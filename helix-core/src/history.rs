@@ -1,6 +1,8 @@
+use crate::parse::*;
 use crate::{Assoc, ChangeSet, Range, Rope, Selection, Transaction};
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::io::{Read, Write};
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
 
@@ -63,6 +65,66 @@ struct Revision {
     // the deleted text.
     inversion: Transaction,
     timestamp: Instant,
+}
+
+const HEADER_TAG: &str = "Helix Undofile 1\n";
+
+pub fn serialize_history<W: Write>(
+    writer: &mut W,
+    history: &History,
+    mtime: u64,
+    hash: [u8; 20],
+) -> std::io::Result<()> {
+    write_string(writer, HEADER_TAG)?;
+    write_usize(writer, history.current)?;
+    write_u64(writer, mtime)?;
+    writer.write_all(&hash)?;
+    write_vec(writer, &history.revisions, serialize_revision)?;
+    Ok(())
+}
+
+pub fn deserialize_history<R: Read>(reader: &mut R) -> std::io::Result<History> {
+    let header = read_string(reader)?;
+    if HEADER_TAG != header {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("missing undofile header"),
+        ))
+    } else {
+        let timestamp = Instant::now();
+        let current = read_usize(reader)?;
+        let mtime = read_u64(reader)?;
+        let mut hash = [0u8; 20];
+        reader.read_exact(&mut hash)?;
+        let revisions = read_vec(reader, |reader| deserialize_revision(reader, timestamp))?;
+        Ok(History { current, revisions })
+    }
+}
+
+fn serialize_revision<W: Write>(writer: &mut W, revision: &Revision) -> std::io::Result<()> {
+    write_usize(writer, revision.parent)?;
+    write_usize(writer, revision.last_child.map(|n| n.get()).unwrap_or(0))?;
+    crate::transaction::serialize_transaction(writer, &revision.transaction)?;
+    crate::transaction::serialize_transaction(writer, &revision.inversion)?;
+
+    Ok(())
+}
+
+fn deserialize_revision<R: Read>(reader: &mut R, timestamp: Instant) -> std::io::Result<Revision> {
+    let parent = read_usize(reader)?;
+    let last_child = match read_usize(reader)? {
+        0 => None,
+        n => Some(unsafe { NonZeroUsize::new_unchecked(n) }),
+    };
+    let transaction = crate::transaction::deserialize_transaction(reader)?;
+    let inversion = crate::transaction::deserialize_transaction(reader)?;
+    Ok(Revision {
+        parent,
+        last_child,
+        transaction,
+        inversion,
+        timestamp,
+    })
 }
 
 impl Default for History {
@@ -386,6 +448,8 @@ impl std::str::FromStr for UndoKind {
 
 #[cfg(test)]
 mod test {
+    use quickcheck::quickcheck;
+
     use super::*;
     use crate::Selection;
 
@@ -630,4 +694,23 @@ mod test {
             Err("duration too large".to_string())
         );
     }
+
+    quickcheck!(
+        fn serde_history(a: String, b: String) -> bool {
+            let old = Rope::from(a);
+            let new = Rope::from(b);
+            let transaction = crate::diff::compare_ropes(&old, &new);
+
+            let mut buf = Vec::new();
+            let mut history = History::default();
+            let state = State {
+                doc: old,
+                selection: Selection::point(0),
+            };
+            history.commit_revision(&transaction, &state);
+            serialize_history(&mut buf, &history).unwrap();
+            deserialize_history(&mut buf.as_slice()).unwrap();
+            true
+        }
+    );
 }

@@ -5,11 +5,10 @@ use crate::{
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
-    session::Session,
     theme::{self, Theme},
     tree::{self, Tree},
     view::ViewPosition,
-    Align, Document, DocumentId, View, ViewId,
+    workspace::Workspace,
 };
 use helix_vcs::DiffProviderRegistry;
 
@@ -975,8 +974,13 @@ impl Editor {
         }
     }
 
-    pub fn session(&self) -> anyhow::Result<Session> {
-        Session::new(std::env::current_dir()?)
+    pub fn save_workspace(&self) -> anyhow::Result<()> {
+        let mut workspace = Workspace::new(std::env::current_dir()?)?;
+        Ok(())
+    }
+
+    pub fn session(&self) -> anyhow::Result<Workspace> {
+        Workspace::new(std::env::current_dir()?)
     }
 
     /// Current editing mode for the [`Editor`].

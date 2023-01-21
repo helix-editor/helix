@@ -16,6 +16,7 @@ pub mod macros;
 pub mod match_brackets;
 pub mod movement;
 pub mod object;
+pub mod parse;
 pub mod path;
 mod position;
 pub mod register;

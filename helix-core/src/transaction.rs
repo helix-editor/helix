@@ -1,5 +1,9 @@
+use crate::parse::*;
 use crate::{Range, Rope, Selection, Tendril};
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    io::{Read, Write},
+};
 
 /// (from, to, replacement)
 pub type Change = (usize, usize, Option<Tendril>);
@@ -413,6 +417,101 @@ impl ChangeSet {
 pub struct Transaction {
     changes: ChangeSet,
     selection: Option<Selection>,
+}
+
+pub fn serialize_transaction<W: Write>(
+    writer: &mut W,
+    transaction: &Transaction,
+) -> std::io::Result<()> {
+    write_option(
+        writer,
+        transaction.selection.as_ref(),
+        |writer, selection| {
+            write_usize(writer, selection.primary_index)?;
+            write_vec(writer, selection.ranges(), |writer, range| {
+                write_usize(writer, range.anchor)?;
+                write_usize(writer, range.head)?;
+                write_option(writer, range.horiz.as_ref(), |writer, horiz| {
+                    write_u32(writer, *horiz)
+                })?;
+                Ok(())
+            })?;
+
+            Ok(())
+        },
+    )?;
+
+    write_usize(writer, transaction.changes.len)?;
+    write_usize(writer, transaction.changes.len_after)?;
+    write_vec(
+        writer,
+        transaction.changes.changes(),
+        |writer, operation| {
+            let variant = match operation {
+                Operation::Retain(_) => 0,
+                Operation::Delete(_) => 1,
+                Operation::Insert(_) => 2,
+            };
+            write_byte(writer, variant)?;
+            match operation {
+                Operation::Retain(n) | Operation::Delete(n) => {
+                    write_usize(writer, *n)?;
+                }
+
+                Operation::Insert(tendril) => {
+                    write_string(writer, tendril.as_str())?;
+                }
+            }
+
+            Ok(())
+        },
+    )?;
+
+    Ok(())
+}
+
+pub fn deserialize_transaction<R: Read>(reader: &mut R) -> std::io::Result<Transaction> {
+    let selection = read_option(reader, |reader| {
+        let primary_index = read_usize(reader)?;
+        let ranges = read_vec(reader, |reader| {
+            let anchor = read_usize(reader)?;
+            let head = read_usize(reader)?;
+            let horiz = read_option(reader, read_u32)?;
+            Ok(Range {
+                anchor,
+                head,
+                horiz,
+            })
+        })?;
+        Ok(Selection {
+            ranges: ranges.into(),
+            primary_index,
+        })
+    })?;
+
+    let len = read_usize(reader)?;
+    let len_after = read_usize(reader)?;
+    let changes = read_vec(reader, |reader| {
+        let res = match read_byte(reader)? {
+            0 => Operation::Retain(read_usize(reader)?),
+            1 => Operation::Delete(read_usize(reader)?),
+            2 => Operation::Insert(read_string(reader)?.into()),
+            _ => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "invalid variant",
+                ))
+            }
+        };
+        Ok(res)
+    })?;
+    let changes = ChangeSet {
+        changes,
+        len,
+        len_after,
+    };
+
+    Ok(Transaction { changes, selection })
 }
 
 impl Transaction {

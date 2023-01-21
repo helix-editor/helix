@@ -389,8 +389,8 @@ impl From<(usize, usize)> for Range {
 /// invariant: A selection can never be empty (always contains at least primary range).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Selection {
-    ranges: SmallVec<[Range; 1]>,
-    primary_index: usize,
+    pub(crate) ranges: SmallVec<[Range; 1]>,
+    pub(crate) primary_index: usize,
 }
 
 #[allow(clippy::len_without_is_empty)] // a Selection is never empty
