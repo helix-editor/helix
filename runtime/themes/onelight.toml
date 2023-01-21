@@ -48,6 +48,7 @@
 "markup.raw.inline" = { fg = "green", bg = "grey-200" }
 "markup.bold" = { fg = "yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "purple", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.list" = { fg = "light-blue" }
 "markup.quote" = { fg = "gray" }
 "markup.link.url" = { fg = "cyan", modifiers = ["underlined"] }

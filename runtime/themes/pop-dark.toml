@@ -103,6 +103,7 @@ namespace = { fg = 'orangeL' }
 'markup.list.unnumbered' = { fg = 'greenN' }
 'markup.bold' = { modifiers = ['bold'] }
 'markup.italic' = { modifiers = ['italic'] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 'markup.link' = { fg = 'blueD' }
 'markup.link.url' = { fg = 'blueL' }
 'markup.link.label' = { fg = 'blueH' }

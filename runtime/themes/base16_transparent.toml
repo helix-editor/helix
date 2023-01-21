@@ -45,6 +45,7 @@
 "markup.list" = "light-red"
 "markup.bold" = { fg = "light-yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "light-magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "yellow", underline = { color = "yellow", style = "line"} }
 "markup.link.text" = "light-red"
 "markup.quote" = "light-cyan"
