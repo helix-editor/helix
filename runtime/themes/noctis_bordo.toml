@@ -49,6 +49,7 @@
 "markup.list" = "base08"
 "markup.quote" = "base0C"
 "markup.raw" = "base0B"
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 
 "diff.delta" = "base09"
 "diff.plus" = "base0B"

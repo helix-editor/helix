@@ -143,6 +143,7 @@
 # "markup.list.numbered" = ""
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link" = "iris"
 "markup.link.url" = { fg = "iris",  underline = { color = "iris", style = "line" } } 
 "markup.link.label" = "subtle"

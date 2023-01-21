@@ -33,6 +33,7 @@ label = "scale.red.3"
 "markup.heading" = "scale.blue.2"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { modifiers = ["underlined"] }
 "markup.link.text" = { fg = "scale.blue.1", modifiers = ["underlined"] }
 "markup.raw" = "scale.blue.2"

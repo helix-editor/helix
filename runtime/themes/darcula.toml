@@ -56,6 +56,7 @@
 "markup.list" = "white"
 "markup.bold" = { fg = "white", modifiers = ["bold"] }
 "markup.italic" = { fg = "white", modifiers = ["italic"] }
+"markup.strikethrough" = { fg = "white", modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "lightblue", modifiers = ["underlined"] }
 "markup.link.text" = "white"
 "markup.quote" = "darkgreen"
