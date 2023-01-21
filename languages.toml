@@ -473,7 +473,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "29f53
 name = "python"
 scope = "source.python"
 injection-regex = "python"
-file-types = ["py"]
+file-types = ["py","pyi","py3","pyw","ptl",".pythonstartup",".pythonrc","SConstruct"]
 shebangs = ["python"]
 roots = []
 comment-token = "#"
@@ -717,6 +717,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "23d4
 
 [[language]]
 name = "lua"
+injection-regex = "lua"
 scope = "source.lua"
 file-types = ["lua"]
 shebangs = ["lua"]
@@ -1061,10 +1062,11 @@ file-types = ["scala", "sbt", "sc"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "metals" }
+config = { "isHttpEnabled" = true }
 
 [[grammar]]
 name = "scala"
-source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "140c96cf398693189d4e50f76d19ddfcd8a018f8" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "f6bbf35de41653b409ca9a3537a154f2b095ef64" }
 
 [[language]]
 name = "dockerfile"

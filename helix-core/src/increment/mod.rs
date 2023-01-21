@@ -1,8 +1,10 @@
-pub mod date_time;
-pub mod number;
+mod date_time;
+mod integer;
 
-use crate::{Range, Tendril};
+pub fn integer(selected_text: &str, amount: i64) -> Option<String> {
+    integer::increment(selected_text, amount)
+}
 
-pub trait Increment {
-    fn increment(&self, amount: i64) -> (Range, Tendril);
+pub fn date_time(selected_text: &str, amount: i64) -> Option<String> {
+    date_time::increment(selected_text, amount)
 }

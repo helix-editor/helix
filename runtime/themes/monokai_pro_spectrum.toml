@@ -65,7 +65,7 @@
 "variable.parameter" = "#f59762"
 
 # error
-"error" = { bg = "magenta", fg = "yellow" }
+"error" = { fg = "red", modifiers = ["bold"] }
 
 # annotations, decorators
 "special" = "#f59762"
@@ -88,7 +88,7 @@
 
 # make diagnostic underlined, to distinguish with selection text.
 "diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
-"diagnostic.error" = { underline = { color = "magenta", style = "curl" } } # maybe should be red?
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
 "diagnostic.info" = { underline = { color = "base8", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "base8", style = "curl" } }
 

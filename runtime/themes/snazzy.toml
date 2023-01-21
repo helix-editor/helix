@@ -1,25 +1,55 @@
-# Author : Sebastian Zivota <loewenheim@mailbox.org>
 # Author : Timothy DeHerrera <tim@nrdxp.dev>
-"comment" = { fg = "comment" }
-"constant" = { fg = "purple" }
-"constant.character.escape" = { fg = "magenta" }
-"function" = { fg = "green" }
-"keyword" = { fg = "magenta" }
-"operator" = { fg = "magenta" }
-"punctuation" = { fg = "foreground" }
-"string" = { fg = "yellow" }
-"string.special.path" = { fg = "blue" }
-"string.regexp" = { fg = "red" }
-"tag" = { fg = "magenta" }
-"type" = { fg = "cyan", modifiers = ["italic"] }
-"type.enum.variant" = { fg = "foreground", modifiers = ["italic"] }
-"variable" = { fg = "foreground" }
-"variable.builtin" = { fg = "cyan", modifiers = ["italic"] }
+"comment".fg = "comment"
+
+"constant".fg = "purple"
+"constant.builtin".fg = "olive"
+"constant.character".fg = "carnation"
+"constant.character.escape".fg = "magenta"
+"constant.numeric".fg = "cyan"
+"constant.numeric.float".fg = "red"
+
+"function".fg = "green"
+"function.builtin".fg = "sand"
+"function.macro".fg = "blue"
+"function.method".fg = "opal"
+
+"keyword" = { fg = "magenta", modifiers = ["bold"] }
+"keyword.operator" = { fg = "coral", modifiers = ["bold"] }
+"keyword.function" = { fg = "lilac", modifiers = ["bold"] }
+"keyword.control" = { fg = "carnation", modifiers = ["bold"]}
+"keyword.control.exception" = { fg = "red", modifiers = ["bold"] }
+"keyword.storage" = { fg = "coral", modifiers = ["bold"] }
+
+"operator".fg = "coral"
+
+"punctuation".fg = "magenta"
+"punctuation.delimiter".fg = "coral"
+"punctuation.bracket".fg = "foreground"
+
+"string".fg = "yellow"
+"string.special".fg = "blue"
+"string.regexp".fg = "red"
+"tag".fg = "carnation"
+"attribute".fg = "opal"
+
+"type".fg = "opal"
+"type.variant".fg = "sand"
+"type.builtin".fg = "yellow"
+"type.enum.variant".fg = "sand"
+
+"variable".fg = "cyan"
+"variable.builtin".fg = "olive"
+"variable.other.member".fg = "lilac"
 "variable.parameter" = { fg ="blue", modifiers = ["italic"] }
 
-"diff.plus" = { fg = "green" }
-"diff.delta" = { fg = "blue" }
-"diff.minus" = { fg = "red" }
+"namespace".fg = "olive"
+"constructor".fg = "sand"
+"special".fg = "magenta"
+"label".fg = "magenta"
+
+"diff.plus".fg = "green"
+"diff.delta".fg = "blue"
+"diff.minus".fg = "red"
 
 "ui.background" = { fg = "foreground", bg = "background" }
 "ui.cursor" =  { fg = "background", bg = "blue", modifiers = ["dim"] }
@@ -36,16 +66,21 @@
 "ui.cursorline" = { bg = "background_dark" }
 "ui.statusline" = { fg = "foreground", bg = "background_dark" }
 "ui.statusline.inactive" = { fg = "comment", bg = "background_dark" }
+"ui.statusline.insert" = { fg = "olive", bg = "background_dark" }
+"ui.statusline.normal" = { fg = "opal", bg = "background_dark" }
+"ui.statusline.select" = { fg = "carnation", bg = "background_dark" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "cyan" }
 "ui.window" = { fg = "foreground" }
 "ui.virtual.whitespace" = { fg = "comment" }
+"ui.virtual.indent-guide" = { fg = "opal" }
 "ui.virtual.ruler" = { bg = "background_dark" }
 
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }
 
 "markup.heading" = { fg = "purple", modifiers = ["bold"] }
+"markup.link.label" = { fg = "blue", modifiers = ["italic"] }
 "markup.list" = "cyan"
 "markup.bold" = { fg = "blue", modifiers = ["bold"] }
 "markup.italic" = { fg = "yellow", modifiers = ["italic"] }
@@ -61,6 +96,8 @@ primary_highlight = "#800049"
 secondary_highlight = "#4d4f66"
 foreground = "#eff0eb"
 comment = "#a39e9b"
+
+# main colors
 red = "#ff5c57"
 blue = "#57c7ff"
 yellow = "#f3f99d"
@@ -68,3 +105,11 @@ green = "#5af78e"
 purple = "#bd93f9"
 cyan = "#9aedfe"
 magenta = "#ff6ac1"
+
+# aux colors
+lilac = "#c9c5fb"
+coral = "#f97c7c"
+sand = "#ffab6f"
+carnation = "#f99fc6"
+olive = "#b6d37c"
+opal = "#b1d7c7"

@@ -1,7 +1,6 @@
 use crate::compositor::{Component, Context, Event, EventResult};
 use helix_view::{apply_transaction, editor::CompleteAction, ViewId};
 use tui::buffer::Buffer as Surface;
-use tui::text::Spans;
 
 use std::borrow::Cow;
 
@@ -33,11 +32,7 @@ impl menu::Item for CompletionItem {
             .into()
     }
 
-    fn label(&self, _data: &Self::Data) -> Spans {
-        self.label.as_str().into()
-    }
-
-    fn row(&self, _data: &Self::Data) -> menu::Row {
+    fn format(&self, _data: &Self::Data) -> menu::Row {
         menu::Row::new(vec![
             menu::Cell::from(self.label.as_str()),
             menu::Cell::from(match self.kind {

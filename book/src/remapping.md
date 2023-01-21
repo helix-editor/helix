@@ -25,6 +25,32 @@ j = { k = "normal_mode" } # Maps `jk` to exit insert mode
 ```
 > NOTE: Typable commands can also be remapped, remember to keep the `:` prefix to indicate it's a typable command.
 
+## Minor modes
+
+Minor modes are accessed by pressing a key (usually from normal mode), giving access to dedicated bindings. Bindings
+can be modified or added by nesting definitions.
+
+```toml
+[keys.insert.j]
+k = "normal_mode" # Maps `jk` to exit insert mode
+
+[keys.normal.g]
+a = "code_action" # Maps `ga` to show possible code actions
+
+# invert `j` and `k` in view mode
+[keys.normal.z]
+j = "scroll_up"
+k = "scroll_down"
+
+# create a new minor mode bound to `+`
+[keys.normal."+"]
+m = ":run-shell-command make"
+c = ":run-shell-command cargo build"
+t = ":run-shell-command cargo test"
+```
+
+## Special keys and modifiers
+
 Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 `C-`, `S-` and `A-`. Special keys are encoded as follows:
 

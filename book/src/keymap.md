@@ -166,6 +166,9 @@ These sub-modes are accessible from normal mode and typically switch back to nor
 | `Ctrl-w` | Enter [window mode](#window-mode)                  | N/A            |
 | `Space`  | Enter [space mode](#space-mode)                    | N/A            |
 
+These modes (except command mode) can be configured by
+[remapping keys](https://docs.helix-editor.com/remapping.html#minor-modes).
+
 #### View mode
 
 Accessed by typing `z` in [normal mode](#normal-mode).
@@ -305,10 +308,10 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 
 | Key      | Description                                  | Command               |
 | -----    | -----------                                  | -------               |
-| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`      |
 | `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`      |
-| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`     |
+| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`      |
 | `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`      |
+| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`     |
 | `]f`     | Go to next function (**TS**)                 | `goto_next_function`  |
 | `[f`     | Go to previous function (**TS**)             | `goto_prev_function`  |
 | `]t`     | Go to next type definition (**TS**)          | `goto_next_class`     |
@@ -323,10 +326,10 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
 | `]g`     | Go to next change                            | `goto_next_change`    |
 | `[g`     | Go to previous change                        | `goto_prev_change`    |
-| `[G`     | Go to first change                           | `goto_first_change`   |
 | `]G`     | Go to last change                            | `goto_last_change`    |
-| `[Space` | Add newline above                            | `add_newline_above`   |
+| `[G`     | Go to first change                           | `goto_first_change`   |
 | `]Space` | Add newline below                            | `add_newline_below`   |
+| `[Space` | Add newline above                            | `add_newline_above`   |
 
 ## Insert mode
 

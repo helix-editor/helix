@@ -342,23 +342,29 @@ impl EditorView {
         let selection_scope = theme
             .find_scope_index("ui.selection")
             .expect("could not find `ui.selection` scope in the theme!");
+        let primary_selection_scope = theme
+            .find_scope_index("ui.selection.primary")
+            .unwrap_or(selection_scope);
         let base_cursor_scope = theme
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
+        let base_primary_cursor_scope = theme
+            .find_scope_index("ui.cursor.primary")
+            .unwrap_or(base_cursor_scope);
 
         let cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
             Mode::Select => theme.find_scope_index("ui.cursor.select"),
-            Mode::Normal => Some(base_cursor_scope),
+            Mode::Normal => theme.find_scope_index("ui.cursor.normal"),
         }
         .unwrap_or(base_cursor_scope);
 
-        let primary_cursor_scope = theme
-            .find_scope_index("ui.cursor.primary")
-            .unwrap_or(cursor_scope);
-        let primary_selection_scope = theme
-            .find_scope_index("ui.selection.primary")
-            .unwrap_or(selection_scope);
+        let primary_cursor_scope = match mode {
+            Mode::Insert => theme.find_scope_index("ui.cursor.primary.insert"),
+            Mode::Select => theme.find_scope_index("ui.cursor.primary.select"),
+            Mode::Normal => theme.find_scope_index("ui.cursor.primary.normal"),
+        }
+        .unwrap_or(base_primary_cursor_scope);
 
         let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         for (i, range) in selection.iter().enumerate() {
@@ -386,7 +392,14 @@ impl EditorView {
             if range.head > range.anchor {
                 // Standard case.
                 let cursor_start = prev_grapheme_boundary(text, range.head);
-                spans.push((selection_scope, range.anchor..cursor_start));
+                // non block cursors look like they exclude the cursor
+                let selection_end =
+                    if selection_is_primary && !cursor_is_block && mode != Mode::Insert {
+                        range.head
+                    } else {
+                        cursor_start
+                    };
+                spans.push((selection_scope, range.anchor..selection_end));
                 if !selection_is_primary || cursor_is_block {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
@@ -396,7 +409,16 @@ impl EditorView {
                 if !selection_is_primary || cursor_is_block {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
-                spans.push((selection_scope, cursor_end..range.anchor));
+                // non block cursors look like they exclude the cursor
+                let selection_start = if selection_is_primary
+                    && !cursor_is_block
+                    && !(mode == Mode::Insert && cursor_end == range.anchor)
+                {
+                    range.head
+                } else {
+                    cursor_end
+                };
+                spans.push((selection_scope, selection_start..range.anchor));
             }
         }
 
