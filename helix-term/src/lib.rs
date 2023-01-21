@@ -1,5 +1,3 @@
-#![allow(clippy::type_complexity)]
-
 #[macro_use]
 extern crate helix_view;
 

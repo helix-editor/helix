@@ -1,5 +1,5 @@
 use crate::{
-    commands,
+    commands::{self, OnKeyCallback},
     compositor::{Component, Context, Event, EventResult},
     job::{self, Callback},
     key,
@@ -34,7 +34,7 @@ use super::statusline;
 
 pub struct EditorView {
     pub keymaps: Keymaps,
-    on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
+    on_next_key: Option<OnKeyCallback>,
     pseudo_pending: Vec<KeyEvent>,
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
