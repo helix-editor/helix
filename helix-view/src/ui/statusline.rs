@@ -9,7 +9,7 @@ use helix_lsp::lsp::DiagnosticSeverity;
 
 use crate::ui::ProgressSpinners;
 
-use crate::editor::StatusLineElement as StatusLineElementID;
+use crate::editor::StatusLineElement;
 use helix_tui::buffer::Buffer as Surface;
 use helix_tui::text::{Span, Spans};
 
@@ -132,27 +132,27 @@ fn append(buffer: &mut Spans, text: String, base_style: &Style, style: Option<St
     ));
 }
 
-fn get_render_function<F>(element_id: StatusLineElementID) -> impl Fn(&mut RenderContext, F)
+fn get_render_function<F>(element: StatusLineElement) -> impl Fn(&mut RenderContext, F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    match element_id {
-        crate::editor::StatusLineElement::Mode => render_mode,
-        crate::editor::StatusLineElement::Spinner => render_lsp_spinner,
-        crate::editor::StatusLineElement::FileBaseName => render_file_base_name,
-        crate::editor::StatusLineElement::FileName => render_file_name,
-        crate::editor::StatusLineElement::FileEncoding => render_file_encoding,
-        crate::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
-        crate::editor::StatusLineElement::FileType => render_file_type,
-        crate::editor::StatusLineElement::Diagnostics => render_diagnostics,
-        crate::editor::StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
-        crate::editor::StatusLineElement::Selections => render_selections,
-        crate::editor::StatusLineElement::PrimarySelectionLength => render_primary_selection_length,
-        crate::editor::StatusLineElement::Position => render_position,
-        crate::editor::StatusLineElement::PositionPercentage => render_position_percentage,
-        crate::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
-        crate::editor::StatusLineElement::Separator => render_separator,
-        crate::editor::StatusLineElement::Spacer => render_spacer,
+    match element {
+        StatusLineElement::Mode => render_mode,
+        StatusLineElement::Spinner => render_lsp_spinner,
+        StatusLineElement::FileBaseName => render_file_base_name,
+        StatusLineElement::FileName => render_file_name,
+        StatusLineElement::FileEncoding => render_file_encoding,
+        StatusLineElement::FileLineEnding => render_file_line_ending,
+        StatusLineElement::FileType => render_file_type,
+        StatusLineElement::Diagnostics => render_diagnostics,
+        StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
+        StatusLineElement::Selections => render_selections,
+        StatusLineElement::PrimarySelectionLength => render_primary_selection_length,
+        StatusLineElement::Position => render_position,
+        StatusLineElement::PositionPercentage => render_position_percentage,
+        StatusLineElement::TotalLineNumbers => render_total_line_numbers,
+        StatusLineElement::Separator => render_separator,
+        StatusLineElement::Spacer => render_spacer,
     }
 }
 
