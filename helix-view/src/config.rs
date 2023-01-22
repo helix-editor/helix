@@ -1,5 +1,5 @@
+use crate::document::Mode;
 use crate::keymap::{default::default, merge_keys, Keymap};
-use helix_view::document::Mode;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -14,7 +14,7 @@ pub struct Config {
     #[serde(default = "default")]
     pub keys: HashMap<Mode, Keymap>,
     #[serde(default)]
-    pub editor: helix_view::editor::Config,
+    pub editor: crate::editor::Config,
 }
 
 impl Default for Config {
@@ -22,7 +22,7 @@ impl Default for Config {
         Config {
             theme: None,
             keys: default(),
-            editor: helix_view::editor::Config::default(),
+            editor: crate::editor::Config::default(),
         }
     }
 }
@@ -63,10 +63,10 @@ mod tests {
 
     #[test]
     fn parsing_keymaps_config_file() {
+        use crate::document::Mode;
         use crate::keymap;
         use crate::keymap::Keymap;
         use helix_core::hashmap;
-        use helix_view::document::Mode;
 
         let sample_keymaps = r#"
             [keys.insert]

@@ -5,7 +5,7 @@ use cassowary::strength::{REQUIRED, WEAK};
 use cassowary::WeightedRelation::*;
 use cassowary::{Constraint as CassowaryConstraint, Expression, Solver, Variable};
 
-use helix_view::graphics::{Margin, Rect};
+use helix_graphics::{Margin, Rect};
 
 #[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
 pub enum Corner {
@@ -111,7 +111,7 @@ impl Layout {
     /// # Examples
     /// ```
     /// # use helix_tui::layout::{Constraint, Direction, Layout};
-    /// # use helix_view::graphics::Rect;
+    /// # use helix_graphics::Rect;
     /// let chunks = Layout::default()
     ///     .direction(Direction::Vertical)
     ///     .constraints([Constraint::Length(5), Constraint::Min(0)].as_ref())

@@ -4,15 +4,15 @@ use crate::{
     compositor::{Callback, Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
 };
-use tui::{buffer::Buffer as Surface, widgets::Table};
+use helix_tui::{buffer::Buffer as Surface, widgets::Table};
 
-pub use tui::widgets::{Cell, Row};
+pub use helix_tui::widgets::{Cell, Row};
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 
-use helix_view::{graphics::Rect, Editor};
-use tui::layout::Constraint;
+use crate::{graphics::Rect, Editor};
+use helix_tui::layout::Constraint;
 
 pub trait Item {
     /// Additional editor state that is used for label calculation.
@@ -336,7 +336,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             .column_spacing(1)
             .widths(&self.widths);
 
-        use tui::widgets::TableState;
+        use helix_tui::widgets::TableState;
 
         table.render_table(
             area.clip_left(Self::LEFT_PADDING as u16).clip_right(1),
@@ -374,10 +374,10 @@ impl<T: Item + 'static> Component for Menu<T> {
 
                 if scroll_line <= i && i < scroll_line + scroll_height {
                     // Draw scroll thumb
-                    cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
+                    cell.set_fg(scroll_style.fg.unwrap_or(crate::theme::Color::Reset));
                 } else {
                     // Draw scroll track
-                    cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
+                    cell.set_fg(scroll_style.bg.unwrap_or(crate::theme::Color::Reset));
                 }
             }
         }

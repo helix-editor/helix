@@ -3,13 +3,13 @@ extern crate helix_view;
 
 pub mod application;
 pub mod args;
-pub mod commands;
-pub mod compositor;
-pub mod config;
+pub use helix_view::commands;
+pub use helix_view::compositor;
+pub use helix_view::config;
 pub mod health;
-pub mod job;
-pub mod keymap;
-pub mod ui;
+pub use helix_view::job;
+pub use helix_view::keymap;
+pub use helix_view::ui;
 pub use keymap::macros::*;
 
 #[cfg(not(windows))]

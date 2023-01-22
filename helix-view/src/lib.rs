@@ -5,18 +5,24 @@ pub mod clipboard;
 pub mod document;
 pub mod editor;
 pub mod env;
-pub mod graphics;
+pub use helix_graphics as graphics;
 pub mod gutter;
 pub mod handlers {
     pub mod dap;
     pub mod lsp;
 }
 pub mod base64;
+pub mod commands;
+pub mod compositor;
+pub mod config;
 pub mod info;
 pub mod input;
+pub mod job;
 pub mod keyboard;
+pub mod keymap;
 pub mod theme;
 pub mod tree;
+pub mod ui;
 pub mod view;
 
 use std::num::NonZeroUsize;

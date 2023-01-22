@@ -1,10 +1,8 @@
 // Each component declares its own size constraints and gets fitted based on its parent.
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
+use crate::graphics::{CursorKind, Rect};
 use helix_core::Position;
-use helix_view::graphics::{CursorKind, Rect};
-
-use tui::buffer::Buffer as Surface;
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
 
@@ -15,9 +13,9 @@ pub enum EventResult {
 }
 
 use crate::job::Jobs;
-use helix_view::Editor;
+use crate::Editor;
 
-pub use helix_view::input::Event;
+pub use crate::input::Event;
 
 pub struct Context<'a> {
     pub editor: &'a mut Editor,
@@ -35,6 +33,12 @@ impl<'a> Context<'a> {
     }
 }
 
+#[cfg(feature = "term")]
+pub use helix_tui::buffer::Buffer as Surface;
+
+#[cfg(not(feature = "term"))]
+pub type Surface = ();
+
 pub trait Component: Any + AnyComponent {
     /// Process input events, return true if handled.
     fn handle_event(&mut self, _event: &Event, _ctx: &mut Context) -> EventResult {
@@ -42,13 +46,13 @@ pub trait Component: Any + AnyComponent {
     }
     // , args: ()
 
+    /// Render the component onto the provided surface.
+    fn render(&mut self, area: Rect, frame: &mut Surface, ctx: &mut Context);
+
     /// Should redraw? Useful for saving redraw cycles if we know component didn't change.
     fn should_update(&self) -> bool {
         true
     }
-
-    /// Render the component onto the provided surface.
-    fn render(&mut self, area: Rect, frame: &mut Surface, ctx: &mut Context);
 
     /// Get cursor position and cursor kind.
     fn cursor(&self, _area: Rect, _ctx: &Editor) -> (Option<Position>, CursorKind) {
@@ -77,7 +81,7 @@ pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
     area: Rect,
 
-    pub(crate) last_picker: Option<Box<dyn Component>>,
+    pub last_picker: Option<Box<dyn Component>>,
 }
 
 impl Compositor {
@@ -222,7 +226,7 @@ pub trait AnyComponent {
     /// # Examples
     ///
     /// ```rust
-    /// use helix_term::{ui::Text, compositor::Component};
+    /// use helix_view::{ui::Text, compositor::Component};
     /// let boxed: Box<dyn Component> = Box::new(Text::new("text".to_string()));
     /// let text: Box<Text> = boxed.as_boxed_any().downcast().unwrap();
     /// ```

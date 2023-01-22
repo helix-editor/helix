@@ -1,0 +1,23 @@
+[package]
+name = "helix-graphics"
+version = "0.6.0"
+authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+edition = "2021"
+license = "MPL-2.0"
+repository = "https://github.com/helix-editor/helix"
+homepage = "https://helix-editor.com"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/
+
+[features]
+term = ["crossterm"]
+
+[dependencies]
+bitflags = "1.3"
+serde = { version = "1.0", features = ["derive"] }
+
+crossterm = { version = "0.25", optional = true }
+
+# TODO: graphics.rs tests rely on this, but we should remove that
+# [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+# helix-tui = { path = "../helix-tui" }

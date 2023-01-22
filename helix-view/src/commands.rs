@@ -3,11 +3,22 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
+use helix_tui::widgets::Row;
 use helix_vcs::Hunk;
 pub use lsp::*;
-use tui::widgets::Row;
 pub use typed::*;
 
+use crate::{
+    clipboard::ClipboardType,
+    document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
+    editor::{Action, Motion},
+    info::Info,
+    input::KeyEvent,
+    keyboard::KeyCode,
+    tree,
+    view::View,
+    Document, DocumentId, Editor, ViewId,
+};
 use helix_core::{
     comment, coords_at_pos, encoding, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
@@ -25,17 +36,6 @@ use helix_core::{
     visual_coords_at_pos, LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection,
     SmallVec, Tendril, Transaction,
 };
-use helix_view::{
-    clipboard::ClipboardType,
-    document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, Motion},
-    info::Info,
-    input::KeyEvent,
-    keyboard::KeyCode,
-    tree,
-    view::View,
-    Document, DocumentId, Editor, ViewId,
-};
 
 use anyhow::{anyhow, bail, ensure, Context as _};
 use fuzzy_matcher::FuzzyMatcher;
@@ -43,7 +43,6 @@ use insert::*;
 use movement::Movement;
 
 use crate::{
-    args,
     compositor::{self, Component, Compositor},
     job::Callback,
     keymap::ReverseKeymap,
@@ -123,7 +122,7 @@ impl<'a> Context<'a> {
     }
 }
 
-use helix_view::{align_view, Align};
+use crate::{align_view, Align};
 
 /// A MappableCommand is either a static command like "jump_view_up" or a Typable command like
 /// :format. It causes a side-effect on the state (usually by creating and applying a transaction).
@@ -4882,7 +4881,7 @@ async fn shell_impl_async(
     let output = if let Some(mut stdin) = process.stdin.take() {
         let input_task = tokio::spawn(async move {
             if let Some(input) = input {
-                helix_view::document::to_writer(&mut stdin, encoding::UTF_8, &input).await?;
+                crate::document::to_writer(&mut stdin, encoding::UTF_8, &input).await?;
             }
             Ok::<_, anyhow::Error>(())
         });
@@ -5152,7 +5151,7 @@ fn replay_macro(cx: &mut Context) {
     }
 
     let keys: Vec<KeyEvent> = if let Some([keys_str]) = cx.editor.registers.read(reg) {
-        match helix_view::input::parse_macro(keys_str) {
+        match crate::input::parse_macro(keys_str) {
             Ok(keys) => keys,
             Err(err) => {
                 cx.editor.set_error(format!("Invalid macro: {}", err));

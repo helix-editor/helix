@@ -3,11 +3,11 @@ pub mod macros;
 
 pub use crate::commands::MappableCommand;
 use crate::config::Config;
+use crate::{document::Mode, info::Info, input::KeyEvent};
 use arc_swap::{
     access::{DynAccess, DynGuard},
     ArcSwap,
 };
-use helix_view::{document::Mode, info::Info, input::KeyEvent};
 use serde::Deserialize;
 use std::{
     borrow::Cow,

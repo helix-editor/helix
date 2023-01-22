@@ -25,9 +25,9 @@ pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
+use crate::Editor;
 use helix_core::regex::Regex;
 use helix_core::regex::RegexBuilder;
-use helix_view::Editor;
 
 use std::path::PathBuf;
 
@@ -156,7 +156,7 @@ pub fn regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
+pub fn file_picker(root: PathBuf, config: &crate::editor::Config) -> FilePicker<PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
 
@@ -236,12 +236,12 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 }
 
 pub mod completers {
+    use crate::document::SCRATCH_BUFFER_NAME;
+    use crate::theme;
     use crate::ui::prompt::Completion;
+    use crate::{editor::Config, Editor};
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
-    use helix_view::document::SCRATCH_BUFFER_NAME;
-    use helix_view::theme;
-    use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::cmp::Reverse;

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
+use crate::graphics::{Margin, Rect, Style};
 use helix_core::syntax;
-use helix_view::graphics::{Margin, Rect, Style};
-use tui::buffer::Buffer;
-use tui::widgets::{BorderType, Paragraph, Widget, Wrap};
+use helix_tui::buffer::Buffer;
+use helix_tui::widgets::{BorderType, Paragraph, Widget, Wrap};
 
 use crate::compositor::{Component, Compositor, Context};
 

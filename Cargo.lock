@@ -1158,6 +1158,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "helix-graphics"
+version = "0.6.0"
+dependencies = [
+ "bitflags",
+ "crossterm",
+ "serde",
+]
+
+[[package]]
 name = "helix-loader"
 version = "0.6.0"
 dependencies = [
@@ -1199,13 +1208,9 @@ dependencies = [
  "anyhow",
  "arc-swap",
  "chrono",
- "content_inspector",
  "crossterm",
  "fern",
  "futures-util",
- "fuzzy-matcher",
- "grep-regex",
- "grep-searcher",
  "helix-core",
  "helix-dap",
  "helix-loader",
@@ -1213,11 +1218,9 @@ dependencies = [
  "helix-tui",
  "helix-vcs",
  "helix-view",
- "ignore",
  "indoc",
  "log",
  "once_cell",
- "pulldown-cmark",
  "serde",
  "serde_json",
  "signal-hook",
@@ -1238,7 +1241,7 @@ dependencies = [
  "cassowary",
  "crossterm",
  "helix-core",
- "helix-view",
+ "helix-graphics",
  "serde",
  "termini",
  "unicode-segmentation",
@@ -1266,19 +1269,27 @@ dependencies = [
  "bitflags",
  "chardetng",
  "clipboard-win",
+ "content_inspector",
  "crossterm",
  "futures-util",
+ "fuzzy-matcher",
+ "grep-regex",
+ "grep-searcher",
  "helix-core",
  "helix-dap",
+ "helix-graphics",
  "helix-loader",
  "helix-lsp",
  "helix-tui",
  "helix-vcs",
+ "ignore",
  "libc",
  "log",
  "once_cell",
+ "pulldown-cmark",
  "serde",
  "serde_json",
+ "signal-hook",
  "slotmap",
  "tokio",
  "tokio-stream",

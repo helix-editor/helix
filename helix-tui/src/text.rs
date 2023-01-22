@@ -21,7 +21,7 @@
 //! ```rust
 //! # use helix_tui::widgets::Block;
 //! # use helix_tui::text::{Span, Spans};
-//! # use helix_view::graphics::{Color, Style};
+//! # use helix_graphics::{Color, Style};
 //! // A simple string with no styling.
 //! // Converted to Spans(vec![
 //! //   Span { content: Cow::Borrowed("My title"), style: Style { .. } }
@@ -48,7 +48,7 @@
 //! ```
 use helix_core::line_ending::str_is_line_ending;
 use helix_core::unicode::width::UnicodeWidthStr;
-use helix_view::graphics::Style;
+use helix_graphics::Style;
 use std::borrow::Cow;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -92,7 +92,7 @@ impl<'a> Span<'a> {
     ///
     /// ```rust
     /// # use helix_tui::text::Span;
-    /// # use helix_view::graphics::{Color, Modifier, Style};
+    /// # use helix_graphics::{Color, Modifier, Style};
     /// let style = Style::default().fg(Color::Yellow).add_modifier(Modifier::ITALIC);
     /// Span::styled("My text", style);
     /// Span::styled(String::from("My text"), style);
@@ -121,7 +121,7 @@ impl<'a> Span<'a> {
     ///
     /// ```rust
     /// # use helix_tui::text::{Span, StyledGrapheme};
-    /// # use helix_view::graphics::{Color, Modifier, Style};
+    /// # use helix_graphics::{Color, Modifier, Style};
     /// # use std::iter::Iterator;
     /// let style = Style::default().fg(Color::Yellow);
     /// let span = Span::styled("Text", style);
@@ -219,7 +219,7 @@ impl<'a> Spans<'a> {
     ///
     /// ```rust
     /// # use helix_tui::text::{Span, Spans};
-    /// # use helix_view::graphics::{Color, Style};
+    /// # use helix_graphics::{Color, Style};
     /// let spans = Spans::from(vec![
     ///     Span::styled("My", Style::default().fg(Color::Yellow)),
     ///     Span::raw(" text"),
@@ -282,7 +282,7 @@ impl<'a> From<&Spans<'a>> for String {
 ///
 /// ```rust
 /// # use helix_tui::text::Text;
-/// # use helix_view::graphics::{Color, Modifier, Style};
+/// # use helix_graphics::{Color, Modifier, Style};
 /// let style = Style::default().fg(Color::Yellow).add_modifier(Modifier::ITALIC);
 ///
 /// // An initial two lines of `Text` built from a `&str`
@@ -330,7 +330,7 @@ impl<'a> Text<'a> {
     ///
     /// ```rust
     /// # use helix_tui::text::Text;
-    /// # use helix_view::graphics::{Color, Modifier, Style};
+    /// # use helix_graphics::{Color, Modifier, Style};
     /// let style = Style::default().fg(Color::Yellow).add_modifier(Modifier::ITALIC);
     /// Text::styled("The first line\nThe second line", style);
     /// Text::styled(String::from("The first line\nThe second line"), style);
@@ -380,7 +380,7 @@ impl<'a> Text<'a> {
     ///
     /// ```rust
     /// # use helix_tui::text::Text;
-    /// # use helix_view::graphics::{Color, Modifier, Style};
+    /// # use helix_graphics::{Color, Modifier, Style};
     /// let style = Style::default().fg(Color::Yellow).add_modifier(Modifier::ITALIC);
     /// let mut raw_text = Text::raw("The first line\nThe second line");
     /// let styled_text = Text::styled(String::from("The first line\nThe second line"), style);

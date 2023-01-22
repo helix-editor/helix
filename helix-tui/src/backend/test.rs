@@ -3,7 +3,7 @@ use crate::{
     buffer::{Buffer, Cell},
 };
 use helix_core::unicode::width::UnicodeWidthStr;
-use helix_view::graphics::{CursorKind, Rect};
+use helix_graphics::{CursorKind, Rect};
 use std::{fmt::Write, io};
 
 /// A backend used for the integration tests.

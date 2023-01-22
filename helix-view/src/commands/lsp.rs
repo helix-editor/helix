@@ -5,15 +5,15 @@ use helix_lsp::{
     util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
-use tui::{
+use helix_tui::{
     text::{Span, Spans},
     widgets::Row,
 };
 
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
+use crate::{document::Mode, editor::Action, theme::Style};
 use helix_core::{path, Selection};
-use helix_view::{document::Mode, editor::Action, theme::Style};
 
 use crate::{
     compositor::{self, Compositor},

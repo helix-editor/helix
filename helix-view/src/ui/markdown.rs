@@ -1,5 +1,5 @@
 use crate::compositor::{Component, Context};
-use tui::{
+use helix_tui::{
     buffer::Buffer as Surface,
     text::{Span, Spans, Text},
 };
@@ -8,13 +8,13 @@ use std::sync::Arc;
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag};
 
+use crate::{
+    graphics::{Margin, Rect, Style},
+    Theme,
+};
 use helix_core::{
     syntax::{self, HighlightEvent, Syntax},
     Rope,
-};
-use helix_view::{
-    graphics::{Margin, Rect, Style},
-    Theme,
 };
 
 fn styled_multiline_text<'a>(text: String, style: Style) -> Text<'a> {
@@ -144,7 +144,7 @@ impl Markdown {
         }
     }
 
-    pub fn parse(&self, theme: Option<&Theme>) -> tui::text::Text<'_> {
+    pub fn parse(&self, theme: Option<&Theme>) -> helix_tui::text::Text<'_> {
         fn push_line<'a>(spans: &mut Vec<Span<'a>>, lines: &mut Vec<Spans<'a>>) {
             let spans = std::mem::take(spans);
             if !spans.is_empty() {
@@ -264,14 +264,14 @@ impl Markdown {
                             CodeBlockKind::Fenced(language) => language,
                             CodeBlockKind::Indented => "",
                         };
-                        let tui_text = highlighted_code_block(
+                        let helix_tui_text = highlighted_code_block(
                             text.to_string(),
                             language,
                             theme,
                             Arc::clone(&self.config_loader),
                             None,
                         );
-                        lines.extend(tui_text.lines.into_iter());
+                        lines.extend(helix_tui_text.lines.into_iter());
                     } else {
                         let style = if let Some(Tag::Heading(level, ..)) = tags.last() {
                             match level {
@@ -308,7 +308,7 @@ impl Markdown {
                     log::warn!("unhandled markdown event {:?}", event);
                 }
             }
-            // build up a vec of Paragraph tui widgets
+            // build up a vec of Paragraph helix_tui widgets
         }
 
         if !spans.is_empty() {
@@ -328,7 +328,7 @@ impl Markdown {
 
 impl Component for Markdown {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        use tui::widgets::{Paragraph, Widget, Wrap};
+        use helix_tui::widgets::{Paragraph, Widget, Wrap};
 
         let text = self.parse(Some(&cx.editor.theme));
 

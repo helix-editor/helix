@@ -3,10 +3,10 @@ use crate::{
     compositor::{Callback, Component, Context, Event, EventResult},
     ctrl, key,
 };
-use tui::buffer::Buffer as Surface;
+use helix_tui::buffer::Buffer as Surface;
 
+use crate::graphics::{Margin, Rect};
 use helix_core::Position;
-use helix_view::graphics::{Margin, Rect};
 
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)
@@ -274,10 +274,10 @@ impl<T: Component> Component for Popup<T> {
 
                     if scroll_line <= i && i < scroll_line + scroll_height {
                         // Draw scroll thumb
-                        cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
+                        cell.set_fg(scroll_style.fg.unwrap_or(crate::theme::Color::Reset));
                     } else {
                         // Draw scroll track
-                        cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
+                        cell.set_fg(scroll_style.bg.unwrap_or(crate::theme::Color::Reset));
                     }
                 }
             }

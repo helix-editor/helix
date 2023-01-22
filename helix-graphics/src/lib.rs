@@ -328,6 +328,7 @@ impl FromStr for UnderlineStyle {
     }
 }
 
+#[cfg(feature = "term")]
 impl From<UnderlineStyle> for crossterm::style::Attribute {
     fn from(style: UnderlineStyle) -> Self {
         match style {
@@ -349,7 +350,7 @@ bitflags! {
     /// ## Examples
     ///
     /// ```rust
-    /// # use helix_view::graphics::Modifier;
+    /// # use helix_graphics::Modifier;
     ///
     /// let m = Modifier::BOLD | Modifier::ITALIC;
     /// ```
@@ -387,7 +388,7 @@ impl FromStr for Modifier {
 /// Style let you control the main characteristics of the displayed elements.
 ///
 /// ```rust
-/// # use helix_view::graphics::{Color, Modifier, Style};
+/// # use helix_graphics::{Color, Modifier, Style};
 /// Style::default()
 ///     .fg(Color::Black)
 ///     .bg(Color::Green)
@@ -398,8 +399,8 @@ impl FromStr for Modifier {
 /// terminal buffer, the style of this cell will be the result of the merge of S1, S2 and S3, not
 /// just S3.
 ///
-/// ```rust
-/// # use helix_view::graphics::{Rect, Color, UnderlineStyle, Modifier, Style};
+/// ```ignore
+/// # use helix_graphics::{Rect, Color, UnderlineStyle, Modifier, Style};
 /// # use helix_tui::buffer::Buffer;
 /// let styles = [
 ///     Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD | Modifier::ITALIC),
@@ -426,8 +427,8 @@ impl FromStr for Modifier {
 /// The default implementation returns a `Style` that does not modify anything. If you wish to
 /// reset all properties until that point use [`Style::reset`].
 ///
-/// ```
-/// # use helix_view::graphics::{Rect, Color, UnderlineStyle, Modifier, Style};
+/// ``` ignore
+/// # use helix_graphics::{Rect, Color, UnderlineStyle, Modifier, Style};
 /// # use helix_tui::buffer::Buffer;
 /// let styles = [
 ///     Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD | Modifier::ITALIC),
@@ -491,7 +492,7 @@ impl Style {
     /// ## Examples
     ///
     /// ```rust
-    /// # use helix_view::graphics::{Color, Style};
+    /// # use helix_graphics::{Color, Style};
     /// let style = Style::default().fg(Color::Blue);
     /// let diff = Style::default().fg(Color::Red);
     /// assert_eq!(style.patch(diff), Style::default().fg(Color::Red));
@@ -506,7 +507,7 @@ impl Style {
     /// ## Examples
     ///
     /// ```rust
-    /// # use helix_view::graphics::{Color, Style};
+    /// # use helix_graphics::{Color, Style};
     /// let style = Style::default().bg(Color::Blue);
     /// let diff = Style::default().bg(Color::Red);
     /// assert_eq!(style.patch(diff), Style::default().bg(Color::Red));
@@ -521,7 +522,7 @@ impl Style {
     /// ## Examples
     ///
     /// ```rust
-    /// # use helix_view::graphics::{Color, Style};
+    /// # use helix_graphics::{Color, Style};
     /// let style = Style::default().underline_color(Color::Blue);
     /// let diff = Style::default().underline_color(Color::Red);
     /// assert_eq!(style.patch(diff), Style::default().underline_color(Color::Red));
@@ -536,7 +537,7 @@ impl Style {
     /// ## Examples
     ///
     /// ```rust
-    /// # use helix_view::graphics::{UnderlineStyle, Style};
+    /// # use helix_graphics::{UnderlineStyle, Style};
     /// let style = Style::default().underline_style(UnderlineStyle::Line);
     /// let diff = Style::default().underline_style(UnderlineStyle::Curl);
     /// assert_eq!(style.patch(diff), Style::default().underline_style(UnderlineStyle::Curl));
@@ -553,7 +554,7 @@ impl Style {
     /// ## Examples
     ///
     /// ```rust
-    /// # use helix_view::graphics::{Color, Modifier, Style};
+    /// # use helix_graphics::{Color, Modifier, Style};
     /// let style = Style::default().add_modifier(Modifier::BOLD);
     /// let diff = Style::default().add_modifier(Modifier::ITALIC);
     /// let patched = style.patch(diff);
@@ -573,7 +574,7 @@ impl Style {
     /// ## Examples
     ///
     /// ```rust
-    /// # use helix_view::graphics::{Color, Modifier, Style};
+    /// # use helix_graphics::{Color, Modifier, Style};
     /// let style = Style::default().add_modifier(Modifier::BOLD | Modifier::ITALIC);
     /// let diff = Style::default().remove_modifier(Modifier::ITALIC);
     /// let patched = style.patch(diff);
@@ -591,7 +592,7 @@ impl Style {
     ///
     /// ## Examples
     /// ```
-    /// # use helix_view::graphics::{Color, Modifier, Style};
+    /// # use helix_graphics::{Color, Modifier, Style};
     /// let style_1 = Style::default().fg(Color::Yellow);
     /// let style_2 = Style::default().bg(Color::Red);
     /// let combined = style_1.patch(style_2);

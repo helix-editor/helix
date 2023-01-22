@@ -1,4 +1,4 @@
-use helix_view::Editor;
+use crate::Editor;
 
 use crate::compositor::Compositor;
 

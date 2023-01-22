@@ -1,8 +1,8 @@
 use crate::compositor::{Component, Context};
-use helix_view::graphics::{Margin, Rect};
-use helix_view::info::Info;
-use tui::buffer::Buffer as Surface;
-use tui::widgets::{Block, Borders, Paragraph, Widget};
+use crate::graphics::{Margin, Rect};
+use crate::info::Info;
+use helix_tui::buffer::Buffer as Surface;
+use helix_tui::widgets::{Block, Borders, Paragraph, Widget};
 
 impl Component for Info {
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {

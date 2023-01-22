@@ -7,6 +7,14 @@ use crate::{
     ui::{Completion, ProgressSpinners},
 };
 
+use crate::{
+    document::{Mode, SCRATCH_BUFFER_NAME},
+    editor::{CompleteAction, CursorShapeConfig},
+    graphics::{Color, CursorKind, Modifier, Rect, Style},
+    input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
+    keyboard::{KeyCode, KeyModifiers},
+    Document, Editor, Theme, View,
+};
 use helix_core::{
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
@@ -16,17 +24,9 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     visual_coords_at_pos, LineEnding, Position, Range, Selection, Transaction,
 };
-use helix_view::{
-    document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
-    graphics::{Color, CursorKind, Modifier, Rect, Style},
-    input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
-    keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View,
-};
 use std::{borrow::Cow, cmp::min, num::NonZeroUsize, path::PathBuf};
 
-use tui::buffer::Buffer as Surface;
+use helix_tui::buffer::Buffer as Surface;
 
 use super::lsp::SignatureHelp;
 use super::statusline;
@@ -162,7 +162,7 @@ impl EditorView {
             let border_style = theme.get("ui.window");
             for y in area.top()..area.bottom() {
                 surface[(x, y)]
-                    .set_symbol(tui::symbols::line::VERTICAL)
+                    .set_symbol(helix_tui::symbols::line::VERTICAL)
                     //.set_symbol(" ")
                     .set_style(border_style);
             }
@@ -431,10 +431,10 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
         highlights: H,
-        config: &helix_view::editor::Config,
+        config: &crate::editor::Config,
     ) {
         let whitespace = &config.whitespace;
-        use helix_view::editor::WhitespaceRenderValue;
+        use crate::editor::WhitespaceRenderValue;
 
         // It's slightly more efficient to produce a full RopeSlice from the Rope, then slice that a bunch
         // of times than it is to always call Rope::slice/get_slice (it will internally always hit RSEnum::Light).
@@ -793,7 +793,7 @@ impl EditorView {
         theme: &Theme,
     ) {
         use helix_core::diagnostic::Severity;
-        use tui::{
+        use helix_tui::{
             layout::Alignment,
             text::Text,
             widgets::{Paragraph, Widget, Wrap},
@@ -1469,7 +1469,7 @@ impl Component for EditorView {
         let config = cx.editor.config();
 
         // check if bufferline should be rendered
-        use helix_view::editor::BufferLine;
+        use crate::editor::BufferLine;
         let use_bufferline = match config.bufferline {
             BufferLine::Always => true,
             BufferLine::Multiple if cx.editor.documents.len() > 1 => true,
@@ -1507,7 +1507,7 @@ impl Component for EditorView {
         // render status msg
         if let Some((status_msg, severity)) = &cx.editor.status_msg {
             status_msg_width = status_msg.width();
-            use helix_view::editor::Severity;
+            use crate::editor::Severity;
             let style = if *severity == Severity::Error {
                 cx.editor.theme.get("error")
             } else {
@@ -1549,7 +1549,7 @@ impl Component for EditorView {
             if let Some((reg, _)) = cx.editor.macro_recording {
                 let disp = format!("[{}]", reg);
                 let style = style
-                    .fg(helix_view::graphics::Color::Yellow)
+                    .fg(crate::graphics::Color::Yellow)
                     .add_modifier(Modifier::BOLD);
                 surface.set_string(
                     area.x + area.width.saturating_sub(3),

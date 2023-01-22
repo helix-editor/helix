@@ -1,5 +1,5 @@
 use crate::{backend::Backend, buffer::Buffer};
-use helix_view::graphics::{CursorKind, Rect};
+use helix_graphics::{CursorKind, Rect};
 use std::io;
 
 #[derive(Debug, Clone, PartialEq)]

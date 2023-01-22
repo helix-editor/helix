@@ -1,17 +1,17 @@
-use helix_core::{coords_at_pos, encoding, Position};
-use helix_lsp::lsp::DiagnosticSeverity;
-use helix_view::{
+use crate::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
     theme::Style,
     Document, Editor, View,
 };
+use helix_core::{coords_at_pos, encoding, Position};
+use helix_lsp::lsp::DiagnosticSeverity;
 
 use crate::ui::ProgressSpinners;
 
-use helix_view::editor::StatusLineElement as StatusLineElementID;
-use tui::buffer::Buffer as Surface;
-use tui::text::{Span, Spans};
+use crate::editor::StatusLineElement;
+use helix_tui::buffer::Buffer as Surface;
+use helix_tui::text::{Span, Spans};
 
 pub struct RenderContext<'a> {
     pub editor: &'a Editor,
@@ -132,29 +132,27 @@ fn append(buffer: &mut Spans, text: String, base_style: &Style, style: Option<St
     ));
 }
 
-fn get_render_function<F>(element_id: StatusLineElementID) -> impl Fn(&mut RenderContext, F)
+fn get_render_function<F>(element: StatusLineElement) -> impl Fn(&mut RenderContext, F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    match element_id {
-        helix_view::editor::StatusLineElement::Mode => render_mode,
-        helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
-        helix_view::editor::StatusLineElement::FileBaseName => render_file_base_name,
-        helix_view::editor::StatusLineElement::FileName => render_file_name,
-        helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
-        helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
-        helix_view::editor::StatusLineElement::FileType => render_file_type,
-        helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
-        helix_view::editor::StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
-        helix_view::editor::StatusLineElement::Selections => render_selections,
-        helix_view::editor::StatusLineElement::PrimarySelectionLength => {
-            render_primary_selection_length
-        }
-        helix_view::editor::StatusLineElement::Position => render_position,
-        helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
-        helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
-        helix_view::editor::StatusLineElement::Separator => render_separator,
-        helix_view::editor::StatusLineElement::Spacer => render_spacer,
+    match element {
+        StatusLineElement::Mode => render_mode,
+        StatusLineElement::Spinner => render_lsp_spinner,
+        StatusLineElement::FileBaseName => render_file_base_name,
+        StatusLineElement::FileName => render_file_name,
+        StatusLineElement::FileEncoding => render_file_encoding,
+        StatusLineElement::FileLineEnding => render_file_line_ending,
+        StatusLineElement::FileType => render_file_type,
+        StatusLineElement::Diagnostics => render_diagnostics,
+        StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
+        StatusLineElement::Selections => render_selections,
+        StatusLineElement::PrimarySelectionLength => render_primary_selection_length,
+        StatusLineElement::Position => render_position,
+        StatusLineElement::PositionPercentage => render_position_percentage,
+        StatusLineElement::TotalLineNumbers => render_total_line_numbers,
+        StatusLineElement::Separator => render_separator,
+        StatusLineElement::Spacer => render_spacer,
     }
 }
 

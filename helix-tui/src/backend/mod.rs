@@ -2,7 +2,7 @@ use std::io;
 
 use crate::buffer::Cell;
 
-use helix_view::graphics::{CursorKind, Rect};
+use helix_graphics::{CursorKind, Rect};
 
 #[cfg(feature = "crossterm")]
 mod crossterm;
