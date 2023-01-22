@@ -1862,8 +1862,10 @@ fn rename_buffer(
                 let files = vec![lsp::FileRename { old_uri, new_uri }];
                 log::debug!("{:?}", files);
                 match helix_lsp::block_on(lsp_client.will_rename_files(&files)) {
-                    Ok(edit) => apply_workspace_edit(cx.editor, helix_lsp::OffsetEncoding::Utf8, &edit),
-                    Err(err) => log::error!("Language server error: {}", err)
+                    Ok(edit) => {
+                        apply_workspace_edit(cx.editor, helix_lsp::OffsetEncoding::Utf8, &edit)
+                    }
+                    Err(err) => log::error!("Language server error: {}", err),
                 }
             } else {
                 log::error!(":rename command could not get new path uri")
@@ -1872,7 +1874,8 @@ fn rename_buffer(
             log::error!(":rename command could not get current path uri")
         }
     }
-    cx.editor.set_status(format!("Renamed file to {}", new_name));
+    cx.editor
+        .set_status(format!("Renamed file to {}", new_name));
     Ok(())
 }
 
