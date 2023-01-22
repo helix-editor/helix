@@ -46,3 +46,11 @@
   (#match? @_path "^text$")
   (#set! injection.language "bash")
   (#set! injection.combined))
+
+; trivial-builders.nix pkgs.writeCBin name content
+((apply_expression
+   function: (apply_expression function: (_) @_func)
+   argument: (indented_string_expression (string_fragment) @injection.content))
+ (#match? @_func "(^|\\.)writeCBin$")
+ (#set! injection.language "c")
+ (#set! injection.combined))
