@@ -1,6 +1,6 @@
 use super::keytrienode::KeyTrieNode;
 use helix_view::{info::Info, input::KeyEvent};
-use std::{collections::HashMap, ops::{Deref, DerefMut}, cmp::Ordering};
+use std::{collections::HashMap, cmp::Ordering};
 use serde::Deserialize;
 
 /// Edges of the trie are KeyEvents and the nodes are descrbibed by KeyTrieNode
@@ -52,7 +52,7 @@ impl KeyTrie {
         }
     }
 
-    pub fn merge_keytrie(&mut self, mut other_keytrie: Self) {
+    pub fn merge_keytrie(&mut self, other_keytrie: Self) {
         for (other_key_event, other_index) in other_keytrie.get_child_order() {
             let other_child_keytrie_node = &other_keytrie.get_children()[*other_index];
             match other_child_keytrie_node {
