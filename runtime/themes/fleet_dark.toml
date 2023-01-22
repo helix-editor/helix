@@ -99,10 +99,10 @@
 "warning" = "#FACb66"
 "error" = "#FF5269"
 
-"diagnostic.hint" = { underline = { color = "Gray 80", style = "solid" } }
-"diagnostic.info" = { underline = { color = "#A366C4", style = "solid" } }
-"diagnostic.warning" = { underline = { color = "#FACB66", style = "solid" } }
-"diagnostic.error" = { underline = { color = "#FF5269", style = "solid" } }
+"diagnostic.hint" = { underline = { color = "Gray 80", style = "line" } }
+"diagnostic.info" = { underline = { color = "#A366C4", style = "line" } }
+"diagnostic.warning" = { underline = { color = "#FACB66", style = "line" } }
+"diagnostic.error" = { underline = { color = "#FF5269", style = "line" } }
 
 [palette]
 "White" = "#ffffff"
