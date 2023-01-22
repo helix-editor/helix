@@ -212,63 +212,38 @@ impl From<crossterm::event::ModifierKeyCode> for ModifierKeyCode {
 }
 
 /// Represents a key.
+/// Variant order determines order in keymap infobox if sorted_infobox is set to true.
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum KeyCode {
-    /// Backspace key.
-    Backspace,
-    /// Enter key.
-    Enter,
-    /// Left arrow key.
-    Left,
-    /// Right arrow key.
-    Right,
-    /// Up arrow key.
-    Up,
-    /// Down arrow key.
-    Down,
-    /// Home key.
-    Home,
-    /// End key.
-    End,
-    /// Page up key.
-    PageUp,
-    /// Page down key.
-    PageDown,
-    /// Tab key.
-    Tab,
-    /// Delete key.
-    Delete,
-    /// Insert key.
-    Insert,
-    /// F key.
-    ///
-    /// `KeyCode::F(1)` represents F1 key, etc.
-    F(u8),
-    /// A character.
-    ///
-    /// `KeyCode::Char('c')` represents `c` character, etc.
+    /// Character key.
+    /// Ex: `KeyCode::Char('c')` represents the `c` character.
     Char(char),
-    /// Null.
-    Null,
-    /// Escape key.
+    /// Function key.
+    /// Ex: `KeyCode::F(1)` represents the F1 key.
+    F(u8),
+    Up,
+    Down,
+    Left,
+    Right,
+    Enter,
     Esc,
-    /// CapsLock key.
+    Tab,
+    Backspace,
+    Insert,
+    Delete,
+    Home,
+    End,
+    PageUp,
+    PageDown,
+    Null,
     CapsLock,
-    /// ScrollLock key.
     ScrollLock,
-    /// NumLock key.
     NumLock,
-    /// PrintScreen key.
-    PrintScreen,
-    /// Pause key.
-    Pause,
-    /// Menu key.
     Menu,
-    /// KeypadBegin key.
+    Pause,
+    PrintScreen,
     KeypadBegin,
-    /// A media key.
     Media(MediaKeyCode),
-    /// A modifier key.
     Modifier(ModifierKeyCode),
 }
 

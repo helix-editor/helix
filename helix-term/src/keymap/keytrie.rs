@@ -80,9 +80,9 @@ impl KeyTrie {
         }
     }
     
-    /// Open an Info box for a given KeyTrie
+    /// Open an info box for a given KeyTrie
     /// Shows the children as possible KeyEvents and thier associated description.
-    pub fn infobox(&self, alphabetical_sort: bool) -> Info {
+    pub fn infobox(&self, sort_infobox: bool) -> Info {
         let mut body: InfoBoxBody = Vec::with_capacity(self.children.len());
         let mut key_event_order = Vec::with_capacity(self.children.len());
         // child_order and children is of same length
@@ -114,6 +114,7 @@ impl KeyTrie {
             }
         }
 
+        // TODO: Add "A-" aknowledgement?
         // Shortest keyevent (as string) appears first, unless is a "C-" KeyEvent
         // Those events will always be placed after the one letter KeyEvent
         for (key_events, _) in body.iter_mut() {
@@ -126,7 +127,7 @@ impl KeyTrie {
             });
         }
 
-        if alphabetical_sort { body = alphabetially_sort_infobox(body); }
+        if sort_infobox { body = keyevent_sort_infobox(body); }
 
         let stringified_key_events_body: Vec<(String, &str)> = body
             .iter()
@@ -178,28 +179,107 @@ impl<'de> Deserialize<'de> for KeyTrie {
     }
 }
 
-type InfoBoxBody<'a> = Vec<(Vec<String>, &'a str)>;
-fn alphabetially_sort_infobox(mut body: InfoBoxBody) -> InfoBoxBody {
-    body.sort_unstable_by(|a, b| a.0[0].to_lowercase().cmp(&b.0[0].to_lowercase()));
-    // Consistently place lowercase before uppercase of the same letter.
-    if body.len() > 1 {
-        let mut x_index = 0;
-        let mut y_index = 1;
+// (KeyEvents, Description)
+type InfoBoxRow<'a> = (Vec<String>, &'a str);
+type InfoBoxBody<'a> = Vec<InfoBoxRow<'a>>;
+/// Sorts by `ModifierKeyCode`, then by each `KeyCode` category, then by each `KeyEvent`.
+/// KeyCode::Char sorting is special in that lower-case and upper-case equivalents are 
+/// placed together, and alphas are placed before the rest.
+fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
+    use std::str::FromStr;
+    use std::collections::BTreeMap;
+    use helix_view::keyboard::{KeyCode, KeyModifiers, MediaKeyCode};
 
-        while y_index < body.len() {
-            let x = &body[x_index].0[0];
-            let y = &body[y_index].0[0];
-            if x.to_lowercase() == y.to_lowercase() {
-                // Uppercase regarded as lower value.
-                if x < y {
-                    let temp_holder = body[x_index].clone();
-                    body[x_index] = body[y_index].clone();
-                    body[y_index] = temp_holder;
+    let mut category_holder: BTreeMap<KeyModifiers , BTreeMap<KeyCode, Vec<InfoBoxRow>>> = BTreeMap::new();
+    let mut sorted_body: InfoBoxBody = Vec::with_capacity(body.len());
+    for infobox_row in body {
+        let first_keyevent = KeyEvent::from_str(infobox_row.0[0].as_str()).unwrap();
+        if !category_holder.contains_key(&first_keyevent.modifiers) {
+            category_holder.insert(first_keyevent.modifiers.clone(), BTreeMap::new());
+        }
+
+        // HACK: inserting by variant not by variant value.
+        // KeyCode:: Char, F, and MediaKeys can have muiltiple values for the given variant
+        // Hence the use of mock Variant values
+        let keycode_category = match first_keyevent.code {
+            KeyCode::Char(_) => {
+                KeyCode::Char('a')
+            }
+            KeyCode::F(_) => {
+                KeyCode::F(0)
+            }
+            KeyCode::Media(_) => {
+                KeyCode::Media(MediaKeyCode::Play)
+            }
+            other_keycode => {
+                other_keycode
+            }
+        };
+
+
+        let modifier_category = category_holder.get_mut(&first_keyevent.modifiers)
+            .expect("keycode category existence should be checked.");
+        if !modifier_category.contains_key(&keycode_category) {
+            modifier_category.insert(keycode_category.clone(), Vec::new());
+        }
+        modifier_category.get_mut(&keycode_category)
+            .expect("key existence should be checked")
+            .push(infobox_row);
+    }
+
+    for (_, keycode_categories) in category_holder {
+        for (keycode_category, mut infobox_rows) in keycode_categories {
+            if infobox_rows.len() > 1 {
+                match keycode_category {
+                    KeyCode::Char(_) => {                   
+                        infobox_rows.sort_unstable_by(|a, b| a.0[0].to_lowercase().cmp(&b.0[0].to_lowercase()));
+
+                        // Consistently place lowercase before uppercase of the same letter.
+                        let mut x_index = 0;
+                        let mut y_index = 1;            
+                        while y_index < infobox_rows.len() {
+                            let x = &infobox_rows[x_index].0[0];
+                            let y = &infobox_rows[y_index].0[0];
+                            if x.to_lowercase() == y.to_lowercase() {
+                                if x < y {
+                                    infobox_rows.swap(x_index, y_index);
+                                }
+                             }
+                             x_index = y_index;
+                             y_index += 1;
+                        }
+
+                        // TEMP: until drain_filter becomes stable. Migth also be worth implementing
+                        // FromIterator on InfoboxBody by then, last two for loops could then also be replaced by Iter::chain
+                        let mut alphas = Vec::new();
+                        let mut misc = Vec::new();
+                        for infobox_row in infobox_rows {
+                            if ('a'..='z')
+                                .map(|char| char.to_string())
+                                .find(|alpha_char| *alpha_char == infobox_row.0[0].to_lowercase())
+                                .is_some()
+                            {
+                                alphas.push(infobox_row);
+                            }
+                            else {
+                                misc.push(infobox_row);
+                            }
+                        }
+                        infobox_rows = Vec::with_capacity(alphas.len() + misc.len());
+                        for alpha_row in alphas {
+                           infobox_rows.push(alpha_row);
+                        }
+                        for misc_row in misc {
+                           infobox_rows.push(misc_row);
+                        }
+                    },
+                    _ => {
+                        infobox_rows.sort_unstable();
+                    }
                 }
             }
-            x_index = y_index;
-            y_index += 1;
+            sorted_body.append(infobox_rows.as_mut());
         }
     }
-    body
+    sorted_body
 }
