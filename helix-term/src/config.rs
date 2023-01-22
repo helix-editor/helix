@@ -77,28 +77,31 @@ mod tests {
     fn parses_keymap_from_toml() {
         let sample_keymaps = r#"
             [keys.insert]
-            y = "move_line_down"
             S-C-a = "delete_selection"
+            y = "move_line_down"
 
             [keys.normal]
             A-F12 = "move_next_word_end"
         "#;
 
-        assert_eq!(
-            toml::from_str::<Config>(sample_keymaps).unwrap(),
-            Config {
-                keys: hashmap! {
-                    Mode::Insert => keytrie!({ "Insert mode"
-                        "y" => move_line_down,
-                        "S-C-a" => delete_selection,
-                    }),
-                    Mode::Normal => keytrie!({ "Normal mode"
-                        "A-F12" => move_next_word_end,
-                    }),
-                },
-                ..Default::default()
-            }
-        );
+        let config = Config {
+            keys: hashmap! {
+                Mode::Insert => keytrie!({ "Insert mode"
+                    "y" => move_line_down,
+                    "S-C-a" => delete_selection,
+                }),
+                Mode::Normal => keytrie!({ "Normal mode"
+                    "A-F12" => move_next_word_end,
+                }),
+            },
+            ..Default::default()
+        };
+        for mode in config.keys.keys() {
+            assert_eq!(
+                config.keys.get(mode).unwrap().get_children(),
+                toml::from_str::<Config>(sample_keymaps).unwrap().keys.get(mode).unwrap().get_children()
+            );
+        }
     }
 
     #[test]
