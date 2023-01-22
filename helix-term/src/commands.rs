@@ -42,7 +42,7 @@ use helix_view::{
     keyboard::KeyCode,
     tree,
     view::View,
-    Document, DocumentId, Editor, ViewId, apply_transaction,
+    Document, DocumentId, Editor, ViewId,
 };
 use std::{
     collections::{HashMap, HashSet},
