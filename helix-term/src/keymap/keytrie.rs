@@ -80,6 +80,7 @@ impl KeyTrie {
         }
     }
     
+    // IMPROVEMENT: cache sorting and update cache only when config is updated
     /// Open an info box for a given KeyTrie
     /// Shows the children as possible KeyEvents and thier associated description.
     pub fn infobox(&self, sort_infobox: bool) -> Info {
@@ -130,16 +131,9 @@ impl KeyTrie {
         if sort_infobox { body = keyevent_sort_infobox(body); }
 
         let stringified_key_events_body: Vec<(String, &str)> = body
-            .iter()
-            .map(|(key_events, description)| {
-                let key_events_string: String = key_events.iter().fold(String::new(), |mut acc, key_event| {
-                    if !acc.is_empty() { acc.push_str(", "); }
-                    acc.push_str(key_event);
-                    acc
-                });
-                (key_events_string, *description)
-            })
-            .collect();
+            .iter().map(|(key_events, description)| {
+                (key_events.join(", "), *description)
+            }).collect();
 
         Info::new(&self.documentation, &stringified_key_events_body)
     }
