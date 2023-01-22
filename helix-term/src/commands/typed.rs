@@ -1,8 +1,7 @@
 use std::ops::Deref;
 
-use crate::job::Job;
-
 use super::*;
+use crate::job::*;
 
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use ui::completers::{self, Completer};

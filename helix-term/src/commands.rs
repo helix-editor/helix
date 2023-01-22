@@ -3,11 +3,19 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
-use helix_vcs::Hunk;
 pub use lsp::*;
-use tui::widgets::Row;
 pub use typed::*;
 
+use crate::{
+    commands::insert::*,
+    args,
+    keymap::CommandList,
+    compositor::{self, Component, Compositor},
+    job::{Callback, self, Jobs},
+    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, menu::{Cell, Row}},
+};
+
+use helix_vcs::Hunk;
 use helix_core::{
     comment, coords_at_pos, encoding, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
@@ -15,7 +23,7 @@ use helix_core::{
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
-    movement::{self, Direction},
+    movement::{self, Direction, Movement},
     object, pos_at_coords, pos_at_visual_coords,
     regex::{self, Regex, RegexBuilder},
     search::{self, CharMatcher},
@@ -36,33 +44,19 @@ use helix_view::{
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
-
-use anyhow::{anyhow, bail, ensure, Context as _};
-use fuzzy_matcher::FuzzyMatcher;
-use insert::*;
-use movement::Movement;
-
-use crate::{
-    args,
-    compositor::{self, Component, Compositor},
-    job::Callback,
-    keymap::ReverseKeymap,
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
-};
-
-use crate::job::{self, Jobs};
-use futures_util::StreamExt;
-use std::{collections::HashMap, fmt, future::Future};
-use std::{collections::HashSet, num::NonZeroUsize};
-
 use std::{
+    collections::{HashMap, HashSet},
+    num::NonZeroUsize,
+    future::Future,
     borrow::Cow,
     path::{Path, PathBuf},
+    fmt,
 };
-
+use anyhow::{anyhow, bail, ensure, Context as _};
+use fuzzy_matcher::FuzzyMatcher;
+use futures_util::StreamExt;
 use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
-
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
@@ -133,23 +127,23 @@ pub enum MappableCommand {
     Typable {
         name: String,
         args: Vec<String>,
-        doc: String,
+        description: String,
     },
     Static {
         name: &'static str,
         fun: fn(cx: &mut Context),
-        doc: &'static str,
+        description: &'static str,
     },
 }
 
 macro_rules! static_commands {
-    ( $($name:ident, $doc:literal,)* ) => {
+    ( $($name:ident, $description:literal,)* ) => {
         $(
             #[allow(non_upper_case_globals)]
             pub const $name: Self = Self::Static {
                 name: stringify!($name),
                 fun: $name,
-                doc: $doc
+                description: $description
             };
         )*
 
@@ -162,7 +156,7 @@ macro_rules! static_commands {
 impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
-            Self::Typable { name, args, doc: _ } => {
+            Self::Typable { name, args, description: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
@@ -186,10 +180,10 @@ impl MappableCommand {
         }
     }
 
-    pub fn doc(&self) -> &str {
+    pub fn description(&self) -> &str {
         match &self {
-            Self::Typable { doc, .. } => doc,
-            Self::Static { doc, .. } => doc,
+            Self::Typable { description, .. } => description,
+            Self::Static { description, .. } => description,
         }
     }
 
@@ -476,7 +470,7 @@ impl std::str::FromStr for MappableCommand {
                 .get(name)
                 .map(|cmd| MappableCommand::Typable {
                     name: cmd.name.to_owned(),
-                    doc: format!(":{} {:?}", cmd.name, args),
+                    description: format!(":{} {:?}", cmd.name, args),
                     args,
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
@@ -2450,31 +2444,40 @@ fn jumplist_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
+// NOTE: does not present aliases
 impl ui::menu::Item for MappableCommand {
-    type Data = ReverseKeymap;
+    type Data = CommandList;
 
-    fn format(&self, keymap: &Self::Data) -> Row {
-        let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
-            bindings.iter().fold(String::new(), |mut acc, bind| {
-                if !acc.is_empty() {
-                    acc.push(' ');
-                }
-                for key in bind {
-                    acc.push_str(&key.key_sequence_format());
-                }
-                acc
-            })
-        };
-
+    fn format(&self, command_list: &Self::Data) -> Row {
         match self {
-            MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
-                Some(bindings) => format!("{} ({}) [:{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [:{}]", doc, name).into(),
+            MappableCommand::Typable { description: doc, name, .. } => {
+                let mut row: Vec<Cell> = vec![Cell::from(&*name.as_str()), Cell::from(""), Cell::from(&*doc.as_str())];
+                match command_list.get(name as &String) {
+                    Some(key_events) => { row[1] = Cell::from(format_key_events(key_events)); },
+                    None => {}
+                }
+                return Row::new(row);
             },
-            MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
-                Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [{}]", doc, name).into(),
-            },
+            MappableCommand::Static { description: doc, name, .. } => {
+                let mut row: Vec<Cell> = vec![Cell::from(*name), Cell::from(""), Cell::from(*doc)];
+                match command_list.get(*name) {
+                    Some(key_events) => { row[1] = Cell::from(format_key_events(key_events)); },
+                    None => {}
+                }
+                return Row::new(row)
+            } 
+        }
+
+        // TODO: Generalize into a Vec<String> Display implemention?
+        fn format_key_events(key_events: &Vec<String>) -> String {
+            let mut result_string: String = String::new();
+            for key_event in key_events {
+                if !result_string.is_empty() {
+                    result_string.push_str(", ");
+                }
+                result_string.push_str(key_event);
+            }
+            result_string
         }
     }
 }
@@ -2482,20 +2485,18 @@ impl ui::menu::Item for MappableCommand {
 pub fn command_palette(cx: &mut Context) {
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
-            let keymap = compositor.find::<ui::EditorView>().unwrap().keymaps.map()
-                [&cx.editor.mode]
-                .reverse_map();
+            let keymap_command_lists = compositor.find::<ui::EditorView>().unwrap().keymap.command_list(&cx.editor.mode);
 
             let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
             commands.extend(typed::TYPABLE_COMMAND_LIST.iter().map(|cmd| {
                 MappableCommand::Typable {
                     name: cmd.name.to_owned(),
-                    doc: cmd.doc.to_owned(),
+                    description: cmd.doc.to_owned(),
                     args: Vec::new(),
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+            let picker = Picker::new(commands, keymap_command_lists, move |cx, command, _action| {
                 let mut ctx = Context {
                     register: None,
                     count: std::num::NonZeroUsize::new(1),

@@ -1,5 +1,3 @@
-use arc_swap::{access::Map, ArcSwap};
-use futures_util::Stream;
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
@@ -15,28 +13,26 @@ use helix_view::{
     tree::Layout,
     Align, Editor,
 };
-use serde_json::json;
-use tui::backend::Backend;
-
 use crate::{
     args::Args,
     commands::apply_workspace_edit,
     compositor::{Compositor, Event},
     config::Config,
+    keymap::Keymap,
     job::Jobs,
-    keymap::Keymaps,
     ui::{self, overlay::overlayed},
 };
-
-use log::{debug, error, warn};
 use std::{
     io::{stdin, stdout, Write},
     sync::Arc,
     time::{Duration, Instant},
 };
-
+use arc_swap::{access::Map, ArcSwap};
+use futures_util::Stream;
+use log::{debug, error, warn};
 use anyhow::{Context, Error};
-
+use serde_json::json;
+use tui::backend::Backend;
 use crossterm::{
     event::{
         DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
@@ -45,6 +41,7 @@ use crossterm::{
     execute, terminal,
     tty::IsTty,
 };
+
 #[cfg(not(windows))]
 use {
     signal_hook::{consts::signal, low_level},
@@ -180,7 +177,7 @@ impl Application {
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
         }));
-        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
+        let editor_view = Box::new(ui::EditorView::new(Keymap::new(keys)));
         compositor.push(editor_view);
 
         if args.load_tutor {

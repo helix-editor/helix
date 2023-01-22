@@ -54,25 +54,7 @@ async fn main_impl() -> Result<i32> {
         Config::default()
     });
 
-<<<<<<< HEAD
-    let config = match std::fs::read_to_string(helix_loader::config_file()) {
-        Ok(config) => toml::from_str(&config)
-            .map(helix_term::keymap::merge_keys)
-            .unwrap_or_else(|err| {
-                eprintln!("Bad config: {}", err);
-                eprintln!("Press <ENTER> to continue with default config");
-                use std::io::Read;
-                let _ = std::io::stdin().read(&mut []);
-                Config::default()
-            }),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
-        Err(err) => return Err(Error::new(err)),
-    };
-
-    let syn_loader_conf =  helix_loader::default_lang_config().try_into().unwrap_or_else(|err| {
-=======
     let language_configurations = LanguageConfigurations::merged().unwrap_or_else(|err| {
->>>>>>> 4731861d (Unify config loading)
         eprintln!("Bad language config: {}", err);
         eprintln!("Press <ENTER> to continue with default language config");
         let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut[]);

@@ -1,20 +1,11 @@
-pub mod default;
-pub mod macros;
-// NOTE: Only pub becuase of their use in macros
-pub mod keytrienode;
-pub mod keytrie;
-mod tests;
-
-use self::{
-    keytrienode::KeyTrieNode,
-    keytrie::KeyTrie,
-    macros::key,
-};
-
+use super::*;
+use crate::keymap::macros::*;
 use crate::commands::MappableCommand;
 use helix_view::{document::Mode, input::KeyEvent};
 use std::{sync::Arc, collections::HashMap};
 use arc_swap::{access::{DynAccess, DynGuard}, ArcSwap};
+
+use std::ops::Deref;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeymapResult {
@@ -26,25 +17,25 @@ pub enum KeymapResult {
     Cancelled(Vec<KeyEvent>),
 }
 
-pub struct Keymap {
-    pub keytries: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>,
+pub struct Keymaps {
+    pub keymaps: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>,
     /// Relative to a sticky node if Some.
     pending_keys: Vec<KeyEvent>,
     pub sticky_keytrie: Option<KeyTrie>,
 }
 
 pub type CommandList = HashMap<String, Vec<String>>;
-impl Keymap {
+impl Keymaps {
     pub fn new(keymaps: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>) -> Self {
         Self {
-            keytries: keymaps,
+            keymaps,
             pending_keys: Vec::new(),
             sticky_keytrie: None,
         }
     }
 
     pub fn load_keymaps(&self) -> DynGuard<HashMap<Mode, KeyTrie>> {
-        self.keytries.load()
+        self.keymaps.load()
     }
 
     /// Returns list of keys waiting to be disambiguated in current mode.
@@ -116,7 +107,7 @@ impl Keymap {
 
     fn get_keytrie(&self, mode: &Mode) -> KeyTrie {
         // HELP: Unsure how I should handle this Option
-        self.keytries.load().get(mode).unwrap().clone()
+        self.keymaps.load().get(mode).unwrap().clone()
     }
 
     /// Returns a key-value list of all commands associated to a given Keymap.
@@ -133,14 +124,13 @@ impl Keymap {
         fn _command_list(list: &mut CommandList, node: &KeyTrieNode, prefix: &mut String) {
             match node {
                 KeyTrieNode::KeyTrie(trie_node) => {
-                    for (key_event, index) in trie_node.get_child_order() {
+                    for (key_event, subtrie_node) in trie_node.deref() {
                         let mut temp_prefix: String = prefix.to_string();
                         if &temp_prefix != "" { 
-                            temp_prefix.push_str("→");
+                            temp_prefix.push_str(">");
                         }
                         temp_prefix.push_str(&key_event.to_string());
-                        _command_list(list, &trie_node.get_children()[*index], &mut temp_prefix);
-
+                        _command_list(list, subtrie_node, &mut temp_prefix);
                     }
                 },
                 KeyTrieNode::MappableCommand(mappable_command) => {
@@ -153,7 +143,7 @@ impl Keymap {
     }
 }
 
-impl Default for Keymap {
+impl Default for Keymaps {
     fn default() -> Self {
         Self::new(Box::new(ArcSwap::new(Arc::new(default::default()))))
     }

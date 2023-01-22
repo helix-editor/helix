@@ -3,7 +3,7 @@ use crate::{
     compositor::{Component, Context, Event, EventResult},
     job::{self, Callback},
     key,
-    keymap::{KeymapResult, Keymaps},
+    keymap::{KeymapResult, Keymap},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -32,7 +32,7 @@ use super::lsp::SignatureHelp;
 use super::statusline;
 
 pub struct EditorView {
-    pub keymaps: Keymaps,
+    pub keymap: Keymap,
     on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
     pseudo_pending: Vec<KeyEvent>,
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
@@ -47,16 +47,10 @@ pub enum InsertEvent {
     TriggerCompletion,
 }
 
-impl Default for EditorView {
-    fn default() -> Self {
-        Self::new(Keymaps::default())
-    }
-}
-
 impl EditorView {
-    pub fn new(keymaps: Keymaps) -> Self {
+    pub fn new(keymap: Keymap) -> Self {
         Self {
-            keymaps,
+            keymap,
             on_next_key: None,
             pseudo_pending: Vec::new(),
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
@@ -934,9 +928,10 @@ impl EditorView {
         event: KeyEvent,
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
-        self.pseudo_pending.extend(self.keymaps.pending());
-        let key_result = self.keymaps.get(mode, event);
-        cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
+        self.pseudo_pending.extend(self.keymap.pending());
+        let key_result = self.keymap.get(mode, event);
+        let sort_infobox = cxt.editor.config.load().sorted_infobox;
+        cxt.editor.autoinfo = self.keymap.sticky_keytrie().map(|node| node.infobox(sort_infobox));
 
         let mut execute_command = |command: &commands::MappableCommand| {
             command.execute(cxt);
@@ -975,8 +970,8 @@ impl EditorView {
             KeymapResult::Matched(command) => {
                 execute_command(command);
             }
-            KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
-            KeymapResult::MatchedSequence(commands) => {
+            KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox(sort_infobox)),
+            KeymapResult::MatchedCommandSequence(commands) => {
                 for command in commands {
                     execute_command(command);
                 }
@@ -1000,7 +995,7 @@ impl EditorView {
                             Some(ch) => commands::insert::insert_char(cx, ch),
                             None => {
                                 if let KeymapResult::Matched(command) =
-                                    self.keymaps.get(Mode::Insert, ev)
+                                    self.keymap.get(Mode::Insert, ev)
                                 {
                                     command.execute(cx);
                                 }
@@ -1022,7 +1017,7 @@ impl EditorView {
                     std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
             }
             // special handling for repeat operator
-            (key!('.'), _) if self.keymaps.pending().is_empty() => {
+            (key!('.'), _) if self.keymap.pending().is_empty() => {
                 for _ in 0..cxt.editor.count.map_or(1, NonZeroUsize::into) {
                     // first execute whatever put us into insert mode
                     self.last_insert.0.execute(cxt);
@@ -1069,7 +1064,7 @@ impl EditorView {
                 cxt.register = cxt.editor.selected_register.take();
 
                 self.handle_keymap_event(mode, cxt, event);
-                if self.keymaps.pending().is_empty() {
+                if self.keymap.pending().is_empty() {
                     cxt.editor.count = None
                 }
             }
@@ -1527,7 +1522,7 @@ impl Component for EditorView {
             if let Some(count) = cx.editor.count {
                 disp.push_str(&count.to_string())
             }
-            for key in self.keymaps.pending() {
+            for key in self.keymap.pending() {
                 disp.push_str(&key.key_sequence_format());
             }
             for key in &self.pseudo_pending {
