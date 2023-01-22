@@ -1846,17 +1846,16 @@ fn rename_buffer(
     let mut path_new = path.clone();
     path_new.set_file_name(OsStr::new(new_name.as_ref()));
     if path_new.exists() {
-        return Err(anyhow!("This file already exists"));
+        bail!("This file already exists");
     }
 
     if let Err(e) = std::fs::rename(&path, &path_new) {
-        return Err(anyhow!("Could not rename file, error: {}", e));
+        bail!("Could not rename file, error: {}", e);
     }
     let (_, doc) = current!(cx.editor);
     doc.set_path(Some(path_new.as_path()))
         .map_err(|_| anyhow!("File renamed, but could not set path of the document"))?;
 
-    let mut lsp_success = false;
     if let Some(lsp_client) = doc.language_server() {
         if let Ok(old_uri_str) = Url::from_file_path(&path) {
             let old_uri = old_uri_str.to_string();
@@ -1866,7 +1865,8 @@ fn rename_buffer(
                 let result = helix_lsp::block_on(lsp_client.will_rename_files(&files))?;
                 if let Some(edit) = result {
                     apply_workspace_edit(cx.editor, helix_lsp::OffsetEncoding::Utf8, &edit);
-                    lsp_success = true;
+                } else {
+                    bail!("File renaming succeded, but language server did not respond to change")
                 }
             } else {
                 log::error!(":rename command could not get new path uri")
@@ -1875,13 +1875,8 @@ fn rename_buffer(
             log::error!(":rename command could not get current path uri")
         }
     }
-
-    match lsp_success {
-        true => Ok(()),
-        false => Err(anyhow!(
-            "File renaming succeeded, but language server did not respond to change"
-        )),
-    }
+    cx.editor.set_status(format!("Renamed file to {}", new_name));
+    Ok(())
 }
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
