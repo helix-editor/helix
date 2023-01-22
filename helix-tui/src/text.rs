@@ -436,6 +436,32 @@ impl<'a> From<Vec<Spans<'a>>> for Text<'a> {
     }
 }
 
+impl<'a> From<Text<'a>> for String {
+    fn from(text: Text<'a>) -> String {
+        String::from(&text)
+    }
+}
+
+impl<'a> From<&Text<'a>> for String {
+    fn from(text: &Text<'a>) -> String {
+        let size = text
+            .lines
+            .iter()
+            .flat_map(|spans| spans.0.iter().map(|span| span.content.len()))
+            .sum::<usize>()
+            + text.lines.len().saturating_sub(1); // for newline after each line
+        let mut output = String::with_capacity(size);
+
+        for spans in &text.lines {
+            for span in &spans.0 {
+                output.push_str(&span.content);
+            }
+            output.push('\n');
+        }
+        output
+    }
+}
+
 impl<'a> IntoIterator for Text<'a> {
     type Item = Spans<'a>;
     type IntoIter = std::vec::IntoIter<Self::Item>;

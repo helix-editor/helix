@@ -22,6 +22,7 @@
 "markup.list" = { fg = "bubblegum" }
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "violet", modifiers = ["underlined"] }
 "markup.link.text" = { fg = "violet" }
 "markup.quote" = { fg = "berry_desaturated" }
@@ -60,7 +61,11 @@
 "warning" = { fg = "gold" }
 "info" = { fg = "lilac" }
 "hint" = { fg = "lilac" }
-"diagnostic" = { modifiers = ["underlined"] }
+
+"diagnostic.warning" = { underline = { color = "bubblegum", style = "curl"} }
+"diagnostic.error" = { underline = { color = "gold", style = "curl"} }
+"diagnostic.info" = { underline = { color = "lilac", style = "curl"} }
+"diagnostic.hint" = { underline = { color = "lilac", style = "curl"} }
 
 [palette]
 berry = "#3A2A4D"

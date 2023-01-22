@@ -431,14 +431,14 @@ impl Client {
     pub fn will_rename_files(
         &self,
         params: &Vec<lsp::FileRename>,
-    ) -> impl Future<Output = Result<Option<lsp::WorkspaceEdit>>> {
+    ) -> impl Future<Output = Result<lsp::WorkspaceEdit>> {
         let files = params.to_owned();
         let request = self.call::<lsp::request::WillRenameFiles>(lsp::RenameFilesParams { files });
 
         async move {
             let json = request.await?;
             let response: Option<lsp::WorkspaceEdit> = serde_json::from_value(json)?;
-            Ok(response)
+            Ok(response.unwrap_or_default())
         }
     }
 
