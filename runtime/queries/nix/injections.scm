@@ -16,6 +16,24 @@
  (#set! injection.language "bash")
  (#set! injection.combined))
 
+; builtins.{match,split} regex str
+; Example: nix/tests/lang/eval-okay-regex-{match,split}.nix
+((apply_expression
+   function: (_) @_func
+   argument: (indented_string_expression (string_fragment) @injection.content))
+ (#match? @_func "(^|\\.)match|split$")
+ (#set! injection.language "regex")
+ (#set! injection.combined))
+
+; builtins.fromJSON json
+; Example: nix/tests/lang/eval-okay-fromjson.nix
+((apply_expression
+   function: (_) @_func
+   argument: (indented_string_expression (string_fragment) @injection.content))
+ (#match? @_func "(^|\\.)fromJSON$")
+ (#set! injection.language "json")
+ (#set! injection.combined))
+
 ; trivial-builders.nix pkgs.writeShellScript[Bin] name content
 ((apply_expression
    function: (apply_expression function: (_) @_func)
