@@ -69,7 +69,7 @@
 ((apply_expression
    function: (apply_expression function: (_) @_func)
    argument: (indented_string_expression (string_fragment) @injection.content))
- (#match? @_func "(^|\\.)writeCBin$")
+ (#match? @_func "(^|\\.)writeC(Bin)?$")
  (#set! injection.language "c")
  (#set! injection.combined))
 
