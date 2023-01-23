@@ -8,9 +8,8 @@
 
   <description>
     <p>
-      Helix is a terminal-based text editor inspired by Kakoune / Neovim, written in Rust.
+      Helix is a terminal-based text editor inspired by Kakoune / Neovim and written in Rust.
     </p>
-    <p>Features: </p>
     <ul>
       <li>Vim-like modal editing</li>
       <li>Multiple selections</li>
@@ -19,7 +18,7 @@
     </ul>
   </description>
 
-  <launchable type="desktop-id">com.helix_editor.Helix.desktop</launchable>
+  <launchable type="desktop-id">Helix.desktop</launchable>
 
   <screenshots>
     <screenshot type="default">
@@ -29,12 +28,32 @@
   </screenshots>
 
   <url type="homepage">https://helix-editor.com/</url>
+  <url type="donation">https://opencollective.com/helix-editor</url>
+  <url type="help">https://docs.helix-editor.com/</url>
+  <url type="vcs-browser">https://github.com/helix-editor/helix</url>
+  <url type="bugtracker">https://github.com/helix-editor/helix/issues</url>
 
   <content_rating type="oars-1.1" />
 
   <releases>
     <release version="22.12" date="2022-12-7" />
   </releases>
+
+  <requires>
+    <control>keyboard</control>
+  </requires>
+
+  <categories>
+    <category>Utility</category>
+    <category>TextEditor</category>
+  </categories>
+
+  <keywords>
+    <keyword>text</keyword>
+    <keyword>editor</keyword>
+    <keyword>development</keyword>
+    <keyword>programming</keyword>
+  </keywords>
 
   <provides>
     <binary>hx</binary>
