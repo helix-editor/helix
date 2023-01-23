@@ -5,6 +5,7 @@ Helix releases are versioned in the Calendar Versioning scheme:
 we'll use `<tag>` as a placeholder for the tag being published.
 
 * Merge the changelog PR
+* Add new `<release>` entry in `contrib/Helix.appdata.xml` with release information 
 * Tag and push
     * `git tag -s -m "<tag>" -a <tag> && git push`
     * Make sure to switch to master and pull first
