@@ -132,7 +132,7 @@ fn display_language(lang_str: String) -> std::io::Result<()> {
                 )?;
                 let result = match which::which(&server_cmd) {
                     Ok(path) => path.display().to_string().green(),
-                    Err(_) => format!("Not found in $PATH").red(),
+                    Err(_) => "Not found in $PATH".to_string().red(),
                 };
                 writeln!(stdout, "Binary for {server_cmd}: {result}")?
             }

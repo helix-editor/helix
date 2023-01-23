@@ -78,7 +78,7 @@ pub fn cache_dir() -> PathBuf {
 
 pub fn runtime_dir() -> PathBuf {
     if let Some(runtime_dir) = RUNTIME_DIR.get() {
-        return runtime_dir.to_path_buf();
+        runtime_dir.to_path_buf()
     } else {
         RUNTIME_DIR.set(_runtime_dir()).unwrap();
         runtime_dir()
