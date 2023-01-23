@@ -2109,3 +2109,13 @@ formatter = { command = "dhall" , args = ["format"] }
 [[grammar]]
 name = "dhall"
 source = { git = "https://github.com/jbellerb/tree-sitter-dhall", rev = "affb6ee38d629c9296749767ab832d69bb0d9ea8" }
+
+[[language]]
+name = "sage"
+scope = "source.sage"
+file-types = ["sage"]
+injection-regex = "sage"
+roots = []
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+grammar = "python"
