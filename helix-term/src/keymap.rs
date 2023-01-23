@@ -1,20 +1,19 @@
 pub mod default;
 pub mod macros;
 // NOTE: Only pub becuase of their use in macros
-pub mod keytrienode;
 pub mod keytrie;
+pub mod keytrienode;
 mod tests;
 
-use self::{
-    keytrienode::KeyTrieNode,
-    keytrie::KeyTrie,
-    macros::key,
-};
+use self::{keytrie::KeyTrie, keytrienode::KeyTrieNode, macros::key};
 
 use crate::commands::MappableCommand;
+use arc_swap::{
+    access::{DynAccess, DynGuard},
+    ArcSwap,
+};
 use helix_view::{document::Mode, input::KeyEvent};
-use std::{sync::Arc, collections::HashMap};
-use arc_swap::{access::{DynAccess, DynGuard}, ArcSwap};
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeymapResult {
@@ -57,7 +56,7 @@ impl Keymap {
     }
 
     /// Lookup `key` in the keymap to try and find a command to execute.
-    /// Escape key represents cancellation. 
+    /// Escape key represents cancellation.
     /// This means clearing pending keystrokes, or the sticky_keytrie if none were present.
     pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
         // TODO: remove the sticky part and look up manually
@@ -122,12 +121,16 @@ impl Keymap {
     /// Returns a key-value list of all commands associated to a given Keymap.
     /// Keys are the node names (see KeyTrieNode documentation)
     /// Values are lists of stringified KeyEvents that triger the command.
-    /// Each element in the KeyEvent list is prefixed with prefixed the ancestor KeyEvents. 
+    /// Each element in the KeyEvent list is prefixed with prefixed the ancestor KeyEvents.
     /// For example: Stringified KeyEvent element for the 'goto_next_window' command could be "space>w>w".
     /// Ancestor KeyEvents are in this case "space" and "w".
     pub fn command_list(&self, mode: &Mode) -> CommandList {
         let mut list = HashMap::new();
-        _command_list(&mut list, &KeyTrieNode::KeyTrie(self.get_keytrie(mode)), &mut String::new());
+        _command_list(
+            &mut list,
+            &KeyTrieNode::KeyTrie(self.get_keytrie(mode)),
+            &mut String::new(),
+        );
         return list;
 
         fn _command_list(list: &mut CommandList, node: &KeyTrieNode, prefix: &mut String) {
@@ -135,18 +138,21 @@ impl Keymap {
                 KeyTrieNode::KeyTrie(trie_node) => {
                     for (key_event, index) in trie_node.get_child_order() {
                         let mut temp_prefix: String = prefix.to_string();
-                        if &temp_prefix != "" { 
+                        if &temp_prefix != "" {
                             temp_prefix.push_str("→");
                         }
                         temp_prefix.push_str(&key_event.to_string());
                         _command_list(list, &trie_node.get_children()[*index], &mut temp_prefix);
-
                     }
-                },
+                }
                 KeyTrieNode::MappableCommand(mappable_command) => {
-                        if mappable_command.name() == "no_op" { return }
-                        list.entry(mappable_command.name().to_string()).or_default().push(prefix.to_string());
-                },
+                    if mappable_command.name() == "no_op" {
+                        return;
+                    }
+                    list.entry(mappable_command.name().to_string())
+                        .or_default()
+                        .push(prefix.to_string());
+                }
                 KeyTrieNode::CommandSequence(_) => {}
             };
         }

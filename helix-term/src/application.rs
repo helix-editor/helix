@@ -1,3 +1,23 @@
+use crate::{
+    args::Args,
+    commands::apply_workspace_edit,
+    compositor::{Compositor, Event},
+    config::Config,
+    job::Jobs,
+    keymap::Keymap,
+    ui::{self, overlay::overlayed},
+};
+use anyhow::{Context, Error};
+use arc_swap::{access::Map, ArcSwap};
+use crossterm::{
+    event::{
+        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
+        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent,
+    },
+    execute, terminal,
+    tty::IsTty,
+};
+use futures_util::Stream;
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
@@ -13,34 +33,14 @@ use helix_view::{
     tree::Layout,
     Align, Editor,
 };
-use crate::{
-    args::Args,
-    commands::apply_workspace_edit,
-    compositor::{Compositor, Event},
-    config::Config,
-    keymap::Keymap,
-    job::Jobs,
-    ui::{self, overlay::overlayed},
-};
+use log::{debug, error, warn};
+use serde_json::json;
 use std::{
     io::{stdin, stdout, Write},
     sync::Arc,
     time::{Duration, Instant},
 };
-use arc_swap::{access::Map, ArcSwap};
-use futures_util::Stream;
-use log::{debug, error, warn};
-use anyhow::{Context, Error};
-use serde_json::json;
 use tui::backend::Backend;
-use crossterm::{
-    event::{
-        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent,
-    },
-    execute, terminal,
-    tty::IsTty,
-};
 
 #[cfg(not(windows))]
 use {

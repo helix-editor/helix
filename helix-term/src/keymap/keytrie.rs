@@ -1,7 +1,7 @@
 use super::keytrienode::KeyTrieNode;
 use helix_view::{info::Info, input::KeyEvent};
-use std::{collections::HashMap, cmp::Ordering};
 use serde::Deserialize;
+use std::{cmp::Ordering, collections::HashMap};
 
 /// Edges of the trie are KeyEvents and the nodes are descrbibed by KeyTrieNode
 #[derive(Debug, Clone)]
@@ -14,7 +14,11 @@ pub struct KeyTrie {
 }
 
 impl KeyTrie {
-    pub fn new(documentation: &str, child_order: HashMap<KeyEvent, usize>, children: Vec<KeyTrieNode>) -> Self {
+    pub fn new(
+        documentation: &str,
+        child_order: HashMap<KeyEvent, usize>,
+        children: Vec<KeyTrieNode>,
+    ) -> Self {
         Self {
             documentation: documentation.to_string(),
             child_order,
@@ -35,17 +39,20 @@ impl KeyTrie {
     pub fn traverse(&self, key_events: &[KeyEvent]) -> Option<KeyTrieNode> {
         return _traverse(self, key_events, 0);
 
-        fn _traverse(keytrie: &KeyTrie, key_events: &[KeyEvent], mut depth: usize) -> Option<KeyTrieNode> {
+        fn _traverse(
+            keytrie: &KeyTrie,
+            key_events: &[KeyEvent],
+            mut depth: usize,
+        ) -> Option<KeyTrieNode> {
             if depth == key_events.len() {
                 return Some(KeyTrieNode::KeyTrie(keytrie.clone()));
-            }
-            else if let Some(found_index) = keytrie.child_order.get(&key_events[depth]) {               
+            } else if let Some(found_index) = keytrie.child_order.get(&key_events[depth]) {
                 match &keytrie.children[*found_index] {
                     KeyTrieNode::KeyTrie(sub_keytrie) => {
                         depth += 1;
-                        return _traverse(sub_keytrie, key_events, depth)
-                    },
-                    _found_child => return Some(_found_child.clone())
+                        return _traverse(sub_keytrie, key_events, depth);
+                    }
+                    _found_child => return Some(_found_child.clone()),
                 }
             }
             return None;
@@ -58,28 +65,31 @@ impl KeyTrie {
             match other_child_keytrie_node {
                 KeyTrieNode::KeyTrie(ref other_child_keytrie) => {
                     if let Some(self_index) = self.child_order.get(&other_key_event) {
-                        if let KeyTrieNode::KeyTrie(ref mut self_clashing_child_key_trie) = self.children[*self_index] {
+                        if let KeyTrieNode::KeyTrie(ref mut self_clashing_child_key_trie) =
+                            self.children[*self_index]
+                        {
                             self_clashing_child_key_trie.merge_keytrie(other_child_keytrie.clone());
                         }
-                    }
-                    else {
-                        self.child_order.insert(*other_key_event, self.children.len());
-                        self.children.push(KeyTrieNode::KeyTrie(other_child_keytrie.clone()));
+                    } else {
+                        self.child_order
+                            .insert(*other_key_event, self.children.len());
+                        self.children
+                            .push(KeyTrieNode::KeyTrie(other_child_keytrie.clone()));
                     }
                 }
                 KeyTrieNode::MappableCommand(_) | KeyTrieNode::CommandSequence(_) => {
                     if let Some(existing_index) = self.child_order.get(other_key_event) {
                         self.children[*existing_index] = other_child_keytrie_node.clone();
-                    }
-                    else {
-                        self.child_order.insert(*other_key_event, self.children.len());
+                    } else {
+                        self.child_order
+                            .insert(*other_key_event, self.children.len());
                         self.children.push(other_child_keytrie_node.clone());
                     }
                 }
             }
         }
     }
-    
+
     // IMPROVEMENT: cache sorting and update cache only when config is updated
     /// Open an info box for a given KeyTrie
     /// Shows the children as possible KeyEvents and thier associated description.
@@ -87,7 +97,9 @@ impl KeyTrie {
         let mut body: InfoBoxBody = Vec::with_capacity(self.children.len());
         let mut key_event_order = Vec::with_capacity(self.children.len());
         // child_order and children is of same length
-        unsafe { key_event_order.set_len(self.children.len()); }
+        unsafe {
+            key_event_order.set_len(self.children.len());
+        }
         for (key_event, index) in &self.child_order {
             key_event_order[*index] = key_event.clone();
         }
@@ -99,7 +111,7 @@ impl KeyTrie {
                         continue;
                     }
                     command.description()
-                },
+                }
                 KeyTrieNode::KeyTrie(ref key_trie) => &key_trie.documentation,
                 // FIX: default to a join of all command names
                 // NOTE: Giving same documentation for all sequences will place all sequence keyvents together.
@@ -107,11 +119,12 @@ impl KeyTrie {
                 KeyTrieNode::CommandSequence(_) => "[Multiple commands]",
             };
             let key_event = key_event_order[index];
-            match body.iter().position(|(_, existing_documentation)| &documentation == existing_documentation) {
-                Some(position) =>  body[position].0.push(key_event.to_string()),
-                None => {
-                    body.push((vec![key_event.to_string()], documentation))   
-                },
+            match body
+                .iter()
+                .position(|(_, existing_documentation)| &documentation == existing_documentation)
+            {
+                Some(position) => body[position].0.push(key_event.to_string()),
+                None => body.push((vec![key_event.to_string()], documentation)),
             }
         }
 
@@ -120,20 +133,24 @@ impl KeyTrie {
         // Those events will always be placed after the one letter KeyEvent
         for (key_events, _) in body.iter_mut() {
             key_events.sort_unstable_by(|a, b| {
-                if a.len() == 1 { return Ordering::Less }
+                if a.len() == 1 {
+                    return Ordering::Less;
+                }
                 if b.len() > a.len() && b.starts_with("C-") {
-                    return Ordering::Greater
+                    return Ordering::Greater;
                 }
                 a.len().cmp(&b.len())
             });
         }
 
-        if sort_infobox { body = keyevent_sort_infobox(body); }
+        if sort_infobox {
+            body = keyevent_sort_infobox(body);
+        }
 
         let stringified_key_events_body: Vec<(String, &str)> = body
-            .iter().map(|(key_events, description)| {
-                (key_events.join(", "), *description)
-            }).collect();
+            .iter()
+            .map(|(key_events, description)| (key_events.join(", "), *description))
+            .collect();
 
         Info::new(&self.documentation, &stringified_key_events_body)
     }
@@ -165,7 +182,7 @@ impl<'de> Deserialize<'de> for KeyTrie {
             children.push(keytrie_node);
         }
 
-         Ok(Self {
+        Ok(Self {
             child_order,
             children,
             ..Default::default()
@@ -177,14 +194,15 @@ impl<'de> Deserialize<'de> for KeyTrie {
 type InfoBoxRow<'a> = (Vec<String>, &'a str);
 type InfoBoxBody<'a> = Vec<InfoBoxRow<'a>>;
 /// Sorts by `ModifierKeyCode`, then by each `KeyCode` category, then by each `KeyEvent`.
-/// KeyCode::Char sorting is special in that lower-case and upper-case equivalents are 
+/// KeyCode::Char sorting is special in that lower-case and upper-case equivalents are
 /// placed together, and alphas are placed before the rest.
 fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
-    use std::str::FromStr;
-    use std::collections::BTreeMap;
     use helix_view::keyboard::{KeyCode, KeyModifiers, MediaKeyCode};
+    use std::collections::BTreeMap;
+    use std::str::FromStr;
 
-    let mut category_holder: BTreeMap<KeyModifiers , BTreeMap<KeyCode, Vec<InfoBoxRow>>> = BTreeMap::new();
+    let mut category_holder: BTreeMap<KeyModifiers, BTreeMap<KeyCode, Vec<InfoBoxRow>>> =
+        BTreeMap::new();
     let mut sorted_body: InfoBoxBody = Vec::with_capacity(body.len());
     for infobox_row in body {
         let first_keyevent = KeyEvent::from_str(infobox_row.0[0].as_str()).unwrap();
@@ -196,27 +214,20 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
         // KeyCode:: Char, F, and MediaKeys can have muiltiple values for the given variant
         // Hence the use of mock Variant values
         let keycode_category = match first_keyevent.code {
-            KeyCode::Char(_) => {
-                KeyCode::Char('a')
-            }
-            KeyCode::F(_) => {
-                KeyCode::F(0)
-            }
-            KeyCode::Media(_) => {
-                KeyCode::Media(MediaKeyCode::Play)
-            }
-            other_keycode => {
-                other_keycode
-            }
+            KeyCode::Char(_) => KeyCode::Char('a'),
+            KeyCode::F(_) => KeyCode::F(0),
+            KeyCode::Media(_) => KeyCode::Media(MediaKeyCode::Play),
+            other_keycode => other_keycode,
         };
 
-
-        let modifier_category = category_holder.get_mut(&first_keyevent.modifiers)
+        let modifier_category = category_holder
+            .get_mut(&first_keyevent.modifiers)
             .expect("keycode category existence should be checked.");
         if !modifier_category.contains_key(&keycode_category) {
             modifier_category.insert(keycode_category.clone(), Vec::new());
         }
-        modifier_category.get_mut(&keycode_category)
+        modifier_category
+            .get_mut(&keycode_category)
             .expect("key existence should be checked")
             .push(infobox_row);
     }
@@ -225,12 +236,14 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
         for (keycode_category, mut infobox_rows) in keycode_categories {
             if infobox_rows.len() > 1 {
                 match keycode_category {
-                    KeyCode::Char(_) => {                   
-                        infobox_rows.sort_unstable_by(|a, b| a.0[0].to_lowercase().cmp(&b.0[0].to_lowercase()));
+                    KeyCode::Char(_) => {
+                        infobox_rows.sort_unstable_by(|a, b| {
+                            a.0[0].to_lowercase().cmp(&b.0[0].to_lowercase())
+                        });
 
                         // Consistently place lowercase before uppercase of the same letter.
                         let mut x_index = 0;
-                        let mut y_index = 1;            
+                        let mut y_index = 1;
                         while y_index < infobox_rows.len() {
                             let x = &infobox_rows[x_index].0[0];
                             let y = &infobox_rows[y_index].0[0];
@@ -238,9 +251,9 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
                                 if x < y {
                                     infobox_rows.swap(x_index, y_index);
                                 }
-                             }
-                             x_index = y_index;
-                             y_index += 1;
+                            }
+                            x_index = y_index;
+                            y_index += 1;
                         }
 
                         // TEMP: until drain_filter becomes stable. Migth also be worth implementing
@@ -254,19 +267,18 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
                                 .is_some()
                             {
                                 alphas.push(infobox_row);
-                            }
-                            else {
+                            } else {
                                 misc.push(infobox_row);
                             }
                         }
                         infobox_rows = Vec::with_capacity(alphas.len() + misc.len());
                         for alpha_row in alphas {
-                           infobox_rows.push(alpha_row);
+                            infobox_rows.push(alpha_row);
                         }
                         for misc_row in misc {
-                           infobox_rows.push(misc_row);
+                            infobox_rows.push(misc_row);
                         }
-                    },
+                    }
                     _ => {
                         infobox_rows.sort_unstable();
                     }
