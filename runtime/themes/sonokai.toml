@@ -17,6 +17,7 @@
 "variable.other.member" = "orange"
 "label" = "red"
 "punctuation" = "grey"
+"punctuation.special" = "yellow"
 "keyword" = "red"
 "operator" = "red"
 "function" = "green"
