@@ -6,7 +6,7 @@ use std::{cmp::Ordering, collections::HashMap};
 /// Edges of the trie are KeyEvents and the nodes are descrbibed by KeyTrieNode
 #[derive(Debug, Clone)]
 pub struct KeyTrie {
-    documentation: String,
+    description: String,
     /// Used for pre-defined order in infoboxes, values represent the index of the key tries children.
     child_order: HashMap<KeyEvent, usize>,
     children: Vec<KeyTrieNode>,
@@ -15,12 +15,12 @@ pub struct KeyTrie {
 
 impl KeyTrie {
     pub fn new(
-        documentation: &str,
+        description: &str,
         child_order: HashMap<KeyEvent, usize>,
         children: Vec<KeyTrieNode>,
     ) -> Self {
         Self {
-            documentation: documentation.to_string(),
+            description: description.to_string(),
             child_order,
             children,
             is_sticky: false,
@@ -105,26 +105,26 @@ impl KeyTrie {
         }
 
         for (index, key_trie) in self.children.iter().enumerate() {
-            let documentation: &str = match key_trie {
+            let description: &str = match key_trie {
                 KeyTrieNode::MappableCommand(ref command) => {
                     if command.name() == "no_op" {
                         continue;
                     }
                     command.description()
                 }
-                KeyTrieNode::KeyTrie(ref key_trie) => &key_trie.documentation,
+                KeyTrieNode::KeyTrie(ref key_trie) => &key_trie.description,
                 // FIX: default to a join of all command names
-                // NOTE: Giving same documentation for all sequences will place all sequence keyvents together.
+                // NOTE: Giving same description for all sequences will place all sequence keyvents together.
                 // Regardless if the command sequence is different.
                 KeyTrieNode::CommandSequence(_) => "[Multiple commands]",
             };
             let key_event = key_event_order[index];
             match body
                 .iter()
-                .position(|(_, existing_documentation)| &documentation == existing_documentation)
+                .position(|(_, existing_description)| &description == existing_description)
             {
                 Some(position) => body[position].0.push(key_event.to_string()),
-                None => body.push((vec![key_event.to_string()], documentation)),
+                None => body.push((vec![key_event.to_string()], description)),
             }
         }
 
@@ -152,7 +152,7 @@ impl KeyTrie {
             .map(|(key_events, description)| (key_events.join(", "), *description))
             .collect();
 
-        Info::new(&self.documentation, &stringified_key_events_body)
+        Info::new(&self.description, &stringified_key_events_body)
     }
 }
 
