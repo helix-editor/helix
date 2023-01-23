@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
+    str,
 };
 
 use anyhow::{anyhow, Context, Result};
@@ -15,12 +16,13 @@ use crate::graphics::UnderlineStyle;
 pub use crate::graphics::{Color, Modifier, Style};
 
 pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
-    toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
+    let bytes = include_bytes!("../../theme.toml");
+    toml::from_str(str::from_utf8(bytes).unwrap()).expect("Failed to parse base default theme")
 });
 
 pub static BASE16_DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
-    toml::from_slice(include_bytes!("../../base16_theme.toml"))
-        .expect("Failed to parse base 16 default theme")
+    let bytes = include_bytes!("../../base16_theme.toml");
+    toml::from_str(str::from_utf8(bytes).unwrap()).expect("Failed to parse base 16 default theme")
 });
 
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
@@ -148,8 +150,8 @@ impl Loader {
 
     // Loads the theme data as `toml::Value` first from the user_dir then in default_dir
     fn load_toml(&self, path: PathBuf) -> Result<Value> {
-        let data = std::fs::read(&path)?;
-        let value = toml::from_slice(data.as_slice())?;
+        let data = std::fs::read_to_string(&path)?;
+        let value = toml::from_str(&data)?;
 
         Ok(value)
     }
