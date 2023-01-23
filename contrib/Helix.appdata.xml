@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.helix_editor.Helix</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MPL-2.0</project_license>
+  <name>Helix</name>
+  <summary>A post-modern text editor</summary>
+
+  <description>
+    <p>
+      Helix is a terminal-based text editor inspired by Kakoune / Neovim, written in Rust.
+    </p>
+    <p>Features: </p>
+    <ul>
+      <li>Vim-like modal editing</li>
+      <li>Multiple selections</li>
+      <li>Built-in language server support</li>
+      <li>Smart, incremental syntax highlighting and code editing via tree-sitter</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">com.helix_editor.Helix.desktop</launchable>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Helix with default theme</caption>
+      <image>https://github.com/helix-editor/helix/raw/d4565b4404cabc522bd60822abd374755581d751/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://helix-editor.com/</url>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="22.12" date="2022-12-7" />
+  </releases>
+
+  <provides>
+    <binary>hx</binary>
+    <mediatype>text/english</mediatype>
+    <mediatype>text/plain</mediatype>
+    <mediatype>text/x-makefile</mediatype>
+    <mediatype>text/x-c++hdr</mediatype>
+    <mediatype>text/x-c++src</mediatype>
+    <mediatype>text/x-chdr</mediatype>
+    <mediatype>text/x-csrc</mediatype>
+    <mediatype>text/x-java</mediatype>
+    <mediatype>text/x-moc</mediatype>
+    <mediatype>text/x-pascal</mediatype>
+    <mediatype>text/x-tcl</mediatype>
+    <mediatype>text/x-tex</mediatype>
+    <mediatype>application/x-shellscript</mediatype>
+    <mediatype>text/x-c</mediatype>
+    <mediatype>text/x-c++</mediatype>
+  </provides>
+</component>
