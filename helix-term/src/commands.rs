@@ -7,15 +7,24 @@ pub use lsp::*;
 pub use typed::*;
 
 use crate::{
-    commands::insert::*,
     args,
-    keymap::CommandList,
+    commands::insert::*,
     compositor::{self, Component, Compositor},
-    job::{Callback, self, Jobs},
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, menu::{Cell, Row}},
+    job::{self, Callback, Jobs},
+    keymap::CommandList,
+    ui::{
+        self,
+        menu::{Cell, Row},
+        overlay::overlayed,
+        FilePicker, Picker, Popup, Prompt, PromptEvent,
+    },
 };
 
-use helix_vcs::Hunk;
+use anyhow::{anyhow, bail, ensure, Context as _};
+use futures_util::StreamExt;
+use fuzzy_matcher::FuzzyMatcher;
+use grep_regex::RegexMatcherBuilder;
+use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use helix_core::{
     comment, coords_at_pos, encoding, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
@@ -33,6 +42,7 @@ use helix_core::{
     visual_coords_at_pos, LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice, Selection,
     SmallVec, Tendril, Transaction,
 };
+use helix_vcs::Hunk;
 use helix_view::{
     clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
@@ -44,22 +54,17 @@ use helix_view::{
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
-use std::{
-    collections::{HashMap, HashSet},
-    num::NonZeroUsize,
-    future::Future,
-    borrow::Cow,
-    path::{Path, PathBuf},
-    fmt,
-};
-use anyhow::{anyhow, bail, ensure, Context as _};
-use fuzzy_matcher::FuzzyMatcher;
-use futures_util::StreamExt;
+use ignore::{DirEntry, WalkBuilder, WalkState};
 use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
-use grep_regex::RegexMatcherBuilder;
-use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
-use ignore::{DirEntry, WalkBuilder, WalkState};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+    fmt,
+    future::Future,
+    num::NonZeroUsize,
+    path::{Path, PathBuf},
+};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub struct Context<'a> {
@@ -156,7 +161,11 @@ macro_rules! static_commands {
 impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
-            Self::Typable { name, args, description: _ } => {
+            Self::Typable {
+                name,
+                args,
+                description: _,
+            } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
@@ -2450,22 +2459,38 @@ impl ui::menu::Item for MappableCommand {
 
     fn format(&self, command_list: &Self::Data) -> Row {
         match self {
-            MappableCommand::Typable { description: doc, name, .. } => {
-                let mut row: Vec<Cell> = vec![Cell::from(&*name.as_str()), Cell::from(""), Cell::from(&*doc.as_str())];
+            MappableCommand::Typable {
+                description: doc,
+                name,
+                ..
+            } => {
+                let mut row: Vec<Cell> = vec![
+                    Cell::from(&*name.as_str()),
+                    Cell::from(""),
+                    Cell::from(&*doc.as_str()),
+                ];
                 match command_list.get(name as &String) {
-                    Some(key_events) => { row[1] = Cell::from(format_key_events(key_events)); },
+                    Some(key_events) => {
+                        row[1] = Cell::from(format_key_events(key_events));
+                    }
                     None => {}
                 }
                 return Row::new(row);
-            },
-            MappableCommand::Static { description: doc, name, .. } => {
+            }
+            MappableCommand::Static {
+                description: doc,
+                name,
+                ..
+            } => {
                 let mut row: Vec<Cell> = vec![Cell::from(*name), Cell::from(""), Cell::from(*doc)];
                 match command_list.get(*name) {
-                    Some(key_events) => { row[1] = Cell::from(format_key_events(key_events)); },
+                    Some(key_events) => {
+                        row[1] = Cell::from(format_key_events(key_events));
+                    }
                     None => {}
                 }
-                return Row::new(row)
-            } 
+                return Row::new(row);
+            }
         }
 
         // TODO: Generalize into a Vec<String> Display implemention?
@@ -2485,7 +2510,11 @@ impl ui::menu::Item for MappableCommand {
 pub fn command_palette(cx: &mut Context) {
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
-            let keymap_command_lists = compositor.find::<ui::EditorView>().unwrap().keymap.command_list(&cx.editor.mode);
+            let keymap_command_lists = compositor
+                .find::<ui::EditorView>()
+                .unwrap()
+                .keymap
+                .command_list(&cx.editor.mode);
 
             let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
             commands.extend(typed::TYPABLE_COMMAND_LIST.iter().map(|cmd| {
@@ -2496,32 +2525,36 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(commands, keymap_command_lists, move |cx, command, _action| {
-                let mut ctx = Context {
-                    register: None,
-                    count: std::num::NonZeroUsize::new(1),
-                    editor: cx.editor,
-                    callback: None,
-                    on_next_key_callback: None,
-                    jobs: cx.jobs,
-                };
-                let focus = view!(ctx.editor).id;
+            let picker = Picker::new(
+                commands,
+                keymap_command_lists,
+                move |cx, command, _action| {
+                    let mut ctx = Context {
+                        register: None,
+                        count: std::num::NonZeroUsize::new(1),
+                        editor: cx.editor,
+                        callback: None,
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+                    let focus = view!(ctx.editor).id;
 
-                command.execute(&mut ctx);
+                    command.execute(&mut ctx);
 
-                if ctx.editor.tree.contains(focus) {
-                    let config = ctx.editor.config();
-                    let mode = ctx.editor.mode();
-                    let view = view_mut!(ctx.editor, focus);
-                    let doc = doc_mut!(ctx.editor, &view.doc);
+                    if ctx.editor.tree.contains(focus) {
+                        let config = ctx.editor.config();
+                        let mode = ctx.editor.mode();
+                        let view = view_mut!(ctx.editor, focus);
+                        let doc = doc_mut!(ctx.editor, &view.doc);
 
-                    view.ensure_cursor_in_view(doc, config.scrolloff);
+                        view.ensure_cursor_in_view(doc, config.scrolloff);
 
-                    if mode != Mode::Insert {
-                        doc.append_changes_to_history(view);
+                        if mode != Mode::Insert {
+                            doc.append_changes_to_history(view);
+                        }
                     }
-                }
-            });
+                },
+            );
             compositor.push(Box::new(overlayed(picker)));
         },
     ));

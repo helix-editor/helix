@@ -116,5 +116,5 @@ macro_rules! keytrie {
 pub use alt;
 pub use ctrl;
 pub use key;
-pub use shift;
 pub use keytrie;
+pub use shift;
