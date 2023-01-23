@@ -171,6 +171,8 @@ pub struct FilePickerConfig {
     /// Enables following symlinks.
     /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to true.
     pub follow_symlinks: bool,
+    /// Hides symlinks that point into the current directory. Default to true
+    pub deduplicate_links: bool,
     /// Enables reading ignore files from parent directories. Defaults to true.
     pub parents: bool,
     /// Enables reading `.ignore` files.
@@ -195,6 +197,7 @@ impl Default for FilePickerConfig {
         Self {
             hidden: true,
             follow_symlinks: true,
+            deduplicate_links: true,
             parents: true,
             ignore: true,
             git_ignore: true,

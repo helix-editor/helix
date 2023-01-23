@@ -10,6 +10,9 @@ pub mod health;
 pub mod job;
 pub mod keymap;
 pub mod ui;
+use std::path::Path;
+
+use ignore::DirEntry;
 pub use keymap::macros::*;
 
 #[cfg(not(windows))]
@@ -20,5 +23,28 @@ fn true_color() -> bool {
 }
 #[cfg(windows)]
 fn true_color() -> bool {
+    true
+}
+
+/// Function used for filtering dir entries in the various file pickers.
+///
+/// We always want to ignore the .git directory, otherwise if
+/// `ignore` is turned off, we end up with a lot of noise
+/// in our picker.
+/// We also ignore symlinks that point inside the current directory
+/// if `dedup_links` is enabled.
+fn filter_entry(entry: &DirEntry, root: &Path, dedup_links: bool) -> bool {
+    if entry.file_name() != ".git" {
+        return false;
+    }
+
+    if dedup_links && entry.path_is_symlink() {
+        return entry
+            .path()
+            .canonicalize()
+            .ok()
+            .map_or(false, |path| !path.starts_with(&root));
+    }
+
     true
 }
