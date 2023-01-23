@@ -207,7 +207,9 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
     let mut sorted_body: InfoBoxBody = Vec::with_capacity(body.len());
     for infobox_row in body {
         let first_keyevent = KeyEvent::from_str(infobox_row.0[0].as_str()).unwrap();
-        category_holder.entry(first_keyevent.modifiers).or_insert_with(BTreeMap::new);
+        category_holder
+            .entry(first_keyevent.modifiers)
+            .or_insert_with(BTreeMap::new);
 
         // HACK: inserting by variant not by variant value.
         // KeyCode:: Char, F, and MediaKeys can have muiltiple values for the given variant
@@ -222,7 +224,9 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
         let modifier_category = category_holder
             .get_mut(&first_keyevent.modifiers)
             .expect("keycode category existence should be checked.");
-        modifier_category.entry(keycode_category).or_insert_with(Vec::new);
+        modifier_category
+            .entry(keycode_category)
+            .or_insert_with(Vec::new);
         modifier_category
             .get_mut(&keycode_category)
             .expect("key existence should be checked")
@@ -244,8 +248,8 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
                         while y_index < infobox_rows.len() {
                             let x = &infobox_rows[x_index].0[0];
                             let y = &infobox_rows[y_index].0[0];
-                            if x.to_lowercase() == y.to_lowercase() && x < y{
-                                    infobox_rows.swap(x_index, y_index);
+                            if x.to_lowercase() == y.to_lowercase() && x < y {
+                                infobox_rows.swap(x_index, y_index);
                             }
                             x_index = y_index;
                             y_index += 1;
