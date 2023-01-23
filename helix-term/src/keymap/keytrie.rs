@@ -55,7 +55,7 @@ impl KeyTrie {
                     _found_child => return Some(_found_child.clone()),
                 }
             }
-            return None;
+            None
         }
     }
 
@@ -64,7 +64,7 @@ impl KeyTrie {
             let other_child_keytrie_node = &other_keytrie.get_children()[*other_index];
             match other_child_keytrie_node {
                 KeyTrieNode::KeyTrie(ref other_child_keytrie) => {
-                    if let Some(self_index) = self.child_order.get(&other_key_event) {
+                    if let Some(self_index) = self.child_order.get(other_key_event) {
                         if let KeyTrieNode::KeyTrie(ref mut self_clashing_child_key_trie) =
                             self.children[*self_index]
                         {
@@ -97,11 +97,12 @@ impl KeyTrie {
         let mut body: InfoBoxBody = Vec::with_capacity(self.children.len());
         let mut key_event_order = Vec::with_capacity(self.children.len());
         // child_order and children is of same length
+        #[allow(clippy::uninit_vec)]
         unsafe {
             key_event_order.set_len(self.children.len());
         }
         for (key_event, index) in &self.child_order {
-            key_event_order[*index] = key_event.clone();
+            key_event_order[*index] = key_event;
         }
 
         for (index, key_trie) in self.children.iter().enumerate() {
@@ -206,9 +207,7 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
     let mut sorted_body: InfoBoxBody = Vec::with_capacity(body.len());
     for infobox_row in body {
         let first_keyevent = KeyEvent::from_str(infobox_row.0[0].as_str()).unwrap();
-        if !category_holder.contains_key(&first_keyevent.modifiers) {
-            category_holder.insert(first_keyevent.modifiers.clone(), BTreeMap::new());
-        }
+        category_holder.entry(first_keyevent.modifiers).or_insert_with(BTreeMap::new);
 
         // HACK: inserting by variant not by variant value.
         // KeyCode:: Char, F, and MediaKeys can have muiltiple values for the given variant
@@ -223,9 +222,7 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
         let modifier_category = category_holder
             .get_mut(&first_keyevent.modifiers)
             .expect("keycode category existence should be checked.");
-        if !modifier_category.contains_key(&keycode_category) {
-            modifier_category.insert(keycode_category.clone(), Vec::new());
-        }
+        modifier_category.entry(keycode_category).or_insert_with(Vec::new);
         modifier_category
             .get_mut(&keycode_category)
             .expect("key existence should be checked")
@@ -247,10 +244,8 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
                         while y_index < infobox_rows.len() {
                             let x = &infobox_rows[x_index].0[0];
                             let y = &infobox_rows[y_index].0[0];
-                            if x.to_lowercase() == y.to_lowercase() {
-                                if x < y {
+                            if x.to_lowercase() == y.to_lowercase() && x < y{
                                     infobox_rows.swap(x_index, y_index);
-                                }
                             }
                             x_index = y_index;
                             y_index += 1;
@@ -263,8 +258,7 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
                         for infobox_row in infobox_rows {
                             if ('a'..='z')
                                 .map(|char| char.to_string())
-                                .find(|alpha_char| *alpha_char == infobox_row.0[0].to_lowercase())
-                                .is_some()
+                                .any(|alpha_char| *alpha_char == infobox_row.0[0].to_lowercase())
                             {
                                 alphas.push(infobox_row);
                             } else {

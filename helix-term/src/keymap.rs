@@ -74,7 +74,7 @@ impl Keymap {
 
         // Check if sticky keytrie is to be used.
         let starting_keytrie = match self.sticky_keytrie {
-            None => &active_keymap,
+            None => active_keymap,
             Some(ref active_sticky_keytrie) => active_sticky_keytrie,
         };
 
@@ -84,10 +84,10 @@ impl Keymap {
         let pending_keytrie: KeyTrie = match starting_keytrie.traverse(&[*first_key]) {
             Some(KeyTrieNode::KeyTrie(sub_keytrie)) => sub_keytrie,
             Some(KeyTrieNode::MappableCommand(cmd)) => {
-                return KeymapResult::Matched(cmd.clone());
+                return KeymapResult::Matched(cmd);
             }
             Some(KeyTrieNode::CommandSequence(cmds)) => {
-                return KeymapResult::MatchedCommandSequence(cmds.clone());
+                return KeymapResult::MatchedCommandSequence(cmds);
             }
             None => return KeymapResult::NotFound,
         };
@@ -99,15 +99,15 @@ impl Keymap {
                     self.pending_keys.clear();
                     self.sticky_keytrie = Some(map.clone());
                 }
-                KeymapResult::Pending(map.clone())
+                KeymapResult::Pending(map)
             }
             Some(KeyTrieNode::MappableCommand(cmd)) => {
                 self.pending_keys.clear();
-                KeymapResult::Matched(cmd.clone())
+                KeymapResult::Matched(cmd)
             }
             Some(KeyTrieNode::CommandSequence(cmds)) => {
                 self.pending_keys.clear();
-                KeymapResult::MatchedCommandSequence(cmds.clone())
+                KeymapResult::MatchedCommandSequence(cmds)
             }
             None => KeymapResult::Cancelled(self.pending_keys.drain(..).collect()),
         }
@@ -138,8 +138,8 @@ impl Keymap {
                 KeyTrieNode::KeyTrie(trie_node) => {
                     for (key_event, index) in trie_node.get_child_order() {
                         let mut temp_prefix: String = prefix.to_string();
-                        if &temp_prefix != "" {
-                            temp_prefix.push_str("→");
+                        if !&temp_prefix.is_empty() {
+                            temp_prefix.push('→');
                         }
                         temp_prefix.push_str(&key_event.to_string());
                         _command_list(list, &trie_node.get_children()[*index], &mut temp_prefix);
