@@ -1,7 +1,29 @@
+use crate::{
+    args::Args,
+    commands::apply_workspace_edit,
+    compositor::{Compositor, Event},
+    config::Config,
+    job::Jobs,
+    keymap::Keymap,
+    ui::{self, overlay::overlayed},
+};
+use anyhow::{Context, Error};
+use arc_swap::{access::Map, ArcSwap};
+use crossterm::{
+    event::{
+        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
+        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent,
+    },
+    execute, terminal,
+    tty::IsTty,
+};
+use futures_util::Stream;
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
-    pos_at_coords, syntax::{self, LanguageConfigurations}, Selection,
+    pos_at_coords,
+    syntax::{self, LanguageConfigurations},
+    Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{
@@ -13,34 +35,14 @@ use helix_view::{
     tree::Layout,
     Align, Editor,
 };
-use crate::{
-    args::Args,
-    commands::apply_workspace_edit,
-    compositor::{Compositor, Event},
-    config::Config,
-    keymap::Keymap,
-    job::Jobs,
-    ui::{self, overlay::overlayed},
-};
+use log::{debug, error, warn};
+use serde_json::json;
 use std::{
     io::{stdin, stdout, Write},
     sync::Arc,
     time::{Duration, Instant},
 };
-use arc_swap::{access::Map, ArcSwap};
-use futures_util::Stream;
-use log::{debug, error, warn};
-use anyhow::{Context, Error};
-use serde_json::json;
 use tui::backend::Backend;
-use crossterm::{
-    event::{
-        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent,
-    },
-    execute, terminal,
-    tty::IsTty,
-};
 
 #[cfg(not(windows))]
 use {
@@ -416,7 +418,9 @@ impl Application {
 
             if let Some(theme) = &self.config.load().theme {
                 let true_color = self.config.load().editor.true_color || crate::true_color();
-                let theme = self.theme_loader.load(theme)
+                let theme = self
+                    .theme_loader
+                    .load(theme)
                     .map_err(|err| anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err))?;
 
                 if true_color || theme.is_16_color() {
@@ -431,8 +435,12 @@ impl Application {
         };
 
         match refresh_config() {
-            Ok(_) => { self.editor.set_status("Config refreshed"); },
-            Err(err) => { self.editor.set_error(err.to_string()); }
+            Ok(_) => {
+                self.editor.set_status("Config refreshed");
+            }
+            Err(err) => {
+                self.editor.set_error(err.to_string());
+            }
         }
     }
 

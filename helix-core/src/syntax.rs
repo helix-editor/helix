@@ -7,8 +7,8 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
-use anyhow;
 use ahash::RandomState;
+use anyhow;
 use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
 use hashbrown::raw::RawTable;
@@ -69,7 +69,8 @@ impl LanguageConfigurations {
     // Local, user config, and system language configs
     pub fn merged() -> Result<Self, anyhow::Error> {
         let merged_lang_configs = helix_loader::merged_lang_config()?;
-        merged_lang_configs.try_into()
+        merged_lang_configs
+            .try_into()
             .map_err(|error| anyhow::anyhow!("{}", error))
     }
 }
@@ -86,11 +87,11 @@ impl Default for LanguageConfigurations {
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
-    pub language_id: String,       // c-sharp, rust
+    pub language_id: String, // c-sharp, rust
     pub scope: String,             // source.rust
     pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
-    pub shebangs: Vec<String>,     // interpreter(s) associated with language
+    pub shebangs: Vec<String>, // interpreter(s) associated with language
     pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
     pub max_line_length: Option<usize>,

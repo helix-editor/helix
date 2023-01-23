@@ -1,5 +1,6 @@
 pub fn help() -> String {
-    format!("\
+    format!(
+        "\
 {pkg_name} {version}
 {authors}
 {description}

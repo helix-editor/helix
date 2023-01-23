@@ -1,6 +1,6 @@
 pub mod grammar;
-pub mod ts_probe;
 pub mod repo_paths;
+pub mod ts_probe;
 
 use anyhow::Error;
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
@@ -60,7 +60,8 @@ pub fn setup_log_file(specified_file: Option<PathBuf>) {
 
 pub fn user_config_dir() -> PathBuf {
     // TODO: allow env var override
-    let strategy = choose_base_strategy().expect("Unable to determine system base directory specification!");
+    let strategy =
+        choose_base_strategy().expect("Unable to determine system base directory specification!");
     let mut path = strategy.config_dir();
     path.push("helix");
     path
@@ -68,7 +69,8 @@ pub fn user_config_dir() -> PathBuf {
 
 pub fn cache_dir() -> PathBuf {
     // TODO: allow env var override
-    let strategy = choose_base_strategy().expect("Unable to determine system base directory specification!");
+    let strategy =
+        choose_base_strategy().expect("Unable to determine system base directory specification!");
     let mut path = strategy.cache_dir();
     path.push("helix");
     path
@@ -77,8 +79,7 @@ pub fn cache_dir() -> PathBuf {
 pub fn runtime_dir() -> PathBuf {
     if let Some(runtime_dir) = RUNTIME_DIR.get() {
         return runtime_dir.to_path_buf();
-    }
-    else {
+    } else {
         RUNTIME_DIR.set(_runtime_dir()).unwrap();
         runtime_dir()
     }
@@ -86,7 +87,7 @@ pub fn runtime_dir() -> PathBuf {
 
 /// $HELIX_RUNTIME || config_dir/runtime || repo/runtime (if run by cargo) || executable location
 fn _runtime_dir() -> PathBuf {
-    // TODO: shouldn't it also look for XDG_RUNTIME_DIR? 
+    // TODO: shouldn't it also look for XDG_RUNTIME_DIR?
     if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
         return dir.into();
     }
@@ -103,7 +104,8 @@ fn _runtime_dir() -> PathBuf {
         return conf_dir;
     }
 
-    std::env::current_exe().ok()
+    std::env::current_exe()
+        .ok()
         .and_then(|path| std::fs::canonicalize(path).ok())
         .and_then(|path| path.parent().map(|path| path.to_path_buf().join(RT_DIR)))
         .unwrap()
@@ -134,12 +136,12 @@ pub fn local_config_dirs() -> Vec<PathBuf> {
     let current_dir = std::env::current_dir().expect("Unable to determine current directory.");
     let mut directories = Vec::new();
     for ancestor in current_dir.ancestors() {
+        let potential_dir = ancestor.to_path_buf().join(".helix");
+        if potential_dir.is_dir() {
+            directories.push(potential_dir);
+        }
         if ancestor.join(".git").exists() {
-            directories.push(ancestor.to_path_buf().join(".helix"));
-            // Don't go higher than repo if we're in one
             break;
-        } else if ancestor.join(".helix").is_dir() {
-            directories.push(ancestor.to_path_buf().join(".helix"));
         }
     }
     log::debug!("Located local configuration folders: {:?}", directories);
@@ -147,7 +149,6 @@ pub fn local_config_dirs() -> Vec<PathBuf> {
 }
 
 fn merge_toml_by_config_paths(config_paths: Vec<PathBuf>) -> Result<toml::Value, Error> {
-    println!("{config_paths:#?}");
     let mut configs: Vec<toml::Value> = Vec::with_capacity(config_paths.len());
     for config_path in config_paths {
         if config_path.exists() {
@@ -157,7 +158,10 @@ fn merge_toml_by_config_paths(config_paths: Vec<PathBuf>) -> Result<toml::Value,
         }
     }
 
-    Ok(configs.into_iter().reduce(|a, b| { merge_toml_values(b, a, 3) }).expect("Supplied config paths should point to at least one valid config."))
+    Ok(configs
+        .into_iter()
+        .reduce(|a, b| merge_toml_values(b, a, 3))
+        .expect("Supplied config paths should point to at least one valid config."))
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`

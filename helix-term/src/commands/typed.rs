@@ -1671,7 +1671,8 @@ fn tree_sitter_subtree(
             let callback = async move {
                 let call: job::Callback = Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let contents = ui::Markdown::new(contents, editor.lang_configs_loader.clone());
+                        let contents =
+                            ui::Markdown::new(contents, editor.lang_configs_loader.clone());
                         let popup = Popup::new("hover", contents).auto_close(true);
                         compositor.replace_or_push("hover", popup);
                     },

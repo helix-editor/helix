@@ -1,8 +1,8 @@
 use super::keytrie::KeyTrie;
 use crate::commands::MappableCommand;
 use helix_view::input::KeyEvent;
+use serde::{de::Visitor, Deserialize};
 use std::collections::HashMap;
-use serde::{Deserialize, de::Visitor};
 
 /// Each variant includes a documentaion property.
 /// For the MappableCommand and CommandSequence variants, the property is self explanatory.
@@ -29,14 +29,14 @@ impl PartialEq for KeyTrieNode {
         match (self, other) {
             (KeyTrieNode::MappableCommand(_self), KeyTrieNode::MappableCommand(_other)) => {
                 _self == _other
-            },          
+            }
             (KeyTrieNode::CommandSequence(_self), KeyTrieNode::CommandSequence(_other)) => {
-                _self == _other        
-            },  
+                _self == _other
+            }
             (KeyTrieNode::KeyTrie(_self), KeyTrieNode::KeyTrie(_other)) => {
                 _self.get_children() == _other.get_children()
-            }, 
-            _ => false
+            }
+            _ => false,
         }
     }
 }
@@ -65,7 +65,7 @@ impl<'de> Visitor<'de> for KeyTrieNodeVisitor {
         S: serde::de::SeqAccess<'de>,
     {
         let mut commands = Vec::new();
-        while let Some(command) = seq.next_element::<&str>()? {
+        while let Some(command) = seq.next_element::<String>()? {
             commands.push(
                 command
                     .parse::<MappableCommand>()
@@ -85,6 +85,10 @@ impl<'de> Visitor<'de> for KeyTrieNodeVisitor {
             child_order.insert(key_event, children.len());
             children.push(key_trie_node);
         }
-        Ok(KeyTrieNode::KeyTrie(KeyTrie::new("", child_order, children)))
+        Ok(KeyTrieNode::KeyTrie(KeyTrie::new(
+            "",
+            child_order,
+            children,
+        )))
     }
 }

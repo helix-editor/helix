@@ -75,7 +75,12 @@ pub fn lang_features() -> Result<String, DynError> {
     for feature in TsFeature::all() {
         let mut langs_with_ts_support: Vec<String> = Vec::new();
         for lang in LanguageConfigurations::default().language {
-            if helix_loader::grammar::load_runtime_file(&lang.language_id, feature.runtime_filename()).is_ok() {
+            if helix_loader::grammar::load_runtime_file(
+                &lang.language_id,
+                feature.runtime_filename(),
+            )
+            .is_ok()
+            {
                 langs_with_ts_support.push(lang.language_id.clone());
             }
         }

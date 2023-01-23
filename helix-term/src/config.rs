@@ -1,8 +1,8 @@
 use crate::keymap::{default, keytrie::KeyTrie};
+use anyhow::{anyhow, Error};
 use helix_view::document::Mode;
 use serde::Deserialize;
 use std::collections::HashMap;
-use anyhow::{Error, anyhow};
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -19,14 +19,15 @@ impl Config {
     pub fn merged() -> Result<Self, Error> {
         let config_string = std::fs::read(helix_loader::config_file())?;
         toml::from_slice(&config_string)
-            .map(|config: Config| config.merge_in_default_keymap()) 
+            .map(|config: Config| config.merge_in_default_keymap())
             .map_err(|error| anyhow!("{}", error))
     }
 
     /// Merge local config with user config and system keymap
     pub fn merged_local_config() -> Result<Self, Error> {
-        helix_loader::merged_config()?.try_into()
-            .map(|config: Config| config.merge_in_default_keymap()) 
+        helix_loader::merged_config()?
+            .try_into()
+            .map(|config: Config| config.merge_in_default_keymap())
             .map_err(|error| anyhow!("{}", error))
     }
 
@@ -54,11 +55,7 @@ mod tests {
     use crate::{
         commands::MappableCommand,
         config::Config,
-        keymap::{
-            default,
-            keytrienode::KeyTrieNode,
-            macros::*,
-        },
+        keymap::{default, keytrienode::KeyTrieNode, macros::*},
     };
     use helix_core::hashmap;
     use helix_view::document::Mode;
@@ -69,8 +66,8 @@ mod tests {
         // into a hashmap first
         let sample_keymaps = r#"
             [keys.insert]
-            S-C-a = "delete_selection"
             y = "move_line_down"
+            S-C-a = "delete_selection"
 
             [keys.normal]
             A-F12 = "move_next_word_end"
@@ -91,7 +88,12 @@ mod tests {
         for mode in config.keys.keys() {
             assert_eq!(
                 config.keys.get(mode).unwrap().get_children(),
-                toml::from_str::<Config>(sample_keymaps).unwrap().keys.get(mode).unwrap().get_children()
+                toml::from_str::<Config>(sample_keymaps)
+                    .unwrap()
+                    .keys
+                    .get(mode)
+                    .unwrap()
+                    .get_children()
             );
         }
     }
@@ -117,14 +119,13 @@ mod tests {
                             "g" => delete_char_forward,
                         },
                     })
-                
+
             },
             ..Default::default()
         };
         let mut merged_config = user_config.clone().merge_in_default_keymap();
         assert_ne!(
-            user_config,
-            merged_config,
+            user_config, merged_config,
             "Merged user keymap with default should differ from user keymap."
         );
 
@@ -147,25 +148,47 @@ mod tests {
         );
         // Assumes that `g` is a sub key trie in default keymap
         assert_eq!(
-            keymap_normal_root_key_trie.traverse(&[key!('g'), key!('$')]).unwrap(),
+            keymap_normal_root_key_trie
+                .traverse(&[key!('g'), key!('$')])
+                .unwrap(),
             KeyTrieNode::MappableCommand(MappableCommand::goto_line_end),
             "User supplied mappable command should be inserted under the correct sub keytrie."
         );
         // Assumes that `gg` is in default keymap
         assert_eq!(
-            keymap_normal_root_key_trie.traverse(&[key!('g'), key!('g')]).unwrap(),
+            keymap_normal_root_key_trie
+                .traverse(&[key!('g'), key!('g')])
+                .unwrap(),
             KeyTrieNode::MappableCommand(MappableCommand::delete_char_forward),
             "User supplied mappable command should replace default even in sub keytries."
         );
         // Assumes that `ge` is in default keymap
         assert_eq!(
-            keymap_normal_root_key_trie.traverse(&[key!('g'), key!('e')]).unwrap(),
+            keymap_normal_root_key_trie
+                .traverse(&[key!('g'), key!('e')])
+                .unwrap(),
             KeyTrieNode::MappableCommand(MappableCommand::goto_last_line),
             "Default mappable commands that aren't ovveridden should exist in merged keymap."
         );
 
         // Huh?
-        assert!(merged_config.keys.get(&Mode::Normal).unwrap().get_children().len() > 1);
-        assert!(merged_config.keys.get(&Mode::Insert).unwrap().get_children().len() > 0);
+        assert!(
+            merged_config
+                .keys
+                .get(&Mode::Normal)
+                .unwrap()
+                .get_children()
+                .len()
+                > 1
+        );
+        assert!(
+            merged_config
+                .keys
+                .get(&Mode::Insert)
+                .unwrap()
+                .get_children()
+                .len()
+                > 0
+        );
     }
 }

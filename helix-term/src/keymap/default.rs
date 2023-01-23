@@ -1,6 +1,6 @@
-use super::{macros::keytrie, keytrie::KeyTrie};
-use helix_view::document::Mode;
+use super::{keytrie::KeyTrie, macros::keytrie};
 use helix_core::hashmap;
+use helix_view::document::Mode;
 use std::collections::HashMap;
 
 pub fn default() -> HashMap<Mode, KeyTrie> {

@@ -1,7 +1,10 @@
-use crossterm::{style::{Color, Print, Stylize}, tty::IsTty};
-use helix_loader::ts_probe::TsFeature;
+use crossterm::{
+    style::{Color, Print, Stylize},
+    tty::IsTty,
+};
+use helix_core::syntax::{LanguageConfiguration, LanguageConfigurations};
 use helix_loader::grammar;
-use helix_core::syntax::{LanguageConfigurations, LanguageConfiguration};
+use helix_loader::ts_probe::TsFeature;
 use helix_view::clipboard;
 use std::io::Write;
 
@@ -24,9 +27,16 @@ pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
 fn display_paths() -> std::io::Result<()> {
     let mut stdout = std::io::stdout().lock();
 
-    writeln!(stdout, "Default config merged with user preferences supplied in:")?;
+    writeln!(
+        stdout,
+        "Default config merged with user preferences supplied in:"
+    )?;
     writeln!(stdout, "Config: {}", helix_loader::config_file().display())?;
-    writeln!(stdout, "Language config: {}", helix_loader::user_lang_config_file().display())?;
+    writeln!(
+        stdout,
+        "Language config: {}",
+        helix_loader::user_lang_config_file().display()
+    )?;
     writeln!(stdout, "Log file: {}", helix_loader::log_file().display())?;
 
     let rt_dir = helix_loader::runtime_dir();
@@ -50,7 +60,11 @@ fn display_clipboard() -> std::io::Result<()> {
     let clipboard = clipboard::get_clipboard_provider();
     match clipboard.name().as_ref() {
         "none" => {
-            writeln!(stdout, "{}", "No system clipboard provider installed, refer to:".red())?;
+            writeln!(
+                stdout,
+                "{}",
+                "No system clipboard provider installed, refer to:".red()
+            )?;
             let link = "https://github.com/helix-editor/helix/wiki/Troubleshooting#copypaste-fromto-system-clipboard-not-working";
             writeln!(stdout, "{}", link.red().underlined())?;
         }
@@ -59,31 +73,49 @@ fn display_clipboard() -> std::io::Result<()> {
     Ok(())
 }
 
-fn load_merged_language_configurations() -> std::io::Result<Vec<LanguageConfiguration>>  {
-    LanguageConfigurations::merged().or_else(|err| {
+fn load_merged_language_configurations() -> std::io::Result<Vec<LanguageConfiguration>> {
+    LanguageConfigurations::merged()
+        .or_else(|err| {
             let mut stderr = std::io::stderr().lock();
-            writeln!(stderr,"{}: {}","Error parsing user language config".red(),err)?;
+            writeln!(
+                stderr,
+                "{}: {}",
+                "Error parsing user language config".red(),
+                err
+            )?;
             writeln!(stderr, "{}", "Using default language config".yellow())?;
             Ok(LanguageConfigurations::default())
-    })
-    .map(|lang_configs| lang_configs.language)
+        })
+        .map(|lang_configs| lang_configs.language)
 }
 
 fn display_language(lang_str: String) -> std::io::Result<()> {
     let mut stdout = std::io::stdout().lock();
 
     let language_configurations = load_merged_language_configurations()?;
-    let lang = match language_configurations.iter().find(|l| l.language_id == lang_str) {
+    let lang = match language_configurations
+        .iter()
+        .find(|l| l.language_id == lang_str)
+    {
         Some(found_language) => found_language,
         None => {
-            writeln!(stdout, "{}", format!("Language '{lang_str}' not found").red())?;
-            let suggestions: Vec<&str> = language_configurations.iter()
+            writeln!(
+                stdout,
+                "{}",
+                format!("Language '{lang_str}' not found").red()
+            )?;
+            let suggestions: Vec<&str> = language_configurations
+                .iter()
                 .filter(|l| l.language_id.starts_with(lang_str.chars().next().unwrap()))
                 .map(|l| l.language_id.as_str())
                 .collect();
             if !suggestions.is_empty() {
                 let suggestions = suggestions.join(", ");
-                writeln!(stdout,"Did you mean one of these: {} ?",suggestions.yellow())?;
+                writeln!(
+                    stdout,
+                    "Did you mean one of these: {} ?",
+                    suggestions.yellow()
+                )?;
             }
             return Ok(());
         }
@@ -92,29 +124,41 @@ fn display_language(lang_str: String) -> std::io::Result<()> {
     let probe_protocol = |protocol_name: &str, server_cmd: Option<String>| -> std::io::Result<()> {
         let mut stdout = std::io::stdout().lock();
         match server_cmd {
-            Some(server_cmd) => { 
-                writeln!(stdout, "Configured {protocol_name}: {}", server_cmd.clone().green())?;
+            Some(server_cmd) => {
+                writeln!(
+                    stdout,
+                    "Configured {protocol_name}: {}",
+                    server_cmd.clone().green()
+                )?;
                 let result = match which::which(&server_cmd) {
                     Ok(path) => path.display().to_string().green(),
-                    Err(_) => format!("Not found in $PATH").red()
+                    Err(_) => format!("Not found in $PATH").red(),
                 };
                 writeln!(stdout, "Binary for {server_cmd}: {result}")?
-            },
-            None => writeln!(stdout, "Configured {protocol_name}: {}", "None".yellow())?
+            }
+            None => writeln!(stdout, "Configured {protocol_name}: {}", "None".yellow())?,
         };
         Ok(())
     };
 
-    probe_protocol("language server",lang.language_server.as_ref()
-        .map(|lsp| lsp.command.to_string()))?;
-    probe_protocol("debug adapter",lang.debugger.as_ref()
-        .map(|dap| dap.command.to_string()))?;
+    probe_protocol(
+        "language server",
+        lang.language_server
+            .as_ref()
+            .map(|lsp| lsp.command.to_string()),
+    )?;
+    probe_protocol(
+        "debug adapter",
+        lang.debugger.as_ref().map(|dap| dap.command.to_string()),
+    )?;
 
     for feature in TsFeature::all() {
-        let supported = match grammar::load_runtime_file(&lang.language_id, feature.runtime_filename()).is_ok() {
-            true => "✓".green(),
-            false => "✗".red(),
-        };
+        let supported =
+            match grammar::load_runtime_file(&lang.language_id, feature.runtime_filename()).is_ok()
+            {
+                true => "✓".green(),
+                false => "✗".red(),
+            };
         writeln!(stdout, "{} queries: {supported}", feature.short_title())?;
     }
     Ok(())
@@ -128,12 +172,15 @@ fn display_all_languages() -> std::io::Result<()> {
         column_headers.push(treesitter_feature.short_title())
     }
 
-    let column_width = crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80) as usize / column_headers.len();
+    let column_width =
+        crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80) as usize / column_headers.len();
     let print_column = |item: &str, color: Color| {
-        let mut data = format!("{:column_width$}", item
-            .get(..column_width - 2)
-            .map(|s| format!("{}…", s))
-            .unwrap_or_else(|| item.to_string()));
+        let mut data = format!(
+            "{:column_width$}",
+            item.get(..column_width - 2)
+                .map(|s| format!("{}…", s))
+                .unwrap_or_else(|| item.to_string())
+        );
 
         if std::io::stdout().is_tty() {
             data = data.stylize().with(color).to_string();
@@ -160,13 +207,17 @@ fn display_all_languages() -> std::io::Result<()> {
     for lang in &language_configurations {
         print_column(&lang.language_id, Color::Reset);
 
-        let lsp = lang.language_server.as_ref().map(|lsp| lsp.command.to_string());
+        let lsp = lang
+            .language_server
+            .as_ref()
+            .map(|lsp| lsp.command.to_string());
         check_binary(lsp);
         let dap = lang.debugger.as_ref().map(|dap| dap.command.to_string());
         check_binary(dap);
 
         for ts_feat in TsFeature::all() {
-            match grammar::load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
+            match grammar::load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok()
+            {
                 true => print_column("✓", Color::Green),
                 false => print_column("✗", Color::Red),
             }

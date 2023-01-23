@@ -7,7 +7,9 @@ use std::{
 
 use anyhow::bail;
 use crossterm::event::{Event, KeyEvent};
-use helix_core::{diagnostic::Severity, test, Selection, Transaction};
+use helix_core::{
+    diagnostic::Severity, syntax::LanguageConfigurations, test, Selection, Transaction,
+};
 use helix_term::{application::Application, args::Args, config::Config};
 use helix_view::{doc, input::parse_macro, Editor};
 use tempfile::NamedTempFile;
@@ -147,8 +149,10 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 /// By default, language server configuration is dropped from the languages.toml
 /// document. If a language-server is necessary for a test, it must be explicitly
 /// added in `overrides`.
-pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Configuration {
-    let mut lang = helix_loader::config::default_lang_config();
+pub fn test_syntax_conf(overrides: Option<String>) -> LanguageConfigurations {
+    let mut lang: toml::Value =
+        toml::from_slice(&std::fs::read(helix_loader::repo_paths::default_lang_configs()).unwrap())
+            .unwrap();
 
     for lang_config in lang
         .as_table_mut()
@@ -178,7 +182,7 @@ pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Config
 pub async fn test_with_config<T: Into<TestCase>>(
     args: Args,
     config: Config,
-    syn_conf: helix_core::syntax::Configuration,
+    syn_conf: LanguageConfigurations,
     test_case: T,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
@@ -257,7 +261,7 @@ pub fn new_readonly_tempfile() -> anyhow::Result<NamedTempFile> {
 pub struct AppBuilder {
     args: Args,
     config: Config,
-    syn_conf: helix_core::syntax::Configuration,
+    syn_conf: LanguageConfigurations,
     input: Option<(String, Selection)>,
 }
 
@@ -298,7 +302,7 @@ impl AppBuilder {
         self
     }
 
-    pub fn with_lang_config(mut self, syn_conf: helix_core::syntax::Configuration) -> Self {
+    pub fn with_lang_config(mut self, syn_conf: LanguageConfigurations) -> Self {
         self.syn_conf = syn_conf;
         self
     }

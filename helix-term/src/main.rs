@@ -49,7 +49,7 @@ async fn main_impl() -> Result<i32> {
     let mut config = Config::merged().unwrap_or_else(|err| {
         eprintln!("Bad config: {}", err);
         eprintln!("Press <ENTER> to continue with default config");
-        let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut[]);
+        let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut []);
         Config::default()
     });
     if config.editor.load_local_config {
@@ -57,7 +57,7 @@ async fn main_impl() -> Result<i32> {
         config = Config::merged_local_config().unwrap_or_else(|err| {
             eprintln!("Bad local config: {}", err);
             eprintln!("Press <ENTER> to continue with default and user config");
-            let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut[]);
+            let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut []);
             config
         });
     }
@@ -65,7 +65,7 @@ async fn main_impl() -> Result<i32> {
     let language_configurations = LanguageConfigurations::merged().unwrap_or_else(|err| {
         eprintln!("Bad language config: {}", err);
         eprintln!("Press <ENTER> to continue with default language config");
-        let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut[]);
+        let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut []);
         LanguageConfigurations::default()
     });
 
@@ -77,7 +77,7 @@ async fn main_impl() -> Result<i32> {
 }
 
 fn setup_logging(logpath: Option<PathBuf>, verbosity: u64) -> Result<()> {
-    helix_loader::setup_log_file(logpath); 
+    helix_loader::setup_log_file(logpath);
 
     let mut base_config = fern::Dispatch::new();
     base_config = match verbosity {

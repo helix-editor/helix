@@ -3,7 +3,7 @@ use crate::{
     compositor::{Component, Context, Event, EventResult},
     job::{self, Callback},
     key,
-    keymap::{KeymapResult, Keymap},
+    keymap::{Keymap, KeymapResult},
     ui::{Completion, ProgressSpinners},
 };
 
@@ -931,7 +931,10 @@ impl EditorView {
         self.pseudo_pending.extend(self.keymap.pending());
         let key_result = self.keymap.get(mode, event);
         let sort_infobox = cxt.editor.config.load().sorted_infobox;
-        cxt.editor.autoinfo = self.keymap.sticky_keytrie().map(|node| node.infobox(sort_infobox));
+        cxt.editor.autoinfo = self
+            .keymap
+            .sticky_keytrie()
+            .map(|node| node.infobox(sort_infobox));
 
         let mut execute_command = |command: &commands::MappableCommand| {
             command.execute(cxt);

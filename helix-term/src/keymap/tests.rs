@@ -1,9 +1,9 @@
 #[macro_use]
 #[cfg(test)]
 mod tests {
+    use crate::keymap::{macros::*, *};
     use helix_core::hashmap;
     use helix_view::{document::Mode, input::KeyEvent};
-    use crate::keymap::{*, macros::*};
     use std::collections::HashMap;
 
     #[test]
@@ -25,8 +25,12 @@ mod tests {
     fn aliased_modes_are_same_in_default_keymap() {
         let normal_mode_keytrie_root = Keymap::default().get_keytrie(&Mode::Normal);
         assert_eq!(
-            normal_mode_keytrie_root.traverse(&[key!(' '), key!('w')]).unwrap(),
-            normal_mode_keytrie_root.traverse(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),
+            normal_mode_keytrie_root
+                .traverse(&[key!(' '), key!('w')])
+                .unwrap(),
+            normal_mode_keytrie_root
+                .traverse(&["C-w".parse::<KeyEvent>().unwrap()])
+                .unwrap(),
             "Mismatch for window mode on `Space-w` and `Ctrl-w`."
         );
         assert_eq!(
@@ -47,7 +51,9 @@ mod tests {
             "j" | "k" => move_line_down,
         });
 
-        let keymap = Keymap::new(Box::new(ArcSwap::new(Arc::new(hashmap!(Mode::Normal => normal_mode)))));
+        let keymap = Keymap::new(Box::new(ArcSwap::new(Arc::new(
+            hashmap!(Mode::Normal => normal_mode),
+        ))));
         let mut command_list = keymap.command_list(&Mode::Normal);
 
         // sort keybindings in order to have consistent tests
@@ -60,10 +66,7 @@ mod tests {
         assert_eq!(
             command_list,
             HashMap::from([
-                (    
-                    "insert_mode".to_string(),
-                    vec![key!('i').to_string()]
-                ),
+                ("insert_mode".to_string(), vec![key!('i').to_string()]),
                 (
                     "goto_file_start".to_string(),
                     vec![format!("{}→{}", key!('g'), key!('g'))]
