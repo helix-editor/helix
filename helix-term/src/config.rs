@@ -15,9 +15,17 @@ pub struct Config {
 }
 
 impl Config {
+    /// Merge user config with system keymap
     pub fn merged() -> Result<Self, Error> {
-        let config_string = std::fs::read_to_string(helix_loader::config_file())?;
-        toml::from_str(&config_string)
+        let config_string = std::fs::read(helix_loader::config_file())?;
+        toml::from_slice(&config_string)
+            .map(|config: Config| config.merge_in_default_keymap()) 
+            .map_err(|error| anyhow!("{}", error))
+    }
+
+    /// Merge local config with user config and system keymap
+    pub fn merged_local_config() -> Result<Self, Error> {
+        helix_loader::merged_config()?.try_into()
             .map(|config: Config| config.merge_in_default_keymap()) 
             .map_err(|error| anyhow!("{}", error))
     }

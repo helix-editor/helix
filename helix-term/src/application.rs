@@ -133,7 +133,7 @@ impl Application {
         use helix_view::editor::Action;
 
         let theme_loader = std::sync::Arc::new(theme::Loader::new(
-            &helix_loader::config_dir(),
+            &helix_loader::user_config_dir(),
             &helix_loader::runtime_dir(),
         ));
 
@@ -397,7 +397,7 @@ impl Application {
     /// refresh language config after config change
     fn refresh_language_config(&mut self) -> Result<(), Error> {
         let language_configs = LanguageConfigurations::merged()
-            .map_err(|err| anyhow::anyhow!("Failed to load language config: {}", err))?;
+            .map_err(|err| anyhow::anyhow!("Failed to load merged language config: {}", err))?;
 
         self.lang_configs_loader = std::sync::Arc::new(syntax::Loader::new(language_configs));
         self.editor.lang_configs_loader = self.lang_configs_loader.clone();

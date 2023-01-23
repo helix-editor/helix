@@ -236,6 +236,8 @@ pub struct Config {
     pub auto_format: bool,
     /// Automatic save on focus lost. Defaults to false.
     pub auto_save: bool,
+    pub load_local_config: bool,
+    //pub load_local_languages: bool, //TODO: implement
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -258,6 +260,7 @@ pub struct Config {
     /// Search configuration.
     #[serde(default)]
     pub search: SearchConfig,
+    /// Security settings (i.e. loading TOML files from $PWD/.helix)
     pub lsp: LspConfig,
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Default to `[]`, meaning no rulers.
@@ -402,49 +405,34 @@ impl Default for ModeConfig {
 pub enum StatusLineElement {
     /// The editor mode (Normal, Insert, Visual/Selection)
     Mode,
-
     /// The LSP activity spinner
     Spinner,
-
     /// The base file name, including a dirty flag if it's unsaved
     FileBaseName,
-
     /// The relative file path, including a dirty flag if it's unsaved
     FileName,
-
     /// The file encoding
     FileEncoding,
-
     /// The file line endings (CRLF or LF)
     FileLineEnding,
-
     /// The file type (language ID or "text")
     FileType,
-
     /// A summary of the number of errors and warnings
     Diagnostics,
-
     /// A summary of the number of errors and warnings on file and workspace
     WorkspaceDiagnostics,
-
     /// The number of selections (cursors)
     Selections,
-
     /// The number of characters currently in primary selection
     PrimarySelectionLength,
-
     /// The cursor position
     Position,
-
     /// The separator string
     Separator,
-
     /// The cursor position as a percent of the total file
     PositionPercentage,
-
     /// The total line numbers of the current file
     TotalLineNumbers,
-
     /// A single space
     Spacer,
 }
@@ -704,6 +692,7 @@ impl Default for Config {
             auto_completion: true,
             auto_format: true,
             auto_save: false,
+            load_local_config: true,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,

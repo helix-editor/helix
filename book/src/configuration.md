@@ -26,7 +26,11 @@ hidden = false
 ```
 
 You may also specify a file to use for configuration with the `-c` or
-`--config` CLI argument: `hx -c path/to/custom-config.toml`.
+`--config` CLI argument: `hx -c path/to/custom-config.toml`. 
+
+Finally, you can have a `config.toml` local to a project by putting it under a `.helix` directory in your repository.
+Its settings will be merged with the configuration directory `config.toml` and the built-in configuration,
+if you have enabled the feature under `[editor.security]` in your global configuration.
 
 It is also possible to trigger configuration file reloading by sending the `USR1`
 signal to the helix process, e.g. via `pkill -USR1 hx`. This is only supported 
@@ -50,6 +54,7 @@ on unix operating systems.
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `auto-format` | Enable automatic formatting on save. | `true` |
 | `auto-save` | Enable automatic saving on focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal. | `false` |
+| `load-local-config` | Look for `$PWD/.helix/config.toml` and merge with default and user configuration if it exists.  | `true`  |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
 | `auto-info` | Whether to display infoboxes | `true` |

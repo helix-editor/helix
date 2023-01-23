@@ -7,6 +7,7 @@ use crate::{
     Rope, RopeSlice, Tendril,
 };
 
+use anyhow;
 use ahash::RandomState;
 use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
@@ -65,16 +66,18 @@ pub struct LanguageConfigurations {
 }
 
 impl LanguageConfigurations {
-    /// Attemps to deserialize a merged user configured languages.toml with the repository languages.toml file.
-    pub fn merged() -> Result<Self, toml::de::Error> {
-        helix_loader::merged_lang_config()?.try_into()
+    // Local, user config, and system language configs
+    pub fn merged() -> Result<Self, anyhow::Error> {
+        let merged_lang_configs = helix_loader::merged_lang_config()?;
+        merged_lang_configs.try_into()
+            .map_err(|error| anyhow::anyhow!("{}", error))
     }
 }
+
 impl Default for LanguageConfigurations {
     fn default() -> Self {
-       helix_loader::default_lang_configs()
-            .try_into()
-            .expect("Failed to deserialize built-in languages.toml into LanguageConfigurations")
+        toml::from_slice(&std::fs::read(helix_loader::repo_paths::default_lang_configs()).unwrap())
+            .expect("Failed to deserialize built-in languages.toml")
     }
 }
 

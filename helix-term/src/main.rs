@@ -1,5 +1,4 @@
 mod help;
-
 use anyhow::{Context, Result};
 use crossterm::event::EventStream;
 use helix_core::syntax::LanguageConfigurations;
@@ -47,12 +46,21 @@ async fn main_impl() -> Result<i32> {
     }
 
     helix_loader::setup_config_file(args.config_file.clone());
-    let config = Config::merged().unwrap_or_else(|err| {
+    let mut config = Config::merged().unwrap_or_else(|err| {
         eprintln!("Bad config: {}", err);
         eprintln!("Press <ENTER> to continue with default config");
         let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut[]);
         Config::default()
     });
+    if config.editor.load_local_config {
+        // NOTE: deserializes user config once again
+        config = Config::merged_local_config().unwrap_or_else(|err| {
+            eprintln!("Bad local config: {}", err);
+            eprintln!("Press <ENTER> to continue with default and user config");
+            let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut[]);
+            config
+        });
+    }
 
     let language_configurations = LanguageConfigurations::merged().unwrap_or_else(|err| {
         eprintln!("Bad language config: {}", err);

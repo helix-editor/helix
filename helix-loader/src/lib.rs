@@ -2,6 +2,7 @@ pub mod grammar;
 pub mod ts_probe;
 pub mod repo_paths;
 
+use anyhow::Error;
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 use std::path::PathBuf;
 
@@ -31,9 +32,13 @@ pub fn log_file() -> PathBuf {
     }
 }
 
+pub fn user_lang_config_file() -> PathBuf {
+    user_config_dir().join("languages.toml")
+}
+
 pub fn setup_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(|| {
-        let config_dir = config_dir();
+        let config_dir = user_config_dir();
         if !config_dir.exists() {
             std::fs::create_dir_all(&config_dir).ok();
         }
@@ -53,7 +58,7 @@ pub fn setup_log_file(specified_file: Option<PathBuf>) {
     LOG_FILE.set(log_file).ok();
 }
 
-pub fn config_dir() -> PathBuf {
+pub fn user_config_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to determine system base directory specification!");
     let mut path = strategy.config_dir();
@@ -93,7 +98,7 @@ fn _runtime_dir() -> PathBuf {
         return path;
     }
 
-    let conf_dir = config_dir().join(RT_DIR);
+    let conf_dir = user_config_dir().join(RT_DIR);
     if conf_dir.exists() {
         return conf_dir;
     }
@@ -104,7 +109,27 @@ fn _runtime_dir() -> PathBuf {
         .unwrap()
 }
 
-// NOTE: only used for languages.toml files right now
+pub fn merged_config() -> Result<toml::Value, Error> {
+    let config_paths: Vec<PathBuf> = local_config_dirs()
+        .into_iter()
+        .chain([user_config_dir()].into_iter())
+        .map(|path| path.join("config.toml"))
+        .collect();
+    merge_toml_by_config_paths(config_paths)
+}
+
+/// Searces for language.toml in config path (user config) and in 'helix' directories
+/// in opened git repository (local). Merge order:
+/// local -> user config -> default/system
+pub fn merged_lang_config() -> Result<toml::Value, Error> {
+    let config_paths: Vec<PathBuf> = local_config_dirs()
+        .into_iter()
+        .chain([user_config_dir(), repo_paths::default_config_dir()].into_iter())
+        .map(|path| path.join("languages.toml"))
+        .collect();
+    merge_toml_by_config_paths(config_paths)
+}
+
 pub fn local_config_dirs() -> Vec<PathBuf> {
     let current_dir = std::env::current_dir().expect("Unable to determine current directory.");
     let mut directories = Vec::new();
@@ -117,41 +142,22 @@ pub fn local_config_dirs() -> Vec<PathBuf> {
             directories.push(ancestor.to_path_buf().join(".helix"));
         }
     }
-    log::debug!("Located langauge configuration folders: {:?}", directories);
+    log::debug!("Located local configuration folders: {:?}", directories);
     directories
 }
 
-pub fn user_lang_config_file() -> PathBuf {
-    config_dir().join("languages.toml")
-}
+fn merge_toml_by_config_paths(config_paths: Vec<PathBuf>) -> Result<toml::Value, Error> {
+    println!("{config_paths:#?}");
+    let mut configs: Vec<toml::Value> = Vec::with_capacity(config_paths.len());
+    for config_path in config_paths {
+        if config_path.exists() {
+            let config_string = std::fs::read(&config_path)?;
+            let config = toml::from_slice(&config_string)?;
+            configs.push(config);
+        }
+    }
 
-/// Default built-in languages.toml.
-pub fn default_lang_configs() -> toml::Value {
-        toml::from_slice(&std::fs::read(repo_paths::default_lang_configs()).unwrap())
-            .expect("Could not parse built-in languages.toml to valid toml")
-}
-
-/// Searces for language.toml in config path (user config) and in 'helix' directories
-/// in opened git repository (local). Merge order:
-/// local -> user config -> default
-pub fn merged_lang_config() -> Result<toml::Value, toml::de::Error> {
-    let config = crate::local_config_dirs()
-        .into_iter()
-        .chain([crate::config_dir()].into_iter())
-        .map(|path| path.join("languages.toml"))
-        .filter_map(|file| {
-            std::fs::read(&file)
-                .map(|config| toml::from_slice(&config))
-                .ok()
-        })
-        .collect::<Result<Vec<_>, _>>()?
-        .into_iter()
-        .chain([default_lang_configs()].into_iter())
-        .fold(toml::Value::Table(toml::value::Table::default()), |a, b| {
-            crate::merge_toml_values(b, a, 3)
-        });
-
-    Ok(config)
+    Ok(configs.into_iter().reduce(|a, b| { merge_toml_values(b, a, 3) }).expect("Supplied config paths should point to at least one valid config."))
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`
