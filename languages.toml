@@ -652,7 +652,7 @@ name = "java"
 scope = "source.java"
 injection-regex = "java"
 file-types = ["java"]
-roots = ["pom.xml"]
+roots = ["pom.xml", "build.gradle"]
 language-server = { command = "jdtls" }
 indent = { tab-width = 4, unit = "    " }
 
