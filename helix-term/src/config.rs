@@ -64,17 +64,18 @@ mod tests {
     use crate::{
         commands::MappableCommand,
         config::Config,
-        keymap::{default, keytrienode::KeyTrieNode, macros::*},
+        keymap::{default, keytrie::KeyTrie, keytrienode::KeyTrieNode, macros::*},
     };
     use helix_core::hashmap;
-    use helix_view::document::Mode;
+    use helix_view::{document::Mode, input::KeyEvent};
+    use std::collections::BTreeMap;
 
     #[test]
     fn parses_keymap_from_toml() {
         let sample_keymaps = r#"
             [keys.insert]
-            S-C-a = "delete_selection"
             y = "move_line_down"
+            S-C-a = "delete_selection"
 
             [keys.normal]
             A-F12 = "move_next_word_end"
@@ -83,8 +84,8 @@ mod tests {
         let config = Config {
             keys: hashmap! {
                 Mode::Insert => keytrie!({ "Insert mode"
-                    "S-C-a" => delete_selection,
                     "y" => move_line_down,
+                    "S-C-a" => delete_selection,
                 }),
                 Mode::Normal => keytrie!({ "Normal mode"
                     "A-F12" => move_next_word_end,
@@ -92,16 +93,29 @@ mod tests {
             },
             ..Default::default()
         };
+
         for mode in config.keys.keys() {
+            // toml keymap config is placed into a hashmap, so order can not be presumed to be conserved
+            // hence the insertion into a BTreeMap
             assert_eq!(
-                config.keys.get(mode).unwrap().get_children(),
-                toml::from_str::<Config>(sample_keymaps)
-                    .unwrap()
-                    .keys
-                    .get(mode)
-                    .unwrap()
-                    .get_children()
+                ordered_mapping(config.keys.get(mode).unwrap()),
+                ordered_mapping(
+                    toml::from_str::<Config>(sample_keymaps)
+                        .unwrap()
+                        .keys
+                        .get(mode)
+                        .unwrap()
+                )
             );
+        }
+
+        fn ordered_mapping<'a>(keytrie: &'a KeyTrie) -> BTreeMap<&'a KeyEvent, KeyTrieNode> {
+            let children = keytrie.get_children();
+            let mut ordered_keymap = BTreeMap::new();
+            for (key_event, order) in keytrie.get_child_order() {
+                ordered_keymap.insert(key_event, children[*order].clone());
+            }
+            ordered_keymap
         }
     }
 
