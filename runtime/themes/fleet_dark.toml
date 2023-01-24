@@ -73,7 +73,7 @@
 
 "ui.cursor" = { modifiers = ["reversed"] } # .insert / .select / .match / .primary
 "ui.cursor.match" = { bg = "Blue 30" } # .insert / .select / .match / .primary
-"ui.selection" = { bg = "Gray 80" } # .primary
+"ui.selection" = { bg = "Gray 50" } # .primary
 "ui.selection.primary" = { bg = "Blue 40" }
 
 "ui.cursorline" = { bg = "Gray 20" }
