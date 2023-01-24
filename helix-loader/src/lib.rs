@@ -264,9 +264,10 @@ mod merge_toml_tests {
         "#;
 
         // NOTE: Exact duplicate of helix_core::LanguageConfigurations::default()
-        let default: Value =
-            toml::from_str(&std::fs::read_to_string(crate::repo_paths::default_lang_configs()).unwrap())
-                .expect("Failed to deserialize built-in languages.toml");
+        let default: Value = toml::from_str(
+            &std::fs::read_to_string(crate::repo_paths::default_lang_configs()).unwrap(),
+        )
+        .expect("Failed to deserialize built-in languages.toml");
         let user: Value = toml::from_str(USER).unwrap();
 
         let merged = merge_toml_values(default, user, 3);
@@ -299,9 +300,10 @@ mod merge_toml_tests {
         "#;
 
         // NOTE: Exact duplicate of helix_core::LanguageConfigurations::default()
-        let default: Value =
-            toml::from_str(&std::fs::read_to_string(crate::repo_paths::default_lang_configs()).unwrap())
-                .expect("Failed to deserialize built-in languages.toml");
+        let default: Value = toml::from_str(
+            &std::fs::read_to_string(crate::repo_paths::default_lang_configs()).unwrap(),
+        )
+        .expect("Failed to deserialize built-in languages.toml");
         let user: Value = toml::from_str(USER).unwrap();
 
         let merged = merge_toml_values(default, user, 3);

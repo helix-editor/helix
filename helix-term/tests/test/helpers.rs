@@ -150,9 +150,10 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 /// document. If a language-server is necessary for a test, it must be explicitly
 /// added in `overrides`.
 pub fn test_syntax_conf(overrides: Option<String>) -> LanguageConfigurations {
-    let mut lang: toml::Value =
-        toml::from_str(&std::fs::read_to_string(helix_loader::repo_paths::default_lang_configs()).unwrap())
-            .unwrap();
+    let mut lang: toml::Value = toml::from_str(
+        &std::fs::read_to_string(helix_loader::repo_paths::default_lang_configs()).unwrap(),
+    )
+    .unwrap();
 
     for lang_config in lang
         .as_table_mut()
