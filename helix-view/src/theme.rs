@@ -77,7 +77,7 @@ impl Loader {
 
     fn _load(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<Value> {
         let path = self
-            .path(name, visited_paths)
+            .find_remaining_path(name, visited_paths)
             .ok_or_else(|| anyhow!("Theme: not found or recursively inheriting: {}", name))?;
         let theme_string = std::fs::read_to_string(&path)?;
         let theme_toml: toml::Value = toml::from_str(&theme_string)?;
@@ -107,22 +107,6 @@ impl Loader {
         Ok(theme_toml)
     }
 
-    pub fn read_names(path: &Path) -> Vec<String> {
-        std::fs::read_dir(path)
-            .map(|entries| {
-                entries
-                    .filter_map(|entry| {
-                        let entry = entry.ok()?;
-                        let path = entry.path();
-                        (path.extension()? == "toml")
-                            .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
-
-    // merge one theme into the parent theme
     fn merge_themes(&self, parent_theme_toml: Value, theme_toml: Value) -> Value {
         let parent_palette = parent_theme_toml.get("palette");
         let palette = theme_toml.get("palette");
@@ -148,10 +132,23 @@ impl Loader {
         merge_toml_values(theme, palette.into(), 1)
     }
 
-    /// Returns the path to the theme with the given name
-    ///
-    /// Ignores paths already visited and follows directory priority order.
-    fn path(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Option<PathBuf> {
+    pub fn read_names(path: &Path) -> Vec<String> {
+        std::fs::read_dir(path)
+            .map(|entries| {
+                entries
+                    .filter_map(|entry| {
+                        let entry = entry.ok()?;
+                        let path = entry.path();
+                        (path.extension()? == "toml")
+                            .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+
+    fn find_remaining_path(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Option<PathBuf> {
         let filename = format!("{}.toml", name);
 
         self.theme_dirs.iter().find_map(|dir| {
@@ -163,15 +160,6 @@ impl Loader {
                 None
             }
         })
-    }
-
-    /// Lists all theme names available in all directories
-    pub fn names(&self) -> Vec<String> {
-        let mut names = Vec::new();
-        for dir in &self.theme_dirs {
-            names.extend(Self::read_names(dir));
-        }
-        names
     }
 
     pub fn default_theme(&self, true_color: bool) -> Theme {
