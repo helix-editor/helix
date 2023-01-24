@@ -77,7 +77,7 @@ impl LanguageConfigurations {
 
 impl Default for LanguageConfigurations {
     fn default() -> Self {
-        toml::from_slice(&std::fs::read(helix_loader::repo_paths::default_lang_configs()).unwrap())
+        toml::from_str(&std::fs::read_to_string(helix_loader::repo_paths::default_lang_configs()).unwrap())
             .expect("Failed to deserialize built-in languages.toml")
     }
 }

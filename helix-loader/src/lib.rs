@@ -152,8 +152,8 @@ fn merge_toml_by_config_paths(config_paths: Vec<PathBuf>) -> Result<toml::Value,
     let mut configs: Vec<toml::Value> = Vec::with_capacity(config_paths.len());
     for config_path in config_paths {
         if config_path.exists() {
-            let config_string = std::fs::read(&config_path)?;
-            let config = toml::from_slice(&config_string)?;
+            let config_string = std::fs::read_to_string(&config_path)?;
+            let config = toml::from_str(&config_string)?;
             configs.push(config);
         }
     }
@@ -263,11 +263,13 @@ mod merge_toml_tests {
         indent = { tab-width = 4, unit = "    ", test = "aaa" }
         "#;
 
-        let base: Value = toml::from_slice(include_bytes!("../../languages.toml"))
-            .expect("Couldn't parse built-in languages config");
+        // NOTE: Exact duplicate of helix_core::LanguageConfigurations::default()
+        let default: Value =
+            toml::from_str(&std::fs::read_to_string(crate::repo_paths::default_lang_configs()).unwrap())
+                .expect("Failed to deserialize built-in languages.toml");
         let user: Value = toml::from_str(USER).unwrap();
 
-        let merged = merge_toml_values(base, user, 3);
+        let merged = merge_toml_values(default, user, 3);
         let languages = merged.get("language").unwrap().as_array().unwrap();
         let nix = languages
             .iter()
@@ -296,11 +298,13 @@ mod merge_toml_tests {
         language-server = { command = "deno", args = ["lsp"] }
         "#;
 
-        let base: Value = toml::from_slice(include_bytes!("../../languages.toml"))
-            .expect("Couldn't parse built-in languages config");
+        // NOTE: Exact duplicate of helix_core::LanguageConfigurations::default()
+        let default: Value =
+            toml::from_str(&std::fs::read_to_string(crate::repo_paths::default_lang_configs()).unwrap())
+                .expect("Failed to deserialize built-in languages.toml");
         let user: Value = toml::from_str(USER).unwrap();
 
-        let merged = merge_toml_values(base, user, 3);
+        let merged = merge_toml_values(default, user, 3);
         let languages = merged.get("language").unwrap().as_array().unwrap();
         let ts = languages
             .iter()

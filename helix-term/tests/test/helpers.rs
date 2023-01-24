@@ -151,7 +151,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 /// added in `overrides`.
 pub fn test_syntax_conf(overrides: Option<String>) -> LanguageConfigurations {
     let mut lang: toml::Value =
-        toml::from_slice(&std::fs::read(helix_loader::repo_paths::default_lang_configs()).unwrap())
+        toml::from_str(&std::fs::read_to_string(helix_loader::repo_paths::default_lang_configs()).unwrap())
             .unwrap();
 
     for lang_config in lang
