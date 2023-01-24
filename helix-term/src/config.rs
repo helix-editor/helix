@@ -100,7 +100,7 @@ mod tests {
             );
         }
 
-        fn ordered_mapping<'a>(keytrie: &'a KeyTrie) -> BTreeMap<&'a KeyEvent, KeyTrieNode> {
+        fn ordered_mapping(keytrie: &KeyTrie) -> BTreeMap<&KeyEvent, KeyTrieNode> {
             let children = keytrie.get_children();
             let mut ordered_keymap = BTreeMap::new();
             for (key_event, order) in keytrie.get_child_order() {
@@ -185,22 +185,10 @@ mod tests {
 
         // Huh?
         assert!(
-            merged_config
-                .keys
-                .get(&Mode::Normal)
-                .unwrap()
-                .get_children()
-                .len()
-                > 1
+            merged_config.keys.get(&Mode::Normal).unwrap().get_children().len() > 1
         );
         assert!(
-            merged_config
-                .keys
-                .get(&Mode::Insert)
-                .unwrap()
-                .get_children()
-                .len()
-                > 0
+            !merged_config.keys.get(&Mode::Insert).unwrap().get_children().is_empty()
         );
     }
 }

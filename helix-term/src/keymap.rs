@@ -3,6 +3,7 @@ pub mod macros;
 // NOTE: Only pub becuase of their use in macros
 pub mod keytrie;
 pub mod keytrienode;
+#[cfg(test)]
 mod tests;
 
 use self::{keytrie::KeyTrie, keytrienode::KeyTrieNode, macros::key};
