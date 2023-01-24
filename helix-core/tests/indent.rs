@@ -28,8 +28,8 @@ fn test_treesitter_indent(file_name: &str, lang_scope: &str) {
 
     let mut config_file = test_dir;
     config_file.push("languages.toml");
-    let config = std::fs::read(config_file).unwrap();
-    let config = toml::from_slice(&config).unwrap();
+    let config = std::fs::read_to_string(config_file).unwrap();
+    let config = toml::from_str(&config).unwrap();
     let loader = Loader::new(config);
 
     // set runtime path so we can find the queries

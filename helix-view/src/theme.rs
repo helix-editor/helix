@@ -517,10 +517,8 @@ mod tests {
 
         let mut style = Style::default();
         let palette = ThemePalette::default();
-        if let Value::Table(entries) = table {
-            for (_name, value) in entries {
-                palette.parse_style(&mut style, value).unwrap();
-            }
+        for (_name, value) in table {
+            palette.parse_style(&mut style, value).unwrap();
         }
 
         assert_eq!(
