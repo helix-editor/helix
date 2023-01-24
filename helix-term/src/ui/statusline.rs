@@ -1,4 +1,4 @@
-use helix_core::{coords_at_pos, encoding, Position};
+use helix_core::{coords_at_pos, encoding, find_root, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
@@ -155,6 +155,7 @@ where
         helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
+        helix_view::editor::StatusLineElement::VersionControl => render_version_control,
     }
 }
 
@@ -465,4 +466,19 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     write(context, String::from(" "), None);
+}
+
+fn render_version_control<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let path = find_root(None, &[]);
+
+    let current_branch_name = context
+        .editor
+        .diff_providers
+        .get_current_head_name(&path)
+        .unwrap_or_default();
+
+    write(context, current_branch_name, None);
 }

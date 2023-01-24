@@ -88,6 +88,18 @@ impl DiffProvider for Git {
         }
         Some(data)
     }
+
+    fn get_current_head_name(&self, file: &Path) -> Option<String> {
+        // TODO cache repository lookup
+        let repo = Git::open_repo(file, None)?.to_thread_local();
+        let head_ref = repo.head_ref().ok()?;
+        let head_commit = repo.head_commit().ok()?;
+
+        match head_ref {
+            Some(reference) => Some(reference.name().shorten().to_string()),
+            None => Some(head_commit.id.to_hex_with_len(8).to_string()),
+        }
+    }
 }
 
 /// Finds the object that contains the contents of a file at a specific commit.

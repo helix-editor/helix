@@ -445,6 +445,9 @@ pub enum StatusLineElement {
 
     /// A single space
     Spacer,
+
+    /// Current version control information
+    VersionControl,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs

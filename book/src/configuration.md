@@ -110,6 +110,7 @@ The following statusline elements can be configured:
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
 | `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
+| `version-control` | The current branch name or detached commit hash of the opened workspace |
 
 ### `[editor.lsp]` Section
 
