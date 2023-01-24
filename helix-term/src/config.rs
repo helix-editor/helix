@@ -194,10 +194,19 @@ mod tests {
 
         // Huh?
         assert!(
-            merged_config.keys.get(&Mode::Normal).unwrap().get_children().len() > 1
+            merged_config
+                .keys
+                .get(&Mode::Normal)
+                .unwrap()
+                .get_children()
+                .len()
+                > 1
         );
-        assert!(
-            !merged_config.keys.get(&Mode::Insert).unwrap().get_children().is_empty()
-        );
+        assert!(!merged_config
+            .keys
+            .get(&Mode::Insert)
+            .unwrap()
+            .get_children()
+            .is_empty());
     }
 }
