@@ -12,7 +12,7 @@ fn count_digits(n: usize) -> usize {
     std::iter::successors(Some(n), |&n| (n >= 10).then(|| n / 10)).count()
 }
 
-pub type GutterFn<'doc> = Box<dyn Fn(usize, bool, &mut String) -> Option<Style> + 'doc>;
+pub type GutterFn<'doc> = Box<dyn FnMut(usize, bool, &mut String) -> Option<Style> + 'doc>;
 pub type Gutter =
     for<'doc> fn(&'doc Editor, &'doc Document, &View, &Theme, bool, usize) -> GutterFn<'doc>;
 
@@ -31,14 +31,16 @@ impl GutterType {
             }
             GutterType::LineNumbers => line_numbers(editor, doc, view, theme, is_focused),
             GutterType::Spacer => padding(editor, doc, view, theme, is_focused),
+            GutterType::Diff => diff(editor, doc, view, theme, is_focused),
         }
     }
 
-    pub fn width(self, _view: &View, doc: &Document) -> usize {
+    pub fn width(self, view: &View, doc: &Document) -> usize {
         match self {
             GutterType::Diagnostics => 1,
-            GutterType::LineNumbers => line_numbers_width(_view, doc),
+            GutterType::LineNumbers => line_numbers_width(view, doc),
             GutterType::Spacer => 1,
+            GutterType::Diff => 1,
         }
     }
 }
@@ -83,6 +85,53 @@ pub fn diagnostic<'doc>(
     })
 }
 
+pub fn diff<'doc>(
+    _editor: &'doc Editor,
+    doc: &'doc Document,
+    _view: &View,
+    theme: &Theme,
+    _is_focused: bool,
+) -> GutterFn<'doc> {
+    let added = theme.get("diff.plus");
+    let deleted = theme.get("diff.minus");
+    let modified = theme.get("diff.delta");
+    if let Some(diff_handle) = doc.diff_handle() {
+        let hunks = diff_handle.hunks();
+        let mut hunk_i = 0;
+        let mut hunk = hunks.nth_hunk(hunk_i);
+        Box::new(move |line: usize, _selected: bool, out: &mut String| {
+            // truncating the line is fine here because we don't compute diffs
+            // for files with more lines than i32::MAX anyways
+            // we need to special case removals here
+            // these technically do not have a range of lines to highlight (`hunk.after.start == hunk.after.end`).
+            // However we still want to display these hunks correctly we must not yet skip to the next hunk here
+            while hunk.after.end < line as u32
+                || !hunk.is_pure_removal() && line as u32 == hunk.after.end
+            {
+                hunk_i += 1;
+                hunk = hunks.nth_hunk(hunk_i);
+            }
+
+            if hunk.after.start > line as u32 {
+                return None;
+            }
+
+            let (icon, style) = if hunk.is_pure_insertion() {
+                ("▍", added)
+            } else if hunk.is_pure_removal() {
+                ("▔", deleted)
+            } else {
+                ("▍", modified)
+            };
+
+            write!(out, "{}", icon).unwrap();
+            Some(style)
+        })
+    } else {
+        Box::new(move |_, _, _| None)
+    }
+}
+
 pub fn line_numbers<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
@@ -91,12 +140,13 @@ pub fn line_numbers<'doc>(
     is_focused: bool,
 ) -> GutterFn<'doc> {
     let text = doc.text().slice(..);
-    let last_line = view.last_line(doc);
-    let width = GutterType::LineNumbers.width(view, doc);
+    let width = line_numbers_width(view, doc);
+
+    let last_line_in_view = view.last_line(doc);
 
     // Whether to draw the line number for the last line of the
     // document or not.  We only draw it if it's not an empty line.
-    let draw_last = text.line_to_byte(last_line) < text.len_bytes();
+    let draw_last = text.line_to_byte(last_line_in_view) < text.len_bytes();
 
     let linenr = theme.get("ui.linenr");
     let linenr_select = theme.get("ui.linenr.selected");
@@ -109,7 +159,7 @@ pub fn line_numbers<'doc>(
     let mode = editor.mode;
 
     Box::new(move |line: usize, selected: bool, out: &mut String| {
-        if line == last_line && !draw_last {
+        if line == last_line_in_view && !draw_last {
             write!(out, "{:>1$}", '~', width).unwrap();
             Some(linenr)
         } else {
@@ -138,14 +188,19 @@ pub fn line_numbers<'doc>(
     })
 }
 
-pub fn line_numbers_width(_view: &View, doc: &Document) -> usize {
+/// The width of a "line-numbers" gutter
+///
+/// The width of the gutter depends on the number of lines in the document,
+/// whether there is content on the last line (the `~` line), and the
+/// `editor.gutters.line-numbers.min-width` settings.
+fn line_numbers_width(view: &View, doc: &Document) -> usize {
     let text = doc.text();
     let last_line = text.len_lines().saturating_sub(1);
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
     let last_drawn = if draw_last { last_line + 1 } else { last_line };
-
-    // set a lower bound to 2-chars to minimize ambiguous relative line numbers
-    std::cmp::max(count_digits(last_drawn), 2)
+    let digits = count_digits(last_drawn);
+    let n_min = view.gutters.line_numbers.min_width;
+    digits.max(n_min)
 }
 
 pub fn padding<'doc>(
@@ -226,10 +281,89 @@ pub fn diagnostics_or_breakpoints<'doc>(
     theme: &Theme,
     is_focused: bool,
 ) -> GutterFn<'doc> {
-    let diagnostics = diagnostic(editor, doc, view, theme, is_focused);
-    let breakpoints = breakpoints(editor, doc, view, theme, is_focused);
+    let mut diagnostics = diagnostic(editor, doc, view, theme, is_focused);
+    let mut breakpoints = breakpoints(editor, doc, view, theme, is_focused);
 
     Box::new(move |line, selected, out| {
         breakpoints(line, selected, out).or_else(|| diagnostics(line, selected, out))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::Document;
+    use crate::editor::{GutterConfig, GutterLineNumbersConfig};
+    use crate::graphics::Rect;
+    use crate::DocumentId;
+    use helix_core::Rope;
+
+    #[test]
+    fn test_default_gutter_widths() {
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        view.area = Rect::new(40, 40, 40, 40);
+
+        let rope = Rope::from_str("abc\n\tdef");
+        let doc = Document::from(rope, None);
+
+        assert_eq!(view.gutters.layout.len(), 5);
+        assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
+        assert_eq!(view.gutters.layout[1].width(&view, &doc), 1);
+        assert_eq!(view.gutters.layout[2].width(&view, &doc), 3);
+        assert_eq!(view.gutters.layout[3].width(&view, &doc), 1);
+        assert_eq!(view.gutters.layout[4].width(&view, &doc), 1);
+    }
+
+    #[test]
+    fn test_configured_gutter_widths() {
+        let gutters = GutterConfig {
+            layout: vec![GutterType::Diagnostics],
+            ..Default::default()
+        };
+
+        let mut view = View::new(DocumentId::default(), gutters);
+        view.area = Rect::new(40, 40, 40, 40);
+
+        let rope = Rope::from_str("abc\n\tdef");
+        let doc = Document::from(rope, None);
+
+        assert_eq!(view.gutters.layout.len(), 1);
+        assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
+
+        let gutters = GutterConfig {
+            layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            line_numbers: GutterLineNumbersConfig { min_width: 10 },
+        };
+
+        let mut view = View::new(DocumentId::default(), gutters);
+        view.area = Rect::new(40, 40, 40, 40);
+
+        let rope = Rope::from_str("abc\n\tdef");
+        let doc = Document::from(rope, None);
+
+        assert_eq!(view.gutters.layout.len(), 2);
+        assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
+        assert_eq!(view.gutters.layout[1].width(&view, &doc), 10);
+    }
+
+    #[test]
+    fn test_line_numbers_gutter_width_resizes() {
+        let gutters = GutterConfig {
+            layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            line_numbers: GutterLineNumbersConfig { min_width: 1 },
+        };
+
+        let mut view = View::new(DocumentId::default(), gutters);
+        view.area = Rect::new(40, 40, 40, 40);
+
+        let rope = Rope::from_str("a\nb");
+        let doc_short = Document::from(rope, None);
+
+        let rope = Rope::from_str("a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np");
+        let doc_long = Document::from(rope, None);
+
+        assert_eq!(view.gutters.layout.len(), 2);
+        assert_eq!(view.gutters.layout[1].width(&view, &doc_short), 1);
+        assert_eq!(view.gutters.layout[1].width(&view, &doc_long), 2);
+    }
 }

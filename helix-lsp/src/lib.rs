@@ -57,7 +57,7 @@ pub enum OffsetEncoding {
 
 pub mod util {
     use super::*;
-    use helix_core::{diagnostic::NumberOrString, Range, Rope, Transaction};
+    use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
     ///
@@ -102,16 +102,17 @@ pub mod util {
             None
         };
 
-        // TODO: add support for Diagnostic.data
-        lsp::Diagnostic::new(
-            range_to_lsp_range(doc, range, offset_encoding),
+        lsp::Diagnostic {
+            range: range_to_lsp_range(doc, range, offset_encoding),
             severity,
             code,
-            diag.source.clone(),
-            diag.message.to_owned(),
-            None,
+            source: diag.source.clone(),
+            message: diag.message.to_owned(),
+            related_information: None,
             tags,
-        )
+            data: diag.data.to_owned(),
+            ..Default::default()
+        }
     }
 
     /// Converts [`lsp::Position`] to a position in the document.
@@ -193,6 +194,42 @@ pub mod util {
         let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
 
         Some(Range::new(start, end))
+    }
+
+    /// Creates a [Transaction] from the [lsp::TextEdit] in a completion response.
+    /// The transaction applies the edit to all cursors.
+    pub fn generate_transaction_from_completion_edit(
+        doc: &Rope,
+        selection: &Selection,
+        edit: lsp::TextEdit,
+        offset_encoding: OffsetEncoding,
+    ) -> Transaction {
+        let replacement: Option<Tendril> = if edit.new_text.is_empty() {
+            None
+        } else {
+            Some(edit.new_text.into())
+        };
+
+        let text = doc.slice(..);
+        let primary_cursor = selection.primary().cursor(text);
+
+        let start_offset = match lsp_pos_to_pos(doc, edit.range.start, offset_encoding) {
+            Some(start) => start as i128 - primary_cursor as i128,
+            None => return Transaction::new(doc),
+        };
+        let end_offset = match lsp_pos_to_pos(doc, edit.range.end, offset_encoding) {
+            Some(end) => end as i128 - primary_cursor as i128,
+            None => return Transaction::new(doc),
+        };
+
+        Transaction::change_by_selection(doc, selection, |range| {
+            let cursor = range.cursor(text);
+            (
+                (cursor as i128 + start_offset) as usize,
+                (cursor as i128 + end_offset) as usize,
+                replacement.clone(),
+            )
+        })
     }
 
     pub fn generate_transaction_from_edits(
@@ -513,6 +550,7 @@ fn start_client(
         &ls_config.command,
         &ls_config.args,
         config.config.clone(),
+        ls_config.environment.clone(),
         &config.roots,
         id,
         ls_config.timeout,

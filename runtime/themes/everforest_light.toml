@@ -46,6 +46,7 @@
 "markup.list" = "red"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "blue", modifiers = ["underlined"] }
 "markup.link.text" = "purple"
 "markup.quote" = "grey2"
@@ -88,7 +89,11 @@
 "info" = "aqua"
 "warning" = "yellow"
 "error" = "red"
-"diagnostic" = { modifiers = ["underlined"] }
+
+"diagnostic.hint" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.info" = { underline = { color = "aqua", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
 
 [palette]
 

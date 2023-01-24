@@ -4,6 +4,8 @@ pub mod grammar;
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 use std::path::PathBuf;
 
+pub const VERSION_AND_GIT_HASH: &str = env!("VERSION_AND_GIT_HASH");
+
 pub static RUNTIME_DIR: once_cell::sync::Lazy<PathBuf> = once_cell::sync::Lazy::new(runtime_dir);
 
 static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
@@ -95,7 +97,7 @@ pub fn find_local_config_dirs() -> Vec<PathBuf> {
     let mut directories = Vec::new();
 
     for ancestor in current_dir.ancestors() {
-        if ancestor.join(".git").is_dir() {
+        if ancestor.join(".git").exists() {
             directories.push(ancestor.to_path_buf());
             // Don't go higher than repo if we're in one
             break;

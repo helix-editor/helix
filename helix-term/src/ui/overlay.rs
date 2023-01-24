@@ -69,4 +69,8 @@ impl<T: Component + 'static> Component for Overlay<T> {
         let dimensions = (self.calc_child_size)(area);
         self.content.cursor(dimensions, ctx)
     }
+
+    fn id(&self) -> Option<&'static str> {
+        self.content.id()
+    }
 }

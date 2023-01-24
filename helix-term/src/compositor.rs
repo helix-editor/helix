@@ -1,4 +1,4 @@
-// Each component declares it's own size constraints and gets fitted based on it's parent.
+// Each component declares its own size constraints and gets fitted based on its parent.
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
 use helix_core::Position;
@@ -97,6 +97,7 @@ impl Compositor {
         self.area = area;
     }
 
+    /// Add a layer to be rendered in front of all existing layers.
     pub fn push(&mut self, mut layer: Box<dyn Component>) {
         let size = self.size();
         // trigger required_size on init
@@ -136,7 +137,8 @@ impl Compositor {
         let mut consumed = false;
 
         // propagate events through the layers until we either find a layer that consumes it or we
-        // run out of layers (event bubbling)
+        // run out of layers (event bubbling), starting at the front layer and then moving to the
+        // background.
         for layer in self.layers.iter_mut().rev() {
             match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {

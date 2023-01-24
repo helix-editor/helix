@@ -1,7 +1,6 @@
 use crate::compositor::{Component, Context, Event, EventResult};
-use helix_view::{apply_transaction, editor::CompleteAction};
+use helix_view::{editor::CompleteAction, ViewId};
 use tui::buffer::Buffer as Surface;
-use tui::text::Spans;
 
 use std::borrow::Cow;
 
@@ -33,11 +32,7 @@ impl menu::Item for CompletionItem {
             .into()
     }
 
-    fn label(&self, _data: &Self::Data) -> Spans {
-        self.label.as_str().into()
-    }
-
-    fn row(&self, _data: &Self::Data) -> menu::Row {
+    fn format(&self, _data: &Self::Data) -> menu::Row {
         menu::Row::new(vec![
             menu::Cell::from(self.label.as_str()),
             menu::Cell::from(match self.kind {
@@ -107,6 +102,7 @@ impl Completion {
         let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
             fn item_to_transaction(
                 doc: &Document,
+                view_id: ViewId,
                 item: &CompletionItem,
                 offset_encoding: helix_lsp::OffsetEncoding,
                 start_offset: usize,
@@ -121,9 +117,10 @@ impl Completion {
                         }
                     };
 
-                    util::generate_transaction_from_edits(
+                    util::generate_transaction_from_completion_edit(
                         doc.text(),
-                        vec![edit],
+                        doc.selection(view_id),
+                        edit,
                         offset_encoding, // TODO: should probably transcode in Client
                     )
                 } else {
@@ -132,10 +129,23 @@ impl Completion {
                     // in these cases we need to check for a common prefix and remove it
                     let prefix = Cow::from(doc.text().slice(start_offset..trigger_offset));
                     let text = text.trim_start_matches::<&str>(&prefix);
-                    Transaction::change(
-                        doc.text(),
-                        vec![(trigger_offset, trigger_offset, Some(text.into()))].into_iter(),
-                    )
+
+                    // TODO: this needs to be true for the numbers to work out correctly
+                    // in the closure below. It's passed in to a callback as this same
+                    // formula, but can the value change between the LSP request and
+                    // response? If it does, can we recover?
+                    debug_assert!(
+                        doc.selection(view_id)
+                            .primary()
+                            .cursor(doc.text().slice(..))
+                            == trigger_offset
+                    );
+
+                    Transaction::change_by_selection(doc.text(), doc.selection(view_id), |range| {
+                        let cursor = range.cursor(doc.text().slice(..));
+
+                        (cursor, cursor, Some(text.into()))
+                    })
                 };
 
                 transaction
@@ -164,6 +174,7 @@ impl Completion {
 
                     let transaction = item_to_transaction(
                         doc,
+                        view.id,
                         item,
                         offset_encoding,
                         start_offset,
@@ -172,7 +183,7 @@ impl Completion {
 
                     // initialize a savepoint
                     doc.savepoint();
-                    apply_transaction(&transaction, doc, view);
+                    doc.apply(&transaction, view.id);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -185,13 +196,14 @@ impl Completion {
 
                     let transaction = item_to_transaction(
                         doc,
+                        view.id,
                         item,
                         offset_encoding,
                         start_offset,
                         trigger_offset,
                     );
 
-                    apply_transaction(&transaction, doc, view);
+                    doc.apply(&transaction, view.id);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -221,7 +233,7 @@ impl Completion {
                                 additional_edits.clone(),
                                 offset_encoding, // TODO: should probably transcode in Client
                             );
-                            apply_transaction(&transaction, doc, view);
+                            doc.apply(&transaction, view.id);
                         }
                     }
                 }
@@ -245,21 +257,13 @@ impl Completion {
         completion_item: lsp::CompletionItem,
     ) -> Option<CompletionItem> {
         let language_server = doc.language_server()?;
-        let completion_resolve_provider = language_server
-            .capabilities()
-            .completion_provider
-            .as_ref()?
-            .resolve_provider;
-        if completion_resolve_provider != Some(true) {
-            return None;
-        }
 
-        let future = language_server.resolve_completion_item(completion_item);
+        let future = language_server.resolve_completion_item(completion_item)?;
         let response = helix_lsp::block_on(future);
         match response {
             Ok(value) => serde_json::from_value(value).ok(),
             Err(err) => {
-                log::error!("execute LSP command: {}", err);
+                log::error!("Failed to resolve completion item: {}", err);
                 None
             }
         }
@@ -330,7 +334,10 @@ impl Completion {
         };
 
         // This method should not block the compositor so we handle the response asynchronously.
-        let future = language_server.resolve_completion_item(current_item.clone());
+        let future = match language_server.resolve_completion_item(current_item.clone()) {
+            Some(future) => future,
+            None => return false,
+        };
 
         cx.callback(
             future,
@@ -399,7 +406,7 @@ impl Component for Completion {
                             "```{}\n{}\n```\n{}",
                             language,
                             option.detail.as_deref().unwrap_or_default(),
-                            contents.clone()
+                            contents
                         ),
                         cx.editor.syn_loader.clone(),
                     )
@@ -409,15 +416,14 @@ impl Component for Completion {
                     value: contents,
                 })) => {
                     // TODO: set language based on doc scope
-                    Markdown::new(
-                        format!(
-                            "```{}\n{}\n```\n{}",
-                            language,
-                            option.detail.as_deref().unwrap_or_default(),
-                            contents.clone()
-                        ),
-                        cx.editor.syn_loader.clone(),
-                    )
+                    if let Some(detail) = &option.detail.as_deref() {
+                        Markdown::new(
+                            format!("```{}\n{}\n```\n{}", language, detail, contents),
+                            cx.editor.syn_loader.clone(),
+                        )
+                    } else {
+                        Markdown::new(contents.to_string(), cx.editor.syn_loader.clone())
+                    }
                 }
                 None if option.detail.is_some() => {
                     // TODO: copied from above
