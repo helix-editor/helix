@@ -67,7 +67,7 @@ pub fn get_language(name: &str) -> Result<Language> {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn get_language(name: &str) -> Result<Language> {
     use libloading::{Library, Symbol};
-    let mut rel_library_path = PathBuf::new().join("grammars").join(name);
+    let mut rel_library_path = PathBuf::from("grammars").join(name);
     rel_library_path.set_extension(DYLIB_EXTENSION);
     let library_path = crate::get_runtime_file(&rel_library_path);
 
@@ -519,7 +519,6 @@ fn mtime(path: &Path) -> Result<SystemTime> {
 /// Gives the contents of a file from a language's `runtime/queries/<lang>`
 /// directory
 pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
-    let path =
-        crate::get_runtime_file(&PathBuf::new().join("queries").join(language).join(filename));
+    let path = crate::get_runtime_file(&PathBuf::from("queries").join(language).join(filename));
     std::fs::read_to_string(&path)
 }
