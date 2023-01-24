@@ -286,6 +286,15 @@ impl Prompt {
         self.recalculate_completion(editor);
     }
 
+    fn step(&self, pos: Option<usize>, end: usize, direction: &CompletionDirection) -> Option<usize> {
+        match (direction, pos) {
+            (CompletionDirection::Forward, None) => Some(0),
+            (CompletionDirection::Backward, None) => Some(end),
+            (CompletionDirection::Forward, Some(p)) => if p == end { None } else { Some(p + 1) },
+            (CompletionDirection::Backward, Some(p)) => if p == 0 { None } else { Some(p - 1) },
+        }
+    }
+
     pub fn change_history(
         &mut self,
         cx: &mut Context,
@@ -306,28 +315,35 @@ impl Prompt {
             PromptMode::HistorySelecting(q) => q,
             _ => "",
         };
-        let end = values.len().saturating_sub(1);
-        let mut index = match direction {
-            CompletionDirection::Forward => self.history_pos.unwrap_or(0),
-            CompletionDirection::Backward => self.history_pos.unwrap_or(values.len()),
-        }
-        .min(end);
+
+        let end = if query.is_empty() {
+            // Ignore the last entry while iterating through the values, as when we clear out
+            // self.line it will be displayed by default.
+            values.len().saturating_sub(2)
+        } else {
+            values.len().saturating_sub(1)
+        };
+
+        let mut index = self.step(self.history_pos, end, &direction);
+
         loop {
-            index = match direction {
-                CompletionDirection::Forward => index + 1,
-                CompletionDirection::Backward => index.saturating_sub(1),
-            }
-            .min(end);
-            if values[index].contains(query) && self.line != values[index] {
-                self.line = values[index].clone();
-                self.history_pos = Some(index);
-                break;
-            }
-            if index == end || index == 0 {
-                // can't find a match, revert to end
-                self.line = query.to_string();
-                self.history_pos = Some(end);
-                break;
+            match index {
+                None => {
+                    // can't find a match, revert to end
+                    self.line = query.to_string();
+                    self.history_pos = None;
+                    break;
+                },
+
+                Some(index_value) => {
+                    if values[index_value].contains(query) && self.line != values[index_value] {
+                        self.line = values[index_value].clone();
+                        self.history_pos = index;
+                        break;
+                    }
+
+                    index = self.step(index, end, &direction);
+                }
             }
         }
 
@@ -370,6 +386,7 @@ impl Prompt {
         let prompt_color = theme.get("ui.text");
         let completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
+        let suggestion_color = theme.get("ui.text.inactive");
         // completion
 
         let max_len = self
@@ -468,21 +485,29 @@ impl Prompt {
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
 
-        let input: Cow<str> = if self.line.is_empty() {
+        let (input, is_suggestion): (Cow<str>, bool) = if self.line.is_empty() {
             // latest value in the register list
-            self.history_register
+            match self
+                .history_register
                 .and_then(|reg| cx.editor.registers.last(reg))
                 .map(|entry| entry.into())
-                .unwrap_or_else(|| Cow::from(""))
+            {
+                Some(value) => (value, true),
+                None => (Cow::from(""), false),
+            }
         } else {
-            self.line.as_str().into()
+            (self.line.as_str().into(), false)
         };
 
         surface.set_string(
             area.x + self.prompt.len() as u16,
             area.y + line,
             &input,
-            prompt_color,
+            if is_suggestion {
+                suggestion_color
+            } else {
+                prompt_color
+            },
         );
     }
 }

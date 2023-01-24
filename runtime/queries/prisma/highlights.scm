@@ -8,6 +8,7 @@
 
 (arguments) @variable.other.member
 (model_declaration (identifier) @type)
+(view_declaration (identifier) @type)
 
 [
  "datasource"
@@ -15,6 +16,7 @@
  "generator"
  "model"
  "type"
+ "view"
 ] @keyword
 
 [

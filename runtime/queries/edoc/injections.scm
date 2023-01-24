@@ -16,5 +16,5 @@
    (tag) @_tag
    (argument) @injection.content)
  (#eq? @_tag "@type")
- (#set injection.language "erlang")
- (#set injection.include-children))
+ (#set! injection.language "erlang")
+ (#set! injection.include-children))

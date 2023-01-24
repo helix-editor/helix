@@ -1,20 +1,25 @@
+use futures_util::FutureExt;
 use helix_lsp::{
     block_on,
     lsp::{self, CodeAction, CodeActionOrCommand, DiagnosticSeverity, NumberOrString},
     util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
-use tui::text::{Span, Spans};
+use tui::{
+    text::{Span, Spans},
+    widgets::Row,
+};
 
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
 use helix_core::{path, Selection};
-use helix_view::{apply_transaction, document::Mode, editor::Action, theme::Style};
+use helix_view::{document::Mode, editor::Action, theme::Style};
 
 use crate::{
     compositor::{self, Compositor},
     ui::{
-        self, lsp::SignatureHelp, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent,
+        self, lsp::SignatureHelp, overlay::overlayed, DynamicPicker, FileLocation, FilePicker,
+        Popup, PromptEvent,
     },
 };
 
@@ -44,7 +49,7 @@ impl ui::menu::Item for lsp::Location {
     /// Current working directory.
     type Data = PathBuf;
 
-    fn label(&self, cwdir: &Self::Data) -> Spans {
+    fn format(&self, cwdir: &Self::Data) -> Row {
         // The preallocation here will overallocate a few characters since it will account for the
         // URL's scheme, which is not used most of the time since that scheme will be "file://".
         // Those extra chars will be used to avoid allocating when writing the line number (in the
@@ -78,7 +83,7 @@ impl ui::menu::Item for lsp::SymbolInformation {
     /// Path to currently focussed document
     type Data = Option<lsp::Url>;
 
-    fn label(&self, current_doc_path: &Self::Data) -> Spans {
+    fn format(&self, current_doc_path: &Self::Data) -> Row {
         if current_doc_path.as_ref() == Some(&self.location.uri) {
             self.name.as_str().into()
         } else {
@@ -108,7 +113,7 @@ struct PickerDiagnostic {
 impl ui::menu::Item for PickerDiagnostic {
     type Data = (DiagnosticStyles, DiagnosticsFormat);
 
-    fn label(&self, (styles, format): &Self::Data) -> Spans {
+    fn format(&self, (styles, format): &Self::Data) -> Row {
         let mut style = self
             .diag
             .severity
@@ -147,6 +152,7 @@ impl ui::menu::Item for PickerDiagnostic {
             Span::styled(&self.diag.message, style),
             Span::styled(code, style),
         ])
+        .into()
     }
 }
 
@@ -156,7 +162,7 @@ fn location_to_file_location(location: &lsp::Location) -> FileLocation {
         location.range.start.line as usize,
         location.range.end.line as usize,
     ));
-    (path, line)
+    (path.into(), line)
 }
 
 // TODO: share with symbol picker(symbol.location)
@@ -333,7 +339,14 @@ pub fn symbol_picker(cx: &mut Context) {
     let current_url = doc.url();
     let offset_encoding = language_server.offset_encoding();
 
-    let future = language_server.document_symbols(doc.identifier());
+    let future = match language_server.document_symbols(doc.identifier()) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support document symbols");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -365,15 +378,55 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     let current_url = doc.url();
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
-    let future = language_server.workspace_symbols("".to_string());
+    let future = match language_server.workspace_symbols("".to_string()) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support workspace symbols");
+            return;
+        }
+    };
 
     cx.callback(
         future,
         move |_editor, compositor, response: Option<Vec<lsp::SymbolInformation>>| {
-            if let Some(symbols) = response {
-                let picker = sym_picker(symbols, current_url, offset_encoding);
-                compositor.push(Box::new(overlayed(picker)))
-            }
+            let symbols = response.unwrap_or_default();
+            let picker = sym_picker(symbols, current_url, offset_encoding);
+            let get_symbols = |query: String, editor: &mut Editor| {
+                let doc = doc!(editor);
+                let language_server = match doc.language_server() {
+                    Some(s) => s,
+                    None => {
+                        // This should not generally happen since the picker will not
+                        // even open in the first place if there is no server.
+                        return async move { Err(anyhow::anyhow!("LSP not active")) }.boxed();
+                    }
+                };
+                let symbol_request = match language_server.workspace_symbols(query) {
+                    Some(future) => future,
+                    None => {
+                        // This should also not happen since the language server must have
+                        // supported workspace symbols before to reach this block.
+                        return async move {
+                            Err(anyhow::anyhow!(
+                                "Language server does not support workspace symbols"
+                            ))
+                        }
+                        .boxed();
+                    }
+                };
+
+                let future = async move {
+                    let json = symbol_request.await?;
+                    let response: Option<Vec<lsp::SymbolInformation>> =
+                        serde_json::from_value(json)?;
+
+                    Ok(response.unwrap_or_default())
+                };
+                future.boxed()
+            };
+            let dyn_picker = DynamicPicker::new(picker, Box::new(get_symbols));
+            compositor.push(Box::new(overlayed(dyn_picker)))
         },
     )
 }
@@ -418,7 +471,7 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
 
 impl ui::menu::Item for lsp::CodeActionOrCommand {
     type Data = ();
-    fn label(&self, _data: &Self::Data) -> Spans {
+    fn format(&self, _data: &Self::Data) -> Row {
         match self {
             lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
             lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
@@ -493,7 +546,7 @@ pub fn code_action(cx: &mut Context) {
 
     let range = range_to_lsp_range(doc.text(), selection_range, offset_encoding);
 
-    let future = language_server.code_actions(
+    let future = match language_server.code_actions(
         doc.identifier(),
         range,
         // Filter and convert overlapping diagnostics
@@ -509,7 +562,14 @@ pub fn code_action(cx: &mut Context) {
                 .collect(),
             only: None,
         },
-    );
+    ) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support code actions");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -606,7 +666,7 @@ pub fn code_action(cx: &mut Context) {
 
 impl ui::menu::Item for lsp::Command {
     type Data = ();
-    fn label(&self, _data: &Self::Data) -> Spans {
+    fn format(&self, _data: &Self::Data) -> Row {
         self.title.as_str().into()
     }
 }
@@ -617,9 +677,16 @@ pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
 
     // the command is executed on the server and communicated back
     // to the client asynchronously using workspace edits
-    let command_future = language_server.command(cmd);
+    let future = match language_server.command(cmd) {
+        Some(future) => future,
+        None => {
+            editor.set_error("Language server does not support executing commands");
+            return;
+        }
+    };
+
     tokio::spawn(async move {
-        let res = command_future.await;
+        let res = future.await;
 
         if let Err(e) = res {
             log::error!("execute LSP command: {}", e);
@@ -678,7 +745,7 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
             if ignore_if_exists && to.exists() {
                 Ok(())
             } else {
-                fs::rename(&from, &to)
+                fs::rename(from, &to)
             }
         }
     }
@@ -732,8 +799,9 @@ pub fn apply_workspace_edit(
             text_edits,
             offset_encoding,
         );
-        apply_transaction(&transaction, doc, view_mut!(editor, view_id));
-        doc.append_changes_to_history(view_id);
+        let view = view_mut!(editor, view_id);
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view);
     };
 
     if let Some(ref changes) = workspace_edit.changes {
@@ -853,7 +921,14 @@ pub fn goto_definition(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.goto_definition(doc.identifier(), pos, None);
+    let future = match language_server.goto_definition(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-definition");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -871,7 +946,14 @@ pub fn goto_type_definition(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.goto_type_definition(doc.identifier(), pos, None);
+    let future = match language_server.goto_type_definition(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-type-definition");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -889,7 +971,14 @@ pub fn goto_implementation(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.goto_implementation(doc.identifier(), pos, None);
+    let future = match language_server.goto_implementation(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-implementation");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -907,7 +996,14 @@ pub fn goto_reference(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.goto_reference(doc.identifier(), pos, None);
+    let future = match language_server.goto_reference(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-reference");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -950,7 +1046,13 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
 
     let future = match language_server.text_document_signature_help(doc.identifier(), pos, None) {
         Some(f) => f,
-        None => return,
+        None => {
+            if was_manually_invoked {
+                cx.editor
+                    .set_error("Language server does not support signature-help");
+            }
+            return;
+        }
     };
 
     cx.callback(
@@ -1051,7 +1153,14 @@ pub fn hover(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.text_document_hover(doc.identifier(), pos, None);
+    let future = match language_server.text_document_hover(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support hover");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -1121,8 +1230,16 @@ pub fn rename_symbol(cx: &mut Context) {
 
             let pos = doc.position(view.id, offset_encoding);
 
-            let task = language_server.rename_symbol(doc.identifier(), pos, input.to_string());
-            match block_on(task) {
+            let future =
+                match language_server.rename_symbol(doc.identifier(), pos, input.to_string()) {
+                    Some(future) => future,
+                    None => {
+                        cx.editor
+                            .set_error("Language server does not support symbol renaming");
+                        return;
+                    }
+                };
+            match block_on(future) {
                 Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
                 Err(err) => cx.editor.set_error(err.to_string()),
             }
@@ -1137,7 +1254,15 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.text_document_document_highlight(doc.identifier(), pos, None);
+    let future = match language_server.text_document_document_highlight(doc.identifier(), pos, None)
+    {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support document highlight");
+            return;
+        }
+    };
 
     cx.callback(
         future,

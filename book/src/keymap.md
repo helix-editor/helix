@@ -111,6 +111,7 @@
 | `s`                   | Select all regex matches inside selections                        | `select_regex`                       |
 | `S`                   | Split selection into subselections on regex matches               | `split_selection`                    |
 | `Alt-s`               | Split selection on newlines                                       | `split_selection_on_newline`         |
+| `Alt-_ `              | Merge consecutive selections                                      | `merge_consecutive_selections`       |
 | `&`                   | Align selection in columns                                        | `align_selections`                   |
 | `_`                   | Trim whitespace from the selection                                | `trim_selections`                    |
 | `;`                   | Collapse selection onto a single cursor                           | `collapse_selection`                 |
@@ -164,6 +165,9 @@ These sub-modes are accessible from normal mode and typically switch back to nor
 | `Z`      | Enter sticky [view mode](#view-mode)               | N/A            |
 | `Ctrl-w` | Enter [window mode](#window-mode)                  | N/A            |
 | `Space`  | Enter [space mode](#space-mode)                    | N/A            |
+
+These modes (except command mode) can be configured by
+[remapping keys](https://docs.helix-editor.com/remapping.html#minor-modes).
 
 #### View mode
 
@@ -297,31 +301,35 @@ Displays documentation for item under cursor.
 | ----     | ----------- |
 | `Ctrl-u` | Scroll up   |
 | `Ctrl-d` | Scroll down |
- 
+
 #### Unimpaired
 
 Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
 
 | Key      | Description                                  | Command               |
 | -----    | -----------                                  | -------               |
-| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`      |
 | `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`      |
-| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`     |
+| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`      |
 | `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`      |
+| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`     |
 | `]f`     | Go to next function (**TS**)                 | `goto_next_function`  |
 | `[f`     | Go to previous function (**TS**)             | `goto_prev_function`  |
-| `]c`     | Go to next class (**TS**)                    | `goto_next_class`     |
-| `[c`     | Go to previous class (**TS**)                | `goto_prev_class`     |
+| `]t`     | Go to next type definition (**TS**)          | `goto_next_class`     |
+| `[t`     | Go to previous type definition (**TS**)      | `goto_prev_class`     |
 | `]a`     | Go to next argument/parameter (**TS**)       | `goto_next_parameter` |
 | `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter` |
-| `]o`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
-| `[o`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
-| `]t`     | Go to next test (**TS**)                     | `goto_next_test`      |
-| `]t`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
+| `]c`     | Go to next comment (**TS**)                  | `goto_next_comment`   |
+| `[c`     | Go to previous comment (**TS**)              | `goto_prev_comment`   |
+| `]T`     | Go to next test (**TS**)                     | `goto_next_test`      |
+| `[T`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
 | `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
 | `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
-| `[Space` | Add newline above                            | `add_newline_above`   |
+| `]g`     | Go to next change                            | `goto_next_change`    |
+| `[g`     | Go to previous change                        | `goto_prev_change`    |
+| `]G`     | Go to last change                            | `goto_last_change`    |
+| `[G`     | Go to first change                           | `goto_first_change`   |
 | `]Space` | Add newline below                            | `add_newline_below`   |
+| `[Space` | Add newline above                            | `add_newline_above`   |
 
 ## Insert mode
 
