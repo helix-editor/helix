@@ -253,9 +253,7 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
         remote, revision, ..
     } = grammar.source
     {
-        let grammar_dir = crate::get_runtime_dirs()
-            .first()
-            .expect("should return at least one directory")
+        let grammar_dir = crate::get_first_runtime_dir()
             .join("grammars")
             .join("sources")
             .join(&grammar.grammar_id);
@@ -353,9 +351,7 @@ fn build_grammar(grammar: GrammarConfiguration, target: Option<&str>) -> Result<
     let grammar_dir = if let GrammarSource::Local { path } = &grammar.source {
         PathBuf::from(&path)
     } else {
-        crate::get_runtime_dirs()
-            .first()
-            .expect("No runtime directories provided") // guaranteed by post-condition
+        crate::get_first_runtime_dir()
             .join("grammars")
             .join("sources")
             .join(&grammar.grammar_id)

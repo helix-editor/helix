@@ -122,6 +122,12 @@ fn _runtime_dirs() -> Vec<PathBuf> {
     runtime_dirs
 }
 
+pub fn get_first_runtime_dir() -> &'static PathBuf {
+   get_runtime_dirs()
+    .first()
+    .expect("should return at least one directory")
+}
+
 /// Search for a file in the runtime directories.
 /// Returns a non-existent path relative to the local executable if none are found.
 pub fn get_runtime_file(relative_path: &Path) -> PathBuf {
