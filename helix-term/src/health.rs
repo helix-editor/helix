@@ -40,7 +40,9 @@ fn display_paths() -> std::io::Result<()> {
     writeln!(stdout, "Log file: {}", helix_loader::log_file().display())?;
 
     let rt_dirs = helix_loader::get_runtime_dirs();
-    writeln!(stdout,"Runtime directories: {}",
+    writeln!(
+        stdout,
+        "Runtime directories: {}",
         rt_dirs
             .iter()
             .map(|rt_dir| rt_dir.to_string_lossy())
