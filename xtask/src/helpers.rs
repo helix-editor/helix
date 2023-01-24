@@ -39,6 +39,6 @@ pub fn find_files(dir: &Path, filename: &str) -> Vec<PathBuf> {
 }
 
 pub fn lang_config() -> LangConfig {
-    let bytes = std::fs::read(path::lang_config()).unwrap();
-    toml::from_slice(&bytes).unwrap()
+    let text = std::fs::read_to_string(path::lang_config()).unwrap();
+    toml::from_str(&text).unwrap()
 }
