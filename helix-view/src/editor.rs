@@ -301,10 +301,10 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
         });
     }
 
-    return Some(TerminalConfig {
+    Some(TerminalConfig {
         command: "conhost".to_string(),
         args: vec!["cmd".to_string(), "/C".to_string()],
-    });
+    })
 }
 
 #[cfg(not(any(windows, target_os = "wasm32")))]

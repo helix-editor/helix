@@ -25,4 +25,4 @@ serde_json = "1.0"
 thiserror = "1.0"
 tokio = { version = "1.24", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "sync"] }
 tokio-stream = "0.1.11"
-which = "4.2"
+which = "4.4"

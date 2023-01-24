@@ -42,7 +42,7 @@ serde_json = "1.0"
 toml = "0.5"
 log = "~0.4"
 
-which = "4.2"
+which = "4.4"
 
 
 [target.'cfg(windows)'.dependencies]
