@@ -286,12 +286,29 @@ impl Prompt {
         self.recalculate_completion(editor);
     }
 
-    fn step(&self, pos: Option<usize>, end: usize, direction: &CompletionDirection) -> Option<usize> {
+    fn step(
+        &self,
+        pos: Option<usize>,
+        end: usize,
+        direction: &CompletionDirection,
+    ) -> Option<usize> {
         match (direction, pos) {
             (CompletionDirection::Forward, None) => Some(0),
             (CompletionDirection::Backward, None) => Some(end),
-            (CompletionDirection::Forward, Some(p)) => if p == end { None } else { Some(p + 1) },
-            (CompletionDirection::Backward, Some(p)) => if p == 0 { None } else { Some(p - 1) },
+            (CompletionDirection::Forward, Some(p)) => {
+                if p == end {
+                    None
+                } else {
+                    Some(p + 1)
+                }
+            }
+            (CompletionDirection::Backward, Some(p)) => {
+                if p == 0 {
+                    None
+                } else {
+                    Some(p - 1)
+                }
+            }
         }
     }
 
@@ -333,7 +350,7 @@ impl Prompt {
                     self.line = query.to_string();
                     self.history_pos = None;
                     break;
-                },
+                }
 
                 Some(index_value) => {
                     if values[index_value].contains(query) && self.line != values[index_value] {
