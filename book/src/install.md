@@ -108,8 +108,9 @@ RUSTFLAGS="-C target-feature=-crt-static"
 
 
 Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
-config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overridden
-via the `HELIX_RUNTIME` environment variable.
+config directory (for example `~/.config/helix/runtime` on Linux/macOS). An alternative runtime directory can
+be used by setting the `HELIX_RUNTIME` environment variable. Both runtime directories can be used at the same
+time, with the files residing under the config runtime directory given priority.
 
 | OS                   | Command                                          |
 | -------------------- | ------------------------------------------------ |
@@ -132,11 +133,6 @@ New-Item -ItemType SymbolicLink -Target "runtime" -Path "$Env:AppData\helix\runt
 cd %appdata%\helix
 mklink /D runtime "<helix-repo>\runtime"
 ```
-
-The runtime location can be overridden via the `HELIX_RUNTIME` environment variable.
-
-> NOTE: if `HELIX_RUNTIME` is set prior to calling `cargo install --path helix-term --locked`,
-> tree-sitter grammars will be built in `$HELIX_RUNTIME/grammars`.
 
 If you plan on keeping the repo locally, an alternative to copying/symlinking
 runtime files is to set `HELIX_RUNTIME=/path/to/helix/runtime`

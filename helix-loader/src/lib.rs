@@ -4,11 +4,11 @@ pub mod ts_probe;
 
 use anyhow::Error;
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub const VERSION_AND_GIT_HASH: &str = env!("VERSION_AND_GIT_HASH");
 
-static RUNTIME_DIR: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+static RUNTIME_DIRS: once_cell::sync::OnceCell<Vec<PathBuf>> = once_cell::sync::OnceCell::new();
 static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
@@ -58,57 +58,83 @@ pub fn setup_log_file(specified_file: Option<PathBuf>) {
     LOG_FILE.set(log_file).ok();
 }
 
+// TODO: allow env var override
 pub fn user_config_dir() -> PathBuf {
-    // TODO: allow env var override
-    let strategy =
-        choose_base_strategy().expect("Unable to determine system base directory specification!");
-    let mut path = strategy.config_dir();
-    path.push("helix");
-    path
+    choose_base_strategy()
+        .expect("Unable to determine system base directory specification!")
+        .config_dir()
+        .join("helix")
 }
 
+// TODO: allow env var override
 pub fn cache_dir() -> PathBuf {
-    // TODO: allow env var override
-    let strategy =
-        choose_base_strategy().expect("Unable to determine system base directory specification!");
-    let mut path = strategy.cache_dir();
-    path.push("helix");
-    path
+    choose_base_strategy()
+        .expect("Unable to determine system base directory specification!")
+        .cache_dir()
+        .join("helix")
 }
 
-pub fn runtime_dir() -> PathBuf {
-    if let Some(runtime_dir) = RUNTIME_DIR.get() {
-        runtime_dir.to_path_buf()
+/// Runtime directory location priority:
+/// 1. Sibling directory to `CARGO_MANIFEST_DIR`, given that environment variable is set. (Often done by cargo)
+// TODO: XDG_RUNTIME_DIR
+/// 2. Under user config directory, given that it exists.
+/// 3. `HELIX_RUNTIME`, given that the environment variable is set.
+/// 4. Under path to helix executable, always included. However, it might not exist.
+pub fn get_runtime_dirs() -> &'static [PathBuf] {
+    if let Some(runtime_dirs) = RUNTIME_DIRS.get() {
+        &runtime_dirs
     } else {
-        RUNTIME_DIR.set(_runtime_dir()).unwrap();
-        runtime_dir()
+        RUNTIME_DIRS.set(_runtime_dirs()).unwrap();
+        get_runtime_dirs()
     }
 }
 
-/// $HELIX_RUNTIME || config_dir/runtime || repo/runtime (if run by cargo) || executable location
-fn _runtime_dir() -> PathBuf {
-    // TODO: shouldn't it also look for XDG_RUNTIME_DIR?
-    if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
-        return dir.into();
-    }
-
-    const RT_DIR: &str = "runtime";
+fn _runtime_dirs() -> Vec<PathBuf> {
+    let mut runtime_dirs = Vec::new();
+    const RUNTIME_DIR_NAME: &str = "runtime";
     if std::env::var("CARGO_MANIFEST_DIR").is_ok() {
-        let path = repo_paths::project_root().join(RT_DIR);
+        let path = repo_paths::project_root().join(RUNTIME_DIR_NAME);
         log::debug!("runtime dir: {}", path.to_string_lossy());
-        return path;
+        runtime_dirs.push(path);
     }
 
-    let conf_dir = user_config_dir().join(RT_DIR);
+    let conf_dir = user_config_dir().join(RUNTIME_DIR_NAME);
     if conf_dir.exists() {
-        return conf_dir;
+        runtime_dirs.push(conf_dir);
     }
 
-    std::env::current_exe()
+    if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
+        runtime_dirs.push(dir.into());
+    }
+
+    // canonicalize the path in case the executable is symlinked
+    runtime_dirs.push(std::env::current_exe()
         .ok()
         .and_then(|path| std::fs::canonicalize(path).ok())
-        .and_then(|path| path.parent().map(|path| path.to_path_buf().join(RT_DIR)))
+        .and_then(|path| path.parent().map(|path| path.to_path_buf().join(RUNTIME_DIR_NAME)))
         .unwrap()
+    );
+
+    runtime_dirs
+}
+
+
+/// Search for a file in the runtime directories.
+/// Returns a non-existent path relative to the local executable if none are found.
+pub fn get_runtime_file(relative_path: &Path) -> PathBuf {
+    get_runtime_dirs().iter().find_map(|runtime_dir| {
+        let path = runtime_dir.join(relative_path);
+        match path.exists() {
+            true => Some(path),
+            false => None
+        }
+    })
+    .unwrap_or_else(|| {
+        get_runtime_dirs()
+            .last()
+            .expect("Path to local executable.")
+            .join(relative_path)
+    })
 }
 
 pub fn merged_config() -> Result<toml::Value, Error> {
