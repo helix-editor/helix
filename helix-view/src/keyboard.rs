@@ -2,7 +2,6 @@ use bitflags::bitflags;
 
 bitflags! {
     /// Represents key modifiers (shift, control, alt).
-    #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
     pub struct KeyModifiers: u8 {
         const SHIFT = 0b0000_0001;
         const CONTROL = 0b0000_0010;
