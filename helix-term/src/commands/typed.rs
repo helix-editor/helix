@@ -1822,31 +1822,6 @@ fn run_shell_command(
     Ok(())
 }
 
-fn cmds(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
-    let mut start;
-    let mut end = 0;
-    loop {
-        start = if end == 0 { 0 } else { end + 1 };
-        end = start + 1;
-        while end < args.len() {
-            if args[end] == "&&" {
-                break;
-            }
-            end += 1;
-        }
-
-        if start >= end || start >= args.len() {
-            break;
-        }
-        process_cmd(cx, &args[start..end].join(" "), event)?;
-    }
-    Ok(())
-}
-
 pub fn process_cmd(
     cx: &mut compositor::Context,
     input: &str,
@@ -2397,13 +2372,6 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::directory),
-        },
-        TypableCommand {
-            name: "commands",
-            aliases: &["cmds"],
-            doc: "Run commands together, use && to sepearte them",
-            fun: cmds,
-            completer: Some(completers::filename),
         },
     ];
 
