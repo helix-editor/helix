@@ -79,7 +79,8 @@ impl Loader {
         let path = self
             .path(name, visited_paths)
             .ok_or_else(|| anyhow!("Theme: not found or recursively inheriting: {}", name))?;
-        let theme_toml = self.load_toml(path)?;
+        let theme_string = std::fs::read_to_string(&path)?;
+        let theme_toml: toml::Value = toml::from_str(&theme_string)?;
 
         let inherits = theme_toml.get("inherits");
 
@@ -145,14 +146,6 @@ impl Loader {
         let theme = merge_toml_values(parent_theme_toml, theme_toml, 1);
         // merge the before specially handled palette into the theme
         merge_toml_values(theme, palette.into(), 1)
-    }
-
-    // Loads the theme data as `toml::Value`
-    fn load_toml(&self, path: PathBuf) -> Result<Value> {
-        let data = std::fs::read_to_string(&path)?;
-        let value = toml::from_str(&data)?;
-
-        Ok(value)
     }
 
     /// Returns the path to the theme with the given name
