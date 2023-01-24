@@ -286,6 +286,15 @@ impl Prompt {
         self.recalculate_completion(editor);
     }
 
+    fn step(&self, pos: Option<usize>, end: usize, direction: &CompletionDirection) -> Option<usize> {
+        match (direction, pos) {
+            (CompletionDirection::Forward, None) => Some(0),
+            (CompletionDirection::Backward, None) => Some(end),
+            (CompletionDirection::Forward, Some(p)) => if p == end { None } else { Some(p + 1) },
+            (CompletionDirection::Backward, Some(p)) => if p == 0 { None } else { Some(p - 1) },
+        }
+    }
+
     pub fn change_history(
         &mut self,
         cx: &mut Context,
@@ -306,28 +315,35 @@ impl Prompt {
             PromptMode::HistorySelecting(q) => q,
             _ => "",
         };
-        let end = values.len().saturating_sub(1);
-        let mut index = match direction {
-            CompletionDirection::Forward => self.history_pos.unwrap_or(0),
-            CompletionDirection::Backward => self.history_pos.unwrap_or(values.len()),
-        }
-        .min(end);
+
+        let end = if query.is_empty() {
+            // Ignore the last entry while iterating through the values, as when we clear out
+            // self.line it will be displayed by default.
+            values.len().saturating_sub(2)
+        } else {
+            values.len().saturating_sub(1)
+        };
+
+        let mut index = self.step(self.history_pos, end, &direction);
+
         loop {
-            index = match direction {
-                CompletionDirection::Forward => index + 1,
-                CompletionDirection::Backward => index.saturating_sub(1),
-            }
-            .min(end);
-            if values[index].contains(query) && self.line != values[index] {
-                self.line = values[index].clone();
-                self.history_pos = Some(index);
-                break;
-            }
-            if index == end || index == 0 {
-                // can't find a match, revert to end
-                self.line = query.to_string();
-                self.history_pos = Some(end);
-                break;
+            match index {
+                None => {
+                    // can't find a match, revert to end
+                    self.line = query.to_string();
+                    self.history_pos = None;
+                    break;
+                },
+
+                Some(index_value) => {
+                    if values[index_value].contains(query) && self.line != values[index_value] {
+                        self.line = values[index_value].clone();
+                        self.history_pos = index;
+                        break;
+                    }
+
+                    index = self.step(index, end, &direction);
+                }
             }
         }
 
