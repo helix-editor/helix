@@ -1,9 +1,9 @@
-use std::{sync::Arc, collections::HashMap};
+use super::{macros::keytrie, Keymap};
+use crate::key;
 use arc_swap::ArcSwap;
 use helix_core::hashmap;
 use helix_view::{document::Mode, input::KeyEvent};
-use crate::key;
-use super::{Keymap, macros::keytrie};
+use std::{collections::HashMap, sync::Arc};
 
 #[test]
 #[should_panic]
