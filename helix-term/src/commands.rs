@@ -2006,6 +2006,10 @@ fn global_search(cx: &mut Context) {
                         let line_num = *line_num;
                         let (view, doc) = current!(cx.editor);
                         let text = doc.text();
+                        if line_num >= text.len_lines() {
+                            cx.editor.set_error("The line you jumped to does not exist anymore because the file has changed.");
+                            return;
+                        }
                         let start = text.line_to_char(line_num);
                         let end = text.line_to_char((line_num + 1).min(text.len_lines()));
 
