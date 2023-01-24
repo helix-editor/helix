@@ -1683,12 +1683,18 @@ fn search_impl(
 }
 
 fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
+    let doc = doc!(cx.editor);
     let mut items = reg
-        .and_then(|reg| cx.editor.registers.get(reg))
-        .map_or(Vec::new(), |reg| reg.read().iter().take(200).collect());
+        .and_then(|reg| cx.editor.registers.read(doc, reg))
+        .map_or(Vec::new(), |mut content| {
+            for s in &mut content {
+                s.drain(200..);
+            }
+            content
+        });
     items.sort_unstable();
     items.dedup();
-    items.into_iter().cloned().collect()
+    items.into_iter().map(String::from).collect()
 }
 
 fn search(cx: &mut Context) {
@@ -1749,7 +1755,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
     let scrolloff = config.scrolloff;
     let (_, doc) = current!(cx.editor);
     let registers = &cx.editor.registers;
-    if let Some(query) = registers.read('/').and_then(|query| query.last()) {
+    if let Some(query) = registers.last(doc, '/') {
         let contents = doc.text().slice(..).to_string();
         let search_config = &config.search;
         let case_insensitive = if search_config.smart_case {
@@ -1758,7 +1764,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
             false
         };
         let wrap_around = search_config.wrap_around;
-        if let Ok(regex) = RegexBuilder::new(query)
+        if let Ok(regex) = RegexBuilder::new(&query)
             .case_insensitive(case_insensitive)
             .multi_line(true)
             .build()
@@ -1816,7 +1822,8 @@ fn search_selection(cx: &mut Context) {
 }
 
 fn make_search_word_bounded(cx: &mut Context) {
-    let regex = match cx.editor.registers.last('/') {
+    let doc = doc!(cx.editor);
+    let regex = match cx.editor.registers.last(doc, '/') {
         Some(regex) => regex,
         None => return,
     };
@@ -1834,7 +1841,7 @@ fn make_search_word_bounded(cx: &mut Context) {
     if !start_anchored {
         new_regex.push_str("\\b");
     }
-    new_regex.push_str(regex);
+    new_regex.push_str(&regex);
     if !end_anchored {
         new_regex.push_str("\\b");
     }
@@ -3696,7 +3703,7 @@ fn replace_with_yanked(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
-    if let Some(values) = registers.read(reg_name) {
+    if let Some(values) = registers.read(doc, reg_name) {
         if !values.is_empty() {
             let repeat = std::iter::repeat(
                 values
@@ -3765,8 +3772,8 @@ fn paste(cx: &mut Context, pos: Paste) {
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
-    if let Some(values) = registers.read(reg_name) {
-        paste_impl(values, doc, view, pos, count, cx.editor.mode);
+    if let Some(values) = registers.read(doc, reg_name) {
+        paste_impl(&values, doc, view, pos, count, cx.editor.mode);
     }
 }
 
@@ -4423,7 +4430,6 @@ fn wonly(cx: &mut Context) {
 }
 
 fn select_register(cx: &mut Context) {
-    cx.editor.update_registers();
     cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
     cx.on_next_key(move |cx, event| {
         if let Some(ch) = event.char() {
@@ -4434,7 +4440,6 @@ fn select_register(cx: &mut Context) {
 }
 
 fn insert_register(cx: &mut Context) {
-    cx.editor.update_registers();
     cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
     cx.on_next_key(move |cx, event| {
         if let Some(ch) = event.char() {
@@ -5144,6 +5149,7 @@ fn record_macro(cx: &mut Context) {
 }
 
 fn replay_macro(cx: &mut Context) {
+    let doc = doc!(cx.editor);
     let reg = cx.register.unwrap_or('@');
 
     if cx.editor.macro_replaying.contains(&reg) {
@@ -5154,18 +5160,19 @@ fn replay_macro(cx: &mut Context) {
         return;
     }
 
-    let keys: Vec<KeyEvent> = if let Some([keys_str]) = cx.editor.registers.read(reg) {
-        match helix_view::input::parse_macro(keys_str) {
-            Ok(keys) => keys,
-            Err(err) => {
-                cx.editor.set_error(format!("Invalid macro: {}", err));
-                return;
+    let keys: Vec<KeyEvent> =
+        if let Some([keys_str]) = cx.editor.registers.read(doc, reg).as_deref() {
+            match helix_view::input::parse_macro(keys_str) {
+                Ok(keys) => keys,
+                Err(err) => {
+                    cx.editor.set_error(format!("Invalid macro: {}", err));
+                    return;
+                }
             }
-        }
-    } else {
-        cx.editor.set_error(format!("Register [{}] empty", reg));
-        return;
-    };
+        } else {
+            cx.editor.set_error(format!("Register [{}] empty", reg));
+            return;
+        };
 
     // Once the macro has been fully validated, it's marked as being under replay
     // to ensure we don't fall into infinite recursion.

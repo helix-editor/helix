@@ -1,5 +1,6 @@
 use crate::input::KeyEvent;
-use helix_core::{register::Registers, unicode::width::UnicodeWidthStr};
+use crate::register::Registers;
+use helix_core::unicode::width::UnicodeWidthStr;
 use std::{collections::BTreeSet, fmt::Write};
 
 #[derive(Debug)]
@@ -69,16 +70,8 @@ impl Info {
 
     pub fn from_registers(registers: &Registers) -> Self {
         let body: Vec<_> = registers
-            .inner()
-            .iter()
-            .map(|(ch, reg)| {
-                let content = reg
-                    .read()
-                    .get(0)
-                    .and_then(|s| s.lines().next())
-                    .unwrap_or_default();
-                (ch.to_string(), content)
-            })
+            .iter_preview()
+            .map(|(ch, content)| (ch.to_string(), content))
             .collect();
 
         let mut infobox = Self::new("Registers", &body);

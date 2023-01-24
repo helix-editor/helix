@@ -294,7 +294,8 @@ impl Prompt {
         direction: CompletionDirection,
     ) {
         (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
-        let values = match cx.editor.registers.read(register) {
+        let doc = doc!(cx.editor);
+        let values = match cx.editor.registers.read(doc, register) {
             Some(values) if !values.is_empty() => values,
             _ => return,
         };
@@ -451,11 +452,12 @@ impl Prompt {
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
 
+        let doc = doc!(cx.editor);
         let (input, is_suggestion): (Cow<str>, bool) = if self.line.is_empty() {
             // latest value in the register list
             match self
                 .history_register
-                .and_then(|reg| cx.editor.registers.last(reg))
+                .and_then(|reg| cx.editor.registers.last(doc, reg))
                 .map(|entry| entry.into())
             {
                 Some(value) => (value, true),
@@ -543,9 +545,10 @@ impl Component for Prompt {
                 if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
                     self.recalculate_completion(cx.editor);
                 } else {
+                    let doc = doc!(cx.editor);
                     let last_item = self
                         .history_register
-                        .and_then(|reg| cx.editor.registers.last(reg).cloned())
+                        .and_then(|reg| cx.editor.registers.last(doc, reg))
                         .map(|entry| entry.into())
                         .unwrap_or_else(|| Cow::from(""));
 
@@ -592,30 +595,17 @@ impl Component for Prompt {
             }
             ctrl!('q') => self.exit_selection(),
             ctrl!('r') => {
-                cx.editor.update_registers();
                 self.completion = cx
                     .editor
                     .registers
-                    .inner()
-                    .iter()
-                    .map(|(ch, reg)| {
-                        let content = reg
-                            .read()
-                            .get(0)
-                            .and_then(|s| s.lines().next().to_owned())
-                            .unwrap_or_default();
-                        (0.., format!("{} {}", ch, &content).into())
-                    })
+                    .iter_preview()
+                    .map(|(ch, content)| (0.., format!("{} {}", ch, &content).into()))
                     .collect();
-                self.next_char_handler = Some(Box::new(|prompt, c, context| {
+                self.next_char_handler = Some(Box::new(|prompt, c, cx| {
+                    let doc = doc!(cx.editor);
                     prompt.insert_str(
-                        context
-                            .editor
-                            .registers
-                            .read(c)
-                            .and_then(|r| r.first())
-                            .map_or("", |r| r.as_str()),
-                        context.editor,
+                        &cx.editor.registers.first(doc, c).unwrap_or_default(),
+                        cx.editor,
                     );
                 }));
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);

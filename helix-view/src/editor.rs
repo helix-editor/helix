@@ -5,6 +5,7 @@ use crate::{
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
+    register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
     Align, Document, DocumentId, View, ViewId,
@@ -37,7 +38,6 @@ use tokio::{
 use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
-pub use helix_core::register::Registers;
 use helix_core::Position;
 use helix_core::{
     auto_pairs::AutoPairs,
@@ -1468,13 +1468,6 @@ impl Editor {
             doc.set_selection(view.id, selection);
             doc.restore_cursor = false;
         }
-    }
-
-    /// Update read-only registers.
-    pub fn update_registers(&mut self) {
-        let doc = doc!(self);
-        self.registers
-            .write('%', vec![doc.display_name().to_string()]);
     }
 }
 
