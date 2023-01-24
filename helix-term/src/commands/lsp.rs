@@ -367,7 +367,7 @@ pub fn symbol_picker(cx: &mut Context) {
                 };
 
                 let picker = sym_picker(symbols, current_url, offset_encoding);
-                compositor.push(Box::new(overlayed(picker)))
+                compositor.push(Box::new(overlayed(picker)), editor)
             }
         },
     )
@@ -389,7 +389,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |_editor, compositor, response: Option<Vec<lsp::SymbolInformation>>| {
+        move |editor, compositor, response: Option<Vec<lsp::SymbolInformation>>| {
             let symbols = response.unwrap_or_default();
             let picker = sym_picker(symbols, current_url, offset_encoding);
             let get_symbols = |query: String, editor: &mut Editor| {
@@ -426,7 +426,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
                 future.boxed()
             };
             let dyn_picker = DynamicPicker::new(picker, Box::new(get_symbols));
-            compositor.push(Box::new(overlayed(dyn_picker)))
+            compositor.push(Box::new(overlayed(dyn_picker)), editor)
         },
     )
 }
@@ -659,7 +659,7 @@ pub fn code_action(cx: &mut Context) {
             picker.move_down(); // pre-select the first item
 
             let popup = Popup::new("code-action", picker).with_scrollbar(false);
-            compositor.replace_or_push("code-action", popup);
+            compositor.replace_or_push("code-action", popup, editor);
         },
     )
 }
@@ -894,7 +894,7 @@ fn goto_impl(
                 },
                 move |_editor, location| Some(location_to_file_location(location)),
             );
-            compositor.push(Box::new(overlayed(picker)));
+            compositor.push(Box::new(overlayed(picker)), editor);
         }
     }
 }
@@ -1139,7 +1139,7 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                 .position(old_popup.and_then(|p| p.get_position()))
                 .position_bias(Open::Above)
                 .ignore_escape_key(true);
-            compositor.replace_or_push(SignatureHelp::ID, popup);
+            compositor.replace_or_push(SignatureHelp::ID, popup, editor);
         },
     );
 }
@@ -1195,7 +1195,7 @@ pub fn hover(cx: &mut Context) {
 
                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                 let popup = Popup::new("hover", contents).auto_close(true);
-                compositor.replace_or_push("hover", popup);
+                compositor.replace_or_push("hover", popup, editor);
             }
         },
     );

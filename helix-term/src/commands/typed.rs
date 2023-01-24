@@ -70,7 +70,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
                         let picker = ui::file_picker(path, &editor.config());
-                        compositor.push(Box::new(overlayed(picker)));
+                        compositor.push(Box::new(overlayed(picker)), editor);
                     },
                 ));
                 Ok(call)
@@ -1158,11 +1158,11 @@ fn lsp_workspace_command(
             .collect::<Vec<_>>();
         let callback = async move {
             let call: job::Callback = Callback::EditorCompositor(Box::new(
-                move |_editor: &mut Editor, compositor: &mut Compositor| {
+                move |editor: &mut Editor, compositor: &mut Compositor| {
                     let picker = ui::Picker::new(commands, (), |cx, command, _action| {
                         execute_lsp_command(cx.editor, command.clone());
                     });
-                    compositor.push(Box::new(overlayed(picker)))
+                    compositor.push(Box::new(overlayed(picker)), editor)
                 },
             ));
             Ok(call)
@@ -1245,7 +1245,7 @@ fn tree_sitter_scopes(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                 let popup = Popup::new("hover", contents).auto_close(true);
-                compositor.replace_or_push("hover", popup);
+                compositor.replace_or_push("hover", popup, editor);
             },
         ));
         Ok(call)
@@ -1674,7 +1674,7 @@ fn tree_sitter_subtree(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
                         let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                         let popup = Popup::new("hover", contents).auto_close(true);
-                        compositor.replace_or_push("hover", popup);
+                        compositor.replace_or_push("hover", popup, editor);
                     },
                 ));
                 Ok(call)
@@ -1810,7 +1810,7 @@ fn run_shell_command(
                     let popup = Popup::new("shell", contents).position(Some(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
                     ));
-                    compositor.replace_or_push("shell", popup);
+                    compositor.replace_or_push("shell", popup, editor);
                 },
             ));
             Ok(call)

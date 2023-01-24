@@ -122,7 +122,7 @@ pub fn regex_prompt(
                             if event == PromptEvent::Validate {
                                 let callback = async move {
                                     let call: job::Callback = Callback::EditorCompositor(Box::new(
-                                        move |_editor: &mut Editor, compositor: &mut Compositor| {
+                                        move |editor: &mut Editor, compositor: &mut Compositor| {
                                             let contents = Text::new(format!("{}", err));
                                             let size = compositor.size();
                                             let mut popup = Popup::new("invalid-regex", contents)
@@ -133,7 +133,11 @@ pub fn regex_prompt(
                                                 .auto_close(true);
                                             popup.required_size((size.width, size.height));
 
-                                            compositor.replace_or_push("invalid-regex", popup);
+                                            compositor.replace_or_push(
+                                                "invalid-regex",
+                                                popup,
+                                                editor,
+                                            );
                                         },
                                     ));
                                     Ok(call)

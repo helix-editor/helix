@@ -88,7 +88,7 @@ fn thread_picker(
                     Some((path.into(), pos))
                 },
             );
-            compositor.push(Box::new(picker));
+            compositor.push(Box::new(picker), editor);
         },
     );
 }
@@ -278,9 +278,9 @@ pub fn dap_launch(cx: &mut Context) {
             let name = template.name.clone();
             let callback = Box::pin(async move {
                 let call: Callback =
-                    Callback::EditorCompositor(Box::new(move |_editor, compositor| {
+                    Callback::EditorCompositor(Box::new(move |editor, compositor| {
                         let prompt = debug_parameter_prompt(completions, name, Vec::new());
-                        compositor.push(Box::new(prompt));
+                        compositor.push(Box::new(prompt), editor);
                     }));
                 Ok(call)
             });
@@ -337,9 +337,9 @@ fn debug_parameter_prompt(
                 let params = params.clone();
                 let callback = Box::pin(async move {
                     let call: Callback =
-                        Callback::EditorCompositor(Box::new(move |_editor, compositor| {
+                        Callback::EditorCompositor(Box::new(move |editor, compositor| {
                             let prompt = debug_parameter_prompt(completions, config_name, params);
-                            compositor.push(Box::new(prompt));
+                            compositor.push(Box::new(prompt), editor);
                         }));
                     Ok(call)
                 });
@@ -614,7 +614,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
                 if let Some(condition) = breakpoint.condition {
                     prompt.insert_str(&condition, editor)
                 }
-                compositor.push(Box::new(prompt));
+                compositor.push(Box::new(prompt), editor);
             }));
             Ok(call)
         });
@@ -655,7 +655,7 @@ pub fn dap_edit_log(cx: &mut Context) {
                 if let Some(log_message) = breakpoint.log_message {
                     prompt.insert_str(&log_message, editor);
                 }
-                compositor.push(Box::new(prompt));
+                compositor.push(Box::new(prompt), editor);
             }));
             Ok(call)
         });

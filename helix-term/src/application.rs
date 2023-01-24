@@ -181,7 +181,7 @@ impl Application {
             &config.keys
         }));
         let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
-        compositor.push(editor_view);
+        compositor.push(editor_view, &mut editor);
 
         if args.load_tutor {
             let path = helix_loader::runtime_dir().join("tutor");
@@ -194,7 +194,7 @@ impl Application {
                 std::env::set_current_dir(first).context("set current dir")?;
                 editor.new_file(Action::VerticalSplit);
                 let picker = ui::file_picker(".".into(), &config.load().editor);
-                compositor.push(Box::new(overlayed(picker)));
+                compositor.push(Box::new(overlayed(picker)), &mut editor);
             } else {
                 let nr_of_files = args.files.len();
                 for (i, (file, pos)) in args.files.into_iter().enumerate() {

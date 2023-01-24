@@ -81,8 +81,8 @@ pub struct Context<'a> {
 impl<'a> Context<'a> {
     /// Push a new component onto the compositor.
     pub fn push_layer(&mut self, component: Box<dyn Component>) {
-        self.callback = Some(Box::new(|compositor: &mut Compositor, _| {
-            compositor.push(component)
+        self.callback = Some(Box::new(|compositor: &mut Compositor, cx| {
+            compositor.push(component, cx.editor)
         }));
     }
 
@@ -2013,7 +2013,7 @@ fn global_search(cx: &mut Context) {
                         Some((path.clone().into(), Some((*line_num, *line_num))))
                     },
                 );
-                compositor.push(Box::new(overlayed(picker)));
+                compositor.push(Box::new(overlayed(picker)), editor);
             },
         ));
         Ok(call)
@@ -2521,7 +2521,7 @@ pub fn command_palette(cx: &mut Context) {
                     }
                 }
             });
-            compositor.push(Box::new(overlayed(picker)));
+            compositor.push(Box::new(overlayed(picker)), cx.editor);
         },
     ));
 }
@@ -2530,7 +2530,7 @@ fn last_picker(cx: &mut Context) {
     // TODO: last picker does not seem to work well with buffer_picker
     cx.callback = Some(Box::new(|compositor, cx| {
         if let Some(picker) = compositor.last_picker.take() {
-            compositor.push(picker);
+            compositor.push(picker, cx.editor);
         } else {
             cx.editor.set_error("no last picker")
         }
