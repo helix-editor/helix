@@ -31,6 +31,7 @@
 "markup.raw.block" = { fg = "white" }
 "markup.bold" = { fg = "gold", modifiers = ["bold"] }
 "markup.italic" = { fg = "purple", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.list" = { fg = "red" }
 "markup.quote" = { fg = "yellow" }
 "markup.link.url" = { fg = "blue", modifiers = ["underlined"]}
@@ -41,7 +42,11 @@
 "diff.delta" = "gold"
 "diff.minus" = "red"
 
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.info".underline = { color = "blue", style = "curl" } 
+"diagnostic.hint".underline = { color = "green", style = "curl" } 
+"diagnostic.warning".underline = { color = "yellow", style = "curl" } 
+"diagnostic.error".underline = { color = "red", style = "curl" } 
+
 "info" = { fg = "blue", modifiers = ["bold"] }
 "hint" = { fg = "green", modifiers = ["bold"] }
 "warning" = { fg = "yellow", modifiers = ["bold"] }

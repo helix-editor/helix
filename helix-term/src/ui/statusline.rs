@@ -69,7 +69,9 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Left side of the status line.
 
-    let element_ids = &context.editor.config().statusline.left;
+    let config = context.editor.config();
+
+    let element_ids = &config.statusline.left;
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
@@ -84,7 +86,7 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Right side of the status line.
 
-    let element_ids = &context.editor.config().statusline.right;
+    let element_ids = &config.statusline.right;
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
@@ -102,7 +104,7 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Center of the status line.
 
-    let element_ids = &context.editor.config().statusline.center;
+    let element_ids = &config.statusline.center;
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
@@ -137,6 +139,7 @@ where
     match element_id {
         helix_view::editor::StatusLineElement::Mode => render_mode,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
+        helix_view::editor::StatusLineElement::FileBaseName => render_file_base_name,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
@@ -160,7 +163,8 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let visible = context.focused;
-    let modenames = &context.editor.config().statusline.mode;
+    let config = context.editor.config();
+    let modenames = &config.statusline.mode;
     write(
         context,
         format!(
@@ -176,7 +180,7 @@ where
                 "   "
             }
         ),
-        if visible && context.editor.config().color_modes {
+        if visible && config.color_modes {
             match context.editor.mode() {
                 Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
                 Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
@@ -412,6 +416,26 @@ where
         let path = rel_path
             .as_ref()
             .map(|p| p.to_string_lossy())
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+        format!(
+            " {}{} ",
+            path,
+            if context.doc.is_modified() { "[+]" } else { "" }
+        )
+    };
+
+    write(context, title, None);
+}
+
+fn render_file_base_name<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = {
+        let rel_path = context.doc.relative_path();
+        let path = rel_path
+            .as_ref()
+            .and_then(|p| p.as_path().file_name().map(|s| s.to_string_lossy()))
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
         format!(
             " {}{} ",

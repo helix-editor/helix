@@ -21,7 +21,7 @@
 "function.macro" = "aqua1"
 "function.builtin" = "yellow1"
 "tag" = "red1"
-"comment" = { fg = "gray1", modifiers = ["italic"]  }
+"comment" = { fg = "gray1", modifiers = ["italic"] }
 "constant" = { fg = "purple1" }
 "constant.builtin" = { fg = "purple1", modifiers = ["bold"] }
 "string" = "green1"
@@ -34,10 +34,10 @@
 "diff.delta" = "orange1"
 "diff.minus" = "red1"
 
-"warning" = { fg = "orange1", bg = "bg1" }
-"error" = { fg = "red1", bg = "bg1" }
-"info" = { fg = "aqua1", bg = "bg1" }
-"hint" = { fg = "blue1", bg = "bg1" }
+"warning" = "orange1"
+"error" = "red1"
+"info" = "aqua1"
+"hint" = "blue1"
 
 "ui.background" = { bg = "bg0" }
 "ui.linenr" = { fg = "bg4" }
@@ -54,6 +54,7 @@
 "ui.text" = { fg = "fg1" }
 "ui.text.focus" = { fg = "fg1" }
 "ui.selection" = { bg = "bg3", modifiers = ["reversed"] }
+"ui.selection.primary" = { bg = "bg4", modifiers = ["reversed"] }
 "ui.cursor.primary" = { modifiers = ["reversed"] }
 "ui.cursor.match" = { bg = "bg2" }
 "ui.menu" = { fg = "fg1", bg = "bg2" }
@@ -61,11 +62,15 @@
 "ui.virtual.whitespace" = "bg2"
 "ui.virtual.ruler" = { bg = "bg1" }
 
-"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { color = "orange1", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red1", style = "curl" } }
+"diagnostic.info" = { underline = { color = "aqua1", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "blue1", style = "curl" } }
 
 "markup.heading" = "aqua1"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "green1", modifiers = ["underlined"] }
 "markup.link.text" = "red1"
 "markup.raw" = "red1"

@@ -42,6 +42,10 @@ impl<T: Component> Popup<T> {
         }
     }
 
+    /// Set the anchor position next to which the popup should be drawn.
+    ///
+    /// Note that this is not the position of the top-left corner of the rendered popup itself,
+    /// but rather the screen-space position of the information to which the popup refers.
     pub fn position(mut self, pos: Option<Position>) -> Self {
         self.position = pos;
         self
@@ -51,6 +55,10 @@ impl<T: Component> Popup<T> {
         self.position
     }
 
+    /// Set the popup to prefer to render above or below the anchor position.
+    ///
+    /// This preference will be ignored if the viewport doesn't have enough space in the
+    /// chosen direction.
     pub fn position_bias(mut self, bias: Open) -> Self {
         self.position_bias = bias;
         self
@@ -78,6 +86,8 @@ impl<T: Component> Popup<T> {
         self
     }
 
+    /// Calculate the position where the popup should be rendered and return the coordinates of the
+    /// top left corner.
     pub fn get_rel_position(&mut self, viewport: Rect, cx: &Context) -> (u16, u16) {
         let position = self
             .position

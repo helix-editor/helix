@@ -1,31 +1,46 @@
-use crate::{editor::GutterType, graphics::Rect, Document, DocumentId, ViewId};
+use crate::{
+    align_view,
+    editor::{GutterConfig, GutterType},
+    graphics::Rect,
+    Align, Document, DocumentId, ViewId,
+};
+
 use helix_core::{
     pos_at_visual_coords, visual_coords_at_pos, Position, RopeSlice, Selection, Transaction,
 };
 
-use std::fmt;
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt,
+};
+
+const JUMP_LIST_CAPACITY: usize = 30;
 
 type Jump = (DocumentId, Selection);
 
 #[derive(Debug, Clone)]
 pub struct JumpList {
-    jumps: Vec<Jump>,
+    jumps: VecDeque<Jump>,
     current: usize,
 }
 
 impl JumpList {
     pub fn new(initial: Jump) -> Self {
-        Self {
-            jumps: vec![initial],
-            current: 0,
-        }
+        let mut jumps = VecDeque::with_capacity(JUMP_LIST_CAPACITY);
+        jumps.push_back(initial);
+        Self { jumps, current: 0 }
     }
 
     pub fn push(&mut self, jump: Jump) {
         self.jumps.truncate(self.current);
         // don't push duplicates
-        if self.jumps.last() != Some(&jump) {
-            self.jumps.push(jump);
+        if self.jumps.back() != Some(&jump) {
+            // If the jumplist is full, drop the oldest item.
+            while self.jumps.len() >= JUMP_LIST_CAPACITY {
+                self.jumps.pop_front();
+            }
+
+            self.jumps.push_back(jump);
             self.current = self.jumps.len();
         }
     }
@@ -57,8 +72,8 @@ impl JumpList {
         self.jumps.retain(|(other_id, _)| other_id != doc_id);
     }
 
-    pub fn get(&self) -> &[Jump] {
-        &self.jumps
+    pub fn iter(&self) -> impl Iterator<Item = &Jump> {
+        self.jumps.iter()
     }
 
     /// Applies a [`Transaction`] of changes to the jumplist.
@@ -94,8 +109,13 @@ pub struct View {
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objects
     pub object_selections: Vec<Selection>,
-    /// GutterTypes used to fetch Gutter (constructor) and width for rendering
-    gutters: Vec<GutterType>,
+    /// all gutter-related configuration settings, used primarily for gutter rendering
+    pub gutters: GutterConfig,
+    /// A mapping between documents and the last history revision the view was updated at.
+    /// Changes between documents and views are synced lazily when switching windows. This
+    /// mapping keeps track of the last applied history revision so that only new changes
+    /// are applied.
+    doc_revisions: HashMap<DocumentId, usize>,
 }
 
 impl fmt::Debug for View {
@@ -109,7 +129,7 @@ impl fmt::Debug for View {
 }
 
 impl View {
-    pub fn new(doc: DocumentId, gutter_types: Vec<crate::editor::GutterType>) -> Self {
+    pub fn new(doc: DocumentId, gutters: GutterConfig) -> Self {
         Self {
             id: ViewId::default(),
             doc,
@@ -119,7 +139,8 @@ impl View {
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
-            gutters: gutter_types,
+            gutters,
+            doc_revisions: HashMap::new(),
         }
     }
 
@@ -139,21 +160,15 @@ impl View {
     }
 
     pub fn gutters(&self) -> &[GutterType] {
-        &self.gutters
+        &self.gutters.layout
     }
 
     pub fn gutter_offset(&self, doc: &Document) -> u16 {
-        let mut offset = self
-            .gutters
+        self.gutters
+            .layout
             .iter()
             .map(|gutter| gutter.width(self, doc) as u16)
-            .sum();
-
-        if offset > 0 {
-            offset += 1
-        }
-
-        offset
+            .sum()
     }
 
     //
@@ -161,6 +176,15 @@ impl View {
         &self,
         doc: &Document,
         scrolloff: usize,
+    ) -> Option<(usize, usize)> {
+        self.offset_coords_to_in_view_center(doc, scrolloff, false)
+    }
+
+    pub fn offset_coords_to_in_view_center(
+        &self,
+        doc: &Document,
+        scrolloff: usize,
+        centering: bool,
     ) -> Option<(usize, usize)> {
         let cursor = doc
             .selection(self.id)
@@ -172,44 +196,66 @@ impl View {
 
         let inner_area = self.inner_area(doc);
         let last_line = (self.offset.row + inner_area.height as usize).saturating_sub(1);
-
-        // - 1 so we have at least one gap in the middle.
-        // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
-        // as we type
-        let scrolloff = scrolloff.min(inner_area.height.saturating_sub(1) as usize / 2);
-
         let last_col = self.offset.col + inner_area.width.saturating_sub(1) as usize;
 
-        let row = if line > last_line.saturating_sub(scrolloff) {
-            // scroll down
-            self.offset.row + line - (last_line.saturating_sub(scrolloff))
-        } else if line < self.offset.row + scrolloff {
-            // scroll up
-            line.saturating_sub(scrolloff)
-        } else {
-            self.offset.row
-        };
+        let new_offset = |scrolloff: usize| {
+            // - 1 so we have at least one gap in the middle.
+            // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
+            // as we type
+            let scrolloff = scrolloff.min(inner_area.height.saturating_sub(1) as usize / 2);
 
-        let col = if col > last_col.saturating_sub(scrolloff) {
-            // scroll right
-            self.offset.col + col - (last_col.saturating_sub(scrolloff))
-        } else if col < self.offset.col + scrolloff {
-            // scroll left
-            col.saturating_sub(scrolloff)
-        } else {
-            self.offset.col
+            let row = if line > last_line.saturating_sub(scrolloff) {
+                // scroll down
+                self.offset.row + line - (last_line.saturating_sub(scrolloff))
+            } else if line < self.offset.row + scrolloff {
+                // scroll up
+                line.saturating_sub(scrolloff)
+            } else {
+                self.offset.row
+            };
+
+            let col = if col > last_col.saturating_sub(scrolloff) {
+                // scroll right
+                self.offset.col + col - (last_col.saturating_sub(scrolloff))
+            } else if col < self.offset.col + scrolloff {
+                // scroll left
+                col.saturating_sub(scrolloff)
+            } else {
+                self.offset.col
+            };
+            (row, col)
         };
-        if row == self.offset.row && col == self.offset.col {
-            None
+        let current_offset = (self.offset.row, self.offset.col);
+        if centering {
+            // return None if cursor is out of view
+            let offset = new_offset(0);
+            (offset == current_offset).then(|| {
+                if scrolloff == 0 {
+                    offset
+                } else {
+                    new_offset(scrolloff)
+                }
+            })
         } else {
-            Some((row, col))
+            // return None if cursor is in (view - scrolloff)
+            let offset = new_offset(scrolloff);
+            (offset != current_offset).then(|| offset) // TODO: use 'then_some' when 1.62 <= MSRV
         }
     }
 
     pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
-        if let Some((row, col)) = self.offset_coords_to_in_view(doc, scrolloff) {
+        if let Some((row, col)) = self.offset_coords_to_in_view_center(doc, scrolloff, false) {
             self.offset.row = row;
             self.offset.col = col;
+        }
+    }
+
+    pub fn ensure_cursor_in_view_center(&mut self, doc: &Document, scrolloff: usize) {
+        if let Some((row, col)) = self.offset_coords_to_in_view_center(doc, scrolloff, true) {
+            self.offset.row = row;
+            self.offset.col = col;
+        } else {
+            align_view(doc, self, Align::Center);
         }
     }
 
@@ -341,11 +387,33 @@ impl View {
     // }
 
     /// Applies a [`Transaction`] to the view.
-    /// Instead of calling this function directly, use [crate::apply_transaction]
-    /// which applies a transaction to the [`Document`] and view together.
-    pub fn apply(&mut self, transaction: &Transaction, doc: &Document) -> bool {
+    pub fn apply(&mut self, transaction: &Transaction, doc: &mut Document) {
         self.jumps.apply(transaction, doc);
-        true
+        self.doc_revisions
+            .insert(doc.id(), doc.get_current_revision());
+    }
+
+    pub fn sync_changes(&mut self, doc: &mut Document) {
+        let latest_revision = doc.get_current_revision();
+        let current_revision = *self
+            .doc_revisions
+            .entry(doc.id())
+            .or_insert(latest_revision);
+
+        if current_revision == latest_revision {
+            return;
+        }
+
+        log::debug!(
+            "Syncing view {:?} between {} and {}",
+            self.id,
+            current_revision,
+            latest_revision
+        );
+
+        if let Some(transaction) = doc.history.get_mut().changes_since(current_revision) {
+            self.apply(&transaction, doc);
+        }
     }
 }
 
@@ -353,18 +421,19 @@ impl View {
 mod tests {
     use super::*;
     use helix_core::Rope;
-    const OFFSET: u16 = 4; // 1 diagnostic + 2 linenr (< 100 lines) + 1 gutter
-    const OFFSET_WITHOUT_LINE_NUMBERS: u16 = 2; // 1 diagnostic + 1 gutter
-                                                // const OFFSET: u16 = GUTTERS.iter().map(|(_, width)| *width as u16).sum();
+
+    // 1 diagnostic + 1 spacer + 3 linenr (< 1000 lines) + 1 spacer + 1 diff
+    const DEFAULT_GUTTER_OFFSET: u16 = 7;
+
+    // 1 diagnostics + 1 spacer + 1 gutter
+    const DEFAULT_GUTTER_OFFSET_ONLY_DIAGNOSTICS: u16 = 3;
+
     use crate::document::Document;
-    use crate::editor::GutterType;
+    use crate::editor::{GutterConfig, GutterLineNumbersConfig, GutterType};
 
     #[test]
     fn test_text_pos_at_screen_coords() {
-        let mut view = View::new(
-            DocumentId::default(),
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-        );
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let doc = Document::from(rope, None);
@@ -384,24 +453,24 @@ mod tests {
         assert_eq!(view.text_pos_at_screen_coords(&doc, 78, 41, 4), None);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 3, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 3, 4),
             Some(3)
         );
 
         assert_eq!(view.text_pos_at_screen_coords(&doc, 40, 80, 4), Some(3));
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET + 1, 4),
+            view.text_pos_at_screen_coords(&doc, 41, 40 + DEFAULT_GUTTER_OFFSET + 1, 4),
             Some(4)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET + 4, 4),
+            view.text_pos_at_screen_coords(&doc, 41, 40 + DEFAULT_GUTTER_OFFSET + 4, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET + 7, 4),
+            view.text_pos_at_screen_coords(&doc, 41, 40 + DEFAULT_GUTTER_OFFSET + 7, 4),
             Some(8)
         );
 
@@ -410,19 +479,36 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_without_line_numbers_gutter() {
-        let mut view = View::new(DocumentId::default(), vec![GutterType::Diagnostics]);
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig {
+                layout: vec![GutterType::Diagnostics],
+                line_numbers: GutterLineNumbersConfig::default(),
+            },
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let doc = Document::from(rope, None);
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 41, 40 + OFFSET_WITHOUT_LINE_NUMBERS + 1, 4),
+            view.text_pos_at_screen_coords(
+                &doc,
+                41,
+                40 + DEFAULT_GUTTER_OFFSET_ONLY_DIAGNOSTICS + 1,
+                4
+            ),
             Some(4)
         );
     }
 
     #[test]
     fn test_text_pos_at_screen_coords_without_any_gutters() {
-        let mut view = View::new(DocumentId::default(), vec![]);
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig {
+                layout: vec![],
+                line_numbers: GutterLineNumbersConfig::default(),
+            },
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let doc = Document::from(rope, None);
@@ -431,76 +517,70 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_cjk() {
-        let mut view = View::new(
-            DocumentId::default(),
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-        );
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
         let doc = Document::from(rope, None);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET, 4),
             Some(0)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 4, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 4, 4),
             Some(4)
         );
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 5, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 5, 4),
             Some(4)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 6, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 6, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 7, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 7, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 8, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 8, 4),
             Some(6)
         );
     }
 
     #[test]
     fn test_text_pos_at_screen_coords_graphemes() {
-        let mut view = View::new(
-            DocumentId::default(),
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-        );
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
         let doc = Document::from(rope, None);
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET, 4),
             Some(0)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 1, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 1, 4),
             Some(1)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 2, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 2, 4),
             Some(3)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 3, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 3, 4),
             Some(5)
         );
 
         assert_eq!(
-            view.text_pos_at_screen_coords(&doc, 40, 40 + OFFSET + 4, 4),
+            view.text_pos_at_screen_coords(&doc, 40, 40 + DEFAULT_GUTTER_OFFSET + 4, 4),
             Some(7)
         );
     }

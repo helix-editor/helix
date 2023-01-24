@@ -495,28 +495,53 @@ impl Selection {
 
     /// Normalizes a `Selection`.
     fn normalize(mut self) -> Self {
-        let primary = self.ranges[self.primary_index];
+        let mut primary = self.ranges[self.primary_index];
         self.ranges.sort_unstable_by_key(Range::from);
+
+        self.ranges.dedup_by(|curr_range, prev_range| {
+            if prev_range.overlaps(curr_range) {
+                let new_range = curr_range.merge(*prev_range);
+                if prev_range == &primary || curr_range == &primary {
+                    primary = new_range;
+                }
+                *prev_range = new_range;
+                true
+            } else {
+                false
+            }
+        });
+
         self.primary_index = self
             .ranges
             .iter()
             .position(|&range| range == primary)
             .unwrap();
 
-        let mut prev_i = 0;
-        for i in 1..self.ranges.len() {
-            if self.ranges[prev_i].overlaps(&self.ranges[i]) {
-                self.ranges[prev_i] = self.ranges[prev_i].merge(self.ranges[i]);
-            } else {
-                prev_i += 1;
-                self.ranges[prev_i] = self.ranges[i];
-            }
-            if i == self.primary_index {
-                self.primary_index = prev_i;
-            }
-        }
+        self
+    }
 
-        self.ranges.truncate(prev_i + 1);
+    // Merges all ranges that are consecutive
+    pub fn merge_consecutive_ranges(mut self) -> Self {
+        let mut primary = self.ranges[self.primary_index];
+
+        self.ranges.dedup_by(|curr_range, prev_range| {
+            if prev_range.to() == curr_range.from() {
+                let new_range = curr_range.merge(*prev_range);
+                if prev_range == &primary || curr_range == &primary {
+                    primary = new_range;
+                }
+                *prev_range = new_range;
+                true
+            } else {
+                false
+            }
+        });
+
+        self.primary_index = self
+            .ranges
+            .iter()
+            .position(|&range| range == primary)
+            .unwrap();
 
         self
     }
@@ -1132,6 +1157,52 @@ mod test {
             &["", "abcd", "efg", "rs", "xyz"]
         );
     }
+
+    #[test]
+    fn test_merge_consecutive_ranges() {
+        let selection = Selection::new(
+            smallvec![
+                Range::new(0, 1),
+                Range::new(1, 10),
+                Range::new(15, 20),
+                Range::new(25, 26),
+                Range::new(26, 30)
+            ],
+            4,
+        );
+
+        let result = selection.merge_consecutive_ranges();
+
+        assert_eq!(
+            result.ranges(),
+            &[Range::new(0, 10), Range::new(15, 20), Range::new(25, 30)]
+        );
+        assert_eq!(result.primary_index, 2);
+
+        let selection = Selection::new(smallvec![Range::new(0, 1)], 0);
+        let result = selection.merge_consecutive_ranges();
+
+        assert_eq!(result.ranges(), &[Range::new(0, 1)]);
+        assert_eq!(result.primary_index, 0);
+
+        let selection = Selection::new(
+            smallvec![
+                Range::new(0, 1),
+                Range::new(1, 5),
+                Range::new(5, 8),
+                Range::new(8, 10),
+                Range::new(10, 15),
+                Range::new(18, 25)
+            ],
+            3,
+        );
+
+        let result = selection.merge_consecutive_ranges();
+
+        assert_eq!(result.ranges(), &[Range::new(0, 15), Range::new(18, 25)]);
+        assert_eq!(result.primary_index, 0);
+    }
+
     #[test]
     fn test_selection_contains() {
         fn contains(a: Vec<(usize, usize)>, b: Vec<(usize, usize)>) -> bool {

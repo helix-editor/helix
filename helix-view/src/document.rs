@@ -3,6 +3,8 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::Range;
+use helix_vcs::{DiffHandle, DiffProviderRegistry};
+
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
@@ -24,7 +26,8 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
-use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
+use crate::editor::RedrawHandle;
+use crate::{DocumentId, Editor, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -133,6 +136,8 @@ pub struct Document {
 
     diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
+
+    diff_handle: Option<DiffHandle>,
 }
 
 use std::{fmt, mem};
@@ -371,6 +376,7 @@ impl Document {
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
+            diff_handle: None,
         }
     }
 
@@ -624,27 +630,36 @@ impl Document {
     }
 
     /// Reload the document from its path.
-    pub fn reload(&mut self, view: &mut View) -> Result<(), Error> {
+    pub fn reload(
+        &mut self,
+        view: &mut View,
+        provider_registry: &DiffProviderRegistry,
+        redraw_handle: RedrawHandle,
+    ) -> Result<(), Error> {
         let encoding = &self.encoding;
-        let path = self.path().filter(|path| path.exists());
+        let path = self
+            .path()
+            .filter(|path| path.exists())
+            .ok_or_else(|| anyhow!("can't find file to reload from"))?
+            .to_owned();
 
-        // If there is no path or the path no longer exists.
-        if path.is_none() {
-            bail!("can't find file to reload from");
-        }
-
-        let mut file = std::fs::File::open(path.unwrap())?;
+        let mut file = std::fs::File::open(&path)?;
         let (rope, ..) = from_reader(&mut file, Some(encoding))?;
 
         // Calculate the difference between the buffer and source text, and apply it.
         // This is not considered a modification of the contents of the file regardless
         // of the encoding.
         let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
-        apply_transaction(&transaction, self, view);
-        self.append_changes_to_history(view.id);
+        self.apply(&transaction, view.id);
+        self.append_changes_to_history(view);
         self.reset_modified();
 
         self.detect_indent_and_line_ending();
+
+        match provider_registry.get_diff_base(&path) {
+            Some(diff_base) => self.set_diff_base(diff_base, redraw_handle),
+            None => self.diff_handle = None,
+        }
 
         Ok(())
     }
@@ -787,6 +802,10 @@ impl Document {
 
         if !transaction.changes().is_empty() {
             self.version += 1;
+            // start computing the diff in parallel
+            if let Some(diff_handle) = &self.diff_handle {
+                diff_handle.update_document(self.text.clone(), false);
+            }
 
             // generate revert to savepoint
             if self.savepoint.is_some() {
@@ -833,9 +852,6 @@ impl Document {
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
-    /// Instead of calling this function directly, use [crate::apply_transaction]
-    /// to ensure that the transaction is applied to the appropriate [`View`] as
-    /// well.
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
@@ -861,7 +877,7 @@ impl Document {
         let mut history = self.history.take();
         let txn = if undo { history.undo() } else { history.redo() };
         let success = if let Some(txn) = txn {
-            self.apply_impl(txn, view.id) && view.apply(txn, self)
+            self.apply_impl(txn, view.id)
         } else {
             false
         };
@@ -870,6 +886,8 @@ impl Document {
         if success {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
+            // Sync with changes with the jumplist selections.
+            view.sync_changes(self);
         }
         success
     }
@@ -890,7 +908,7 @@ impl Document {
 
     pub fn restore(&mut self, view: &mut View) {
         if let Some(revert) = self.savepoint.take() {
-            apply_transaction(&revert, self, view);
+            self.apply(&revert, view.id);
         }
     }
 
@@ -902,13 +920,15 @@ impl Document {
         };
         let mut success = false;
         for txn in txns {
-            if self.apply_impl(&txn, view.id) && view.apply(&txn, self) {
+            if self.apply_impl(&txn, view.id) {
                 success = true;
             }
         }
         if success {
             // reset changeset to fix len
             self.changes = ChangeSet::new(self.text());
+            // Sync with changes with the jumplist selections.
+            view.sync_changes(self);
         }
         success
     }
@@ -924,7 +944,7 @@ impl Document {
     }
 
     /// Commit pending changes to history
-    pub fn append_changes_to_history(&mut self, view_id: ViewId) {
+    pub fn append_changes_to_history(&mut self, view: &mut View) {
         if self.changes.is_empty() {
             return;
         }
@@ -934,7 +954,7 @@ impl Document {
         // Instead of doing this messy merge we could always commit, and based on transaction
         // annotations either add a new layer or compose into the previous one.
         let transaction =
-            Transaction::from(changes).with_selection(self.selection(view_id).clone());
+            Transaction::from(changes).with_selection(self.selection(view.id).clone());
 
         // HAXX: we need to reconstruct the state as it was before the changes..
         let old_state = self.old_state.take().expect("no old_state available");
@@ -942,6 +962,9 @@ impl Document {
         let mut history = self.history.take();
         history.commit_revision(&transaction, &old_state);
         self.history.set(history);
+
+        // Update jumplist entries in the view.
+        view.apply(&transaction, self);
     }
 
     pub fn id(&self) -> DocumentId {
@@ -1037,6 +1060,23 @@ impl Document {
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
         let server = self.language_server.as_deref()?;
         server.is_initialized().then(|| server)
+    }
+
+    pub fn diff_handle(&self) -> Option<&DiffHandle> {
+        self.diff_handle.as_ref()
+    }
+
+    /// Intialize/updates the differ for this document with a new base.
+    pub fn set_diff_base(&mut self, diff_base: Vec<u8>, redraw_handle: RedrawHandle) {
+        if let Ok((diff_base, _)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
+            if let Some(differ) = &self.diff_handle {
+                differ.update_diff_base(diff_base);
+                return;
+            }
+            self.diff_handle = Some(DiffHandle::new(diff_base, self.text.clone(), redraw_handle))
+        } else {
+            self.diff_handle = None;
+        }
     }
 
     #[inline]

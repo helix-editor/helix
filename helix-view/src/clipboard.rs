@@ -136,7 +136,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     } else if env_var_is_set("TMUX") && binary_exists("tmux") {
         command_provider! {
             paste => "tmux", "save-buffer", "-";
-            copy => "tmux", "load-buffer", "-";
+            copy => "tmux", "load-buffer", "-w", "-";
         }
     } else {
         Box::new(provider::FallbackProvider::new())
@@ -276,12 +276,27 @@ pub mod provider {
                 let stdin = input.map(|_| Stdio::piped()).unwrap_or_else(Stdio::null);
                 let stdout = pipe_output.then(Stdio::piped).unwrap_or_else(Stdio::null);
 
-                let mut child = Command::new(self.prg)
+                let mut command: Command = Command::new(self.prg);
+
+                let mut command_mut: &mut Command = command
                     .args(self.args)
                     .stdin(stdin)
                     .stdout(stdout)
-                    .stderr(Stdio::null())
-                    .spawn()?;
+                    .stderr(Stdio::null());
+
+                // Fix for https://github.com/helix-editor/helix/issues/5424
+                if cfg!(unix) {
+                    use std::os::unix::process::CommandExt;
+
+                    unsafe {
+                        command_mut = command_mut.pre_exec(|| match libc::setsid() {
+                            -1 => Err(std::io::Error::last_os_error()),
+                            _ => Ok(()),
+                        });
+                    }
+                }
+
+                let mut child = command_mut.spawn()?;
 
                 if let Some(input) = input {
                     let mut stdin = child.stdin.take().context("stdin is missing")?;

@@ -17,7 +17,6 @@ use helix_core::{
     visual_coords_at_pos, LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    apply_transaction,
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
@@ -82,6 +81,7 @@ impl EditorView {
         let inner = view.inner_area(doc);
         let area = view.area;
         let theme = &editor.theme;
+        let config = editor.config();
 
         // DAP: Highlight current stack frame position
         let stack_frame = editor.debugger.as_ref().and_then(|debugger| {
@@ -117,10 +117,10 @@ impl EditorView {
             }
         }
 
-        if is_focused && editor.config().cursorline {
+        if is_focused && config.cursorline {
             Self::highlight_cursorline(doc, view, surface, theme);
         }
-        if is_focused && editor.config().cursorcolumn {
+        if is_focused && config.cursorcolumn {
             Self::highlight_cursorcolumn(doc, view, surface, theme);
         }
 
@@ -141,22 +141,14 @@ impl EditorView {
                     doc,
                     view,
                     theme,
-                    &editor.config().cursor_shape,
+                    &config.cursor_shape,
                 ),
             ))
         } else {
             Box::new(highlights)
         };
 
-        Self::render_text_highlights(
-            doc,
-            view.offset,
-            inner,
-            surface,
-            theme,
-            highlights,
-            &editor.config(),
-        );
+        Self::render_text_highlights(doc, view.offset, inner, surface, theme, highlights, &config);
         Self::render_gutter(editor, doc, view, view.area, surface, theme, is_focused);
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
@@ -176,7 +168,7 @@ impl EditorView {
             }
         }
 
-        self.render_diagnostics(doc, view, inner, surface, theme);
+        Self::render_diagnostics(doc, view, inner, surface, theme);
 
         let statusline_area = view
             .area
@@ -349,23 +341,29 @@ impl EditorView {
         let selection_scope = theme
             .find_scope_index("ui.selection")
             .expect("could not find `ui.selection` scope in the theme!");
+        let primary_selection_scope = theme
+            .find_scope_index("ui.selection.primary")
+            .unwrap_or(selection_scope);
         let base_cursor_scope = theme
             .find_scope_index("ui.cursor")
             .unwrap_or(selection_scope);
+        let base_primary_cursor_scope = theme
+            .find_scope_index("ui.cursor.primary")
+            .unwrap_or(base_cursor_scope);
 
         let cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index("ui.cursor.insert"),
             Mode::Select => theme.find_scope_index("ui.cursor.select"),
-            Mode::Normal => Some(base_cursor_scope),
+            Mode::Normal => theme.find_scope_index("ui.cursor.normal"),
         }
         .unwrap_or(base_cursor_scope);
 
-        let primary_cursor_scope = theme
-            .find_scope_index("ui.cursor.primary")
-            .unwrap_or(cursor_scope);
-        let primary_selection_scope = theme
-            .find_scope_index("ui.selection.primary")
-            .unwrap_or(selection_scope);
+        let primary_cursor_scope = match mode {
+            Mode::Insert => theme.find_scope_index("ui.cursor.primary.insert"),
+            Mode::Select => theme.find_scope_index("ui.cursor.primary.select"),
+            Mode::Normal => theme.find_scope_index("ui.cursor.primary.normal"),
+        }
+        .unwrap_or(base_primary_cursor_scope);
 
         let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         for (i, range) in selection.iter().enumerate() {
@@ -393,7 +391,14 @@ impl EditorView {
             if range.head > range.anchor {
                 // Standard case.
                 let cursor_start = prev_grapheme_boundary(text, range.head);
-                spans.push((selection_scope, range.anchor..cursor_start));
+                // non block cursors look like they exclude the cursor
+                let selection_end =
+                    if selection_is_primary && !cursor_is_block && mode != Mode::Insert {
+                        range.head
+                    } else {
+                        cursor_start
+                    };
+                spans.push((selection_scope, range.anchor..selection_end));
                 if !selection_is_primary || cursor_is_block {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
@@ -403,7 +408,16 @@ impl EditorView {
                 if !selection_is_primary || cursor_is_block {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
-                spans.push((selection_scope, cursor_end..range.anchor));
+                // non block cursors look like they exclude the cursor
+                let selection_start = if selection_is_primary
+                    && !cursor_is_block
+                    && !(mode == Mode::Insert && cursor_end == range.anchor)
+                {
+                    range.head
+                } else {
+                    cursor_end
+                };
+                spans.push((selection_scope, selection_start..range.anchor));
             }
         }
 
@@ -523,8 +537,8 @@ impl EditorView {
                     use helix_core::graphemes::{grapheme_width, RopeGraphemes};
 
                     for grapheme in RopeGraphemes::new(text) {
-                        let out_of_bounds = offset.col > (visual_x as usize)
-                            || (visual_x as usize) >= viewport.width as usize + offset.col;
+                        let out_of_bounds = offset.col > visual_x
+                            || visual_x >= viewport.width as usize + offset.col;
 
                         if LineEnding::from_rope_slice(&grapheme).is_some() {
                             if !out_of_bounds {
@@ -554,7 +568,7 @@ impl EditorView {
                             let (display_grapheme, width) = if grapheme == "\t" {
                                 is_whitespace = true;
                                 // make sure we display tab as appropriate amount of spaces
-                                let visual_tab_width = tab_width - (visual_x as usize % tab_width);
+                                let visual_tab_width = tab_width - (visual_x % tab_width);
                                 let grapheme_tab_width =
                                     helix_core::str_utils::char_to_byte_idx(&tab, visual_tab_width);
 
@@ -573,7 +587,7 @@ impl EditorView {
                                 (grapheme.as_ref(), width)
                             };
 
-                            let cut_off_start = offset.col.saturating_sub(visual_x as usize);
+                            let cut_off_start = offset.col.saturating_sub(visual_x);
 
                             if !out_of_bounds {
                                 // if we're offscreen just keep going until we hit a new line
@@ -590,7 +604,7 @@ impl EditorView {
                             } else if cut_off_start != 0 && cut_off_start < width {
                                 // partially on screen
                                 let rect = Rect::new(
-                                    viewport.x as u16,
+                                    viewport.x,
                                     viewport.y + line,
                                     (width - cut_off_start) as u16,
                                     1,
@@ -737,7 +751,7 @@ impl EditorView {
         let mut text = String::with_capacity(8);
 
         for gutter_type in view.gutters() {
-            let gutter = gutter_type.style(editor, doc, view, theme, is_focused);
+            let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
             let width = gutter_type.width(view, doc);
             text.reserve(width); // ensure there's enough space for the gutter
             for (i, line) in (view.offset.row..(last_line + 1)).enumerate() {
@@ -772,7 +786,6 @@ impl EditorView {
     }
 
     pub fn render_diagnostics(
-        &self,
         doc: &Document,
         view: &View,
         viewport: Rect,
@@ -1034,7 +1047,7 @@ impl EditorView {
                                         (shift_position(start), shift_position(end), t)
                                     }),
                                 );
-                                apply_transaction(&tx, doc, view);
+                                doc.apply(&tx, view.id);
                             }
                             InsertEvent::TriggerCompletion => {
                                 let (_, doc) = current!(cxt.editor);
@@ -1163,6 +1176,7 @@ impl EditorView {
                     }
 
                     editor.focus(view_id);
+                    editor.ensure_cursor_in_view(view_id);
 
                     return EventResult::Consumed(None);
                 }
@@ -1199,7 +1213,8 @@ impl EditorView {
                 let primary = selection.primary_mut();
                 *primary = primary.put_cursor(doc.text().slice(..), pos, true);
                 doc.set_selection(view.id, selection);
-
+                let view_id = view.id;
+                cxt.editor.ensure_cursor_in_view(view_id);
                 EventResult::Consumed(None)
             }
 
@@ -1221,6 +1236,7 @@ impl EditorView {
                 commands::scroll(cxt, offset, direction);
 
                 cxt.editor.tree.focus = current_view;
+                cxt.editor.ensure_cursor_in_view(current_view);
 
                 EventResult::Consumed(None)
             }
@@ -1327,7 +1343,7 @@ impl Component for EditorView {
                 // Store a history state if not in insert mode. Otherwise wait till we exit insert
                 // to include any edits to the paste in the history state.
                 if mode != Mode::Insert {
-                    doc.append_changes_to_history(view.id);
+                    doc.append_changes_to_history(view);
                 }
 
                 EventResult::Consumed(None)
@@ -1426,7 +1442,7 @@ impl Component for EditorView {
                     // Store a history state if not in insert mode. This also takes care of
                     // committing changes when leaving insert mode.
                     if mode != Mode::Insert {
-                        doc.append_changes_to_history(view.id);
+                        doc.append_changes_to_history(view);
                     }
                 }
 
