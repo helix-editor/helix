@@ -43,12 +43,12 @@ impl<'t> DocumentFormatter<'t> {
     }
 }
 
-fn softwrap_text(text: &str, char_pos: usize) -> String {
+fn softwrap_text(text: &str) -> String {
     DocumentFormatter::new_at_prev_checkpoint(
         text.into(),
         &TextFormat::new_test(true),
         &TextAnnotations::default(),
-        char_pos,
+        0,
     )
     .0
     .collect_to_str()
@@ -57,29 +57,26 @@ fn softwrap_text(text: &str, char_pos: usize) -> String {
 #[test]
 fn basic_softwrap() {
     assert_eq!(
-        softwrap_text(&"foo ".repeat(10), 0),
+        softwrap_text(&"foo ".repeat(10)),
         "foo foo foo foo \n.foo foo foo foo \n.foo foo  "
     );
     assert_eq!(
-        softwrap_text(&"fooo ".repeat(10), 0),
+        softwrap_text(&"fooo ".repeat(10)),
         "fooo fooo fooo \n.fooo fooo fooo \n.fooo fooo fooo \n.fooo  "
     );
 
     // check that we don't wrap unnecessarily
-    assert_eq!(
-        softwrap_text("\t\txxxx1xxxx2xx\n", 0),
-        "    xxxx1xxxx2xx \n "
-    );
+    assert_eq!(softwrap_text("\t\txxxx1xxxx2xx\n"), "    xxxx1xxxx2xx \n ");
 }
 
 #[test]
 fn softwrap_indentation() {
     assert_eq!(
-        softwrap_text("\t\tfoo1 foo2 foo3 foo4 foo5 foo6\n", 0),
+        softwrap_text("\t\tfoo1 foo2 foo3 foo4 foo5 foo6\n"),
         "    foo1 foo2 \n.....foo3 foo4 \n.....foo5 foo6 \n "
     );
     assert_eq!(
-        softwrap_text("\t\t\tfoo1 foo2 foo3 foo4 foo5 foo6\n", 0),
+        softwrap_text("\t\t\tfoo1 foo2 foo3 foo4 foo5 foo6\n"),
         "      foo1 foo2 \n.foo3 foo4 foo5 \n.foo6 \n "
     );
 }
@@ -87,19 +84,19 @@ fn softwrap_indentation() {
 #[test]
 fn long_word_softwrap() {
     assert_eq!(
-        softwrap_text("\t\txxxx1xxxx2xxxx3xxxx4xxxx5xxxx6xxxx7xxxx8xxxx9xxx\n", 0),
+        softwrap_text("\t\txxxx1xxxx2xxxx3xxxx4xxxx5xxxx6xxxx7xxxx8xxxx9xxx\n"),
         "    xxxx1xxxx2xxx\n.....x3xxxx4xxxx5\n.....xxxx6xxxx7xx\n.....xx8xxxx9xxx \n "
     );
     assert_eq!(
-        softwrap_text("xxxxxxxx1xxxx2xxx\n", 0),
+        softwrap_text("xxxxxxxx1xxxx2xxx\n"),
         "xxxxxxxx1xxxx2xxx\n. \n "
     );
     assert_eq!(
-        softwrap_text("\t\txxxx1xxxx 2xxxx3xxxx4xxxx5xxxx6xxxx7xxxx8xxxx9xxx\n", 0),
+        softwrap_text("\t\txxxx1xxxx 2xxxx3xxxx4xxxx5xxxx6xxxx7xxxx8xxxx9xxx\n"),
         "    xxxx1xxxx \n.....2xxxx3xxxx4x\n.....xxx5xxxx6xxx\n.....x7xxxx8xxxx9\n.....xxx \n "
     );
     assert_eq!(
-        softwrap_text("\t\txxxx1xxx 2xxxx3xxxx4xxxx5xxxx6xxxx7xxxx8xxxx9xxx\n", 0),
+        softwrap_text("\t\txxxx1xxx 2xxxx3xxxx4xxxx5xxxx6xxxx7xxxx8xxxx9xxx\n"),
         "    xxxx1xxx 2xxx\n.....x3xxxx4xxxx5\n.....xxxx6xxxx7xx\n.....xx8xxxx9xxx \n "
     );
 }
@@ -159,17 +156,12 @@ fn overlay() {
     );
 }
 
-fn annotate_text(
-    text: &str,
-    char_pos: usize,
-    softwrap: bool,
-    annotations: &[InlineAnnotation],
-) -> String {
+fn annotate_text(text: &str, softwrap: bool, annotations: &[InlineAnnotation]) -> String {
     DocumentFormatter::new_at_prev_checkpoint(
         text.into(),
         &TextFormat::new_test(softwrap),
         TextAnnotations::default().add_inline_annotations(annotations.into(), None),
-        char_pos,
+        0,
     )
     .0
     .collect_to_str()
@@ -180,7 +172,6 @@ fn annotation() {
     assert_eq!(
         annotate_text(
             "bar",
-            0,
             false,
             &[InlineAnnotation {
                 char_idx: 0,
@@ -192,7 +183,6 @@ fn annotation() {
     assert_eq!(
         annotate_text(
             &"foo ".repeat(10),
-            0,
             true,
             &[InlineAnnotation {
                 char_idx: 0,
