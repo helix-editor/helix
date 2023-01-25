@@ -6,7 +6,7 @@ use std::rc::Rc;
 use crate::syntax::Highlight;
 use crate::Tendril;
 
-/// An inline annotation is continuos text show
+/// An inline annotation is continuous text shown
 /// on the screen before the grapheme that starts at
 /// `char_idx`
 #[derive(Debug, Clone)]
@@ -15,7 +15,7 @@ pub struct InlineAnnotation {
     pub char_idx: usize,
 }
 
-/// Represents a *single Grapheme** that is part of the document
+/// Represents a **single Grapheme** that is part of the document
 /// that start at `char_idx` that will be replaced with
 /// a different `grapheme`.
 /// If `grapheme` contains multiple graphemes the text
@@ -78,10 +78,10 @@ pub struct Overlay {
 /// text lines. They cause `height` empty lines to be inserted
 /// below the document line that contains `anchor_char_idx`.
 ///
-/// These lines can be filled with text in the rendering code.
+/// These lines can be filled with text in the rendering code
 /// as their contents have no effect beyond visual appearance.
 ///
-/// To insert a line after a documet line simply set
+/// To insert a line after a document line simply set
 /// `anchor_char_idx` to `doc.line_to_char(line_idx)`
 #[derive(Debug, Clone)]
 pub struct LineAnnotation {

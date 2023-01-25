@@ -23,7 +23,7 @@ use crate::syntax::Highlight;
 use crate::text_annotations::TextAnnotations;
 use crate::{Position, RopeGraphemes, RopeSlice};
 
-/// TODO make Highlight a u32  to reduce the size of this enum to a sinlge word.
+/// TODO make Highlight a u32 to reduce the size of this enum to a single word.
 #[derive(Debug, Clone, Copy)]
 pub enum GraphemeSource {
     Document {
@@ -134,8 +134,8 @@ pub struct DocumentFormatter<'t> {
 
     // softwrap specific
     /// The indentation of the current line
-    /// Is set to `None` if the indentation level is not yet know
-    /// because no non-whitespace graphemes has been encountered yet
+    /// Is set to `None` if the indentation level is not yet known
+    /// because no non-whitespace graphemes have been encountered yet
     indent_level: Option<usize>,
     /// In case a long word needs to be split a single grapheme might need to be wrapped
     /// while the rest of the word stays on the same line
@@ -149,7 +149,7 @@ pub struct DocumentFormatter<'t> {
 impl<'t> DocumentFormatter<'t> {
     /// Creates a new formatter at the last block before `char_idx`.
     /// A block is a chunk which always ends with a linebreak.
-    /// This is usally just a normal line break.
+    /// This is usually just a normal line break.
     /// However very long lines are always wrapped at constant intervals that can be cheaply calculated
     /// to avoid pathological behaviour.
     pub fn new_at_prev_checkpoint(

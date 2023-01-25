@@ -64,8 +64,8 @@ impl<'a> Grapheme<'a> {
     }
 
     // TODO currently word boundaries are used for softwrapping.
-    // This works best for programming langauges and well for prose.
-    // This could however be improved in the future by consindering unicode
+    // This works best for programming languages and well for prose.
+    // This could however be improved in the future by considering unicode
     // character classes but
     pub fn is_word_boundary(&self) -> bool {
         !matches!(&self, Grapheme::Other { g,.. } if g.chars().all(char_is_word))
@@ -426,7 +426,7 @@ impl<'a> Iterator for RopeGraphemes<'a> {
     }
 }
 
-/// A highlight compressed Cow<'a, str> that holds
+/// A highly compressed Cow<'a, str> that holds
 /// atmost u31::MAX bytes and is readonly
 pub struct GraphemeStr<'a> {
     ptr: NonNull<u8>,

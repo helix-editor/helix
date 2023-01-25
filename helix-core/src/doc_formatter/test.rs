@@ -12,7 +12,7 @@ impl TextFormat {
             max_indent_retain: 4,
             wrap_indicator: ".".into(),
             wrap_indicator_highlight: None,
-            // use a prime number to allow linging up too often with repear
+            // use a prime number to allow lining up too often with repeat
             viewport_width: 17,
         }
     }
@@ -65,7 +65,7 @@ fn basic_softwrap() {
         "fooo fooo fooo \n.fooo fooo fooo \n.fooo fooo fooo \n.fooo  "
     );
 
-    // check that we don't wrap unecessarly
+    // check that we don't wrap unnecessarily
     assert_eq!(
         softwrap_text("\t\txxxx1xxxx2xx\n", 0),
         "    xxxx1xxxx2xx \n "
