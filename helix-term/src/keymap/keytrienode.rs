@@ -65,7 +65,7 @@ impl<'de> Visitor<'de> for KeyTrieNodeVisitor {
         S: serde::de::SeqAccess<'de>,
     {
         let mut commands = Vec::new();
-        while let Some(command) = seq.next_element::<&str>()? {
+        while let Some(command) = seq.next_element::<String>()? {
             commands.push(
                 command
                     .parse::<MappableCommand>()
