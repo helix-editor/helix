@@ -106,18 +106,23 @@ impl KeyTrie {
         }
 
         for (index, key_trie) in self.children.iter().enumerate() {
-            let description: &str = match key_trie {
+            let description: String = match key_trie {
                 KeyTrieNode::MappableCommand(ref command) => {
                     if command.name() == "no_op" {
                         continue;
                     }
-                    command.description()
+                    command.description().to_string()
                 }
-                KeyTrieNode::KeyTrie(ref key_trie) => &key_trie.description,
                 // FIX: default to a join of all command names
                 // NOTE: Giving same description for all sequences will place all sequence keyvents together.
                 // Regardless if the command sequence is different.
-                KeyTrieNode::CommandSequence(_) => "[Multiple commands]",
+                KeyTrieNode::CommandSequence(ref command_sequence) => command_sequence
+                    .iter()
+                    .map(|command| command.name().to_string())
+                    .collect::<Vec<_>>()
+                    .join(" → ")
+                    .clone(),
+                KeyTrieNode::KeyTrie(key_trie) => key_trie.description.clone(),
             };
             let key_event = key_event_order[index];
             match body
@@ -148,10 +153,11 @@ impl KeyTrie {
             body = keyevent_sort_infobox(body);
         }
 
-        let stringified_key_events_body: Vec<(String, &str)> = body
-            .iter()
-            .map(|(key_events, description)| (key_events.join(", "), *description))
-            .collect();
+        // TODO: create InfoboxBody collect
+        let mut stringified_key_events_body = Vec::with_capacity(body.len());
+        for (key_events, description) in body {
+            stringified_key_events_body.push((key_events.join(", "), description));
+        }
 
         Info::new(&self.description, &stringified_key_events_body)
     }
@@ -192,8 +198,8 @@ impl<'de> Deserialize<'de> for KeyTrie {
 }
 
 // (KeyEvents, Description)
-type InfoBoxRow<'a> = (Vec<String>, &'a str);
-type InfoBoxBody<'a> = Vec<InfoBoxRow<'a>>;
+type InfoBoxRow = (Vec<String>, String);
+type InfoBoxBody = Vec<InfoBoxRow>;
 /// Sorts by `ModifierKeyCode`, then by each `KeyCode` category, then by each `KeyEvent`.
 /// KeyCode::Char sorting is special in that lower-case and upper-case equivalents are
 /// placed together, and alphas are placed before the rest.
