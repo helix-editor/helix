@@ -147,8 +147,11 @@ impl Loader {
             .unwrap_or_default()
     }
 
-
-    fn find_remaining_path(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Option<PathBuf> {
+    fn find_remaining_path(
+        &self,
+        name: &str,
+        visited_paths: &mut HashSet<PathBuf>,
+    ) -> Option<PathBuf> {
         let filename = format!("{}.toml", name);
 
         self.theme_dirs.iter().find_map(|dir| {
