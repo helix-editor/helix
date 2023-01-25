@@ -451,9 +451,16 @@ impl MappableCommand {
 
 impl fmt::Debug for MappableCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("MappableCommand")
-            .field(&self.name())
-            .finish()
+        match self {
+            MappableCommand::Static { name, .. } => {
+                f.debug_tuple("MappableCommand").field(name).finish()
+            }
+            MappableCommand::Typable { name, args, .. } => f
+                .debug_tuple("MappableCommand")
+                .field(name)
+                .field(args)
+                .finish(),
+        }
     }
 }
 
@@ -508,12 +515,16 @@ impl PartialEq for MappableCommand {
         match (self, other) {
             (
                 MappableCommand::Typable {
-                    name: first_name, ..
+                    name: first_name,
+                    args: first_args,
+                    ..
                 },
                 MappableCommand::Typable {
-                    name: second_name, ..
+                    name: second_name,
+                    args: second_args,
+                    ..
                 },
-            ) => first_name == second_name,
+            ) => first_name == second_name && first_args == second_args,
             (
                 MappableCommand::Static {
                     name: first_name, ..
