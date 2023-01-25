@@ -1,6 +1,7 @@
-use anyhow::{bail, Result};
 use arc_swap::ArcSwap;
 use std::{path::Path, sync::Arc};
+
+use anyhow::{bail, Result};
 
 #[cfg(feature = "git")]
 pub use git::Git;
@@ -12,7 +13,7 @@ mod git;
 
 mod diff;
 
-pub use diff::{DiffHandle, Hunk};
+pub use diff::{DiffHandle, FileChange, Hunk};
 
 pub trait DiffProvider {
     /// Returns the data that a diff should be computed against
@@ -20,7 +21,10 @@ pub trait DiffProvider {
     /// The data is returned as raw byte without any decoding or encoding performed
     /// to ensure all file encodings are handled correctly.
     fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>>;
+
     fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>>;
+
+    fn get_changed_files(&self, cwd: &Path) -> Result<Vec<FileChange>>;
 }
 
 #[doc(hidden)]
@@ -32,6 +36,10 @@ impl DiffProvider for Dummy {
 
     fn get_current_head_name(&self, _file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
         bail!("helix was compiled without git support")
+    }
+
+    fn get_changed_files(&self, _cwd: &Path) -> Result<Vec<FileChange>> {
+        anyhow::bail!("dummy diff provider")
     }
 }
 
@@ -64,6 +72,13 @@ impl DiffProviderRegistry {
                     None
                 }
             })
+    }
+
+    pub fn get_changed_files(&self, cwd: &Path) -> Result<Vec<FileChange>> {
+        self.providers
+            .iter()
+            .find_map(|provider| provider.get_changed_files(cwd).ok())
+            .ok_or_else(|| anyhow::anyhow!("no diff provider returns success"))
     }
 }
 
