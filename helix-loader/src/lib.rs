@@ -25,10 +25,7 @@ pub fn log_file() -> PathBuf {
 
 // TODO: allow env var override
 pub fn cache_dir() -> PathBuf {
-    choose_base_strategy()
-        .expect("Unable to determine system base directory specification!")
-        .cache_dir()
-        .join("helix")
+    get_base_stategy().cache_dir().join("helix")
 }
 
 pub fn config_file() -> PathBuf {
@@ -43,10 +40,7 @@ pub fn config_file() -> PathBuf {
 
 // TODO: allow env var override
 pub fn user_config_dir() -> PathBuf {
-    choose_base_strategy()
-        .expect("Unable to determine system base directory specification!")
-        .config_dir()
-        .join("helix")
+    get_base_stategy().config_dir().join("helix")
 }
 
 /// Returns a non-existent path relative to the local executable if none are found.
@@ -105,11 +99,11 @@ pub fn setup_log_file(specified_file: Option<PathBuf>) {
 }
 
 /// Runtime directory location priority:
-/// 1. Sibling directory to `CARGO_MANIFEST_DIR`, given that environment variable is set. (Often done by cargo)
-// TODO: XDG_RUNTIME_DIR
-/// 2. Under user config directory, given that it exists.
-/// 3. `HELIX_RUNTIME`, given that the environment variable is set.
-/// 4. Under path to helix executable, always included. However, it might not exist.
+/// 1. Sibling directory to `$CARGO_MANIFEST_DIR`, if set. (Often done by cargo)
+/// 2. User data directory `$XDG_RUNTIME_DIR`/`%AppData%`, if it exists.
+/// 3. Under user config directory, given that it exists.
+/// 4. `$HELIX_RUNTIME`, if set.
+/// 5. Under path to helix executable, always included. However, it might not exist.
 fn set_runtime_dirs() -> Vec<PathBuf> {
     let mut runtime_dirs = Vec::new();
     const RUNTIME_DIR_NAME: &str = "runtime";
@@ -117,6 +111,11 @@ fn set_runtime_dirs() -> Vec<PathBuf> {
         let path = repo_paths::project_root().join(RUNTIME_DIR_NAME);
         log::debug!("runtime dir: {}", path.to_string_lossy());
         runtime_dirs.push(path);
+    }
+
+    let data_dir = get_base_stategy().data_dir();
+    if data_dir.exists() {
+        runtime_dirs.push(data_dir.join("helix").join(RUNTIME_DIR_NAME));
     }
 
     let conf_dir = user_config_dir().join(RUNTIME_DIR_NAME);
@@ -141,6 +140,10 @@ fn set_runtime_dirs() -> Vec<PathBuf> {
     );
 
     runtime_dirs
+}
+
+fn get_base_stategy() -> impl BaseStrategy {
+    choose_base_strategy().expect("Unable to determine system base directory specification!")
 }
 
 pub fn merged_config() -> Result<toml::Value, Error> {
