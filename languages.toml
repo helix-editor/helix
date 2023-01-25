@@ -1778,6 +1778,7 @@ auto-format = true
 comment-token = "//"
 language-server = { command = "cuelsp" }
 indent = { tab-width = 4, unit = "\t" }
+formatter = { command = "cue", args = ["fmt", "-"] }
 
 [[grammar]]
 name = "cue"
