@@ -42,25 +42,23 @@ fn display_paths() -> std::io::Result<()> {
     let rt_dirs = helix_loader::get_runtime_dirs();
     writeln!(
         stdout,
-        "Runtime directories: {}",
-        rt_dirs
-            .iter()
-            .map(|rt_dir| rt_dir.to_string_lossy())
-            .collect::<Vec<_>>()
-            .join(";")
+        "Runtime directories by order of priority:",
     )?;
 
     for rt_dir in rt_dirs {
+        write!(stdout, "- {};", rt_dir.display())?;
+
         if let Ok(path) = std::fs::read_link(&rt_dir) {
-            let msg = format!("Runtime directory is symlinked to {}", path.display());
-            writeln!(stdout, "{}", msg.yellow())?;
-        }
-        if !rt_dir.exists() {
-            writeln!(stdout, "{}", "Runtime directory does not exist.".red())?;
+            let msg = format!(" (symlinked to {})", path.display());
+            write!(stdout, "{}", msg.yellow())?;
         }
         if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
-            writeln!(stdout, "{}", "Runtime directory is empty.".red())?;
+            write!(stdout, "{}", " is empty.".yellow())?;
         }
+        if !rt_dir.exists() {
+            write!(stdout, "{}", " does not exist.".red())?;
+        }
+        writeln!(stdout)?;
     }
 
     Ok(())
