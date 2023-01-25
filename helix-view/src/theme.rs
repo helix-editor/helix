@@ -1,9 +1,10 @@
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
+    str,
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use helix_core::hashmap;
 use helix_loader::{merge_toml_values, repo_paths};
 use log::warn;
@@ -197,16 +198,18 @@ pub struct Theme {
 
 impl From<Value> for Theme {
     fn from(value: Value) -> Self {
-        let values: Result<HashMap<String, Value>> =
-            toml::from_str(&value.to_string()).context("Failed to load theme");
+        if let Value::Table(table) = value {
+            let (styles, scopes, highlights) = build_theme_values(table);
 
-        let (styles, scopes, highlights) = build_theme_values(values);
-
-        Self {
-            styles,
-            scopes,
-            highlights,
-            ..Default::default()
+            Self {
+                styles,
+                scopes,
+                highlights,
+                ..Default::default()
+            }
+        } else {
+            warn!("Expected theme TOML value to be a table, found {:?}", value);
+            Default::default()
         }
     }
 }
@@ -216,9 +219,9 @@ impl<'de> Deserialize<'de> for Theme {
     where
         D: Deserializer<'de>,
     {
-        let values = HashMap::<String, Value>::deserialize(deserializer)?;
+        let values = Map::<String, Value>::deserialize(deserializer)?;
 
-        let (styles, scopes, highlights) = build_theme_values(Ok(values));
+        let (styles, scopes, highlights) = build_theme_values(values);
 
         Ok(Self {
             styles,
@@ -230,39 +233,37 @@ impl<'de> Deserialize<'de> for Theme {
 }
 
 fn build_theme_values(
-    values: Result<HashMap<String, Value>>,
+    mut values: Map<String, Value>,
 ) -> (HashMap<String, Style>, Vec<String>, Vec<Style>) {
     let mut styles = HashMap::new();
     let mut scopes = Vec::new();
     let mut highlights = Vec::new();
 
-    if let Ok(mut colors) = values {
-        // TODO: alert user of parsing failures in editor
-        let palette = colors
-            .remove("palette")
-            .map(|value| {
-                ThemePalette::try_from(value).unwrap_or_else(|err| {
-                    warn!("{}", err);
-                    ThemePalette::default()
-                })
-            })
-            .unwrap_or_default();
-        // remove inherits from value to prevent errors
-        let _ = colors.remove("inherits");
-        styles.reserve(colors.len());
-        scopes.reserve(colors.len());
-        highlights.reserve(colors.len());
-        for (name, style_value) in colors {
-            let mut style = Style::default();
-            if let Err(err) = palette.parse_style(&mut style, style_value) {
+    // TODO: alert user of parsing failures in editor
+    let palette = values
+        .remove("palette")
+        .map(|value| {
+            ThemePalette::try_from(value).unwrap_or_else(|err| {
                 warn!("{}", err);
-            }
-
-            // these are used both as UI and as highlights
-            styles.insert(name.clone(), style);
-            scopes.push(name);
-            highlights.push(style);
+                ThemePalette::default()
+            })
+        })
+        .unwrap_or_default();
+    // remove inherits from value to prevent errors
+    let _ = values.remove("inherits");
+    styles.reserve(values.len());
+    scopes.reserve(values.len());
+    highlights.reserve(values.len());
+    for (name, style_value) in values {
+        let mut style = Style::default();
+        if let Err(err) = palette.parse_style(&mut style, style_value) {
+            warn!("{}", err);
         }
+
+        // these are used both as UI and as highlights
+        styles.insert(name.clone(), style);
+        scopes.push(name);
+        highlights.push(style);
     }
 
     (styles, scopes, highlights)
@@ -505,10 +506,8 @@ mod tests {
 
         let mut style = Style::default();
         let palette = ThemePalette::default();
-        if let Value::Table(entries) = table {
-            for (_name, value) in entries {
-                palette.parse_style(&mut style, value).unwrap();
-            }
+        for (_name, value) in table {
+            palette.parse_style(&mut style, value).unwrap();
         }
 
         assert_eq!(

@@ -283,6 +283,8 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
 
 #[cfg(test)]
 mod merge_toml_tests {
+    use std::str;
+
     use super::merge_toml_values;
     use toml::Value;
 
