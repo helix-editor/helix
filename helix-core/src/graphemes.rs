@@ -43,9 +43,7 @@ impl<'a> Grapheme<'a> {
         }
     }
 
-    /// Returns the approximate visual width of this grapheme,
-    /// This serves as a lower bound for the width for use during soft wrapping.
-    /// The actual displayed witdth might be position dependent and larger (primarly tabs)
+    /// Returns the a visual width of this grapheme,
     #[inline]
     pub fn width(&self) -> usize {
         match *self {
