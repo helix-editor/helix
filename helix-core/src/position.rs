@@ -75,7 +75,13 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
 /// Takes \t, double-width characters (CJK) into account as well as text
 /// not in the document in the future.
 /// See [`coords_at_pos`] for an "objective" one.
-#[deprecated]
+///
+/// This function should be used very rarely. Usually `visual_offset_from_anchor`
+/// or `visual_offset_from_block` is preferable. However when you want to compute the
+/// actual visual row/column in the text (not what is actually shown on screen)
+/// then you should use this function. For example aligning text should ignore virtual
+/// text and softwrap.
+#[deprecated = "Doesn't account for softwrap or decorations, use visual_offset_from_anchor instead"]
 pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Position {
     let line = text.char_to_line(pos);
 
@@ -102,6 +108,11 @@ pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Po
 /// actual line breaks but for very long lines
 /// softwrapping positions are estimated with an O(1) algorithm
 /// to ensure consistent performance for large lines (currently unimplemented)
+///
+/// Usualy you want to use `visual_offset_from_anchor` instead but this function
+/// can be useful (and faster) if
+/// * You already know the visual position of the block
+/// * You only care about the horizontal offset (column) and not the vertical offset (row)
 pub fn visual_offset_from_block(
     text: RopeSlice,
     anchor: usize,
@@ -214,7 +225,11 @@ pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending
 /// If the `column` coordinate is past the end of the given line, the
 /// line-end position (in this case, just before the line ending
 /// character) will be returned.
-#[deprecated]
+/// This function should be used very rarely. Usually `char_idx_at_visual_offset` is preferable.
+/// However when you want to compute a char position from the visual row/column in the text
+/// (not what is actually shown on screen) then you should use this function.
+/// For example aligning text should ignore virtual text and softwrap.
+#[deprecated = "Doesn't account for softwrap or decorations, use char_idx_at_visual_offset instead"]
 pub fn pos_at_visual_coords(text: RopeSlice, coords: Position, tab_width: usize) -> usize {
     let Position { mut row, col } = coords;
     row = row.min(text.len_lines() - 1);
