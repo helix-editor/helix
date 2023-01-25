@@ -146,6 +146,8 @@
   (keyword_commit)
   (keyword_rollback)
   (keyword_transaction)
+  (keyword_group_concat)
+  (keyword_separator)
 ] @keyword
 
 [
