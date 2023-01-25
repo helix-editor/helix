@@ -27,18 +27,17 @@ fn true_color() -> bool {
 }
 
 /// Function used for filtering dir entries in the various file pickers.
-///
-/// We always want to ignore the .git directory, otherwise if
-/// `ignore` is turned off, we end up with a lot of noise
-/// in our picker.
-/// We also ignore symlinks that point inside the current directory
-/// if `dedup_links` is enabled.
-fn filter_entry(entry: &DirEntry, root: &Path, dedup_links: bool) -> bool {
-    if entry.file_name() != ".git" {
+fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> bool {
+    // We always want to ignore the .git directory, otherwise if
+    // `ignore` is turned off, we end up with a lot of noise
+    // in our picker.
+    if entry.file_name() == ".git" {
         return false;
     }
 
-    if dedup_links && entry.path_is_symlink() {
+    // We also ignore symlinks that point inside the current directory
+    // if `dedup_links` is enabled.
+    if dedup_symlinks && entry.path_is_symlink() {
         return entry
             .path()
             .canonicalize()

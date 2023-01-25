@@ -45,7 +45,7 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
-    filter_entry,
+    filter_picker_entry,
     job::Callback,
     keymap::ReverseKeymap,
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
@@ -1928,7 +1928,9 @@ fn global_search(cx: &mut Context) {
                     .git_global(file_picker_config.git_global)
                     .git_exclude(file_picker_config.git_exclude)
                     .max_depth(file_picker_config.max_depth)
-                    .filter_entry(move |entry| filter_entry(entry, &absolute_root, dedup_symlinks))
+                    .filter_entry(move |entry| {
+                        filter_picker_entry(entry, &absolute_root, dedup_symlinks)
+                    })
                     .build_parallel()
                     .run(|| {
                         let mut searcher = searcher.clone();

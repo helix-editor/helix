@@ -14,7 +14,7 @@ mod statusline;
 mod text;
 
 use crate::compositor::{Component, Compositor};
-use crate::filter_entry;
+use crate::filter_picker_entry;
 use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
@@ -163,7 +163,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     let now = Instant::now();
 
-    let deadup_symlinks = config.file_picker.deduplicate_links;
+    let dedup_symlinks = config.file_picker.deduplicate_links;
     let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
 
     let mut walk_builder = WalkBuilder::new(&root);
@@ -176,7 +176,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         .git_global(config.file_picker.git_global)
         .git_exclude(config.file_picker.git_exclude)
         .max_depth(config.file_picker.max_depth)
-        .filter_entry(move |entry| filter_entry(entry, &absolute_root, deadup_symlinks));
+        .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
 
     // We want to exclude files that the editor can't handle yet
     let mut type_builder = TypesBuilder::new();
@@ -196,10 +196,10 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     let files = walk_builder.build().filter_map(|entry| {
         let entry = entry.ok()?;
         // This is faster than entry.path().is_dir() since it uses cached fs::Metadata fetched by ignore/walkdir
-        if !entry.file_type()?.is_file() {
-            return None;
+        if entry.file_type()?.is_file() {
+            return Some(entry.into_path());
         }
-        Some(entry.into_path())
+        None
     });
 
     // Cap the number of files if we aren't in a git project, preventing
