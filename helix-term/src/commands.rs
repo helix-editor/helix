@@ -482,11 +482,12 @@ impl std::str::FromStr for MappableCommand {
             let args = typable_command
                 .map(|s| s.to_owned())
                 .collect::<Vec<String>>();
+
             typed::TYPABLE_COMMAND_MAP
                 .get(name)
                 .map(|cmd| MappableCommand::Typable {
                     name: cmd.name.to_owned(),
-                    description: format!(":{} {:?}", cmd.name, args),
+                    description: format!(":{} {}", cmd.name, args.join(" ")),
                     args,
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
@@ -2475,14 +2476,12 @@ impl ui::menu::Item for MappableCommand {
     fn format(&self, command_list: &Self::Data) -> Row {
         match self {
             MappableCommand::Typable {
-                description: doc,
-                name,
-                ..
+                description, name, ..
             } => {
                 let mut row: Vec<Cell> = vec![
-                    Cell::from(&*name.as_str()),
+                    Cell::from(name.as_str()),
                     Cell::from(""),
-                    Cell::from(&*doc.as_str()),
+                    Cell::from(description.as_str()),
                 ];
                 match command_list.get(name as &String) {
                     Some(key_events) => {
