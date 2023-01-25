@@ -40,10 +40,7 @@ fn display_paths() -> std::io::Result<()> {
     writeln!(stdout, "Log file: {}", helix_loader::log_file().display())?;
 
     let rt_dirs = helix_loader::get_runtime_dirs();
-    writeln!(
-        stdout,
-        "Runtime directories by order of priority:",
-    )?;
+    writeln!(stdout, "Runtime directories by order of priority:",)?;
 
     for rt_dir in rt_dirs {
         write!(stdout, "- {};", rt_dir.display())?;
