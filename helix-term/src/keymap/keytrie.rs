@@ -90,9 +90,9 @@ impl KeyTrie {
         }
     }
 
-    // IMPROVEMENT: cache sorting and update cache only when config is updated
+    // IMPROVEMENT: cache contents and update cache only when config is updated
     /// Open an info box for a given KeyTrie
-    /// Shows the children as possible KeyEvents and thier associated description.
+    /// Shows the children as possible KeyEvents with thier associated description.
     pub fn infobox(&self, sort_infobox: bool) -> Info {
         let mut body: InfoBoxBody = Vec::with_capacity(self.children.len());
         let mut key_event_order = Vec::with_capacity(self.children.len());
@@ -113,9 +113,6 @@ impl KeyTrie {
                     }
                     command.description().to_string()
                 }
-                // FIX: default to a join of all command names
-                // NOTE: Giving same description for all sequences will place all sequence keyvents together.
-                // Regardless if the command sequence is different.
                 KeyTrieNode::CommandSequence(ref command_sequence) => command_sequence
                     .iter()
                     .map(|command| command.name().to_string())
@@ -153,7 +150,6 @@ impl KeyTrie {
             body = keyevent_sort_infobox(body);
         }
 
-        // TODO: create InfoboxBody collect
         let mut stringified_key_events_body = Vec::with_capacity(body.len());
         for (key_events, description) in body {
             stringified_key_events_body.push((key_events.join(", "), description));
@@ -197,7 +193,7 @@ impl<'de> Deserialize<'de> for KeyTrie {
     }
 }
 
-// (KeyEvents, Description)
+/// (KeyEvents as strings, Description)
 type InfoBoxRow = (Vec<String>, String);
 type InfoBoxBody = Vec<InfoBoxRow>;
 /// Sorts by `ModifierKeyCode`, then by each `KeyCode` category, then by each `KeyEvent`.
@@ -261,8 +257,6 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
                             y_index += 1;
                         }
 
-                        // TEMP: until drain_filter becomes stable. Migth also be worth implementing
-                        // FromIterator on InfoboxBody by then, last two for loops could then also be replaced by Iter::chain
                         let mut alphas = Vec::new();
                         let mut misc = Vec::new();
                         for infobox_row in infobox_rows {
