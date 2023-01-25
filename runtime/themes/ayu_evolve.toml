@@ -3,7 +3,7 @@ inherits = 'ayu_dark'
 "keyword.control" = "orange"
 "keyword.storage" = "yellow"
 "keyword.storage.modifier" = "magenta"
-"variable.other.member" = "bbbbbb"
+"variable.other.member" = "#gray"
 "variable" = "light_gray"
 "constructor" = "magenta"
 "type.builtin" = { fg = "blue", modifiers = ["italic"] }
@@ -17,6 +17,9 @@ inherits = 'ayu_dark'
 "diagnostic.hint" = { underline = { color = "vibrant_yellow", style = "curl" } }
 "info" = "white"
 "diagnostic.info" = { underline = { color = "white", style = "curl" } }
+
+"markup.raw.block" = { bg = "black" }
+"markup.raw.inline" = { bg = "black" }
 
 "ui.cursor" = { fg = "dark_gray", bg = "light_gray" }
 "ui.cursor.primary" = { fg = "dark_gray", bg = "orange" }
