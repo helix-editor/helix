@@ -1603,7 +1603,7 @@ scope = "source.v"
 file-types = ["v", "vv"]
 shebangs = ["v run"]
 roots = ["v.mod"]
-language-server = { command = "vls", args = [] }
+language-server = { command = "v", args = ["ls"] }
 auto-format = true
 comment-token = "//"
 indent = { tab-width = 4, unit = "\t" }

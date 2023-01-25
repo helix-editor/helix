@@ -1,5 +1,8 @@
-use super::{macros::keytrie, Keymap};
-use crate::key;
+use crate::{
+    commands::MappableCommand,
+    key,
+    keymap::{keytrie::KeyTrie, keytrienode::KeyTrieNode, macros::keytrie, Keymap},
+};
 use arc_swap::ArcSwap;
 use helix_core::hashmap;
 use helix_view::{document::Mode, input::KeyEvent};
@@ -81,4 +84,32 @@ fn command_list() {
         ]),
         "Mismatch"
     )
+}
+
+#[test]
+fn escaped_keymap() {
+    let parsed_keytrie: KeyTrie = toml::from_str(
+        r#"
+"+" = [
+    "select_all",
+    ":pipe sed -E 's/\\s+$//g'",
+]
+    "#,
+    )
+    .unwrap();
+
+    let command_sequence = KeyTrieNode::CommandSequence(vec![
+        MappableCommand::select_all,
+        MappableCommand::Typable {
+            name: "pipe".to_string(),
+            args: vec![
+                "sed".to_string(),
+                "-E".to_string(),
+                "'s/\\s+$//g'".to_string(),
+            ],
+            description: "".to_string(),
+        },
+    ]);
+
+    assert_eq!(parsed_keytrie.get_children()[0], command_sequence);
 }
