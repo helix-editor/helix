@@ -150,7 +150,7 @@ impl Loader {
 
     // Loads the theme data as `toml::Value` first from the user_dir then in default_dir
     fn load_toml(&self, path: PathBuf) -> Result<Value> {
-        let data = std::fs::read_to_string(&path)?;
+        let data = std::fs::read_to_string(path)?;
         let value = toml::from_str(&data)?;
 
         Ok(value)

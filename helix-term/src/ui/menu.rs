@@ -77,7 +77,7 @@ impl<T: Item> Menu<T> {
         Self {
             options,
             editor_data,
-            matcher: Box::new(Matcher::default()),
+            matcher: Box::default(),
             matches,
             cursor: None,
             widths: Vec::new(),
