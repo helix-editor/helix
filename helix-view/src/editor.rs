@@ -125,7 +125,7 @@ where
             S: serde::de::SeqAccess<'de>,
         {
             let mut gutters = Vec::new();
-            while let Some(gutter) = seq.next_element::<&str>()? {
+            while let Some(gutter) = seq.next_element::<String>()? {
                 gutters.push(
                     gutter
                         .parse::<GutterType>()
