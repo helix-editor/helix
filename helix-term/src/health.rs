@@ -262,8 +262,31 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
         lang.debugger.as_ref().map(|dap| dap.command.to_string()),
     )?;
 
+    probe_commands(
+        lang.formatter
+            .as_ref()
+            .map(|fmtcfg| fmtcfg.command.to_string()),
+    )?;
+
     for ts_feat in TsFeature::all() {
         probe_treesitter_feature(&lang_str, *ts_feat)?
+    }
+
+    Ok(())
+}
+
+/// Display any additional binaries that are configured as commands for the
+/// language.
+fn probe_commands(formatter_cmd: Option<String>) -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    if let Some(cmd) = formatter_cmd {
+        let path = match which::which(&cmd) {
+            Ok(path) => path.display().to_string().green(),
+            Err(_) => format!("'{}' not found in $PATH", cmd).red(),
+        };
+        writeln!(stdout, "Binary for formatter: {}", path)?;
     }
 
     Ok(())
