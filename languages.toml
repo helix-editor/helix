@@ -707,7 +707,8 @@ injection-regex = "ocaml"
 file-types = ["ml"]
 shebangs = []
 roots = []
-comment-token = "(**)"
+comment-token = "(*"
+comment-end-token = "*)"
 language-server = { command = "ocamllsp" }
 indent = { tab-width = 2, unit = "  " }
 
@@ -721,7 +722,8 @@ scope = "source.ocaml.interface"
 file-types = ["mli"]
 shebangs = []
 roots = []
-comment-token = "(**)"
+comment-token = "(*"
+comment-end-token = "*)"
 language-server = { command = "ocamllsp" }
 indent = { tab-width = 2, unit = "  " }
 
@@ -1870,6 +1872,7 @@ scope = "source.sml"
 injection-regex = "sml"
 file-types = ["sml"]
 comment-token = "(*"
+comment-end-token = "*)"
 roots = []
 
 [[grammar]]

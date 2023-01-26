@@ -4221,7 +4221,14 @@ fn toggle_comments(cx: &mut Context) {
         .language_config()
         .and_then(|lc| lc.comment_token.as_ref())
         .map(|tc| tc.as_ref());
-    let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id), token);
+
+    let end_token = doc
+        .language_config()
+        .and_then(|lc| lc.comment_end_token.as_ref())
+        .map(|tc| tc.as_ref());
+
+    let transaction =
+        comment::toggle_line_comments(doc.text(), doc.selection(view.id), token, end_token);
 
     doc.apply(&transaction, view.id);
     exit_select_mode(cx);

@@ -58,6 +58,7 @@ These configuration keys are available:
 | `auto-format`         | Whether to autoformat this language when saving               |
 | `diagnostic-severity` | Minimal severity of diagnostic for it to be displayed. (Allowed values: `Error`, `Warning`, `Info`, `Hint`) |
 | `comment-token`       | The token to use as a comment-token                           |
+| `comment-end-token`   | The token to use to end comments (in languages with no line comments) |
 | `indent`              | The indent to use. Has sub keys `unit` (the text inserted into the document when indenting; usually set to N spaces or `"\t"` for tabs) and `tab-width` (the number of spaces rendered for a tab) |
 | `language-server`     | The Language Server to run. See the Language Server configuration section below. |
 | `config`              | Language Server configuration                                 |

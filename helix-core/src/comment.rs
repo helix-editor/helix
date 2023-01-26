@@ -57,11 +57,18 @@ fn find_line_comment(
 }
 
 #[must_use]
-pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&str>) -> Transaction {
+pub fn toggle_line_comments(
+    doc: &Rope,
+    selection: &Selection,
+    token: Option<&str>,
+    end_token: Option<&str>,
+) -> Transaction {
     let text = doc.slice(..);
 
     let token = token.unwrap_or("//");
     let comment = Tendril::from(format!("{} ", token));
+
+    let end_comment = end_token.map(|t| Tendril::from(format!(" {}", t)));
 
     let mut lines: Vec<usize> = Vec::with_capacity(selection.len());
 
@@ -81,13 +88,20 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
 
     for line in to_change {
         let pos = text.line_to_char(line) + min;
+        let end_pos = pos + text.line(line).len_chars() - min - 1 /* skip \n*/;
 
         if !commented {
             // comment line
             changes.push((pos, pos, Some(comment.clone())));
+            if let Some(end_comment) = &end_comment {
+                changes.push((end_pos, end_pos, Some(end_comment.clone())));
+            }
         } else {
             // uncomment line
             changes.push((pos, pos + token.len() + margin, None));
+            if let Some(end_token) = &end_token {
+                changes.push((end_pos - end_token.len() - margin, end_pos, None));
+            }
         }
     }
 
@@ -112,14 +126,14 @@ mod test {
         assert_eq!(res, (false, vec![0, 2], 2, 0));
 
         // comment
-        let transaction = toggle_line_comments(&doc, &selection, None);
+        let transaction = toggle_line_comments(&doc, &selection, None, None);
         transaction.apply(&mut doc);
         selection = selection.map(transaction.changes());
 
         assert_eq!(doc, "  // 1\n\n  // 2\n  // 3");
 
         // uncomment
-        let transaction = toggle_line_comments(&doc, &selection, None);
+        let transaction = toggle_line_comments(&doc, &selection, None, None);
         transaction.apply(&mut doc);
         selection = selection.map(transaction.changes());
         assert_eq!(doc, "  1\n\n  2\n  3");
@@ -130,7 +144,7 @@ mod test {
         // reset the selection.
         selection = Selection::single(0, doc.len_chars() - 1);
 
-        let transaction = toggle_line_comments(&doc, &selection, None);
+        let transaction = toggle_line_comments(&doc, &selection, None, None);
         transaction.apply(&mut doc);
         selection = selection.map(transaction.changes());
         assert_eq!(doc, "  1\n\n  2\n  3");
@@ -141,12 +155,27 @@ mod test {
         // reset the selection.
         selection = Selection::single(0, doc.len_chars() - 1);
 
-        let transaction = toggle_line_comments(&doc, &selection, None);
+        let transaction = toggle_line_comments(&doc, &selection, None, None);
         transaction.apply(&mut doc);
         selection = selection.map(transaction.changes());
         assert_eq!(doc, "");
         assert!(selection.len() == 1); // to ignore the selection unused warning
 
         // TODO: account for uncommenting with uneven comment indentation
+
+        // comment and uncomment with end of comment tokens
+        doc = Rope::from("1 2\n 3\n");
+        selection = Selection::single(0, doc.len_chars() - 1);
+
+        let transaction = toggle_line_comments(&doc, &selection, Some("/*"), Some("*/"));
+        transaction.apply(&mut doc);
+        selection = selection.map(transaction.changes());
+        assert_eq!(doc, "/* 1 2 */\n/*  3 */\n");
+
+        let transaction = toggle_line_comments(&doc, &selection, Some("/*"), Some("*/"));
+        transaction.apply(&mut doc);
+        selection = selection.map(transaction.changes());
+        assert_eq!(doc, "1 2\n 3\n");
+        assert!(selection.len() == 1); // to ignore the selection unused warning
     }
 }
