@@ -2479,33 +2479,30 @@ fn expand_args<'a>(editor: &mut Editor, args: &'a str) -> Cow<'a, str> {
         let remaining = &caps[2];
         let end = find_first_open_right_braces(remaining);
         let exp = expand_args(editor, &remaining[..end]);
-        let next = expand_args(editor, remaining.get(end + 1..).unwrap_or(""));
-        let (_view, doc) = current_ref!(editor);
-        format!(
-            "{} {}",
-            match &caps[1] {
-                "val" => match exp.trim() {
-                    "filename" => doc.path().and_then(|p| p.to_str()).unwrap_or("").to_owned(),
-                    "dirname" => doc
-                        .path()
-                        .and_then(|p| p.parent())
-                        .and_then(|p| p.to_str())
-                        .unwrap_or("")
-                        .to_owned(),
-                    _ => "".into(),
-                },
-                "sh" => {
-                    let shell = &editor.config().shell;
-                    if let Ok((output, _)) = shell_impl(shell, &exp, None) {
-                        output.trim().into()
-                    } else {
-                        "".into()
-                    }
-                }
+        let doc = doc!(editor);
+        let rep = match &caps[1] {
+            "val" => match exp.trim() {
+                "filename" => doc.path().and_then(|p| p.to_str()).unwrap_or("").to_owned(),
+                "dirname" => doc
+                    .path()
+                    .and_then(|p| p.parent())
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("")
+                    .to_owned(),
                 _ => "".into(),
             },
-            next
-        )
+            "sh" => {
+                let shell = &editor.config().shell;
+                if let Ok((output, _)) = shell_impl(shell, &exp, None) {
+                    output.trim().into()
+                } else {
+                    "".into()
+                }
+            }
+            _ => "".into(),
+        };
+        let next = expand_args(editor, remaining.get(end + 1..).unwrap_or(""));
+        format!("{rep} {next}")
     })
 }
 
