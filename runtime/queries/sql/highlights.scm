@@ -42,22 +42,11 @@
   "."
 ] @punctuation.delimiter
 
-[
-  "*"
-  "+"
-  "-"
-  "/"
-  "%"
-  "^"
-  "||"  
-  "="
-  "<"
-  "<="
-  "!="
-  ">="
-  ">"
-  (bang)
-] @operator
+(binary_expression
+  operator: _ @operator)
+
+(unary_expression
+  operator: _ @operator)
 
 [
   (keyword_null)
