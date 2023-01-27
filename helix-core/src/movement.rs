@@ -9,7 +9,7 @@ use crate::{
         next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
         prev_grapheme_boundary,
     },
-    line_ending::rope_is_line_ending,
+    line_ending::{line_end_char_index, rope_is_line_ending},
     pos_at_visual_coords,
     syntax::LanguageConfiguration,
     textobject::TextObject,
@@ -48,6 +48,28 @@ pub fn move_horizontally(
     range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
 }
 
+pub fn move_horizontally_same_line(
+    slice: RopeSlice,
+    range: Range,
+    dir: Direction,
+    count: usize,
+    behaviour: Movement,
+    _: usize,
+) -> Range {
+    let pos = range.cursor(slice);
+    let new_pos = match dir {
+        Direction::Forward => nth_next_grapheme_boundary(slice, pos, count),
+        Direction::Backward => nth_prev_grapheme_boundary(slice, pos, count),
+    };
+
+    // only allow moves within the same line.
+    if slice.char_to_line(pos) == slice.char_to_line(new_pos) {
+        range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
+    } else {
+        range
+    }
+}
+
 pub fn move_vertically(
     slice: RopeSlice,
     range: Range,
@@ -77,6 +99,84 @@ pub fn move_vertically(
 
     let mut new_range = range.put_cursor(slice, new_pos, behaviour == Movement::Extend);
     new_range.horiz = Some(horiz);
+    new_range
+}
+
+/// Implements anchored vertical movement.
+///
+/// Anchored movement behaves differently depending on where the cursor is placed with
+/// regards to newlines.  If the cursor is currently on a newline, then moving up and
+/// down will place you again on the newline of that line.
+///
+/// If you are not on the newline, then moving up and down will move you to the same
+/// column except if that column is further to the left from where you are.  In that case
+/// it places you on the rightmost column that is not a newline.
+pub fn move_vertically_anchored(
+    slice: RopeSlice,
+    range: Range,
+    dir: Direction,
+    count: usize,
+    behaviour: Movement,
+    tab_width: usize,
+) -> Range {
+    let pos = range.cursor(slice);
+    let line = slice.char_to_line(pos);
+
+    // Compute the current position's 2d coordinates.
+    let Position { row, col } = visual_coords_at_pos(slice, pos, tab_width);
+    let horiz = range.horiz.unwrap_or(col as u32);
+
+    // if we are resting on a newline character and we did not just move
+    // across an empty line we are in newline movement mode.  To disambiugate these
+    // cases we take advantage that anchored movement sets the horizontal column
+    // to the largest possible integer.
+    let newline_move_mode = pos == line_end_char_index(&slice, line)
+        && (horiz == u32::MAX || !rope_is_line_ending(slice.line(line)));
+
+    // Compute the new position.
+    let new_row = match dir {
+        Direction::Forward => (row + count).min(slice.len_lines().saturating_sub(1)),
+        Direction::Backward => row.saturating_sub(count),
+    };
+
+    // if we are already on a newline character, we want to navigate to the
+    // newline character on the new line we moved to.
+    let (new_pos, new_horiz) = if newline_move_mode {
+        let new_pos = line_end_char_index(
+            &slice,
+            slice.char_to_line(pos_at_visual_coords(
+                slice,
+                Position::new(new_row, col),
+                tab_width,
+            )),
+        );
+
+        // when in newline_move_mode we set the horizontal column to the largest
+        // possible integer to be able to disambiugate movements across empty lines.
+        (new_pos, u32::MAX)
+
+    // otherwise move up and down like normal but ensure to never place the
+    // cursor on the newline character.
+    } else {
+        let new_col = col.max(horiz as usize);
+        let mut new_pos = pos_at_visual_coords(slice, Position::new(new_row, new_col), tab_width);
+
+        // Special-case to avoid moving to the end of the last non-empty line.
+        if behaviour == Movement::Extend && slice.line(new_row).len_chars() == 0 {
+            return range;
+        }
+
+        // Move away from the newline character.
+        let end_index = line_end_char_index(&slice, new_row);
+        if new_pos == end_index && !rope_is_line_ending(slice.line(new_row)) {
+            new_pos = prev_grapheme_boundary(slice, end_index);
+        }
+
+        (new_pos, horiz)
+    };
+
+    let mut new_range = range.put_cursor(slice, new_pos, behaviour == Movement::Extend);
+    new_range.horiz = Some(new_horiz);
     new_range
 }
 
