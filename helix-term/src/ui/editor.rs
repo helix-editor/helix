@@ -133,6 +133,13 @@ impl EditorView {
             highlights = Box::new(syntax::merge(highlights, overlay_highlights));
         }
 
+        if !view.search_matches.matches.is_empty() {
+            highlights = match view.get_search_matches(theme) {
+                Some(match_highlights) => Box::new(syntax::merge(highlights, match_highlights)),
+                None => highlights,
+            };
+        }
+
         for diagnostic in Self::doc_diagnostics_highlights(doc, theme) {
             // Most of the `diagnostic` Vecs are empty most of the time. Skipping
             // a merge for any empty Vec saves a significant amount of work.
@@ -1244,6 +1251,9 @@ impl Component for EditorView {
                 let (view, doc) = current!(cx.editor);
                 view.ensure_cursor_in_view(doc, config.scrolloff);
 
+                // document has been alterred, clear search_matches
+                view.search_matches.clear();
+
                 // Store a history state if not in insert mode. Otherwise wait till we exit insert
                 // to include any edits to the paste in the history state.
                 if mode != Mode::Insert {
@@ -1405,6 +1415,14 @@ impl Component for EditorView {
 
         if use_bufferline {
             Self::render_bufferline(cx.editor, area.with_height(1), surface);
+        }
+
+        {
+            let (view, doc) = current!(cx.editor);
+            if !doc.changes().is_empty() || doc.has_changed() {
+                // document has been alterred, clear search_matches
+                view.search_matches.clear();
+            }
         }
 
         for (view, is_focused) in cx.editor.tree.views() {

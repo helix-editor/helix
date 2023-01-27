@@ -1388,11 +1388,23 @@ impl Document {
         self.earlier_later_impl(view, uk, false)
     }
 
+    pub fn has_changed(&self) -> bool {
+        if self.changes.is_empty() {
+            return false;
+        }
+
+        let new_changeset = ChangeSet::new(self.text());
+        self.changes != new_changeset
+    }
+
     /// Commit pending changes to history
     pub fn append_changes_to_history(&mut self, view: &mut View) {
         if self.changes.is_empty() {
             return;
         }
+
+        // doc has changed, so clear search_matches highlights
+        view.search_matches.clear();
 
         let new_changeset = ChangeSet::new(self.text());
         let changes = std::mem::replace(&mut self.changes, new_changeset);
