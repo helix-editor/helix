@@ -130,7 +130,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     })
     .with_selection(test_case.in_selection.clone());
 
-    helix_view::apply_transaction(&transaction, doc, view);
+    doc.apply(&transaction, view.id);
 
     test_key_sequence(
         &mut app,
@@ -315,7 +315,7 @@ impl AppBuilder {
             .with_selection(selection);
 
             // replace the initial text with the input text
-            helix_view::apply_transaction(&trans, doc, view);
+            doc.apply(&trans, view.id);
         }
 
         Ok(app)

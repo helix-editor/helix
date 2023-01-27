@@ -75,6 +75,7 @@
 "markup.list" = { fg = "t4" }
 "markup.bold" = { fg = "t4" }
 "markup.italic" = { fg = "t4" }
+"markup.strikethrough" = { fg = "t4", modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "t4", modifiers = ["underlined"] }
 "markup.link.text" = { fg = "t4" }
 "markup.quote" = { fg = "t4" }

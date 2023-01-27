@@ -27,7 +27,7 @@ use helix_core::{
 };
 
 use crate::editor::RedrawHandle;
-use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
+use crate::{DocumentId, Editor, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -650,7 +650,7 @@ impl Document {
         // This is not considered a modification of the contents of the file regardless
         // of the encoding.
         let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
-        apply_transaction(&transaction, self, view);
+        self.apply(&transaction, view.id);
         self.append_changes_to_history(view);
         self.reset_modified();
 
@@ -852,9 +852,6 @@ impl Document {
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
-    /// Instead of calling this function directly, use [crate::apply_transaction]
-    /// to ensure that the transaction is applied to the appropriate [`View`] as
-    /// well.
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
@@ -911,7 +908,7 @@ impl Document {
 
     pub fn restore(&mut self, view: &mut View) {
         if let Some(revert) = self.savepoint.take() {
-            apply_transaction(&revert, self, view);
+            self.apply(&revert, view.id);
         }
     }
 
