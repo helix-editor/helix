@@ -363,14 +363,16 @@ impl Completion {
 
 impl Component for Completion {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
-        // let the Editor handle Esc instead
-        if let Event::Key(KeyEvent {
-            code: KeyCode::Esc, ..
-        }) = event
-        {
-            return EventResult::Ignored(None);
+        // Escape needs to get handled by the popup so that completions can
+        // be properly reverted and it needs to bubble up so that helix
+        // will go into normal mode.
+        let event_result = self.popup.handle_event(event, cx);
+        match event {
+            Event::Key(KeyEvent {
+                code: KeyCode::Esc, ..
+            }) => EventResult::Ignored(None),
+            _ => event_result,
         }
-        self.popup.handle_event(event, cx)
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
