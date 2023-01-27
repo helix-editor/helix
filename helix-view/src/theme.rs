@@ -72,7 +72,7 @@ impl Loader {
     fn load_theme(
         &self,
         name: &str,
-        base_them_name: &str,
+        base_theme_name: &str,
         only_default_dir: bool,
     ) -> Result<Value> {
         let path = self.path(name, only_default_dir);
@@ -94,8 +94,8 @@ impl Loader {
                 "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
                 _ => self.load_theme(
                     parent_theme_name,
-                    base_them_name,
-                    base_them_name == parent_theme_name,
+                    base_theme_name,
+                    base_theme_name == parent_theme_name,
                 )?,
             };
 
