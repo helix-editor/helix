@@ -104,7 +104,7 @@ impl Client {
             server_tx,
             request_counter: AtomicU64::new(0),
             capabilities: OnceCell::new(),
-            offset_encoding: OffsetEncoding::Utf8,
+            offset_encoding: OffsetEncoding::Utf16,
             config,
             req_timeout,
 
