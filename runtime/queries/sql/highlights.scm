@@ -56,10 +56,10 @@
   (keyword_false)
 ] @constant.builtin
 
-(literal) @string
-
 ((literal) @constant.numeric
   (#match? @constant.numeric "^(-?\d*\.?\d*)$"))
+
+(literal) @string
 
 [
   (keyword_select)
