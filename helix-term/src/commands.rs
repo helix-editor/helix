@@ -3888,7 +3888,7 @@ fn replace_with_count_converter(cx: &mut Context, converter: fn(usize) -> String
             }
         });
 
-    apply_transaction(&transaction, doc, view);
+    doc.apply(&transaction, view.id);
     exit_select_mode(cx);
 }
 
