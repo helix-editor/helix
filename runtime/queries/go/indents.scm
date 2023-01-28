@@ -17,6 +17,7 @@
   (type_switch_statement)
   (expression_switch_statement)
   (var_declaration)
+  (select_statement)
 ] @indent
 
 [
