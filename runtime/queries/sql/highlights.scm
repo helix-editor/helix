@@ -48,6 +48,8 @@
 (unary_expression
   operator: _ @operator)
 
+(all_fields) @special
+
 [
   (keyword_null)
   (keyword_true)
