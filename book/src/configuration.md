@@ -2,10 +2,10 @@
 
 To override global configuration parameters, create a `config.toml` file located in your config directory:
 
-* Linux and Mac: `~/.config/helix/config.toml`
-* Windows: `%AppData%\helix\config.toml`
+- Linux and Mac: `~/.config/helix/config.toml`
+- Windows: `%AppData%\helix\config.toml`
 
-> Hint: You can easily open the config file by typing `:config-open` within Helix normal mode.
+> 💡 You can easily open the config file by typing `:config-open` within Helix normal mode.
 
 Example config:
 
@@ -25,12 +25,10 @@ select = "underline"
 hidden = false
 ```
 
-You may also specify a file to use for configuration with the `-c` or
-`--config` CLI argument: `hx -c path/to/custom-config.toml`.
-
-It is also possible to trigger configuration file reloading by sending the `USR1`
-signal to the helix process, e.g. via `pkill -USR1 hx`. This is only supported 
-on unix operating systems.
+You can use a custom configuration file by specifying it with the `-c` or
+`--config` command line argument, for example `hx -c path/to/custom-config.toml`.
+Additionally, you can reload the configuration file by sending the USR1
+signal to the Helix process on Unix operating systems, such as by using the command `pkill -USR1 hx`.
 
 ## Editor
 
@@ -49,7 +47,7 @@ on unix operating systems.
 | `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `auto-format` | Enable automatic formatting on save. | `true` |
-| `auto-save` | Enable automatic saving on focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal. | `false` |
+| `auto-save` | Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal. | `false` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
 | `auto-info` | Whether to display infoboxes | `true` |
@@ -123,9 +121,11 @@ The following statusline elements can be configured:
 
 ### `[editor.cursor-shape]` Section
 
-Defines the shape of cursor in each mode. Note that due to limitations
-of the terminal environment, only the primary cursor can change shape.
+Defines the shape of cursor in each mode.
 Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
+
+> 💡Due to limitations of the terminal environment, only the primary cursor can
+> change shape.
 
 | Key      | Description                                | Default |
 | ---      | -----------                                | ------- |
@@ -139,11 +139,8 @@ Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
 
 ### `[editor.file-picker]` Section
 
-Sets options for file picker and global search. All but the last key listed in
-the default file-picker configuration below are IgnoreOptions: whether hidden
-files and files listed within ignore files are ignored by (not visible in) the
-helix file picker and global search. There is also one other key, `max-depth`
-available, which is not defined by default.
+Sets options for file picker and global search. Ignoring a file means it is
+not visible in the Helix file picker and global search.
 
 All git related options are only enabled in a git repository.
 
@@ -153,7 +150,7 @@ All git related options are only enabled in a git repository.
 |`parents` | Enables reading ignore files from parent directories. | true
 |`ignore` | Enables reading `.ignore` files. | true
 |`git-ignore` | Enables reading `.gitignore` files. | true
-|`git-global` | Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option. | true
+|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludefile` option. | true
 |`git-exclude` | Enables reading `.git/info/exclude` files. | true
 |`max-depth` | Set with an integer value for maximum depth to recurse. | Defaults to `None`.
 
@@ -207,7 +204,7 @@ Search specific options.
 
 | Key | Description | Default |
 |--|--|---------|
-| `smart-case` | Enable smart case regex searching (case insensitive unless pattern contains upper case characters) | `true` |
+| `smart-case` | Enable smart case regex searching (case-insensitive unless pattern contains upper case characters) | `true` |
 | `wrap-around`| Whether the search should wrap after depleting the matches | `true` |
 
 ### `[editor.whitespace]` Section
