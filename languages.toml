@@ -1434,7 +1434,7 @@ injection-regex = "sql"
 
 [[grammar]]
 name = "sql"
-source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "2743c7b5e710e6854d4e8c14c302548b436e2a1f" }
+source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "4fe05b2d81565ddb689d2f415e07afdacc515c52" }
 
 [[language]]
 name = "gdscript"
