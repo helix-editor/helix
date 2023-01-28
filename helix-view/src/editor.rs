@@ -74,6 +74,96 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct GutterConfig {
+    /// Gutter Layout
+    pub layout: Vec<GutterType>,
+    /// Options specific to the "line-numbers" gutter
+    pub line_numbers: GutterLineNumbersConfig,
+}
+
+impl Default for GutterConfig {
+    fn default() -> Self {
+        Self {
+            layout: vec![
+                GutterType::Diagnostics,
+                GutterType::Spacer,
+                GutterType::LineNumbers,
+                GutterType::Spacer,
+                GutterType::Diff,
+            ],
+            line_numbers: GutterLineNumbersConfig::default(),
+        }
+    }
+}
+
+impl From<Vec<GutterType>> for GutterConfig {
+    fn from(x: Vec<GutterType>) -> Self {
+        GutterConfig {
+            layout: x,
+            ..Default::default()
+        }
+    }
+}
+
+fn deserialize_gutter_seq_or_struct<'de, D>(deserializer: D) -> Result<GutterConfig, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct GutterVisitor;
+
+    impl<'de> serde::de::Visitor<'de> for GutterVisitor {
+        type Value = GutterConfig;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(
+                formatter,
+                "an array of gutter names or a detailed gutter configuration"
+            )
+        }
+
+        fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
+        where
+            S: serde::de::SeqAccess<'de>,
+        {
+            let mut gutters = Vec::new();
+            while let Some(gutter) = seq.next_element::<String>()? {
+                gutters.push(
+                    gutter
+                        .parse::<GutterType>()
+                        .map_err(serde::de::Error::custom)?,
+                )
+            }
+
+            Ok(gutters.into())
+        }
+
+        fn visit_map<M>(self, map: M) -> Result<Self::Value, M::Error>
+        where
+            M: serde::de::MapAccess<'de>,
+        {
+            let deserializer = serde::de::value::MapAccessDeserializer::new(map);
+            Deserialize::deserialize(deserializer)
+        }
+    }
+
+    deserializer.deserialize_any(GutterVisitor)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct GutterLineNumbersConfig {
+    /// Minimum number of characters to use for line number gutter. Defaults to 3.
+    pub min_width: usize,
+}
+
+impl Default for GutterLineNumbersConfig {
+    fn default() -> Self {
+        Self { min_width: 3 }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
     /// IgnoreOptions
     /// Enables ignoring hidden files.
@@ -133,8 +223,8 @@ pub struct Config {
     pub cursorline: bool,
     /// Highlight the columns cursors are currently on. Defaults to false.
     pub cursorcolumn: bool,
-    /// Gutters. Default ["diagnostics", "line-numbers"]
-    pub gutters: Vec<GutterType>,
+    #[serde(deserialize_with = "deserialize_gutter_seq_or_struct")]
+    pub gutters: GutterConfig,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
     /// Automatic insertion of pairs to parentheses, brackets,
@@ -207,10 +297,10 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
         });
     }
 
-    return Some(TerminalConfig {
+    Some(TerminalConfig {
         command: "conhost".to_string(),
         args: vec!["cmd".to_string(), "/C".to_string()],
-    });
+    })
 }
 
 #[cfg(not(any(windows, target_os = "wasm32")))]
@@ -607,13 +697,7 @@ impl Default for Config {
             line_number: LineNumber::Absolute,
             cursorline: false,
             cursorcolumn: false,
-            gutters: vec![
-                GutterType::Diagnostics,
-                GutterType::Spacer,
-                GutterType::LineNumbers,
-                GutterType::Spacer,
-                GutterType::Diff,
-            ],
+            gutters: GutterConfig::default(),
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
@@ -848,6 +932,7 @@ impl Editor {
         let config = self.config();
         self.auto_pairs = (&config.auto_pairs).into();
         self.reset_idle_timer();
+        self._refresh();
     }
 
     pub fn clear_idle_timer(&mut self) {
@@ -988,6 +1073,7 @@ impl Editor {
         for (view, _) in self.tree.views_mut() {
             let doc = doc_mut!(self, &view.doc);
             view.sync_changes(doc);
+            view.gutters = config.gutters.clone();
             view.ensure_cursor_in_view(doc, config.scrolloff)
         }
     }
@@ -1515,6 +1601,6 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 (line_start_pos, pos, None)
             });
-        crate::apply_transaction(&transaction, doc, view);
+        doc.apply(&transaction, view.id);
     }
 }

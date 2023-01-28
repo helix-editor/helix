@@ -80,6 +80,7 @@
 'markup.list' = { fg = 'pink' }
 'markup.bold' = { fg = 'foreground', modifiers = ['bold'] }
 'markup.italic' = { fg = 'foreground', modifiers = ['italic'] }
+'markup.strikethrough' = { fg = 'foreground', modifiers = ['crossed_out'] }
 'markup.link' = { fg = 'pink', modifiers = ['underlined'] }
 'markup.link.url' = { fg = 'slate', modifiers = ['underlined'] }
 'markup.quote' = { fg = 'green', modifiers = ['italic'] }

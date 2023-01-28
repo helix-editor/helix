@@ -84,6 +84,7 @@
 "markup.list" = "cyan"
 "markup.bold" = { fg = "blue", modifiers = ["bold"] }
 "markup.italic" = { fg = "yellow", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = "cyan"
 "markup.link.text" = "magenta"
 "markup.quote" = { fg = "yellow", modifiers = ["italic"] }

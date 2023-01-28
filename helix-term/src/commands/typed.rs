@@ -4,10 +4,7 @@ use crate::job::Job;
 
 use super::*;
 
-use helix_view::{
-    apply_transaction,
-    editor::{Action, CloseError, ConfigEvent},
-};
+use helix_view::editor::{Action, CloseError, ConfigEvent};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -480,7 +477,7 @@ fn set_line_ending(
             }
         }),
     );
-    apply_transaction(&transaction, doc, view);
+    doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
 
     Ok(())
@@ -927,7 +924,7 @@ fn replace_selections_with_clipboard_impl(
                 (range.from(), range.to(), Some(contents.as_str().into()))
             });
 
-            apply_transaction(&transaction, doc, view);
+            doc.apply(&transaction, view.id);
             doc.append_changes_to_history(view);
             Ok(())
         }
@@ -1598,7 +1595,7 @@ fn sort_impl(
             .map(|(s, fragment)| (s.from(), s.to(), Some(fragment))),
     );
 
-    apply_transaction(&transaction, doc, view);
+    doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
 
     Ok(())
@@ -1642,7 +1639,7 @@ fn reflow(
         (range.from(), range.to(), Some(reflowed_text))
     });
 
-    apply_transaction(&transaction, doc, view);
+    doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
 

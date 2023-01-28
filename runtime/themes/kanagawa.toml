@@ -97,6 +97,7 @@ hint = "dragonBlue"
 "markup.list" = "oniViolet"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "springBlue", modifiers = ["underlined"] }
 "markup.link.text" = "crystalBlue"
 "markup.quote" = "seaFoam"

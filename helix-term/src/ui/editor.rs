@@ -17,7 +17,6 @@ use helix_core::{
     visual_coords_at_pos, LineEnding, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    apply_transaction,
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
@@ -1048,7 +1047,7 @@ impl EditorView {
                                         (shift_position(start), shift_position(end), t)
                                     }),
                                 );
-                                apply_transaction(&tx, doc, view);
+                                doc.apply(&tx, view.id);
                             }
                             InsertEvent::TriggerCompletion => {
                                 let (_, doc) = current!(cxt.editor);

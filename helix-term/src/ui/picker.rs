@@ -431,7 +431,7 @@ impl<T: Item> Picker<T> {
         let mut picker = Self {
             options,
             editor_data,
-            matcher: Box::new(Matcher::default()),
+            matcher: Box::default(),
             matches: Vec::new(),
             cursor: 0,
             prompt,
