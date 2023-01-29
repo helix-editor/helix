@@ -1527,6 +1527,11 @@ fn half_page_down(cx: &mut Context) {
 }
 
 #[allow(deprecated)]
+// currently uses the deprected `visual_coords_at_pos`/`pos_at_visual_coords` functions
+// as this function ignores softwrapping (and virtual text) and instead only cares
+// about "text visual position"
+//
+// TODO: implement a variant of that uses visual lines and respects virtual text
 fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
     use helix_core::{pos_at_visual_coords, visual_coords_at_pos};
 
