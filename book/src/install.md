@@ -1,7 +1,6 @@
 # Installing Helix
 
 <!--toc:start-->
-
 - [Installing Helix](#installing-helix)
   - [Using the Pre-built Binaries](#using-the-pre-built-binaries)
   - [Installing Helix on Linux through the Official Package Manager](#installing-helix-on-linux-through-the-official-package-manager)
@@ -33,7 +32,7 @@ line.
 ## Installing Helix on Linux through the Official Package Manager
 
 If your Linux distribution has Helix available through its official package
-manager, install it through that. The following list shows availability
+manager, install it through that. The following shows availability
 throughout the Linux ecosystem:
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
@@ -51,8 +50,7 @@ Helix is available for the following versions of Ubuntu:
 - 22.04 LTS (Jammy Jellyfish)
 - 22.10 (Kinetic Kudu)
 
-Via
-[Maveonair's PPA](https://launchpad.net/~maveonair/+archive/ubuntu/helix-editor):
+Via [Maveonair's PPA](https://launchpad.net/~maveonair/+archive/ubuntu/helix-editor)
 
 ```sh
 sudo add-apt-repository ppa:maveonair/helix-editor
@@ -97,8 +95,8 @@ brew install helix
 
 ## Installing Helix on Windows
 
-Install on Windows using [Scoop](https://scoop.sh/),
-[Chocolatey](https://chocolatey.org/) or [MSYS2](https://msys2.org/).
+Install on Windows using [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
+or [MSYS2](https://msys2.org/).
 
 **Scoop:**
 
@@ -120,7 +118,7 @@ For 64-bit Windows 8.1 or above:
 pacman -S mingw-w64-ucrt-x86_64-helix
 ```
 
-## Building from Source
+2. Compile Helix:
 
 1. Clone the repository:
 
@@ -139,7 +137,14 @@ This command will create the `hx` executable and construct the tree-sitter
 grammars in the `runtime` folder, or in the folder specified in `HELIX_RUNTIME`
 (as described below).
 
-3.  Configure Helix's runtime files
+> 💡 If you are using the musl-libc instead of glibc the following environment variable must be set during the build
+> to ensure tree sitter grammars can be loaded correctly:
+>
+> ```sh
+> RUSTFLAGS="-C target-feature=-crt-static"
+> ```
+
+3. Configure Helix's runtime files
 
 **IMPORTANT**: The runtime files must be accessible to the newly created binary.
 They are currently located in the source code `runtime` directory. To make them
@@ -162,7 +167,7 @@ Either,
 
 Or,
 
-2. Create a symlink in `~/.config/helix/` that links to the source code
+2. Create a symlink in `~/.config/helix` that links to the source code
    directory.
 
    ```sh
@@ -174,7 +179,7 @@ And optionally:
 3. Configure the Desktop Shortcut
 
 If your desktop environment supports the
-[XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html),
+[XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html)
 you can configure Helix to show up in the application menu by copying the
 provided `.desktop` and icon files to their correct folders:
 
@@ -198,7 +203,7 @@ Either,
 1. Set the `HELIX_RUNTIME` environment variable on your system to tell Helix
    where to find the runtime files.
 
-   You can either do this using the Windows settings (search for
+   You can either do this using the Windows setting (search for
    `Edit environment variables for your account`) or use the `setx` command in
    Cmd:
 

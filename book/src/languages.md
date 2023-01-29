@@ -8,7 +8,7 @@ Language-specific settings and settings for language servers are configured in
 There are three possible locations for a `languages.toml` file:
 
 1. In the Helix source code, this lives in the
-   [Helix repository](https://github.com/helix-editor/helix/blob/master/languages.toml).
+   [Helix repository](https://github.com/helix-editor/helix/blob/master/languages.toml)
    It provides the default configurations for languages and language servers.
 
 2. In your [configuration directory](./configuration.md). This overrides values
@@ -67,8 +67,8 @@ These configuration keys are available:
 
 ### File-type detection and the `file-types` key
 
-Helix determines which language configuration to use based on the `file-types`
-key from the above section. `file-types` is a list of strings or tables, for
+Helix determines which language configuration to use based on the `file-types` key
+from the above section. `file-types` is a list of strings or tables, for
 example:
 
 ```toml

@@ -50,10 +50,3 @@ below.
   grammars.
 - If a parser is causing a segfault or you want to remove it, make sure to
   remove the compiled parser located at `runtime/grammar/<name>.so`.
-
-[language configuration section]: ../languages.md
-[neovim-query-precedence]:
-  https://github.com/helix-editor/helix/pull/1170#issuecomment-997294090
-[install-lsp-wiki]:
-  https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers
-[lang-support]: ../lang-support.md

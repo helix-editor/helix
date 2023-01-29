@@ -31,6 +31,7 @@
 "markup.list" = "bright3"
 "markup.bold" = { fg = "foreground", modifiers = ["bold"] }
 "markup.italic" = { fg = "bright0", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "bright6", modifiers = ["underlined"] }
 "markup.link.text" = "bright2"
 "markup.link.label" = { fg = "regular2", modifiers = ["bold"] }

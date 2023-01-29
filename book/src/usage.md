@@ -1,7 +1,6 @@
 # Using Helix
 
 <!--toc:start-->
-
 - [Using Helix](#using-helix)
   - [Registers](#registers)
     - [User-defined Registers](#user-defined-registers)
@@ -34,8 +33,7 @@ example:
 - `"ay` - Yank the current selection to register `a`.
 - `"op` - Paste the text in register `o` after the selection.
 
-If a register is selected before invoking a change or delete command, the
-selection will be stored in the register and the action will be carried out:
+If a register is selected before invoking a change or delete command, the selection will be stored in the register and the action will be carried out:
 
 - `"hc` - Store the selection in register `h` and then change it (delete and
   enter insert mode).
@@ -50,19 +48,15 @@ selection will be stored in the register and the action will be carried out:
 | `"`                | Last yanked text      |
 | `_`                | Black hole            |
 
-The system clipboard is not directly supported by a built-in register. Instead,
-special commands and keybindings are provided. Refer to the
+The system clipboard is not directly supported by a built-in register. Instead, special commands and keybindings are provided. Refer to the
 [key map](keymap.md#space-mode) for more details.
 
-The black hole register is a no-op register, meaning that no data will be read
-or written to it.
+The black hole register is a no-op register, meaning that no data will be read or written to it.
 
 ## Surround
 
-Helix includes built-in functionality similar to
-[vim-surround](https://github.com/tpope/vim-surround). The key mappings for this
-functionality have been inspired by
-[vim-sandwich](https://github.com/machakann/vim-sandwich).
+Helix includes built-in functionality similar to [vim-surround](https://github.com/tpope/vim-surround).
+The keymappings have been inspired from [vim-sandwich](https://github.com/machakann/vim-sandwich):
 
 ![Surround demo](https://user-images.githubusercontent.com/23398472/122865801-97073180-d344-11eb-8142-8f43809982c6.gif)
 
@@ -74,8 +68,7 @@ functionality have been inspired by
 
 You can use counts to act on outer pairs.
 
-Surround can also act on multiple selections. For example, to change every
-occurrence of `(use)` to `[use]`:
+Surround can also act on multiple selections. For example, to change every occurrence of `(use)` to `[use]`:
 
 1. `%` to select the whole file
 2. `s` to split the selections on a search term
@@ -86,9 +79,9 @@ Multiple characters are currently not supported, but planned for future release.
 
 ## Moving the Primary Selection with Syntax-tree Motions
 
-`Alt-p`, `Alt-o`, `Alt-i`, and `Alt-n` (or `Alt` and arrow keys) allow you to
-move the primary selection according to its location in the syntax tree. For
-example, many languages have the following syntax for function calls:
+`Alt-p`, `Alt-o`, `Alt-i`, and `Alt-n` (or `Alt` and arrow keys) allow you to move the primary
+selection according to its location in the syntax tree. For example, many languages have the
+following syntax for function calls:
 
 ```js
 func(arg1, arg2, arg3);
@@ -129,7 +122,10 @@ If you have a selection that wraps `arg1` (see the tree above), and you use
 Alt-n, it will select the next sibling in the syntax tree: `arg2`.
 
 ```js
-func([arg1], arg2, arg3) > func(arg1, [arg2], arg3);
+// before
+func([arg1], arg2, arg3)
+// after
+func(arg1, [arg2], arg3);
 ```
 
 Similarly, Alt-o will expand the selection to the parent node, in this case, the
@@ -173,24 +169,25 @@ function or block of code.
 | `t`                    | Test                     |
 | `g`                    | Change                   |
 
-> 💡`f`, `c`, etc. need a tree-sitter grammar active for the current document
-> and a special tree-sitter query file to work properly. [Only some
-> grammars][lang-support] currently have the query file implemented.
-> Contributions are welcome!
+> 💡 `f`, `c`, etc need a tree-sitter grammar active for the current
+document and a special tree-sitter query file to work properly. [Only
+some grammars][lang-support] currently have the query file implemented.
+Contributions are welcome!
 
-## Navigating Using Tree-sitter Textobjects
+## Navigating Using Tree-sitter Textobject
 
 Navigating between functions, classes, parameters, and other elements is
-possible using tree-sitter and Textobject queries. For example, to move to the
-next function use `]f`, to move to previous class use `[c`, and so on.
+possible using tree-sitter and Textobject queries. For
+example to move to the next function use `]f`, to move to previous
+class use `[c`, and so on.
 
 ![tree-sitter-nav-demo][tree-sitter-nav-demo]
 
-For the full reference see the [unimpaired][unimpaired-keybinds] section of the
-key bind documentation.
+For the full reference see the [unimpaired][unimpaired-keybinds] section of the key bind
+documentation.
 
-> 💡 This feature relies on tree-sitter Textobjects and requires the
-> corresponding query file to work properly.
+> 💡 This feature relies on tree-sitter Textobjects
+> and requires the corresponding query file to work properly.
 
 [lang-support]: ./lang-support.md
 [unimpaired-keybinds]: ./keymap.md#unimpaired
