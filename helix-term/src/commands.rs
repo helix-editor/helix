@@ -534,20 +534,10 @@ impl PartialEq for MappableCommand {
 
 fn no_op(_cx: &mut Context) {}
 
-fn move_impl(
-    cx: &mut Context,
-    move_fn: fn(
-        RopeSlice,
-        Range,
-        Direction,
-        usize,
-        Movement,
-        &TextFormat,
-        &mut TextAnnotations,
-    ) -> Range,
-    dir: Direction,
-    behaviour: Movement,
-) {
+type MoveFn =
+    fn(RopeSlice, Range, Direction, usize, Movement, &TextFormat, &mut TextAnnotations) -> Range;
+
+fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movement) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
