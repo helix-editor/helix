@@ -633,7 +633,7 @@ impl Document {
     pub fn reload(
         &mut self,
         view: &mut View,
-        provider_registry: &DiffProviderRegistry,
+        provider_registry: &mut DiffProviderRegistry,
         redraw_handle: RedrawHandle,
     ) -> Result<(), Error> {
         let encoding = &self.encoding;
@@ -656,8 +656,8 @@ impl Document {
 
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path) {
-            Some(diff_base) => self.set_diff_base(diff_base, redraw_handle),
+        match provider_registry.load_version_control_data(&path) {
+            Some(data) => self.set_diff_base(data.diff_base, redraw_handle),
             None => self.diff_handle = None,
         }
 

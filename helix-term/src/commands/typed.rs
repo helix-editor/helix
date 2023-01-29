@@ -1044,7 +1044,7 @@ fn reload(
     let scrolloff = cx.editor.config().scrolloff;
     let redraw_handle = cx.editor.redraw_handle.clone();
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_providers, redraw_handle)
+    doc.reload(view, &mut cx.editor.diff_providers, redraw_handle)
         .map(|_| {
             view.ensure_cursor_in_view(doc, scrolloff);
         })
@@ -1087,7 +1087,7 @@ fn reload_all(
         view.sync_changes(doc);
 
         let redraw_handle = cx.editor.redraw_handle.clone();
-        doc.reload(view, &cx.editor.diff_providers, redraw_handle)?;
+        doc.reload(view, &mut cx.editor.diff_providers, redraw_handle)?;
 
         for view_id in view_ids {
             let view = view_mut!(cx.editor, view_id);

@@ -1,4 +1,4 @@
-use helix_core::{coords_at_pos, encoding, find_root, Position};
+use helix_core::{coords_at_pos, encoding, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
@@ -472,12 +472,11 @@ fn render_version_control<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let path = find_root(None, &[]);
-
     let current_branch_name = context
         .editor
         .diff_providers
-        .get_current_head_name(&path)
+        .last_known_head_name
+        .clone()
         .unwrap_or_default();
 
     write(context, current_branch_name, None);

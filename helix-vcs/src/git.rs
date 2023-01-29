@@ -5,7 +5,7 @@ use git::sec::trust::DefaultForLevel;
 use git::{Commit, ObjectId, Repository, ThreadSafeRepository};
 use git_repository as git;
 
-use crate::DiffProvider;
+use crate::{DiffProvider, VersionControlData};
 
 #[cfg(test)]
 mod test;
@@ -54,7 +54,7 @@ impl Git {
 }
 
 impl DiffProvider for Git {
-    fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>> {
+    fn get_version_control_data(&self, file: &Path) -> Option<VersionControlData> {
         debug_assert!(!file.exists() || file.is_file());
         debug_assert!(file.is_absolute());
 
@@ -64,16 +64,16 @@ impl DiffProvider for Git {
         let file_oid = find_file_in_commit(&repo, &head, file)?;
 
         let file_object = repo.find_object(file_oid).ok()?;
-        let mut data = file_object.detach().data;
+        let mut diff_base = file_object.detach().data;
         // convert LF to CRLF if configured to avoid showing every line as changed
         if repo
             .config_snapshot()
             .boolean("core.autocrlf")
             .unwrap_or(false)
         {
-            let mut normalized_file = Vec::with_capacity(data.len());
+            let mut normalized_file = Vec::with_capacity(diff_base.len());
             let mut at_cr = false;
-            for &byte in &data {
+            for &byte in &diff_base {
                 if byte == b'\n' {
                     // if this is a LF instead of a CRLF (last byte was not a CR)
                     // insert a new CR to generate a CRLF
@@ -84,21 +84,20 @@ impl DiffProvider for Git {
                 at_cr = byte == b'\r';
                 normalized_file.push(byte)
             }
-            data = normalized_file
+            diff_base = normalized_file
         }
-        Some(data)
-    }
 
-    fn get_current_head_name(&self, file: &Path) -> Option<String> {
-        // TODO cache repository lookup
-        let repo = Git::open_repo(file, None)?.to_thread_local();
-        let head_ref = repo.head_ref().ok()?;
-        let head_commit = repo.head_commit().ok()?;
+        let head_name = repo
+            .head_ref()
+            .ok()
+            .flatten()
+            .map(|reference| reference.name().shorten().to_string())
+            .unwrap_or(head.id.to_hex_with_len(8).to_string());
 
-        match head_ref {
-            Some(reference) => Some(reference.name().shorten().to_string()),
-            None => Some(head_commit.id.to_hex_with_len(8).to_string()),
-        }
+        Some(VersionControlData {
+            diff_base,
+            head_name,
+        })
     }
 }
 

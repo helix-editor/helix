@@ -1226,8 +1226,8 @@ impl Editor {
             let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
-            if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
-                doc.set_diff_base(diff_base, self.redraw_handle.clone());
+            if let Some(data) = self.diff_providers.load_version_control_data(&path) {
+                doc.set_diff_base(data.diff_base, self.redraw_handle.clone());
             }
             self.new_document(doc)
         };

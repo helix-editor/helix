@@ -54,7 +54,11 @@ fn missing_file() {
     let file = temp_git.path().join("file.txt");
     File::create(&file).unwrap().write_all(b"foo").unwrap();
 
-    assert_eq!(Git.get_diff_base(&file), None);
+    assert_eq!(
+        Git.get_version_control_data(&file)
+            .map(|data| data.diff_base),
+        None
+    );
 }
 
 #[test]
@@ -64,7 +68,11 @@ fn unmodified_file() {
     let contents = b"foo".as_slice();
     File::create(&file).unwrap().write_all(contents).unwrap();
     create_commit(temp_git.path(), true);
-    assert_eq!(Git.get_diff_base(&file), Some(Vec::from(contents)));
+    assert_eq!(
+        Git.get_version_control_data(&file)
+            .map(|data| data.diff_base),
+        Some(Vec::from(contents))
+    );
 }
 
 #[test]
@@ -76,7 +84,11 @@ fn modified_file() {
     create_commit(temp_git.path(), true);
     File::create(&file).unwrap().write_all(b"bar").unwrap();
 
-    assert_eq!(Git.get_diff_base(&file), Some(Vec::from(contents)));
+    assert_eq!(
+        Git.get_version_control_data(&file)
+            .map(|data| data.diff_base),
+        Some(Vec::from(contents))
+    );
 }
 
 /// Test that `get_file_head` does not return content for a directory.
@@ -95,7 +107,11 @@ fn directory() {
 
     std::fs::remove_dir_all(&dir).unwrap();
     File::create(&dir).unwrap().write_all(b"bar").unwrap();
-    assert_eq!(Git.get_diff_base(&dir), None);
+    assert_eq!(
+        Git.get_version_control_data(&dir)
+            .map(|data| data.diff_base),
+        None
+    );
 }
 
 /// Test that `get_file_head` does not return content for a symlink.
@@ -116,6 +132,14 @@ fn symlink() {
     symlink("file.txt", &file_link).unwrap();
 
     create_commit(temp_git.path(), true);
-    assert_eq!(Git.get_diff_base(&file_link), None);
-    assert_eq!(Git.get_diff_base(&file), Some(Vec::from(contents)));
+    assert_eq!(
+        Git.get_version_control_data(&file_link)
+            .map(|data| data.diff_base),
+        None
+    );
+    assert_eq!(
+        Git.get_version_control_data(&file)
+            .map(|data| data.diff_base),
+        Some(Vec::from(contents))
+    );
 }

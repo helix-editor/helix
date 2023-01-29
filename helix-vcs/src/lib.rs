@@ -12,42 +12,41 @@ mod diff;
 
 pub use diff::{DiffHandle, Hunk};
 
+pub struct VersionControlData {
+    pub diff_base: Vec<u8>,
+    pub head_name: String,
+}
+
 pub trait DiffProvider {
     /// Returns the data that a diff should be computed against
     /// if this provider is used.
     /// The data is returned as raw byte without any decoding or encoding performed
     /// to ensure all file encodings are handled correctly.
-    fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>>;
-    fn get_current_head_name(&self, file: &Path) -> Option<String>;
+    fn get_version_control_data(&self, file: &Path) -> Option<VersionControlData>;
 }
 
 #[doc(hidden)]
 pub struct Dummy;
 impl DiffProvider for Dummy {
-    fn get_diff_base(&self, _file: &Path) -> Option<Vec<u8>> {
-        None
-    }
-
-    fn get_current_head_name(&self, _file: &Path) -> Option<String> {
+    fn get_version_control_data(&self, _file: &Path) -> Option<VersionControlData> {
         None
     }
 }
 
 pub struct DiffProviderRegistry {
+    pub last_known_head_name: Option<String>,
     providers: Vec<Box<dyn DiffProvider>>,
 }
 
 impl DiffProviderRegistry {
-    pub fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>> {
-        self.providers
+    pub fn load_version_control_data(&mut self, file: &Path) -> Option<VersionControlData> {
+        let data = self
+            .providers
             .iter()
-            .find_map(|provider| provider.get_diff_base(file))
-    }
+            .find_map(|provider| provider.get_version_control_data(file));
 
-    pub fn get_current_head_name(&self, file: &Path) -> Option<String> {
-        self.providers
-            .iter()
-            .find_map(|provider| provider.get_current_head_name(file))
+        self.last_known_head_name = data.as_ref().map(|data| data.head_name.clone());
+        data
     }
 }
 
@@ -57,6 +56,10 @@ impl Default for DiffProviderRegistry {
         // TODO make this configurable when more providers are added
         let git: Box<dyn DiffProvider> = Box::new(Git);
         let providers = vec![git];
-        DiffProviderRegistry { providers }
+
+        DiffProviderRegistry {
+            providers,
+            last_known_head_name: None,
+        }
     }
 }
