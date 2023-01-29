@@ -854,6 +854,18 @@ pub struct Editor {
     /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be aquired
     pub redraw_handle: RedrawHandle,
     pub needs_redraw: bool,
+    /// Cached position of the cursor calculated during rendering.
+    /// The content of `cursor_cache` is returned by `Editor::cursor` if
+    /// set to `Some(_)`. The value will be cleared after it's used.
+    /// If `cursor_cache` is `None` then the `Editor::cursor` function will
+    /// calculate the cursor position.
+    ///
+    /// `Some(None)` represents a cursor position outside of the visible area.
+    /// This will just cause `Editor::cursor` to return `None`.
+    ///
+    /// This cache is only a performance optimization to
+    /// avoid calculating the cursor position multiple
+    /// times during rendering and should not be set by other functions.
     pub cursor_cache: Cell<Option<Option<Position>>>,
 }
 
