@@ -326,6 +326,6 @@ Example:
 [editor.soft-wrap]
 enable = true
 max-wrap = 25 # increase value to reduce forced mid-word wrapping
-max-indent-retain = 0 
+max-indent-retain = 0
 wrap-indicator = ""  # set wrap-indicator to "" to hide it
 ```

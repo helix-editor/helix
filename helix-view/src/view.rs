@@ -328,10 +328,10 @@ impl View {
         self.offset_coords_to_in_view(doc, scrolloff).is_none()
     }
 
-    /// Estiamtes the last visible document line on screen.
-    /// This estimate is an upper bond obtained by calculating the first
+    /// Estimates the last visible document line on screen.
+    /// This estimate is an upper bound obtained by calculating the first
     /// visible line and adding the viewport height.
-    /// The actual last visisble line may be smaller if softwrapping occurs
+    /// The actual last visible line may be smaller if softwrapping occurs
     /// or virtual text lines are visible
     #[inline]
     pub fn estimate_last_doc_line(&self, doc: &Document) -> usize {

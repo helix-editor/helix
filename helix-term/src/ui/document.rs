@@ -17,7 +17,7 @@ use tui::buffer::Buffer as Surface;
 
 pub trait LineDecoration {
     fn render_background(&mut self, _renderer: &mut TextRenderer, _pos: LinePos) {}
-    fn render_forground(
+    fn render_foreground(
         &mut self,
         _renderer: &mut TextRenderer,
         _pos: LinePos,
@@ -247,7 +247,7 @@ pub fn render_text<'t>(
                 renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
                 is_in_indent_area = true;
                 for line_decoration in &mut *line_decorations {
-                    line_decoration.render_forground(renderer, last_line_pos, char_pos);
+                    line_decoration.render_foreground(renderer, last_line_pos, char_pos);
                 }
             }
             last_line_pos = LinePos {
@@ -304,7 +304,7 @@ pub fn render_text<'t>(
 
     renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
     for line_decoration in &mut *line_decorations {
-        line_decoration.render_forground(renderer, last_line_pos, char_pos);
+        line_decoration.render_foreground(renderer, last_line_pos, char_pos);
     }
 }
 

@@ -703,7 +703,7 @@ impl EditorView {
         theme: &Theme,
     ) -> Box<dyn LineDecoration> {
         let text = doc.text().slice(..);
-        // TODO only higlioght the visual line that contains the cursor instead of the full visual line
+        // TODO only highlight the visual line that contains the cursor instead of the full visual line
         let primary_line = doc.selection(view.id).primary().cursor_line(text);
 
         // The secondary_lines do contain the primary_line, it doesn't matter

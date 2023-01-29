@@ -158,7 +158,7 @@ pub fn move_vertically(
     }
 
     let mut new_range = range.put_cursor(slice, new_pos, behaviour == Movement::Extend);
-    new_range.old_visual_position = Some((new_row as u32, new_col));
+    new_range.old_visual_position = Some((new_row, new_col));
     new_range
 }
 

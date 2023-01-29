@@ -96,7 +96,7 @@ struct Layer<A, M> {
     metadata: M,
 }
 
-impl<'a, A, M: Clone> Clone for Layer<A, M> {
+impl<A, M: Clone> Clone for Layer<A, M> {
     fn clone(&self) -> Self {
         Layer {
             annotations: self.annotations.clone(),
@@ -219,7 +219,7 @@ impl TextAnnotations {
     /// Add new annotation lines.
     ///
     /// The line annotations **must be sorted** by their `char_idx`.
-    /// Multiple line annotations with the smame `char_idx` **are not allowed**.
+    /// Multiple line annotations with the same `char_idx` **are not allowed**.
     pub fn add_line_annotation(&mut self, layer: Rc<[LineAnnotation]>) -> &mut Self {
         self.line_annotations.push((layer, ()).into());
         self

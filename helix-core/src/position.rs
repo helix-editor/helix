@@ -351,7 +351,7 @@ pub fn char_idx_at_visual_block_offset(
     for (grapheme, grapheme_pos) in formatter {
         match grapheme_pos.row.cmp(&row) {
             Ordering::Equal => {
-                if grapheme_pos.col + grapheme.width() as usize > column {
+                if grapheme_pos.col + grapheme.width() > column {
                     if !grapheme.is_virtual() {
                         return (char_idx, 0);
                     } else if let Some(char_idx) = last_char_idx_on_line {
