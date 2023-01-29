@@ -131,7 +131,7 @@ supported by your terminal emulator.
 
 ### Inheritance
 
-Extends other themes by setting the `inherits` property to an existing theme.
+Extend other themes by setting the `inherits` property to an existing theme.
 
 ```toml
 inherits = "boo_berry"

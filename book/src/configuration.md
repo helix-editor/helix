@@ -124,7 +124,7 @@ The following statusline elements can be configured:
 Defines the shape of cursor in each mode.
 Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
 
-> 💡Due to limitations of the terminal environment, only the primary cursor can
+> 💡 Due to limitations of the terminal environment, only the primary cursor can
 > change shape.
 
 | Key      | Description                                | Default |

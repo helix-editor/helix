@@ -121,7 +121,10 @@ If you have a selection that wraps `arg1` (see the tree above), and you use
 Alt-n, it will select the next sibling in the syntax tree: `arg2`.
 
 ```js
-func([arg1], arg2, arg3) > func(arg1, [arg2], arg3);
+// before
+func([arg1], arg2, arg3)
+// after
+func(arg1, [arg2], arg3);
 ```
 
 Similarly, Alt-o will expand the selection to the parent node, in this case, the

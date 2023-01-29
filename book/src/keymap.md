@@ -238,7 +238,7 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 #### Window mode
 
 Window mode is accessed by typing `Ctrl-w` in [normal mode](#normal-mode),
-this layer is similar to Vim keybindings as Kakoune does not support window.
+this layer is similar to Vim keybindings as Kakoune does not support windows.
 
 | Key                    | Description                                          | Command           |
 | -----                  | -------------                                        | -------           |
