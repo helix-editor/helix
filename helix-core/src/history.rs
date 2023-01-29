@@ -5,7 +5,6 @@ use regex::Regex;
 use std::io::{Read, Write};
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
-
 #[derive(Debug, Clone)]
 pub struct State {
     pub doc: Rope,
@@ -69,62 +68,20 @@ struct Revision {
 
 const HEADER_TAG: &str = "Helix Undofile 1\n";
 
-pub fn serialize_history<W: Write>(
-    writer: &mut W,
-    history: &History,
-    mtime: u64,
-    hash: [u8; 20],
-) -> std::io::Result<()> {
-    write_string(writer, HEADER_TAG)?;
-    write_usize(writer, history.current)?;
-    write_u64(writer, mtime)?;
-    writer.write_all(&hash)?;
-    write_vec(writer, &history.revisions, serialize_revision)?;
-    Ok(())
-}
+fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
+    const BUF_SIZE: usize = 8192;
 
-pub fn deserialize_history<R: Read>(reader: &mut R) -> std::io::Result<History> {
-    let header = read_string(reader)?;
-    if HEADER_TAG != header {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("missing undofile header"),
-        ))
-    } else {
-        let timestamp = Instant::now();
-        let current = read_usize(reader)?;
-        let mtime = read_u64(reader)?;
-        let mut hash = [0u8; 20];
-        reader.read_exact(&mut hash)?;
-        let revisions = read_vec(reader, |reader| deserialize_revision(reader, timestamp))?;
-        Ok(History { current, revisions })
+    let mut buf = [0u8; BUF_SIZE];
+    let mut hash = sha1_smol::Sha1::new();
+    loop {
+        let total_read = reader.read(&mut buf)?;
+        if total_read == 0 {
+            break;
+        }
+
+        hash.update(&buf[0..total_read]);
     }
-}
-
-fn serialize_revision<W: Write>(writer: &mut W, revision: &Revision) -> std::io::Result<()> {
-    write_usize(writer, revision.parent)?;
-    write_usize(writer, revision.last_child.map(|n| n.get()).unwrap_or(0))?;
-    crate::transaction::serialize_transaction(writer, &revision.transaction)?;
-    crate::transaction::serialize_transaction(writer, &revision.inversion)?;
-
-    Ok(())
-}
-
-fn deserialize_revision<R: Read>(reader: &mut R, timestamp: Instant) -> std::io::Result<Revision> {
-    let parent = read_usize(reader)?;
-    let last_child = match read_usize(reader)? {
-        0 => None,
-        n => Some(unsafe { NonZeroUsize::new_unchecked(n) }),
-    };
-    let transaction = crate::transaction::deserialize_transaction(reader)?;
-    let inversion = crate::transaction::deserialize_transaction(reader)?;
-    Ok(Revision {
-        parent,
-        last_child,
-        transaction,
-        inversion,
-        timestamp,
-    })
+    Ok(hash.digest().bytes())
 }
 
 impl Default for History {
@@ -143,7 +100,82 @@ impl Default for History {
     }
 }
 
+impl Revision {
+    fn serialize<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        write_usize(writer, self.parent)?;
+        write_usize(writer, self.last_child.map(|n| n.get()).unwrap_or(0))?;
+        crate::transaction::serialize_transaction(writer, &self.transaction)?;
+        crate::transaction::serialize_transaction(writer, &self.inversion)?;
+
+        Ok(())
+    }
+
+    fn deserialize<R: Read>(reader: &mut R, timestamp: Instant) -> std::io::Result<Self> {
+        let parent = read_usize(reader)?;
+        let last_child = match read_usize(reader)? {
+            0 => None,
+            n => Some(unsafe { NonZeroUsize::new_unchecked(n) }),
+        };
+        let transaction = crate::transaction::deserialize_transaction(reader)?;
+        let inversion = crate::transaction::deserialize_transaction(reader)?;
+        Ok(Revision {
+            parent,
+            last_child,
+            transaction,
+            inversion,
+            timestamp,
+        })
+    }
+}
+
 impl History {
+    pub fn serialize<W: Write, R: Read>(
+        &self,
+        writer: &mut W,
+        text: &mut R,
+        last_saved_revision: usize,
+        last_mtime: u64,
+    ) -> std::io::Result<()> {
+        write_string(writer, HEADER_TAG)?;
+        write_usize(writer, self.current)?;
+        write_usize(writer, last_saved_revision)?;
+        write_u64(writer, last_mtime)?;
+        writer.write_all(&get_hash(text)?)?;
+        write_vec(writer, &self.revisions, |writer, rev| rev.serialize(writer))?;
+        Ok(())
+    }
+
+    pub fn deserialize<R: Read>(
+        reader: &mut R,
+        text: &mut R,
+        last_mtime: u64,
+    ) -> std::io::Result<(usize, Self)> {
+        let header = read_string(reader)?;
+        if HEADER_TAG != header {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "missing undofile header",
+            ))
+        } else {
+            let timestamp = Instant::now();
+            let current = read_usize(reader)?;
+            let last_saved_revision = read_usize(reader)?;
+            let mtime = read_u64(reader)?;
+            let mut hash = [0u8; 20];
+            reader.read_exact(&mut hash)?;
+
+            if mtime != last_mtime && hash != get_hash(text)? {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "outdated undo file",
+                ));
+            }
+
+            let revisions = read_vec(reader, |reader| Revision::deserialize(reader, timestamp))?;
+            Ok((last_saved_revision, History { current, revisions }))
+        }
+    }
+
     pub fn commit_revision(&mut self, transaction: &Transaction, original: &State) {
         self.commit_revision_at_timestamp(transaction, original, Instant::now());
     }
@@ -708,8 +740,12 @@ mod test {
                 selection: Selection::point(0),
             };
             history.commit_revision(&transaction, &state);
-            serialize_history(&mut buf, &history).unwrap();
-            deserialize_history(&mut buf.as_slice()).unwrap();
+
+            let text = Vec::new();
+            history
+                .serialize(&mut buf, &mut text.as_slice(), 0, 0)
+                .unwrap();
+            History::deserialize(&mut buf.as_slice(), &mut text.as_slice(), 0).unwrap();
             true
         }
     );

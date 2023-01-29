@@ -1953,6 +1953,62 @@ fn run_shell_command(
     Ok(())
 }
 
+fn save_workspace(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    use helix_view::workspace::undo::UndoIndex;
+    use helix_view::workspace::Workspace;
+
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let mut workspace = Workspace::new()?;
+    let mut index_file = workspace.get_mut(".index")?;
+
+    // Create a merged list of key-value tuples from the saved index and the open buffers.
+    let index = {
+        let mut saved_files = UndoIndex::deserialize(&mut index_file)
+            .unwrap_or(UndoIndex::default())
+            .0;
+        let mut last_id = saved_files.last().map(|(id, _)| *id + 1).unwrap_or(0);
+        let mut new_files = cx
+            .editor
+            .documents()
+            .filter_map(|doc| {
+                doc.path().filter(|path| {
+                    !saved_files
+                        .iter()
+                        .any(|(_, indexed_path)| indexed_path == *path)
+                })
+            })
+            .map(|path| {
+                let id = last_id;
+                last_id += 1;
+                (id, path.clone())
+            })
+            .collect();
+        saved_files.append(&mut new_files);
+        UndoIndex(saved_files)
+    };
+
+    cx.editor.save_workspace()
+}
+
+fn open_workspace(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor.open_workspace()
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2474,6 +2530,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::filename),
+        },
+        TypableCommand {
+            name: "save-workspace",
+            aliases: &["sw"],
+            doc: "Save open document undo history",
+            fun: save_workspace,
+            completer: None,
+        },
+        TypableCommand {
+            name: "open-workspace",
+            aliases: &["ow"],
+            doc: "Open document undo history",
+            fun: open_workspace,
+            completer: None,
         },
     ];
 

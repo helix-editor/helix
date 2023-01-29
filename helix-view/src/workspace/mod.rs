@@ -6,6 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+use helix_core::path::path_as_bytes;
 use sha1_smol::Sha1;
 
 pub struct Workspace {
@@ -13,17 +14,10 @@ pub struct Workspace {
     lock: Option<FileLock>,
 }
 
-fn path_as_bytes(path: PathBuf) -> Vec<u8> {
-    #[cfg(windows)]
-    return path.to_str().unwrap().into();
-
-    #[cfg(unix)]
-    return std::os::unix::ffi::OsStrExt::as_bytes(path.as_os_str()).into();
-}
-
 impl Workspace {
     // TODO: Allow custom session names to be passed.
-    pub fn new(path: PathBuf) -> Result<Self> {
+    pub fn new() -> Result<Self> {
+        let path = std::env::current_dir()?;
         let bytes = path_as_bytes(path);
         let hash = Sha1::from(bytes).digest().to_string();
         let path = helix_loader::cache_dir().join("workspaces").join(hash);
@@ -34,33 +28,35 @@ impl Workspace {
         self.path.clone()
     }
 
-    pub fn get(&mut self, filename: &str) -> Result<File> {
+    pub fn get(&mut self, path: &str) -> Result<File> {
         if self.lock.is_none() {
             let lock = FileLock::shared(self.path.join(".helix.lock"))?;
             lock.lock()?;
 
             self.lock = Some(lock);
         }
+        let path = self.path.join(path);
 
         OpenOptions::new()
             .read(true)
-            .open(self.path.join(filename))
+            .open(path)
             .context("failed to open file")
     }
 
-    pub fn get_mut(&mut self, filename: &str) -> Result<File> {
+    pub fn get_mut(&mut self, path: &str) -> Result<File> {
         if self.lock.is_none() {
             let lock = FileLock::exclusive(self.path.join(".helix.lock"))?;
             lock.lock()?;
 
             self.lock = Some(lock);
         }
+        let path = self.path.join(path);
 
         OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(self.path.join(filename))
+            .open(path)
             .context("failed to open file")
     }
 }

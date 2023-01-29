@@ -1131,6 +1131,7 @@ dependencies = [
  "ropey",
  "serde",
  "serde_json",
+ "sha1_smol",
  "slotmap",
  "smallvec",
  "smartstring",
@@ -1267,7 +1268,6 @@ dependencies = [
  "chardetng",
  "clipboard-win",
  "crossterm",
- "either",
  "futures-util",
  "helix-core",
  "helix-dap",
@@ -1286,6 +1286,7 @@ dependencies = [
  "tokio-stream",
  "toml",
  "url",
+ "walkdir",
  "which",
  "winapi",
 ]
