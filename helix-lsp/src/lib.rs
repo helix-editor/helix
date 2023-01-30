@@ -10,11 +10,15 @@ pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::syntax::{LanguageConfiguration, LanguageServerConfiguration};
+use helix_core::{
+    find_workspace,
+    syntax::{LanguageConfiguration, LanguageServerConfiguration},
+};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
     collections::{hash_map::Entry, HashMap},
+    path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -641,6 +645,7 @@ impl Registry {
         &mut self,
         language_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
+        root_dirs: &[PathBuf],
     ) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
@@ -656,7 +661,7 @@ impl Registry {
                 let id = self.counter.fetch_add(1, Ordering::Relaxed);
 
                 let NewClientResult(client, incoming) =
-                    start_client(id, language_config, config, doc_path)?;
+                    start_client(id, language_config, config, doc_path, root_dirs)?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
 
                 let (_, old_client) = entry.insert((id, client.clone()));
@@ -684,6 +689,7 @@ impl Registry {
         &mut self,
         language_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
+        root_dirs: &[PathBuf],
     ) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
@@ -697,7 +703,7 @@ impl Registry {
                 let id = self.counter.fetch_add(1, Ordering::Relaxed);
 
                 let NewClientResult(client, incoming) =
-                    start_client(id, language_config, config, doc_path)?;
+                    start_client(id, language_config, config, doc_path, root_dirs)?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
 
                 entry.insert((id, client.clone()));
@@ -798,6 +804,7 @@ fn start_client(
     config: &LanguageConfiguration,
     ls_config: &LanguageServerConfiguration,
     doc_path: Option<&std::path::PathBuf>,
+    root_dirs: &[PathBuf],
 ) -> Result<NewClientResult> {
     let (client, incoming, initialize_notify) = Client::start(
         &ls_config.command,
@@ -805,6 +812,7 @@ fn start_client(
         config.config.clone(),
         ls_config.environment.clone(),
         &config.roots,
+        config.workspace_lsp_roots.as_deref().unwrap_or(root_dirs),
         id,
         ls_config.timeout,
         doc_path,
@@ -840,6 +848,48 @@ fn start_client(
     });
 
     Ok(NewClientResult(client, incoming))
+}
+
+/// Find an LSP root of a file using the following mechansim:
+/// * start at `file` (either an absolute path or relative to CWD)
+/// * find the top most directory containing a root_marker
+/// * inside the current workspace
+///     * stop the search at the first root_dir that contains `file` or the workspace (obtained from `helix_core::find_workspace`)
+///     * root_dirs only apply inside the workspace. For files outside of the workspace they are ignored
+/// * outside the current workspace: keep searching to the top of the file hiearchy
+pub fn find_root(file: &str, root_markers: &[String], root_dirs: &[PathBuf]) -> PathBuf {
+    let file = std::path::Path::new(file);
+    let workspace = find_workspace();
+    let file = if file.is_absolute() {
+        file.to_path_buf()
+    } else {
+        let current_dir = std::env::current_dir().expect("unable to determine current directory");
+        current_dir.join(file)
+    };
+
+    let inside_workspace = file.strip_prefix(&workspace).is_ok();
+
+    let mut top_marker = None;
+    for ancestor in file.ancestors() {
+        if root_markers
+            .iter()
+            .any(|marker| ancestor.join(marker).exists())
+        {
+            top_marker = Some(ancestor);
+        }
+
+        if inside_workspace
+            && (ancestor == workspace
+                || root_dirs
+                    .iter()
+                    .any(|root_dir| root_dir == ancestor.strip_prefix(&workspace).unwrap()))
+        {
+            return top_marker.unwrap_or(ancestor).to_owned();
+        }
+    }
+
+    // If no root was found use the workspace as a fallback
+    workspace
 }
 
 #[cfg(test)]
