@@ -37,6 +37,6 @@ impl UndoIndex {
     pub fn find_id(&self, path: &PathBuf) -> Option<usize> {
         self.0
             .iter()
-            .find_map(|(id, index_path)| (index_path == path).then_some(*id))
+            .find_map(|(id, index_path)| (index_path == path).then(|| *id))
     }
 }

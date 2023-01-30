@@ -470,6 +470,25 @@ async fn test_character_info() -> anyhow::Result<()> {
         Some(&|app| {
             assert_eq!(r#""h" Dec 104 Hex 68"#, app.editor.get_status().unwrap().0);
         }),
+    );
+}
+
+async fn test_workspace_serde() -> anyhow::Result<()> {
+    let file = helpers::new_readonly_tempfile()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ihello<esc>:sw<ret>:bc!<ret>:ow<ret>"),
+        Some(&|app| {
+            let mut docs: Vec<_> = app.editor.documents().collect();
+            assert_eq!(1, docs.len());
+
+            let doc = docs.pop().unwrap();
+            assert_eq!(Some(file.path()), doc.path().map(PathBuf::as_path));
+        }),
         false,
     )
     .await?;

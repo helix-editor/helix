@@ -1971,7 +1971,7 @@ fn save_workspace(
     // Create a merged list of key-value tuples from the saved index and the open buffers.
     let index = {
         let mut saved_files = UndoIndex::deserialize(&mut index_file)
-            .unwrap_or(UndoIndex::default())
+            .unwrap_or_default()
             .0;
         let mut last_id = saved_files.last().map(|(id, _)| *id + 1).unwrap_or(0);
         let mut new_files = cx
@@ -1993,8 +1993,37 @@ fn save_workspace(
         saved_files.append(&mut new_files);
         UndoIndex(saved_files)
     };
+    log::debug!("Saving undo index: {:?}", index);
 
-    cx.editor.save_workspace()
+    index
+        .serialize(&mut index_file)
+        .context("failed to save index")?;
+
+    // Save the histories of open buffers.
+    for doc in cx.editor.documents_mut().filter(|doc| doc.path().is_some()) {
+        let path = doc.path().unwrap().clone();
+        let last_saved_revision = doc.get_last_saved_revision();
+        let history = doc.history.get_mut();
+        let mtime = std::fs::metadata(path.clone())?
+            .modified()?
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_secs();
+
+        let mut file = workspace.get_mut(&index.find_id(&path).unwrap().to_string())?;
+        history
+            .serialize(
+                &mut file,
+                &mut std::fs::File::open(&path)?,
+                last_saved_revision,
+                mtime,
+            )
+            .context(format!(
+                "failed to save history for {}",
+                path.to_string_lossy()
+            ))?;
+        log::debug!("Saved history for: {}", path.to_string_lossy());
+    }
+    Ok(())
 }
 
 fn open_workspace(
@@ -2002,11 +2031,77 @@ fn open_workspace(
     _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
+    use helix_view::workspace::undo::UndoIndex;
+    use helix_view::workspace::Workspace;
+
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    cx.editor.open_workspace()
+    let mut workspace = Workspace::new()?;
+    let index = UndoIndex::deserialize(&mut workspace.get(".index")?)
+        .context("failed to load index")?
+        .0;
+    let scrolloff = cx.editor.config().scrolloff;
+    log::debug!("Loaded undo index: {:?}", index);
+
+    // Open the documents in the index and load their histories.
+    for (id, path) in index {
+        if !path.exists() {
+            continue;
+        }
+
+        // Close open buffers for the doc.
+        let doc_id = cx
+            .editor
+            .documents()
+            .find_map(|doc| (doc.path() == Some(&path)).then(|| doc.id()));
+        if let Some(id) = doc_id {
+            buffer_close_by_ids_impl(cx, &[id], false)?;
+        }
+
+        let mut file = workspace.get(&id.to_string())?;
+        let last_mtime = std::fs::metadata(path.clone())?
+            .modified()?
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_secs();
+        let id = cx.editor.open(path.as_path(), Action::Load)?;
+        let doc = doc_mut!(cx.editor, &id);
+        let (last_saved_revision, history) = match helix_core::history::History::deserialize(
+            &mut file,
+            &mut std::fs::File::open(&path)?,
+            last_mtime,
+        ) {
+            Ok(res) => res,
+            Err(e) => {
+                cx.editor.set_error(format!(
+                    "failed to load undo file for {} because {e}",
+                    path.to_string_lossy()
+                ));
+                continue;
+            }
+        };
+
+        // Jump to saved revision if the doc wasn't saved.
+        if history.current_revision() != last_saved_revision {
+            let view_id = doc
+                .selections()
+                .keys()
+                .next()
+                .copied()
+                .expect("No view_id available");
+            let view = view_mut!(cx.editor, view_id);
+            doc.apply(
+                &history.changes_since(last_saved_revision).unwrap(),
+                view_id,
+            );
+            view.ensure_cursor_in_view(doc, scrolloff);
+        }
+        doc.history.set(history);
+        doc.set_last_saved_revision(last_saved_revision);
+        log::debug!("Loaded history for: {}", path.to_string_lossy());
+    }
+    Ok(())
 }
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
@@ -2541,7 +2636,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "open-workspace",
             aliases: &["ow"],
-            doc: "Open document undo history",
+            doc: "Open document undo history, overriding open buffers.",
             fun: open_workspace,
             completer: None,
         },

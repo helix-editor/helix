@@ -1042,7 +1042,7 @@ impl Document {
     }
 
     /// Get the document's latest saved revision.
-    pub fn get_last_saved_revision(&mut self) -> usize {
+    pub fn get_last_saved_revision(&self) -> usize {
         self.last_saved_revision
     }
 

@@ -1,6 +1,5 @@
 use etcetera::home_dir;
 use std::{
-    ffi::OsString,
     path::{Component, Path, PathBuf},
     str::Utf8Error,
 };

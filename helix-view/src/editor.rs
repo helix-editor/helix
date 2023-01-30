@@ -1,5 +1,5 @@
 use crate::{
-    align_view, apply_transaction,
+    align_view,
     clipboard::{get_clipboard_provider, ClipboardProvider},
     document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
     graphics::{CursorKind, Rect},
@@ -21,7 +21,6 @@ use std::{
     borrow::Cow,
     cell::Cell,
     collections::{BTreeMap, HashMap},
-    fs::File,
     io::stdin,
     num::NonZeroUsize,
     path::{Path, PathBuf},
@@ -37,7 +36,7 @@ use tokio::{
     time::{sleep, Duration, Instant, Sleep},
 };
 
-use anyhow::{anyhow, bail, Context, Error};
+use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
@@ -973,119 +972,6 @@ impl Editor {
             needs_redraw: false,
             cursor_cache: Cell::new(None),
         }
-    }
-
-    // TODO: Async?
-    pub fn save_workspace(&mut self) -> anyhow::Result<()> {
-        let mut workspace = Workspace::new()?;
-        let mut index_file = workspace.get_mut("index.undo")?;
-        let index = {
-            let mut current_index =
-                UndoIndex::deserialize(&mut index_file).unwrap_or(UndoIndex::default());
-            let new_files = self.documents().filter_map(|doc| {
-                doc.path().filter(|path| {
-                    !current_index
-                        .0
-                        .iter()
-                        .any(|(_, indexed_path)| indexed_path == *path)
-                })
-            });
-            let mut last_id = current_index.0.last().map(|(id, _)| *id).unwrap_or(0);
-            current_index.0.append(
-                &mut new_files
-                    .map(|path| {
-                        let current_id = last_id;
-                        last_id += 1;
-                        (current_id, path.clone())
-                    })
-                    .collect(),
-            );
-            current_index
-        };
-        log::debug!("Saving undo index: {:?}", index);
-
-        index
-            .serialize(&mut index_file)
-            .context("failed to serialize index")?;
-        for doc in self.documents_mut().filter(|doc| doc.path().is_some()) {
-            let history = doc.history.take();
-            let last_saved_revision = doc.get_last_saved_revision();
-            let path = doc.path().unwrap();
-            let mtime = std::fs::metadata(path.clone())?
-                .modified()?
-                .duration_since(std::time::UNIX_EPOCH)?
-                .as_secs();
-            let id = index.find_id(path).unwrap();
-            let mut undo_file = workspace.get_mut(&id.to_string())?;
-
-            history
-                .serialize(
-                    &mut undo_file,
-                    &mut File::open(path)?,
-                    last_saved_revision,
-                    mtime,
-                )
-                .context(format!(
-                    "failed to save history for {}",
-                    path.to_string_lossy()
-                ))?;
-            doc.history.set(history);
-        }
-        Ok(())
-    }
-
-    pub fn open_workspace(&mut self) -> anyhow::Result<()> {
-        let mut workspace = Workspace::new()?;
-        let index = UndoIndex::deserialize(&mut workspace.get("index.undo")?)
-            .context("failed to load index")?;
-
-        let scrolloff = self.config().scrolloff;
-        for (id, path) in index.0 {
-            if !path.exists() {
-                continue;
-            }
-            let current_view_id = view!(&self).id;
-
-            let mut undo_file = workspace.get(&id.to_string())?;
-            let last_mtime = std::fs::metadata(path.clone())?
-                .modified()?
-                .duration_since(std::time::UNIX_EPOCH)?
-                .as_secs();
-            let id = self.open(path.as_path(), Action::Load)?;
-            let doc = doc_mut!(self, &id);
-            let (last_saved_revision, history) = helix_core::history::History::deserialize(
-                &mut undo_file,
-                &mut File::open(path)?,
-                last_mtime,
-            )
-            .context("failed to load history")?;
-
-            if history.current_revision() != last_saved_revision {
-                let selections = doc.selections();
-                let view_id = if selections.contains_key(&current_view_id) {
-                    // use current if possible
-                    current_view_id
-                } else {
-                    // Hack: we take the first available view_id
-                    selections
-                        .keys()
-                        .next()
-                        .copied()
-                        .expect("No view_id available")
-                };
-                let view = view_mut!(self, view_id);
-                apply_transaction(
-                    &history.changes_since(last_saved_revision).unwrap(),
-                    doc,
-                    &view,
-                );
-                view.ensure_cursor_in_view(&doc, scrolloff);
-            }
-            doc.history.set(history);
-            doc.set_last_saved_revision(last_saved_revision);
-        }
-
-        Ok(())
     }
 
     /// Current editing mode for the [`Editor`].
