@@ -454,6 +454,13 @@ impl Application {
                     // A pid of 0 sends the signal to the entire process group, allowing the user to
                     // regain control of their terminal if the editor was spawned under another process
                     // (e.g. when running `git commit`).
+                    //
+                    // We have to send SIGSTOP (not SIGTSTP) to the entire process group, because,
+                    // as mentioned above, the terminal will get stuck if `helix` was spawned from
+                    // an external process and that process waits for `helix` to complete. This may
+                    // be an issue with signal-hook-tokio, but the author of signal-hook believes it
+                    // could be a tokio issue instead:
+                    // https://github.com/vorner/signal-hook/issues/132
                     libc::kill(0, signal::SIGSTOP)
                 };
 
