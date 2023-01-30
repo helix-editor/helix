@@ -74,3 +74,5 @@
 | `:pipe` | Pipe each selection to the shell command. |
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh` | Run a shell command |
+| `:save-workspace`, `:sw` | Save open document undo history |
+| `:open-workspace`, `:ow` | Open document undo history, overriding open buffers. |
