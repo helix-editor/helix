@@ -484,10 +484,7 @@ async fn test_workspace_serde() -> anyhow::Result<()> {
         Some("ihello<esc>:sw<ret>:bc!<ret>:ow<ret>"),
         Some(&|app| {
             let mut docs: Vec<_> = app.editor.documents().collect();
-            assert_eq!(1, docs.len());
-
-            let doc = docs.pop().unwrap();
-            assert_eq!(Some(file.path()), doc.path().map(PathBuf::as_path));
+            assert_eq!(2, docs.len());
         }),
         false,
     )

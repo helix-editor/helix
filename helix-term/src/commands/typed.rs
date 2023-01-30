@@ -2046,27 +2046,18 @@ fn open_workspace(
     log::debug!("Loaded undo index: {:?}", index);
 
     // Open the documents in the index and load their histories.
-    for (id, path) in index {
+    for (index_id, path) in index {
         if !path.exists() {
             continue;
         }
 
         // Close open buffers for the doc.
-        let doc_id = cx
-            .editor
-            .documents()
-            .find_map(|doc| (doc.path() == Some(&path)).then(|| doc.id()));
-        if let Some(id) = doc_id {
-            buffer_close_by_ids_impl(cx, &[id], false)?;
-        }
 
-        let mut file = workspace.get(&id.to_string())?;
+        let mut file = workspace.get(&index_id.to_string())?;
         let last_mtime = std::fs::metadata(path.clone())?
             .modified()?
             .duration_since(std::time::UNIX_EPOCH)?
             .as_secs();
-        let id = cx.editor.open(path.as_path(), Action::Load)?;
-        let doc = doc_mut!(cx.editor, &id);
         let (last_saved_revision, history) = match helix_core::history::History::deserialize(
             &mut file,
             &mut std::fs::File::open(&path)?,
@@ -2082,6 +2073,15 @@ fn open_workspace(
             }
         };
 
+        let doc_id = cx
+            .editor
+            .documents()
+            .find_map(|doc| (doc.path() == Some(&path)).then(|| doc.id()));
+        if let Some(id) = doc_id {
+            buffer_close_by_ids_impl(cx, &[id], false)?;
+        }
+        let id = cx.editor.open(path.as_path(), Action::Load)?;
+        let doc = doc_mut!(cx.editor, &id);
         // Jump to saved revision if the doc wasn't saved.
         if history.current_revision() != last_saved_revision {
             let view_id = doc

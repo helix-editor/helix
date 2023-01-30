@@ -157,7 +157,7 @@ pub fn path_as_bytes<P: AsRef<Path>>(path: P) -> Vec<u8> {
 
 pub fn path_from_bytes(slice: &[u8]) -> Result<PathBuf, Utf8Error> {
     #[cfg(windows)]
-    return Ok(PathBuf::from(std::str::from_utf8(slice)));
+    return Ok(PathBuf::from(std::str::from_utf8(slice)?));
 
     #[cfg(unix)]
     return Ok(PathBuf::from(
