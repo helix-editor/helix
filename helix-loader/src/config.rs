@@ -9,9 +9,8 @@ pub fn default_lang_config() -> toml::Value {
 
 /// User configured languages.toml file, merged with the default config.
 pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
-    let config = crate::local_config_dirs()
+    let config = [crate::config_dir(), crate::find_workspace().join(".helix")]
         .into_iter()
-        .chain([crate::config_dir()].into_iter())
         .map(|path| path.join("languages.toml"))
         .filter_map(|file| {
             std::fs::read_to_string(file)
@@ -20,8 +19,7 @@ pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
         })
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
-        .chain([default_lang_config()].into_iter())
-        .fold(toml::Value::Table(toml::value::Table::default()), |a, b| {
+        .fold(default_lang_config(), |a, b| {
             // combines for example
             // b:
             //   [[language]]
@@ -38,7 +36,7 @@ pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
             //   language-server = { command = "/usr/bin/taplo" }
             //
             // thus it overrides the third depth-level of b with values of a if they exist, but otherwise merges their values
-            crate::merge_toml_values(b, a, 3)
+            crate::merge_toml_values(a, b, 3)
         });
 
     Ok(config)

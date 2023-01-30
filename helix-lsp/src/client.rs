@@ -1,22 +1,22 @@
 use crate::{
-    jsonrpc,
+    find_root, jsonrpc,
     transport::{Payload, Transport},
     Call, Error, OffsetEncoding, Result,
 };
 
-use helix_core::{find_root, ChangeSet, Rope};
+use helix_core::{ChangeSet, Rope};
 use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp::PositionEncodingKind;
 use lsp_types as lsp;
 use serde::Deserialize;
 use serde_json::Value;
-use std::collections::HashMap;
 use std::future::Future;
 use std::process::Stdio;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
 };
+use std::{collections::HashMap, path::PathBuf};
 use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},
@@ -49,6 +49,7 @@ impl Client {
         config: Option<Value>,
         server_environment: HashMap<String, String>,
         root_markers: &[String],
+        manual_roots: &[PathBuf],
         id: usize,
         req_timeout: u64,
         doc_path: Option<&std::path::PathBuf>,
@@ -77,8 +78,11 @@ impl Client {
             Transport::start(reader, writer, stderr, id);
 
         let root_path = find_root(
-            doc_path.and_then(|x| x.parent().and_then(|x| x.to_str())),
+            doc_path
+                .and_then(|x| x.parent().and_then(|x| x.to_str()))
+                .unwrap_or("."),
             root_markers,
+            manual_roots,
         );
 
         let root_uri = lsp::Url::from_file_path(root_path.clone()).ok();
