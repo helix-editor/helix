@@ -312,7 +312,6 @@ impl<T: Item + 'static> Component for FilePicker<T> {
             }
             let mut decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
 
-            // TODO: avoid set_style and instead handle through special LineDecoration function instead?
             if let Some((start, end)) = range {
                 let style = cx
                     .editor
@@ -320,7 +319,6 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                     .try_get("ui.highlight")
                     .unwrap_or_else(|| cx.editor.theme.get("ui.selection"));
                 let draw_highlight = move |renderer: &mut TextRenderer, pos: LinePos| {
-                    log::error!("{start} {end} {}", pos.doc_line);
                     if (start..=end).contains(&pos.doc_line) {
                         let area = Rect::new(
                             renderer.viewport.x,
