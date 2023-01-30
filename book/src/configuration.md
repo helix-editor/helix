@@ -89,6 +89,7 @@ The `[editor.statusline]` key takes the following sub-keys:
 | `mode.normal` | The text shown in the `mode` element for normal mode | `"NOR"` |
 | `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
 | `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
+| `date-time-format` | The date and time format used in the `date-time` element. For more format options see: https://docs.rs/chrono/latest/chrono/format/strftime/index.html | `"%A %e %B, %Y %H:%M"`|
 
 The following statusline elements can be configured:
 
@@ -110,6 +111,7 @@ The following statusline elements can be configured:
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
 | `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
+| `date-time` | Displays the date and time based on the format specified in `editor.statusline.date-time-format` (defaults to `"%A %e %B, %Y %H:%M"`)
 
 ### `[editor.lsp]` Section
 
