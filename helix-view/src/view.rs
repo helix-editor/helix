@@ -21,21 +21,18 @@ type Jump = (DocumentId, Selection);
 #[derive(Debug, Clone)]
 pub struct JumpList {
     jumps: VecDeque<Jump>,
-    current_idx: usize,
+    current: usize,
 }
 
 impl JumpList {
     pub fn new(initial: Jump) -> Self {
         let mut jumps = VecDeque::with_capacity(JUMP_LIST_CAPACITY);
         jumps.push_back(initial);
-        Self {
-            jumps,
-            current_idx: 0,
-        }
+        Self { jumps, current: 0 }
     }
 
     pub fn push(&mut self, jump: Jump) {
-        self.jumps.truncate(self.current_idx + 1);
+        self.jumps.truncate(self.current);
         // don't push duplicates
         if self.jumps.back() != Some(&jump) {
             // If the jumplist is full, drop the oldest item.
@@ -44,14 +41,14 @@ impl JumpList {
             }
 
             self.jumps.push_back(jump);
-            self.current_idx = self.jumps.len() - 1;
+            self.current = self.jumps.len();
         }
     }
 
     pub fn forward(&mut self, count: usize) -> Option<&Jump> {
-        if self.current_idx + count < self.jumps.len() {
-            self.current_idx += count;
-            self.jumps.get(self.current_idx)
+        if self.current + count < self.jumps.len() {
+            self.current += count;
+            self.jumps.get(self.current)
         } else {
             None
         }
@@ -59,13 +56,13 @@ impl JumpList {
 
     // Taking view and doc to prevent unnecessary cloning when jump is not required.
     pub fn backward(&mut self, view_id: ViewId, doc: &mut Document, count: usize) -> Option<&Jump> {
-        if let Some(current) = self.current_idx.checked_sub(count) {
-            if self.current_idx == self.jumps.len() {
+        if let Some(current) = self.current.checked_sub(count) {
+            if self.current == self.jumps.len() {
                 let jump = (doc.id(), doc.selection(view_id).clone());
                 self.push(jump);
             }
-            self.current_idx = current;
-            self.jumps.get(self.current_idx)
+            self.current = current;
+            self.jumps.get(self.current)
         } else {
             None
         }
