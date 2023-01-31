@@ -1418,7 +1418,7 @@ pub(super) fn goto_line_number(
     match event {
         PromptEvent::Abort => {
             if let Some(line_number) = cx.editor.last_line_number {
-                goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
+                goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line_number));
                 let (view, doc) = current!(cx.editor);
                 view.ensure_cursor_in_view(doc, line_number);
                 cx.editor.last_line_number = None;
@@ -1427,6 +1427,10 @@ pub(super) fn goto_line_number(
         }
         PromptEvent::Validate => {
             ensure!(!args.is_empty(), "Line number required");
+
+            let (view, doc) = current!(cx.editor);
+            push_jump(view, doc);
+
             cx.editor.last_line_number = None;
         }
         PromptEvent::Update => {
@@ -1434,7 +1438,7 @@ pub(super) fn goto_line_number(
                 if let Some(line_number) = cx.editor.last_line_number {
                     // When a user hits backspace and there are no numbers left,
                     // we can bring them back to their original line
-                    goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
+                    goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line_number));
                     let (view, doc) = current!(cx.editor);
                     view.ensure_cursor_in_view(doc, line_number);
                     cx.editor.last_line_number = None;
@@ -1445,12 +1449,13 @@ pub(super) fn goto_line_number(
             let text = doc.text().slice(..);
             let line = doc.selection(view.id).primary().cursor_line(text);
             cx.editor.last_line_number.get_or_insert(line + 1);
+
+            let line = args[0].parse::<usize>()?;
+            goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
+            let (view, doc) = current!(cx.editor);
+            view.ensure_cursor_in_view(doc, line);
         }
     }
-    let line = args[0].parse::<usize>()?;
-    goto_line_impl(cx.editor, NonZeroUsize::new(line));
-    let (view, doc) = current!(cx.editor);
-    view.ensure_cursor_in_view(doc, line);
     Ok(())
 }
 
