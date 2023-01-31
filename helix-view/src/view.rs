@@ -254,25 +254,13 @@ impl View {
         };
 
         if new_anchor {
-            if at_top {
-                (offset.anchor, offset.vertical_offset) = char_idx_at_visual_offset(
-                    doc_text,
-                    cursor,
-                    -(scrolloff as isize),
-                    0,
-                    &text_fmt,
-                    &annotations,
-                );
+            let v_off = if at_top {
+                scrolloff as isize
             } else {
-                (offset.anchor, offset.vertical_offset) = char_idx_at_visual_offset(
-                    doc_text,
-                    cursor,
-                    -(viewport.height as isize - scrolloff as isize),
-                    0,
-                    &text_fmt,
-                    &annotations,
-                );
-            }
+                viewport.height as isize - scrolloff as isize
+            };
+            (offset.anchor, offset.vertical_offset) =
+                char_idx_at_visual_offset(doc_text, cursor, -v_off, 0, &text_fmt, &annotations);
         }
 
         if text_fmt.soft_wrap {
