@@ -914,6 +914,31 @@ fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Lo
     }
 }
 
+pub fn goto_declaration(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = doc.position(view.id, offset_encoding);
+
+    let future = match language_server.goto_declaration(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-declaration");
+            return;
+        }
+    };
+
+    cx.callback(
+        future,
+        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
+            let items = to_locations(response);
+            goto_impl(editor, compositor, items, offset_encoding);
+        },
+    );
+}
+
 pub fn goto_definition(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
