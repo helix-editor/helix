@@ -1445,15 +1445,20 @@ pub(super) fn goto_line_number(
                 }
                 return Ok(());
             }
-            let (view, doc) = current!(cx.editor);
-            let text = doc.text().slice(..);
-            let line = doc.selection(view.id).primary().cursor_line(text);
-            cx.editor.last_line_number.get_or_insert(line + 1);
 
-            let line = args[0].parse::<usize>()?;
-            goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
+            cx.editor.last_line_number.get_or_insert_with(|| {
+                let (view, doc) = current!(cx.editor);
+
+                let text = doc.text().slice(..);
+                let line = doc.selection(view.id).primary().cursor_line(text);
+
+                line + 1
+            });
+
             let (view, doc) = current!(cx.editor);
+            let line = args[0].parse::<usize>()?;
             view.ensure_cursor_in_view(doc, line);
+            goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
         }
     }
     Ok(())
