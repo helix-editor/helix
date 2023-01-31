@@ -15,6 +15,7 @@ use std::{slice, str};
 use crate::chars::{char_is_whitespace, char_is_word};
 use crate::LineEnding;
 
+#[inline]
 pub fn tab_width_at(visual_x: usize, tab_width: u16) -> usize {
     tab_width as usize - (visual_x % tab_width as usize)
 }
