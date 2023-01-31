@@ -952,7 +952,7 @@ impl Default for Config {
             auto_format: true,
             auto_save: AutoSave::default(),
             idle_timeout: Duration::from_millis(250),
-            completion_timeout: Duration::from_millis(250),
+            completion_timeout: Duration::from_millis(150),
             preview_completion_insert: true,
             completion_trigger_len: 2,
             auto_info: true,
@@ -970,7 +970,7 @@ impl Default for Config {
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap {
-                enable: Some(false),
+                enable: Some(true),
                 ..SoftWrap::default()
             },
             text_width: 80,
@@ -982,9 +982,13 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
-            inline_diagnostics: InlineDiagnosticsConfig::default(),
-            end_of_line_diagnostics: DiagnosticFilter::Disable,
-            rainbow_brackets: false,
+            inline_diagnostics: InlineDiagnosticsConfig {
+                cursor_line: DiagnosticFilter::Enable(Severity::Hint),
+                other_lines: DiagnosticFilter::Enable(Severity::Info),
+                ..Default::default()
+            },
+            end_of_line_diagnostics: DiagnosticFilter::Enable(Severity::Hint),
+            rainbow_brackets: true,
         }
     }
 }
