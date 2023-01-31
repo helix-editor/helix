@@ -308,3 +308,24 @@ Currently unused
 #### `[editor.gutters.spacer]` Section
 
 Currently unused
+
+### `[editor.soft-wrap]` Section
+
+Options for soft wrapping lines that exceed the view width
+
+| Key                 | Description                                                  | Default |
+| ---                 | ---                                                          | ---     |
+| `enable`            | Whether soft wrapping is enabled.                            | `false` |
+| `max-wrap`          | Maximum free space left at the end of the line.              | `20`    |
+| `max-indent-retain` | Maximum indentation to carry over when soft wrapping a line. | `40`    |
+| `wrap-indicator`    | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `↪ `    |
+
+Example:
+
+```toml
+[editor.soft-wrap]
+enable = true
+max-wrap = 25 # increase value to reduce forced mid-word wrapping
+max-indent-retain = 0
+wrap-indicator = ""  # set wrap-indicator to "" to hide it
+```

@@ -2,7 +2,12 @@ use crate::{
     alt,
     compositor::{Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
-    ui::{self, fuzzy_match::FuzzyQuery, EditorView},
+    ui::{
+        self,
+        document::{render_document, LineDecoration, LinePos, TextRenderer},
+        fuzzy_match::FuzzyQuery,
+        EditorView,
+    },
 };
 use futures_util::future::BoxFuture;
 use tui::{
@@ -19,11 +24,15 @@ use std::cmp::{self, Ordering};
 use std::{collections::HashMap, io::Read, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
-use helix_core::{movement::Direction, unicode::segmentation::UnicodeSegmentation, Position};
+use helix_core::{
+    movement::Direction, text_annotations::TextAnnotations,
+    unicode::segmentation::UnicodeSegmentation, Position,
+};
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
     theme::Style,
+    view::ViewPosition,
     Document, DocumentId, Editor,
 };
 
@@ -179,7 +188,7 @@ impl<T: Item> FilePicker<T> {
                             }
                             _ => {
                                 // TODO: enable syntax highlighting; blocked by async rendering
-                                Document::open(path, None, None)
+                                Document::open(path, None, None, editor.config.clone())
                                     .map(|doc| CachedPreview::Document(Box::new(doc)))
                                     .unwrap_or(CachedPreview::NotFound)
                             }
@@ -283,43 +292,57 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 })
                 .unwrap_or(0);
 
-            let offset = Position::new(first_line, 0);
+            let offset = ViewPosition {
+                anchor: doc.text().line_to_char(first_line),
+                horizontal_offset: 0,
+                vertical_offset: 0,
+            };
 
-            let mut highlights =
-                EditorView::doc_syntax_highlights(doc, offset, area.height, &cx.editor.theme);
+            let mut highlights = EditorView::doc_syntax_highlights(
+                doc,
+                offset.anchor,
+                area.height,
+                &cx.editor.theme,
+            );
             for spans in EditorView::doc_diagnostics_highlights(doc, &cx.editor.theme) {
                 if spans.is_empty() {
                     continue;
                 }
                 highlights = Box::new(helix_core::syntax::merge(highlights, spans));
             }
-            EditorView::render_text_highlights(
+            let mut decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
+
+            if let Some((start, end)) = range {
+                let style = cx
+                    .editor
+                    .theme
+                    .try_get("ui.highlight")
+                    .unwrap_or_else(|| cx.editor.theme.get("ui.selection"));
+                let draw_highlight = move |renderer: &mut TextRenderer, pos: LinePos| {
+                    if (start..=end).contains(&pos.doc_line) {
+                        let area = Rect::new(
+                            renderer.viewport.x,
+                            renderer.viewport.y + pos.visual_line,
+                            renderer.viewport.width,
+                            1,
+                        );
+                        renderer.surface.set_style(area, style)
+                    }
+                };
+                decorations.push(Box::new(draw_highlight))
+            }
+
+            render_document(
+                surface,
+                inner,
                 doc,
                 offset,
-                inner,
-                surface,
-                &cx.editor.theme,
+                &TextAnnotations::default(),
                 highlights,
-                &cx.editor.config(),
+                &cx.editor.theme,
+                &mut decorations,
+                &mut [],
             );
-
-            // highlight the line
-            if let Some((start, end)) = range {
-                let offset = start.saturating_sub(first_line) as u16;
-                surface.set_style(
-                    Rect::new(
-                        inner.x,
-                        inner.y + offset,
-                        inner.width,
-                        (end.saturating_sub(start) as u16 + 1)
-                            .min(inner.height.saturating_sub(offset)),
-                    ),
-                    cx.editor
-                        .theme
-                        .try_get("ui.highlight")
-                        .unwrap_or_else(|| cx.editor.theme.get("ui.selection")),
-                );
-            }
         }
     }
 
