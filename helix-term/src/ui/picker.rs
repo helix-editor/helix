@@ -618,10 +618,10 @@ impl<T: Item + 'static> Component for Picker<T> {
         cx.editor.reset_idle_timer();
 
         match key_event {
-            shift!(Tab) | key!(Up) | ctrl!('p') => {
+            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
                 self.move_by(1, Direction::Backward);
             }
-            key!(Tab) | key!(Down) | ctrl!('n') => {
+            key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
                 self.move_by(1, Direction::Forward);
             }
             key!(PageDown) | ctrl!('d') => {
