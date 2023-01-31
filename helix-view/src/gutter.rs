@@ -59,8 +59,8 @@ pub fn diagnostic<'doc>(
     let diagnostics = doc.diagnostics();
 
     Box::new(
-        move |line: usize, _selected: bool, first_line: bool, out: &mut String| {
-            if !first_line {
+        move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
+            if !first_visual_line {
                 return None;
             }
             use helix_core::diagnostic::Severity;
