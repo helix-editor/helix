@@ -61,6 +61,9 @@ pub fn move_vertically_visual(
     text_fmt: &TextFormat,
     annotations: &mut TextAnnotations,
 ) -> Range {
+    if !text_fmt.soft_wrap {
+        move_vertically(slice, range, dir, count, behaviour, text_fmt, annotations);
+    }
     annotations.clear_line_annotations();
     let pos = range.cursor(slice);
 
