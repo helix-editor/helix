@@ -5,13 +5,16 @@
 (keyword_gin) @function.builtin
 (keyword_brin) @function.builtin
 
-(invocation
-  name: (identifier) @function.builtin
-  parameter: [(field)]? @variable.other.member)
+(cast
+  name: (identifier) @function.builtin)
   
 (count
-  name: (identifier) @function.builtin
-  parameter: [(field)]? @variable.other.member)
+  name: (identifier) @function.builtin)
+
+(keyword_group_concat) @function.builtin  
+
+(invocation
+  name: (identifier) @function.builtin)
   
 (table_reference
   name: (identifier) @namespace)
@@ -25,7 +28,6 @@
 (field
   table_alias: (identifier) @variable.parameter
   name: (identifier) @variable.other.member)
-
 
 (comment) @comment
 
@@ -100,12 +102,16 @@
   (keyword_as)
   (keyword_distinct)
   (keyword_constraint)
+  ; (keyword_cast)
   ; (keyword_count)
+  ; (keyword_group_concat)
+  (keyword_separator)
   (keyword_max)
   (keyword_min)
   (keyword_avg)
   (keyword_end)
   (keyword_force)
+  (keyword_ignore)
   (keyword_using)
   (keyword_use)
   (keyword_index)
@@ -115,8 +121,6 @@
   (keyword_auto_increment)
   (keyword_default)
   (keyword_cascade)
-  (keyword_between)
-  (keyword_window)
   (keyword_with)
   (keyword_no)
   (keyword_data)
@@ -127,6 +131,7 @@
   (keyword_owner)
   (keyword_temp)
   (keyword_temporary)
+  (keyword_unlogged)
   (keyword_union)
   (keyword_all)
   (keyword_except)
@@ -136,8 +141,35 @@
   (keyword_commit)
   (keyword_rollback)
   (keyword_transaction)
-  (keyword_group_concat)
-  (keyword_separator)
+  (keyword_over)
+  (keyword_nulls)
+  (keyword_first)
+  (keyword_last)
+  (keyword_window)
+  (keyword_range)
+  (keyword_rows)
+  (keyword_groups)
+  (keyword_between)
+  (keyword_unbounded)
+  (keyword_preceding)
+  (keyword_following)
+  (keyword_exclude)
+  (keyword_current)
+  (keyword_row)
+  (keyword_ties)
+  (keyword_others)
+  (keyword_only)
+  (keyword_unique)
+  (keyword_concurrently)
+  ; (keyword_btree)
+  ; (keyword_hash)
+  ; (keyword_gist)
+  ; (keyword_spgist)
+  ; (keyword_gin)
+  ; (keyword_brin)
+  (keyword_like)
+  (keyword_similar)
+  (keyword_preserve)
 ] @keyword
 
 [
@@ -157,6 +189,7 @@
 
 [
   (keyword_boolean)
+
   (keyword_smallserial)
   (keyword_serial)
   (keyword_bigserial)
@@ -193,4 +226,15 @@
   (keyword_geography)
   (keyword_box2d)
   (keyword_box3d)
+
+  (char)
+  (varchar)
+  (numeric)
+
+  (keyword_oid)
+  (keyword_name)
+  (keyword_regclass)
+  (keyword_regnamespace)
+  (keyword_regproc)
+  (keyword_regtype)
 ] @type.builtin
