@@ -197,9 +197,10 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         let entry = entry.ok()?;
         // This is faster than entry.path().is_dir() since it uses cached fs::Metadata fetched by ignore/walkdir
         if entry.file_type()?.is_file() {
-            return Some(entry.into_path());
+            Some(entry.into_path())
+        } else {
+            None
         }
-        None
     });
 
     // Cap the number of files if we aren't in a git project, preventing
