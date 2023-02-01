@@ -37,6 +37,7 @@ use tokio::{
 use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
+pub use helix_core::line_ending::get_line_ending;
 pub use helix_core::register::Registers;
 use helix_core::{
     auto_pairs::AutoPairs,
@@ -1336,17 +1337,16 @@ impl Editor {
         let newline = doc.line_ending.as_str();
         let text = doc.text();
         let doc_len = text.len_chars();
-        if config.newline_at_eof
-            && get_line_ending(text
-                .slice(..)).is_none()
-        {
+        if config.newline_at_eof && get_line_ending(&text.slice(..)).is_none() {
+            let view = view_mut!(self);
+            let old_selection = doc.selection(view.id).clone();
             let newline = Tendril::from(newline);
             let selection = Selection::point(doc_len);
             let transaction = Transaction::insert(text, &selection, newline);
-            let view = view_mut!(self);
             doc.set_selection(view.id, selection);
             doc.apply(&transaction, view.id);
             doc.append_changes_to_history(view);
+            doc.set_selection(view.id, old_selection);
         }
 
         let future = doc.save(path, force)?;
