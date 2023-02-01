@@ -13,6 +13,8 @@ use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
 
+use std::path::PathBuf;
+
 pub struct RenderContext<'a> {
     pub editor: &'a Editor,
     pub doc: &'a Document,
@@ -410,20 +412,28 @@ where
     write(context, format!(" {} ", file_type), None);
 }
 
+fn render_path<F>(context: &mut RenderContext, write: F, path: Option<PathBuf>)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let path = path
+        .as_ref()
+        .map(|p| p.to_string_lossy())
+        .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+
+    let title = format!(
+        " {} ",
+        path,
+    );
+
+    write(context, title, None)
+}
+
 fn render_file_name<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let title = {
-        let rel_path = context.doc.relative_path();
-        let path = rel_path
-            .as_ref()
-            .map(|p| p.to_string_lossy())
-            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-        format!(" {} ", path)
-    };
-
-    write(context, title, None);
+    render_path(context, write, context.doc.relative_path())
 }
 
 fn render_file_modification_indicator<F>(context: &mut RenderContext, write: F)
@@ -444,16 +454,12 @@ fn render_file_base_name<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let title = {
-        let rel_path = context.doc.relative_path();
-        let path = rel_path
-            .as_ref()
-            .and_then(|p| p.as_path().file_name().map(|s| s.to_string_lossy()))
-            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-        format!(" {} ", path)
-    };
+    let path = context
+        .doc
+        .relative_path()
+        .and_then(|p| p.file_name().map(PathBuf::from));
 
-    write(context, title, None);
+    render_path(context, write, path)
 }
 
 fn render_separator<F>(context: &mut RenderContext, write: F)
