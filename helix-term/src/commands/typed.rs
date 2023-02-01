@@ -2335,7 +2335,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["sh"],
             doc: "Run a shell command",
             fun: run_shell_command,
-            completer: Some(completers::directory),
+            completer: Some(completers::filename),
         },
     ];
 

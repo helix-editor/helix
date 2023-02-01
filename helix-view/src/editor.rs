@@ -7,6 +7,7 @@ use crate::{
     input::KeyEvent,
     theme::{self, Theme},
     tree::{self, Tree},
+    view::ViewPosition,
     Align, Document, DocumentId, View, ViewId,
 };
 use helix_vcs::DiffProviderRegistry;
@@ -18,6 +19,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
     borrow::Cow,
+    cell::Cell,
     collections::{BTreeMap, HashMap},
     io::stdin,
     num::NonZeroUsize,
@@ -269,6 +271,44 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub newline_at_eof: bool,
+    pub soft_wrap: SoftWrap,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct SoftWrap {
+    /// Soft wrap lines that exceed viewport width. Default to off
+    pub enable: bool,
+    /// Maximum space left free at the end of the line.
+    /// This space is used to wrap text at word boundaries. If that is not possible within this limit
+    /// the word is simply split at the end of the line.
+    ///
+    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+    ///
+    /// Default to 20
+    pub max_wrap: u16,
+    /// Maximum number of indentation that can be carried over from the previous line when softwrapping.
+    /// If a line is indented further then this limit it is rendered at the start of the viewport instead.
+    ///
+    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+    ///
+    /// Default to 40
+    pub max_indent_retain: u16,
+    /// Indicator placed at the beginning of softwrapped lines
+    ///
+    /// Defaults to ↪
+    pub wrap_indicator: String,
+}
+
+impl Default for SoftWrap {
+    fn default() -> Self {
+        SoftWrap {
+            enable: false,
+            max_wrap: 20,
+            max_indent_retain: 40,
+            wrap_indicator: "↪ ".into(),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -719,6 +759,7 @@ impl Default for Config {
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             newline_at_eof: false,
+            soft_wrap: SoftWrap::default(),
         }
     }
 }
@@ -799,7 +840,7 @@ pub struct Editor {
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
-    pub config: Box<dyn DynAccess<Config>>,
+    pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
@@ -815,6 +856,19 @@ pub struct Editor {
     /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be aquired
     pub redraw_handle: RedrawHandle,
     pub needs_redraw: bool,
+    /// Cached position of the cursor calculated during rendering.
+    /// The content of `cursor_cache` is returned by `Editor::cursor` if
+    /// set to `Some(_)`. The value will be cleared after it's used.
+    /// If `cursor_cache` is `None` then the `Editor::cursor` function will
+    /// calculate the cursor position.
+    ///
+    /// `Some(None)` represents a cursor position outside of the visible area.
+    /// This will just cause `Editor::cursor` to return `None`.
+    ///
+    /// This cache is only a performance optimization to
+    /// avoid calculating the cursor position multiple
+    /// times during rendering and should not be set by other functions.
+    pub cursor_cache: Cell<Option<Option<Position>>>,
 }
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
@@ -868,7 +922,7 @@ impl Editor {
         mut area: Rect,
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
-        config: Box<dyn DynAccess<Config>>,
+        config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
@@ -912,6 +966,7 @@ impl Editor {
             config_events: unbounded_channel(),
             redraw_handle: Default::default(),
             needs_redraw: false,
+            cursor_cache: Cell::new(None),
         }
     }
 
@@ -996,7 +1051,7 @@ impl Editor {
 
     fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
         // `ui.selection` is the only scope required to be able to render a theme.
-        if theme.find_scope_index("ui.selection").is_none() {
+        if theme.find_scope_index_exact("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
             return;
         }
@@ -1079,7 +1134,7 @@ impl Editor {
     fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
         let view = self.tree.get_mut(current_view);
         view.doc = doc_id;
-        view.offset = Position::default();
+        view.offset = ViewPosition::default();
 
         let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
@@ -1206,12 +1261,15 @@ impl Editor {
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
-        self.new_file_from_document(action, Document::default())
+        self.new_file_from_document(action, Document::default(self.config.clone()))
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
         let (rope, encoding) = crate::document::from_reader(&mut stdin(), None)?;
-        Ok(self.new_file_from_document(action, Document::from(rope, Some(encoding))))
+        Ok(self.new_file_from_document(
+            action,
+            Document::from(rope, Some(encoding), self.config.clone()),
+        ))
     }
 
     // ??? possible use for integration tests
@@ -1222,7 +1280,12 @@ impl Editor {
         let id = if let Some(id) = id {
             id
         } else {
-            let mut doc = Document::open(&path, None, Some(self.syn_loader.clone()))?;
+            let mut doc = Document::open(
+                &path,
+                None,
+                Some(self.syn_loader.clone()),
+                self.config.clone(),
+            )?;
 
             let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
@@ -1308,7 +1371,7 @@ impl Editor {
                 .iter()
                 .map(|(&doc_id, _)| doc_id)
                 .next()
-                .unwrap_or_else(|| self.new_document(Document::default()));
+                .unwrap_or_else(|| self.new_document(Document::default(self.config.clone())));
             let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
@@ -1460,7 +1523,11 @@ impl Editor {
             .selection(view.id)
             .primary()
             .cursor(doc.text().slice(..));
-        if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
+        let pos = self
+            .cursor_cache
+            .get()
+            .unwrap_or_else(|| view.screen_coords_at_pos(doc, doc.text().slice(..), cursor));
+        if let Some(mut pos) = pos {
             let inner = view.inner_area(doc);
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
