@@ -1,5 +1,5 @@
-use std::cmp::Ordering;
 use std::iter::Peekable;
+use std::{cmp::Ordering, path::PathBuf};
 
 use anyhow::Result;
 
@@ -18,6 +18,7 @@ pub trait TreeItem: Sized {
     type Params;
 
     fn text(&self, cx: &mut Context, selected: bool, params: &mut Self::Params) -> Spans;
+    fn text_string(&self) -> String;
     fn is_child(&self, other: &Self) -> bool;
     fn cmp(&self, other: &Self) -> Ordering;
 
@@ -253,15 +254,76 @@ impl<T: TreeItem> Tree<T> {
             iter.skip(start).position(f).map(|p| p + start)
         }
     }
+
+    pub fn focus_path(&mut self, cx: &mut Context, current_path: PathBuf, current_root: &PathBuf) {
+        let current_path = current_path.as_path().to_string_lossy().to_string();
+        let current_root = current_root.as_path().to_string_lossy().to_string() + "/";
+        let nodes = current_path
+            .strip_prefix(current_root.as_str())
+            .expect(
+                format!(
+                    "Failed to strip prefix '{}' from '{}'",
+                    current_root, current_path
+                )
+                .as_str(),
+            )
+            .split(std::path::MAIN_SEPARATOR)
+            .enumerate()
+            .collect::<Vec<(usize, &str)>>();
+
+        let len = nodes.len();
+
+        // `preivous_item_index` is necessary to avoid choosing the first file
+        // that is not the current file.
+        // For example, consider a project that contains multiple `Cargo.toml`.
+        // Without `previous_item_index`, the first `Cargo.toml` will always be chosen,
+        // regardless of which `Cargo.toml` the user wishes to find in the explorer.
+        let mut previous_item_index = 0;
+        for (index, node) in nodes {
+            let current_level = index + 1;
+            let is_last = index == len - 1;
+            match self
+                .items
+                .iter()
+                .enumerate()
+                .position(|(item_index, item)| {
+                    item_index >= previous_item_index
+                        && item.item.text_string().eq(node)
+                        && item.level == current_level
+                }) {
+                Some(index) => {
+                    if is_last {
+                        self.selected = index
+                    } else {
+                        let item = &self.items[index];
+                        let items = match item.item.get_childs() {
+                            Ok(items) => items,
+                            Err(e) => return cx.editor.set_error(format!("{e}")),
+                        };
+                        let inserts = vec_to_tree(items, current_level + 1);
+                        previous_item_index = index;
+                        let _: Vec<_> = self.items.splice(index + 1..index + 1, inserts).collect();
+                    }
+                }
+                None => cx.editor.set_error(format!(
+                    "The following file does not exist anymore: '{}'. node = {}",
+                    current_path, node
+                )),
+            }
+        }
+
+        // Center the selection
+        self.winline = self.max_len / 2;
+    }
 }
 
 impl<T: TreeItem> Tree<T> {
-    pub fn on_enter(&mut self, cx: &mut Context, params: &mut T::Params) {
+    pub fn on_enter(&mut self, cx: &mut Context, params: &mut T::Params, selected_index: usize) {
         if self.items.is_empty() {
             return;
         }
         if let Some(next_level) = self.next_item().map(|elem| elem.level) {
-            let current = &mut self.items[self.selected];
+            let current = &mut self.items[selected_index];
             let current_level = current.level;
             if next_level > current_level {
                 if let Some(mut on_folded_fn) = self.on_folded_fn.take() {
@@ -275,13 +337,13 @@ impl<T: TreeItem> Tree<T> {
 
         if let Some(mut on_open_fn) = self.on_opened_fn.take() {
             let mut f = || {
-                let current = &mut self.items[self.selected];
+                let current = &mut self.items[selected_index];
                 let items = match on_open_fn(&mut current.item, cx, params) {
                     TreeOp::Restore => {
                         let inserts = std::mem::take(&mut current.folded);
                         let _: Vec<_> = self
                             .items
-                            .splice(self.selected + 1..self.selected + 1, inserts)
+                            .splice(selected_index + 1..selected_index + 1, inserts)
                             .collect();
                         return;
                     }
@@ -297,17 +359,17 @@ impl<T: TreeItem> Tree<T> {
                 let inserts = vec_to_tree(items, current.level + 1);
                 let _: Vec<_> = self
                     .items
-                    .splice(self.selected + 1..self.selected + 1, inserts)
+                    .splice(selected_index + 1..selected_index + 1, inserts)
                     .collect();
             };
             f();
             self.on_opened_fn = Some(on_open_fn)
         } else {
-            let current = &mut self.items[self.selected];
+            let current = &mut self.items[selected_index];
             let inserts = std::mem::take(&mut current.folded);
             let _: Vec<_> = self
                 .items
-                .splice(self.selected + 1..self.selected + 1, inserts)
+                .splice(selected_index + 1..selected_index + 1, inserts)
                 .collect();
         }
     }
@@ -428,6 +490,10 @@ impl<T: TreeItem> Tree<T> {
 
     pub fn replace_current(&mut self, item: T) {
         self.items[self.selected].item = item;
+    }
+
+    pub fn set_selected(&mut self, selected: usize) {
+        self.selected = selected
     }
 
     pub fn insert_current_level(&mut self, item: T) {
@@ -567,7 +633,7 @@ impl<T: TreeItem> Tree<T> {
             key!('h') => self.move_left(1.max(count)),
             key!('l') => self.move_right(1.max(count)),
             shift!('G') => self.move_down(usize::MAX / 2),
-            key!(Enter) => self.on_enter(cx, params),
+            key!(Enter) => self.on_enter(cx, params, self.selected),
             ctrl!('d') => self.move_down_half_page(),
             ctrl!('u') => self.move_up_half_page(),
             shift!('D') => self.move_down_page(),

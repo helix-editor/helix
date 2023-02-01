@@ -77,6 +77,7 @@ impl FileInfo {
 
 impl TreeItem for FileInfo {
     type Params = State;
+
     fn text(&self, cx: &mut Context, selected: bool, state: &mut State) -> Spans {
         let text = self.get_text();
         let theme = &cx.editor.theme;
@@ -179,6 +180,10 @@ impl TreeItem for FileInfo {
             self.get_text().contains(s)
         }
     }
+
+    fn text_string(&self) -> String {
+        self.get_text().to_string()
+    }
 }
 
 // #[derive(Default, Debug, Clone)]
@@ -262,21 +267,15 @@ impl Explorer {
         })
     }
 
-    pub fn new_explorer_recursion() -> Result<Self> {
-        let current_root = std::env::current_dir().unwrap_or_else(|_| "./".into());
-        let parent = FileInfo::parent(&current_root);
-        let root = FileInfo::root(current_root.clone());
-        let mut tree =
-            Tree::build_from_root(root, usize::MAX / 2)?.with_enter_fn(Self::toggle_current);
-        tree.insert_current_level(parent);
-        Ok(Self {
-            tree,
-            state: State::new(true, current_root),
-            repeat_motion: None,
-            prompt: None,
-            on_next_key: None,
-        })
-        // let mut root = vec![, FileInfo::root(p)];
+    pub fn focus_current_file(&mut self, cx: &mut Context) {
+        let current_document_path = doc!(cx.editor).path().cloned();
+        match current_document_path {
+            None => cx.editor.set_error("No opened document."),
+            Some(path) => {
+                self.tree.focus_path(cx, path, &self.state.current_root);
+                self.focus();
+            }
+        }
     }
 
     // pub fn new_with_uri(uri: String) -> Result<Self> {
@@ -289,7 +288,7 @@ impl Explorer {
     // }
 
     pub fn focus(&mut self) {
-        self.state.focus = true
+        self.state.focus = true;
     }
 
     pub fn unfocus(&mut self) {
