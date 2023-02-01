@@ -8,7 +8,7 @@ use crate::{
     theme::{self, Theme},
     tree::{self, Tree},
     view::ViewPosition,
-    workspace::{undo::UndoIndex, Workspace},
+    Align, Document, DocumentId, View, ViewId,
 };
 use helix_vcs::DiffProviderRegistry;
 
@@ -274,6 +274,7 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
+    pub persistent_undo: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -764,6 +765,7 @@ impl Default for Config {
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap::default(),
+            persistent_undo: true,
         }
     }
 }

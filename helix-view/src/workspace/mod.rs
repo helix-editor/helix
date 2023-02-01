@@ -80,7 +80,17 @@ impl FileLock {
         Ok(Self { file, shared: true })
     }
 
-    pub fn lock(&self) -> Result<()> {
+    pub fn get(&self) -> Result<&File> {
+        self.lock()?;
+        Ok(&self.file)
+    }
+
+    pub fn get_mut(&mut self) -> Result<&mut File> {
+        self.lock()?;
+        Ok(&mut self.file)
+    }
+
+    fn lock(&self) -> Result<()> {
         sys::lock(&self.file, self.shared)
     }
 

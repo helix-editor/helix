@@ -431,8 +431,10 @@ pub fn serialize_transaction<W: Write>(
             write_vec(writer, selection.ranges(), |writer, range| {
                 write_usize(writer, range.anchor)?;
                 write_usize(writer, range.head)?;
-                write_option(writer, range.horiz.as_ref(), |writer, horiz| {
-                    write_u32(writer, *horiz)
+                write_option(writer, range.old_visual_position.as_ref(), |writer, pos| {
+                    write_u32(writer, pos.0)?;
+                    write_u32(writer, pos.1)?;
+                    Ok(())
                 })?;
                 Ok(())
             })?;
@@ -476,11 +478,14 @@ pub fn deserialize_transaction<R: Read>(reader: &mut R) -> std::io::Result<Trans
         let ranges = read_vec(reader, |reader| {
             let anchor = read_usize(reader)?;
             let head = read_usize(reader)?;
-            let horiz = read_option(reader, read_u32)?;
+            let old_visual_position = read_option(reader, |reader| {
+                let res = (read_u32(reader)?, read_u32(reader)?);
+                Ok(res)
+            })?;
             Ok(Range {
                 anchor,
                 head,
-                horiz,
+                old_visual_position,
             })
         })?;
         Ok(Selection {

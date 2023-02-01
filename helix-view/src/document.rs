@@ -32,6 +32,7 @@ use helix_core::{
 };
 
 use crate::editor::{Config, RedrawHandle};
+use crate::workspace::FileLock;
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -697,6 +698,37 @@ impl Document {
             None => self.diff_handle = None,
         }
 
+        Ok(())
+    }
+
+    pub fn undo_file(&self) -> Option<PathBuf> {
+        self.path().map(|path| {
+            let undo_dir = helix_loader::cache_dir().join("undo");
+            let escaped_path = helix_core::path::escape_path(path);
+            let res = undo_dir.join(escaped_path);
+            res
+        })
+    }
+
+    pub fn save_history(&mut self) -> anyhow::Result<()> {
+        if let Some(Ok(mut undo_file)) = self.undo_file().map(FileLock::exclusive) {
+            let last_saved_revision = self.get_last_saved_revision();
+            let path = self.path().unwrap().clone();
+            let history = self.history.get_mut();
+            history.serialize(undo_file.get_mut()?, &path, last_saved_revision)?;
+        }
+        Ok(())
+    }
+
+    pub fn load_history(&mut self) -> anyhow::Result<()> {
+        if let Some(Ok(undo_file)) = self.undo_file().map(FileLock::shared) {
+            let (last_saved_revision, history) = helix_core::history::History::deserialize(
+                &mut undo_file.get()?,
+                self.path().unwrap(),
+            )?;
+            self.history.set(history);
+            self.set_last_saved_revision(last_saved_revision);
+        }
         Ok(())
     }
 

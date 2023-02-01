@@ -164,3 +164,14 @@ pub fn path_from_bytes(slice: &[u8]) -> Result<PathBuf, Utf8Error> {
         <std::ffi::OsStr as std::os::unix::ffi::OsStrExt>::from_bytes(slice),
     ));
 }
+
+pub fn escape_path<P: AsRef<Path>>(path: P) -> PathBuf {
+    let mut res = PathBuf::with_capacity(path.as_ref().as_os_str().len());
+    for component in path.as_ref() {
+        let mut bytes = vec![b'%'];
+        bytes.append(&mut path_as_bytes(PathBuf::from(component)));
+        let s = path_from_bytes(&bytes).unwrap();
+        res.push(s);
+    }
+    res
+}

@@ -2,8 +2,9 @@ use crate::parse::*;
 use crate::{Assoc, ChangeSet, Range, Rope, Selection, Transaction};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 use std::num::NonZeroUsize;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 #[derive(Debug, Clone)]
 pub struct State {
@@ -66,24 +67,6 @@ struct Revision {
     timestamp: Instant,
 }
 
-const HEADER_TAG: &str = "Helix Undofile 1\n";
-
-fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
-    const BUF_SIZE: usize = 8192;
-
-    let mut buf = [0u8; BUF_SIZE];
-    let mut hash = sha1_smol::Sha1::new();
-    loop {
-        let total_read = reader.read(&mut buf)?;
-        if total_read == 0 {
-            break;
-        }
-
-        hash.update(&buf[0..total_read]);
-    }
-    Ok(hash.digest().bytes())
-}
-
 impl Default for History {
     fn default() -> Self {
         // Add a dummy root revision with empty transaction
@@ -128,28 +111,47 @@ impl Revision {
     }
 }
 
+const HEADER_TAG: &str = "Helix Undofile 1\n";
+
+fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
+    const BUF_SIZE: usize = 8192;
+
+    let mut buf = [0u8; BUF_SIZE];
+    let mut hash = sha1_smol::Sha1::new();
+    loop {
+        let total_read = reader.read(&mut buf)?;
+        if total_read == 0 {
+            break;
+        }
+
+        hash.update(&buf[0..total_read]);
+    }
+    Ok(hash.digest().bytes())
+}
+
 impl History {
-    pub fn serialize<W: Write, R: Read>(
+    pub fn serialize<W: Write + Seek>(
         &self,
         writer: &mut W,
-        text: &mut R,
+        path: &PathBuf,
         last_saved_revision: usize,
-        last_mtime: u64,
     ) -> std::io::Result<()> {
         write_string(writer, HEADER_TAG)?;
         write_usize(writer, self.current)?;
         write_usize(writer, last_saved_revision)?;
+
+        let last_mtime = std::fs::metadata(path)?
+            .modified()?
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         write_u64(writer, last_mtime)?;
-        writer.write_all(&get_hash(text)?)?;
+        writer.write_all(&get_hash(&mut std::fs::File::open(path)?)?)?;
         write_vec(writer, &self.revisions, |writer, rev| rev.serialize(writer))?;
         Ok(())
     }
 
-    pub fn deserialize<R: Read>(
-        reader: &mut R,
-        text: &mut R,
-        last_mtime: u64,
-    ) -> std::io::Result<(usize, Self)> {
+    pub fn deserialize<R: Read>(reader: &mut R, path: &PathBuf) -> std::io::Result<(usize, Self)> {
         let header = read_string(reader)?;
         if HEADER_TAG != header {
             Err(std::io::Error::new(
@@ -161,10 +163,15 @@ impl History {
             let current = read_usize(reader)?;
             let last_saved_revision = read_usize(reader)?;
             let mtime = read_u64(reader)?;
+            let last_mtime = std::fs::metadata(path)?
+                .modified()?
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
             let mut hash = [0u8; 20];
             reader.read_exact(&mut hash)?;
 
-            if mtime != last_mtime && hash != get_hash(text)? {
+            if mtime != last_mtime && hash != get_hash(&mut std::fs::File::open(path)?)? {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
                     "outdated undo file",
@@ -172,7 +179,8 @@ impl History {
             }
 
             let revisions = read_vec(reader, |reader| Revision::deserialize(reader, timestamp))?;
-            Ok((last_saved_revision, History { current, revisions }))
+            let history = History { current, revisions };
+            Ok((last_saved_revision, history))
         }
     }
 
@@ -741,11 +749,11 @@ mod test {
             };
             history.commit_revision(&transaction, &state);
 
-            let text = Vec::new();
+            let file = tempfile::NamedTempFile::new().unwrap();
             history
-                .serialize(&mut buf, &mut text.as_slice(), 0, 0)
+                .serialize(&mut buf, &file.path().to_path_buf(), 0)
                 .unwrap();
-            History::deserialize(&mut buf.as_slice(), &mut text.as_slice(), 0).unwrap();
+            History::deserialize(&mut buf.as_slice(), &file.path().to_path_buf()).unwrap();
             true
         }
     );
