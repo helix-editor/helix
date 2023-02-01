@@ -357,6 +357,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "C-s" => commit_undo_checkpoint,
         "C-x" => completion,
+        "C-n" => completion_word,
+        "C-l" => completion_line,
         "C-r" => insert_register,
 
         "C-w" | "A-backspace" => delete_word_backward,
