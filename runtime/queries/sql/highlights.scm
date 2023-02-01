@@ -4,7 +4,6 @@
 (keyword_spgist) @function.builtin
 (keyword_gin) @function.builtin
 (keyword_brin) @function.builtin
-(keyword_float) @function.builtin
 
 (invocation
   name: (identifier) @function.builtin
@@ -169,6 +168,7 @@
   (numeric)
   (keyword_real)
   (double)
+  (float)
 
   (keyword_money)
 
