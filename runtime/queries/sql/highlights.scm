@@ -1,7 +1,6 @@
-(keyword_gist) @function.builtin
-(keyword_btree) @function.builtin
 (keyword_btree) @function.builtin
 (keyword_hash) @function.builtin
+(keyword_gist) @function.builtin
 (keyword_spgist) @function.builtin
 (keyword_gin) @function.builtin
 (keyword_brin) @function.builtin
