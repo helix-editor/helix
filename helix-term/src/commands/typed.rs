@@ -1412,15 +1412,9 @@ fn tutor(
 
 fn undo_goto_line_number_preview(cx: &mut compositor::Context) {
     if cx.editor.goto_line_number_preview {
-        log::info!("undoing goto_line_number preview, jumping backwards");
-        // if let Some(line_number) = cx.editor.last_line_number {
-        // goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line_number));
-
         // Remove the jump we added during the preview session.
         jump_backward_impl(cx.editor, 1);
 
-        // let (view, doc) = current!(cx.editor);
-        // view.ensure_cursor_in_view(doc, line_number);
         cx.editor.goto_line_number_preview = false;
     }
 }
