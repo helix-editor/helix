@@ -1337,11 +1337,8 @@ impl Editor {
         let text = doc.text();
         let doc_len = text.len_chars();
         if config.newline_at_eof
-            && text
-                .get_slice((doc_len - newline.len())..)
-                .and_then(|s| s.as_str())
-                .filter(|s| s != &newline)
-                .is_some()
+            && get_line_ending(text
+                .slice(..)).is_none()
         {
             let newline = Tendril::from(newline);
             let selection = Selection::point(doc_len);
