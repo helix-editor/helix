@@ -4775,35 +4775,39 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
-        let ch = match event.char() {
-            Some(ch) => ch,
+        let (view, doc) = current!(cx.editor);
+        // surround_len is the number of new characters being added.
+        let (open, close, surround_len) = match event.char() {
+            Some(ch) => {
+                let (o, c) = surround::get_pair(ch);
+                let mut open = Tendril::new();
+                open.push(o);
+                let mut close = Tendril::new();
+                close.push(c);
+                (open, close, 2)
+            }
+            None if event.code == KeyCode::Enter => (
+                doc.line_ending.as_str().into(),
+                doc.line_ending.as_str().into(),
+                2 * doc.line_ending.len_chars(),
+            ),
             None => return,
         };
-        let (view, doc) = current!(cx.editor);
-        let selection = doc.selection(view.id);
-        let (open, close) = surround::get_pair(ch);
-        // The number of chars in get_pair
-        let surround_len = 2;
 
+        let selection = doc.selection(view.id);
         let mut changes = Vec::with_capacity(selection.len() * 2);
         let mut ranges = SmallVec::with_capacity(selection.len());
         let mut offs = 0;
 
         for range in selection.iter() {
-            let mut o = Tendril::new();
-            o.push(open);
-            let mut c = Tendril::new();
-            c.push(close);
-            changes.push((range.from(), range.from(), Some(o)));
-            changes.push((range.to(), range.to(), Some(c)));
+            changes.push((range.from(), range.from(), Some(open.clone())));
+            changes.push((range.to(), range.to(), Some(close.clone())));
 
-            // Add 2 characters to the range to select them
             ranges.push(
                 Range::new(offs + range.from(), offs + range.to() + surround_len)
                     .with_direction(range.direction()),
             );
 
-            // Add 2 characters to the offset for the next ranges
             offs += surround_len;
         }
 
