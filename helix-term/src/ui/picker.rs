@@ -352,6 +352,14 @@ impl<T: Item + 'static> FilePicker<T> {
         self.show_preview = !self.show_preview;
     }
 
+    fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+        if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
+            // TODO: recalculate only if pattern changed
+            self.score();
+        }
+        EventResult::Consumed(None)
+    }
+
     /// Get (cached) preview for a given path. If a document corresponding
     /// to the path is already open in the editor, it is used instead.
     fn get_preview<'picker, 'editor>(
@@ -554,7 +562,76 @@ impl<T: Item + 'static> Component for FilePicker<T> {
             return self.handle_idle_timeout(ctx);
         }
         // TODO: keybinds for scrolling preview
-        self.picker.handle_event(event, ctx)
+
+        let key_event = match event {
+            Event::Key(event) => *event,
+            Event::Paste(..) => return self.prompt_handle_event(event, ctx),
+            Event::Resize(..) => return EventResult::Consumed(None),
+            _ => return EventResult::Ignored(None),
+        };
+
+        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _cx| {
+            // remove the layer
+            compositor.last_picker = compositor.pop();
+        })));
+
+        // So that idle timeout retriggers
+        ctx.editor.reset_idle_timer();
+
+        match key_event {
+            shift!(Tab) | key!(Up) | ctrl!('p') => {
+                self.move_by(1, Direction::Backward);
+            }
+            key!(Tab) | key!(Down) | ctrl!('n') => {
+                self.move_by(1, Direction::Forward);
+            }
+            key!(PageDown) | ctrl!('d') => {
+                self.page_down();
+            }
+            key!(PageUp) | ctrl!('u') => {
+                self.page_up();
+            }
+            key!(Home) => {
+                self.to_start();
+            }
+            key!(End) => {
+                self.to_end();
+            }
+            key!(Esc) | ctrl!('c') => {
+                return close_fn;
+            }
+            alt!(Enter) => {
+                if let Some(option) = self.selection() {
+                    (self.callback_fn)(ctx, option, Action::Load);
+                }
+            }
+            key!(Enter) => {
+                if let Some(option) = self.selection() {
+                    (self.callback_fn)(ctx, option, Action::Replace);
+                }
+                return close_fn;
+            }
+            ctrl!('s') => {
+                if let Some(option) = self.selection() {
+                    (self.callback_fn)(ctx, option, Action::HorizontalSplit);
+                }
+                return close_fn;
+            }
+            ctrl!('v') => {
+                if let Some(option) = self.selection() {
+                    (self.callback_fn)(ctx, option, Action::VerticalSplit);
+                }
+                return close_fn;
+            }
+            ctrl!('t') => {
+                self.toggle_preview();
+            }
+            _ => {
+                self.prompt_handle_event(event, ctx);
+            }
+        }
+
+        EventResult::Consumed(None)
     }
 
     fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
@@ -672,11 +749,7 @@ impl<T: Item> Picker<T> {
     }
 
     fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
-        if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
-            // TODO: recalculate only if pattern changed
-            self.score();
-        }
-        EventResult::Consumed(None)
+        unimplemented!()
     }
 }
 
@@ -692,75 +765,7 @@ impl<T: Item + 'static> Component for Picker<T> {
     }
 
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
-        let key_event = match event {
-            Event::Key(event) => *event,
-            Event::Paste(..) => return self.prompt_handle_event(event, cx),
-            Event::Resize(..) => return EventResult::Consumed(None),
-            _ => return EventResult::Ignored(None),
-        };
-
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _cx| {
-            // remove the layer
-            compositor.last_picker = compositor.pop();
-        })));
-
-        // So that idle timeout retriggers
-        cx.editor.reset_idle_timer();
-
-        match key_event {
-            shift!(Tab) | key!(Up) | ctrl!('p') => {
-                self.move_by(1, Direction::Backward);
-            }
-            key!(Tab) | key!(Down) | ctrl!('n') => {
-                self.move_by(1, Direction::Forward);
-            }
-            key!(PageDown) | ctrl!('d') => {
-                self.page_down();
-            }
-            key!(PageUp) | ctrl!('u') => {
-                self.page_up();
-            }
-            key!(Home) => {
-                self.to_start();
-            }
-            key!(End) => {
-                self.to_end();
-            }
-            key!(Esc) | ctrl!('c') => {
-                return close_fn;
-            }
-            alt!(Enter) => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::Load);
-                }
-            }
-            key!(Enter) => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::Replace);
-                }
-                return close_fn;
-            }
-            ctrl!('s') => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::HorizontalSplit);
-                }
-                return close_fn;
-            }
-            ctrl!('v') => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::VerticalSplit);
-                }
-                return close_fn;
-            }
-            ctrl!('t') => {
-                self.toggle_preview();
-            }
-            _ => {
-                self.prompt_handle_event(event, cx);
-            }
-        }
-
-        EventResult::Consumed(None)
+        unimplemented!()
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
