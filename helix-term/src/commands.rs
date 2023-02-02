@@ -9,9 +9,8 @@ use tui::widgets::Row;
 pub use typed::*;
 
 use helix_core::{
-    comment, coords_at_pos,
-    diagnostic::{Diagnostic, Severity::*},
     char_idx_at_visual_offset, comment,
+    diagnostic::{Diagnostic, Severity::*},
     doc_formatter::TextFormat,
     encoding, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
@@ -2416,9 +2415,9 @@ fn buffer_picker(cx: &mut Context) {
     }
 
     impl ui::menu::Item for BufferMeta {
-        type Data = ();
+        type Data = (helix_view::graphics::Style, helix_view::graphics::Style);
 
-        fn format(&self, _data: &Self::Data) -> Row {
+        fn format(&self, data: &Self::Data) -> Row {
             let path = self
                 .path
                 .as_deref()
@@ -2433,18 +2432,19 @@ fn buffer_picker(cx: &mut Context) {
             let diagnostics = &self.diagnostics;
 
             let (hint, info, warning, error) =
-                diagnostics.iter().fold((0, 0, 0, 0), |mut acc, d| {
-                    if let Some(s) = d.severity {
+                diagnostics
+                    .iter()
+                    .filter_map(|d| d.severity)
+                    .fold((0, 0, 0, 0), |mut acc, s| {
                         match s {
                             Hint => acc.0 += 1,
                             Info => acc.1 += 1,
                             Warning => acc.2 += 1,
                             Error => acc.3 += 1,
-                        };
-                    }
+                        }
 
-                    acc
-                });
+                        acc
+                    });
 
             if !diagnostics.is_empty() {
                 flags.push("!");
@@ -2462,10 +2462,11 @@ fn buffer_picker(cx: &mut Context) {
                 format!(" ({})", flags.join(""))
             };
 
-            format!(
-                "{} {}{}{}",
-                self.id,
-                path,
+            let (diag, text) = data;
+
+            Row::new(vec![
+                self.id.to_string(),
+                path.to_string(),
                 flag,
                 if !diagnostics.is_empty() {
                     format!(
@@ -2474,9 +2475,13 @@ fn buffer_picker(cx: &mut Context) {
                     )
                 } else {
                     String::new()
-                }
-            )
-            .into()
+                },
+            ])
+            .style(if !diagnostics.is_empty() {
+                *diag
+            } else {
+                *text
+            })
         }
     }
 
@@ -2494,7 +2499,7 @@ fn buffer_picker(cx: &mut Context) {
             .values()
             .map(|doc| new_meta(doc))
             .collect(),
-        (),
+        (cx.editor.theme.get("error"), cx.editor.theme.get("text")),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
         },
