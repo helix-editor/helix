@@ -6,7 +6,7 @@
     - [User-defined Registers](#user-defined-registers)
     - [Built-in Registers](#built-in-registers)
   - [Surround](#surround)
-  - [Moving the Selection with Syntax-tree Motions](#moving-the-selection-with-syntax-tree-motions)
+  - [Moving the Primary Selection with Syntax-tree Motions](#moving-the-primary-selection-with-syntax-tree-motions)
   - [Selecting and Manipulating Text with Textobjects](#selecting-and-manipulating-text-with-textobjects)
   - [Navigating Using Tree-sitter Textobjects](#navigating-using-tree-sitter-textobjects)
   <!--toc:end-->
@@ -77,9 +77,9 @@ Surround can also act on multiple selections. For example, to change every occur
 
 Multiple characters are currently not supported, but planned for future release.
 
-## Moving the Selection with Syntax-tree Motions
+## Moving the Primary Selection with Syntax-tree Motions
 
-`Alt-p`, `Alt-o`, `Alt-i`, and `Alt-n` (or `Alt` and arrow keys) allow you to move the 
+`Alt-p`, `Alt-o`, `Alt-i`, and `Alt-n` (or `Alt` and arrow keys) allow you to move the primary
 selection according to its location in the syntax tree. For example, many languages have the
 following syntax for function calls:
 
@@ -119,7 +119,7 @@ a more intuitive tree format:
 ```
 
 If you have a selection that wraps `arg1` (see the tree above), and you use
-`Alt-n`, it will select the next sibling in the syntax tree: `arg2`.
+Alt-n, it will select the next sibling in the syntax tree: `arg2`.
 
 ```js
 // before
@@ -128,7 +128,7 @@ func([arg1], arg2, arg3)
 func(arg1, [arg2], arg3);
 ```
 
-Similarly, `Alt-o` will expand the selection to the parent node, in this case, the
+Similarly, Alt-o will expand the selection to the parent node, in this case, the
 arguments node.
 
 ```js
@@ -136,15 +136,15 @@ func[(arg1, arg2, arg3)];
 ```
 
 There is also some nuanced behavior that prevents you from getting stuck on a
-node with no sibling. When using `Alt-p` with a selection on `arg1`, the previous
+node with no sibling. When using Alt-p with a selection on `arg1`, the previous
 child node will be selected. In the event that `arg1` does not have a previous
 sibling, the selection will move up the syntax tree and select the previous
-element. As a result, using `Alt-p` with a selection on `arg1` will move the
+element. As a result, using Alt-p with a selection on `arg1` will move the
 selection to the "func" `identifier`.
 
 ## Selecting and Manipulating Text with Textobjects
 
-In Helix, textobjects are a way to select, manipulate and operate on a piece of
+In Helix, Textobjects are a way to select, manipulate and operate on a piece of
 text in a structured way. They allow you to refer to blocks of text based on
 their structure or purpose, such as a word, sentence, paragraph, or even a
 function or block of code.
@@ -177,7 +177,7 @@ Contributions are welcome!
 ## Navigating Using Tree-sitter Textobject
 
 Navigating between functions, classes, parameters, and other elements is
-possible using tree-sitter and textobject queries. For
+possible using tree-sitter and Textobject queries. For
 example to move to the next function use `]f`, to move to previous
 class use `[c`, and so on.
 
@@ -186,7 +186,7 @@ class use `[c`, and so on.
 For the full reference see the [unimpaired][unimpaired-keybinds] section of the key bind
 documentation.
 
-> 💡 This feature relies on tree-sitter textobjects
+> 💡 This feature relies on tree-sitter Textobjects
 > and requires the corresponding query file to work properly.
 
 [lang-support]: ./lang-support.md
