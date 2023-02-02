@@ -9,9 +9,7 @@ directory (default `~/.config/helix` on Linux systems) with a structure like
 this:
 
 ```toml
-
 # At most one section each of 'keys.normal', 'keys.insert' and 'keys.select'
-
 [keys.normal]
 C-s = ":w" # Maps Ctrl-s to the typable command :w which is an alias for :write (save file)
 C-o = ":open ~/.config/helix/config.toml" # Maps Ctrl-o to opening of the helix config file
@@ -19,15 +17,11 @@ a = "move_char_left" # Maps the 'a' key to the move_char_left command
 w = "move_line_up" # Maps the 'w' key move_line_up
 "C-S-esc" = "extend_line" # Maps Ctrl-Shift-Escape to extend_line
 g = { a = "code_action" } # Maps `ga` to show possible code actions
-"ret" = [
-  "open_below",
-  "normal_mode",
-] # Maps the enter key to open_below then re-enter normal mode
+"ret" = ["open_below", "normal_mode"] # Maps the enter key to open_below then re-enter normal mode
 
 [keys.insert]
 "A-x" = "normal_mode"     # Maps Alt-X to enter normal mode
 j = { k = "normal_mode" } # Maps `jk` to exit insert mode
-
 ```
 
 ## Minor modes
@@ -56,11 +50,11 @@ t = ":run-shell-command cargo test"
 
 ## Special keys and modifiers
 
-Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes `C-`,
-`S-` and `A-`. Special keys are encoded as follows:
+Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
+`C-`, `S-` and `A-`. Special keys are encoded as follows:
 
 | Key name     | Representation |
-| ------------ | -------------- |
+| ---          | ---            |
 | Backspace    | `"backspace"`  |
 | Space        | `"space"`      |
 | Return/Enter | `"ret"`        |

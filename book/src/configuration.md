@@ -1,7 +1,6 @@
 # Configuration
 
-To override global configuration parameters, create a `config.toml` file located
-in your config directory:
+To override global configuration parameters, create a `config.toml` file located in your config directory:
 
 - Linux and Mac: `~/.config/helix/config.toml`
 - Windows: `%AppData%\helix\config.toml`
@@ -77,51 +76,48 @@ mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
 ```
-
 The `[editor.statusline]` key takes the following sub-keys:
 
-| Key           | Description                                                | Default                                                      |
-| ------------- | ---------------------------------------------------------- | ------------------------------------------------------------ |
-| `left`        | A list of elements aligned to the left of the statusline   | `["mode", "spinner", "file-name"]`                           |
-| `center`      | A list of elements aligned to the middle of the statusline | `[]`                                                         |
-| `right`       | A list of elements aligned to the right of the statusline  | `["diagnostics", "selections", "position", "file-encoding"]` |
-| `separator`   | The character used to separate elements in the statusline  | `"│"`                                                        |
-| `mode.normal` | The text shown in the `mode` element for normal mode       | `"NOR"`                                                      |
-| `mode.insert` | The text shown in the `mode` element for insert mode       | `"INS"`                                                      |
-| `mode.select` | The text shown in the `mode` element for select mode       | `"SEL"`                                                      |
+| Key           | Description | Default |
+| ---           | ---         | ---     |
+| `left`        | A list of elements aligned to the left of the statusline | `["mode", "spinner", "file-name"]` |
+| `center`      | A list of elements aligned to the middle of the statusline | `[]` |
+| `right`       | A list of elements aligned to the right of the statusline | `["diagnostics", "selections", "position", "file-encoding"]` |
+| `separator`   | The character used to separate elements in the statusline | `"│"` |
+| `mode.normal` | The text shown in the `mode` element for normal mode | `"NOR"` |
+| `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
+| `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
 
 The following statusline elements can be configured:
 
-| Key                        | Description                                                                     |
-| -------------------------- | ------------------------------------------------------------------------------- |
-| `mode`                     | The current editor mode (`mode.normal`/`mode.insert`/`mode.select`)             |
-| `spinner`                  | A progress spinner indicating LSP activity                                      |
-| `file-name`                | The path/name of the opened file                                                |
-| `file-base-name`           | The basename of the opened file                                                 |
-| `file-encoding`            | The encoding of the opened file if it differs from UTF-8                        |
-| `file-line-ending`         | The file line endings (CRLF or LF)                                              |
-| `total-line-numbers`       | The total line numbers of the opened file                                       |
-| `file-type`                | The type of the opened file                                                     |
-| `diagnostics`              | The number of warnings and/or errors                                            |
-| `workspace-diagnostics`    | The number of warnings and/or errors on workspace                               |
-| `selections`               | The number of active selections                                                 |
-| `primary-selection-length` | The number of characters currently in primary selection                         |
-| `position`                 | The cursor position                                                             |
-| `position-percentage`      | The cursor position as a percentage of the total number of lines                |
-| `separator`                | The string defined in `editor.statusline.separator` (defaults to `"│"`)         |
-| `spacer`                   | Inserts a space between elements (multiple/contiguous spacers may be specified) |
+| Key    | Description |
+| ------ | ----------- |
+| `mode` | The current editor mode (`mode.normal`/`mode.insert`/`mode.select`) |
+| `spinner` | A progress spinner indicating LSP activity |
+| `file-name` | The path/name of the opened file |
+| `file-base-name` | The basename of the opened file |
+| `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
+| `file-line-ending` | The file line endings (CRLF or LF) |
+| `total-line-numbers` | The total line numbers of the opened file |
+| `file-type` | The type of the opened file |
+| `diagnostics` | The number of warnings and/or errors |
+| `workspace-diagnostics` | The number of warnings and/or errors on workspace |
+| `selections` | The number of active selections |
+| `primary-selection-length` | The number of characters currently in primary selection |
+| `position` | The cursor position |
+| `position-percentage` | The cursor position as a percentage of the total number of lines |
+| `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
+| `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
 
 ### `[editor.lsp]` Section
 
-| Key                           | Description                                                | Default |
-| ----------------------------- | ---------------------------------------------------------- | ------- |
-| `display-messages`            | Display LSP progress messages below statusline[^1]         | `false` |
-| `auto-signature-help`         | Enable automatic popup of signature help (parameter hints) | `true`  |
-| `display-signature-help-docs` | Display docs under signature help popup                    | `true`  |
+| Key                   | Description                                                 | Default |
+| ---                   | -----------                                                 | ------- |
+| `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
+| `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
+| `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
 
-[^1]:
-    By default, a progress spinner is shown in the statusline beside the file
-    path.
+[^1]: By default, a progress spinner is shown in the statusline beside the file path.
 
 ### `[editor.cursor-shape]` Section
 
@@ -132,7 +128,7 @@ Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
 > change shape.
 
 | Key      | Description                                | Default |
-| -------- | ------------------------------------------ | ------- |
+| ---      | -----------                                | ------- |
 | `normal` | Cursor shape in [normal mode][normal mode] | `block` |
 | `insert` | Cursor shape in [insert mode][insert mode] | `block` |
 | `select` | Cursor shape in [select mode][select mode] | `block` |
@@ -170,9 +166,8 @@ To disable auto-pairs altogether, set `auto-pairs` to `false`:
 auto-pairs = false # defaults to `true`
 ```
 
-The default pairs are
-<code>(){}[]''""``</code>, but these can be customized by setting `auto-pairs`
-to a TOML table:
+The default pairs are <code>(){}[]''""``</code>, but these can be customized by
+setting `auto-pairs` to a TOML table:
 
 ```toml
 [editor.auto-pairs]
@@ -184,9 +179,9 @@ to a TOML table:
 '<' = '>'
 ```
 
-Additionally, this setting can be used in a language config. Unless the editor
-setting is `false`, this will override the editor config in documents with this
-language.
+Additionally, this setting can be used in a language config. Unless
+the editor setting is `false`, this will override the editor config in
+documents with this language.
 
 Example `languages.toml` that adds <> and removes ''
 
@@ -214,14 +209,12 @@ Search specific options.
 
 ### `[editor.whitespace]` Section
 
-Options for rendering whitespace with visible characters. Use
-`:set whitespace.render all` to temporarily enable visible whitespace.
+Options for rendering whitespace with visible characters. Use `:set whitespace.render all` to temporarily enable visible whitespace.
 
-| Key | Description | Default | |-----|-------------|---------| | `render` |
-Whether to render whitespace. May either be `"all"` or `"none"`, or a table with
-sub-keys `space`, `nbsp`, `tab`, and `newline`. | `"none"` | | `characters` |
-Literal characters to use when rendering whitespace. Sub-keys may be any of
-`tab`, `space`, `nbsp`, `newline` or `tabpad` | See example below |
+| Key | Description | Default |
+|-----|-------------|---------|
+| `render` | Whether to render whitespace. May either be `"all"` or `"none"`, or a table with sub-keys `space`, `nbsp`, `tab`, and `newline`. | `"none"` |
+| `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp`, `newline` or `tabpad` | See example below |
 
 Example
 
@@ -247,7 +240,7 @@ tabpad = "·" # Tabs will look like "→···" (depending on tab width)
 Options for rendering vertical indent guides.
 
 | Key           | Description                                             | Default |
-| ------------- | ------------------------------------------------------- | ------- |
+| ---           | ---                                                     | ---     |
 | `render`      | Whether to render indent guides.                        | `false` |
 | `character`   | Literal character to use for rendering the indent guide | `│`     |
 | `skip-levels` | Number of indent levels to skip                         | `0`     |
@@ -311,3 +304,4 @@ Currently unused
 
 #### `[editor.gutters.spacer]` Section
 
+Currently unused

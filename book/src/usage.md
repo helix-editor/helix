@@ -35,14 +35,13 @@ example:
 
 If a register is selected before invoking a change or delete command, the selection will be stored in the register and the action will be carried out:
 
-- `"hc` - Store the selection in register `h` and then change it (delete and
-  enter insert mode).
+- `"hc` - Store the selection in register `h` and then change it (delete and enter insert mode).
 - `"md` - Store the selection in register `m` and delete it.
 
 ### Built-in Registers
 
 | Register character | Contains              |
-| ------------------ | --------------------- |
+| ---                | ---                   |
 | `/`                | Last search           |
 | `:`                | Last executed command |
 | `"`                | Last yanked text      |
@@ -87,7 +86,7 @@ following syntax for function calls:
 func(arg1, arg2, arg3);
 ```
 
-A function call parsed by tree-sitter might look like:
+A function call might be parsed by tree-sitter into a tree like the following.
 
 ```tsq
 (call
@@ -156,7 +155,7 @@ function or block of code.
 - `mi` - Select inside the object (`vi` in Vim, `<alt-i>` in Kakoune)
 
 | Key after `mi` or `ma` | Textobject selected      |
-| ---------------------- | ------------------------ |
+| ---                    | ---                      |
 | `w`                    | Word                     |
 | `W`                    | WORD                     |
 | `p`                    | Paragraph                |
@@ -191,5 +190,4 @@ documentation.
 
 [lang-support]: ./lang-support.md
 [unimpaired-keybinds]: ./keymap.md#unimpaired
-[tree-sitter-nav-demo]:
-  https://user-images.githubusercontent.com/23398472/152332550-7dfff043-36a2-4aec-b8f2-77c13eb56d6f.gif
+[tree-sitter-nav-demo]: https://user-images.githubusercontent.com/23398472/152332550-7dfff043-36a2-4aec-b8f2-77c13eb56d6f.gif

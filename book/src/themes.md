@@ -18,12 +18,7 @@ To create a theme file:
 
 ### An overview of the Theme File Format
 
-> 💡 The names "default" and "base16_default" are reserved for built-in themes
-> and cannot be overridden by user-defined themes.
-
-### An Overview of the Theme File Format
-
-Each line in the theme file is specified as follows:
+Each line in the theme file is specified as below:
 
 ```toml
 key = { fg = "#ffffff", bg = "#000000", underline = { color = "#ff0000", style = "curl"}, modifiers = ["bold", "italic"] }
@@ -82,7 +77,7 @@ are listed below. The `[palette]` section in the config file takes precedence
 over it and is merged into the default palette.
 
 | Color Name      |
-| --------------- |
+| ---             |
 | `black`         |
 | `red`           |
 | `green`         |
@@ -133,13 +128,6 @@ supported by your terminal emulator.
 | `dotted`       |
 | `double_line`  |
 
-| Modifier      |
-| ------------- |
-| `line`        |
-| `curl`        |
-| `dashed`      |
-| `dotted`      |
-| `double_line` |
 
 ### Inheritance
 
@@ -162,8 +150,7 @@ The following is a list of scopes available to use for styling:
 
 #### Syntax highlighting
 
-These keys match
-[tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme).
+These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme).
 
 When determining styling for a highlight, the longest matching theme key will be used. For example, if the highlight is `function.builtin.static`, the key `function.builtin` will be used instead of `function`.
 
@@ -189,7 +176,6 @@ We use a similar set of scopes as
     - `float`
 
 - `string` (TODO: string.quoted.{single, double}, string.raw/.unquoted)?
-
   - `regexp` - Regular expressions
   - `special`
     - `path`
@@ -197,14 +183,12 @@ We use a similar set of scopes as
     - `symbol` - Erlang/Elixir atoms, Ruby symbols, Clojure keywords
 
 - `comment` - Code comments
-
   - `line` - Single line comments (`//`)
   - `block` - Block comments (e.g. (`/* */`)
     - `documentation` - Documentation comments (e.g. `///` in Rust)
 
 - `variable` - Variables
-
-  - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
+  - `builtin` - Reserved language variables (`self`, `this`, `super`, etc)
   - `parameter` - Function parameters
   - `other`
     - `member` - Fields of composite data types (e.g. structs, unions)
@@ -212,13 +196,11 @@ We use a similar set of scopes as
 - `label`
 
 - `punctuation`
-
   - `delimiter` - Commas, colons
   - `bracket` - Parentheses, angle brackets, etc.
   - `special` - String interpolation brackets.
 
 - `keyword`
-
   - `control`
     - `conditional` - `if`, `else`
     - `repeat` - `for`, `while`, `loop`
@@ -235,7 +217,6 @@ We use a similar set of scopes as
 - `operator` - `||`, `+=`, `>`
 
 - `function`
-
   - `builtin`
   - `method`
   - `macro`
@@ -248,7 +229,6 @@ We use a similar set of scopes as
 - `special`
 
 - `markup`
-
   - `heading`
     - `marker`
     - `1`, `2`, `3`, `4`, `5`, `6` - heading text for h1 through h6

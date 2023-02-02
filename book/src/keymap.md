@@ -60,7 +60,7 @@
 ### Changes
 
 | Key         | Description                                                          | Command                   |
-| ----------- | -------------------------------------------------------------------- | ------------------------- |
+| -----       | -----------                                                          | -------                   |
 | `r`         | Replace with a character                                             | `replace`                 |
 | `R`         | Replace with yanked text                                             | `replace_with_yanked`     |
 | `~`         | Switch case of the selected text                                     | `switch_case`             |
@@ -82,7 +82,7 @@
 | `P`         | Paste before selection                                               | `paste_before`            |
 | `"` `<reg>` | Select a register to yank to or paste from                           | `select_register`         |
 | `>`         | Indent selection                                                     | `indent`                  |
-| `<`         | Remove indentation from the selection                                | `unindent`                |
+| `<`         | Unindent selection                                                   | `unindent`                |
 | `=`         | Format selection (currently nonfunctional/disabled) (**LSP**)        | `format_selections`       |
 | `d`         | Delete selection                                                     | `delete_selection`        |
 | `Alt-d`     | Delete selection, without yanking                                    | `delete_selection_noyank` |
@@ -95,13 +95,14 @@
 
 #### Shell
 
-| Key                     | Description                                                                      | Command               |
-| ----------------------- | -------------------------------------------------------------------------------- | --------------------- |
+| Key     | Description                                                                      | Command               |
+| ------  | -----------                                                                      | -------               |
 | <code>&#124;</code>     | Pipe each selection through shell command, replacing with output                 | `shell_pipe`          |
 | <code>Alt-&#124;</code> | Pipe each selection into shell command, ignoring output                          | `shell_pipe_to`       |
-| `!`                     | Run shell command, inserting output before each selection                        | `shell_insert_output` |
-| `Alt-!`                 | Run shell command, appending output after each selection                         | `shell_append_output` |
-| `$`                     | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
+| `!`     | Run shell command, inserting output before each selection                        | `shell_insert_output` |
+| `Alt-!` | Run shell command, appending output after each selection                         | `shell_append_output` |
+| `$`     | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
+
 
 ### Selection manipulation
 
@@ -142,20 +143,20 @@
 
 Search commands all operate on the `/` register by default. To use a different register, use `"<char>`.
 
-| Key | Description                                 | Command            |
-| --- | ------------------------------------------- | ------------------ |
-| `/` | Search for regex pattern                    | `search`           |
-| `?` | Search for previous pattern                 | `rsearch`          |
-| `n` | Select next search match                    | `search_next`      |
-| `N` | Select previous search match                | `search_prev`      |
-| `*` | Use current selection as the search pattern | `search_selection` |
+| Key   | Description                                 | Command              |
+| ----- | -----------                                 | -------              |
+| `/`   | Search for regex pattern                    | `search`             |
+| `?`   | Search for previous pattern                 | `rsearch`            |
+| `n`   | Select next search match                    | `search_next`        |
+| `N`   | Select previous search match                | `search_prev`        |
+| `*`   | Use current selection as the search pattern | `search_selection`   |
 
 ### Minor modes
 
 Minor modes are accessible from normal mode and typically switch back to normal mode after a command.
 
 | Key      | Description                                        | Command        |
-| -------- | -------------------------------------------------- | -------------- |
+| -----    | -----------                                        | -------        |
 | `v`      | Enter [select (extend) mode](#select--extend-mode) | `select_mode`  |
 | `g`      | Enter [goto mode](#goto-mode)                      | N/A            |
 | `m`      | Enter [match mode](#match-mode)                    | N/A            |
@@ -178,7 +179,7 @@ useful when you're simply looking over text and not actively editing it.
 
 
 | Key                  | Description                                               | Command             |
-| -------------------- | --------------------------------------------------------- | ------------------- |
+| -----                | -----------                                               | -------             |
 | `z`, `c`             | Vertically center the line                                | `align_view_center` |
 | `t`                  | Align the line to the top of the screen                   | `align_view_top`    |
 | `b`                  | Align the line to the bottom of the screen                | `align_view_bottom` |
@@ -224,7 +225,7 @@ See the relevant section in [Usage](./usage.md) for an explanation about
 [surround](./usage.md#surround) and [text object](./usage.md#textobjects) usage.
 
 | Key              | Description                                     | Command                    |
-| ---------------- | ----------------------------------------------- | -------------------------- |
+| -----            | -----------                                     | -------                    |
 | `m`              | Goto matching bracket (**TS**)                  | `match_brackets`           |
 | `s` `<char>`     | Surround current selection with `<char>`        | `surround_add`             |
 | `r` `<from><to>` | Replace surround character `<from>` with `<to>` | `surround_replace`         |
@@ -240,7 +241,7 @@ Window mode is accessed by typing `Ctrl-w` in [normal mode](#normal-mode),
 this layer is similar to Vim keybindings as Kakoune does not support windows.
 
 | Key                    | Description                                          | Command           |
-| ---------------------- | ---------------------------------------------------- | ----------------- |
+| -----                  | -------------                                        | -------           |
 | `w`, `Ctrl-w`          | Switch to next window                                | `rotate_view`     |
 | `v`, `Ctrl-v`          | Vertical right split                                 | `vsplit`          |
 | `s`, `Ctrl-s`          | Horizontal bottom split                              | `hsplit`          |
@@ -290,11 +291,10 @@ This layer is a kludge of mappings, mostly pickers.
 
 ##### Popup
 
-Popups display documentation for items under the cursor. If there is more
-content than fits on the screen, you can use scroll:
+Displays documentation for item under cursor.
 
 | Key      | Description |
-| -------- | ----------- |
+| ----     | ----------- |
 | `Ctrl-u` | Scroll up   |
 | `Ctrl-d` | Scroll down |
 
@@ -354,16 +354,16 @@ escaping from insert mode to normal mode.
 These keys are not recommended, but are included for new users less familiar
 with modal editors.
 
-| Key        | Description           | Command                 |
-| ---------- | --------------------- | ----------------------- |
-| `Up`       | Move to previous line | `move_line_up`          |
-| `Down`     | Move to next line     | `move_line_down`        |
-| `Left`     | Backward a char       | `move_char_left`        |
-| `Right`    | Forward a char        | `move_char_right`       |
-| `PageUp`   | Move one page up      | `page_up`               |
-| `PageDown` | Move one page down    | `page_down`             |
-| `Home`     | Move to line start    | `goto_line_start`       |
-| `End`      | Move to line end      | `goto_line_end_newline` |
+| Key                                         | Description                 | Command                  |
+| -----                                       | -----------                 | -------                  |
+| `Up`                                        | Move to previous line       | `move_line_up`           |
+| `Down`                                      | Move to next line           | `move_line_down`         |
+| `Left`                                      | Backward a char             | `move_char_left`         |
+| `Right`                                     | Forward a char              | `move_char_right`        |
+| `PageUp`                                    | Move one page up            | `page_up`                |
+| `PageDown`                                  | Move one page down          | `page_down`              |
+| `Home`                                      | Move to line start          | `goto_line_start`        |
+| `End`                                       | Move to line end            | `goto_line_end_newline`  |
 
 As you become more comfortable with modal editing, you may want to disable some
 insert mode bindings. You can do this by editing your `config.toml` file.
@@ -388,52 +388,52 @@ extend, so that `vgl` for example extends the selection to the end of
 the line.
 
 Search is also affected. By default, `n` and `N` will remove the current
-selection and select the next instance of the search term. Toggling this mode
-before pressing `n` or `N` makes it possible to keep the current selection.
-Toggling it on and off during your iterative searching allows you to selectively
-add search terms to your selections.
+selection and select the next instance of the search term. Toggling this
+mode before pressing `n` or `N` makes it possible to keep the current
+selection. Toggling it on and off during your iterative searching allows
+you to selectively add search terms to your selections.
 
 ## Picker
 
 Keys to use within picker. Remapping currently not supported.
 
-| Key                         | Description       |
-| --------------------------- | ----------------- |
-| `Shift-Tab`, `Up`, `Ctrl-p` | Previous entry    |
-| `Tab`, `Down`, `Ctrl-n`     | Next entry        |
-| `PageUp`, `Ctrl-u`          | Page up           |
-| `PageDown`, `Ctrl-d`        | Page down         |
-| `Home`                      | Go to first entry |
-| `End`                       | Go to last entry  |
-| `Enter`                     | Open selected     |
-| `Ctrl-s`                    | Open horizontally |
-| `Ctrl-v`                    | Open vertically   |
-| `Ctrl-t`                    | Toggle preview    |
-| `Escape`, `Ctrl-c`          | Close picker      |
+| Key                          | Description       |
+| -----                        | -------------     |
+| `Shift-Tab`, `Up`, `Ctrl-p`  | Previous entry    |
+| `Tab`, `Down`, `Ctrl-n`      | Next entry        |
+| `PageUp`, `Ctrl-u`           | Page up           |
+| `PageDown`, `Ctrl-d`         | Page down         |
+| `Home`                       | Go to first entry |
+| `End`                        | Go to last entry  |
+| `Enter`                      | Open selected     |
+| `Ctrl-s`                     | Open horizontally |
+| `Ctrl-v`                     | Open vertically   |
+| `Ctrl-t`                     | Toggle preview    |
+| `Escape`, `Ctrl-c`           | Close picker      |
 
 ## Prompt
 
 Keys to use within prompt, Remapping currently not supported.
 
-| Key                                         | Description                                                           |
-| ------------------------------------------- | --------------------------------------------------------------------- |
-| `Escape`, `Ctrl-c`                          | Close prompt                                                          |
-| `Alt-b`, `Ctrl-Left`                        | Backward a word                                                       |
-| `Ctrl-b`, `Left`                            | Backward a char                                                       |
-| `Alt-f`, `Ctrl-Right`                       | Forward a word                                                        |
-| `Ctrl-f`, `Right`                           | Forward a char                                                        |
-| `Ctrl-e`, `End`                             | Move prompt end                                                       |
-| `Ctrl-a`, `Home`                            | Move prompt start                                                     |
-| `Ctrl-w`, `Alt-Backspace`, `Ctrl-Backspace` | Delete previous word                                                  |
-| `Alt-d`, `Alt-Delete`, `Ctrl-Delete`        | Delete next word                                                      |
-| `Ctrl-u`                                    | Delete to start of line                                               |
-| `Ctrl-k`                                    | Delete to end of line                                                 |
-| `Backspace`, `Ctrl-h`                       | Delete previous char                                                  |
-| `Delete`, `Ctrl-d`                          | Delete next char                                                      |
-| `Ctrl-s`                                    | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later |
-| `Ctrl-p`, `Up`                              | Select previous history                                               |
-| `Ctrl-n`, `Down`                            | Select next history                                                   |
-| `Ctrl-r`                                    | Insert the content of the register selected by following input char   |
-| `Tab`                                       | Select next completion item                                           |
-| `BackTab`                                   | Select previous completion item                                       |
-| `Enter`                                     | Open selected                                                         |
+| Key                                         | Description                                                             |
+| -----                                       | -------------                                                           |
+| `Escape`, `Ctrl-c`                          | Close prompt                                                            |
+| `Alt-b`, `Ctrl-Left`                        | Backward a word                                                         |
+| `Ctrl-b`, `Left`                            | Backward a char                                                         |
+| `Alt-f`, `Ctrl-Right`                       | Forward a word                                                          |
+| `Ctrl-f`, `Right`                           | Forward a char                                                          |
+| `Ctrl-e`, `End`                             | Move prompt end                                                         |
+| `Ctrl-a`, `Home`                            | Move prompt start                                                       |
+| `Ctrl-w`, `Alt-Backspace`, `Ctrl-Backspace` | Delete previous word                                                    |
+| `Alt-d`, `Alt-Delete`, `Ctrl-Delete`        | Delete next word                                                        |
+| `Ctrl-u`                                    | Delete to start of line                                                 |
+| `Ctrl-k`                                    | Delete to end of line                                                   |
+| `Backspace`, `Ctrl-h`                       | Delete previous char                                                    |
+| `Delete`, `Ctrl-d`                          | Delete next char                                                        |
+| `Ctrl-s`                                    | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
+| `Ctrl-p`, `Up`                              | Select previous history                                                 |
+| `Ctrl-n`, `Down`                            | Select next history                                                     |
+| `Ctrl-r`                                    | Insert the content of the register selected by following input char     |
+| `Tab`                                       | Select next completion item                                             |
+| `BackTab`                                   | Select previous completion item                                         |
+| `Enter`                                     | Open selected                                                           |

@@ -15,7 +15,7 @@ for example).
 The following [captures][tree-sitter-captures] are recognized:
 
 | Capture Name       |
-| ------------------ |
+| ---                |
 | `function.inside`  |
 | `function.around`  |
 | `class.inside`     |
@@ -26,8 +26,7 @@ The following [captures][tree-sitter-captures] are recognized:
 | `comment.inside`   |
 | `comment.around`   |
 
-[Example query files][textobject-examples] can be found in the Helix GitHub
-repository.
+[Example query files][textobject-examples] can be found in the helix GitHub repository.
 
 ## Queries for Textobject Based Navigation
 
