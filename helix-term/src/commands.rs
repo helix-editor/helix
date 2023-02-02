@@ -3746,6 +3746,7 @@ fn paste_impl(
     }
 
     doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
 }
 
 pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
