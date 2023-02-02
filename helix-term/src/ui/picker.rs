@@ -120,7 +120,7 @@ impl Preview<'_, '_> {
     }
 }
 
-impl<T: Item> FilePicker<T> {
+impl<T: Item + 'static> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
         editor_data: T::Data,
@@ -227,10 +227,8 @@ impl<T: Item> FilePicker<T> {
 
         EventResult::Consumed(None)
     }
-}
 
-impl<T: Item + 'static> Component for FilePicker<T> {
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render_picker(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
         // |prompt   | |preview  |
         // +---------+ |         |
@@ -344,6 +342,12 @@ impl<T: Item + 'static> Component for FilePicker<T> {
                 &mut [],
             );
         }
+    }
+}
+
+impl<T: Item + 'static> Component for FilePicker<T> {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        self.render_picker(area, surface, cx)
     }
 
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
