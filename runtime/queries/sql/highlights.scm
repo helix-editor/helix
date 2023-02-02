@@ -42,21 +42,13 @@
   "."
 ] @punctuation.delimiter
 
-[
-  "*"
-  "+"
-  "-"
-  "/"
-  "%"
-  "^"
-  "||"  
-  "="
-  "<"
-  "<="
-  "!="
-  ">="
-  ">"
-] @operator
+(binary_expression
+  operator: _ @operator)
+
+(unary_expression
+  operator: _ @operator)
+
+(all_fields) @special
 
 [
   (keyword_null)
@@ -64,10 +56,10 @@
   (keyword_false)
 ] @constant.builtin
 
-(literal) @string
-
 ((literal) @constant.numeric
   (#match? @constant.numeric "^(-?\d*\.?\d*)$"))
+
+(literal) @string
 
 [
   (keyword_select)
@@ -146,6 +138,8 @@
   (keyword_commit)
   (keyword_rollback)
   (keyword_transaction)
+  (keyword_group_concat)
+  (keyword_separator)
 ] @keyword
 
 [

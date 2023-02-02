@@ -391,8 +391,10 @@ impl Component for Completion {
             let language = doc.language_name().unwrap_or("");
             let text = doc.text().slice(..);
             let cursor_pos = doc.selection(view.id).primary().cursor(text);
-            let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());
-            let cursor_pos = (coords.row - view.offset.row) as u16;
+            let coords = view
+                .screen_coords_at_pos(doc, text, cursor_pos)
+                .expect("cursor must be in view");
+            let cursor_pos = coords.row as u16;
 
             let mut markdown_doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))
