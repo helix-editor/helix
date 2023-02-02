@@ -17,7 +17,7 @@
 "attribute" = "green"
 "type" = "light_blue"
 "type.enum.variant" = "purple"
-"constructor" = "yellow" 
+"constructor" = "yellow"
 "constant" = "dark_orange"
 
 "constant.builtin.boolean" = "yellow"
@@ -26,16 +26,16 @@
 "constant.numeric" = "dark_orange"
 "string" = "dark_green"
 "string.regexp" = "light_purple"
-"string.special" = { fg = "yellow", modifiers = ["underlined"] } 
-"comment" = "light_gray" 
+"string.special" = { fg = "yellow", modifiers = ["underlined"] }
+"comment" = "light_gray"
 
-"variable" = "light_yellow" 
+"variable" = "light_yellow"
 "variable.builtin" = { fg = "dark_green", modifiers = ["underlined"] }
 "variable.parameter" = "yellow"
 "variable.other.member" = "light_purple"
 "label" = "yellow"
-"punctuation" = "mid_blue" 
-"keyword" = "mid_blue" 
+"punctuation" = "mid_blue"
+"keyword" = "mid_blue"
 "keyword.control.exception" = "purple"
 "operator" = "light_purple"
 "function" = "yellow"
@@ -49,8 +49,9 @@
 
 "markup.bold" = { fg = "white", modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
-"markup.heading" = { fg = "mid_blue", modifiers = ["bold"] } 
-"markup.list" = "dark_green" 
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.heading" = { fg = "mid_blue", modifiers = ["bold"] }
+"markup.list" = "dark_green"
 "markup.list.numbered" = "mid_blue"
 "markup.list.unnumbered" = "mid_blue"
 "markup.link.url" = { fg = "dark_green", modifiers = ['italic', 'underlined'] }
@@ -58,7 +59,7 @@
 "markup.link.label" = "purple"
 "markup.quote" = "dark_green"
 "markup.raw" = "dark_green"
-"markup.raw.inline" = "mid_blue" 
+"markup.raw.inline" = "mid_blue"
 "markup.raw.block" = "dark_green"
 
 "diff.plus" = "diff_plus"
@@ -66,28 +67,28 @@
 "diff.delta" = "blue_accent"
 
 # ui specific
-"ui.background" = { bg = "background" } # .separator
+"ui.background" = { bg = "background" }                                            # .separator
 "ui.cursor" = { bg = "background", modifiers = ["reversed"] }
-"ui.cursor.insert" = { bg = "light_yellow", fg="background" } 
-"ui.cursor.match" = { fg = "background", bg = "dark_orange" } 
+"ui.cursor.insert" = { bg = "light_yellow", fg = "background" }
+"ui.cursor.match" = { fg = "background", bg = "dark_orange" }
 "ui.cursorline" = { bg = "darker" }
 "ui.linenr" = "dark_gray"
 "ui.linenr.selected" = { fg = "light_yellow", bg = "darker" }
-"ui.statusline" = { fg = "light_yellow", bg = "darker" } 
+"ui.statusline" = { fg = "light_yellow", bg = "darker" }
 "ui.statusline.inactive" = { fg = "dark", bg = "darker" }
-"ui.statusline.normal" = { fg = "light_yellow", bg = "darker"}
+"ui.statusline.normal" = { fg = "light_yellow", bg = "darker" }
 "ui.statusline.insert" = { fg = "darker", bg = "purple" }
 "ui.statusline.select" = { fg = "selectionFG", bg = "selection" }
-"ui.popup" = { fg = "light_yellow", bg = "darkest" } 
+"ui.popup" = { fg = "light_yellow", bg = "darkest" }
 "ui.window" = { fg = "dark", bg = "darkest" }
 "ui.help" = { fg = "light_yellow", bg = "darkest" }
-"ui.text" = "light_yellow" 
+"ui.text" = "light_yellow"
 "ui.text.focus" = { fg = "white", bg = "dark_blue" }
-"ui.virtual" = "dark" 
-"ui.virtual.ruler" = { bg = "darker"}
-"ui.menu" = { fg = "light_purple", bg = "darkest" } 
-"ui.menu.selected" = { fg = "white", bg = "dark_blue" } 
-"ui.selection" = { bg = "darker" } 
+"ui.virtual" = "dark"
+"ui.virtual.ruler" = { bg = "darker" }
+"ui.menu" = { fg = "light_purple", bg = "darkest" }
+"ui.menu.selected" = { fg = "white", bg = "dark_blue" }
+"ui.selection" = { bg = "darker" }
 "ui.selection.primary" = { bg = "selection", fg = "selectionFG" }
 "hint" = "blue"
 "info" = "yellow_accent"
