@@ -53,9 +53,9 @@
 | `Ctrl-f`, `PageDown`  | Move page down                                     | `page_down`                 |
 | `Ctrl-u`              | Move half page up                                  | `half_page_up`              |
 | `Ctrl-d`              | Move half page down                                | `half_page_down`            |
-| `Ctrl-i`              | Jump forward on the jump list                      | `jump_forward`              |
-| `Ctrl-o`              | Jump backward on the jump list                     | `jump_backward`             |
-| `Ctrl-s`              | Save the current selection to the jump list        | `save_selection`            |
+| `Ctrl-i`              | Jump forward on the jumplist                      | `jump_forward`              |
+| `Ctrl-o`              | Jump backward on the jumplist                     | `jump_backward`             |
+| `Ctrl-s`              | Save the current selection to the jumplist        | `save_selection`            |
 
 ### Changes
 
@@ -221,7 +221,7 @@ various locations.
 Match mode is accessed by typing `m` in [normal mode](#normal-mode).
 
 See the relevant section in [Usage](./usage.md) for an explanation about
-[surround](./usage.md#surround) and [text object](./usage.md#textobjects) usage.
+[surround](./usage.md#surround) and [textobject](./usage.md#textobjects) usage.
 
 | Key              | Description                                     | Command                    |
 | ---------------- | ----------------------------------------------- | -------------------------- |
@@ -229,8 +229,8 @@ See the relevant section in [Usage](./usage.md) for an explanation about
 | `s` `<char>`     | Surround current selection with `<char>`        | `surround_add`             |
 | `r` `<from><to>` | Replace surround character `<from>` with `<to>` | `surround_replace`         |
 | `d` `<char>`     | Delete surround character `<char>`              | `surround_delete`          |
-| `a` `<object>`   | Select around text object                       | `select_textobject_around` |
-| `i` `<object>`   | Select inside text object                       | `select_textobject_inner`  |
+| `a` `<object>`   | Select around textobject                       | `select_textobject_around` |
+| `i` `<object>`   | Select inside textobject                       | `select_textobject_inner`  |
 
 TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
@@ -268,7 +268,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `f`     | Open file picker                                                        | `file_picker`                       |
 | `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`  |
 | `b`     | Open buffer picker                                                      | `buffer_picker`                     |
-| `j`     | Open jump list picker                                                    | `jump list_picker`                   |
+| `j`     | Open jumplist picker                                                    | `jump list_picker`                   |
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                             |
 | `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                     |
 | `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`           |
