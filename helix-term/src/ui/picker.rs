@@ -74,6 +74,26 @@ impl From<DocumentId> for PathOrId {
 pub type FileLocation = (PathOrId, Option<(usize, usize)>);
 
 pub struct FilePicker<T: Item> {
+    options: Vec<T>,
+    editor_data: T::Data,
+    // filter: String,
+    matcher: Box<Matcher>,
+    matches: Vec<PickerMatch>,
+
+    /// Current height of the completions box
+    completion_height: u16,
+
+    cursor: usize,
+    // pattern: String,
+    prompt: Prompt,
+    previous_pattern: (String, FuzzyQuery),
+    /// Whether to show the preview panel (default true)
+    show_preview: bool,
+    /// Constraints for tabular formatting
+    widths: Vec<Constraint>,
+
+    callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
+
     picker: Picker<T>,
     pub truncate_start: bool,
     /// Caches paths to documents
@@ -127,17 +147,68 @@ impl<T: Item + 'static> FilePicker<T> {
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
-        let truncate_start = true;
-        let mut picker = Picker::new(options, editor_data, callback_fn);
-        picker.truncate_start = truncate_start;
+        let prompt = Prompt::new(
+            "".into(),
+            None,
+            ui::completers::none,
+            |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {},
+        );
 
-        Self {
-            picker,
-            truncate_start,
+        let n = options
+            .first()
+            .map(|option| option.format(&editor_data).cells.len())
+            .unwrap_or_default();
+        let max_lens = options.iter().fold(vec![0; n], |mut acc, option| {
+            let row = option.format(&editor_data);
+            // maintain max for each column
+            for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
+                let width = cell.content.width();
+                if width > *acc {
+                    *acc = width;
+                }
+            }
+            acc
+        });
+        let widths = max_lens
+            .into_iter()
+            .map(|len| Constraint::Length(len as u16))
+            .collect();
+
+        let mut picker = Self {
+            options,
+            editor_data,
+            matcher: Box::default(),
+            matches: Vec::new(),
+            cursor: 0,
+            prompt,
+            previous_pattern: (String::new(), FuzzyQuery::default()),
+            show_preview: true,
+            callback_fn: Box::new(callback_fn),
+            completion_height: 0,
+            widths,
+
+            truncate_start: true,
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
-        }
+
+            picker: unimplemented!(), // remove after replacing references
+        };
+
+        // scoring on empty input:
+        // TODO: just reuse score()
+        picker
+            .matches
+            .extend(picker.options.iter().enumerate().map(|(index, option)| {
+                let text = option.filter_text(&picker.editor_data);
+                PickerMatch {
+                    index,
+                    score: 0,
+                    len: text.chars().count(),
+                }
+            }));
+
+        picker
     }
 
     pub fn truncate_start(mut self, truncate_start: bool) -> Self {
@@ -428,62 +499,7 @@ impl<T: Item> Picker<T> {
         editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
-        let prompt = Prompt::new(
-            "".into(),
-            None,
-            ui::completers::none,
-            |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {},
-        );
-
-        let n = options
-            .first()
-            .map(|option| option.format(&editor_data).cells.len())
-            .unwrap_or_default();
-        let max_lens = options.iter().fold(vec![0; n], |mut acc, option| {
-            let row = option.format(&editor_data);
-            // maintain max for each column
-            for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
-                let width = cell.content.width();
-                if width > *acc {
-                    *acc = width;
-                }
-            }
-            acc
-        });
-        let widths = max_lens
-            .into_iter()
-            .map(|len| Constraint::Length(len as u16))
-            .collect();
-
-        let mut picker = Self {
-            options,
-            editor_data,
-            matcher: Box::default(),
-            matches: Vec::new(),
-            cursor: 0,
-            prompt,
-            previous_pattern: (String::new(), FuzzyQuery::default()),
-            truncate_start: true,
-            show_preview: true,
-            callback_fn: Box::new(callback_fn),
-            completion_height: 0,
-            widths,
-        };
-
-        // scoring on empty input:
-        // TODO: just reuse score()
-        picker
-            .matches
-            .extend(picker.options.iter().enumerate().map(|(index, option)| {
-                let text = option.filter_text(&picker.editor_data);
-                PickerMatch {
-                    index,
-                    score: 0,
-                    len: text.chars().count(),
-                }
-            }));
-
-        picker
+        unimplemented!()
     }
 
     pub fn score(&mut self) {
