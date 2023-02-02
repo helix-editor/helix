@@ -211,6 +211,85 @@ impl<T: Item + 'static> FilePicker<T> {
         picker
     }
 
+    pub fn score(&mut self) {
+        let pattern = self.prompt.line();
+
+        if pattern == &self.previous_pattern.0 {
+            return;
+        }
+
+        let (query, is_refined) = self
+            .previous_pattern
+            .1
+            .refine(pattern, &self.previous_pattern.0);
+
+        if pattern.is_empty() {
+            // Fast path for no pattern.
+            self.matches.clear();
+            self.matches
+                .extend(self.options.iter().enumerate().map(|(index, option)| {
+                    let text = option.filter_text(&self.editor_data);
+                    PickerMatch {
+                        index,
+                        score: 0,
+                        len: text.chars().count(),
+                    }
+                }));
+        } else if is_refined {
+            // optimization: if the pattern is a more specific version of the previous one
+            // then we can score the filtered set.
+            self.matches.retain_mut(|pmatch| {
+                let option = &self.options[pmatch.index];
+                let text = option.sort_text(&self.editor_data);
+
+                match query.fuzzy_match(&text, &self.matcher) {
+                    Some(s) => {
+                        // Update the score
+                        pmatch.score = s;
+                        true
+                    }
+                    None => false,
+                }
+            });
+
+            self.matches.sort_unstable();
+        } else {
+            self.force_score();
+        }
+
+        // reset cursor position
+        self.cursor = 0;
+        let pattern = self.prompt.line();
+        self.previous_pattern.0.clone_from(pattern);
+        self.previous_pattern.1 = query;
+
+    }
+
+    pub fn force_score(&mut self) {
+        let pattern = self.prompt.line();
+
+        let query = FuzzyQuery::new(pattern);
+        self.matches.clear();
+        self.matches.extend(
+            self.options
+                .iter()
+                .enumerate()
+                .filter_map(|(index, option)| {
+                    let text = option.filter_text(&self.editor_data);
+
+                    query
+                        .fuzzy_match(&text, &self.matcher)
+                        .map(|score| PickerMatch {
+                            index,
+                            score,
+                            len: text.chars().count(),
+                        })
+                }),
+        );
+
+        self.matches.sort_unstable();
+    }
+
     pub fn truncate_start(mut self, truncate_start: bool) -> Self {
         self.truncate_start = truncate_start;
         self.picker.truncate_start = truncate_start;
@@ -503,81 +582,11 @@ impl<T: Item> Picker<T> {
     }
 
     pub fn score(&mut self) {
-        let pattern = self.prompt.line();
-
-        if pattern == &self.previous_pattern.0 {
-            return;
-        }
-
-        let (query, is_refined) = self
-            .previous_pattern
-            .1
-            .refine(pattern, &self.previous_pattern.0);
-
-        if pattern.is_empty() {
-            // Fast path for no pattern.
-            self.matches.clear();
-            self.matches
-                .extend(self.options.iter().enumerate().map(|(index, option)| {
-                    let text = option.filter_text(&self.editor_data);
-                    PickerMatch {
-                        index,
-                        score: 0,
-                        len: text.chars().count(),
-                    }
-                }));
-        } else if is_refined {
-            // optimization: if the pattern is a more specific version of the previous one
-            // then we can score the filtered set.
-            self.matches.retain_mut(|pmatch| {
-                let option = &self.options[pmatch.index];
-                let text = option.sort_text(&self.editor_data);
-
-                match query.fuzzy_match(&text, &self.matcher) {
-                    Some(s) => {
-                        // Update the score
-                        pmatch.score = s;
-                        true
-                    }
-                    None => false,
-                }
-            });
-
-            self.matches.sort_unstable();
-        } else {
-            self.force_score();
-        }
-
-        // reset cursor position
-        self.cursor = 0;
-        let pattern = self.prompt.line();
-        self.previous_pattern.0.clone_from(pattern);
-        self.previous_pattern.1 = query;
+        unimplemented!()
     }
 
     pub fn force_score(&mut self) {
-        let pattern = self.prompt.line();
-
-        let query = FuzzyQuery::new(pattern);
-        self.matches.clear();
-        self.matches.extend(
-            self.options
-                .iter()
-                .enumerate()
-                .filter_map(|(index, option)| {
-                    let text = option.filter_text(&self.editor_data);
-
-                    query
-                        .fuzzy_match(&text, &self.matcher)
-                        .map(|score| PickerMatch {
-                            index,
-                            score,
-                            len: text.chars().count(),
-                        })
-                }),
-        );
-
-        self.matches.sort_unstable();
+        unimplemented!()
     }
 
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
