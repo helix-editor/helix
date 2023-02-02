@@ -207,16 +207,19 @@ pub fn render_text<'t>(
             it
         } else {
             let mut last_pos = formatter.visual_pos();
-            last_pos.col -= 1;
-            // check if any positions translated on the fly (like cursor) are at the EOF
-            translate_positions(
-                char_pos + 1,
-                first_visible_char_idx,
-                translated_positions,
-                text_fmt,
-                renderer,
-                last_pos,
-            );
+            if last_pos.row >= row_off {
+                last_pos.col -= 1;
+                last_pos.row -= row_off;
+                // check if any positions translated on the fly (like cursor) are at the EOF
+                translate_positions(
+                    char_pos + 1,
+                    first_visible_char_idx,
+                    translated_positions,
+                    text_fmt,
+                    renderer,
+                    last_pos,
+                );
+            }
             break;
         };
 
