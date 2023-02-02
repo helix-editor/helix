@@ -179,6 +179,8 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
 
 #[cfg(test)]
 mod merge_toml_tests {
+    use std::str;
+
     use super::merge_toml_values;
     use toml::Value;
 
@@ -191,8 +193,9 @@ mod merge_toml_tests {
         indent = { tab-width = 4, unit = "    ", test = "aaa" }
         "#;
 
-        let base: Value = toml::from_slice(include_bytes!("../../languages.toml"))
-            .expect("Couldn't parse built-in languages config");
+        let base = include_bytes!("../../languages.toml");
+        let base = str::from_utf8(base).expect("Couldn't parse built-in languages config");
+        let base: Value = toml::from_str(base).expect("Couldn't parse built-in languages config");
         let user: Value = toml::from_str(USER).unwrap();
 
         let merged = merge_toml_values(base, user, 3);
@@ -224,8 +227,9 @@ mod merge_toml_tests {
         language-server = { command = "deno", args = ["lsp"] }
         "#;
 
-        let base: Value = toml::from_slice(include_bytes!("../../languages.toml"))
-            .expect("Couldn't parse built-in languages config");
+        let base = include_bytes!("../../languages.toml");
+        let base = str::from_utf8(base).expect("Couldn't parse built-in languages config");
+        let base: Value = toml::from_str(base).expect("Couldn't parse built-in languages config");
         let user: Value = toml::from_str(USER).unwrap();
 
         let merged = merge_toml_values(base, user, 3);

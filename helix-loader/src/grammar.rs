@@ -515,5 +515,5 @@ pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::
         .join("queries")
         .join(language)
         .join(filename);
-    std::fs::read_to_string(&path)
+    std::fs::read_to_string(path)
 }

@@ -473,7 +473,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "29f53
 name = "python"
 scope = "source.python"
 injection-regex = "python"
-file-types = ["py"]
+file-types = ["py","pyi","py3","pyw","ptl",".pythonstartup",".pythonrc","SConstruct"]
 shebangs = ["python"]
 roots = []
 comment-token = "#"
@@ -652,7 +652,7 @@ name = "java"
 scope = "source.java"
 injection-regex = "java"
 file-types = ["java"]
-roots = ["pom.xml"]
+roots = ["pom.xml", "build.gradle"]
 language-server = { command = "jdtls" }
 indent = { tab-width = 4, unit = "    " }
 
@@ -717,6 +717,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "23d4
 
 [[language]]
 name = "lua"
+injection-regex = "lua"
 scope = "source.lua"
 file-types = ["lua"]
 shebangs = ["lua"]
@@ -877,7 +878,7 @@ source = { git = "https://github.com/uyha/tree-sitter-cmake", rev = "6e51463ef30
 [[language]]
 name = "make"
 scope = "source.make"
-file-types = ["Makefile", "makefile", "mk", "justfile", ".justfile"]
+file-types = ["Makefile", "makefile", "mk", "Justfile", "justfile", ".justfile"]
 injection-regex = "(make|makefile|Makefile|mk|just)"
 roots = []
 comment-token = "#"
@@ -1018,7 +1019,7 @@ source = { git = "https://github.com/Flakebi/tree-sitter-tablegen", rev = "568dd
 name = "markdown"
 scope = "source.md"
 injection-regex = "md|markdown"
-file-types = ["md", "markdown"]
+file-types = ["md", "markdown", "PULLREQ_EDITMSG"]
 roots = [".marksman.toml"]
 language-server = { command = "marksman", args=["server"] }
 indent = { tab-width = 2, unit = "  " }
@@ -1061,10 +1062,11 @@ file-types = ["scala", "sbt", "sc"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "metals" }
+config = { "isHttpEnabled" = true }
 
 [[grammar]]
 name = "scala"
-source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "140c96cf398693189d4e50f76d19ddfcd8a018f8" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "f6bbf35de41653b409ca9a3537a154f2b095ef64" }
 
 [[language]]
 name = "dockerfile"
@@ -1432,7 +1434,7 @@ injection-regex = "sql"
 
 [[grammar]]
 name = "sql"
-source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "2743c7b5e710e6854d4e8c14c302548b436e2a1f" }
+source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "4fe05b2d81565ddb689d2f415e07afdacc515c52" }
 
 [[language]]
 name = "gdscript"
@@ -1601,7 +1603,7 @@ scope = "source.v"
 file-types = ["v", "vv"]
 shebangs = ["v run"]
 roots = ["v.mod"]
-language-server = { command = "vls", args = [] }
+language-server = { command = "v", args = ["ls"] }
 auto-format = true
 comment-token = "//"
 indent = { tab-width = 4, unit = "\t" }
@@ -1776,6 +1778,7 @@ auto-format = true
 comment-token = "//"
 language-server = { command = "cuelsp" }
 indent = { tab-width = 4, unit = "\t" }
+formatter = { command = "cue", args = ["fmt", "-"] }
 
 [[grammar]]
 name = "cue"
@@ -1978,7 +1981,7 @@ roots = []
 
 [[grammar]]
 name = "xml"
-source = { git = "https://github.com/RenjiSann/tree-sitter-xml", rev = "422528a43630db6dcc1e222d1c5ee3babd559473" }
+source = { git = "https://github.com/RenjiSann/tree-sitter-xml", rev = "48a7c2b6fb9d515577e115e6788937e837815651" }
 
 [[language]]
 name = "wit"
@@ -2004,15 +2007,12 @@ source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "c917790ab9a
 [[language]]
 name = "env"
 scope = "source.env"
-file-types = [".env", ".env.local", ".env.development", ".env.production"]
+file-types = [".env", ".env.local", ".env.development", ".env.production", ".envrc"]
 injection-regex = "env"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
 roots = []
-
-[[grammar]]
-name = "env"
-source = { git = "https://github.com/seshotake/tree-sitter-env", rev = "e6c6bb1e7b51d481cba463fe949f083cf22d81f7" }
+grammar = "bash"
 
 [[language]]
 name = "ini"
@@ -2107,3 +2107,13 @@ formatter = { command = "dhall" , args = ["format"] }
 [[grammar]]
 name = "dhall"
 source = { git = "https://github.com/jbellerb/tree-sitter-dhall", rev = "affb6ee38d629c9296749767ab832d69bb0d9ea8" }
+
+[[language]]
+name = "sage"
+scope = "source.sage"
+file-types = ["sage"]
+injection-regex = "sage"
+roots = []
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+grammar = "python"

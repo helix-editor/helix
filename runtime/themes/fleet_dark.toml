@@ -46,6 +46,7 @@
 # "markup.normal" = {} # .completion / .hover
 "markup.bold" = { fg = "lightest", modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.heading" = { fg = "cyan", modifiers = ["bold"] } # .marker / .1 / .2 / .3 / .4 / .5 / .6
 "markup.list" = "pink" # .unnumbered / .numbered
 "markup.list.numbered" = "cyan"

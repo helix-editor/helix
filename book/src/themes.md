@@ -252,10 +252,14 @@ These scopes are used for theming the editor interface.
 | `ui.background`             |                                                                                                |
 | `ui.background.separator`   | Picker separator below input line                                                              |
 | `ui.cursor`                 |                                                                                                |
+| `ui.cursor.normal`          |                                                                                                |
 | `ui.cursor.insert`          |                                                                                                |
 | `ui.cursor.select`          |                                                                                                |
 | `ui.cursor.match`           | Matching bracket etc.                                                                          |
 | `ui.cursor.primary`         | Cursor with primary selection                                                                  |
+| `ui.cursor.primary.normal`  |                                                                                                |
+| `ui.cursor.primary.insert`  |                                                                                                |
+| `ui.cursor.primary.select`  |                                                                                                |
 | `ui.gutter`                 | Gutter                                                                                         |
 | `ui.gutter.selected`        | Gutter for the line the cursor is on                                                           |
 | `ui.linenr`                 | Line numbers                                                                                   |

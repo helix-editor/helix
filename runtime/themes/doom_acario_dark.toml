@@ -29,6 +29,7 @@
 
 'markup.bold' = { fg = 'orange', modifiers = ['bold'] }
 'markup.italic' = { fg = 'magenta', modifiers = ['italic'] }
+'markup.strikethrough' = { modifiers = ['crossed_out'] }
 'markup.heading' = { fg = 'red' }
 'markup.link' = { fg = 'orange' }
 'markup.link.url' = { fg = 'magenta' }
