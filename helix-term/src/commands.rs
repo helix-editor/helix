@@ -2430,20 +2430,15 @@ fn buffer_picker(cx: &mut Context) {
                 None => SCRATCH_BUFFER_NAME,
             };
 
-            let mut flags = Vec::new();
+            let mut flags = String::new();
             if self.is_modified {
-                flags.push("+");
+                flags.push('+');
             }
             if self.is_current {
-                flags.push("*");
+                flags.push('*');
             }
 
-            let flag = if flags.is_empty() {
-                "".into()
-            } else {
-                format!(" ({})", flags.join(""))
-            };
-            format!("{} {}{}", self.id, path, flag).into()
+            Row::new([self.id.to_string(), flags, path.to_string()])
         }
     }
 
