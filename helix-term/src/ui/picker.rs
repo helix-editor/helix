@@ -635,16 +635,18 @@ impl<T: Item + 'static> Component for FilePicker<T> {
     }
 
     fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
-        self.picker.cursor(area, ctx)
+        let block = Block::default().borders(Borders::ALL);
+        // calculate the inner area inside the box
+        let inner = block.inner(area);
+
+        // prompt area
+        let area = inner.clip_left(1).with_height(1);
+
+        self.prompt.cursor(area, ctx)
     }
 
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
-        let picker_width = if width > MIN_AREA_WIDTH_FOR_PREVIEW {
-            width / 2
-        } else {
-            width
-        };
-        self.picker.required_size((picker_width, height))?;
+        self.completion_height = height.saturating_sub(4);
         Some((width, height))
     }
 }
@@ -760,8 +762,7 @@ impl<T: Item> Picker<T> {
 
 impl<T: Item + 'static> Component for Picker<T> {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        self.completion_height = viewport.1.saturating_sub(4);
-        Some(viewport)
+        unimplemented!()
     }
 
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
@@ -931,14 +932,7 @@ impl<T: Item + 'static> Component for Picker<T> {
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        let block = Block::default().borders(Borders::ALL);
-        // calculate the inner area inside the box
-        let inner = block.inner(area);
-
-        // prompt area
-        let area = inner.clip_left(1).with_height(1);
-
-        self.prompt.cursor(area, editor)
+        unimplemented!()
     }
 }
 
