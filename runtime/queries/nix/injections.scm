@@ -6,6 +6,16 @@
   (indented_string_expression (string_fragment) @injection.content))
   (#set! injection.combined))
 
+; Common attribute keys corresponding to Python scripts,
+; such as those for NixOS VM tests in nixpkgs/nixos/tests.
+((binding
+   attrpath: (attrpath (identifier) @_path)
+   expression: (indented_string_expression
+     (string_fragment) @injection.content))
+ (#match? @_path "(^|\\.)testScript$")
+ (#set! injection.language "python")
+ (#set! injection.combined))
+
 ; Common attribute keys corresponding to scripts,
 ; such as those of stdenv.mkDerivation.
 ((binding
