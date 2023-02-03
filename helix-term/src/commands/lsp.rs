@@ -210,7 +210,7 @@ fn sym_picker(
     offset_encoding: OffsetEncoding,
 ) -> FilePicker<lsp::SymbolInformation> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
-    FilePicker::new(
+    FilePicker::with_preview(
         symbols,
         current_path.clone(),
         move |cx, symbol, action| {
@@ -285,7 +285,7 @@ fn diag_picker(
         error: cx.editor.theme.get("error"),
     };
 
-    FilePicker::new(
+    FilePicker::with_preview(
         flat_diag,
         (styles, format),
         move |cx, PickerDiagnostic { url, diag }, action| {
@@ -886,7 +886,7 @@ fn goto_impl(
             editor.set_error("No definition found.");
         }
         _locations => {
-            let picker = FilePicker::new(
+            let picker = FilePicker::with_preview(
                 locations,
                 cwdir,
                 move |cx, location, action| {

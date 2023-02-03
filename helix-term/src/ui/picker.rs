@@ -137,15 +137,15 @@ pub struct FilePicker<T: Item> {
     preview_cache: HashMap<PathBuf, CachedPreview>,
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
-    file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
+    file_fn: Option<Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>>,
 }
 
 impl<T: Item + 'static> FilePicker<T> {
-    pub fn new(
+    fn new(
         options: Vec<T>,
         editor_data: T::Data,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
-        preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
+        callback_fn: Box<dyn Fn(&mut Context, &T, Action) + 'static>,
+        preview_fn: Option<Box<dyn Fn(&Editor, &T) -> Option<FileLocation> + 'static>>,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
@@ -183,14 +183,14 @@ impl<T: Item + 'static> FilePicker<T> {
             prompt,
             previous_pattern: (String::new(), FuzzyQuery::default()),
             show_preview: true,
-            callback_fn: Box::new(callback_fn),
+            callback_fn: callback_fn,
             completion_height: 0,
             widths,
 
             truncate_start: true,
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
-            file_fn: Box::new(preview_fn),
+            file_fn: preview_fn,
 
             picker: unimplemented!(), // remove after replacing references
         };
@@ -209,6 +209,20 @@ impl<T: Item + 'static> FilePicker<T> {
             }));
 
         picker
+    }
+
+    pub fn with_preview(
+        options: Vec<T>,
+        editor_data: T::Data,
+        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+        preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
+    ) -> Self {
+        FilePicker::new(
+            options,
+            editor_data,
+            Box::new(callback_fn),
+            Some(Box::new(preview_fn)),
+        )
     }
 
     pub fn score(&mut self) {
@@ -299,7 +313,7 @@ impl<T: Item + 'static> FilePicker<T> {
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
         self.picker
             .selection()
-            .and_then(|current| (self.file_fn)(editor, current))
+            .and_then(|current| (self.file_fn.as_ref()?)(editor, current))
             .and_then(|(path_or_id, line)| path_or_id.get_canonicalized().ok().zip(Some(line)))
     }
 

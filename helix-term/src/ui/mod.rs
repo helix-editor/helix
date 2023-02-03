@@ -217,7 +217,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
-    FilePicker::new(
+    FilePicker::with_preview(
         files,
         root,
         move |cx, path: &PathBuf, action| {

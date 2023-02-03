@@ -2090,7 +2090,7 @@ fn global_search(cx: &mut Context) {
                     return;
                 }
 
-                let picker = FilePicker::new(
+                let picker = FilePicker::with_preview(
                     all_matches,
                     current_path,
                     move |cx, FileResult { path, line_num }, action| {
@@ -2466,7 +2466,7 @@ fn buffer_picker(cx: &mut Context) {
         is_current: doc.id() == current,
     };
 
-    let picker = FilePicker::new(
+    let picker = FilePicker::with_preview(
         cx.editor
             .documents
             .values()
@@ -2544,7 +2544,7 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
-    let picker = FilePicker::new(
+    let picker = FilePicker::with_preview(
         cx.editor
             .tree
             .views()

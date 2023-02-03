@@ -73,7 +73,7 @@ fn thread_picker(
             let debugger = debugger!(editor);
 
             let thread_states = debugger.thread_states.clone();
-            let picker = FilePicker::new(
+            let picker = FilePicker::with_preview(
                 threads,
                 thread_states,
                 move |cx, thread, _action| callback_fn(cx.editor, thread),
@@ -681,7 +681,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
 
     let frames = debugger.stack_frames[&thread_id].clone();
 
-    let picker = FilePicker::new(
+    let picker = FilePicker::with_preview(
         frames,
         (),
         move |cx, frame, _action| {
