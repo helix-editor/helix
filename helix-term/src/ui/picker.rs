@@ -110,7 +110,7 @@ impl Preview<'_, '_> {
     }
 }
 
-pub struct FilePicker<T: Item> {
+pub struct Picker<T: Item> {
     options: Vec<T>,
     editor_data: T::Data,
     // filter: String,
@@ -131,7 +131,6 @@ pub struct FilePicker<T: Item> {
 
     callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
 
-    picker: Picker<T>,
     pub truncate_start: bool,
     /// Caches paths to documents
     preview_cache: HashMap<PathBuf, CachedPreview>,
@@ -140,7 +139,7 @@ pub struct FilePicker<T: Item> {
     file_fn: Option<Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>>,
 }
 
-impl<T: Item + 'static> FilePicker<T> {
+impl<T: Item + 'static> Picker<T> {
     fn new(
         options: Vec<T>,
         editor_data: T::Data,
@@ -183,7 +182,7 @@ impl<T: Item + 'static> FilePicker<T> {
             prompt,
             previous_pattern: (String::new(), FuzzyQuery::default()),
             show_preview: true,
-            callback_fn: callback_fn,
+            callback_fn,
             completion_height: 0,
             widths,
 
@@ -191,8 +190,6 @@ impl<T: Item + 'static> FilePicker<T> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: preview_fn,
-
-            picker: unimplemented!(), // remove after replacing references
         };
 
         // scoring on empty input:
@@ -217,12 +214,20 @@ impl<T: Item + 'static> FilePicker<T> {
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
-        FilePicker::new(
+        Picker::new(
             options,
             editor_data,
             Box::new(callback_fn),
             Some(Box::new(preview_fn)),
         )
+    }
+
+    pub fn without_preview(
+        options: Vec<T>,
+        editor_data: T::Data,
+        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+    ) -> Self {
+        Picker::new(options, editor_data, Box::new(callback_fn), None)
     }
 
     pub fn score(&mut self) {
@@ -306,13 +311,11 @@ impl<T: Item + 'static> FilePicker<T> {
 
     pub fn truncate_start(mut self, truncate_start: bool) -> Self {
         self.truncate_start = truncate_start;
-        self.picker.truncate_start = truncate_start;
         self
     }
 
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
-        self.picker
-            .selection()
+        self.selection()
             .and_then(|current| (self.file_fn.as_ref()?)(editor, current))
             .and_then(|(path_or_id, line)| path_or_id.get_canonicalized().ok().zip(Some(line)))
     }
@@ -705,7 +708,7 @@ impl<T: Item + 'static> FilePicker<T> {
     }
 }
 
-impl<T: Item + 'static> Component for FilePicker<T> {
+impl<T: Item + 'static> Component for Picker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
         // |prompt   | |preview  |
@@ -714,7 +717,8 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         // |         | |         |
         // +---------+ +---------+
 
-        let render_preview = self.picker.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let render_preview =
+            self.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW && self.file_fn.is_some();
 
         let picker_width = if render_preview {
             area.width / 2
@@ -850,108 +854,6 @@ impl Ord for PickerMatch {
     }
 }
 
-pub struct Picker<T: Item> {
-    options: Vec<T>,
-    editor_data: T::Data,
-    // filter: String,
-    matcher: Box<Matcher>,
-    matches: Vec<PickerMatch>,
-
-    /// Current height of the completions box
-    completion_height: u16,
-
-    cursor: usize,
-    // pattern: String,
-    prompt: Prompt,
-    previous_pattern: (String, FuzzyQuery),
-    /// Whether to truncate the start (default true)
-    pub truncate_start: bool,
-    /// Whether to show the preview panel (default true)
-    show_preview: bool,
-    /// Constraints for tabular formatting
-    widths: Vec<Constraint>,
-
-    callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
-}
-
-impl<T: Item> Picker<T> {
-    pub fn new(
-        options: Vec<T>,
-        editor_data: T::Data,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
-    ) -> Self {
-        unimplemented!()
-    }
-
-    pub fn score(&mut self) {
-        unimplemented!()
-    }
-
-    pub fn force_score(&mut self) {
-        unimplemented!()
-    }
-
-    /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
-    pub fn move_by(&mut self, amount: usize, direction: Direction) {
-        unimplemented!()
-    }
-
-    /// Move the cursor down by exactly one page. After the last page comes the first page.
-    pub fn page_up(&mut self) {
-        unimplemented!()
-    }
-
-    /// Move the cursor up by exactly one page. After the first page comes the last page.
-    pub fn page_down(&mut self) {
-        unimplemented!()
-    }
-
-    /// Move the cursor to the first entry
-    pub fn to_start(&mut self) {
-        unimplemented!()
-    }
-
-    /// Move the cursor to the last entry
-    pub fn to_end(&mut self) {
-        unimplemented!()
-    }
-
-    pub fn selection(&self) -> Option<&T> {
-        unimplemented!()
-    }
-
-    pub fn toggle_preview(&mut self) {
-        unimplemented!()
-    }
-
-    fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
-        unimplemented!()
-    }
-}
-
-// process:
-// - read all the files into a list, maxed out at a large value
-// - on input change:
-//  - score all the names in relation to input
-
-impl<T: Item + 'static> Component for Picker<T> {
-    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        unimplemented!()
-    }
-
-    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
-        unimplemented!()
-    }
-
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        unimplemented!()
-    }
-
-    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        unimplemented!()
-    }
-}
-
 /// Returns a new list of options to replace the contents of the picker
 /// when called with the current picker query,
 pub type DynQueryCallback<T> =
@@ -960,7 +862,7 @@ pub type DynQueryCallback<T> =
 /// A picker that updates its contents via a callback whenever the
 /// query string changes. Useful for live grep, workspace symbols, etc.
 pub struct DynamicPicker<T: ui::menu::Item + Send> {
-    file_picker: FilePicker<T>,
+    file_picker: Picker<T>,
     query_callback: DynQueryCallback<T>,
     query: String,
 }
@@ -968,7 +870,7 @@ pub struct DynamicPicker<T: ui::menu::Item + Send> {
 impl<T: ui::menu::Item + Send> DynamicPicker<T> {
     pub const ID: &'static str = "dynamic-picker";
 
-    pub fn new(file_picker: FilePicker<T>, query_callback: DynQueryCallback<T>) -> Self {
+    pub fn new(file_picker: Picker<T>, query_callback: DynQueryCallback<T>) -> Self {
         Self {
             file_picker,
             query_callback,
@@ -984,7 +886,7 @@ impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
 
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let event_result = self.file_picker.handle_event(event, cx);
-        let current_query = self.file_picker.picker.prompt.line();
+        let current_query = self.file_picker.prompt.line();
 
         if !matches!(event, Event::IdleTimeout) || self.query == *current_query {
             return event_result;
@@ -1001,7 +903,7 @@ impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
                     // Wrapping of pickers in overlay is done outside the picker code,
                     // so this is fragile and will break if wrapped in some other widget.
                     let picker = match compositor.find_id::<Overlay<DynamicPicker<T>>>(Self::ID) {
-                        Some(overlay) => &mut overlay.content.file_picker.picker,
+                        Some(overlay) => &mut overlay.content.file_picker,
                         None => return,
                     };
                     picker.options = new_options;

@@ -18,8 +18,8 @@ use helix_view::{document::Mode, editor::Action, theme::Style};
 use crate::{
     compositor::{self, Compositor},
     ui::{
-        self, lsp::SignatureHelp, overlay::overlayed, DynamicPicker, FileLocation, FilePicker,
-        Popup, PromptEvent,
+        self, lsp::SignatureHelp, overlay::overlayed, DynamicPicker, FileLocation, Picker, Popup,
+        PromptEvent,
     },
 };
 
@@ -208,9 +208,9 @@ fn sym_picker(
     symbols: Vec<lsp::SymbolInformation>,
     current_path: Option<lsp::Url>,
     offset_encoding: OffsetEncoding,
-) -> FilePicker<lsp::SymbolInformation> {
+) -> Picker<lsp::SymbolInformation> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
-    FilePicker::with_preview(
+    Picker::with_preview(
         symbols,
         current_path.clone(),
         move |cx, symbol, action| {
@@ -263,7 +263,7 @@ fn diag_picker(
     current_path: Option<lsp::Url>,
     format: DiagnosticsFormat,
     offset_encoding: OffsetEncoding,
-) -> FilePicker<PickerDiagnostic> {
+) -> Picker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
 
     // flatten the map to a vec of (url, diag) pairs
@@ -285,7 +285,7 @@ fn diag_picker(
         error: cx.editor.theme.get("error"),
     };
 
-    FilePicker::with_preview(
+    Picker::with_preview(
         flat_diag,
         (styles, format),
         move |cx, PickerDiagnostic { url, diag }, action| {
@@ -886,7 +886,7 @@ fn goto_impl(
             editor.set_error("No definition found.");
         }
         _locations => {
-            let picker = FilePicker::with_preview(
+            let picker = Picker::with_preview(
                 locations,
                 cwdir,
                 move |cx, location, action| {

@@ -52,7 +52,7 @@ use crate::{
     filter_picker_entry,
     job::Callback,
     keymap::ReverseKeymap,
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
+    ui::{self, overlay::overlayed, Picker, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Jobs};
@@ -2090,7 +2090,7 @@ fn global_search(cx: &mut Context) {
                     return;
                 }
 
-                let picker = FilePicker::with_preview(
+                let picker = Picker::with_preview(
                     all_matches,
                     current_path,
                     move |cx, FileResult { path, line_num }, action| {
@@ -2466,7 +2466,7 @@ fn buffer_picker(cx: &mut Context) {
         is_current: doc.id() == current,
     };
 
-    let picker = FilePicker::with_preview(
+    let picker = Picker::with_preview(
         cx.editor
             .documents
             .values()
@@ -2544,7 +2544,7 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
-    let picker = FilePicker::with_preview(
+    let picker = Picker::with_preview(
         cx.editor
             .tree
             .views()
@@ -2616,7 +2616,7 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+            let picker = Picker::without_preview(commands, keymap, move |cx, command, _action| {
                 let mut ctx = Context {
                     register: None,
                     count: std::num::NonZeroUsize::new(1),
