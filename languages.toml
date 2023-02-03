@@ -2117,3 +2117,20 @@ roots = []
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 grammar = "python"
+
+[[language]]
+name = "msbuild"
+scope = "source.msbuild"
+injection-regex = "msbuild"
+file-types = ["proj", "vbproj", "csproj", "fsproj", "targets", "props"]
+indent = { tab-width = 2, unit = "  " }
+roots = []
+grammar = "xml"
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+"'" = "'"
+"<" = ">"
