@@ -881,6 +881,8 @@ pub struct Editor {
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
 
+    pub last_event_is_char: bool,
+
     // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
     // https://stackoverflow.com/a/66875668
     pub saves: HashMap<DocumentId, UnboundedSender<Once<DocumentSavedEventFuture>>>,
@@ -1062,6 +1064,7 @@ impl Editor {
             needs_redraw: false,
             cursor_cache: Cell::new(None),
             completion_request_handle: None,
+            last_event_is_char: false,
         }
     }
 

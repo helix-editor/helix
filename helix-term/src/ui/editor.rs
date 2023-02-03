@@ -857,18 +857,23 @@ impl EditorView {
     }
 
     fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
-        if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
-            match keyresult {
-                KeymapResult::NotFound => {
-                    if let Some(ch) = event.char() {
-                        commands::insert::insert_char(cx, ch)
+        match self.handle_keymap_event(Mode::Insert, cx, event) {
+            Some(keyresult) => match keyresult {
+                KeymapResult::NotFound => match event.char() {
+                    Some(ch) => {
+                        cx.editor.last_event_is_char = true;
+                        commands::insert::insert_char(cx, ch);
                     }
-                }
+                    None => {
+                        cx.editor.last_event_is_char = false;
+                    }
+                },
                 KeymapResult::Cancelled(pending) => {
                     for ev in pending {
                         match ev.char() {
                             Some(ch) => commands::insert::insert_char(cx, ch),
                             None => {
+                                cx.editor.last_event_is_char = false;
                                 if let KeymapResult::Matched(command) =
                                     self.keymaps.get(Mode::Insert, ev)
                                 {
@@ -879,7 +884,8 @@ impl EditorView {
                     }
                 }
                 _ => unreachable!(),
-            }
+            },
+            None => cx.editor.last_event_is_char = false,
         }
     }
 
@@ -1020,7 +1026,10 @@ impl EditorView {
             };
         }
 
-        if cx.editor.mode != Mode::Insert || !cx.editor.config().auto_completion {
+        if cx.editor.mode != Mode::Insert
+            || !cx.editor.last_event_is_char
+            || !cx.editor.config().auto_completion
+        {
             return EventResult::Ignored(None);
         }
 
