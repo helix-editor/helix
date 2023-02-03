@@ -1212,11 +1212,11 @@ impl Document {
             .language_config()
             .and_then(|config| config.max_line_length)
         {
-            // we increase max_line_len by 1 because softwrap considers the newline characterr
-            // as part of the line length while the "typical" expectiation is that this is not the case
-            // In particular other commands like :reflow do not count the line terminator
-            // this is technically inconsistent for the last  line as that line never has a line terminator
-            // but having the last visual line exceed the width by 1 seems like a rare edgecase
+            // We increase max_line_len by 1 because softwrap considers the newline character
+            // as part of the line length while the "typical" expectation is that this is not the case.
+            // In particular other commands like :reflow do not count the line terminator.
+            // This is technically inconsistent for the last line as that line never has a line terminator
+            // but having the last visual line exceed the width by 1 seems like a rare edge case.
             viewport_width = viewport_width.min(max_line_len as u16 + 1)
         }
         let config = self.config.load();
