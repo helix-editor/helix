@@ -5,7 +5,15 @@ use helix_core::text_annotations::Overlay;
 use helix_view::{input::KeyEvent, View};
 use std::rc::Rc;
 
-pub const JUMP_KEYS: &[u8] = b"etovxqpdygfblzhckisuran";
+pub fn jump_keys(ctx: &mut Context) -> Vec<u8> {
+    doc!(ctx.editor)
+        .config
+        .load()
+        .jump_mode
+        .jump_keys
+        .clone()
+        .into_bytes()
+}
 
 #[inline]
 pub fn setup(ctx: &mut Context) {

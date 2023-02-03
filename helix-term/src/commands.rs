@@ -50,8 +50,8 @@ use insert::*;
 use movement::Movement;
 
 use self::jump::{
-    cleanup, find_all_identifiers_in_view, find_all_str_occurrences_in_view,
-    show_key_annotations_with_callback, sort_jump_targets, JumpSequencer, TrieNode, JUMP_KEYS,
+    cleanup, find_all_identifiers_in_view, find_all_str_occurrences_in_view, jump_keys,
+    show_key_annotations_with_callback, sort_jump_targets, JumpSequencer, TrieNode,
 };
 use crate::{
     args,
@@ -5669,7 +5669,7 @@ fn jump_with_targets(cx: &mut Context, mut jump_targets: Vec<Range>, extend_sele
         jump_to(cx, jump_targets[0], extend_selection);
         return cleanup(cx);
     }
-    let root = TrieNode::build(JUMP_KEYS, jump_targets);
+    let root = TrieNode::build(&jump_keys(cx), jump_targets);
     show_key_annotations_with_callback(cx, root.generate(), move |cx, event| {
         handle_key_event(root, cx, event, extend_selection)
     });
