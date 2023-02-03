@@ -2716,10 +2716,10 @@ fn push_jump(view: &mut View, doc: &Document) {
 
 fn goto_line(cx: &mut Context) {
     if cx.count.is_some() {
-        goto_line_without_jumplist(cx.editor, cx.count);
-
         let (view, doc) = current!(cx.editor);
         push_jump(view, doc);
+
+        goto_line_without_jumplist(cx.editor, cx.count);
     }
 }
 

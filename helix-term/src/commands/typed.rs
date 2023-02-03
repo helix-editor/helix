@@ -1411,12 +1411,12 @@ fn tutor(
 }
 
 fn abort_goto_line_number_preview(cx: &mut compositor::Context) {
-    if let Some(last_selection) = &cx.editor.last_selection {
+    if let Some(last_selection) = cx.editor.last_selection.take() {
         let scrolloff = cx.editor.config().scrolloff;
+
         let (view, doc) = current!(cx.editor);
         doc.set_selection(view.id, last_selection.clone());
         view.ensure_cursor_in_view(doc, scrolloff);
-        cx.editor.last_selection = None;
     }
 }
 
