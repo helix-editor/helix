@@ -4313,18 +4313,15 @@ fn jump_forward(cx: &mut Context) {
 }
 
 fn jump_backward(cx: &mut Context) {
-    jump_backward_impl(cx.editor, cx.count());
-}
-
-fn jump_backward_impl(editor: &mut Editor, count: usize) {
-    let config = editor.config();
-    let (view, doc) = current!(editor);
+    let count = cx.count();
+    let config = cx.editor.config();
+    let (view, doc) = current!(cx.editor);
     let doc_id = doc.id();
 
     if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
         view.doc = *id;
         let selection = selection.clone();
-        let (view, doc) = current!(editor); // refetch doc
+        let (view, doc) = current!(cx.editor); // refetch doc
 
         if doc.id() != doc_id {
             view.add_to_history(doc_id);

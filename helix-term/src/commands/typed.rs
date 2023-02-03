@@ -1410,60 +1410,53 @@ fn tutor(
     Ok(())
 }
 
-fn undo_goto_line_number_preview(cx: &mut compositor::Context) {
-    if cx.editor.goto_line_number_preview {
-        log::info!("undoing goto_line_number preview, jumping backwards");
-        // if let Some(line_number) = cx.editor.last_line_number {
-        // goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line_number));
-
-        // Remove the jump we added during the preview session.
-        jump_backward_impl(cx.editor, 1);
-
-        // let (view, doc) = current!(cx.editor);
-        // view.ensure_cursor_in_view(doc, line_number);
-        cx.editor.goto_line_number_preview = false;
-    }
-}
-
-fn start_goto_line_number_preview(cx: &mut compositor::Context) {
-    if !cx.editor.goto_line_number_preview {
-        let (view, doc) = current!(cx.editor);
-
-        // Allow the user to jump back to the previous location before invoking
-        // `goto_line_number`.
-        push_jump(view, doc);
-
-        cx.editor.goto_line_number_preview = true;
-    }
-}
-
 pub(super) fn goto_line_number(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     match event {
-        PromptEvent::Abort => undo_goto_line_number_preview(cx),
-
+        PromptEvent::Abort => {
+            if let Some(line_number) = cx.editor.last_line_number {
+                goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line_number));
+                let (view, doc) = current!(cx.editor);
+                view.ensure_cursor_in_view(doc, line_number);
+                cx.editor.last_line_number = None;
+            }
+            return Ok(());
+        }
         PromptEvent::Validate => {
             ensure!(!args.is_empty(), "Line number required");
-            cx.editor.goto_line_number_preview = false;
-        }
-
-        PromptEvent::Update => {
-            // When a user hits backspace and there are no numbers left,
-            // we can bring them back to their original selection(s).
-            if args.is_empty() {
-                undo_goto_line_number_preview(cx);
-                return Ok(());
-            }
-            if !cx.editor.goto_line_number_preview {
-                start_goto_line_number_preview(cx);
-            }
-
-            let line = args[0].parse::<usize>()?;
 
             let (view, doc) = current!(cx.editor);
+            push_jump(view, doc);
+
+            cx.editor.last_line_number = None;
+        }
+        PromptEvent::Update => {
+            if args.is_empty() {
+                if let Some(line_number) = cx.editor.last_line_number {
+                    // When a user hits backspace and there are no numbers left,
+                    // we can bring them back to their original line
+                    goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line_number));
+                    let (view, doc) = current!(cx.editor);
+                    view.ensure_cursor_in_view(doc, line_number);
+                    cx.editor.last_line_number = None;
+                }
+                return Ok(());
+            }
+
+            cx.editor.last_line_number.get_or_insert_with(|| {
+                let (view, doc) = current!(cx.editor);
+
+                let text = doc.text().slice(..);
+                let line = doc.selection(view.id).primary().cursor_line(text);
+
+                line + 1
+            });
+
+            let (view, doc) = current!(cx.editor);
+            let line = args[0].parse::<usize>()?;
             view.ensure_cursor_in_view(doc, line);
             goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
         }

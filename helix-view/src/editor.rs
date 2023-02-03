@@ -793,10 +793,7 @@ pub struct Editor {
     /// The currently applied editor theme. While previewing a theme, the previewed theme
     /// is set here.
     pub theme: Theme,
-
-    // Are we currently previewing a goto_line_number typed command (`:goto <linenum>`, `:<linenum>`)?
-    pub goto_line_number_preview: bool,
-
+    pub last_line_number: Option<usize>,
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
@@ -899,7 +896,7 @@ impl Editor {
             syn_loader,
             theme_loader,
             last_theme: None,
-            goto_line_number_preview: false,
+            last_line_number: None,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
