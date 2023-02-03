@@ -73,6 +73,8 @@ impl From<DocumentId> for PathOrId {
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation = (PathOrId, Option<(usize, usize)>);
 
+type FilePreviewFn<T> = Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>;
+
 pub enum CachedPreview {
     Document(Box<Document>),
     Binary,
@@ -136,7 +138,7 @@ pub struct Picker<T: Item> {
     preview_cache: HashMap<PathBuf, CachedPreview>,
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
-    file_fn: Option<Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>>,
+    file_fn: Option<FilePreviewFn<T>>,
 }
 
 impl<T: Item + 'static> Picker<T> {
@@ -144,7 +146,7 @@ impl<T: Item + 'static> Picker<T> {
         options: Vec<T>,
         editor_data: T::Data,
         callback_fn: Box<dyn Fn(&mut Context, &T, Action) + 'static>,
-        preview_fn: Option<Box<dyn Fn(&Editor, &T) -> Option<FileLocation> + 'static>>,
+        preview_fn: Option<FilePreviewFn<T>>,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
@@ -281,7 +283,6 @@ impl<T: Item + 'static> Picker<T> {
         let pattern = self.prompt.line();
         self.previous_pattern.0.clone_from(pattern);
         self.previous_pattern.1 = query;
-
     }
 
     pub fn force_score(&mut self) {
