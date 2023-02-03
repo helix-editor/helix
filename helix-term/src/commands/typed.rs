@@ -1410,55 +1410,49 @@ fn tutor(
     Ok(())
 }
 
+fn abort_goto_line_number_preview(cx: &mut compositor::Context) {
+    if let Some(last_selection) = &cx.editor.last_selection {
+        let scrolloff = cx.editor.config().scrolloff;
+        let (view, doc) = current!(cx.editor);
+        doc.set_selection(view.id, last_selection.clone());
+        view.ensure_cursor_in_view(doc, scrolloff);
+        cx.editor.last_selection = None;
+    }
+}
+
 pub(super) fn goto_line_number(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     match event {
-        PromptEvent::Abort => {
-            if let Some(line_number) = cx.editor.last_line_number {
-                goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line_number));
-                let (view, doc) = current!(cx.editor);
-                view.ensure_cursor_in_view(doc, line_number);
-                cx.editor.last_line_number = None;
-            }
-            return Ok(());
-        }
+        PromptEvent::Abort => abort_goto_line_number_preview(cx),
         PromptEvent::Validate => {
             ensure!(!args.is_empty(), "Line number required");
 
-            let (view, doc) = current!(cx.editor);
-            push_jump(view, doc);
-
-            cx.editor.last_line_number = None;
-        }
-        PromptEvent::Update => {
-            if args.is_empty() {
-                if let Some(line_number) = cx.editor.last_line_number {
-                    // When a user hits backspace and there are no numbers left,
-                    // we can bring them back to their original line
-                    goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line_number));
-                    let (view, doc) = current!(cx.editor);
-                    view.ensure_cursor_in_view(doc, line_number);
-                    cx.editor.last_line_number = None;
-                }
-                return Ok(());
-            }
-
-            cx.editor.last_line_number.get_or_insert_with(|| {
+            if let Some(last_selection) = &cx.editor.last_selection {
                 let (view, doc) = current!(cx.editor);
+                view.jumps.push((doc.id(), last_selection.clone()));
 
-                let text = doc.text().slice(..);
-                let line = doc.selection(view.id).primary().cursor_line(text);
-
-                line + 1
+                cx.editor.last_selection = None;
+            }
+        }
+        // When a user hits backspace and there are no numbers left,
+        // we can bring them back to their original selection. If they
+        // begin typing numbers again, we'll start a new preview session.
+        PromptEvent::Update if args.is_empty() => abort_goto_line_number_preview(cx),
+        PromptEvent::Update => {
+            cx.editor.last_selection.get_or_insert_with(|| {
+                let (view, doc) = current!(cx.editor);
+                doc.selection(view.id).clone()
             });
 
-            let (view, doc) = current!(cx.editor);
+            let scrolloff = cx.editor.config().scrolloff;
             let line = args[0].parse::<usize>()?;
-            view.ensure_cursor_in_view(doc, line);
             goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
+
+            let (view, doc) = current!(cx.editor);
+            view.ensure_cursor_in_view(doc, scrolloff);
         }
     }
     Ok(())
