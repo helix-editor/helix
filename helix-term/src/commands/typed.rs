@@ -913,6 +913,7 @@ fn replace_selections_with_clipboard_impl(
     cx: &mut compositor::Context,
     clipboard_type: ClipboardType,
 ) -> anyhow::Result<()> {
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
 
     match cx.editor.clipboard_provider.get_contents(clipboard_type) {
@@ -924,6 +925,7 @@ fn replace_selections_with_clipboard_impl(
 
             doc.apply(&transaction, view.id);
             doc.append_changes_to_history(view);
+            view.ensure_cursor_in_view(doc, scrolloff);
             Ok(())
         }
         Err(e) => Err(e.context("Couldn't get system clipboard contents")),
@@ -1570,6 +1572,7 @@ fn sort_impl(
     _args: &[Cow<str>],
     reverse: bool,
 ) -> anyhow::Result<()> {
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -1595,6 +1598,7 @@ fn sort_impl(
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
 }

@@ -117,6 +117,7 @@ The following statusline elements can be configured:
 
 | Key                   | Description                                                 | Default |
 | ---                   | -----------                                                 | ------- |
+| `enable`              | Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.| `true` |
 | `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
@@ -152,6 +153,8 @@ All git related options are only enabled in a git repository.
 | Key | Description | Default |
 |--|--|---------|
 |`hidden` | Enables ignoring hidden files. | true
+|`follow-links` | Follow symlinks instead of ignoring them | true
+|`deduplicate-links` | Ignore symlinks that point at files already shown in the picker | true
 |`parents` | Enables reading ignore files from parent directories. | true
 |`ignore` | Enables reading `.ignore` files. | true
 |`git-ignore` | Enables reading `.gitignore` files. | true
