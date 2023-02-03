@@ -282,6 +282,8 @@ pub struct Config {
     pub whitespace: WhitespaceConfig,
     /// Persistently display open buffers along the top
     pub bufferline: BufferLine,
+    /// Align the bufferline contents. Defaults to `left`.
+    pub bufferline_alignment: BufferLineAlignment,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
@@ -598,6 +600,24 @@ pub enum BufferLine {
     Multiple,
 }
 
+/// Where to align the bufferline contents
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BufferLineAlignment {
+    /// Align items to the left
+    Left,
+    /// Align items to the center
+    Center,
+    /// Align items to the right
+    Right,
+}
+
+impl Default for BufferLineAlignment {
+    fn default() -> Self {
+        Self::Left
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
@@ -848,6 +868,7 @@ impl Default for Config {
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
             bufferline: BufferLine::default(),
+            bufferline_alignment: BufferLineAlignment::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap {
