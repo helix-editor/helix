@@ -8,7 +8,7 @@ in `languages.toml` files.
 There are three possible locations for a `languages.toml` file:
 
 1. In the Helix source code, this lives in the
-   [Helix repository](https://github.com/helix-editor/helix/blob/master/languages.toml)
+   [Helix repository](https://github.com/helix-editor/helix/blob/master/languages.toml).
    It provides the default configurations for languages and language servers.
 
 2. In your [configuration directory](./configuration.md). This overrides values

@@ -118,7 +118,7 @@ For 64-bit Windows 8.1 or above:
 pacman -S mingw-w64-ucrt-x86_64-helix
 ```
 
-## Build from source
+## Building from source
 
 1. Clone the repository:
 
@@ -185,7 +185,7 @@ provided `.desktop` and icon files to their correct folders:
 
 ```sh
 cp contrib/Helix.desktop ~/.local/share/applications
-cp contrib/helix.png ~/.local/share/icons
+cp contrib/helix.png ~/.icons # or ~/.local/share/icons
 ```
 
 To use another terminal than the system default, you can modify the `.desktop`

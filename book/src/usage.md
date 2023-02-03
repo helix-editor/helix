@@ -148,8 +148,8 @@ text in a structured way. They allow you to refer to blocks of text based on
 their structure or purpose, such as a word, sentence, paragraph, or even a
 function or block of code.
 
-![textobject demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
-![textobject tree-sitter demo](https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif)
+![Textobject demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
+![Textobject tree-sitter demo](https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif)
 
 - `ma` - Select around the object (`va` in Vim, `<alt-a>` in Kakoune)
 - `mi` - Select inside the object (`vi` in Vim, `<alt-i>` in Kakoune)
@@ -160,7 +160,7 @@ function or block of code.
 | `W`                    | WORD                     |
 | `p`                    | Paragraph                |
 | `(`, `[`, `'`, etc.    | Specified surround pairs |
-| `m`                    | Closest surround pair    |
+| `m`                    | The closest surround pair    |
 | `f`                    | Function                 |
 | `c`                    | Class                    |
 | `a`                    | Argument/parameter       |
@@ -168,19 +168,19 @@ function or block of code.
 | `t`                    | Test                     |
 | `g`                    | Change                   |
 
-> 💡 `f`, `c`, etc need a tree-sitter grammar active for the current
+> 💡 `f`, `c`, etc. need a tree-sitter grammar active for the current
 document and a special tree-sitter query file to work properly. [Only
 some grammars][lang-support] currently have the query file implemented.
 Contributions are welcome!
 
-## Navigating Using Tree-sitter Textobject
+## Navigating Using Tree-sitter Textobjects
 
 Navigating between functions, classes, parameters, and other elements is
 possible using tree-sitter and textobject queries. For
 example to move to the next function use `]f`, to move to previous
 class use `[c`, and so on.
 
-![tree-sitter-nav-demo][tree-sitter-nav-demo]
+![Tree-sitter-nav-demo][tree-sitter-nav-demo]
 
 For the full reference see the [unimpaired][unimpaired-keybinds] section of the key bind
 documentation.

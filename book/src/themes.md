@@ -16,7 +16,7 @@ To create a theme file:
 > 💡 The names "default" and "base16_default" are reserved for built-in themes
 > and cannot be overridden by user-defined themes.
 
-### An overview of the Theme File Format
+### An Overview of the Theme File Format
 
 Each line in the theme file is specified as below:
 
@@ -188,7 +188,7 @@ We use a similar set of scopes as
     - `documentation` - Documentation comments (e.g. `///` in Rust)
 
 - `variable` - Variables
-  - `builtin` - Reserved language variables (`self`, `this`, `super`, etc)
+  - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
   - `parameter` - Function parameters
   - `other`
     - `member` - Fields of composite data types (e.g. structs, unions)
@@ -292,16 +292,16 @@ These scopes are used for theming the editor interface:
 | `ui.statusline.insert`      | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.select`      | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.separator`   | Separator character in statusline                                                              |
-| `ui.popup`                  | Documentation popups (e.g Space + k)                                                             |
+| `ui.popup`                  | Documentation popups (e.g. Space + k)                                                          |
 | `ui.popup.info`             | Prompt for multiple key options                                                                |
-| `ui.window`                 | Border lines separating splits                                                                 |
+| `ui.window`                 | Borderlines separating splits                                                                  |
 | `ui.help`                   | Description box for commands                                                                   |
 | `ui.text`                   | Command prompts, popup text, etc.                                                              |
 | `ui.text.focus`             |                                                                                                |
 | `ui.text.inactive`          | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`              | The key: command text in `ui.popup.info` boxes                                                 |
 | `ui.virtual.ruler`          | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
-| `ui.virtual.whitespace`     | Visible whitespace characters                                                                 |
+| `ui.virtual.whitespace`     | Visible whitespace characters                                                                  |
 | `ui.virtual.indent-guide`   | Vertical indent width guides                                                                   |
 | `ui.menu`                   | Code and command completion menus                                                              |
 | `ui.menu.selected`          | Selected autocomplete item                                                                     |

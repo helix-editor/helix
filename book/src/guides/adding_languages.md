@@ -48,5 +48,5 @@ below.
   need to update the tree-sitter grammars. Run the command `hx --grammar fetch`
   to fetch the grammars and `hx --grammar build` to build any out-of-date
   grammars.
-- If a parser is causing a segfault or you want to remove it, make sure to
+- If a parser is causing a segfault, or you want to remove it, make sure to
   remove the compiled parser located at `runtime/grammar/<name>.so`.

@@ -15,7 +15,7 @@
       - [Popup](#popup)
     - [Unimpaired](#unimpaired)
 - [Insert Mode](#insert-mode)
-- [Select / extend mode](#select--extend-mode)
+- [Select / extend mode](#select-extend-mode)
 - [Picker](#picker)
 - [Prompt](#prompt)
 
@@ -287,7 +287,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `/`     | Global search in workspace folder                                       | `global_search`                     |
 | `?`     | Open command palette                                                    | `command_palette`                   |
 
-> TIP: Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
+> 💡 Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
 
 ##### Popup
 

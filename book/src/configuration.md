@@ -36,23 +36,23 @@ signal to the Helix process on Unix operating systems, such as by using the comm
 
 | Key | Description | Default |
 |--|--|---------|
-| `scrolloff` | Number of lines of padding around the edge of the screen when scrolling. | `5` |
-| `mouse` | Enable mouse mode. | `true` |
-| `middle-click-paste` | Middle click paste support. | `true` |
-| `scroll-lines` | Number of lines to scroll per scroll wheel step. | `3` |
-| `shell` | Shell to use when running external commands. | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
+| `scrolloff` | Number of lines of padding around the edge of the screen when scrolling | `5` |
+| `mouse` | Enable mouse mode | `true` |
+| `middle-click-paste` | Middle click paste support | `true` |
+| `scroll-lines` | Number of lines to scroll per scroll wheel step | `3` |
+| `shell` | Shell to use when running external commands | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. | `absolute` |
-| `cursorline` | Highlight all lines with a cursor. | `false` |
-| `cursorcolumn` | Highlight all columns with a cursor. | `false` |
+| `cursorline` | Highlight all lines with a cursor | `false` |
+| `cursorcolumn` | Highlight all columns with a cursor | `false` |
 | `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
-| `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
-| `auto-format` | Enable automatic formatting on save. | `true` |
-| `auto-save` | Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal. | `false` |
-| `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant. | `400` |
+| `auto-completion` | Enable automatic pop up of auto-completion | `true` |
+| `auto-format` | Enable automatic formatting on save | `true` |
+| `auto-save` | Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal | `false` |
+| `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
-| `auto-info` | Whether to display infoboxes | `true` |
-| `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. | `false` |
-| `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file. | `[]` |
+| `auto-info` | Whether to display info boxes | `true` |
+| `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative | `false` |
+| `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file | `[]` |
 | `bufferline` | Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use) | `never` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
 
@@ -139,22 +139,22 @@ Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
 
 ### `[editor.file-picker]` Section
 
-Sets options for file picker and global search. Ignoring a file means it is
+Set options for file picker and global search. Ignoring a file means it is
 not visible in the Helix file picker and global search.
 
 All git related options are only enabled in a git repository.
 
 | Key | Description | Default |
 |--|--|---------|
-|`hidden` | Enables ignoring hidden files. | true
+|`hidden` | Enables ignoring hidden files | true
 |`follow-links` | Follow symlinks instead of ignoring them | true
 |`deduplicate-links` | Ignore symlinks that point at files already shown in the picker | true
-|`parents` | Enables reading ignore files from parent directories. | true
-|`ignore` | Enables reading `.ignore` files. | true
-|`git-ignore` | Enables reading `.gitignore` files. | true
-|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludefile` option. | true
-|`git-exclude` | Enables reading `.git/info/exclude` files. | true
-|`max-depth` | Set with an integer value for maximum depth to recurse. | Defaults to `None`.
+|`parents` | Enables reading ignore files from parent directories | true
+|`ignore` | Enables reading `.ignore` files | true
+|`git-ignore` | Enables reading `.gitignore` files | true
+|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludefile` option | true
+|`git-exclude` | Enables reading `.git/info/exclude` files | true
+|`max-depth` | Set with an integer value for maximum depth to recurse | Defaults to `None`.
 
 ### `[editor.auto-pairs]` Section
 
@@ -215,7 +215,7 @@ Options for rendering whitespace with visible characters. Use `:set whitespace.r
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `render` | Whether to render whitespace. May either be `"all"` or `"none"`, or a table with sub-keys `space`, `nbsp`, `tab`, and `newline`. | `"none"` |
+| `render` | Whether to render whitespace. May either be `"all"` or `"none"`, or a table with sub-keys `space`, `nbsp`, `tab`, and `newline` | `"none"` |
 | `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp`, `newline` or `tabpad` | See example below |
 
 Example
@@ -243,7 +243,7 @@ Options for rendering vertical indent guides.
 
 | Key           | Description                                             | Default |
 | ---           | ---                                                     | ---     |
-| `render`      | Whether to render indent guides.                        | `false` |
+| `render`      | Whether to render indent guides                         | `false` |
 | `character`   | Literal character to use for rendering the indent guide | `│`     |
 | `skip-levels` | Number of indent levels to skip                         | `0`     |
 
@@ -268,7 +268,7 @@ gutters = ["diff", "diagnostics", "line-numbers", "spacer"]
 
 To customize the behavior of gutters, the `[editor.gutters]` section must
 be used. This section contains top level settings, as well as settings for
-specific gutter components as sub-sections.
+specific gutter components as subsections.
 
 | Key      | Description                    | Default                                                       |
 | ---      | ---                            | ---                                                           |
@@ -310,13 +310,13 @@ Currently unused
 
 ### `[editor.soft-wrap]` Section
 
-Options for soft wrapping lines that exceed the view width
+Options for soft wrapping lines that exceed the view width:
 
 | Key                 | Description                                                  | Default |
 | ---                 | ---                                                          | ---     |
-| `enable`            | Whether soft wrapping is enabled.                            | `false` |
-| `max-wrap`          | Maximum free space left at the end of the line.              | `20`    |
-| `max-indent-retain` | Maximum indentation to carry over when soft wrapping a line. | `40`    |
+| `enable`            | Whether soft wrapping is enabled                             | `false` |
+| `max-wrap`          | Maximum free space left at the end of the line               | `20`    |
+| `max-indent-retain` | Maximum indentation to carry over when soft wrapping a line  | `40`    |
 | `wrap-indicator`    | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `↪ `    |
 
 Example:
