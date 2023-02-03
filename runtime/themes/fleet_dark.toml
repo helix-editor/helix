@@ -32,7 +32,7 @@
 "keyword.control.exception" = "purple"
 "operator" = "light"
 "function" = "yellow"
-"function.macro" = "green"
+"function.declaration" = { fg = "lightest", modifiers = ["bold"] }
 "function.builtin" = "green"
 "function.special" = "green"
 "function.method" = "light"

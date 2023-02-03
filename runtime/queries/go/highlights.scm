@@ -14,10 +14,10 @@
 ; Function definitions
 
 (function_declaration
-  name: (identifier) @function)
+  name: (identifier) @function.declaration)
 
 (method_declaration
-  name: (field_identifier) @function.method)
+  name: (field_identifier) @function.declaration)
 
 ; Identifiers
 

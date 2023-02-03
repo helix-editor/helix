@@ -26,9 +26,9 @@
 (function
   name: (identifier) @function)
 (function_declaration
-  name: (identifier) @function)
+  name: (identifier) @function.declaration)
 (method_definition
-  name: (property_identifier) @function.method)
+  name: (property_identifier) @function.declaration)
 
 (pair
   key: (property_identifier) @function.method
