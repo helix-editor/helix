@@ -6,6 +6,7 @@ pub mod comment;
 pub mod config;
 pub mod diagnostic;
 pub mod diff;
+pub mod doc_formatter;
 pub mod graphemes;
 pub mod history;
 pub mod increment;
@@ -24,6 +25,7 @@ pub mod shellwords;
 pub mod surround;
 pub mod syntax;
 pub mod test;
+pub mod text_annotations;
 pub mod textobject;
 mod transaction;
 pub mod wrap;
@@ -69,7 +71,7 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::Path
             top_marker = Some(ancestor);
         }
 
-        if ancestor.join(".git").is_dir() {
+        if ancestor.join(".git").exists() {
             // Top marker is repo root if not root marker was detected yet
             if top_marker.is_none() {
                 top_marker = Some(ancestor);
@@ -83,7 +85,7 @@ pub fn find_root(root: Option<&str>, root_markers: &[String]) -> std::path::Path
     top_marker.map_or(current_dir, |a| a.to_path_buf())
 }
 
-pub use ropey::{str_utils, Rope, RopeBuilder, RopeSlice};
+pub use ropey::{self, str_utils, Rope, RopeBuilder, RopeSlice};
 
 // pub use tendril::StrTendril as Tendril;
 pub use smartstring::SmartString;
@@ -95,8 +97,12 @@ pub use {regex, tree_sitter};
 
 pub use graphemes::RopeGraphemes;
 pub use position::{
-    coords_at_pos, pos_at_coords, pos_at_visual_coords, visual_coords_at_pos, Position,
+    char_idx_at_visual_offset, coords_at_pos, pos_at_coords, visual_offset_from_anchor,
+    visual_offset_from_block, Position,
 };
+#[allow(deprecated)]
+pub use position::{pos_at_visual_coords, visual_coords_at_pos};
+
 pub use selection::{Range, Selection};
 pub use smallvec::{smallvec, SmallVec};
 pub use syntax::Syntax;

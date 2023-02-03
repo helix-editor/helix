@@ -172,7 +172,7 @@ impl Application {
             area,
             theme_loader.clone(),
             syn_loader.clone(),
-            Box::new(Map::new(Arc::clone(&config), |config: &Config| {
+            Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
         );
@@ -227,7 +227,11 @@ impl Application {
                         doc.set_selection(view_id, pos);
                     }
                 }
-                editor.set_status(format!("Loaded {} files.", nr_of_files));
+                editor.set_status(format!(
+                    "Loaded {} file{}.",
+                    nr_of_files,
+                    if nr_of_files == 1 { "" } else { "s" } // avoid "Loaded 1 files." grammo
+                ));
                 // align the view to center after all files are loaded,
                 // does not affect views without pos since it is at the top
                 let (view, doc) = current!(editor);
@@ -274,15 +278,26 @@ impl Application {
     }
 
     #[cfg(feature = "integration")]
-    fn render(&mut self) {}
+    async fn render(&mut self) {}
 
     #[cfg(not(feature = "integration"))]
-    fn render(&mut self) {
+    async fn render(&mut self) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
+
+        // Acquire mutable access to the redraw_handle lock
+        // to ensure that there are no tasks running that want to block rendering
+        drop(cx.editor.redraw_handle.1.write().await);
+        cx.editor.needs_redraw = false;
+        {
+            // exhaust any leftover redraw notifications
+            let notify = cx.editor.redraw_handle.0.notified();
+            tokio::pin!(notify);
+            notify.enable();
+        }
 
         let area = self
             .terminal
@@ -294,8 +309,10 @@ impl Application {
         let surface = self.terminal.current_buffer_mut();
 
         self.compositor.render(area, surface, &mut cx);
-
         let (pos, kind) = self.compositor.cursor(area, &self.editor);
+        // reset cursor cache
+        self.editor.cursor_cache.set(None);
+
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
         self.terminal.draw(pos, kind).unwrap();
     }
@@ -304,7 +321,7 @@ impl Application {
     where
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
-        self.render();
+        self.render().await;
         self.last_render = Instant::now();
 
         loop {
@@ -329,18 +346,18 @@ impl Application {
                 biased;
 
                 Some(event) = input_stream.next() => {
-                    self.handle_terminal_events(event);
+                    self.handle_terminal_events(event).await;
                 }
                 Some(signal) = self.signals.next() => {
                     self.handle_signals(signal).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render();
+                    self.render().await;
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render();
+                    self.render().await;
                 }
                 event = self.editor.wait_event() => {
                     let _idle_handled = self.handle_editor_event(event).await;
@@ -380,36 +397,62 @@ impl Application {
         // Update all the relevant members in the editor after updating
         // the configuration.
         self.editor.refresh_config();
-    }
 
-    /// Refresh theme after config change
-    fn refresh_theme(&mut self, config: &Config) {
-        if let Some(theme) = config.theme.clone() {
-            let true_color = self.true_color();
-            match self.theme_loader.load(&theme) {
-                Ok(theme) => {
-                    if true_color || theme.is_16_color() {
-                        self.editor.set_theme(theme);
-                    } else {
-                        self.editor
-                            .set_error("theme requires truecolor support, which is not available");
-                    }
-                }
-                Err(err) => {
-                    let err_string = format!("failed to load theme `{}` - {}", theme, err);
-                    self.editor.set_error(err_string);
-                }
-            }
+        // reset view position in case softwrap was enabled/disabled
+        let scrolloff = self.editor.config().scrolloff;
+        for (view, _) in self.editor.tree.views_mut() {
+            let doc = &self.editor.documents[&view.doc];
+            view.ensure_cursor_in_view(doc, scrolloff)
         }
     }
 
-    fn refresh_config(&mut self) {
-        match Config::load_default() {
-            Ok(config) => {
-                self.refresh_theme(&config);
+    /// refresh language config after config change
+    fn refresh_language_config(&mut self) -> Result<(), Error> {
+        let syntax_config = helix_core::config::user_syntax_loader()
+            .map_err(|err| anyhow::anyhow!("Failed to load language config: {}", err))?;
 
-                // Store new config
-                self.config.store(Arc::new(config));
+        self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
+        self.editor.syn_loader = self.syn_loader.clone();
+        for document in self.editor.documents.values_mut() {
+            document.detect_language(self.syn_loader.clone());
+        }
+
+        Ok(())
+    }
+
+    /// Refresh theme after config change
+    fn refresh_theme(&mut self, config: &Config) -> Result<(), Error> {
+        if let Some(theme) = config.theme.clone() {
+            let true_color = self.true_color();
+            let theme = self
+                .theme_loader
+                .load(&theme)
+                .map_err(|err| anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err))?;
+
+            if true_color || theme.is_16_color() {
+                self.editor.set_theme(theme);
+            } else {
+                anyhow::bail!("theme requires truecolor support, which is not available")
+            }
+        }
+
+        Ok(())
+    }
+
+    fn refresh_config(&mut self) {
+        let mut refresh_config = || -> Result<(), Error> {
+            let default_config = Config::load_default()
+                .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
+            self.refresh_language_config()?;
+            self.refresh_theme(&default_config)?;
+            // Store new config
+            self.config.store(Arc::new(default_config));
+            Ok(())
+        };
+
+        match refresh_config() {
+            Ok(_) => {
+                self.editor.set_status("Config refreshed");
             }
             Err(err) => {
                 self.editor.set_error(err.to_string());
@@ -445,25 +488,25 @@ impl Application {
                 self.compositor.resize(area);
                 self.terminal.clear().expect("couldn't clear terminal");
 
-                self.render();
+                self.render().await;
             }
             signal::SIGUSR1 => {
                 self.refresh_config();
-                self.render();
+                self.render().await;
             }
             _ => unreachable!(),
         }
     }
 
-    pub fn handle_idle_timeout(&mut self) {
+    pub async fn handle_idle_timeout(&mut self) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
         let should_render = self.compositor.handle_event(&Event::IdleTimeout, &mut cx);
-        if should_render {
-            self.render();
+        if should_render || self.editor.needs_redraw {
+            self.render().await;
         }
     }
 
@@ -536,11 +579,11 @@ impl Application {
         match event {
             EditorEvent::DocumentSaved(event) => {
                 self.handle_document_write(event);
-                self.render();
+                self.render().await;
             }
             EditorEvent::ConfigEvent(event) => {
                 self.handle_config_events(event);
-                self.render();
+                self.render().await;
             }
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
@@ -548,19 +591,19 @@ impl Application {
                 let last = self.editor.language_servers.incoming.is_empty();
 
                 if last || self.last_render.elapsed() > LSP_DEADLINE {
-                    self.render();
+                    self.render().await;
                     self.last_render = Instant::now();
                 }
             }
             EditorEvent::DebuggerEvent(payload) => {
                 let needs_render = self.editor.handle_debugger_message(payload).await;
                 if needs_render {
-                    self.render();
+                    self.render().await;
                 }
             }
             EditorEvent::IdleTimer => {
                 self.editor.clear_idle_timer();
-                self.handle_idle_timeout();
+                self.handle_idle_timeout().await;
 
                 #[cfg(feature = "integration")]
                 {
@@ -572,7 +615,10 @@ impl Application {
         false
     }
 
-    pub fn handle_terminal_events(&mut self, event: Result<CrosstermEvent, crossterm::ErrorKind>) {
+    pub async fn handle_terminal_events(
+        &mut self,
+        event: Result<CrosstermEvent, crossterm::ErrorKind>,
+    ) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -596,7 +642,7 @@ impl Application {
         };
 
         if should_redraw && !self.editor.should_close() {
-            self.render();
+            self.render().await;
         }
     }
 
@@ -758,7 +804,8 @@ impl Application {
                                         severity,
                                         code,
                                         tags,
-                                        source: diagnostic.source.clone()
+                                        source: diagnostic.source.clone(),
+                                        data: diagnostic.data.clone(),
                                     })
                                 })
                                 .collect();
@@ -870,6 +917,32 @@ impl Application {
                     }
                     Notification::ProgressMessage(_params) => {
                         // do nothing
+                    }
+                    Notification::Exit => {
+                        self.editor.set_status("Language server exited");
+
+                        // Clear any diagnostics for documents with this server open.
+                        let urls: Vec<_> = self
+                            .editor
+                            .documents_mut()
+                            .filter_map(|doc| {
+                                if doc.language_server().map(|server| server.id())
+                                    == Some(server_id)
+                                {
+                                    doc.set_diagnostics(Vec::new());
+                                    doc.url()
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+
+                        for url in urls {
+                            self.editor.diagnostics.remove(&url);
+                        }
+
+                        // Remove the language server from the registry.
+                        self.editor.language_servers.remove_by_id(server_id);
                     }
                 }
             }

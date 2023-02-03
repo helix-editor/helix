@@ -53,7 +53,9 @@ pub struct Range {
     pub anchor: usize,
     /// The head of the range, moved when extending.
     pub head: usize,
-    pub horiz: Option<u32>,
+    /// The previous visual offset (softwrapped lines and columns) from
+    /// the start of the line
+    pub old_visual_position: Option<(u32, u32)>,
 }
 
 impl Range {
@@ -61,7 +63,7 @@ impl Range {
         Self {
             anchor,
             head,
-            horiz: None,
+            old_visual_position: None,
         }
     }
 
@@ -127,7 +129,7 @@ impl Range {
         Self {
             anchor: self.head,
             head: self.anchor,
-            horiz: self.horiz,
+            old_visual_position: self.old_visual_position,
         }
     }
 
@@ -185,7 +187,7 @@ impl Range {
         Self {
             anchor,
             head,
-            horiz: None,
+            old_visual_position: None,
         }
     }
 
@@ -198,13 +200,13 @@ impl Range {
             Self {
                 anchor: self.anchor.min(from),
                 head: self.head.max(to),
-                horiz: None,
+                old_visual_position: None,
             }
         } else {
             Self {
                 anchor: self.anchor.max(to),
                 head: self.head.min(from),
-                horiz: None,
+                old_visual_position: None,
             }
         }
     }
@@ -219,13 +221,13 @@ impl Range {
             Range {
                 anchor: self.anchor.max(other.anchor),
                 head: self.head.min(other.head),
-                horiz: None,
+                old_visual_position: None,
             }
         } else {
             Range {
                 anchor: self.from().min(other.from()),
                 head: self.to().max(other.to()),
-                horiz: None,
+                old_visual_position: None,
             }
         }
     }
@@ -279,8 +281,8 @@ impl Range {
         Range {
             anchor: new_anchor,
             head: new_head,
-            horiz: if new_anchor == self.anchor {
-                self.horiz
+            old_visual_position: if new_anchor == self.anchor {
+                self.old_visual_position
             } else {
                 None
             },
@@ -306,7 +308,7 @@ impl Range {
             Range {
                 anchor: self.anchor,
                 head: next_grapheme_boundary(slice, self.head),
-                horiz: self.horiz,
+                old_visual_position: self.old_visual_position,
             }
         } else {
             *self
@@ -378,7 +380,7 @@ impl From<(usize, usize)> for Range {
         Self {
             anchor,
             head,
-            horiz: None,
+            old_visual_position: None,
         }
     }
 }
@@ -482,7 +484,7 @@ impl Selection {
             ranges: smallvec![Range {
                 anchor,
                 head,
-                horiz: None
+                old_visual_position: None
             }],
             primary_index: 0,
         }
@@ -495,28 +497,53 @@ impl Selection {
 
     /// Normalizes a `Selection`.
     fn normalize(mut self) -> Self {
-        let primary = self.ranges[self.primary_index];
+        let mut primary = self.ranges[self.primary_index];
         self.ranges.sort_unstable_by_key(Range::from);
+
+        self.ranges.dedup_by(|curr_range, prev_range| {
+            if prev_range.overlaps(curr_range) {
+                let new_range = curr_range.merge(*prev_range);
+                if prev_range == &primary || curr_range == &primary {
+                    primary = new_range;
+                }
+                *prev_range = new_range;
+                true
+            } else {
+                false
+            }
+        });
+
         self.primary_index = self
             .ranges
             .iter()
             .position(|&range| range == primary)
             .unwrap();
 
-        let mut prev_i = 0;
-        for i in 1..self.ranges.len() {
-            if self.ranges[prev_i].overlaps(&self.ranges[i]) {
-                self.ranges[prev_i] = self.ranges[prev_i].merge(self.ranges[i]);
-            } else {
-                prev_i += 1;
-                self.ranges[prev_i] = self.ranges[i];
-            }
-            if i == self.primary_index {
-                self.primary_index = prev_i;
-            }
-        }
+        self
+    }
 
-        self.ranges.truncate(prev_i + 1);
+    // Merges all ranges that are consecutive
+    pub fn merge_consecutive_ranges(mut self) -> Self {
+        let mut primary = self.ranges[self.primary_index];
+
+        self.ranges.dedup_by(|curr_range, prev_range| {
+            if prev_range.to() == curr_range.from() {
+                let new_range = curr_range.merge(*prev_range);
+                if prev_range == &primary || curr_range == &primary {
+                    primary = new_range;
+                }
+                *prev_range = new_range;
+                true
+            } else {
+                false
+            }
+        });
+
+        self.primary_index = self
+            .ranges
+            .iter()
+            .position(|&range| range == primary)
+            .unwrap();
 
         self
     }
@@ -541,9 +568,9 @@ impl Selection {
     }
 
     /// Takes a closure and maps each `Range` over the closure.
-    pub fn transform<F>(mut self, f: F) -> Self
+    pub fn transform<F>(mut self, mut f: F) -> Self
     where
-        F: Fn(Range) -> Range,
+        F: FnMut(Range) -> Range,
     {
         for range in self.ranges.iter_mut() {
             *range = f(*range)
@@ -1132,6 +1159,52 @@ mod test {
             &["", "abcd", "efg", "rs", "xyz"]
         );
     }
+
+    #[test]
+    fn test_merge_consecutive_ranges() {
+        let selection = Selection::new(
+            smallvec![
+                Range::new(0, 1),
+                Range::new(1, 10),
+                Range::new(15, 20),
+                Range::new(25, 26),
+                Range::new(26, 30)
+            ],
+            4,
+        );
+
+        let result = selection.merge_consecutive_ranges();
+
+        assert_eq!(
+            result.ranges(),
+            &[Range::new(0, 10), Range::new(15, 20), Range::new(25, 30)]
+        );
+        assert_eq!(result.primary_index, 2);
+
+        let selection = Selection::new(smallvec![Range::new(0, 1)], 0);
+        let result = selection.merge_consecutive_ranges();
+
+        assert_eq!(result.ranges(), &[Range::new(0, 1)]);
+        assert_eq!(result.primary_index, 0);
+
+        let selection = Selection::new(
+            smallvec![
+                Range::new(0, 1),
+                Range::new(1, 5),
+                Range::new(5, 8),
+                Range::new(8, 10),
+                Range::new(10, 15),
+                Range::new(18, 25)
+            ],
+            3,
+        );
+
+        let result = selection.merge_consecutive_ranges();
+
+        assert_eq!(result.ranges(), &[Range::new(0, 15), Range::new(18, 25)]);
+        assert_eq!(result.primary_index, 0);
+    }
+
     #[test]
     fn test_selection_contains() {
         fn contains(a: Vec<(usize, usize)>, b: Vec<(usize, usize)>) -> bool {

@@ -18,6 +18,9 @@
 # status bars, panels, modals, autocompletion
 "ui.statusline" = { fg = "base8", bg = "base4" }
 "ui.statusline.inactive" = { fg = "base8", bg = "base8x0c" }
+"ui.statusline.normal" = { fg = "base4", bg = "blue" }
+"ui.statusline.insert" = { fg = "base4", bg = "green" }
+"ui.statusline.select" = { fg = "base4", bg = "purple" }
 "ui.popup" = { bg = "base3" }
 "ui.window" = { bg = "base3" }
 "ui.help" = { fg = "base8", bg = "base3" }
@@ -87,12 +90,16 @@
 "diff.minus" = "red"
 
 # make diagnostic underlined, to distinguish with selection text.
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.info" = { underline = { color = "base8", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "base8", style = "curl" } }
 
 # markup highlight, no need for `markup.raw` and `markup.list`, make them to be default
 "markup.heading" = "green"
 "markup.bold" = { fg = "orange", modifiers = ["bold"] }
 "markup.italic" = { fg = "orange", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "orange", modifiers = ["underlined"] }
 "markup.link.text" = "yellow"
 "markup.quote" = "green"

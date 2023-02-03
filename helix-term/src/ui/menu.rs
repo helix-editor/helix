@@ -4,7 +4,7 @@ use crate::{
     compositor::{Callback, Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
 };
-use tui::{buffer::Buffer as Surface, text::Spans, widgets::Table};
+use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
@@ -18,20 +18,16 @@ pub trait Item {
     /// Additional editor state that is used for label calculation.
     type Data;
 
-    fn label(&self, data: &Self::Data) -> Spans;
+    fn format(&self, data: &Self::Data) -> Row;
 
     fn sort_text(&self, data: &Self::Data) -> Cow<str> {
-        let label: String = self.label(data).into();
+        let label: String = self.format(data).cell_text().collect();
         label.into()
     }
 
     fn filter_text(&self, data: &Self::Data) -> Cow<str> {
-        let label: String = self.label(data).into();
+        let label: String = self.format(data).cell_text().collect();
         label.into()
-    }
-
-    fn row(&self, data: &Self::Data) -> Row {
-        Row::new(vec![Cell::from(self.label(data))])
     }
 }
 
@@ -39,7 +35,7 @@ impl Item for PathBuf {
     /// Root prefix to strip.
     type Data = PathBuf;
 
-    fn label(&self, root_path: &Self::Data) -> Spans {
+    fn format(&self, root_path: &Self::Data) -> Row {
         self.strip_prefix(root_path)
             .unwrap_or(self)
             .to_string_lossy()
@@ -81,7 +77,7 @@ impl<T: Item> Menu<T> {
         Self {
             options,
             editor_data,
-            matcher: Box::new(Matcher::default()),
+            matcher: Box::default(),
             matches,
             cursor: None,
             widths: Vec::new(),
@@ -144,10 +140,10 @@ impl<T: Item> Menu<T> {
         let n = self
             .options
             .first()
-            .map(|option| option.row(&self.editor_data).cells.len())
+            .map(|option| option.format(&self.editor_data).cells.len())
             .unwrap_or_default();
         let max_lens = self.options.iter().fold(vec![0; n], |mut acc, option| {
-            let row = option.row(&self.editor_data);
+            let row = option.format(&self.editor_data);
             // maintain max for each column
             for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
                 let width = cell.content.width();
@@ -224,6 +220,17 @@ impl<T: Item> Menu<T> {
     }
 }
 
+impl<T: Item + PartialEq> Menu<T> {
+    pub fn replace_option(&mut self, old_option: T, new_option: T) {
+        for option in &mut self.options {
+            if old_option == *option {
+                *option = new_option;
+                break;
+            }
+        }
+    }
+}
+
 use super::PromptEvent as MenuEvent;
 
 impl<T: Item + 'static> Component for Menu<T> {
@@ -245,12 +252,12 @@ impl<T: Item + 'static> Component for Menu<T> {
                 return EventResult::Consumed(close_fn);
             }
             // arrow up/ctrl-p/shift-tab prev completion choice (including updating the doc)
-            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
+            shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_up();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
-            key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
+            key!(Tab) | key!(Down) | ctrl!('n') => {
                 // arrow down/ctrl-n/tab advances completion choice (including updating the doc)
                 self.move_down();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
@@ -320,12 +327,9 @@ impl<T: Item + 'static> Component for Menu<T> {
             (a + b - 1) / b
         }
 
-        let scroll_height = std::cmp::min(div_ceil(win_height.pow(2), len), win_height as usize);
-
-        let scroll_line = (win_height - scroll_height) * scroll
-            / std::cmp::max(1, len.saturating_sub(win_height));
-
-        let rows = options.iter().map(|option| option.row(&self.editor_data));
+        let rows = options
+            .iter()
+            .map(|option| option.format(&self.editor_data));
         let table = Table::new(rows)
             .style(style)
             .highlight_style(selected)
@@ -357,20 +361,24 @@ impl<T: Item + 'static> Component for Menu<T> {
         let fits = len <= win_height;
 
         let scroll_style = theme.get("ui.menu.scroll");
-        for (i, _) in (scroll..(scroll + win_height).min(len)).enumerate() {
-            let cell = &mut surface[(area.x + area.width - 1, area.y + i as u16)];
+        if !fits {
+            let scroll_height = div_ceil(win_height.pow(2), len).min(win_height);
+            let scroll_line = (win_height - scroll_height) * scroll
+                / std::cmp::max(1, len.saturating_sub(win_height));
 
-            if !fits {
-                // Draw scroll track
+            let mut cell;
+            for i in 0..win_height {
+                cell = &mut surface[(area.right() - 1, area.top() + i as u16)];
+
                 cell.set_symbol("▐"); // right half block
-                cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
-            }
 
-            let is_marked = i >= scroll_line && i < scroll_line + scroll_height;
-
-            if !fits && is_marked {
-                // Draw scroll thumb
-                cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
+                if scroll_line <= i && i < scroll_line + scroll_height {
+                    // Draw scroll thumb
+                    cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
+                } else {
+                    // Draw scroll track
+                    cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
+                }
             }
         }
     }

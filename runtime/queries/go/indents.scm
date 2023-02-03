@@ -5,7 +5,7 @@
   (type_spec)
   (func_literal)
   (literal_value)
-  (element)
+  (literal_element)
   (keyed_element)
   (expression_case)
   (default_case)
@@ -16,6 +16,7 @@
   (block)
   (type_switch_statement)
   (expression_switch_statement)
+  (var_declaration)
 ] @indent
 
 [

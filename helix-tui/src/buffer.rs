@@ -360,14 +360,14 @@ impl Buffer {
             let mut start_index = self.index_of(x, y);
             let mut index = self.index_of(max_offset as u16, y);
 
-            let total_width = string.width();
-            let truncated = total_width > width;
+            let content_width = string.width();
+            let truncated = content_width > width;
             if ellipsis && truncated {
                 self.content[start_index].set_symbol("…");
                 start_index += 1;
             }
             if !truncated {
-                index -= width - total_width;
+                index -= width - content_width;
             }
             for (byte_offset, s) in graphemes.rev() {
                 let width = s.width();
@@ -384,6 +384,7 @@ impl Buffer {
                     self.content[i].reset();
                 }
                 index -= width;
+                x_offset += width;
             }
         }
         (x_offset as u16, y)
@@ -432,7 +433,7 @@ impl Buffer {
         (x_offset as u16, y)
     }
 
-    pub fn set_spans<'a>(&mut self, x: u16, y: u16, spans: &Spans<'a>, width: u16) -> (u16, u16) {
+    pub fn set_spans(&mut self, x: u16, y: u16, spans: &Spans, width: u16) -> (u16, u16) {
         let mut remaining_width = width;
         let mut x = x;
         for span in &spans.0 {
@@ -453,7 +454,7 @@ impl Buffer {
         (x, y)
     }
 
-    pub fn set_span<'a>(&mut self, x: u16, y: u16, span: &Span<'a>, width: u16) -> (u16, u16) {
+    pub fn set_span(&mut self, x: u16, y: u16, span: &Span, width: u16) -> (u16, u16) {
         self.set_stringn(x, y, span.content.as_ref(), width as usize, span.style)
     }
 
@@ -520,10 +521,10 @@ impl Buffer {
     pub fn merge(&mut self, other: &Buffer) {
         let area = self.area.union(other.area);
         let cell: Cell = Default::default();
-        self.content.resize(area.area() as usize, cell.clone());
+        self.content.resize(area.area(), cell.clone());
 
         // Move original content to the appropriate space
-        let size = self.area.area() as usize;
+        let size = self.area.area();
         for i in (0..size).rev() {
             let (x, y) = self.pos_of(i);
             // New index in content
@@ -536,7 +537,7 @@ impl Buffer {
 
         // Push content of the other buffer into this one (may erase previous
         // data)
-        let size = other.area.area() as usize;
+        let size = other.area.area();
         for i in 0..size {
             let (x, y) = other.pos_of(i);
             // New index in content

@@ -1,4 +1,5 @@
 mod completion;
+mod document;
 pub(crate) mod editor;
 mod fuzzy_match;
 mod info;
@@ -14,12 +15,13 @@ mod statusline;
 mod text;
 
 use crate::compositor::{Component, Compositor};
+use crate::filter_picker_entry;
 use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
 pub use markdown::Markdown;
 pub use menu::Menu;
-pub use picker::{FileLocation, FilePicker, Picker};
+pub use picker::{DynamicPicker, FileLocation, FilePicker, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
@@ -162,6 +164,9 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     let now = Instant::now();
 
+    let dedup_symlinks = config.file_picker.deduplicate_links;
+    let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
+
     let mut walk_builder = WalkBuilder::new(&root);
     walk_builder
         .hidden(config.file_picker.hidden)
@@ -172,10 +177,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         .git_global(config.file_picker.git_global)
         .git_exclude(config.file_picker.git_exclude)
         .max_depth(config.file_picker.max_depth)
-        // We always want to ignore the .git directory, otherwise if
-        // `ignore` is turned off above, we end up with a lot of noise
-        // in our picker.
-        .filter_entry(|entry| entry.file_name() != ".git");
+        .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
 
     // We want to exclude files that the editor can't handle yet
     let mut type_builder = TypesBuilder::new();
@@ -194,26 +196,24 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     // We want files along with their modification date for sorting
     let files = walk_builder.build().filter_map(|entry| {
         let entry = entry.ok()?;
-
         // This is faster than entry.path().is_dir() since it uses cached fs::Metadata fetched by ignore/walkdir
-        let is_dir = entry.file_type().map_or(false, |ft| ft.is_dir());
-        if is_dir {
-            // Will give a false positive if metadata cannot be read (eg. permission error)
-            None
-        } else {
+        if entry.file_type()?.is_file() {
             Some(entry.into_path())
+        } else {
+            None
         }
     });
 
     // Cap the number of files if we aren't in a git project, preventing
     // hangs when using the picker in your home directory
-    let files: Vec<_> = if root.join(".git").is_dir() {
+    let mut files: Vec<PathBuf> = if root.join(".git").exists() {
         files.collect()
     } else {
         // const MAX: usize = 8192;
         const MAX: usize = 100_000;
         files.take(MAX).collect()
     };
+    files.sort();
 
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
@@ -230,7 +230,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
                 cx.editor.set_error(err);
             }
         },
-        |_editor, path| Some((path.clone(), None)),
+        |_editor, path| Some((path.clone().into(), None)),
     )
 }
 
@@ -254,8 +254,8 @@ pub mod completers {
     pub fn buffer(editor: &Editor, input: &str) -> Vec<Completion> {
         let mut names: Vec<_> = editor
             .documents
-            .iter()
-            .map(|(_id, doc)| {
+            .values()
+            .map(|doc| {
                 let name = doc
                     .relative_path()
                     .map(|p| p.display().to_string())
@@ -462,20 +462,30 @@ pub mod completers {
         use ignore::WalkBuilder;
         use std::path::Path;
 
-        let is_tilde = input.starts_with('~') && input.len() == 1;
+        let is_tilde = input == "~";
         let path = helix_core::path::expand_tilde(Path::new(input));
 
         let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)
         } else {
-            let file_name = path
-                .file_name()
-                .and_then(|file| file.to_str().map(|path| path.to_owned()));
+            let is_period = (input.ends_with((format!("{}.", std::path::MAIN_SEPARATOR)).as_str())
+                && input.len() > 2)
+                || input == ".";
+            let file_name = if is_period {
+                Some(String::from("."))
+            } else {
+                path.file_name()
+                    .and_then(|file| file.to_str().map(|path| path.to_owned()))
+            };
 
-            let path = match path.parent() {
-                Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
-                // Path::new("h")'s parent is Some("")...
-                _ => std::env::current_dir().expect("couldn't determine current directory"),
+            let path = if is_period {
+                path
+            } else {
+                match path.parent() {
+                    Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
+                    // Path::new("h")'s parent is Some("")...
+                    _ => std::env::current_dir().expect("couldn't determine current directory"),
+                }
             };
 
             (path, file_name)
