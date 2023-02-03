@@ -274,6 +274,8 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
+    /// Whether to check for external modifications upon saving. Defaults to `true`.
+    pub prevent_external_modifications: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -764,6 +766,7 @@ impl Default for Config {
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap::default(),
+            prevent_external_modifications: true,
         }
     }
 }

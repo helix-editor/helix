@@ -319,7 +319,7 @@ impl AppBuilder {
     }
 }
 
-pub async fn run_event_loop_to_idle(app: &mut Application) {
+pub async fn run_event_loop_until_idle(app: &mut Application) {
     let (_, rx) = tokio::sync::mpsc::unbounded_channel();
     let mut rx_stream = UnboundedReceiverStream::new(rx);
     app.event_loop_until_idle(&mut rx_stream).await;

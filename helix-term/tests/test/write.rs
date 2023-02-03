@@ -44,7 +44,7 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
         .with_file(file.path(), None)
         .build()?;
 
-    helpers::run_event_loop_to_idle(&mut app).await;
+    helpers::run_event_loop_until_idle(&mut app).await;
 
     file.as_file_mut()
         .write_all(helpers::platform_line("extremely important content").as_bytes())?;

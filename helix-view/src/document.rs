@@ -165,6 +165,7 @@ impl fmt::Debug for Document {
             .field("changes", &self.changes)
             .field("old_state", &self.old_state)
             // .field("history", &self.history)
+            .field("last_saved_time", &self.last_saved_time)
             .field("last_saved_revision", &self.last_saved_revision)
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
@@ -585,6 +586,8 @@ impl Document {
 
         let last_saved_time = self.last_saved_time;
 
+        let prevent_external_modifications = self.config.load().prevent_external_modifications;
+
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
             use tokio::{fs, fs::File};
@@ -600,11 +603,11 @@ impl Document {
             }
 
             // Protect against overwriting changes made externally
-            if !force {
+            if !force && prevent_external_modifications {
                 if let Ok(metadata) = fs::metadata(&path).await {
                     if let Ok(mtime) = metadata.modified() {
                         if last_saved_time < mtime {
-                            bail!("file modified by an external process, use :w! to force");
+                            bail!("file modified by an external process, use :w! to overwrite");
                         }
                     }
                 }
