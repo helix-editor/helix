@@ -10,3 +10,7 @@ cname = "docs.helix-editor.com"
 default-theme = "colibri"
 preferred-dark-theme = "colibri"
 git-repository-url = "https://github.com/helix-editor/helix"
+
+[preprocessor.toc]
+command = "mdbook-toc"
+renderer = ["html"]
