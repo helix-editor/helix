@@ -2119,12 +2119,13 @@ indent = { tab-width = 4, unit = "    " }
 grammar = "python"
 
 [[language]]
-name = "MSBuild"
-scope = "source.xml"
-injection-regex = "xml"
-file-types = [".proj", ".vbproj", ".csproj", ".fsproj", ".targets", ".props"]
+name = "msbuild"
+scope = "source.msbuild"
+injection-regex = "msbuild"
+file-types = ["proj", "vbproj", "csproj", "fsproj", "targets", "props"]
 indent = { tab-width = 2, unit = "  " }
 roots = []
+grammar = "xml"
 
 [language.auto-pairs]
 '(' = ')'
@@ -2133,7 +2134,3 @@ roots = []
 '"' = '"'
 "'" = "'"
 "<" = ">"
-
-[[grammar]]
-name = "MSBuild"
-source = { git = "https://github.com/RenjiSann/tree-sitter-xml", rev = "48a7c2b6fb9d515577e115e6788937e837815651" }
