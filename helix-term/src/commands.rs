@@ -1191,27 +1191,39 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
                 .to_string(),
         );
     }
+
     for sel in paths {
         let p = sel.trim();
-        if !p.is_empty() {
-            if let Ok(url) = Url::parse(p) {
-                if let Err(e) = open::that(url.as_str()) {
-                    cx.editor.set_error(format!(
-                        "Open file failed for url '{}': {:?}",
-                        url.as_str(),
-                        e
-                    ));
-                }
+        if p.is_empty() {
+            continue;
+        }
+
+        if let Ok(url) = Url::parse(p) {
+            // file:// urls are opened inside helix
+            if url.scheme() != "file" {
+                let commands = open::commands(url.as_str());
+                cx.jobs.callback(async {
+                    for cmd in commands {
+                        let mut command = tokio::process::Command::new(cmd.get_program());
+                        command.args(cmd.get_args());
+                        if command.output().await.is_ok() {
+                            return Ok(job::Callback::Editor(Box::new(|_| {})));
+                        }
+                    }
+                    Ok(job::Callback::Editor(Box::new(move |editor| {
+                        editor.set_error("Open file failed: no command found")
+                    })))
+                });
                 return;
             }
+        }
 
-            let path = &rel_path.join(p);
-            if path.is_dir() {
-                let picker = ui::file_picker(path.into(), &cx.editor.config());
-                cx.push_layer(Box::new(overlaid(picker)));
-            } else if let Err(e) = cx.editor.open(path, action) {
-                cx.editor.set_error(format!("Open file failed: {:?}", e));
-            }
+        let path = &rel_path.join(p);
+        if path.is_dir() {
+            let picker = ui::file_picker(path.into(), &cx.editor.config());
+            cx.push_layer(Box::new(overlaid(picker)));
+        } else if let Err(e) = cx.editor.open(path, action) {
+            cx.editor.set_error(format!("Open file failed: {:?}", e));
         }
     }
 }
