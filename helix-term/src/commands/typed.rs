@@ -1415,7 +1415,7 @@ fn abort_goto_line_number_preview(cx: &mut compositor::Context) {
         let scrolloff = cx.editor.config().scrolloff;
 
         let (view, doc) = current!(cx.editor);
-        doc.set_selection(view.id, last_selection.clone());
+        doc.set_selection(view.id, last_selection);
         view.ensure_cursor_in_view(doc, scrolloff);
     }
 }
@@ -1454,10 +1454,14 @@ pub(super) fn goto_line_number(
             // is moved to the appropriate location.
             update_goto_line_number_preview(cx, args)?;
 
-            if let Some(last_selection) = cx.editor.last_selection.take() {
-                let (view, doc) = current!(cx.editor);
-                view.jumps.push((doc.id(), last_selection.clone()));
-            }
+            let last_selection = cx
+                .editor
+                .last_selection
+                .take()
+                .expect("update_goto_line_number_preview should always set last_selection");
+
+            let (view, doc) = current!(cx.editor);
+            view.jumps.push((doc.id(), last_selection));
         }
 
         // When a user hits backspace and there are no numbers left,
