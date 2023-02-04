@@ -1420,6 +1420,25 @@ fn abort_goto_line_number_preview(cx: &mut compositor::Context) {
     }
 }
 
+fn update_goto_line_number_preview(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+) -> anyhow::Result<()> {
+    cx.editor.last_selection.get_or_insert_with(|| {
+        let (view, doc) = current!(cx.editor);
+        doc.selection(view.id).clone()
+    });
+
+    let scrolloff = cx.editor.config().scrolloff;
+    let line = args[0].parse::<usize>()?;
+    goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
+
+    let (view, doc) = current!(cx.editor);
+    view.ensure_cursor_in_view(doc, scrolloff);
+
+    Ok(())
+}
+
 pub(super) fn goto_line_number(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1430,31 +1449,24 @@ pub(super) fn goto_line_number(
         PromptEvent::Validate => {
             ensure!(!args.is_empty(), "Line number required");
 
-            if let Some(last_selection) = &cx.editor.last_selection {
+            // If we are invoked directly via a keybinding, Validate is
+            // sent without any prior Update events. Ensure the cursor
+            // is moved to the appropriate location.
+            update_goto_line_number_preview(cx, args)?;
+
+            if let Some(last_selection) = cx.editor.last_selection.take() {
                 let (view, doc) = current!(cx.editor);
                 view.jumps.push((doc.id(), last_selection.clone()));
-
-                cx.editor.last_selection = None;
             }
         }
+
         // When a user hits backspace and there are no numbers left,
         // we can bring them back to their original selection. If they
         // begin typing numbers again, we'll start a new preview session.
         PromptEvent::Update if args.is_empty() => abort_goto_line_number_preview(cx),
-        PromptEvent::Update => {
-            cx.editor.last_selection.get_or_insert_with(|| {
-                let (view, doc) = current!(cx.editor);
-                doc.selection(view.id).clone()
-            });
-
-            let scrolloff = cx.editor.config().scrolloff;
-            let line = args[0].parse::<usize>()?;
-            goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
-
-            let (view, doc) = current!(cx.editor);
-            view.ensure_cursor_in_view(doc, scrolloff);
-        }
+        PromptEvent::Update => update_goto_line_number_preview(cx, args)?,
     }
+
     Ok(())
 }
 
