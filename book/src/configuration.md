@@ -347,3 +347,23 @@ max-wrap = 25 # increase value to reduce forced mid-word wrapping
 max-indent-retain = 0
 wrap-indicator = ""  # set wrap-indicator to "" to hide it
 ```
+
+### `[editor.jump-mode]` Section
+
+Options for jump mode. If you are already familiar with vim/nvim's [easymotion](https://github.com/easymotion/vim-easymotion), [hop](https://github.com/phaazon/hop.nvim), [leap](https://github.com/ggandor/leap.nvim) etc, you
+can think of jump mode as the equivalent in helix.
+
+| Key                      | Description                                                            | Default                        |
+| ---                      | ---                                                                    | ---                            |
+| `dim-during-jump`        | Whether to dim the view when in jump mode.                             | `true`                         |
+| `num-chars-before-label` | How many characters the user should type before labelling the targets. | `1`                            |
+| `jump-keys`              | Keys used in labels. Should be ascii characters.                       | `"jwetovxqpdygfblzhckisuranm"` |
+
+Example:
+
+```toml
+[editor.jump-mode]
+dim-during-jump = true
+num-chars-before-label = 2
+jump-keys = "laskdjfhgpmoinqzubwxyvecrt"
+```
