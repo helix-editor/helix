@@ -19,8 +19,7 @@ use helix_core::{
     syntax::{self, Highlight, HighlightEvent},
     text_annotations::TextAnnotations,
     unicode::width::UnicodeWidthStr,
-    visual_offset_from_block, Change, Position, Range, RopeSlice, Selection,
-    Transaction,
+    visual_offset_from_block, Change, Position, Range, RopeSlice, Selection, Transaction,
 };
 use helix_view::{
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},

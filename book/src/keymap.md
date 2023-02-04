@@ -224,7 +224,7 @@ Jumps to various locations.
 | `j`   | Move down textual (instead of visual) line       | `move_line_down`           |
 | `k`   | Move up textual (instead of visual) line         | `move_line_up`             |
 | `w`   | Word-wise jump mode                              | `jump_to_identifier_label` |
-| `/`   | Character search jump mode                       | `jump_to_char_label`       |
+| `/`   | Character or string search jump mode             | `jump_to_str_label`       |
 
 #### Match mode
 

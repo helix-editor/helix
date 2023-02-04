@@ -356,3 +356,23 @@ wrap-indicator = ""  # set wrap-indicator to "" to hide it
 |------------|-------------|---------|
 | `enable` | If set to true, then when the cursor is in a position with non-whitespace to its left, instead of inserting a tab, it will run `move_parent_node_end`. If there is only whitespace to the left, then it inserts a tab as normal. With the default bindings, to explicitly insert a tab character, press Shift-tab. | `true` |
 | `supersede-menu` | Normally, when a menu is on screen, such as when auto complete is triggered, the tab key is bound to cycling through the items. This means when menus are on screen, one cannot use the tab key to trigger the `smart-tab` command. If this option is set to true, the `smart-tab` command always takes precedence, which means one cannot use the tab key to cycle through menu items. One of the other bindings must be used instead, such as arrow keys or `C-n`/`C-p`. | `false` |
+
+### `[editor.jump-mode]` Section
+
+Options for jump mode. If you are already familiar with vim/nvim's [easymotion](https://github.com/easymotion/vim-easymotion), [hop](https://github.com/phaazon/hop.nvim), [leap](https://github.com/ggandor/leap.nvim) etc, you
+can think of jump mode as the equivalent in helix.
+
+| Key                      | Description                                                            | Default                        |
+| ---                      | ---                                                                    | ---                            |
+| `dim-during-jump`        | Whether to dim the view when in jump mode.                             | `true`                         |
+| `num-chars-before-label` | How many characters the user should type before labelling the targets. | `1`                            |
+| `jump-keys`              | Keys used in labels. Should be ascii characters.                       | `"jwetovxqpdygfblzhckisuranm"` |
+
+Example:
+
+```toml
+[editor.jump-mode]
+dim-during-jump = true
+num-chars-before-label = 2
+jump-keys = "laskdjfhgpmoinqzubwxyvecrt"
+```
