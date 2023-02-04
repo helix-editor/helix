@@ -277,10 +277,6 @@ impl Application {
         Ok(app)
     }
 
-    #[cfg(feature = "integration")]
-    async fn render(&mut self) {}
-
-    #[cfg(not(feature = "integration"))]
     async fn render(&mut self) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
