@@ -312,15 +312,20 @@ pub mod completers {
     }
 
     /// Recursive function to get all keys from this value and add them to vec
-    fn get_keys(value: &serde_json::Value, vec: &mut Vec<String>, scope: Option<&str>) {
+    fn get_keys(
+        value: &serde_json::Value,
+        vec: &mut Vec<String>,
+        scope: Option<&str>,
+        only_booleans: bool,
+    ) {
         if let Some(map) = value.as_object() {
             for (key, value) in map.iter() {
                 let key = match scope {
                     Some(scope) => format!("{}.{}", scope, key),
                     None => key.clone(),
                 };
-                get_keys(value, vec, Some(&key));
-                if !value.is_object() {
+                get_keys(value, vec, Some(&key), only_booleans);
+                if !value.is_object() && (!only_booleans || value.is_boolean()) {
                     vec.push(key);
                 }
             }
@@ -328,17 +333,40 @@ pub mod completers {
     }
 
     pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
-        static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
+        setting_with_filter(_editor, input, false)
+    }
+
+    pub fn boolean_setting(_editor: &Editor, input: &str) -> Vec<Completion> {
+        setting_with_filter(_editor, input, true)
+    }
+
+    pub fn setting_with_filter(
+        _editor: &Editor,
+        input: &str,
+        only_booleans: bool,
+    ) -> Vec<Completion> {
+        static BOOL_KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             let mut keys = Vec::new();
             let json = serde_json::json!(Config::default());
-            get_keys(&json, &mut keys, None);
+            get_keys(&json, &mut keys, None, true);
+            keys
+        });
+        static ALL_KEYS: Lazy<Vec<String>> = Lazy::new(|| {
+            let mut keys = Vec::new();
+            let json = serde_json::json!(Config::default());
+            get_keys(&json, &mut keys, None, false);
             keys
         });
 
         let matcher = Matcher::default();
 
-        let mut matches: Vec<_> = KEYS
-            .iter()
+        let source = if only_booleans {
+            BOOL_KEYS.iter()
+        } else {
+            ALL_KEYS.iter()
+        };
+
+        let mut matches: Vec<_> = source
             .filter_map(|name| matcher.fuzzy_match(name, input).map(|score| (name, score)))
             .collect();
 

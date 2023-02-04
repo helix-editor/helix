@@ -2438,7 +2438,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["toggle"],
             doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
             fun: toggle_option,
-            completer: Some(completers::setting),
+            completer: Some(completers::boolean_setting),
         },
         TypableCommand {
             name: "get-option",
