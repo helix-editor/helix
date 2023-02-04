@@ -1,4 +1,5 @@
 pub use encoding_rs as encoding;
+pub use url;
 
 pub mod auto_pairs;
 pub mod chars;

@@ -28,6 +28,7 @@ use helix_core::{
     textobject,
     tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
+    url::Url,
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
     RopeReader, RopeSlice, Selection, SmallVec, Tendril, Transaction,
 };
@@ -331,7 +332,7 @@ impl MappableCommand {
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto line number <n> else file start",
         goto_file_end, "Goto file end",
-        goto_file, "Goto files in selection",
+        goto_file, "Goto files/URLs in selection",
         goto_file_hsplit, "Goto files in selection (hsplit)",
         goto_file_vsplit, "Goto files in selection (vsplit)",
         goto_reference, "Goto references",
@@ -1193,6 +1194,17 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     for sel in paths {
         let p = sel.trim();
         if !p.is_empty() {
+            if let Ok(url) = Url::parse(p) {
+                if let Err(e) = open::that(url.as_str()) {
+                    cx.editor.set_error(format!(
+                        "Open file failed for url '{}': {:?}",
+                        url.as_str(),
+                        e
+                    ));
+                }
+                return;
+            }
+
             let path = &rel_path.join(p);
             if path.is_dir() {
                 let picker = ui::file_picker(path.into(), &cx.editor.config());

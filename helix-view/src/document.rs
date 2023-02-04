@@ -634,7 +634,7 @@ where
 }
 
 use helix_lsp::{lsp, Client, LanguageServerName};
-use url::Url;
+use helix_core::url::Url;
 
 impl Document {
     pub fn from(
