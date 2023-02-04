@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Context, Error};
+use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
@@ -138,6 +139,7 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 
     diff_handle: Option<DiffHandle>,
+    version_control_head: Option<Arc<ArcSwap<Arc<str>>>>,
 }
 
 use std::{fmt, mem};
@@ -377,6 +379,7 @@ impl Document {
             modified_since_accessed: false,
             language_server: None,
             diff_handle: None,
+            version_control_head: None,
         }
     }
 
@@ -633,7 +636,7 @@ impl Document {
     pub fn reload(
         &mut self,
         view: &mut View,
-        provider_registry: &mut DiffProviderRegistry,
+        provider_registry: &DiffProviderRegistry,
         redraw_handle: RedrawHandle,
     ) -> Result<(), Error> {
         let encoding = &self.encoding;
@@ -656,10 +659,12 @@ impl Document {
 
         self.detect_indent_and_line_ending();
 
-        match provider_registry.load_version_control_data(&path) {
-            Some(data) => self.set_diff_base(data.diff_base, redraw_handle),
+        match provider_registry.get_diff_base(&path) {
+            Some(diff_base) => self.set_diff_base(diff_base, redraw_handle),
             None => self.diff_handle = None,
         }
+
+        self.version_control_head = provider_registry.get_current_head_name(&path);
 
         Ok(())
     }
@@ -1077,6 +1082,19 @@ impl Document {
         } else {
             self.diff_handle = None;
         }
+    }
+
+    pub fn version_control_head(&self) -> Option<Arc<str>> {
+        self.version_control_head
+            .clone()
+            .map(|head| (*head.load().clone()).clone())
+    }
+
+    pub fn set_version_control_head(
+        &mut self,
+        version_control_head: Option<Arc<ArcSwap<Arc<str>>>>,
+    ) {
+        self.version_control_head = version_control_head;
     }
 
     #[inline]

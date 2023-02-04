@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use helix_core::{coords_at_pos, encoding, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::{
@@ -472,12 +474,13 @@ fn render_version_control<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let current_branch_name = context
-        .editor
-        .diff_providers
-        .last_known_head_name
-        .clone()
-        .unwrap_or_default();
-
-    write(context, current_branch_name, None);
+    write(
+        context,
+        context
+            .doc
+            .version_control_head()
+            .unwrap_or(Arc::from(""))
+            .to_string(),
+        None,
+    );
 }

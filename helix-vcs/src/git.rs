@@ -1,11 +1,13 @@
+use arc_swap::ArcSwap;
 use std::path::Path;
+use std::sync::Arc;
 
 use git::objs::tree::EntryMode;
 use git::sec::trust::DefaultForLevel;
 use git::{Commit, ObjectId, Repository, ThreadSafeRepository};
 use git_repository as git;
 
-use crate::{DiffProvider, VersionControlData};
+use crate::DiffProvider;
 
 #[cfg(test)]
 mod test;
@@ -54,7 +56,7 @@ impl Git {
 }
 
 impl DiffProvider for Git {
-    fn get_version_control_data(&self, file: &Path) -> Option<VersionControlData> {
+    fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>> {
         debug_assert!(!file.exists() || file.is_file());
         debug_assert!(file.is_absolute());
 
@@ -64,16 +66,16 @@ impl DiffProvider for Git {
         let file_oid = find_file_in_commit(&repo, &head, file)?;
 
         let file_object = repo.find_object(file_oid).ok()?;
-        let mut diff_base = file_object.detach().data;
+        let mut data = file_object.detach().data;
         // convert LF to CRLF if configured to avoid showing every line as changed
         if repo
             .config_snapshot()
             .boolean("core.autocrlf")
             .unwrap_or(false)
         {
-            let mut normalized_file = Vec::with_capacity(diff_base.len());
+            let mut normalized_file = Vec::with_capacity(data.len());
             let mut at_cr = false;
-            for &byte in &diff_base {
+            for &byte in &data {
                 if byte == b'\n' {
                     // if this is a LF instead of a CRLF (last byte was not a CR)
                     // insert a new CR to generate a CRLF
@@ -84,20 +86,24 @@ impl DiffProvider for Git {
                 at_cr = byte == b'\r';
                 normalized_file.push(byte)
             }
-            diff_base = normalized_file
+            data = normalized_file
         }
+        Some(data)
+    }
 
-        let head_name = repo
-            .head_ref()
-            .ok()
-            .flatten()
-            .map(|reference| reference.name().shorten().to_string())
-            .unwrap_or(head.id.to_hex_with_len(8).to_string());
+    fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Arc<str>>>> {
+        debug_assert!(!file.exists() || file.is_file());
+        debug_assert!(file.is_absolute());
+        let repo = Git::open_repo(file.parent()?, None)?.to_thread_local();
+        let head_ref = repo.head_ref().ok()?;
+        let head_commit = repo.head_commit().ok()?;
 
-        Some(VersionControlData {
-            diff_base,
-            head_name,
-        })
+        let name = match head_ref {
+            Some(reference) => reference.name().shorten().to_string(),
+            None => head_commit.id.to_hex_with_len(8).to_string(),
+        };
+
+        Some(Arc::new(ArcSwap::from_pointee(Arc::from(name))))
     }
 }
 
