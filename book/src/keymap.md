@@ -408,7 +408,7 @@ Keys to use within picker. Remapping currently not supported.
 | `PageDown`, `Ctrl-d`         | Page down         |
 | `Home`                       | Go to first entry |
 | `End`                        | Go to last entry  |
-| `Enter`                      | Open selected     |
+| `Enter`, `Ctrl-j`            | Open selected     |
 | `Ctrl-s`                     | Open horizontally |
 | `Ctrl-v`                     | Open vertically   |
 | `Ctrl-t`                     | Toggle preview    |
@@ -439,4 +439,4 @@ Keys to use within prompt, Remapping currently not supported.
 | `Ctrl-r`                                    | Insert the content of the register selected by following input char     |
 | `Tab`                                       | Select next completion item                                             |
 | `BackTab`                                   | Select previous completion item                                         |
-| `Enter`                                     | Open selected                                                           |
+| `Enter`, `Ctrl-j`                           | Open selected                                                           |

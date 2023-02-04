@@ -539,7 +539,7 @@ impl Component for Prompt {
                     (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 }
             }
-            key!(Enter) => {
+            key!(Enter) | ctrl!('j') => {
                 if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
                     self.recalculate_completion(cx.editor);
                 } else {

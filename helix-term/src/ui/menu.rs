@@ -263,7 +263,7 @@ impl<T: Item + 'static> Component for Menu<T> {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
-            key!(Enter) => {
+            key!(Enter) | ctrl!('j') => {
                 if let Some(selection) = self.selection() {
                     (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
                     return EventResult::Consumed(close_fn);
