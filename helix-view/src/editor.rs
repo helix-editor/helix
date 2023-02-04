@@ -7,6 +7,7 @@ use crate::{
     input::KeyEvent,
     theme::{self, Theme},
     tree::{self, Tree},
+    view::ViewPosition,
     Align, Document, DocumentId, View, ViewId,
 };
 use helix_vcs::DiffProviderRegistry;
@@ -18,6 +19,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
     borrow::Cow,
+    cell::Cell,
     collections::{BTreeMap, HashMap},
     io::stdin,
     num::NonZeroUsize,
@@ -172,6 +174,8 @@ pub struct FilePickerConfig {
     /// Enables following symlinks.
     /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to true.
     pub follow_symlinks: bool,
+    /// Hides symlinks that point into the current directory. Defaults to true.
+    pub deduplicate_links: bool,
     /// Enables reading ignore files from parent directories. Defaults to true.
     pub parents: bool,
     /// Enables reading `.ignore` files.
@@ -196,6 +200,7 @@ impl Default for FilePickerConfig {
         Self {
             hidden: true,
             follow_symlinks: true,
+            deduplicate_links: true,
             parents: true,
             ignore: true,
             git_ignore: true,
@@ -269,6 +274,44 @@ pub struct Config {
     pub indent_guides: IndentGuidesConfig,
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
+    pub soft_wrap: SoftWrap,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct SoftWrap {
+    /// Soft wrap lines that exceed viewport width. Default to off
+    pub enable: bool,
+    /// Maximum space left free at the end of the line.
+    /// This space is used to wrap text at word boundaries. If that is not possible within this limit
+    /// the word is simply split at the end of the line.
+    ///
+    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+    ///
+    /// Default to 20
+    pub max_wrap: u16,
+    /// Maximum number of indentation that can be carried over from the previous line when softwrapping.
+    /// If a line is indented further then this limit it is rendered at the start of the viewport instead.
+    ///
+    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+    ///
+    /// Default to 40
+    pub max_indent_retain: u16,
+    /// Indicator placed at the beginning of softwrapped lines
+    ///
+    /// Defaults to ↪
+    pub wrap_indicator: String,
+}
+
+impl Default for SoftWrap {
+    fn default() -> Self {
+        SoftWrap {
+            enable: false,
+            max_wrap: 20,
+            max_indent_retain: 40,
+            wrap_indicator: "↪ ".into(),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -327,6 +370,8 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
+    /// Enables LSP
+    pub enable: bool,
     /// Display LSP progress messages below statusline
     pub display_messages: bool,
     /// Enable automatic pop up of signature help (parameter hints)
@@ -338,6 +383,7 @@ pub struct LspConfig {
 impl Default for LspConfig {
     fn default() -> Self {
         Self {
+            enable: true,
             display_messages: false,
             auto_signature_help: true,
             display_signature_help_docs: true,
@@ -718,6 +764,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            soft_wrap: SoftWrap::default(),
         }
     }
 }
@@ -798,7 +845,7 @@ pub struct Editor {
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
-    pub config: Box<dyn DynAccess<Config>>,
+    pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
@@ -816,6 +863,19 @@ pub struct Editor {
     /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be aquired
     pub redraw_handle: RedrawHandle,
     pub needs_redraw: bool,
+    /// Cached position of the cursor calculated during rendering.
+    /// The content of `cursor_cache` is returned by `Editor::cursor` if
+    /// set to `Some(_)`. The value will be cleared after it's used.
+    /// If `cursor_cache` is `None` then the `Editor::cursor` function will
+    /// calculate the cursor position.
+    ///
+    /// `Some(None)` represents a cursor position outside of the visible area.
+    /// This will just cause `Editor::cursor` to return `None`.
+    ///
+    /// This cache is only a performance optimization to
+    /// avoid calculating the cursor position multiple
+    /// times during rendering and should not be set by other functions.
+    pub cursor_cache: Cell<Option<Option<Position>>>,
 }
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
@@ -869,7 +929,7 @@ impl Editor {
         mut area: Rect,
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
-        config: Box<dyn DynAccess<Config>>,
+        config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
@@ -914,6 +974,7 @@ impl Editor {
             words_completion: Arc::new(WordsCompletion::new(conf.completion_trigger_len)),
             redraw_handle: Default::default(),
             needs_redraw: false,
+            cursor_cache: Cell::new(None),
         }
     }
 
@@ -998,7 +1059,7 @@ impl Editor {
 
     fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
         // `ui.selection` is the only scope required to be able to render a theme.
-        if theme.find_scope_index("ui.selection").is_none() {
+        if theme.find_scope_index_exact("ui.selection").is_none() {
             self.set_error("Invalid theme: `ui.selection` required");
             return;
         }
@@ -1023,18 +1084,25 @@ impl Editor {
 
     /// Refreshes the language server for a given document
     pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
-        let doc = self.documents.get_mut(&doc_id)?;
-        Self::launch_language_server(&mut self.language_servers, doc)
+        self.launch_language_server(doc_id)
     }
 
     /// Launch a language server for a given document
-    fn launch_language_server(ls: &mut helix_lsp::Registry, doc: &mut Document) -> Option<()> {
+    fn launch_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
+        if !self.config().lsp.enable {
+            return None;
+        }
+
         // if doc doesn't have a URL it's a scratch buffer, ignore it
-        let doc_url = doc.url()?;
+        let (lang, path) = {
+            let doc = self.document(doc_id)?;
+            (doc.language.clone(), doc.path().cloned())
+        };
 
         // try to find a language server based on the language name
-        let language_server = doc.language.as_ref().and_then(|language| {
-            ls.get(language, doc.path())
+        let language_server = lang.as_ref().and_then(|language| {
+            self.language_servers
+                .get(language, path.as_ref())
                 .map_err(|e| {
                     log::error!(
                         "Failed to initialize the LSP for `{}` {{ {} }}",
@@ -1045,6 +1113,10 @@ impl Editor {
                 .ok()
                 .flatten()
         });
+
+        let doc = self.document_mut(doc_id)?;
+        let doc_url = doc.url()?;
+
         if let Some(language_server) = language_server {
             // only spawn a new lang server if the servers aren't the same
             if Some(language_server.id()) != doc.language_server().map(|server| server.id()) {
@@ -1081,7 +1153,7 @@ impl Editor {
     fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
         let view = self.tree.get_mut(current_view);
         view.doc = doc_id;
-        view.offset = Position::default();
+        view.offset = ViewPosition::default();
 
         let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
@@ -1209,14 +1281,22 @@ impl Editor {
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
-        self.new_file_from_document(action, Document::new(Some(self.words_completion.clone())))
+        self.new_file_from_document(
+            action,
+            Document::default(self.config.clone(), Some(self.words_completion.clone())),
+        )
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
         let (rope, encoding) = crate::document::from_reader(&mut stdin(), None)?;
         Ok(self.new_file_from_document(
             action,
-            Document::from(rope, Some(encoding), Some(self.words_completion.clone())),
+            Document::from(
+                rope,
+                Some(encoding),
+                self.config.clone(),
+                Some(self.words_completion.clone()),
+            ),
         ))
     }
 
@@ -1232,14 +1312,18 @@ impl Editor {
                 &path,
                 None,
                 Some(self.syn_loader.clone()),
+                self.config.clone(),
                 Some(self.words_completion.clone()),
             )?;
 
-            let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
                 doc.set_diff_base(diff_base, self.redraw_handle.clone());
             }
-            self.new_document(doc)
+
+            let id = self.new_document(doc);
+            let _ = self.launch_language_server(id);
+
+            id
         };
 
         self.switch(id, action);
@@ -1319,7 +1403,12 @@ impl Editor {
                 .iter()
                 .map(|(&doc_id, _)| doc_id)
                 .next()
-                .unwrap_or_else(|| self.new_document(Document::default()));
+                .unwrap_or_else(|| {
+                    self.new_document(Document::default(
+                        self.config.clone(),
+                        Some(self.words_completion.clone()),
+                    ))
+                });
             let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
@@ -1453,7 +1542,11 @@ impl Editor {
             .selection(view.id)
             .primary()
             .cursor(doc.text().slice(..));
-        if let Some(mut pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
+        let pos = self
+            .cursor_cache
+            .get()
+            .unwrap_or_else(|| view.screen_coords_at_pos(doc, doc.text().slice(..), cursor));
+        if let Some(mut pos) = pos {
             let inner = view.inner_area(doc);
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;

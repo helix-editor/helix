@@ -41,7 +41,7 @@ macro_rules! command_provider {
      primary_paste => $pr_get_prg:literal $( , $pr_get_arg:literal )* ;
      primary_copy => $pr_set_prg:literal $( , $pr_set_arg:literal )* ;
     ) => {{
-        log::info!(
+        log::debug!(
             "Using {} to interact with the system and selection (primary) clipboard",
             if $set_prg != $get_prg { format!("{}+{}", $set_prg, $get_prg)} else { $set_prg.to_string() }
         );
@@ -381,7 +381,7 @@ mod provider {
 
     impl ClipboardProvider for WindowsProvider {
         fn name(&self) -> Cow<str> {
-            log::info!("Using clipboard-win to interact with the system clipboard");
+            log::debug!("Using clipboard-win to interact with the system clipboard");
             Cow::Borrowed("clipboard-win")
         }
 

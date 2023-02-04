@@ -61,7 +61,7 @@ pulldown-cmark = { version = "0.9", default-features = false }
 content_inspector = "0.2.4"
 
 # config
-toml = "0.6"
+toml = "0.7"
 
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -78,5 +78,5 @@ helix-loader = { version = "0.6", path = "../helix-loader" }
 
 [dev-dependencies]
 smallvec = "1.10"
-indoc = "1.0.8"
+indoc = "2.0.0"
 tempfile = "3.3.0"

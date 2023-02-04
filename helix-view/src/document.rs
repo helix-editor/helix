@@ -1,7 +1,11 @@
 use anyhow::{anyhow, bail, Context, Error};
+use arc_swap::access::DynAccess;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
+use helix_core::doc_formatter::TextFormat;
+use helix_core::syntax::Highlight;
+use helix_core::text_annotations::TextAnnotations;
 use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
@@ -27,8 +31,8 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
-use crate::editor::RedrawHandle;
-use crate::{DocumentId, Editor, View, ViewId};
+use crate::editor::{Config, RedrawHandle};
+use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -128,6 +132,7 @@ pub struct Document {
     // it back as it separated from the edits. We could split out the parts manually but that will
     // be more troublesome.
     pub history: Cell<History>,
+    pub config: Arc<dyn DynAccess<Config>>,
 
     pub savepoint: Option<Transaction>,
 
@@ -357,6 +362,7 @@ impl Document {
     pub fn from(
         text: Rope,
         encoding: Option<&'static encoding::Encoding>,
+        config: Arc<dyn DynAccess<Config>>,
         words_completion: Option<Arc<WordsCompletion>>,
     ) -> Self {
         let encoding = encoding.unwrap_or(encoding::UTF_8);
@@ -384,15 +390,24 @@ impl Document {
             modified_since_accessed: false,
             language_server: None,
             diff_handle: None,
+            config,
             words_completion,
         }
     }
 
-    pub fn new(words_completion: Option<Arc<WordsCompletion>>) -> Self {
-        Document {
-            words_completion,
-            ..Default::default()
-        }
+    // pub fn new(words_completion: Option<Arc<WordsCompletion>>) -> Self {
+    //     Document {
+    //         words_completion,
+    //         ..Default::default()
+    //     }
+    // }
+
+    pub fn default(
+        config: Arc<dyn DynAccess<Config>>,
+        words_completion: Option<Arc<WordsCompletion>>,
+    ) -> Self {
+        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
+        Self::from(text, None, config, words_completion)
     }
 
     // TODO: async fn?
@@ -402,6 +417,7 @@ impl Document {
         path: &Path,
         encoding: Option<&'static encoding::Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
+        config: Arc<dyn DynAccess<Config>>,
         words_completion: Option<Arc<WordsCompletion>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
@@ -414,7 +430,7 @@ impl Document {
             (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
         };
 
-        let mut doc = Self::from(rope, Some(encoding), words_completion);
+        let mut doc = Self::from(rope, Some(encoding), config, words_completion);
 
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
@@ -1270,12 +1286,34 @@ impl Document {
             None => global_config,
         }
     }
-}
 
-impl Default for Document {
-    fn default() -> Self {
-        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
-        Self::from(text, None, None)
+    pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
+        if let Some(max_line_len) = self
+            .language_config()
+            .and_then(|config| config.max_line_length)
+        {
+            viewport_width = viewport_width.min(max_line_len as u16)
+        }
+        let config = self.config.load();
+        let soft_wrap = &config.soft_wrap;
+        let tab_width = self.tab_width() as u16;
+        TextFormat {
+            soft_wrap: soft_wrap.enable && viewport_width > 10,
+            tab_width,
+            max_wrap: soft_wrap.max_wrap.min(viewport_width / 4),
+            max_indent_retain: soft_wrap.max_indent_retain.min(viewport_width * 2 / 5),
+            // avoid spinning forever when the window manager
+            // sets the size to something tiny
+            viewport_width,
+            wrap_indicator: soft_wrap.wrap_indicator.clone().into_boxed_str(),
+            wrap_indicator_highlight: theme
+                .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
+                .map(Highlight),
+        }
+    }
+
+    pub fn text_annotations(&self, _theme: Option<&Theme>) -> TextAnnotations {
+        TextAnnotations::default()
     }
 }
 
@@ -1314,13 +1352,20 @@ impl Display for FormatterError {
 
 #[cfg(test)]
 mod test {
+    use arc_swap::ArcSwap;
+
     use super::*;
 
     #[test]
     fn changeset_to_changes_ignore_line_endings() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello\r\nworld");
-        let mut doc = Document::from(text, None, None);
+        let mut doc = Document::from(
+            text,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            None,
+        );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(0, 0));
 
@@ -1354,7 +1399,12 @@ mod test {
     fn changeset_to_changes() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello");
-        let mut doc = Document::from(text, None, None);
+        let mut doc = Document::from(
+            text,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            None,
+        );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));
 
@@ -1467,7 +1517,9 @@ mod test {
     #[test]
     fn test_line_ending() {
         assert_eq!(
-            Document::default().text().to_string(),
+            Document::default(Arc::new(ArcSwap::new(Arc::new(Config::default()))))
+                .text()
+                .to_string(),
             DEFAULT_LINE_ENDING.as_str()
         );
     }

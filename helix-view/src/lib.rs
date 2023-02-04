@@ -50,13 +50,10 @@ pub enum Align {
 }
 
 pub fn align_view(doc: &Document, view: &mut View, align: Align) {
-    let pos = doc
-        .selection(view.id)
-        .primary()
-        .cursor(doc.text().slice(..));
-    let line = doc.text().char_to_line(pos);
-
-    let last_line_height = view.inner_height().saturating_sub(1);
+    let doc_text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(doc_text);
+    let viewport = view.inner_area(doc);
+    let last_line_height = viewport.height.saturating_sub(1);
 
     let relative = match align {
         Align::Center => last_line_height / 2,
@@ -64,10 +61,20 @@ pub fn align_view(doc: &Document, view: &mut View, align: Align) {
         Align::Bottom => last_line_height,
     };
 
-    view.offset.row = line.saturating_sub(relative);
+    let text_fmt = doc.text_format(viewport.width, None);
+    let annotations = view.text_annotations(doc, None);
+    (view.offset.anchor, view.offset.vertical_offset) = char_idx_at_visual_offset(
+        doc_text,
+        cursor,
+        -(relative as isize),
+        0,
+        &text_fmt,
+        &annotations,
+    );
 }
 
 pub use document::Document;
 pub use editor::Editor;
+use helix_core::char_idx_at_visual_offset;
 pub use theme::Theme;
 pub use view::View;
