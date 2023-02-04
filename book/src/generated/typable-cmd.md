@@ -74,3 +74,4 @@
 | `:pipe` | Pipe each selection to the shell command. |
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh` | Run a shell command |
+| `:read`, `:r` | Load a file into buffer |
