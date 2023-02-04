@@ -2544,16 +2544,13 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
+    let view = cx.editor.tree.get(cx.editor.tree.focus);
+    let jumps: Vec<_> = view.jumps.iter()
+        .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
+        .collect();
+    
     let picker = FilePicker::new(
-        cx.editor
-            .tree
-            .views()
-            .flat_map(|(view, _)| {
-                view.jumps
-                    .iter()
-                    .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
-            })
-            .collect(),
+        jumps,
         (),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
