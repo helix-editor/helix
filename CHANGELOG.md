@@ -1,19 +1,25 @@
 # Next
 
-> Checkpoint: `927fa112ec049e5f40309ffdd57c314897e18bbc`
+> Checkpoint: `9c98043c1cd6a8b92f35214007a90bb0f287beda`
 
 Breaking changes:
 
 - Select diagnostic range in `goto_*_diag` commands (#4713, #5164)
+- Remove jump behavior from `increment`/`decrement` (#4123)
 
 Features:
 
 - Dynamic workspace symbol picker (#5055)
+- Soft-wrap (#5420, #5786)
 
 Commands:
 
 - `:pipe-to` which pipes selections into a shell command and ignores output (#4931)
 - `merge_consecutive_selections` (`A-_`) combines all consecutive selections (#5047)
+- `rotate_view_reverse` which focuses the previous view (#5356)
+- `goto_declaration` (`gD`, requires LSP) which jumps to a symbol's declaration (#5646)
+- `file_picker_in_current_buffer_directory` (#4666)
+- `:character-info` which shows information about the character under the cursor (#4000)
 
 Usability improvements and fixes:
 
@@ -39,6 +45,24 @@ Usability improvements and fixes:
 - Improve indent queries for python when the tree is errored (#5332)
 - Prompt: Fix autocompletion for paths containing periods (#5175)
 - Skip serializing JSONRPC params if params is null (#5471)
+- Fix interaction with the `xclip` clipboard provider (#5426)
+- Picker: Open files without closing the picker with `A-ret` (#4435)
+- Fix undo/redo execution from the command palette (#5294)
+- Allow theming cursors by primary/secondary and by mode (#5130)
+- Fix highlighting of non-bar cursors (#5575)
+- Fix panic when nooping in `join_selections` and `join_selections_space` (#5423)
+- Allow configuration of the minimum width for the line-numbers gutter (#4724, #5696)
+- Fix selecting a changed file in global search (#5639)
+- Use filename completer for `:run-shell-command` command (#5729)
+- Fix initial syntax highlight layer sort order (#5196)
+- Surround with line-endings with `ms<ret>` (#4571)
+- Fix UTF-8 length handling for shellwords (#5738)
+- Hide duplicate symlinks in file pickers (#5658)
+- Tabulate buffer picker contents (#5777)
+- Add substring matching syntax for the picker (#5658)
+- Remove C-j and C-k bindings from the completion menu (#5070)
+- Add an option to disable LSP (#4425)
+- Always commit to history when pasting (#5790)
 
 Themes:
 
@@ -46,22 +70,35 @@ Themes:
 - Update `flatwhite` (#5036)
 - Update `autumn` (#5051, #5397)
 - Update `acme` (#5019, #5486, #5488)
-- Update `gruvbox` themes (#5066, #5333)
+- Update `gruvbox` themes (#5066, #5333, #5540)
 - Update `base16_transparent` (#5105)
 - Update `dark_high_contrast` (#5105)
-- Update `dracula` (#5236)
-- Update `monokai_pro_spectrum` (#5250)
-- Update `rose_pine` (#5267)
+- Update `dracula` (#5236, #5627)
+- Update `monokai_pro_spectrum` (#5250, #5602)
+- Update `rose_pine` (#5267, #5489)
 - Update `kanagawa` (#5273)
 - Update `emacs` (#5334)
-- Add `github` themes (#5353)
+- Add `github` themes (#5353, efeec12)
     - Dark themes: `github_dark`, `github_dark_colorblind`, `github_dark_dimmed`, `github_dark_high_contrast`, `github_dark_tritanopia`
     - Light themes: `github_light`, `github_light_colorblind`, `github_light_dimmed`, `github_light_high_contrast`, `github_light_tritanopia`
 - Update `solarized_dark` (#5445)
+- Update `catppuccin` (#5404)
+- Use curly underlines in built-in themes (#5419)
+- Update `zenburn` (#5573)
+- Update `kanagawa` (#5571)
+- Rewrite `snazzy` (#3971)
+- Add `monokai_aqua` (#5578)
+- Add `markup.strikethrough` to existing themes (#5619)
+- Update `sonokai` (#5440)
+- Update `onedark` (#5755)
+- Add `ayu_evolve` (#5638)
+- Add `jellybeans` (#5719)
 
 LSP configurations:
 
 - Support BibTeX (#5064)
+- Enable HTTP server in `metals` (Scala) config (#5551)
+- Change V-lang language server to `v ls` from `vls` (#5677)
 
 New languages:
 
@@ -70,6 +107,10 @@ New languages:
 - Crystal (#4993, #5205)
 - MATLAB/Octave (#5192)
 - `tfvars` (uses HCL) (#5396)
+- Ponylang (#5416)
+- DHall (1f6809c)
+- Sagemath (#5649)
+- MSBuild (#5793)
 
 Updated languages and queries:
 
@@ -87,10 +128,25 @@ Updated languages and queries:
 - Add `.bash_aliases` as a Bash file-type (#5347)
 - Fix comment token for sshclientconfig (#5351)
 - Update Prisma (#5417)
+- Update C++ (#5457)
+- Add more file-types for Python (#5593)
+- Update tree-sitter-scala (#5576)
+- Add an injection regex for Lua (#5606)
+- Add `build.gradle` to java roots configuration (#5641)
+- Add Hub PR files to markdown file-types (#5634)
+- Add an external formatter configuration for Cue (#5679)
+- Add injections for builders and writers to Nix (#5629)
+- Update tree-sitter-xml to fix whitespace parsing (#5685)
+- Add `Justfile` to the make file-types configuration (#5687)
+- Update tree-sitter-sql and highlight queries (#5683, #5772)
+- Use the bash grammar and queries for env language (#5720)
+- Add podspec files to ruby file-types (#5811)
+- Recognize `.C` and `.H` file-types as C++ (#5808)
 
 Packaging:
 
 - Fix Nix flake devShell for darwin hosts (#5368)
+- Add Appstream metadata file to `contrib/` (#5643)
 
 # 22.12 (2022-12-06)
 
