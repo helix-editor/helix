@@ -970,6 +970,69 @@ fn show_clipboard_provider(
         .set_status(cx.editor.clipboard_provider.name().to_string());
     Ok(())
 }
+//TODO: where to keep the below struct
+pub struct ClipboardContent {
+    content: String,
+}
+impl ui::menu::Item for ClipboardContent {
+    type Data = ();
+
+    fn format(&self, _data: &Self::Data) -> Row {
+        self.content.as_str().into()
+    }
+}
+
+fn show_clipboard(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let sys_cb_contents = cx
+        .editor
+        .clipboard_provider
+        .get_contents(ClipboardType::Clipboard);
+
+    let mut options = Vec::new();
+
+    if let Ok(c) = sys_cb_contents {
+        options.push(ClipboardContent {
+            content: format!("[S] {c}"),
+        });
+    }
+
+    let reg = cx.editor.registers.inner();
+
+    for (i, val) in reg {
+        let contents = val.read(); //Not sure why register contains Array
+        let n = contents.len();
+        if n > 0 {
+            options.push(ClipboardContent {
+                content: format!("[{i}] {}", contents[n - 1]),
+            });
+        }
+    }
+
+    if !options.is_empty() {
+        let callback = async move {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |_editor: &mut Editor, compositor: &mut Compositor| {
+                    let picker = ui::Picker::new(options, (), |_cx, _command, _action| {
+                        //TODO: no_op for now
+                    });
+                    compositor.push(Box::new(overlayed(picker)))
+                },
+            ));
+            Ok(call)
+        };
+        cx.jobs.callback(callback);
+    }
+
+    Ok(())
+}
 
 fn change_current_directory(
     cx: &mut compositor::Context,
@@ -2234,6 +2297,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Show clipboard provider name in status bar.",
             fun: show_clipboard_provider,
+            completer: None,
+        },
+        TypableCommand {
+            name: "show-clipboard",
+            aliases: &[],
+            doc: "Show clipboard.",
+            fun: show_clipboard,
             completer: None,
         },
         TypableCommand {
