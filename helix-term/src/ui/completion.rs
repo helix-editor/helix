@@ -448,39 +448,42 @@ impl Component for Completion {
 
         let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
         let (popup_width, _popup_height) = self.popup.get_size();
-        let mut width = area
+        let doc_width_available = area
             .width
             .saturating_sub(popup_x)
             .saturating_sub(popup_width);
-        let area = if width > 30 {
-            let mut height = area.height.saturating_sub(popup_y);
+        let doc_area = if doc_width_available > 30 {
+            let mut doc_width = doc_width_available;
+            let mut doc_height = area.height.saturating_sub(popup_y);
             let x = popup_x + popup_width;
             let y = popup_y;
 
-            if let Some((rel_width, rel_height)) = markdown_doc.required_size((width, height)) {
-                width = rel_width.min(width);
-                height = rel_height.min(height);
+            if let Some((rel_width, rel_height)) =
+                markdown_doc.required_size((doc_width, doc_height))
+            {
+                doc_width = rel_width.min(doc_width);
+                doc_height = rel_height.min(doc_height);
             }
-            Rect::new(x, y, width, height)
+            Rect::new(x, y, doc_width, doc_height)
         } else {
             let half = area.height / 2;
-            let height = 15.min(half);
+            let doc_height = 15.min(half);
             // we want to make sure the cursor is visible (not hidden behind the documentation)
             let y = if cursor_pos + area.y
-                >= (cx.editor.tree.area().height - height - 2/* statusline + commandline */)
+                >= (cx.editor.tree.area().height - doc_height - 2/* statusline + commandline */)
             {
                 0
             } else {
                 // -2 to subtract command line + statusline. a bit of a hack, because of splits.
-                area.height.saturating_sub(height).saturating_sub(2)
+                area.height.saturating_sub(doc_height).saturating_sub(2)
             };
 
-            Rect::new(0, y, area.width, height)
+            Rect::new(0, y, area.width, doc_height)
         };
 
         // clear area
         let background = cx.editor.theme.get("ui.popup");
-        surface.clear_with(area, background);
-        markdown_doc.render(area, surface, cx);
+        surface.clear_with(doc_area, background);
+        markdown_doc.render(doc_area, surface, cx);
     }
 }
