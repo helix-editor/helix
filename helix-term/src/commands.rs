@@ -16,7 +16,9 @@ use helix_core::{
     history::UndoKind,
     increment, indent,
     indent::IndentStyle,
-    line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
+    line_ending::{
+        get_line_ending_of_str, line_end_char_index, str_is_line_ending,
+    },
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
@@ -2756,9 +2758,66 @@ fn last_picker(cx: &mut Context) {
 }
 
 // I inserts at the first nonwhitespace character of each line with a selection
+// If the line is empty, automatically indent
 fn insert_at_line_start(cx: &mut Context) {
-    goto_first_nonwhitespace(cx);
     enter_insert_mode(cx);
+
+    let (view, doc) = current!(cx.editor);
+
+    let text = doc.text().slice(..);
+    let contents = doc.text();
+    let selection = doc.selection(view.id);
+
+    let language_config = doc.language_config();
+    let syntax = doc.syntax();
+    let tab_width = doc.tab_width();
+
+    let mut ranges = SmallVec::with_capacity(selection.len());
+    let mut offs = 0;
+
+    let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
+        let cursor_line = range.cursor_line(text);
+        let cursor_line_start = text.line_to_char(cursor_line);
+
+        if line_end_char_index(&text, cursor_line) == cursor_line_start {
+            // line is empty => auto indent
+            let line_end_index = cursor_line_start;
+
+            let indent = indent::indent_for_newline(
+                language_config,
+                syntax,
+                &doc.indent_style,
+                tab_width,
+                text,
+                cursor_line,
+                line_end_index,
+                cursor_line,
+            );
+
+            // calculate new selection ranges
+            let pos = offs + cursor_line_start;
+            let indent_width = indent.chars().count();
+            ranges.push(Range::point(pos + indent_width));
+            offs += indent_width;
+
+            (line_end_index, line_end_index, Some(indent.into()))
+        } else {
+            // move cursor to the first non-whitespace character of the current line
+            let mut pos = cursor_line_start + offs;
+            let range = find_first_non_whitespace_char(text.line(cursor_line))
+                .map(|ws_offset| {
+                    pos += ws_offset;
+                    range.put_cursor(text, pos, cx.editor.mode == Mode::Select)
+                })
+                .unwrap_or(*range);
+            ranges.push(range);
+
+            (cursor_line_start, cursor_line_start, None)
+        }
+    });
+
+    transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
+    doc.apply(&transaction, view.id);
 }
 
 // A inserts at the end of each line with a selection
