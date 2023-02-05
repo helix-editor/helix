@@ -381,104 +381,106 @@ impl Component for Completion {
         self.popup.render(area, surface, cx);
 
         // if we have a selection, render a markdown popup on top/below with info
-        if let Some(option) = self.popup.contents().selection() {
-            // need to render:
-            // option.detail
-            // ---
-            // option.documentation
+        let option = match self.popup.contents().selection() {
+            Some(option) => option,
+            None => return,
+        };
+        // need to render:
+        // option.detail
+        // ---
+        // option.documentation
 
-            let (view, doc) = current!(cx.editor);
-            let language = doc.language_name().unwrap_or("");
-            let text = doc.text().slice(..);
-            let cursor_pos = doc.selection(view.id).primary().cursor(text);
-            let coords = view
-                .screen_coords_at_pos(doc, text, cursor_pos)
-                .expect("cursor must be in view");
-            let cursor_pos = coords.row as u16;
+        let (view, doc) = current!(cx.editor);
+        let language = doc.language_name().unwrap_or("");
+        let text = doc.text().slice(..);
+        let cursor_pos = doc.selection(view.id).primary().cursor(text);
+        let coords = view
+            .screen_coords_at_pos(doc, text, cursor_pos)
+            .expect("cursor must be in view");
+        let cursor_pos = coords.row as u16;
 
-            let mut markdown_doc = match &option.documentation {
-                Some(lsp::Documentation::String(contents))
-                | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
-                    kind: lsp::MarkupKind::PlainText,
-                    value: contents,
-                })) => {
-                    // TODO: convert to wrapped text
+        let mut markdown_doc = match &option.documentation {
+            Some(lsp::Documentation::String(contents))
+            | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                kind: lsp::MarkupKind::PlainText,
+                value: contents,
+            })) => {
+                // TODO: convert to wrapped text
+                Markdown::new(
+                    format!(
+                        "```{}\n{}\n```\n{}",
+                        language,
+                        option.detail.as_deref().unwrap_or_default(),
+                        contents
+                    ),
+                    cx.editor.syn_loader.clone(),
+                )
+            }
+            Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                kind: lsp::MarkupKind::Markdown,
+                value: contents,
+            })) => {
+                // TODO: set language based on doc scope
+                if let Some(detail) = &option.detail.as_deref() {
                     Markdown::new(
-                        format!(
-                            "```{}\n{}\n```\n{}",
-                            language,
-                            option.detail.as_deref().unwrap_or_default(),
-                            contents
-                        ),
+                        format!("```{}\n{}\n```\n{}", language, detail, contents),
                         cx.editor.syn_loader.clone(),
                     )
-                }
-                Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
-                    kind: lsp::MarkupKind::Markdown,
-                    value: contents,
-                })) => {
-                    // TODO: set language based on doc scope
-                    if let Some(detail) = &option.detail.as_deref() {
-                        Markdown::new(
-                            format!("```{}\n{}\n```\n{}", language, detail, contents),
-                            cx.editor.syn_loader.clone(),
-                        )
-                    } else {
-                        Markdown::new(contents.to_string(), cx.editor.syn_loader.clone())
-                    }
-                }
-                None if option.detail.is_some() => {
-                    // TODO: copied from above
-
-                    // TODO: set language based on doc scope
-                    Markdown::new(
-                        format!(
-                            "```{}\n{}\n```",
-                            language,
-                            option.detail.as_deref().unwrap_or_default(),
-                        ),
-                        cx.editor.syn_loader.clone(),
-                    )
-                }
-                None => return,
-            };
-
-            let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
-            let (popup_width, _popup_height) = self.popup.get_size();
-            let mut width = area
-                .width
-                .saturating_sub(popup_x)
-                .saturating_sub(popup_width);
-            let area = if width > 30 {
-                let mut height = area.height.saturating_sub(popup_y);
-                let x = popup_x + popup_width;
-                let y = popup_y;
-
-                if let Some((rel_width, rel_height)) = markdown_doc.required_size((width, height)) {
-                    width = rel_width.min(width);
-                    height = rel_height.min(height);
-                }
-                Rect::new(x, y, width, height)
-            } else {
-                let half = area.height / 2;
-                let height = 15.min(half);
-                // we want to make sure the cursor is visible (not hidden behind the documentation)
-                let y = if cursor_pos + area.y
-                    >= (cx.editor.tree.area().height - height - 2/* statusline + commandline */)
-                {
-                    0
                 } else {
-                    // -2 to subtract command line + statusline. a bit of a hack, because of splits.
-                    area.height.saturating_sub(height).saturating_sub(2)
-                };
+                    Markdown::new(contents.to_string(), cx.editor.syn_loader.clone())
+                }
+            }
+            None if option.detail.is_some() => {
+                // TODO: copied from above
 
-                Rect::new(0, y, area.width, height)
+                // TODO: set language based on doc scope
+                Markdown::new(
+                    format!(
+                        "```{}\n{}\n```",
+                        language,
+                        option.detail.as_deref().unwrap_or_default(),
+                    ),
+                    cx.editor.syn_loader.clone(),
+                )
+            }
+            None => return,
+        };
+
+        let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
+        let (popup_width, _popup_height) = self.popup.get_size();
+        let mut width = area
+            .width
+            .saturating_sub(popup_x)
+            .saturating_sub(popup_width);
+        let area = if width > 30 {
+            let mut height = area.height.saturating_sub(popup_y);
+            let x = popup_x + popup_width;
+            let y = popup_y;
+
+            if let Some((rel_width, rel_height)) = markdown_doc.required_size((width, height)) {
+                width = rel_width.min(width);
+                height = rel_height.min(height);
+            }
+            Rect::new(x, y, width, height)
+        } else {
+            let half = area.height / 2;
+            let height = 15.min(half);
+            // we want to make sure the cursor is visible (not hidden behind the documentation)
+            let y = if cursor_pos + area.y
+                >= (cx.editor.tree.area().height - height - 2/* statusline + commandline */)
+            {
+                0
+            } else {
+                // -2 to subtract command line + statusline. a bit of a hack, because of splits.
+                area.height.saturating_sub(height).saturating_sub(2)
             };
 
-            // clear area
-            let background = cx.editor.theme.get("ui.popup");
-            surface.clear_with(area, background);
-            markdown_doc.render(area, surface, cx);
-        }
+            Rect::new(0, y, area.width, height)
+        };
+
+        // clear area
+        let background = cx.editor.theme.get("ui.popup");
+        surface.clear_with(area, background);
+        markdown_doc.render(area, surface, cx);
     }
 }
