@@ -453,19 +453,25 @@ impl Component for Completion {
             }
             Rect::new(x, y, doc_width, doc_height)
         } else {
-            let half = area.height / 2;
-            let doc_height = 15.min(half);
-            // we want to make sure the cursor is visible (not hidden behind the documentation)
-            let y = if cursor_pos + area.y
-                >= (cx.editor.tree.area().height - doc_height - 2/* statusline + commandline */)
-            {
-                0
+            // Documentation should not cover the cursor or the completion popup
+            // Completion popup could be above or below the current line
+            let avail_height_above = cursor_pos.min(popup_area.top()).saturating_sub(1);
+            let avail_height_below = area
+                .height
+                .saturating_sub(cursor_pos.max(popup_area.bottom()) + 1 /* padding */);
+            let (y, avail_height) = if avail_height_below >= avail_height_above {
+                (
+                    area.height.saturating_sub(avail_height_below),
+                    avail_height_below,
+                )
             } else {
-                // -2 to subtract command line + statusline. a bit of a hack, because of splits.
-                area.height.saturating_sub(doc_height).saturating_sub(2)
+                (0, avail_height_above)
             };
+            if avail_height <= 1 {
+                return;
+            }
 
-            Rect::new(0, y, area.width, doc_height)
+            Rect::new(0, y, area.width, avail_height.min(15))
         };
 
         // clear area
