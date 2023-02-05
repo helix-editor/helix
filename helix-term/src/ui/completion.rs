@@ -399,6 +399,16 @@ impl Component for Completion {
             .expect("cursor must be in view");
         let cursor_pos = coords.row as u16;
 
+        let markdowned = |lang: &str, detail: Option<&str>, doc: Option<&str>| {
+            let md = match (detail, doc) {
+                (Some(detail), Some(doc)) => format!("```{lang}\n{detail}\n```\n{doc}"),
+                (Some(detail), None) => format!("```{lang}\n{detail}\n```"),
+                (None, Some(doc)) => doc.to_string(),
+                (None, None) => String::new(),
+            };
+            Markdown::new(md, cx.editor.syn_loader.clone())
+        };
+
         let mut markdown_doc = match &option.documentation {
             Some(lsp::Documentation::String(contents))
             | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
@@ -406,42 +416,18 @@ impl Component for Completion {
                 value: contents,
             })) => {
                 // TODO: convert to wrapped text
-                Markdown::new(
-                    format!(
-                        "```{}\n{}\n```\n{}",
-                        language,
-                        option.detail.as_deref().unwrap_or_default(),
-                        contents
-                    ),
-                    cx.editor.syn_loader.clone(),
-                )
+                markdowned(language, option.detail.as_deref(), Some(contents))
             }
             Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
                 kind: lsp::MarkupKind::Markdown,
                 value: contents,
             })) => {
                 // TODO: set language based on doc scope
-                if let Some(detail) = &option.detail.as_deref() {
-                    Markdown::new(
-                        format!("```{}\n{}\n```\n{}", language, detail, contents),
-                        cx.editor.syn_loader.clone(),
-                    )
-                } else {
-                    Markdown::new(contents.to_string(), cx.editor.syn_loader.clone())
-                }
+                markdowned(language, option.detail.as_deref(), Some(contents))
             }
             None if option.detail.is_some() => {
-                // TODO: copied from above
-
                 // TODO: set language based on doc scope
-                Markdown::new(
-                    format!(
-                        "```{}\n{}\n```",
-                        language,
-                        option.detail.as_deref().unwrap_or_default(),
-                    ),
-                    cx.editor.syn_loader.clone(),
-                )
+                markdowned(language, option.detail.as_deref(), None)
             }
             None => return,
         };
