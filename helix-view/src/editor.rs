@@ -881,6 +881,8 @@ pub struct Editor {
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
 
+    // To know if the user is currently inserting chars or moving in Insert Mode
+    // https://github.com/helix-editor/helix/pull/5803
     pub last_event_is_char: bool,
 
     // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
