@@ -1,7 +1,9 @@
 use std::{
     collections::{HashMap, HashSet},
+    fmt,
+    marker::PhantomData,
     path::{Path, PathBuf},
-    str,
+    str::{self, FromStr},
 };
 
 use anyhow::{anyhow, Result};
@@ -9,11 +11,100 @@ use helix_core::hashmap;
 use helix_loader::merge_toml_values;
 use log::warn;
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Deserializer};
+use serde::{
+    de::{self, MapAccess, Visitor},
+    Deserialize, Deserializer,
+};
 use toml::{map::Map, Value};
 
 use crate::graphics::UnderlineStyle;
 pub use crate::graphics::{Color, Modifier, Style};
+
+#[derive(Clone, Default, PartialEq, Debug, Deserialize)]
+pub struct Config {
+    pub name: String,
+    pub overwrite: Option<Value>,
+}
+
+impl FromStr for Config {
+    type Err = anyhow::Error;
+    fn from_str(name: &str) -> Result<Self, Self::Err> {
+        Ok(Self {
+            name: name.to_string(),
+            overwrite: None,
+        })
+    }
+}
+
+fn string_or_struct<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+    T: Deserialize<'de> + FromStr<Err = anyhow::Error>,
+    D: Deserializer<'de>,
+{
+    struct StringOrStruct<T>(PhantomData<fn() -> T>);
+
+    impl<'de, T> Visitor<'de> for StringOrStruct<T>
+    where
+        T: Deserialize<'de> + FromStr<Err = anyhow::Error>,
+    {
+        type Value = T;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("string or map")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(FromStr::from_str(value).unwrap())
+        }
+
+        fn visit_map<M>(self, map: M) -> Result<Self::Value, M::Error>
+        where
+            M: MapAccess<'de>,
+        {
+            Deserialize::deserialize(de::value::MapAccessDeserializer::new(map))
+        }
+    }
+
+    deserializer.deserialize_any(StringOrStruct(PhantomData))
+}
+
+pub fn opt_string_or_struct<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: Deserialize<'de> + FromStr<Err = anyhow::Error>,
+    D: Deserializer<'de>,
+{
+    struct OptStringOrStruct<T>(PhantomData<T>);
+
+    impl<'de, T> Visitor<'de> for OptStringOrStruct<T>
+    where
+        T: Deserialize<'de> + FromStr<Err = anyhow::Error>,
+    {
+        type Value = Option<T>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a nul, a string or map")
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            string_or_struct(deserializer).map(Some)
+        }
+    }
+
+    deserializer.deserialize_option(OptStringOrStruct(PhantomData))
+}
 
 pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
     let bytes = include_bytes!("../../theme.toml");
@@ -52,7 +143,8 @@ impl Loader {
     }
 
     /// Loads a theme searching directories in priority order.
-    pub fn load(&self, name: &str) -> Result<Theme> {
+    pub fn load(&self, config: &Config) -> Result<Theme> {
+        let name = &config.name;
         if name == "default" {
             return Ok(self.default());
         }
@@ -61,7 +153,7 @@ impl Loader {
         }
 
         let mut visited_paths = HashSet::new();
-        let theme = self.load_theme(name, &mut visited_paths).map(Theme::from)?;
+        let theme = self.load_theme(config, name, &mut visited_paths).map(Theme::from)?;
 
         Ok(Theme {
             name: name.into(),
@@ -78,9 +170,14 @@ impl Loader {
     /// so long as the second file is in a themes directory with lower priority.
     /// However, it is not recommended that users do this as it will make tracing
     /// errors more difficult.
-    fn load_theme(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<Value> {
-        let path = self.path(name, visited_paths)?;
-
+    fn load_theme(
+        &self,
+        name: &str,
+        config: &Config,
+        visited_paths: &mut HashSet<PathBuf>,
+    ) -> Result<Value> {
+        let name = &config.name;
+        let path = self.path(name, only_default_dir);
         let theme_toml = self.load_toml(path)?;
 
         let inherits = theme_toml.get("inherits");
@@ -97,10 +194,26 @@ impl Loader {
                 // load default themes's toml from const.
                 "default" => DEFAULT_THEME_DATA.clone(),
                 "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
-                _ => self.load_theme(parent_theme_name, visited_paths)?,
+                _ => {
+                    let parent_theme_config = Config {
+                        name: parent_theme_name.to_string(),
+                        overwrite: None,
+                    };
+                    self.load_theme(
+                        &parent_theme_config,
+                        parent_theme_name,
+                        visited_paths,
+                    )?
+                }
             };
 
             self.merge_themes(parent_theme_toml, theme_toml)
+        } else {
+            theme_toml
+        };
+
+        let theme_toml = if let Some(overrides) = config.overwrite.clone() {
+            self.merge_themes(theme_toml, overrides)
         } else {
             theme_toml
         };

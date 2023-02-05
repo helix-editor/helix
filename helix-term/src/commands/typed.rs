@@ -853,7 +853,11 @@ fn theme(
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
             } else if let Some(theme_name) = args.first() {
-                if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
+                let theme_config = helix_view::theme::Config {
+                    name: theme_name.to_string(),
+                    overwrite: None,
+                };
+                if let Ok(theme) = cx.editor.theme_loader.load(&theme_config) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
                     }
@@ -863,10 +867,15 @@ fn theme(
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
+                let theme_config = helix_view::theme::Config {
+                    name: theme_name.to_string(),
+                    overwrite: None,
+                };
+
                 let theme = cx
                     .editor
                     .theme_loader
-                    .load(theme_name)
+                    .load(&theme_config)
                     .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
                 if !(true_color || theme.is_16_color()) {
                     bail!("Unsupported theme: theme requires true color support");
