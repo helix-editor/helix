@@ -16,9 +16,7 @@ use helix_core::{
     history::UndoKind,
     increment, indent,
     indent::IndentStyle,
-    line_ending::{
-        get_line_ending_of_str, line_end_char_index, str_is_line_ending,
-    },
+    line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
@@ -2760,6 +2758,26 @@ fn last_picker(cx: &mut Context) {
 // I inserts at the first nonwhitespace character of each line with a selection
 // If the line is empty, automatically indent
 fn insert_at_line_start(cx: &mut Context) {
+    insert_with_indent(cx, |cursor_line, cursor_line_start, text| {
+        find_first_non_whitespace_char(text.line(cursor_line))
+            .map(|ws_offset| ws_offset + cursor_line_start)
+    });
+}
+
+// A inserts at the end of each line with a selection
+// If the line is empty, automatically indent
+fn insert_at_line_end(cx: &mut Context) {
+    insert_with_indent(cx, |cursor_line, _, text| {
+        Some(line_end_char_index(text, cursor_line))
+    });
+}
+
+// Enter insert mode and auto-indent the current line if it is empty.
+// If the line is not empty, move the cursor to the specified fallback position.
+fn insert_with_indent(
+    cx: &mut Context,
+    cursor_fallback: impl Fn(usize, usize, &RopeSlice) -> Option<usize>,
+) {
     enter_insert_mode(cx);
 
     let (view, doc) = current!(cx.editor);
@@ -2802,13 +2820,9 @@ fn insert_at_line_start(cx: &mut Context) {
 
             (line_end_index, line_end_index, Some(indent.into()))
         } else {
-            // move cursor to the first non-whitespace character of the current line
-            let mut pos = cursor_line_start + offs;
-            let range = find_first_non_whitespace_char(text.line(cursor_line))
-                .map(|ws_offset| {
-                    pos += ws_offset;
-                    range.put_cursor(text, pos, cx.editor.mode == Mode::Select)
-                })
+            // move cursor to the fallback position
+            let range = cursor_fallback(cursor_line, cursor_line_start, &text)
+                .map(|pos| range.put_cursor(text, pos + offs, cx.editor.mode == Mode::Select))
                 .unwrap_or(*range);
             ranges.push(range);
 
@@ -2818,20 +2832,6 @@ fn insert_at_line_start(cx: &mut Context) {
 
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
     doc.apply(&transaction, view.id);
-}
-
-// A inserts at the end of each line with a selection
-fn insert_at_line_end(cx: &mut Context) {
-    enter_insert_mode(cx);
-    let (view, doc) = current!(cx.editor);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let text = doc.text().slice(..);
-        let line = range.cursor_line(text);
-        let pos = line_end_char_index(&text, line);
-        Range::new(pos, pos)
-    });
-    doc.set_selection(view.id, selection);
 }
 
 // Creates an LspCallback that waits for formatting changes to be computed. When they're done,
