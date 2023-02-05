@@ -432,17 +432,18 @@ impl Component for Completion {
             None => return,
         };
 
-        let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
-        let (popup_width, _popup_height) = self.popup.get_size();
-        let doc_width_available = area
-            .width
-            .saturating_sub(popup_x)
-            .saturating_sub(popup_width);
+        let popup_area = {
+            let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
+            let (popup_width, popup_height) = self.popup.get_size();
+            Rect::new(popup_x, popup_y, popup_width, popup_height)
+        };
+
+        let doc_width_available = area.width.saturating_sub(popup_area.right());
         let doc_area = if doc_width_available > 30 {
             let mut doc_width = doc_width_available;
-            let mut doc_height = area.height.saturating_sub(popup_y);
-            let x = popup_x + popup_width;
-            let y = popup_y;
+            let mut doc_height = area.height.saturating_sub(popup_area.top());
+            let x = popup_area.right();
+            let y = popup_area.top();
 
             if let Some((rel_width, rel_height)) =
                 markdown_doc.required_size((doc_width, doc_height))
