@@ -158,6 +158,16 @@ impl<T: Component> Popup<T> {
     pub fn contents_mut(&mut self) -> &mut T {
         &mut self.contents
     }
+
+    pub fn area(&mut self, viewport: Rect, editor: &Editor) -> Rect {
+        // trigger required_size so we recalculate if the child changed
+        self.required_size((viewport.width, viewport.height));
+
+        let (rel_x, rel_y) = self.get_rel_position(viewport, editor);
+
+        // clip to viewport
+        viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1))
+    }
 }
 
 impl<T: Component> Component for Popup<T> {
@@ -235,7 +245,7 @@ impl<T: Component> Component for Popup<T> {
     }
 
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
-        let area = self.area(viewport, cx.editor).unwrap();
+        let area = self.area(viewport, cx.editor);
         cx.scroll = Some(self.scroll);
 
         // clear area
@@ -282,16 +292,5 @@ impl<T: Component> Component for Popup<T> {
 
     fn id(&self) -> Option<&'static str> {
         Some(self.id)
-    }
-
-    fn area(&mut self, viewport: Rect, editor: &Editor) -> Option<Rect> {
-        // trigger required_size so we recalculate if the child changed
-        self.required_size((viewport.width, viewport.height));
-
-        let (rel_x, rel_y) = self.get_rel_position(viewport, editor);
-
-        // clip to viewport
-        let area = viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1));
-        Some(area)
     }
 }

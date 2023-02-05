@@ -4220,8 +4220,7 @@ pub fn completion(cx: &mut Context) {
             let size = compositor.size();
             let signature_help_area = compositor
                 .find_id::<Popup<SignatureHelp>>(SignatureHelp::ID)
-                .and_then(|signature_help| signature_help.area(size, editor))
-                .unwrap();
+                .map(|signature_help| signature_help.area(size, editor));
             let ui = compositor.find::<ui::EditorView>().unwrap();
 
             // Delete the signature help popup if they intersect.
@@ -4234,7 +4233,7 @@ pub fn completion(cx: &mut Context) {
                     trigger_offset,
                     size,
                 )
-                .filter(|area| area.intersects(signature_help_area))
+                .and_then(|area| Some(area.intersects(signature_help_area?)))
                 .is_some()
             {
                 compositor.remove(SignatureHelp::ID);

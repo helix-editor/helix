@@ -359,6 +359,10 @@ impl Completion {
 
         true
     }
+
+    pub fn area(&mut self, viewport: Rect, editor: &Editor) -> Rect {
+        self.popup.area(viewport, editor)
+    }
 }
 
 impl Component for Completion {
@@ -478,9 +482,5 @@ impl Component for Completion {
         let background = cx.editor.theme.get("ui.popup");
         surface.clear_with(doc_area, background);
         markdown_doc.render(doc_area, surface, cx);
-    }
-
-    fn area(&mut self, viewport: Rect, editor: &Editor) -> Option<Rect> {
-        self.popup.area(viewport, editor)
     }
 }

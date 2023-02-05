@@ -19,7 +19,7 @@ use helix_core::{path, Selection};
 use helix_view::{document::Mode, editor::Action, theme::Style};
 
 use crate::{
-    compositor::{self, Component, Compositor},
+    compositor::{self, Compositor},
     ui::{
         self, lsp::SignatureHelp, overlay::overlayed, DynamicPicker, FileLocation, FilePicker,
         Popup, PromptEvent,
@@ -1176,8 +1176,8 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                 .unwrap()
                 .completion
                 .as_mut()
-                .and_then(|completion| completion.area(size, editor))
-                .filter(|area| area.intersects(popup.area(size, editor).unwrap()))
+                .map(|completion| completion.area(size, editor))
+                .filter(|area| area.intersects(popup.area(size, editor)))
                 .is_some()
             {
                 return;

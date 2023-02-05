@@ -940,7 +940,6 @@ impl EditorView {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn set_completion(
         &mut self,
         editor: &mut Editor,
@@ -969,7 +968,7 @@ impl EditorView {
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
-        area
+        Some(area)
     }
 
     pub fn clear_completion(&mut self, editor: &mut Editor) {
