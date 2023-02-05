@@ -623,12 +623,15 @@ impl<T: Item> Picker<T> {
     pub fn set_options(&mut self, options: Vec<T>) {
         self.options = options;
         self.matches.clear();
-        self.matches.extend(
-            self.options
-                .iter()
-                .enumerate()
-                .map(|(index, _option)| (index, 0)),
-        );
+        self.matches
+            .extend(self.options.iter().enumerate().map(|(index, option)| {
+                let text = option.filter_text(&self.editor_data);
+                PickerMatch {
+                    index,
+                    score: 0,
+                    len: text.chars().count(),
+                }
+            }));
         self.score();
         self.move_by(1, Direction::Backward);
     }
