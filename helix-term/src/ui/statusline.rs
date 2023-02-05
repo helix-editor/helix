@@ -13,8 +13,6 @@ use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
 
-use std::sync::Arc;
-
 pub struct RenderContext<'a> {
     pub editor: &'a Editor,
     pub doc: &'a Document,
