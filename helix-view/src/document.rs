@@ -447,8 +447,11 @@ impl Document {
         {
             use std::process::Stdio;
             let text = self.text().clone();
-            let mut process = tokio::process::Command::new(&formatter.command);
+            let shell = &self.config.load().shell;
+            let mut process = tokio::process::Command::new(&shell[0]);
             process
+                .args(&shell[1..])
+                .arg(&formatter.command)
                 .args(&formatter.args)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
