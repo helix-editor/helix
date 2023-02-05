@@ -225,8 +225,9 @@ via the <code>HELIX_RUNTIME</code> environment variable.</p>
 <p>Starting with Windows Vista you can also create symbolic links on Windows. Note that this requires
 elevated privileges - i.e. PowerShell or Cmd must be run as administrator.</p>
 <p><strong>PowerShell:</strong></p>
-<pre><code class="language-powershell">New-Item -ItemType SymbolicLink -Target &quot;runtime&quot; -Path &quot;$Env:AppData\helix\runtime&quot;
+<pre><code class="language-powershell">New-Item -ItemType Junction -Target &quot;runtime&quot; -Path &quot;$Env:AppData\helix\runtime&quot;
 </code></pre>
+<p>Note: &quot;runtime&quot; must be the absolute path to the runtime directory.</p>
 <p><strong>Cmd:</strong></p>
 <pre><code class="language-cmd">cd %appdata%\helix
 mklink /D runtime &quot;&lt;helix-repo&gt;\runtime&quot;
