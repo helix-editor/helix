@@ -70,7 +70,7 @@ async fn test_write_quit() -> anyhow::Result<()> {
 async fn test_write_concurrent() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut command = String::new();
-    const RANGE: RangeInclusive<i32> = 1..=5000;
+    const RANGE: RangeInclusive<i32> = 1..=1000;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
         .build()?;

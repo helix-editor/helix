@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use helix_core::{coords_at_pos, encoding, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::{
@@ -14,6 +12,8 @@ use crate::ui::ProgressSpinners;
 use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
+
+use std::sync::Arc;
 
 pub struct RenderContext<'a> {
     pub editor: &'a Editor,

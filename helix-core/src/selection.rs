@@ -53,7 +53,9 @@ pub struct Range {
     pub anchor: usize,
     /// The head of the range, moved when extending.
     pub head: usize,
-    pub horiz: Option<u32>,
+    /// The previous visual offset (softwrapped lines and columns) from
+    /// the start of the line
+    pub old_visual_position: Option<(u32, u32)>,
 }
 
 impl Range {
@@ -61,7 +63,7 @@ impl Range {
         Self {
             anchor,
             head,
-            horiz: None,
+            old_visual_position: None,
         }
     }
 
@@ -127,7 +129,7 @@ impl Range {
         Self {
             anchor: self.head,
             head: self.anchor,
-            horiz: self.horiz,
+            old_visual_position: self.old_visual_position,
         }
     }
 
@@ -185,7 +187,7 @@ impl Range {
         Self {
             anchor,
             head,
-            horiz: None,
+            old_visual_position: None,
         }
     }
 
@@ -198,13 +200,13 @@ impl Range {
             Self {
                 anchor: self.anchor.min(from),
                 head: self.head.max(to),
-                horiz: None,
+                old_visual_position: None,
             }
         } else {
             Self {
                 anchor: self.anchor.max(to),
                 head: self.head.min(from),
-                horiz: None,
+                old_visual_position: None,
             }
         }
     }
@@ -219,13 +221,13 @@ impl Range {
             Range {
                 anchor: self.anchor.max(other.anchor),
                 head: self.head.min(other.head),
-                horiz: None,
+                old_visual_position: None,
             }
         } else {
             Range {
                 anchor: self.from().min(other.from()),
                 head: self.to().max(other.to()),
-                horiz: None,
+                old_visual_position: None,
             }
         }
     }
@@ -279,8 +281,8 @@ impl Range {
         Range {
             anchor: new_anchor,
             head: new_head,
-            horiz: if new_anchor == self.anchor {
-                self.horiz
+            old_visual_position: if new_anchor == self.anchor {
+                self.old_visual_position
             } else {
                 None
             },
@@ -306,7 +308,7 @@ impl Range {
             Range {
                 anchor: self.anchor,
                 head: next_grapheme_boundary(slice, self.head),
-                horiz: self.horiz,
+                old_visual_position: self.old_visual_position,
             }
         } else {
             *self
@@ -378,7 +380,7 @@ impl From<(usize, usize)> for Range {
         Self {
             anchor,
             head,
-            horiz: None,
+            old_visual_position: None,
         }
     }
 }
@@ -482,7 +484,7 @@ impl Selection {
             ranges: smallvec![Range {
                 anchor,
                 head,
-                horiz: None
+                old_visual_position: None
             }],
             primary_index: 0,
         }
@@ -566,9 +568,9 @@ impl Selection {
     }
 
     /// Takes a closure and maps each `Range` over the closure.
-    pub fn transform<F>(mut self, f: F) -> Self
+    pub fn transform<F>(mut self, mut f: F) -> Self
     where
-        F: Fn(Range) -> Range,
+        F: FnMut(Range) -> Range,
     {
         for range in self.ranges.iter_mut() {
             *range = f(*range)

@@ -7,7 +7,7 @@ async fn auto_indent_c() -> anyhow::Result<()> {
             files: vec![(PathBuf::from("foo.c"), Position::default())],
             ..Default::default()
         },
-        Config::default(),
+        helpers::test_config(),
         helpers::test_syntax_conf(None),
         // switches to append mode?
         (
