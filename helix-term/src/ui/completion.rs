@@ -1,7 +1,6 @@
 use crate::compositor::{Component, Context, Event, EventResult};
-use helix_view::{apply_transaction, editor::CompleteAction, ViewId};
+use helix_view::{editor::CompleteAction, ViewId};
 use tui::buffer::Buffer as Surface;
-use tui::text::Spans;
 
 use std::borrow::Cow;
 
@@ -33,11 +32,7 @@ impl menu::Item for CompletionItem {
             .into()
     }
 
-    fn label(&self, _data: &Self::Data) -> Spans {
-        self.label.as_str().into()
-    }
-
-    fn row(&self, _data: &Self::Data) -> menu::Row {
+    fn format(&self, _data: &Self::Data) -> menu::Row {
         menu::Row::new(vec![
             menu::Cell::from(self.label.as_str()),
             menu::Cell::from(match self.kind {
@@ -188,7 +183,7 @@ impl Completion {
 
                     // initialize a savepoint
                     doc.savepoint();
-                    apply_transaction(&transaction, doc, view);
+                    doc.apply(&transaction, view.id);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -208,7 +203,7 @@ impl Completion {
                         trigger_offset,
                     );
 
-                    apply_transaction(&transaction, doc, view);
+                    doc.apply(&transaction, view.id);
 
                     editor.last_completion = Some(CompleteAction {
                         trigger_offset,
@@ -238,7 +233,7 @@ impl Completion {
                                 additional_edits.clone(),
                                 offset_encoding, // TODO: should probably transcode in Client
                             );
-                            apply_transaction(&transaction, doc, view);
+                            doc.apply(&transaction, view.id);
                         }
                     }
                 }
@@ -396,8 +391,10 @@ impl Component for Completion {
             let language = doc.language_name().unwrap_or("");
             let text = doc.text().slice(..);
             let cursor_pos = doc.selection(view.id).primary().cursor(text);
-            let coords = helix_core::visual_coords_at_pos(text, cursor_pos, doc.tab_width());
-            let cursor_pos = (coords.row - view.offset.row) as u16;
+            let coords = view
+                .screen_coords_at_pos(doc, text, cursor_pos)
+                .expect("cursor must be in view");
+            let cursor_pos = coords.row as u16;
 
             let mut markdown_doc = match &option.documentation {
                 Some(lsp::Documentation::String(contents))

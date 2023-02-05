@@ -886,6 +886,31 @@ impl Client {
         ))
     }
 
+    pub fn goto_declaration(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if the server does not support goto-declaration.
+        match capabilities.declaration_provider {
+            Some(
+                lsp::DeclarationCapability::Simple(true)
+                | lsp::DeclarationCapability::RegistrationOptions(_)
+                | lsp::DeclarationCapability::Options(_),
+            ) => (),
+            _ => return None,
+        }
+
+        Some(self.goto_request::<lsp::request::GotoDeclaration>(
+            text_document,
+            position,
+            work_done_token,
+        ))
+    }
+
     pub fn goto_type_definition(
         &self,
         text_document: lsp::TextDocumentIdentifier,
