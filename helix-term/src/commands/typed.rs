@@ -844,6 +844,12 @@ fn theme(
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     let true_color = cx.editor.config.load().true_color || crate::true_color();
+
+    // Take the new theme name and return a theme config with currently applied overrides
+    use helix_view::theme::Config as ThemeConfig;
+    let inherit_overrides =
+        |name: String| ThemeConfig::new(name, cx.editor.theme.overrides.clone());
+
     match event {
         PromptEvent::Abort => {
             cx.editor.unset_theme_preview();
@@ -853,10 +859,7 @@ fn theme(
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
             } else if let Some(theme_name) = args.first() {
-                let theme_config = helix_view::theme::Config {
-                    name: theme_name.to_string(),
-                    overwrite: None,
-                };
+                let theme_config = inherit_overrides(theme_name.to_string());
                 if let Ok(theme) = cx.editor.theme_loader.load(&theme_config) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
@@ -867,11 +870,7 @@ fn theme(
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
-                let theme_config = helix_view::theme::Config {
-                    name: theme_name.to_string(),
-                    overwrite: None,
-                };
-
+                let theme_config = inherit_overrides(theme_name.to_string());
                 let theme = cx
                     .editor
                     .theme_loader
