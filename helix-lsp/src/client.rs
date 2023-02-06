@@ -407,6 +407,19 @@ impl Client {
 
     /// Forcefully shuts down the language server ignoring any errors.
     pub async fn force_shutdown(&self) -> Result<()> {
+        if !self.is_initialized() {
+            return match self.exit().await {
+                Err(e) => {
+                    log::warn!(
+                        "language server failed to exit during initialization - {}",
+                        e
+                    );
+                    return Err(e);
+                }
+                _ => Ok(()),
+            };
+        }
+
         if let Err(e) = self.shutdown().await {
             log::warn!("language server failed to terminate gracefully - {}", e);
         }
