@@ -119,8 +119,14 @@ pub enum ExplorerStyle {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ExplorerPosition {
-    Embed,
     Overlay,
+    Left,
+    Right,
+}
+
+pub enum ExplorerPositionEmbed {
+    Left,
+    Right,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -133,17 +139,18 @@ pub struct ExplorerConfig {
 }
 
 impl ExplorerConfig {
-    pub fn is_embed(&self) -> bool {
+    pub fn is_embed(&self) -> Option<ExplorerPositionEmbed> {
         match self.position {
-            ExplorerPosition::Embed => true,
-            ExplorerPosition::Overlay => false,
+            ExplorerPosition::Overlay => None,
+            ExplorerPosition::Left => Some(ExplorerPositionEmbed::Left),
+            ExplorerPosition::Right => Some(ExplorerPositionEmbed::Right),
         }
     }
 
     pub fn is_overlay(&self) -> bool {
         match self.position {
-            ExplorerPosition::Embed => false,
             ExplorerPosition::Overlay => true,
+            _ => false,
         }
     }
 
@@ -166,7 +173,7 @@ impl Default for ExplorerConfig {
     fn default() -> Self {
         Self {
             style: ExplorerStyle::Tree,
-            position: ExplorerPosition::Overlay,
+            position: ExplorerPosition::Left,
             column_width: 30,
         }
     }

@@ -6,7 +6,7 @@ use crate::{
 use anyhow::{bail, ensure, Result};
 use helix_core::Position;
 use helix_view::{
-    editor::Action,
+    editor::{Action, ExplorerPositionEmbed},
     graphics::{CursorKind, Modifier, Rect},
     input::{Event, KeyEvent},
     Editor,
@@ -496,19 +496,39 @@ impl Explorer {
         self.tree.render(list_area, surface, cx, &mut self.state);
     }
 
-    fn render_embed(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    pub fn render_embed(
+        &mut self,
+        area: Rect,
+        surface: &mut Surface,
+        cx: &mut Context,
+        position: &ExplorerPositionEmbed,
+    ) {
         let config = &cx.editor.config().explorer;
-        let side_area = area
-            .with_width(area.width.min(config.column_width as u16 + 2))
-            .clip_bottom(1);
+
+        let width = area.width.min(config.column_width as u16 + 2);
+
+        let side_area = match position {
+            ExplorerPositionEmbed::Left => Rect { width, ..area },
+            ExplorerPositionEmbed::Right => Rect {
+                x: area.width - width,
+                width,
+                ..area
+            },
+        }
+        .clip_bottom(1);
         let background = cx.editor.theme.get("ui.background");
         surface.clear_with(side_area, background);
 
-        let preview_area = area.clip_left(side_area.width).clip_bottom(2);
         let prompt_area = area.clip_top(side_area.height);
 
-        let list_area =
-            render_block(side_area.clip_left(1), surface, Borders::RIGHT).clip_bottom(1);
+        let list_area = match position {
+            ExplorerPositionEmbed::Left => {
+                render_block(side_area.clip_left(1), surface, Borders::RIGHT).clip_bottom(1)
+            }
+            ExplorerPositionEmbed::Right => {
+                render_block(side_area.clip_right(1), surface, Borders::LEFT).clip_bottom(1)
+            }
+        };
         self.tree.render(list_area, surface, cx, &mut self.state);
 
         {
@@ -517,7 +537,11 @@ impl Explorer {
             } else {
                 cx.editor.theme.get("ui.statusline.inactive")
             };
-            let area = side_area.clip_top(list_area.height).clip_right(1);
+            let area = side_area.clip_top(list_area.height);
+            let area = match position {
+                ExplorerPositionEmbed::Left => area.clip_right(1),
+                ExplorerPositionEmbed::Right => area.clip_left(1),
+            };
             surface.clear_with(area, statusline);
             // surface.set_string_truncated(
             //     area.x,
@@ -531,16 +555,30 @@ impl Explorer {
         }
 
         if self.is_focus() {
+            const PREVIEW_AREA_MAX_WIDTH: u16 = 90;
+            const PREVIEW_AREA_MAX_HEIGHT: u16 = 25;
+            let preview_area_width = (area.width - side_area.width).min(PREVIEW_AREA_MAX_WIDTH);
+            let preview_area_height = area.height.min(PREVIEW_AREA_MAX_HEIGHT);
+
+            let preview_area = match position {
+                ExplorerPositionEmbed::Left => area.clip_left(side_area.width).clip_bottom(2),
+                ExplorerPositionEmbed::Right => (Rect {
+                    x: area.width - side_area.width - preview_area_width,
+                    ..area
+                })
+                .clip_right(side_area.width)
+                .clip_bottom(2),
+            };
             if preview_area.width < 30 || preview_area.height < 3 {
                 return;
             }
-            let width = preview_area.width.min(90);
-            let mut y = self.tree.row().saturating_sub(1) as u16;
-            let height = (preview_area.height).min(25);
-            if (height + y) > preview_area.height {
-                y = preview_area.height - height;
-            }
-            let area = Rect::new(preview_area.x, y, width, height);
+            let y = self.tree.row().saturating_sub(1) as u16;
+            let y = if (preview_area_height + y) > preview_area.height {
+                preview_area.height - preview_area_height
+            } else {
+                y
+            };
+            let area = Rect::new(preview_area.x, y, preview_area_width, preview_area_height);
             surface.clear_with(area, background);
             let area = render_block(area, surface, Borders::all());
             self.render_preview(area, surface, cx.editor);
@@ -800,8 +838,8 @@ impl Component for Explorer {
             return;
         }
         let config = &cx.editor.config().explorer;
-        if config.is_embed() {
-            self.render_embed(area, surface, cx);
+        if let Some(position) = config.is_embed() {
+            self.render_embed(area, surface, cx, &position);
         } else {
             self.render_float(area, surface, cx);
         }

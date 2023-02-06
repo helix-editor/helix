@@ -17,7 +17,7 @@ use helix_core::{
 };
 use helix_view::{
     document::Mode,
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, CursorShapeConfig, ExplorerPosition},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -1266,16 +1266,26 @@ impl Component for EditorView {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
+
         // if the terminal size suddenly changed, we need to trigger a resize
-        let mut editor_area = area.clip_bottom(1);
-        if self.explorer.is_some() && (config.explorer.is_embed()) {
-            editor_area = editor_area.clip_left(config.explorer.column_width as u16 + 2);
-        }
+        let editor_area = area.clip_bottom(1);
+        let explorer_column_width = config.explorer.column_width as u16 + 2;
+        let editor_area = if self.explorer.is_some() {
+            match config.explorer.position {
+                ExplorerPosition::Overlay => editor_area,
+                ExplorerPosition::Left => editor_area.clip_left(explorer_column_width),
+                ExplorerPosition::Right => editor_area.clip_right(explorer_column_width),
+            }
+        } else {
+            editor_area
+        };
         cx.editor.resize(editor_area); // -1 from bottom for commandline
 
-        if let Some(explore) = self.explorer.as_mut() {
-            if !explore.content.is_focus() && config.explorer.is_embed() {
-                explore.content.render(area, surface, cx);
+        if let Some(explorer) = self.explorer.as_mut() {
+            if !explorer.content.is_focus() {
+                if let Some(position) = config.explorer.is_embed() {
+                    explorer.content.render_embed(area, surface, cx, &position);
+                }
             }
         }
 
@@ -1356,8 +1366,8 @@ impl Component for EditorView {
 
         if let Some(explore) = self.explorer.as_mut() {
             if explore.content.is_focus() {
-                if config.explorer.is_embed() {
-                    explore.content.render(area, surface, cx);
+                if let Some(position) = config.explorer.is_embed() {
+                    explore.content.render_embed(area, surface, cx, &position);
                 } else {
                     explore.render(area, surface, cx);
                 }
