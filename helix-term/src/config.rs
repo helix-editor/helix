@@ -12,7 +12,7 @@ use toml::de::Error as TomlError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Config {
-    #[serde(deserialize_with = "opt_string_or_struct")]
+    #[serde(default, deserialize_with = "opt_string_or_struct")]
     pub theme: Option<ThemeConfig>,
     #[serde(default = "default")]
     pub keys: HashMap<Mode, Keymap>,
