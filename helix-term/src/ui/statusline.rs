@@ -412,11 +412,11 @@ where
     write(context, format!(" {} ", file_type), None);
 }
 
-fn render_title<F>(context: &mut RenderContext, write: F, path: Option<PathBuf>)
+fn render_path<F>(context: &mut RenderContext, write: F, path: Option<PathBuf>)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let buffer_name = path
+    let path = path
         .as_ref()
         .map(|p| p.to_string_lossy())
         .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
@@ -433,7 +433,7 @@ fn render_file_name<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    render_title(context, write, context.doc.relative_path())
+    render_path(context, write, context.doc.relative_path())
 }
 
 fn render_file_modification_indicator<F>(context: &mut RenderContext, write: F)
@@ -459,7 +459,7 @@ where
         .relative_path()
         .and_then(|p| p.file_name().map(PathBuf::from));
 
-    render_title(context, write, path)
+    render_path(context, write, path)
 }
 
 fn render_separator<F>(context: &mut RenderContext, write: F)
