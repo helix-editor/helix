@@ -54,7 +54,7 @@
 # "markup.link" = "green"
 "markup.link.url" = { fg = "Pink", modifiers = ['italic', 'underlined'] }
 "markup.link.text" = "Cyan"
-"markup.link.label" = "purple"
+"markup.link.label" = "Purple 20"
 "markup.quote" = "Pink"
 "markup.raw" = "Pink"
 "markup.raw.inline" = "Cyan" # .completion / .hover
