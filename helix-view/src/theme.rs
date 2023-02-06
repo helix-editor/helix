@@ -20,92 +20,6 @@ use toml::{map::Map, Value};
 use crate::graphics::UnderlineStyle;
 pub use crate::graphics::{Color, Modifier, Style};
 
-#[derive(Clone, Default, PartialEq, Debug, Deserialize)]
-pub struct Config {
-    pub name: String,
-    pub overwrite: Option<Value>,
-}
-
-impl FromStr for Config {
-    type Err = anyhow::Error;
-    fn from_str(name: &str) -> Result<Self, Self::Err> {
-        Ok(Self {
-            name: name.to_string(),
-            overwrite: None,
-        })
-    }
-}
-
-fn string_or_struct<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-where
-    T: Deserialize<'de> + FromStr<Err = anyhow::Error>,
-    D: Deserializer<'de>,
-{
-    struct StringOrStruct<T>(PhantomData<fn() -> T>);
-
-    impl<'de, T> Visitor<'de> for StringOrStruct<T>
-    where
-        T: Deserialize<'de> + FromStr<Err = anyhow::Error>,
-    {
-        type Value = T;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("string or map")
-        }
-
-        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            Ok(FromStr::from_str(value).unwrap())
-        }
-
-        fn visit_map<M>(self, map: M) -> Result<Self::Value, M::Error>
-        where
-            M: MapAccess<'de>,
-        {
-            Deserialize::deserialize(de::value::MapAccessDeserializer::new(map))
-        }
-    }
-
-    deserializer.deserialize_any(StringOrStruct(PhantomData))
-}
-
-pub fn opt_string_or_struct<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    T: Deserialize<'de> + FromStr<Err = anyhow::Error>,
-    D: Deserializer<'de>,
-{
-    struct OptStringOrStruct<T>(PhantomData<T>);
-
-    impl<'de, T> Visitor<'de> for OptStringOrStruct<T>
-    where
-        T: Deserialize<'de> + FromStr<Err = anyhow::Error>,
-    {
-        type Value = Option<T>;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("a nul, a string or map")
-        }
-
-        fn visit_none<E>(self) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            Ok(None)
-        }
-
-        fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            string_or_struct(deserializer).map(Some)
-        }
-    }
-
-    deserializer.deserialize_option(OptStringOrStruct(PhantomData))
-}
-
 pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
     let bytes = include_bytes!("../../theme.toml");
     toml::from_str(str::from_utf8(bytes).unwrap()).expect("Failed to parse base default theme")
@@ -144,16 +58,34 @@ impl Loader {
 
     /// Loads a theme searching directories in priority order.
     pub fn load(&self, config: &Config) -> Result<Theme> {
+        // Persist the overrides in the Theme to be able to access them
+        // while using ":theme"
+        //
+        // The default themes also need to be overriden. Otherwise, while
+        // browsing through the options, `Theme.overrides` is set to `None`
+        // causing us to lose them until the session is restarted
+        let persist_overrides = |theme: Theme| -> Theme {
+            Theme {
+                overrides: config.overrides.clone(),
+                ..theme
+            }
+        };
+
         let name = &config.name;
         if name == "default" {
-            return Ok(self.default());
+            let default = self.default();
+            let default = persist_overrides(default);
+            return Ok(default);
         }
         if name == "base16_default" {
-            return Ok(self.base16_default());
+            let base16_default = self.base16_default();
+            let base16_default = persist_overrides(base16_default);
+            return Ok(base16_default);
         }
 
         let mut visited_paths = HashSet::new();
         let theme = self.load_theme(config, name, &mut visited_paths).map(Theme::from)?;
+        let theme = persist_overrides(theme);
 
         Ok(Theme {
             name: name.into(),
@@ -197,7 +129,7 @@ impl Loader {
                 _ => {
                     let parent_theme_config = Config {
                         name: parent_theme_name.to_string(),
-                        overwrite: None,
+                        overrides: None,
                     };
                     self.load_theme(
                         &parent_theme_config,
@@ -212,7 +144,7 @@ impl Loader {
             theme_toml
         };
 
-        let theme_toml = if let Some(overrides) = config.overwrite.clone() {
+        let theme_toml = if let Some(overrides) = config.overrides.clone() {
             self.merge_themes(theme_toml, overrides)
         } else {
             theme_toml
@@ -329,6 +261,7 @@ pub struct Theme {
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
     highlights: Vec<Style>,
+    pub overrides: Option<Value>,
 }
 
 impl From<Value> for Theme {
@@ -614,6 +547,97 @@ impl TryFrom<Value> for ThemePalette {
     }
 }
 
+#[derive(Clone, Default, PartialEq, Debug, Deserialize)]
+pub struct Config {
+    pub name: String,
+    pub overrides: Option<Value>,
+}
+
+impl Config {
+    pub fn new(name: String, overrides: Option<Value>) -> Self {
+        Self { name, overrides }
+    }
+}
+
+impl FromStr for Config {
+    type Err = anyhow::Error;
+    fn from_str(name: &str) -> Result<Self, Self::Err> {
+        Ok(Self {
+            name: name.to_string(),
+            overrides: None,
+        })
+    }
+}
+
+fn string_or_struct<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+    T: Deserialize<'de> + FromStr<Err = anyhow::Error>,
+    D: Deserializer<'de>,
+{
+    struct StringOrStruct<T>(PhantomData<fn() -> T>);
+
+    impl<'de, T> Visitor<'de> for StringOrStruct<T>
+    where
+        T: Deserialize<'de> + FromStr<Err = anyhow::Error>,
+    {
+        type Value = T;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("Either a TOML table for theme or 'theme=<value>'")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(FromStr::from_str(value).unwrap())
+        }
+
+        fn visit_map<M>(self, visitor: M) -> Result<Self::Value, M::Error>
+        where
+            M: MapAccess<'de>,
+        {
+            Deserialize::deserialize(de::value::MapAccessDeserializer::new(visitor))
+        }
+    }
+
+    deserializer.deserialize_any(StringOrStruct(PhantomData))
+}
+
+pub fn opt_string_or_struct<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: Deserialize<'de> + FromStr<Err = anyhow::Error>,
+    D: Deserializer<'de>,
+{
+    struct OptStringOrStruct<T>(PhantomData<T>);
+
+    impl<'de, T> Visitor<'de> for OptStringOrStruct<T>
+    where
+        T: Deserialize<'de> + FromStr<Err = anyhow::Error>,
+    {
+        type Value = Option<T>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("Either a TOML table for theme or 'theme=<value>'. Or None")
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            string_or_struct(deserializer).map(Some)
+        }
+    }
+
+    deserializer.deserialize_option(OptStringOrStruct(PhantomData))
+}
 #[cfg(test)]
 mod tests {
     use super::*;
