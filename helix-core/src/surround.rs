@@ -3,6 +3,7 @@ use std::fmt::Display;
 use crate::{search, Range, Selection};
 use ropey::RopeSlice;
 
+pub const QUOTES: &[char] = &['\'', '"', '`'];
 pub const PAIRS: &[(char, char)] = &[
     ('(', ')'),
     ('[', ']'),
@@ -85,6 +86,24 @@ pub fn find_nth_closest_pairs_pos(
                 // char as the auto-detected closest pair.
                 return find_nth_pairs_pos(text, ch, range, n);
             }
+        }
+    }
+
+    Err(Error::PairNotFound)
+}
+
+pub fn find_nth_closest_quotes_pos(
+    text: RopeSlice,
+    range: Range,
+    n: usize,
+) -> Result<(usize, usize)> {
+    let is_quote = |ch| QUOTES.iter().any(|open| *open == ch);
+
+    let pos = range.cursor(text);
+
+    for ch in text.chars_at(pos) {
+        if is_quote(ch) {
+            return find_nth_pairs_pos(text, ch, range, n);
         }
     }
 
