@@ -53,7 +53,10 @@ impl Component for SignatureHelp {
 
         let active_param_span = self.active_param_range.map(|(start, end)| {
             vec![(
-                cx.editor.theme.find_scope_index("ui.selection").unwrap(),
+                cx.editor
+                    .theme
+                    .find_scope_index_exact("ui.selection")
+                    .unwrap(),
                 start..end,
             )]
         });

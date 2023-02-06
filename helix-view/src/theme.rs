@@ -314,8 +314,21 @@ impl Theme {
         &self.scopes
     }
 
-    pub fn find_scope_index(&self, scope: &str) -> Option<usize> {
+    pub fn find_scope_index_exact(&self, scope: &str) -> Option<usize> {
         self.scopes().iter().position(|s| s == scope)
+    }
+
+    pub fn find_scope_index(&self, mut scope: &str) -> Option<usize> {
+        loop {
+            if let Some(highlight) = self.find_scope_index_exact(scope) {
+                return Some(highlight);
+            }
+            if let Some(new_end) = scope.rfind('.') {
+                scope = &scope[..new_end];
+            } else {
+                return None;
+            }
+        }
     }
 
     pub fn is_16_color(&self) -> bool {

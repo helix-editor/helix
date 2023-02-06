@@ -12,7 +12,7 @@ fn count_digits(n: usize) -> usize {
     std::iter::successors(Some(n), |&n| (n >= 10).then(|| n / 10)).count()
 }
 
-pub type GutterFn<'doc> = Box<dyn FnMut(usize, bool, &mut String) -> Option<Style> + 'doc>;
+pub type GutterFn<'doc> = Box<dyn FnMut(usize, bool, bool, &mut String) -> Option<Style> + 'doc>;
 pub type Gutter =
     for<'doc> fn(&'doc Editor, &'doc Document, &View, &Theme, bool, usize) -> GutterFn<'doc>;
 
@@ -58,31 +58,36 @@ pub fn diagnostic<'doc>(
     let hint = theme.get("hint");
     let diagnostics = doc.diagnostics();
 
-    Box::new(move |line: usize, _selected: bool, out: &mut String| {
-        use helix_core::diagnostic::Severity;
-        if let Ok(index) = diagnostics.binary_search_by_key(&line, |d| d.line) {
-            let after = diagnostics[index..].iter().take_while(|d| d.line == line);
+    Box::new(
+        move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
+            if !first_visual_line {
+                return None;
+            }
+            use helix_core::diagnostic::Severity;
+            if let Ok(index) = diagnostics.binary_search_by_key(&line, |d| d.line) {
+                let after = diagnostics[index..].iter().take_while(|d| d.line == line);
 
-            let before = diagnostics[..index]
-                .iter()
-                .rev()
-                .take_while(|d| d.line == line);
+                let before = diagnostics[..index]
+                    .iter()
+                    .rev()
+                    .take_while(|d| d.line == line);
 
-            let diagnostics_on_line = after.chain(before);
+                let diagnostics_on_line = after.chain(before);
 
-            // This unwrap is safe because the iterator cannot be empty as it contains at least the item found by the binary search.
-            let diagnostic = diagnostics_on_line.max_by_key(|d| d.severity).unwrap();
+                // This unwrap is safe because the iterator cannot be empty as it contains at least the item found by the binary search.
+                let diagnostic = diagnostics_on_line.max_by_key(|d| d.severity).unwrap();
 
-            write!(out, "●").unwrap();
-            return Some(match diagnostic.severity {
-                Some(Severity::Error) => error,
-                Some(Severity::Warning) | None => warning,
-                Some(Severity::Info) => info,
-                Some(Severity::Hint) => hint,
-            });
-        }
-        None
-    })
+                write!(out, "●").unwrap();
+                return Some(match diagnostic.severity {
+                    Some(Severity::Error) => error,
+                    Some(Severity::Warning) | None => warning,
+                    Some(Severity::Info) => info,
+                    Some(Severity::Hint) => hint,
+                });
+            }
+            None
+        },
+    )
 }
 
 pub fn diff<'doc>(
@@ -99,36 +104,41 @@ pub fn diff<'doc>(
         let hunks = diff_handle.hunks();
         let mut hunk_i = 0;
         let mut hunk = hunks.nth_hunk(hunk_i);
-        Box::new(move |line: usize, _selected: bool, out: &mut String| {
-            // truncating the line is fine here because we don't compute diffs
-            // for files with more lines than i32::MAX anyways
-            // we need to special case removals here
-            // these technically do not have a range of lines to highlight (`hunk.after.start == hunk.after.end`).
-            // However we still want to display these hunks correctly we must not yet skip to the next hunk here
-            while hunk.after.end < line as u32
-                || !hunk.is_pure_removal() && line as u32 == hunk.after.end
-            {
-                hunk_i += 1;
-                hunk = hunks.nth_hunk(hunk_i);
-            }
+        Box::new(
+            move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
+                // truncating the line is fine here because we don't compute diffs
+                // for files with more lines than i32::MAX anyways
+                // we need to special case removals here
+                // these technically do not have a range of lines to highlight (`hunk.after.start == hunk.after.end`).
+                // However we still want to display these hunks correctly we must not yet skip to the next hunk here
+                while hunk.after.end < line as u32
+                    || !hunk.is_pure_removal() && line as u32 == hunk.after.end
+                {
+                    hunk_i += 1;
+                    hunk = hunks.nth_hunk(hunk_i);
+                }
 
-            if hunk.after.start > line as u32 {
-                return None;
-            }
+                if hunk.after.start > line as u32 {
+                    return None;
+                }
 
-            let (icon, style) = if hunk.is_pure_insertion() {
-                ("▍", added)
-            } else if hunk.is_pure_removal() {
-                ("▔", deleted)
-            } else {
-                ("▍", modified)
-            };
+                let (icon, style) = if hunk.is_pure_insertion() {
+                    ("▍", added)
+                } else if hunk.is_pure_removal() {
+                    if !first_visual_line {
+                        return None;
+                    }
+                    ("▔", deleted)
+                } else {
+                    ("▍", modified)
+                };
 
-            write!(out, "{}", icon).unwrap();
-            Some(style)
-        })
+                write!(out, "{}", icon).unwrap();
+                Some(style)
+            },
+        )
     } else {
-        Box::new(move |_, _, _| None)
+        Box::new(move |_, _, _, _| None)
     }
 }
 
@@ -142,7 +152,7 @@ pub fn line_numbers<'doc>(
     let text = doc.text().slice(..);
     let width = line_numbers_width(view, doc);
 
-    let last_line_in_view = view.last_line(doc);
+    let last_line_in_view = view.estimate_last_doc_line(doc);
 
     // Whether to draw the line number for the last line of the
     // document or not.  We only draw it if it's not an empty line.
@@ -158,34 +168,42 @@ pub fn line_numbers<'doc>(
     let line_number = editor.config().line_number;
     let mode = editor.mode;
 
-    Box::new(move |line: usize, selected: bool, out: &mut String| {
-        if line == last_line_in_view && !draw_last {
-            write!(out, "{:>1$}", '~', width).unwrap();
-            Some(linenr)
-        } else {
-            use crate::{document::Mode, editor::LineNumber};
-
-            let relative = line_number == LineNumber::Relative
-                && mode != Mode::Insert
-                && is_focused
-                && current_line != line;
-
-            let display_num = if relative {
-                abs_diff(current_line, line)
+    Box::new(
+        move |line: usize, selected: bool, first_visual_line: bool, out: &mut String| {
+            if line == last_line_in_view && !draw_last {
+                write!(out, "{:>1$}", '~', width).unwrap();
+                Some(linenr)
             } else {
-                line + 1
-            };
+                use crate::{document::Mode, editor::LineNumber};
 
-            let style = if selected && is_focused {
-                linenr_select
-            } else {
-                linenr
-            };
+                let relative = line_number == LineNumber::Relative
+                    && mode != Mode::Insert
+                    && is_focused
+                    && current_line != line;
 
-            write!(out, "{:>1$}", display_num, width).unwrap();
-            Some(style)
-        }
-    })
+                let display_num = if relative {
+                    abs_diff(current_line, line)
+                } else {
+                    line + 1
+                };
+
+                let style = if selected && is_focused {
+                    linenr_select
+                } else {
+                    linenr
+                };
+
+                if first_visual_line {
+                    write!(out, "{:>1$}", display_num, width).unwrap();
+                } else {
+                    write!(out, "{:>1$}", " ", width).unwrap();
+                }
+
+                // TODO: Use then_some when MSRV reaches 1.62
+                first_visual_line.then(|| style)
+            }
+        },
+    )
 }
 
 /// The width of a "line-numbers" gutter
@@ -210,7 +228,7 @@ pub fn padding<'doc>(
     _theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
-    Box::new(|_line: usize, _selected: bool, _out: &mut String| None)
+    Box::new(|_line: usize, _selected: bool, _first_visual_line: bool, _out: &mut String| None)
 }
 
 #[inline(always)]
@@ -237,41 +255,46 @@ pub fn breakpoints<'doc>(
 
     let breakpoints = match breakpoints {
         Some(breakpoints) => breakpoints,
-        None => return Box::new(move |_, _, _| None),
+        None => return Box::new(move |_, _, _, _| None),
     };
 
-    Box::new(move |line: usize, _selected: bool, out: &mut String| {
-        let breakpoint = breakpoints
-            .iter()
-            .find(|breakpoint| breakpoint.line == line)?;
-
-        let mut style = if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
-            error.underline_style(UnderlineStyle::Line)
-        } else if breakpoint.condition.is_some() {
-            error
-        } else if breakpoint.log_message.is_some() {
-            info
-        } else {
-            warning
-        };
-
-        if !breakpoint.verified {
-            // Faded colors
-            style = if let Some(Color::Rgb(r, g, b)) = style.fg {
-                style.fg(Color::Rgb(
-                    ((r as f32) * 0.4).floor() as u8,
-                    ((g as f32) * 0.4).floor() as u8,
-                    ((b as f32) * 0.4).floor() as u8,
-                ))
-            } else {
-                style.fg(Color::Gray)
+    Box::new(
+        move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
+            if !first_visual_line {
+                return None;
             }
-        };
+            let breakpoint = breakpoints
+                .iter()
+                .find(|breakpoint| breakpoint.line == line)?;
 
-        let sym = if breakpoint.verified { "▲" } else { "⊚" };
-        write!(out, "{}", sym).unwrap();
-        Some(style)
-    })
+            let mut style = if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
+                error.underline_style(UnderlineStyle::Line)
+            } else if breakpoint.condition.is_some() {
+                error
+            } else if breakpoint.log_message.is_some() {
+                info
+            } else {
+                warning
+            };
+
+            if !breakpoint.verified {
+                // Faded colors
+                style = if let Some(Color::Rgb(r, g, b)) = style.fg {
+                    style.fg(Color::Rgb(
+                        ((r as f32) * 0.4).floor() as u8,
+                        ((g as f32) * 0.4).floor() as u8,
+                        ((b as f32) * 0.4).floor() as u8,
+                    ))
+                } else {
+                    style.fg(Color::Gray)
+                }
+            };
+
+            let sym = if breakpoint.verified { "▲" } else { "⊚" };
+            write!(out, "{}", sym).unwrap();
+            Some(style)
+        },
+    )
 }
 
 pub fn diagnostics_or_breakpoints<'doc>(
@@ -284,18 +307,22 @@ pub fn diagnostics_or_breakpoints<'doc>(
     let mut diagnostics = diagnostic(editor, doc, view, theme, is_focused);
     let mut breakpoints = breakpoints(editor, doc, view, theme, is_focused);
 
-    Box::new(move |line, selected, out| {
-        breakpoints(line, selected, out).or_else(|| diagnostics(line, selected, out))
+    Box::new(move |line, selected, first_visual_line: bool, out| {
+        breakpoints(line, selected, first_visual_line, out)
+            .or_else(|| diagnostics(line, selected, first_visual_line, out))
     })
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
     use crate::document::Document;
-    use crate::editor::{GutterConfig, GutterLineNumbersConfig};
+    use crate::editor::{Config, GutterConfig, GutterLineNumbersConfig};
     use crate::graphics::Rect;
     use crate::DocumentId;
+    use arc_swap::ArcSwap;
     use helix_core::Rope;
 
     #[test]
@@ -304,7 +331,11 @@ mod tests {
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(rope, None);
+        let doc = Document::from(
+            rope,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
 
         assert_eq!(view.gutters.layout.len(), 5);
         assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
@@ -325,7 +356,11 @@ mod tests {
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(rope, None);
+        let doc = Document::from(
+            rope,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
 
         assert_eq!(view.gutters.layout.len(), 1);
         assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
@@ -339,7 +374,11 @@ mod tests {
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(rope, None);
+        let doc = Document::from(
+            rope,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
 
         assert_eq!(view.gutters.layout.len(), 2);
         assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
@@ -357,10 +396,18 @@ mod tests {
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("a\nb");
-        let doc_short = Document::from(rope, None);
+        let doc_short = Document::from(
+            rope,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
 
         let rope = Rope::from_str("a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np");
-        let doc_long = Document::from(rope, None);
+        let doc_long = Document::from(
+            rope,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
 
         assert_eq!(view.gutters.layout.len(), 2);
         assert_eq!(view.gutters.layout[1].width(&view, &doc_short), 1);

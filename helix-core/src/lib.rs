@@ -6,6 +6,7 @@ pub mod comment;
 pub mod config;
 pub mod diagnostic;
 pub mod diff;
+pub mod doc_formatter;
 pub mod graphemes;
 pub mod history;
 pub mod increment;
@@ -24,6 +25,7 @@ pub mod shellwords;
 pub mod surround;
 pub mod syntax;
 pub mod test;
+pub mod text_annotations;
 pub mod textobject;
 mod transaction;
 pub mod wrap;
@@ -95,8 +97,12 @@ pub use {regex, tree_sitter};
 
 pub use graphemes::RopeGraphemes;
 pub use position::{
-    coords_at_pos, pos_at_coords, pos_at_visual_coords, visual_coords_at_pos, Position,
+    char_idx_at_visual_offset, coords_at_pos, pos_at_coords, visual_offset_from_anchor,
+    visual_offset_from_block, Position,
 };
+#[allow(deprecated)]
+pub use position::{pos_at_visual_coords, visual_coords_at_pos};
+
 pub use selection::{Range, Selection};
 pub use smallvec::{smallvec, SmallVec};
 pub use syntax::Syntax;
