@@ -153,6 +153,7 @@ where
         helix_view::editor::StatusLineElement::Position => render_position,
         helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
         helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
+        helix_view::editor::StatusLineElement::CodePoint => render_code_point,
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
     }
@@ -447,6 +448,22 @@ where
     write(context, title, None);
 }
 
+fn render_code_point<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let text = context.doc.text();
+    let cursor = context
+        .doc
+        .selection(context.view.id)
+        .primary()
+        .cursor(text.slice(..));
+
+    if let Some(c) = text.get_char(cursor) {
+        write(context, char_to_code_point(c), None)
+    }
+}
+
 fn render_separator<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
@@ -465,4 +482,26 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     write(context, String::from(" "), None);
+}
+
+fn char_to_code_point(c: char) -> String {
+    // Uses "U+" notation as described here:
+    // https://en.wikipedia.org/wiki/Unicode#Architecture_and_terminology
+    format!("U+{:04X}", c as u32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::char_to_code_point;
+
+    #[test]
+    fn char_to_code_point_examples() {
+        assert_eq!("U+0000", &char_to_code_point('\u{0}'));
+        assert_eq!("U+000F", &char_to_code_point('\u{F}'));
+        assert_eq!("U+00FF", &char_to_code_point('\u{FF}'));
+        assert_eq!("U+0FFF", &char_to_code_point('\u{FFF}'));
+        assert_eq!("U+FFFF", &char_to_code_point('\u{FFFF}'));
+        assert_eq!("U+FFFFF", &char_to_code_point('\u{FFFFF}'));
+        assert_eq!("U+10FFFF", &char_to_code_point('\u{10FFFF}'));
+    }
 }

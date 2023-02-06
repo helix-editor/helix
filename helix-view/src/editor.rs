@@ -489,6 +489,9 @@ pub enum StatusLineElement {
     /// The total line numbers of the current file
     TotalLineNumbers,
 
+    /// The code point under the cursor
+    CodePoint,
+
     /// A single space
     Spacer,
 }
