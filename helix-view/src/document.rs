@@ -586,8 +586,6 @@ impl Document {
 
         let last_saved_time = self.last_saved_time;
 
-        let prevent_external_modifications = self.config.load().prevent_external_modifications;
-
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
             use tokio::{fs, fs::File};
@@ -603,7 +601,7 @@ impl Document {
             }
 
             // Protect against overwriting changes made externally
-            if !force && prevent_external_modifications {
+            if !force {
                 if let Ok(metadata) = fs::metadata(&path).await {
                     if let Ok(mtime) = metadata.modified() {
                         if last_saved_time < mtime {
