@@ -846,7 +846,7 @@ fn theme(
     let true_color = cx.editor.config.load().true_color || crate::true_color();
 
     // Take the new theme name and return a theme config with currently applied overrides
-    use helix_view::theme::Config as ThemeConfig;
+    use helix_view::theme::ThemeConfig;
     let inherit_overrides =
         |name: String| ThemeConfig::new(name, cx.editor.theme.overrides.clone());
 

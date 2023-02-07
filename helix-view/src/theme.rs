@@ -57,7 +57,7 @@ impl Loader {
     }
 
     /// Loads a theme searching directories in priority order.
-    pub fn load(&self, config: &Config) -> Result<Theme> {
+    pub fn load(&self, config: &ThemeConfig) -> Result<Theme> {
         // Persist the overrides in the Theme to be able to access them
         // while using ":theme"
         //
@@ -105,7 +105,7 @@ impl Loader {
     fn load_theme(
         &self,
         name: &str,
-        config: &Config,
+        config: &ThemeConfig,
         visited_paths: &mut HashSet<PathBuf>,
     ) -> Result<Value> {
         let name = &config.name;
@@ -127,7 +127,7 @@ impl Loader {
                 "default" => DEFAULT_THEME_DATA.clone(),
                 "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
                 _ => {
-                    let parent_theme_config = Config {
+                    let parent_theme_config = ThemeConfig {
                         name: parent_theme_name.to_string(),
                         overrides: None,
                     };
@@ -548,18 +548,18 @@ impl TryFrom<Value> for ThemePalette {
 }
 
 #[derive(Clone, Default, PartialEq, Debug, Deserialize)]
-pub struct Config {
+pub struct ThemeConfig {
     pub name: String,
     pub overrides: Option<Value>,
 }
 
-impl Config {
+impl ThemeConfig {
     pub fn new(name: String, overrides: Option<Value>) -> Self {
         Self { name, overrides }
     }
 }
 
-impl FromStr for Config {
+impl FromStr for ThemeConfig {
     type Err = anyhow::Error;
     fn from_str(name: &str) -> Result<Self, Self::Err> {
         Ok(Self {

@@ -2,7 +2,7 @@ use crate::keymap;
 use crate::keymap::{merge_keys, Keymap};
 use helix_loader::merge_toml_values;
 use helix_view::document::Mode;
-use helix_view::theme::{opt_string_or_struct, Config as ThemeConfig};
+use helix_view::theme::{opt_string_or_struct, ThemeConfig};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
