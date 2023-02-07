@@ -1176,7 +1176,11 @@ fn reload(
     doc.reload(view, &cx.editor.diff_providers, redraw_handle)
         .map(|_| {
             view.ensure_cursor_in_view(doc, scrolloff);
-        })
+        })?;
+    if let Err(_) = doc.load_history() {
+        cx.editor.set_error("failed to load history from disk");
+    }
+    Ok(())
 }
 
 fn reload_all(

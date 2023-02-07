@@ -1137,6 +1137,7 @@ dependencies = [
  "smartstring",
  "tempfile",
  "textwrap",
+ "tokio",
  "toml",
  "tree-sitter",
  "unicode-general-category",

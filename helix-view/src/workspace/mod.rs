@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use helix_core::path::path_as_bytes;
+use helix_core::path::os_str_as_bytes;
 use sha1_smol::Sha1;
 
 pub struct Workspace {
@@ -18,7 +18,7 @@ impl Workspace {
     // TODO: Allow custom session names to be passed.
     pub fn new() -> Result<Self> {
         let path = std::env::current_dir()?;
-        let bytes = path_as_bytes(path);
+        let bytes = os_str_as_bytes(path);
         let hash = Sha1::from(bytes).digest().to_string();
         let path = helix_loader::cache_dir().join("workspaces").join(hash);
         Ok(Self { path, lock: None })
@@ -100,7 +100,11 @@ impl FileLock {
                 std::fs::DirBuilder::new().recursive(true).create(parent)?;
             }
         }
-        OpenOptions::new().write(true).create(true).open(path)
+        OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(path)
     }
 }
 

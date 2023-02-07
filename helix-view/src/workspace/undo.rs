@@ -6,7 +6,7 @@ use std::{
 
 use helix_core::{
     parse::*,
-    path::{path_as_bytes, path_from_bytes},
+    path::{os_str_as_bytes, path_from_bytes},
 };
 
 #[derive(Default, Debug)]
@@ -16,7 +16,7 @@ impl UndoIndex {
     pub fn serialize<W: Write>(&self, writer: &mut W) -> Result<()> {
         write_vec(writer, &self.0, |writer, (id, path)| {
             write_usize(writer, *id)?;
-            write_vec(writer, &path_as_bytes(path), |writer, byte| {
+            write_vec(writer, &os_str_as_bytes(path), |writer, byte| {
                 write_byte(writer, *byte)
             })?;
             Ok(())

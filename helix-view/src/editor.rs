@@ -1303,6 +1303,9 @@ impl Editor {
                 Some(self.syn_loader.clone()),
                 self.config.clone(),
             )?;
+            if let Err(_) = doc.load_history() {
+                self.set_error("failed to load history from disk");
+            }
 
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
                 doc.set_diff_base(diff_base, self.redraw_handle.clone());

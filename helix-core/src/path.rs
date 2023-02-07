@@ -145,14 +145,14 @@ pub fn get_truncated_path<P: AsRef<Path>>(path: P) -> PathBuf {
     ret
 }
 
-pub fn path_as_bytes<P: AsRef<Path>>(path: P) -> Vec<u8> {
+pub fn os_str_as_bytes<P: AsRef<std::ffi::OsStr>>(path: P) -> Vec<u8> {
     let path = path.as_ref();
 
     #[cfg(windows)]
     return path.to_str().unwrap().into();
 
     #[cfg(unix)]
-    return std::os::unix::ffi::OsStrExt::as_bytes(path.as_os_str()).into();
+    return std::os::unix::ffi::OsStrExt::as_bytes(path.into()).to_vec();
 }
 
 pub fn path_from_bytes(slice: &[u8]) -> Result<PathBuf, Utf8Error> {
@@ -165,13 +165,21 @@ pub fn path_from_bytes(slice: &[u8]) -> Result<PathBuf, Utf8Error> {
     ));
 }
 
-pub fn escape_path<P: AsRef<Path>>(path: P) -> PathBuf {
-    let mut res = PathBuf::with_capacity(path.as_ref().as_os_str().len());
-    for component in path.as_ref() {
-        let mut bytes = vec![b'%'];
-        bytes.append(&mut path_as_bytes(PathBuf::from(component)));
-        let s = path_from_bytes(&bytes).unwrap();
-        res.push(s);
+pub fn is_sep_byte(b: u8) -> bool {
+    if cfg!(windows) {
+        b == b'/' || b == b'\\'
+    } else {
+        b == b'/'
     }
-    res
+}
+
+pub fn escape_path(path: &Path) -> PathBuf {
+    let s = path.as_os_str().to_os_string();
+    let mut bytes = os_str_as_bytes(&s);
+    for b in bytes.iter_mut() {
+        if is_sep_byte(*b) {
+            *b = b'%';
+        }
+    }
+    path_from_bytes(&bytes).unwrap()
 }

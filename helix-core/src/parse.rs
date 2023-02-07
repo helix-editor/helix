@@ -60,8 +60,8 @@ pub fn write_option<W: Write, T>(
 
 pub fn read_byte<R: Read>(reader: &mut R) -> Result<u8> {
     match reader.bytes().next() {
-        Some(byte) => byte,
-        None => Err(Error::new(ErrorKind::Other, "end of file")),
+        Some(s) => s,
+        None => Err(Error::from(ErrorKind::UnexpectedEof)),
     }
 }
 
