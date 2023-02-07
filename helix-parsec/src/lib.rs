@@ -157,6 +157,35 @@ where
     }
 }
 
+/// A parser which matches all values until the specified pattern no longer match.
+///
+/// This parser only ever fails if the input has a length of zero.
+///
+/// # Examples
+///
+/// ```
+/// use helix_parsec::{take_while, Parser};
+/// let parser = take_while(|c| c == '1');
+/// assert_eq!(Ok(("2", "11")), parser.parse("112"));
+/// assert_eq!(Err("22"), parser.parse("22"));
+/// ```
+pub fn take_while<'a, F>(pattern: F) -> impl Parser<'a, Output = &'a str>
+where
+    F: Fn(char) -> bool,
+{
+    move |input: &'a str| match input
+        .char_indices()
+        .take_while(|(_p, c)| pattern(*c))
+        .last()
+    {
+        Some((index, c)) => {
+            let index = index + c.len_utf8();
+            Ok((&input[index..], &input[0..index]))
+        }
+        _ => Err(input),
+    }
+}
+
 // Variadic parser combinators
 
 /// A parser combinator which matches a sequence of parsers in an all-or-nothing fashion.

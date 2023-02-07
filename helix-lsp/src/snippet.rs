@@ -50,14 +50,11 @@ pub struct Snippet<'a> {
     elements: Vec<SnippetElement<'a>>,
 }
 
-pub fn parse<'a>(s: &'a str) -> Result<Snippet<'a>> {
+pub fn parse(s: &str) -> Result<Snippet<'_>> {
     parser::parse(s).map_err(|rest| anyhow!("Failed to parse snippet. Remaining input: {}", rest))
 }
 
 mod parser {
-    use helix_core::regex;
-    use once_cell::sync::Lazy;
-
     use helix_parsec::*;
 
     use super::{CaseChange, FormatItem, Regex, Snippet, SnippetElement};
@@ -86,17 +83,34 @@ mod parser {
         else        ::= text
     */
 
-    static DIGIT: Lazy<regex::Regex> = Lazy::new(|| regex::Regex::new(r"^[0-9]+").unwrap());
-    static VARIABLE: Lazy<regex::Regex> =
-        Lazy::new(|| regex::Regex::new(r"^[_a-zA-Z][_a-zA-Z0-9]*").unwrap());
-    static TEXT: Lazy<regex::Regex> = Lazy::new(|| regex::Regex::new(r"^[^\$]+").unwrap());
-
     fn var<'a>() -> impl Parser<'a, Output = &'a str> {
-        pattern(&VARIABLE)
+        // var = [_a-zA-Z][_a-zA-Z0-9]*
+        move |input: &'a str| match input
+            .char_indices()
+            .take_while(|(p, c)| {
+                *c == '_'
+                    || if *p == 0 {
+                        c.is_ascii_alphabetic()
+                    } else {
+                        c.is_ascii_alphanumeric()
+                    }
+            })
+            .last()
+        {
+            Some((index, c)) if index >= 1 => {
+                let index = index + c.len_utf8();
+                Ok((&input[index..], &input[0..index]))
+            }
+            _ => Err(input),
+        }
+    }
+
+    fn text<'a>() -> impl Parser<'a, Output = &'a str> {
+        take_while(|c| c != '$')
     }
 
     fn digit<'a>() -> impl Parser<'a, Output = usize> {
-        filter_map(pattern(&DIGIT), |s| s.parse().ok())
+        filter_map(take_while(|c| c.is_ascii_digit()), |s| s.parse().ok())
     }
 
     fn case_change<'a>() -> impl Parser<'a, Output = CaseChange> {
@@ -152,7 +166,7 @@ mod parser {
                 |seq| { Conditional(seq.1, None, Some(seq.4)) }
             ),
             // Any text
-            map(pattern(&TEXT), Text),
+            map(text(), Text),
         )
     }
 
@@ -245,12 +259,9 @@ mod parser {
         )
     }
 
-    fn text<'a>() -> impl Parser<'a, Output = SnippetElement<'a>> {
-        map(pattern(&TEXT), SnippetElement::Text)
-    }
-
     fn anything<'a>() -> impl Parser<'a, Output = SnippetElement<'a>> {
-        choice!(tabstop(), placeholder(), choice(), variable(), text())
+        let text = map(text(), SnippetElement::Text);
+        choice!(tabstop(), placeholder(), choice(), variable(), text)
     }
 
     fn snippet<'a>() -> impl Parser<'a, Output = Snippet<'a>> {
