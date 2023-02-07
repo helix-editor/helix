@@ -129,7 +129,7 @@ pub fn config_file() -> PathBuf {
 }
 
 pub fn workspace_config_file() -> PathBuf {
-    find_workspace().join(".helix").join("config.toml")
+    find_workspace().0.join(".helix").join("config.toml")
 }
 
 pub fn lang_config_file() -> PathBuf {
@@ -283,14 +283,19 @@ mod merge_toml_tests {
 }
 
 /// Finds the current workspace folder.
-/// Used as a ceiling dir for root resolve, for the filepicker and other related
-pub fn find_workspace() -> PathBuf {
+/// Used as a ceiling dir for LSP root resolution, the filepicker and potentially as a future filewatching root
+///
+/// This function starts searching the FS upward from the CWD
+/// and returns the first directory that contains either `.git` or `.helix`.
+/// If no workspace was found returns (CWD, true).
+/// Otherwise (workspace, false) is returned
+pub fn find_workspace() -> (PathBuf, bool) {
     let current_dir = std::env::current_dir().expect("unable to determine current directory");
     for ancestor in current_dir.ancestors() {
         if ancestor.join(".git").exists() || ancestor.join(".helix").exists() {
-            return ancestor.to_owned();
+            return (ancestor.to_owned(), false);
         }
     }
 
-    current_dir
+    (current_dir, true)
 }

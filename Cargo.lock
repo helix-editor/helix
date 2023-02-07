@@ -1149,6 +1149,7 @@ dependencies = [
  "helix-parsec",
  "log",
  "lsp-types",
+ "parking_lot",
  "serde",
  "serde_json",
  "thiserror",
