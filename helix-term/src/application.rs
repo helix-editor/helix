@@ -1018,7 +1018,7 @@ impl Application {
                         let language_server =
                             self.editor.language_servers.get_by_id(server_id).unwrap();
 
-                        Ok(json!(language_server.workspace_folders()))
+                        Ok(json!(&*language_server.workspace_folders().await))
                     }
                     Ok(MethodCall::WorkspaceConfiguration(params)) => {
                         let result: Vec<_> = params
