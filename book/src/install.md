@@ -1,15 +1,17 @@
-# Installing Helix
+# Installation
 
 <!--toc:start-->
-- [Installing Helix](#installing-helix)
-  - [Using the Pre-built Binaries](#using-the-pre-built-binaries)
-  - [Installing Helix on Linux through the Official Package Manager](#installing-helix-on-linux-through-the-official-package-manager)
-  - [Installing Helix on Linux via Third-Party Repositories](#installing-helix-on-linux-via-third-party-repositories)
-  - [Installing Helix on macOS via Homebrew](#installing-helix-on-macos-via-homebrew)
-  - [Installing Helix on Windows](#installing-helix-on-windows)
-  - [Building from Source](#building-from-source)
+- [Installation](#installation)
+  - [Pre-built binaries](#pre-built-binaries)
+  - [Official repositories for Linux, macOS and Windows](#official-repositories-for-linux-macos-and-windows)
+  - [Third party repositories for Linux](#third-party-repositories-for-linux)
+    - [Ubuntu](#ubuntu)
+    - [Fedora/RHEL](#fedorarhel)
+    - [Arch Linux community](#arch-linux-community)
+    - [NixOS](#nixos)
+  - [Building from source](#building-from-source)
   - [Validating the Installation](#validating-the-installation)
-  <!--toc:end-->
+<!--toc:end-->
 
 To install Helix, follow the instructions specific to your operating system.
 Additionally:
@@ -22,35 +24,29 @@ Additionally:
   [Helix Wiki](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)
   for detailed instructions.
 
-## Using the Pre-built Binaries
+## Pre-built binaries
 
 Download pre-built binaries from the
 [GitHub Releases page](https://github.com/helix-editor/helix/releases). You will
 need to add the binary to your system's `$PATH` to access it from the command
 line.
 
-## Installing Helix on Linux through the Official Package Manager
+## Official repositories for Linux, macOS and Windows
 
-If your Linux distribution has Helix available through its official package
-manager, install it through that. The following shows availability
-throughout the Linux ecosystem:
+Helix is available for Linux, macOS and Windows via the official repositories listed below. For installation instructions consult the documentation.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
-## Installing Helix on Linux via Third-Party Repositories
+If Helix is not available through the above list, you will need to use a
+third-party repository or build from source.
 
-If Helix is not available through your distribution's official repository, use a
-third-party repository.
+## Third party repositories for Linux
+
+The following third party repositories are available:
 
 ### Ubuntu
 
-Helix is available for the following versions of Ubuntu:
-
-- 20.04 LTS (Focal Fossa)
-- 22.04 LTS (Jammy Jellyfish)
-- 22.10 (Kinetic Kudu)
-
-Via [Maveonair's PPA](https://launchpad.net/~maveonair/+archive/ubuntu/helix-editor)
+Helix is available via [Maveonair's PPA](https://launchpad.net/~maveonair/+archive/ubuntu/helix-editor):
 
 ```sh
 sudo add-apt-repository ppa:maveonair/helix-editor
@@ -58,7 +54,7 @@ sudo apt update
 sudo apt install helix
 ```
 
-### Fedora/RHEL Linux
+### Fedora/RHEL
 
 Helix is available via `copr`:
 
@@ -67,9 +63,9 @@ sudo dnf copr enable varlad/helix
 sudo dnf install helix
 ```
 
-### Arch Linux Community
+### Arch Linux community
 
-Releases are available in the community repository. Additionally, a
+Releases are available in the `community` repository. Additionally, a
 [helix-git](https://aur.archlinux.org/packages/helix-git/) package is available
 in the AUR, which builds the master branch.
 
@@ -84,39 +80,6 @@ accepts the new settings on first use.
 If you are using a version of Nix without flakes enabled,
 [install Cachix CLI](https://docs.cachix.org/installation) and use
 `cachix use helix` to configure Nix to use cached outputs when possible.
-
-## Installing Helix on macOS via Homebrew
-
-Helix is available in Homebrew Core:
-
-```sh
-brew install helix
-```
-
-## Installing Helix on Windows
-
-Install on Windows using [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
-or [MSYS2](https://msys2.org/).
-
-**Scoop:**
-
-```sh
-scoop install helix
-```
-
-**Chocolatey:**
-
-```sh
-choco install helix
-```
-
-**MSYS2:**
-
-For 64-bit Windows 8.1 or above:
-
-```sh
-pacman -S mingw-w64-ucrt-x86_64-helix
-```
 
 ## Building from source
 
