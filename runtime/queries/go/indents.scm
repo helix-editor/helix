@@ -20,9 +20,9 @@
 ] @indent
 
 [
-  "case"
   "]"
   ")"
 ] @outdent
 
-("}") @outdent (#not-kind-eq? @parent "select-statement")
+((_ "}" @outdent) @outer (#not-kind-eq? @outer "select_statement"))
+(communication_case) @extend
