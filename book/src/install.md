@@ -31,7 +31,7 @@ Download pre-built binaries from the
 need to add the binary to your system's `$PATH` to access it from the command
 line.
 
-## Official repositories for Linux, macOS and Windows
+## Official repositories for Linux, macOS, Windows and OpenBSD
 
 Helix is available for Linux, macOS and Windows via the official repositories listed below. For installation instructions consult the documentation.
 
