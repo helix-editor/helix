@@ -24,7 +24,7 @@
 To install Helix, follow the instructions specific to your operating system.
 Additionally:
 
-- To get the latest pre-release version of Helix, you will need to
+- To get the latest nightly version of Helix, you will need to
   [build from source](#building-from-source).
 
 - To take full advantage of Helix, install the language servers for your
