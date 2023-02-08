@@ -4,8 +4,6 @@ To use a theme add `theme = "<name>"` to the top of your [`config.toml`](./confi
 
 ## Creating a Theme
 
-### Creating Your Theme File
-
 To create a theme file:
 
 1. Create a 'themes' folder in your user configuration folder (e.g.
@@ -16,7 +14,7 @@ To create a theme file:
 > 💡 The names "default" and "base16_default" are reserved for built-in themes
 > and cannot be overridden by user-defined themes.
 
-### An Overview of the Theme File Format
+### Overview
 
 Each line in the theme file is specified as below:
 
@@ -45,8 +43,7 @@ user-submitted themes
 
 ### Using the Linter
 
-If you plan to submit your theme for inclusion in Helix, it is recommended to
-use the supplied linting tool to ensure compliance with the specifications:
+Use the supplied linting tool to check for errors and missing scopes:
 
 ```sh
 cargo xtask themelint onedark # replace onedark with <name>

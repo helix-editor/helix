@@ -4,12 +4,12 @@
 - [Using Helix](#using-helix)
   - [Registers](#registers)
     - [User-defined Registers](#user-defined-registers)
-    - [Built-in Registers](#built-in-registers)
+    - [Special Registers](#special-registers)
   - [Surround](#surround)
-  - [Moving the Selection with Syntax-tree Motions](#moving-the-selection-with-syntax-tree-motions)
   - [Selecting and Manipulating Text with Textobjects](#selecting-and-manipulating-text-with-textobjects)
   - [Navigating Using Tree-sitter Textobjects](#navigating-using-tree-sitter-textobjects)
-  <!--toc:end-->
+  - [Moving the Selection with Syntax-aware Motions](#moving-the-selection-with-syntax-aware-motions)
+<!--toc:end-->
 
 For a full interactive introduction to Helix, refer to the
 [tutor](https://github.com/helix-editor/helix/blob/master/runtime/tutor) which
@@ -38,7 +38,7 @@ If a register is selected before invoking a change or delete command, the select
 - `"hc` - Store the selection in register `h` and then change it (delete and enter insert mode).
 - `"md` - Store the selection in register `m` and delete it.
 
-### Built-in Registers
+### Special Registers
 
 | Register character | Contains              |
 | ---                | ---                   |
@@ -47,7 +47,7 @@ If a register is selected before invoking a change or delete command, the select
 | `"`                | Last yanked text      |
 | `_`                | Black hole            |
 
-The system clipboard is not directly supported by a built-in register. Instead, special commands and keybindings are provided. Refer to the
+The system clipboard is not directly supported by a special register. Instead, special commands and keybindings are provided. Refer to the
 [key map](keymap.md#space-mode) for more details.
 
 The black hole register is a no-op register, meaning that no data will be read or written to it.
@@ -76,7 +76,54 @@ Surround can also act on multiple selections. For example, to change every occur
 
 Multiple characters are currently not supported, but planned for future release.
 
-## Moving the Selection with Syntax-tree Motions
+## Selecting and Manipulating Text with Textobjects
+
+In Helix, textobjects are a way to select, manipulate and operate on a piece of
+text in a structured way. They allow you to refer to blocks of text based on
+their structure or purpose, such as a word, sentence, paragraph, or even a
+function or block of code.
+
+![Textobject demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
+![Textobject tree-sitter demo](https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif)
+
+- `ma` - Select around the object (`va` in Vim, `<alt-a>` in Kakoune)
+- `mi` - Select inside the object (`vi` in Vim, `<alt-i>` in Kakoune)
+
+| Key after `mi` or `ma` | Textobject selected      |
+| ---                    | ---                      |
+| `w`                    | Word                     |
+| `W`                    | WORD                     |
+| `p`                    | Paragraph                |
+| `(`, `[`, `'`, etc.    | Specified surround pairs |
+| `m`                    | The closest surround pair    |
+| `f`                    | Function                 |
+| `c`                    | Class                    |
+| `a`                    | Argument/parameter       |
+| `o`                    | Comment                  |
+| `t`                    | Test                     |
+| `g`                    | Change                   |
+
+> 💡 `f`, `c`, etc. need a tree-sitter grammar active for the current
+document and a special tree-sitter query file to work properly. [Only
+some grammars][lang-support] currently have the query file implemented.
+Contributions are welcome!
+
+## Navigating Using Tree-sitter Textobjects
+
+Navigating between functions, classes, parameters, and other elements is
+possible using tree-sitter and textobject queries. For
+example to move to the next function use `]f`, to move to previous
+class use `[c`, and so on.
+
+![Tree-sitter-nav-demo][tree-sitter-nav-demo]
+
+For the full reference see the [unimpaired][unimpaired-keybinds] section of the key bind
+documentation.
+
+> 💡 This feature relies on tree-sitter textobjects
+> and requires the corresponding query file to work properly.
+
+## Moving the Selection with Syntax-aware Motions
 
 `Alt-p`, `Alt-o`, `Alt-i`, and `Alt-n` (or `Alt` and arrow keys) allow you to move the 
 selection according to its location in the syntax tree. For example, many languages have the
@@ -140,53 +187,6 @@ child node will be selected. In the event that `arg1` does not have a previous
 sibling, the selection will move up the syntax tree and select the previous
 element. As a result, using `Alt-p` with a selection on `arg1` will move the
 selection to the "func" `identifier`.
-
-## Selecting and Manipulating Text with Textobjects
-
-In Helix, textobjects are a way to select, manipulate and operate on a piece of
-text in a structured way. They allow you to refer to blocks of text based on
-their structure or purpose, such as a word, sentence, paragraph, or even a
-function or block of code.
-
-![Textobject demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
-![Textobject tree-sitter demo](https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif)
-
-- `ma` - Select around the object (`va` in Vim, `<alt-a>` in Kakoune)
-- `mi` - Select inside the object (`vi` in Vim, `<alt-i>` in Kakoune)
-
-| Key after `mi` or `ma` | Textobject selected      |
-| ---                    | ---                      |
-| `w`                    | Word                     |
-| `W`                    | WORD                     |
-| `p`                    | Paragraph                |
-| `(`, `[`, `'`, etc.    | Specified surround pairs |
-| `m`                    | The closest surround pair    |
-| `f`                    | Function                 |
-| `c`                    | Class                    |
-| `a`                    | Argument/parameter       |
-| `o`                    | Comment                  |
-| `t`                    | Test                     |
-| `g`                    | Change                   |
-
-> 💡 `f`, `c`, etc. need a tree-sitter grammar active for the current
-document and a special tree-sitter query file to work properly. [Only
-some grammars][lang-support] currently have the query file implemented.
-Contributions are welcome!
-
-## Navigating Using Tree-sitter Textobjects
-
-Navigating between functions, classes, parameters, and other elements is
-possible using tree-sitter and textobject queries. For
-example to move to the next function use `]f`, to move to previous
-class use `[c`, and so on.
-
-![Tree-sitter-nav-demo][tree-sitter-nav-demo]
-
-For the full reference see the [unimpaired][unimpaired-keybinds] section of the key bind
-documentation.
-
-> 💡 This feature relies on tree-sitter textobjects
-> and requires the corresponding query file to work properly.
 
 [lang-support]: ./lang-support.md
 [unimpaired-keybinds]: ./keymap.md#unimpaired
