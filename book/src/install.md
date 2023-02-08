@@ -1,9 +1,9 @@
-# Installation
+# Installing Helix
 
 <!--toc:start-->
-- [Installation](#installation)
+- [Installing Helix](#installing-helix)
   - [Pre-built binaries](#pre-built-binaries)
-  - [Linux, macOS, Windows and OpenBSD via official repositories](#linux-macos-windows-and-openbsd-via-official-repositories)
+  - [Linux, macOS, Windows and OpenBSD packaging status](#linux-macos-windows-and-openbsd-packaging-status)
   - [Linux](#linux)
     - [Ubuntu](#ubuntu)
     - [Fedora/RHEL](#fedorarhel)
@@ -16,30 +16,30 @@
     - [Chocolatey](#chocolatey)
     - [MSYS2](#msys2)
   - [Building from source](#building-from-source)
-    - [Additional steps for Linux and macOS](#additional-steps-for-linux-and-macos)
-    - [Additional steps for Windows](#additional-steps-for-windows)
+    - [Configuring Helix's runtime files for Linux and macOS](#configuring-helixs-runtime-files-for-linux-and-macos)
+    - [Configuring Helix's runtime files for Windows](#configuring-helixs-runtime-files-for-windows)
   - [Validating the Installation](#validating-the-installation)
+  - [Configure the Desktop Shortcut](#configure-the-desktop-shortcut)
 <!--toc:end-->
 
 To install Helix, follow the instructions specific to your operating system.
-Additionally:
+Note that:
 
-- To get the latest nightly version of Helix, you will need to
+- To get the latest nightly version of Helix, you need to
   [build from source](#building-from-source).
 
 - To take full advantage of Helix, install the language servers for your
-  preferred programming languages. Refer to the
-  [Helix Wiki](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)
-  for detailed instructions.
+  preferred programming languages. See the
+  [wiki](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)
+  for instructions.
 
 ## Pre-built binaries
 
 Download pre-built binaries from the
-[GitHub Releases page](https://github.com/helix-editor/helix/releases). You will
-need to add the binary to your system's `$PATH` to access it from the command
+[GitHub Releases page](https://github.com/helix-editor/helix/releases). Add the binary to your system's `$PATH` to use it from the command
 line.
 
-## Linux, macOS, Windows and OpenBSD via official repositories
+## Linux, macOS, Windows and OpenBSD packaging status
 
 Helix is available for Linux, macOS and Windows via the official repositories listed below.
 
@@ -124,21 +124,21 @@ pacman -S mingw-w64-ucrt-x86_64-helix
 
 ## Building from source
 
-1. Clone the repository:
+Clone the repository:
 
 ```sh
 git clone https://github.com/helix-editor/helix
 cd helix
 ```
 
-2. Compile Helix:
+Compile Helix:
 
 ```sh
 cargo install --path helix-term --locked
 ```
 
 This command will create the `hx` executable and construct the tree-sitter
-grammars in the `runtime` folder, or in the folder specified in `HELIX_RUNTIME`
+grammars either in the `runtime` folder, or in the folder specified in `HELIX_RUNTIME`
 (as described below).
 
 > 💡 If you are using the musl-libc instead of glibc the following environment variable must be set during the build
@@ -148,80 +148,40 @@ grammars in the `runtime` folder, or in the folder specified in `HELIX_RUNTIME`
 > RUSTFLAGS="-C target-feature=-crt-static"
 > ```
 
-3. Configure Helix's runtime files
-
-**IMPORTANT**: The runtime files must be accessible to the newly created binary.
-They are currently located in the source code `runtime` directory. To make them
-accessible, you must follow the instructions for your operating system:
-
 > 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
 > grammars with `hx --grammar fetch` (requires `git`) and compile them with
 > `hx --grammar build` (requires a C++ compiler).
 
-### Additional steps for Linux and macOS
+### Configuring Helix's runtime files for Linux and macOS
 
-Either,
-
-1. Set the `HELIX_RUNTIME` environment variable on your system to tell Helix
-   where to find the runtime files.
-
-   Use the `HELIX_RUNTIME=/path/to/helix/runtime` format, for example:
-   `HELIX_RUNTIME=/home/user-name/src/helix/runtime`. Add this variable to your
-   `~/.bashrc` file or equivalent to persist it.
-
-Or,
-
-2. Create a symlink in `~/.config/helix` that links to the source code
-   directory.
-
-   ```sh
-   ln -s $PWD/runtime ~/.config/helix/runtime
-   ```
-
-And optionally:
-
-3. Configure the Desktop Shortcut
-
-If your desktop environment supports the
-[XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html)
-you can configure Helix to show up in the application menu by copying the
-provided `.desktop` and icon files to their correct folders:
+Either set the `HELIX_RUNTIME` environment variable to point to the runtime files and add it to your `~/.bashrc` or equivalent:
 
 ```sh
-cp contrib/Helix.desktop ~/.local/share/applications
-cp contrib/helix.png ~/.icons # or ~/.local/share/icons
+HELIX_RUNTIME=/home/user-name/src/helix/runtime
 ```
 
-To use another terminal than the system default, you can modify the `.desktop`
-file. For example, to use `kitty`:
+Or, create a symlink in `~/.config/helix` that links to the source code
+   directory.
 
 ```sh
-sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
-sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
+ln -s $PWD/runtime ~/.config/helix/runtime
 ```
 
-### Additional steps for Windows
+### Configuring Helix's runtime files for Windows
 
-Either,
+Either set the `HELIX_RUNTIME` environment variable to point to the runtime files using the Windows setting (search for
+`Edit environment variables for your account`) or use the `setx` command in
+Cmd:
 
-1. Set the `HELIX_RUNTIME` environment variable on your system to tell Helix
-   where to find the runtime files.
+```sh
+setx HELIX_RUNTIME "%userprofile%\source\repos\helix\runtime"
+```
 
-   You can either do this using the Windows setting (search for
-   `Edit environment variables for your account`) or use the `setx` command in
-   Cmd:
+> 💡 `%userprofile%` resolves to your user directory like
+> `C:\Users\Your-Name\` for example.
 
-   ```sh
-   setx HELIX_RUNTIME "%userprofile%\source\repos\helix\runtime"
-   ```
-
-   > 💡 `%userprofile%` resolves to your user directory like
-   > `C:\Users\Your-Name\` for example.
-
-Or,
-
-2. Create a symlink in `%appdata%\helix\` that links to the source code
-   directory.
+Or, create a symlink in `%appdata%\helix\` that links to the source code
+   directory:
 
    | Method     | Command                                                                                |
    | ---------- | -------------------------------------------------------------------------------------- |
@@ -242,3 +202,23 @@ hx --health
 
 For more information on the health check results refer to
 [Health check](https://github.com/helix-editor/helix/wiki/Healthcheck).
+
+## Configure the Desktop Shortcut
+
+If your desktop environment supports the
+[XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html)
+you can configure Helix to show up in the application menu by copying the
+provided `.desktop` and icon files to their correct folders:
+
+```sh
+cp contrib/Helix.desktop ~/.local/share/applications
+cp contrib/helix.png ~/.icons # or ~/.local/share/icons
+```
+
+To use another terminal than the system default, you can modify the `.desktop`
+file. For example, to use `kitty`:
+
+```sh
+sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
+sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
+```
