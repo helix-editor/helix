@@ -144,7 +144,7 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 
     diff_handle: Option<DiffHandle>,
-    version_control_head: Option<Arc<ArcSwap<Arc<str>>>>,
+    version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
 }
 
 use std::{fmt, mem};
@@ -1106,7 +1106,7 @@ impl Document {
 
     pub fn set_version_control_head(
         &mut self,
-        version_control_head: Option<Arc<ArcSwap<Arc<str>>>>,
+        version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
     ) {
         self.version_control_head = version_control_head;
     }

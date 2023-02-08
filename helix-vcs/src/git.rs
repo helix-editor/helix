@@ -91,7 +91,7 @@ impl DiffProvider for Git {
         Some(data)
     }
 
-    fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Arc<str>>>> {
+    fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
         debug_assert!(!file.exists() || file.is_file());
         debug_assert!(file.is_absolute());
         let repo = Git::open_repo(file.parent()?, None)?.to_thread_local();
@@ -103,7 +103,7 @@ impl DiffProvider for Git {
             None => head_commit.id.to_hex_with_len(8).to_string(),
         };
 
-        Some(Arc::new(ArcSwap::from_pointee(Arc::from(name))))
+        Some(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
     }
 }
 

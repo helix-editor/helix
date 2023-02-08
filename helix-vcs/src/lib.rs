@@ -19,7 +19,7 @@ pub trait DiffProvider {
     /// The data is returned as raw byte without any decoding or encoding performed
     /// to ensure all file encodings are handled correctly.
     fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>>;
-    fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Arc<str>>>>;
+    fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>>;
 }
 
 #[doc(hidden)]
@@ -29,7 +29,7 @@ impl DiffProvider for Dummy {
         None
     }
 
-    fn get_current_head_name(&self, _file: &Path) -> Option<Arc<ArcSwap<Arc<str>>>> {
+    fn get_current_head_name(&self, _file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
         None
     }
 }
@@ -45,7 +45,7 @@ impl DiffProviderRegistry {
             .find_map(|provider| provider.get_diff_base(file))
     }
 
-    pub fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Arc<str>>>> {
+    pub fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
         self.providers
             .iter()
             .find_map(|provider| provider.get_current_head_name(file))
