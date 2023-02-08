@@ -3,13 +3,21 @@
 <!--toc:start-->
 - [Installation](#installation)
   - [Pre-built binaries](#pre-built-binaries)
-  - [Official repositories for Linux, macOS and Windows](#official-repositories-for-linux-macos-and-windows)
-  - [Third party repositories for Linux](#third-party-repositories-for-linux)
+  - [Linux, macOS, Windows and OpenBSD via official repositories](#linux-macos-windows-and-openbsd-via-official-repositories)
+  - [Linux](#linux)
     - [Ubuntu](#ubuntu)
     - [Fedora/RHEL](#fedorarhel)
     - [Arch Linux community](#arch-linux-community)
     - [NixOS](#nixos)
+  - [macOS](#macos)
+    - [Homebrew Core](#homebrew-core)
+  - [Windows](#windows)
+    - [Scoop](#scoop)
+    - [Chocolatey](#chocolatey)
+    - [MSYS2](#msys2)
   - [Building from source](#building-from-source)
+    - [Additional steps for Linux and macOS](#additional-steps-for-linux-and-macos)
+    - [Additional steps for Windows](#additional-steps-for-windows)
   - [Validating the Installation](#validating-the-installation)
 <!--toc:end-->
 
@@ -31,16 +39,13 @@ Download pre-built binaries from the
 need to add the binary to your system's `$PATH` to access it from the command
 line.
 
-## Official repositories for Linux, macOS, Windows and OpenBSD
+## Linux, macOS, Windows and OpenBSD via official repositories
 
-Helix is available for Linux, macOS and Windows via the official repositories listed below. For installation instructions consult the documentation.
+Helix is available for Linux, macOS and Windows via the official repositories listed below.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
-If Helix is not available through the above list, you will need to use a
-third-party repository or build from source.
-
-## Third party repositories for Linux
+## Linux
 
 The following third party repositories are available:
 
@@ -80,6 +85,42 @@ accepts the new settings on first use.
 If you are using a version of Nix without flakes enabled,
 [install Cachix CLI](https://docs.cachix.org/installation) and use
 `cachix use helix` to configure Nix to use cached outputs when possible.
+@@ -85,39 +81,6 @@ ### NixOS
+ [install Cachix CLI](https://docs.cachix.org/installation) and use
+ `cachix use helix` to configure Nix to use cached outputs when possible.
+ 
+## macOS
+
+### Homebrew Core
+
+```sh
+brew install helix
+```
+
+## Windows
+
+Install on Windows using [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
+or [MSYS2](https://msys2.org/).
+
+### Scoop
+
+```sh
+scoop install helix
+```
+
+### Chocolatey
+
+```sh
+choco install helix
+```
+
+### MSYS2
+
+For 64-bit Windows 8.1 or above:
+
+```sh
+pacman -S mingw-w64-ucrt-x86_64-helix
+```
 
 ## Building from source
 
@@ -117,7 +158,7 @@ accessible, you must follow the instructions for your operating system:
 > grammars with `hx --grammar fetch` (requires `git`) and compile them with
 > `hx --grammar build` (requires a C++ compiler).
 
-- Linux and macOS
+### Additional steps for Linux and macOS
 
 Either,
 
@@ -159,7 +200,7 @@ sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.deskt
 sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 ```
 
-- Windows
+### Additional steps for Windows
 
 Either,
 
