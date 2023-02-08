@@ -8,7 +8,7 @@
 # Email: sainnhe@gmail.com
 # License: MIT License
 
-"type" = { fg = "yellow", modifiers = ["italic"] }
+"type" = "yellow"
 "constant" = "fg"
 "constant.builtin" = { fg = "purple", modifiers = ["italic"] }
 "constant.builtin.boolean" = "purple"
@@ -30,7 +30,7 @@
 "keyword" = "red"
 "keyword.operator" = "orange"
 "keyword.directive" = "purple"
-"keyword.storage" = "orange"
+"keyword.storage" = "red"
 "operator" = "orange"
 "function" = "green"
 "function.macro" = "green"
