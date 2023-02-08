@@ -85,9 +85,6 @@ accepts the new settings on first use.
 If you are using a version of Nix without flakes enabled,
 [install Cachix CLI](https://docs.cachix.org/installation) and use
 `cachix use helix` to configure Nix to use cached outputs when possible.
-@@ -85,39 +81,6 @@ ### NixOS
- [install Cachix CLI](https://docs.cachix.org/installation) and use
- `cachix use helix` to configure Nix to use cached outputs when possible.
  
 ## macOS
 
