@@ -1073,7 +1073,7 @@ name = "dockerfile"
 scope = "source.dockerfile"
 injection-regex = "docker|dockerfile"
 roots = ["Dockerfile", "Containerfile"]
-file-types = ["Dockerfile", "dockerfile", "Containerfile"]
+file-types = ["Dockerfile", "dockerfile", "Containerfile", "containerfile"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "docker-langserver", args = ["--stdio"] }
