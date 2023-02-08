@@ -15,7 +15,13 @@ use helix_view::{
 };
 
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
-type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
+
+#[derive(Clone)]
+enum PromptMode {
+    Input,
+    RegisterSelecting,
+    HistorySelecting(String),
+}
 
 pub struct Prompt {
     prompt: Cow<'static, str>,
@@ -28,7 +34,7 @@ pub struct Prompt {
     completion_fn: Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>,
     callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
     pub doc_fn: Box<dyn Fn(&str) -> Option<Cow<str>>>,
-    next_char_handler: Option<PromptCharHandler>,
+    mode: PromptMode,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -79,7 +85,7 @@ impl Prompt {
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
-            next_char_handler: None,
+            mode: PromptMode::Input,
         }
     }
 
@@ -202,13 +208,6 @@ impl Prompt {
     }
 
     pub fn insert_char(&mut self, c: char, cx: &Context) {
-        if let Some(handler) = &self.next_char_handler.take() {
-            handler(self, c, cx);
-
-            self.next_char_handler = None;
-            return;
-        }
-
         self.line.insert(self.cursor, c);
         let mut cursor = GraphemeCursor::new(self.cursor, self.line.len(), false);
         if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
@@ -287,6 +286,32 @@ impl Prompt {
         self.recalculate_completion(editor);
     }
 
+    fn step(
+        &self,
+        pos: Option<usize>,
+        end: usize,
+        direction: &CompletionDirection,
+    ) -> Option<usize> {
+        match (direction, pos) {
+            (CompletionDirection::Forward, None) => Some(0),
+            (CompletionDirection::Backward, None) => Some(end),
+            (CompletionDirection::Forward, Some(p)) => {
+                if p == end {
+                    None
+                } else {
+                    Some(p + 1)
+                }
+            }
+            (CompletionDirection::Backward, Some(p)) => {
+                if p == 0 {
+                    None
+                } else {
+                    Some(p - 1)
+                }
+            }
+        }
+    }
+
     pub fn change_history(
         &mut self,
         cx: &mut Context,
@@ -299,19 +324,45 @@ impl Prompt {
             _ => return,
         };
 
-        let end = values.len().saturating_sub(1);
+        if values.is_empty() {
+            return;
+        }
 
-        let index = match direction {
-            CompletionDirection::Forward => self.history_pos.map_or(0, |i| i + 1),
-            CompletionDirection::Backward => {
-                self.history_pos.unwrap_or(values.len()).saturating_sub(1)
+        let query = match &self.mode {
+            PromptMode::HistorySelecting(q) => q,
+            _ => "",
+        };
+
+        let end = if query.is_empty() {
+            // Ignore the last entry while iterating through the values, as when we clear out
+            // self.line it will be displayed by default.
+            values.len().saturating_sub(2)
+        } else {
+            values.len().saturating_sub(1)
+        };
+
+        let mut index = self.step(self.history_pos, end, &direction);
+
+        loop {
+            match index {
+                None => {
+                    // can't find a match, revert to end
+                    self.line = query.to_string();
+                    self.history_pos = None;
+                    break;
+                }
+
+                Some(index_value) => {
+                    if values[index_value].contains(query) && self.line != values[index_value] {
+                        self.line = values[index_value].clone();
+                        self.history_pos = index;
+                        break;
+                    }
+
+                    index = self.step(index, end, &direction);
+                }
             }
         }
-        .min(end);
-
-        self.line = values[index].clone();
-
-        self.history_pos = Some(index);
 
         self.move_end();
         (self.callback_fn)(cx, &self.line, PromptEvent::Update);
@@ -496,6 +547,9 @@ impl Component for Prompt {
             compositor.pop();
         })));
 
+        let current_mode = self.mode.clone();
+        self.mode = PromptMode::Input;
+
         match event {
             ctrl!('c') | key!(Esc) => {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
@@ -570,11 +624,19 @@ impl Component for Prompt {
             }
             ctrl!('p') | key!(Up) => {
                 if let Some(register) = self.history_register {
+                    self.mode = match current_mode {
+                        PromptMode::HistorySelecting(_) => current_mode,
+                        _ => PromptMode::HistorySelecting(self.line.clone()),
+                    };
                     self.change_history(cx, register, CompletionDirection::Backward);
                 }
             }
             ctrl!('n') | key!(Down) => {
                 if let Some(register) = self.history_register {
+                    self.mode = match current_mode {
+                        PromptMode::HistorySelecting(_) => current_mode,
+                        _ => PromptMode::HistorySelecting(self.line.clone()),
+                    };
                     self.change_history(cx, register, CompletionDirection::Forward);
                 }
             }
@@ -606,26 +668,30 @@ impl Component for Prompt {
                         (0.., format!("{} {}", ch, &content).into())
                     })
                     .collect();
-                self.next_char_handler = Some(Box::new(|prompt, c, context| {
-                    prompt.insert_str(
-                        context
-                            .editor
-                            .registers
-                            .read(c)
-                            .and_then(|r| r.first())
-                            .map_or("", |r| r.as_str()),
-                        context.editor,
-                    );
-                }));
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
-                return EventResult::Consumed(None);
+                self.mode = PromptMode::RegisterSelecting;
             }
             // any char event that's not mapped to any other combo
             KeyEvent {
                 code: KeyCode::Char(c),
                 modifiers: _,
             } => {
-                self.insert_char(c, cx);
+                match current_mode {
+                    PromptMode::RegisterSelecting => {
+                        self.insert_str(
+                            cx.editor
+                                .registers
+                                .read(c)
+                                .and_then(|r| r.first())
+                                .map_or("", |r| r.as_str()),
+                            cx.editor,
+                        );
+                        self.recalculate_completion(cx.editor);
+                    }
+                    _ => {
+                        self.insert_char(c, cx);
+                    }
+                }
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             _ => (),
