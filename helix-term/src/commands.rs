@@ -5035,7 +5035,7 @@ async fn shell_impl_async(
             log::error!("Shell error: {}", err);
             bail!("Shell error: {}", err);
         }
-        bail!("Shell command failed");
+        bail!("[Process exited 1]");
     } else if !output.stderr.is_empty() {
         log::debug!(
             "Command printed to stderr: {}",
