@@ -147,10 +147,10 @@ pub mod util {
         // Note that the end of the line here is **before** the line terminator
         // so we must use `line_end_char_index` istead of `doc.line_to_char(pos_line + 1)`
         //
-        // FIXME: Helix does not fully compley with the LSP spec for line terminators.
+        // FIXME: Helix does not fully comply with the LSP spec for line terminators.
         // The LSP standard requires that line terminators are ['\n', '\r\n', '\r'].
-        // Without the unicode-linbreak feature disabeled, the `\r` terminator is not handeled by helix.
-        // With the unicode-linbreak feature, helix recognized multiple extra line break chars
+        // Without the unicode-linebreak feature disabled, the `\r` terminator is not handled by helix.
+        // With the unicode-linebreak feature, helix recognizes multiple extra line break chars
         // which means that positions will be decoded/encoded incorrectly in their presence
 
         let line = match offset_encoding {
@@ -177,7 +177,7 @@ pub mod util {
             .unwrap_or(line.end)
             .min(line.end);
 
-        // TODO prefer UTF32/char indecies to avoid this step
+        // TODO prefer UTF32/char indices to avoid this step
         match offset_encoding {
             OffsetEncoding::Utf8 => doc.try_byte_to_char(pos).ok(),
             OffsetEncoding::Utf16 => doc.try_utf16_cu_to_char(pos).ok(),
