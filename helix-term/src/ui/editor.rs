@@ -224,10 +224,7 @@ impl EditorView {
 
         Self::render_diagnostics(doc, view, inner, surface, theme);
 
-        let statusline_area = view
-            .area
-            .clip_top(view.area.height.saturating_sub(1))
-            .clip_bottom(1); // -1 from bottom to remove commandline
+        let statusline_area = view.area.clip_top(view.area.height);
 
         let mut context =
             statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
@@ -1388,7 +1385,7 @@ impl Component for EditorView {
 
             surface.set_string(
                 area.x,
-                area.y + area.height.saturating_sub(1),
+                area.y + area.height.saturating_sub(2),
                 status_msg,
                 style,
             );
