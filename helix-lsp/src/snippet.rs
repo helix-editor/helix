@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use anyhow::{anyhow, Result};
+use helix_core::SmallVec;
 
 use crate::{util::lsp_pos_to_pos, OffsetEncoding};
 
@@ -87,7 +88,7 @@ pub fn into_transaction<'a>(
 
     let mut insert = String::new();
     let mut offset = (primary_cursor as i128 + start_offset) as usize;
-    let mut tabstops: Vec<Range> = Vec::new();
+    let mut tabstops: Vec<(usize, Range)> = Vec::new();
 
     for element in snippet.elements {
         match element {
@@ -111,20 +112,15 @@ pub fn into_transaction<'a>(
                 offset += text.chars().count();
                 insert.push_str(text);
             }
-            Tabstop { .. } => {
-                // TODO: tabstop indexing: 0 is final cursor position. 1,2,.. are positions.
-                // TODO: merge tabstops with the same index
-                tabstops.push(Range::point(offset));
+            Tabstop { tabstop } => {
+                tabstops.push((tabstop, Range::point(offset)));
             }
-            Placeholder {
-                tabstop: _tabstop,
-                value,
-            } => match value.as_ref() {
+            Placeholder { tabstop, value } => match value.as_ref() {
                 // https://doc.rust-lang.org/beta/unstable-book/language-features/box-patterns.html
                 // would make this a bit nicer
                 Text(text) => {
                     let len_chars = text.chars().count();
-                    tabstops.push(Range::new(offset, offset + len_chars + 1));
+                    tabstops.push((tabstop, Range::new(offset, offset + len_chars + 1)));
                     offset += len_chars;
                     insert.push_str(text);
                 }
@@ -155,8 +151,25 @@ pub fn into_transaction<'a>(
         )
     });
 
-    if let Some(first) = tabstops.first() {
-        transaction.with_selection(Selection::new(smallvec![*first], 0))
+    // sort in ascending order (except for 0, which should always be the last one (per lsp doc))
+    tabstops.sort_unstable_by_key(|(n, _range)| if *n == 0 { usize::MAX } else { *n });
+
+    // merge tabstops with the same index (we take advantage of the fact that we just sorted them
+    // above to simply look backwards)
+    let mut ntabstops = Vec::<SmallVec<[Range; 1]>>::new();
+    let mut prev = None;
+    for (tabstop, range) in tabstops {
+        if prev == Some(tabstop) {
+            let len_1 = ntabstops.len() - 1;
+            ntabstops[len_1].push(range);
+        } else {
+            prev = Some(tabstop);
+            ntabstops.push(smallvec![range]);
+        }
+    }
+
+    if let Some(first) = ntabstops.first() {
+        transaction.with_selection(Selection::new(first.clone(), 0))
     } else {
         transaction
     }
