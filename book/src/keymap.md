@@ -171,7 +171,7 @@ These modes (except command mode) can be configured by
 
 #### View mode
 
-View mode is access by typing `z` in [normal mode](#normal-mode)
+View mode is accessed by typing `z` in [normal mode](#normal-mode)
 and is intended for scrolling and manipulating the view without changing
 the selection. The "sticky" variant of this mode (accessed by typing `Z` in
 normal mode) is persistent and can be exited using the escape key. This is

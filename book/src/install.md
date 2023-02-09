@@ -16,10 +16,9 @@
     - [Chocolatey](#chocolatey)
     - [MSYS2](#msys2)
   - [Building from source](#building-from-source)
-    - [Configuring Helix's runtime files for Linux and macOS](#configuring-helixs-runtime-files-for-linux-and-macos)
-    - [Configuring Helix's runtime files for Windows](#configuring-helixs-runtime-files-for-windows)
-  - [Validating the Installation](#validating-the-installation)
-  - [Configure the Desktop Shortcut](#configure-the-desktop-shortcut)
+    - [Configuring Helix's runtime files](#configuring-helixs-runtime-files)
+    - [Validating the Installation](#validating-the-installation)
+    - [Configure the Desktop Shortcut](#configure-the-desktop-shortcut)
 <!--toc:end-->
 
 To install Helix, follow the instructions specific to your operating system.
@@ -149,7 +148,9 @@ grammars either in the `runtime` folder, or in the folder specified in `HELIX_RU
 > grammars with `hx --grammar fetch` (requires `git`) and compile them with
 > `hx --grammar build` (requires a C++ compiler).
 
-### Configuring Helix's runtime files for Linux and macOS
+### Configuring Helix's runtime files
+
+- **Linux and macOS**
 
 Either set the `HELIX_RUNTIME` environment variable to point to the runtime files and add it to your `~/.bashrc` or equivalent:
 
@@ -157,14 +158,13 @@ Either set the `HELIX_RUNTIME` environment variable to point to the runtime file
 HELIX_RUNTIME=/home/user-name/src/helix/runtime
 ```
 
-Or, create a symlink in `~/.config/helix` that links to the source code
-   directory.
+Or, create a symlink in `~/.config/helix` that links to the source code directory:
 
 ```sh
 ln -s $PWD/runtime ~/.config/helix/runtime
 ```
 
-### Configuring Helix's runtime files for Windows
+- **Windows**
 
 Either set the `HELIX_RUNTIME` environment variable to point to the runtime files using the Windows setting (search for
 `Edit environment variables for your account`) or use the `setx` command in
@@ -177,8 +177,7 @@ setx HELIX_RUNTIME "%userprofile%\source\repos\helix\runtime"
 > 💡 `%userprofile%` resolves to your user directory like
 > `C:\Users\Your-Name\` for example.
 
-Or, create a symlink in `%appdata%\helix\` that links to the source code
-   directory:
+Or, create a symlink in `%appdata%\helix\` that links to the source code directory:
 
    | Method     | Command                                                                                |
    | ---------- | -------------------------------------------------------------------------------------- |
@@ -188,7 +187,7 @@ Or, create a symlink in `%appdata%\helix\` that links to the source code
    > 💡 On Windows, creating a symbolic link may require running PowerShell or
    > Cmd as an administrator.
 
-## Validating the Installation
+### Validating the Installation
 
 To make sure everything is set up as expected you should run the Helix health
 check:
@@ -200,7 +199,7 @@ hx --health
 For more information on the health check results refer to
 [Health check](https://github.com/helix-editor/helix/wiki/Healthcheck).
 
-## Configure the Desktop Shortcut
+### Configure the Desktop Shortcut
 
 If your desktop environment supports the
 [XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html)
