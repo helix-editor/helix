@@ -127,7 +127,7 @@ git clone https://github.com/helix-editor/helix
 cd helix
 ```
 
-Compile Helix:
+Compile from source:
 
 ```sh
 cargo install --path helix-term --locked
