@@ -20,7 +20,7 @@
 )
 
 (record_operand (atom (ident) @variable))
-(let_expr
+(let_in_block
   "let" @keyword
   "rec"? @keyword
   pat: (pattern
@@ -53,7 +53,7 @@
 (interpolation_end) @punctuation.bracket
 
 ["forall" "default" "doc"] @keyword
-["if" "then" "else" "switch"] @keyword.control.conditional
+["if" "then" "else" "match"] @keyword.control.conditional
 "import" @keyword.control.import
 
 (infix_expr
