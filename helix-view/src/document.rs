@@ -39,6 +39,8 @@ const BUF_SIZE: usize = 8192;
 
 const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
 
+pub const DEFAULT_LANGUAGE_NAME: &str = "text";
+
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
