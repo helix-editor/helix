@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  merge_group:
   schedule:
     - cron: '00 01 * * *'
 
