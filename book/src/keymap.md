@@ -173,7 +173,7 @@ These modes (except command mode) can be configured by
 
 Accessed by typing `z` in [normal mode](#normal-mode).
 
-View mode is is intended for scrolling and manipulating the view without changing
+View mode is intended for scrolling and manipulating the view without changing
 the selection. The "sticky" variant of this mode (accessed by typing `Z` in
 normal mode) is persistent and can be exited using the escape key. This is
 useful when you're simply looking over text and not actively editing it.
@@ -224,7 +224,7 @@ Jumps to various locations.
 Accessed by typing `m` in [normal mode](#normal-mode).
 
 See the relevant section in [Usage](./usage.md) for an explanation about
-[surround](./usage.md#surround) and [textobject](./usage.md#textobjects) usage.
+[surround](./usage.md#surround) and [textobject](./usage.md#navigating-using-tree-sitter-textobjects) usage.
 
 | Key              | Description                                     | Command                    |
 | -----            | -----------                                     | -------                    |
@@ -279,7 +279,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `d`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                |
 | `D`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`      |
 | `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                     |
-| `a`     | Apply code action  (**LSP**)                                            | `code_action`                       |
+| `a`     | Apply code action (**LSP**)                                             | `code_action`                       |
 | `'`     | Open last fuzzy picker                                                  | `last_picker`                       |
 | `w`     | Enter [window mode](#window-mode)                                       | N/A                                 |
 | `p`     | Paste system clipboard after selections                                 | `paste_clipboard_after`             |
