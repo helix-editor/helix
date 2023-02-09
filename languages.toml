@@ -577,7 +577,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nickel"
-source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "9d83db400b6c11260b9106f131f93ddda8131933" }
+source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "3a794388773f2424a97b2186828aa3fac4c66ce6" }
 
 [[language]]
 name = "nix"
