@@ -206,7 +206,7 @@ impl EditorView {
             highlights,
             theme,
             &mut line_decorations,
-            &mut *translated_positions,
+            &mut translated_positions,
         );
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
@@ -723,12 +723,7 @@ impl EditorView {
         let viewport = view.area;
 
         let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
-            let area = Rect::new(
-                viewport.x,
-                viewport.y + pos.visual_line as u16,
-                viewport.width,
-                1,
-            );
+            let area = Rect::new(viewport.x, viewport.y + pos.visual_line, viewport.width, 1);
             if primary_line == pos.doc_line {
                 renderer.surface.set_style(area, primary_style);
             } else if secondary_lines.binary_search(&pos.doc_line).is_ok() {

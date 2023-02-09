@@ -36,7 +36,7 @@ const LOW_SIX_BITS: u32 = 0x3F;
 pub fn encode(input: &[u8]) -> String {
     let rem = input.len() % 3;
     let complete_chunks = input.len() / 3;
-    let remainder_chunk = if rem == 0 { 0 } else { 1 };
+    let remainder_chunk = usize::from(rem != 0);
     let encoded_size = (complete_chunks + remainder_chunk) * 4;
 
     let mut output = vec![0; encoded_size];
