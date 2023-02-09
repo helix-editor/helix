@@ -1098,10 +1098,8 @@ impl Document {
         }
     }
 
-    pub fn version_control_head(&self) -> Option<String> {
-        self.version_control_head
-            .clone()
-            .map(|head| (*head).load().as_ref().as_ref().to_owned())
+    pub fn version_control_head(&self) -> Option<Arc<Box<str>>> {
+        self.version_control_head.as_ref().map(|a| a.load_full())
     }
 
     pub fn set_version_control_head(

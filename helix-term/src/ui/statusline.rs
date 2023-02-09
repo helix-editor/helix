@@ -472,9 +472,11 @@ fn render_version_control<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    write(
-        context,
-        context.doc.version_control_head().unwrap_or_default(),
-        None,
-    );
+    let head = context
+        .doc
+        .version_control_head()
+        .unwrap_or_default()
+        .to_string();
+
+    write(context, head, None);
 }
