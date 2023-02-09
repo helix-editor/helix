@@ -153,7 +153,7 @@ Search commands all operate on the `/` register by default. To use a different r
 
 ### Minor modes
 
-Minor modes are accessible from normal mode and typically switch back to normal mode after a command.
+These sub-modes are accessible from normal mode and typically switch back to normal mode after a command.
 
 | Key      | Description                                        | Command        |
 | -----    | -----------                                        | -------        |
@@ -171,8 +171,9 @@ These modes (except command mode) can be configured by
 
 #### View mode
 
-View mode is accessed by typing `z` in [normal mode](#normal-mode)
-and is intended for scrolling and manipulating the view without changing
+Accessed by typing `z` in [normal mode](#normal-mode).
+
+View mode is is intended for scrolling and manipulating the view without changing
 the selection. The "sticky" variant of this mode (accessed by typing `Z` in
 normal mode) is persistent and can be exited using the escape key. This is
 useful when you're simply looking over text and not actively editing it.
@@ -193,8 +194,9 @@ useful when you're simply looking over text and not actively editing it.
 
 #### Goto mode
 
-Goto mode is accessed by typing `g` in [normal mode](#normal-mode), it jumps to
-various locations.
+Accessed by typing `g` in [normal mode](#normal-mode).
+
+Jumps to various locations.
 
 | Key   | Description                                      | Command                    |
 | ----- | -----------                                      | -------                    |
@@ -219,7 +221,7 @@ various locations.
 
 #### Match mode
 
-Match mode is accessed by typing `m` in [normal mode](#normal-mode).
+Accessed by typing `m` in [normal mode](#normal-mode).
 
 See the relevant section in [Usage](./usage.md) for an explanation about
 [surround](./usage.md#surround) and [textobject](./usage.md#textobjects) usage.
@@ -237,8 +239,9 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 #### Window mode
 
-Window mode is accessed by typing `Ctrl-w` in [normal mode](#normal-mode),
-this layer is similar to Vim keybindings as Kakoune does not support windows.
+Accessed by typing `Ctrl-w` in [normal mode](#normal-mode).
+
+This layer is similar to Vim keybindings as Kakoune does not support windows.
 
 | Key                    | Description                                          | Command           |
 | -----                  | -------------                                        | -------           |
@@ -260,7 +263,7 @@ this layer is similar to Vim keybindings as Kakoune does not support windows.
 
 #### Space mode
 
-Space mode is accessed by typing `Space` in [normal mode](#normal-mode).
+Accessed by typing `Space` in [normal mode](#normal-mode).
 
 This layer is a kludge of mappings, mostly pickers.
 
