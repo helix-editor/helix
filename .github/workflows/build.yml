@@ -10,19 +10,11 @@ on:
 
 jobs:
   check:
-    name: Check
+    name: Check (msrv)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, msrv]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-
-      - name: Use MSRV rust toolchain
-        if: matrix.rust == 'msrv'
-        run: cp .github/workflows/msrv-rust-toolchain.toml rust-toolchain.toml
-
       - name: Install stable toolchain
         uses: helix-editor/rust-toolchain@v1
         with:
@@ -45,7 +37,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.61
+        uses: dtolnay/rust-toolchain@1.63
 
       - uses: Swatinem/rust-cache@v2
 
@@ -74,7 +66,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.61
+        uses: dtolnay/rust-toolchain@1.63
         with:
           components: rustfmt, clippy
 
@@ -99,7 +91,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.61
+        uses: dtolnay/rust-toolchain@1.63
 
       - uses: Swatinem/rust-cache@v2
 
