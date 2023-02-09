@@ -1231,11 +1231,8 @@ impl Document {
     }
 
     pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
-        if let Some(max_line_len) = self
-            .language_config()
-            .and_then(|config| config.max_line_length)
-        {
-            viewport_width = viewport_width.min(max_line_len as u16)
+        if let Some(text_width) = self.language_config().and_then(|config| config.text_width) {
+            viewport_width = viewport_width.min(text_width as u16)
         }
         let config = self.config.load();
         let soft_wrap = &config.soft_wrap;
