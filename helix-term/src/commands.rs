@@ -1617,6 +1617,10 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
                 sels += 1;
             }
 
+            if anchor_row == 0 && head_row == 0 {
+                break;
+            }
+
             i += 1;
         }
     }

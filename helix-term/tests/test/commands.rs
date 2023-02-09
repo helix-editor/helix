@@ -132,6 +132,70 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
         .as_str(),
     ))
     .await?;
+
+    // Copy the selection to previous line, skipping the first line in the file
+    test((
+        platform_line(indoc! {"\
+            test
+            #[testitem|]#
+            "})
+        .as_str(),
+        "<A-C>",
+        platform_line(indoc! {"\
+            test
+            #[testitem|]#
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // Copy the selection to previous line, including the first line in the file
+    test((
+        platform_line(indoc! {"\
+            test
+            #[test|]#
+            "})
+        .as_str(),
+        "<A-C>",
+        platform_line(indoc! {"\
+            #[test|]#
+            #(test|)#
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // Copy the selection to next line, skipping the last line in the file
+    test((
+        platform_line(indoc! {"\
+            #[testitem|]#
+            test
+            "})
+        .as_str(),
+        "C",
+        platform_line(indoc! {"\
+            #[testitem|]#
+            test
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // Copy the selection to next line, including the last line in the file
+    test((
+        platform_line(indoc! {"\
+            #[test|]#
+            test
+            "})
+        .as_str(),
+        "C",
+        platform_line(indoc! {"\
+            #(test|)#
+            #[test|]#
+            "})
+        .as_str(),
+    ))
+    .await?;
     Ok(())
 }
 
