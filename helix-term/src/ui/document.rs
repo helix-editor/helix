@@ -419,7 +419,7 @@ impl<'a> TextRenderer<'a> {
             // TODO special rendering for other whitespaces?
             Grapheme::Other { ref g } if g == " " => &self.space,
             Grapheme::Other { ref g } if g == "\u{00A0}" => &self.nbsp,
-            Grapheme::Other { ref g } => &*g,
+            Grapheme::Other { ref g } => g,
             Grapheme::Newline => &self.newline,
         };
 
