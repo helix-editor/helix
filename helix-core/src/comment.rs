@@ -68,7 +68,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     let mut min_next_line = 0;
     for selection in selection {
         let (start, end) = selection.line_range(text);
-        let start = start.max(min_next_line).min(text.len_lines());
+        let start = start.clamp(min_next_line, text.len_lines());
         let end = (end + 1).min(text.len_lines());
 
         lines.extend(start..end);

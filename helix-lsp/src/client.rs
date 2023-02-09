@@ -628,7 +628,7 @@ impl Client {
         Some(self.notify::<lsp::notification::DidSaveTextDocument>(
             lsp::DidSaveTextDocumentParams {
                 text_document,
-                text: include_text.then(|| text.into()),
+                text: include_text.then_some(text.into()),
             },
         ))
     }
