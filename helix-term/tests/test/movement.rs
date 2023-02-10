@@ -146,7 +146,7 @@ async fn surround_inside_pair() -> anyhow::Result<()> {
     ))
     .await?;
 
-    // Matching paris outside selection don't match
+    // Matching pairs outside selection don't match
     test((
         "((so)((many) go#[o|]#d (text))(here))",
         "mim",
@@ -274,7 +274,7 @@ async fn surround_around_pair() -> anyhow::Result<()> {
     ))
     .await?;
 
-    // Matching paris outside selection don't match
+    // Matching pairs outside selection don't match
     test((
         "((so)((many) go#[o|]#d (text))(here))",
         "mam",
