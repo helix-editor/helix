@@ -89,7 +89,7 @@ fn directory() {
     std::fs::create_dir(&dir).expect("");
     let file = dir.join("file.txt");
     let contents = b"foo".as_slice();
-    File::create(&file).unwrap().write_all(contents).unwrap();
+    File::create(file).unwrap().write_all(contents).unwrap();
 
     create_commit(temp_git.path(), true);
 

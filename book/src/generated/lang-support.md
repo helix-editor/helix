@@ -83,6 +83,7 @@
 | mermaid | ✓ |  |  |  |
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
+| msbuild | ✓ |  | ✓ |  |
 | nickel | ✓ |  | ✓ | `nls` |
 | nix | ✓ |  |  | `nil` |
 | nu | ✓ |  |  |  |
@@ -92,6 +93,7 @@
 | openscad | ✓ |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |
 | pascal | ✓ | ✓ |  | `pasls` |
+| pem | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | ponylang | ✓ | ✓ | ✓ |  |
@@ -109,6 +111,7 @@
 | ron | ✓ |  | ✓ |  |
 | ruby | ✓ | ✓ | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
+| sage | ✓ | ✓ |  |  |
 | scala | ✓ |  | ✓ | `metals` |
 | scheme | ✓ |  |  |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
@@ -129,7 +132,7 @@
 | twig | ✓ |  |  |  |
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | ungrammar | ✓ |  |  |  |
-| v | ✓ |  |  | `vls` |
+| v | ✓ |  |  | `v` |
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
 | vhs | ✓ |  |  |  |

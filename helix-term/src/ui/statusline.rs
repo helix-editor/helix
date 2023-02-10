@@ -450,11 +450,7 @@ where
             .as_ref()
             .and_then(|p| p.as_path().file_name().map(|s| s.to_string_lossy()))
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-        format!(
-            " {}{} ",
-            path,
-            if context.doc.is_modified() { "[+]" } else { "" }
-        )
+        format!(" {} ", path)
     };
 
     write(context, title, None);
