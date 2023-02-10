@@ -1231,7 +1231,12 @@ impl Document {
     }
 
     pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
-        if let Some(text_width) = self.language_config().and_then(|config| config.text_width) {
+        let config = self.config.load();
+        let text_width = self
+            .language_config()
+            .and_then(|config| config.text_width)
+            .or_else(|| config.text_width);
+        if let Some(text_width) = text_width {
             // We increase max_line_len by 1 because softwrap considers the newline character
             // as part of the line length while the "typical" expectation is that this is not the case.
             // In particular other commands like :reflow do not count the line terminator.
@@ -1239,7 +1244,6 @@ impl Document {
             // but having the last visual line exceed the width by 1 seems like a rare edge case.
             viewport_width = viewport_width.min(text_width as u16 + 1)
         }
-        let config = self.config.load();
         let soft_wrap = &config.soft_wrap;
         let tab_width = self.tab_width() as u16;
         TextFormat {
