@@ -1260,7 +1260,7 @@ impl Component for EditorView {
                                         // assume close_fn
                                         self.clear_completion(cx.editor);
 
-                                        // In case the popup was deleted beacuse of an intersection w/ the auto-complete menu.
+                                        // In case the popup was deleted because of an intersection w/ the auto-complete menu.
                                         commands::signature_help_impl(
                                             &mut cx,
                                             commands::SignatureHelpInvoked::Automatic,

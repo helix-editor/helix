@@ -4233,7 +4233,8 @@ pub fn completion(cx: &mut Context) {
                     trigger_offset,
                     size,
                 )
-                .and_then(|area| Some(area.intersects(signature_help_area?)))
+                .zip(signature_help_area)
+                .filter(|(a, b)| a.intersects(*b))
                 .is_some()
             {
                 compositor.remove(SignatureHelp::ID);
