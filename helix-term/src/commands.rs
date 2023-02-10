@@ -2761,6 +2761,7 @@ fn insert_at_line_start(cx: &mut Context) {
     insert_with_indent(cx, |cursor_line, cursor_line_start, text| {
         find_first_non_whitespace_char(text.line(cursor_line))
             .map(|ws_offset| ws_offset + cursor_line_start)
+            .unwrap_or(cursor_line_start)
     });
 }
 
@@ -2768,7 +2769,7 @@ fn insert_at_line_start(cx: &mut Context) {
 // If the line is empty, automatically indent
 fn insert_at_line_end(cx: &mut Context) {
     insert_with_indent(cx, |cursor_line, _, text| {
-        Some(line_end_char_index(text, cursor_line))
+        line_end_char_index(text, cursor_line)
     });
 }
 
@@ -2776,7 +2777,7 @@ fn insert_at_line_end(cx: &mut Context) {
 // If the line is not empty, move the cursor to the specified fallback position.
 fn insert_with_indent(
     cx: &mut Context,
-    cursor_fallback: impl Fn(usize, usize, &RopeSlice) -> Option<usize>,
+    cursor_fallback: impl Fn(usize, usize, &RopeSlice) -> usize,
 ) {
     enter_insert_mode(cx);
 
@@ -2821,10 +2822,8 @@ fn insert_with_indent(
             (line_end_index, line_end_index, Some(indent.into()))
         } else {
             // move cursor to the fallback position
-            let range = cursor_fallback(cursor_line, cursor_line_start, &text)
-                .map(|pos| range.put_cursor(text, pos + offs, cx.editor.mode == Mode::Select))
-                .unwrap_or(*range);
-            ranges.push(range);
+            let pos = cursor_fallback(cursor_line, cursor_line_start, &text);
+            ranges.push(range.put_cursor(text, pos + offs, cx.editor.mode == Mode::Select));
 
             (cursor_line_start, cursor_line_start, None)
         }
