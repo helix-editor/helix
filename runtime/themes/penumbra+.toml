@@ -95,6 +95,7 @@ error = "red"
 "markup.list" = "sky"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { modifiers = ["underlined"] }
 "markup.link.text" = "magenta"
 "markup.quote" = "green"

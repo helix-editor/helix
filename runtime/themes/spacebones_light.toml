@@ -34,6 +34,7 @@
 "markup.list" = "theme_red"
 "markup.bold" = { fg = "theme_yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "theme_magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "theme_yellow", modifiers = ["underlined"] }
 "markup.link.text" = "theme_red"
 "markup.quote" = "theme_cyan"
