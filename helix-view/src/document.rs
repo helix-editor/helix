@@ -1,7 +1,11 @@
 use anyhow::{anyhow, bail, Context, Error};
+use arc_swap::access::DynAccess;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
+use helix_core::doc_formatter::TextFormat;
+use helix_core::syntax::Highlight;
+use helix_core::text_annotations::TextAnnotations;
 use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
@@ -15,6 +19,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use helix_core::{
     encoding,
@@ -26,8 +31,8 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
-use crate::editor::RedrawHandle;
-use crate::{apply_transaction, DocumentId, Editor, View, ViewId};
+use crate::editor::{Config, RedrawHandle};
+use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -127,8 +132,13 @@ pub struct Document {
     // it back as it separated from the edits. We could split out the parts manually but that will
     // be more troublesome.
     pub history: Cell<History>,
+    pub config: Arc<dyn DynAccess<Config>>,
 
     pub savepoint: Option<Transaction>,
+
+    // Last time we wrote to the file. This will carry the time the file was last opened if there
+    // were no saves.
+    last_saved_time: SystemTime,
 
     last_saved_revision: usize,
     version: i32, // should be usize?
@@ -155,6 +165,7 @@ impl fmt::Debug for Document {
             .field("changes", &self.changes)
             .field("old_state", &self.old_state)
             // .field("history", &self.history)
+            .field("last_saved_time", &self.last_saved_time)
             .field("last_saved_revision", &self.last_saved_revision)
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
@@ -351,7 +362,11 @@ use helix_lsp::lsp;
 use url::Url;
 
 impl Document {
-    pub fn from(text: Rope, encoding: Option<&'static encoding::Encoding>) -> Self {
+    pub fn from(
+        text: Rope,
+        encoding: Option<&'static encoding::Encoding>,
+        config: Arc<dyn DynAccess<Config>>,
+    ) -> Self {
         let encoding = encoding.unwrap_or(encoding::UTF_8);
         let changes = ChangeSet::new(&text);
         let old_state = None;
@@ -373,13 +388,18 @@ impl Document {
             version: 0,
             history: Cell::new(History::default()),
             savepoint: None,
+            last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
             diff_handle: None,
+            config,
         }
     }
-
+    pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
+        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
+        Self::from(text, None, config)
+    }
     // TODO: async fn?
     /// Create a new document from `path`. Encoding is auto-detected, but it can be manually
     /// overwritten with the `encoding` parameter.
@@ -387,6 +407,7 @@ impl Document {
         path: &Path,
         encoding: Option<&'static encoding::Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
+        config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding) = if path.exists() {
@@ -398,7 +419,7 @@ impl Document {
             (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
         };
 
-        let mut doc = Self::from(rope, Some(encoding));
+        let mut doc = Self::from(rope, Some(encoding), config);
 
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
@@ -563,9 +584,11 @@ impl Document {
 
         let encoding = self.encoding;
 
+        let last_saved_time = self.last_saved_time;
+
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
-            use tokio::fs::File;
+            use tokio::{fs, fs::File};
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -573,6 +596,17 @@ impl Document {
                         std::fs::DirBuilder::new().recursive(true).create(parent)?;
                     } else {
                         bail!("can't save file, parent directory does not exist");
+                    }
+                }
+            }
+
+            // Protect against overwriting changes made externally
+            if !force {
+                if let Ok(metadata) = fs::metadata(&path).await {
+                    if let Ok(mtime) = metadata.modified() {
+                        if last_saved_time < mtime {
+                            bail!("file modified by an external process, use :w! to overwrite");
+                        }
                     }
                 }
             }
@@ -650,9 +684,11 @@ impl Document {
         // This is not considered a modification of the contents of the file regardless
         // of the encoding.
         let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
-        apply_transaction(&transaction, self, view);
+        self.apply(&transaction, view.id);
         self.append_changes_to_history(view);
         self.reset_modified();
+
+        self.last_saved_time = SystemTime::now();
 
         self.detect_indent_and_line_ending();
 
@@ -852,9 +888,6 @@ impl Document {
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
-    /// Instead of calling this function directly, use [crate::apply_transaction]
-    /// to ensure that the transaction is applied to the appropriate [`View`] as
-    /// well.
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
@@ -911,7 +944,7 @@ impl Document {
 
     pub fn restore(&mut self, view: &mut View) {
         if let Some(revert) = self.savepoint.take() {
-            apply_transaction(&revert, self, view);
+            self.apply(&revert, view.id);
         }
     }
 
@@ -1005,6 +1038,7 @@ impl Document {
             rev
         );
         self.last_saved_revision = rev;
+        self.last_saved_time = SystemTime::now();
     }
 
     /// Get the document's latest saved revision.
@@ -1062,7 +1096,7 @@ impl Document {
     /// Language server if it has been initialized.
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
         let server = self.language_server.as_deref()?;
-        server.is_initialized().then(|| server)
+        server.is_initialized().then_some(server)
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
@@ -1195,12 +1229,34 @@ impl Document {
             None => global_config,
         }
     }
-}
 
-impl Default for Document {
-    fn default() -> Self {
-        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
-        Self::from(text, None)
+    pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
+        if let Some(max_line_len) = self
+            .language_config()
+            .and_then(|config| config.max_line_length)
+        {
+            viewport_width = viewport_width.min(max_line_len as u16)
+        }
+        let config = self.config.load();
+        let soft_wrap = &config.soft_wrap;
+        let tab_width = self.tab_width() as u16;
+        TextFormat {
+            soft_wrap: soft_wrap.enable && viewport_width > 10,
+            tab_width,
+            max_wrap: soft_wrap.max_wrap.min(viewport_width / 4),
+            max_indent_retain: soft_wrap.max_indent_retain.min(viewport_width * 2 / 5),
+            // avoid spinning forever when the window manager
+            // sets the size to something tiny
+            viewport_width,
+            wrap_indicator: soft_wrap.wrap_indicator.clone().into_boxed_str(),
+            wrap_indicator_highlight: theme
+                .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
+                .map(Highlight),
+        }
+    }
+
+    pub fn text_annotations(&self, _theme: Option<&Theme>) -> TextAnnotations {
+        TextAnnotations::default()
     }
 }
 
@@ -1239,13 +1295,19 @@ impl Display for FormatterError {
 
 #[cfg(test)]
 mod test {
+    use arc_swap::ArcSwap;
+
     use super::*;
 
     #[test]
     fn changeset_to_changes_ignore_line_endings() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello\r\nworld");
-        let mut doc = Document::from(text, None);
+        let mut doc = Document::from(
+            text,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(0, 0));
 
@@ -1279,7 +1341,11 @@ mod test {
     fn changeset_to_changes() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello");
-        let mut doc = Document::from(text, None);
+        let mut doc = Document::from(
+            text,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));
 
@@ -1392,7 +1458,9 @@ mod test {
     #[test]
     fn test_line_ending() {
         assert_eq!(
-            Document::default().text().to_string(),
+            Document::default(Arc::new(ArcSwap::new(Arc::new(Config::default()))))
+                .text()
+                .to_string(),
             DEFAULT_LINE_ENDING.as_str()
         );
     }

@@ -44,6 +44,7 @@
 "markup.list" = "blue3"
 "markup.bold" = { fg = "blue2", modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { modifiers = ["underlined"] }
 "markup.link.text" = "orange"
 "markup.quote" = "dark_green"

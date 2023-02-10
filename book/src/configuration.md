@@ -115,6 +115,7 @@ The following statusline elements can be configured:
 
 | Key                   | Description                                                 | Default |
 | ---                   | -----------                                                 | ------- |
+| `enable`              | Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.| `true` |
 | `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
@@ -150,6 +151,8 @@ All git related options are only enabled in a git repository.
 | Key | Description | Default |
 |--|--|---------|
 |`hidden` | Enables ignoring hidden files. | true
+|`follow-links` | Follow symlinks instead of ignoring them | true
+|`deduplicate-links` | Ignore symlinks that point at files already shown in the picker | true
 |`parents` | Enables reading ignore files from parent directories. | true
 |`ignore` | Enables reading `.ignore` files. | true
 |`git-ignore` | Enables reading `.gitignore` files. | true
@@ -255,4 +258,77 @@ Example:
 render = true
 character = "╎" # Some characters that work well: "▏", "┆", "┊", "⸽"
 skip-levels = 1
+```
+
+### `[editor.gutters]` Section
+
+For simplicity, `editor.gutters` accepts an array of gutter types, which will
+use default settings for all gutter components.
+
+```toml
+[editor]
+gutters = ["diff", "diagnostics", "line-numbers", "spacer"]
+```
+
+To customize the behavior of gutters, the `[editor.gutters]` section must
+be used. This section contains top level settings, as well as settings for
+specific gutter components as sub-sections.
+
+| Key      | Description                    | Default                                                       |
+| ---      | ---                            | ---                                                           |
+| `layout` | A vector of gutters to display | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
+
+Example:
+
+```toml
+[editor.gutters]
+layout = ["diff", "diagnostics", "line-numbers", "spacer"]
+```
+
+#### `[editor.gutters.line-numbers]` Section
+
+Options for the line number gutter
+
+| Key         | Description                             | Default |
+| ---         | ---                                     | ---     |
+| `min-width` | The minimum number of characters to use | `3`     |
+
+Example:
+
+```toml
+[editor.gutters.line-numbers]
+min-width = 1
+```
+
+#### `[editor.gutters.diagnotics]` Section
+
+Currently unused
+
+#### `[editor.gutters.diff]` Section
+
+Currently unused
+
+#### `[editor.gutters.spacer]` Section
+
+Currently unused
+
+### `[editor.soft-wrap]` Section
+
+Options for soft wrapping lines that exceed the view width
+
+| Key                 | Description                                                  | Default |
+| ---                 | ---                                                          | ---     |
+| `enable`            | Whether soft wrapping is enabled.                            | `false` |
+| `max-wrap`          | Maximum free space left at the end of the line.              | `20`    |
+| `max-indent-retain` | Maximum indentation to carry over when soft wrapping a line. | `40`    |
+| `wrap-indicator`    | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `↪ `    |
+
+Example:
+
+```toml
+[editor.soft-wrap]
+enable = true
+max-wrap = 25 # increase value to reduce forced mid-word wrapping
+max-indent-retain = 0
+wrap-indicator = ""  # set wrap-indicator to "" to hide it
 ```

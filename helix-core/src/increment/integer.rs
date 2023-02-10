@@ -69,8 +69,8 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
                 let (lower_count, upper_count): (usize, usize) =
                     number.chars().fold((0, 0), |(lower, upper), c| {
                         (
-                            lower + c.is_ascii_lowercase().then(|| 1).unwrap_or(0),
-                            upper + c.is_ascii_uppercase().then(|| 1).unwrap_or(0),
+                            lower + c.is_ascii_lowercase() as usize,
+                            upper + c.is_ascii_uppercase() as usize,
                         )
                     });
                 if upper_count > lower_count {
