@@ -302,6 +302,8 @@ pub struct SoftWrap {
     ///
     /// Defaults to ↪
     pub wrap_indicator: String,
+    /// Softwrap at `text_width` instead of viewport width if it is shorter
+    pub wrap_at_text_width: bool,
 }
 
 impl Default for SoftWrap {
@@ -311,6 +313,7 @@ impl Default for SoftWrap {
             max_wrap: 20,
             max_indent_retain: 40,
             wrap_indicator: "↪ ".into(),
+            wrap_at_text_width: true,
         }
     }
 }

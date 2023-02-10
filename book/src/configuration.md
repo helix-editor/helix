@@ -317,12 +317,13 @@ Currently unused
 
 Options for soft wrapping lines that exceed the view width
 
-| Key                 | Description                                                  | Default |
-| ---                 | ---                                                          | ---     |
-| `enable`            | Whether soft wrapping is enabled.                            | `false` |
-| `max-wrap`          | Maximum free space left at the end of the line.              | `20`    |
-| `max-indent-retain` | Maximum indentation to carry over when soft wrapping a line. | `40`    |
-| `wrap-indicator`    | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `↪ `    |
+| Key                  | Description                                                  | Default |
+| ---                  | ---                                                          | ---     |
+| `enable`             | Whether soft wrapping is enabled.                            | `false` |
+| `max-wrap`           | Maximum free space left at the end of the line.              | `20`    |
+| `max-indent-retain`  | Maximum indentation to carry over when soft wrapping a line. | `40`    |
+| `wrap-indicator`     | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `↪ `    |
+| `wrap-at-text-width` | Soft wrap at `text-width` instead of using the full viewport size. | `true` |
 
 Example:
 
