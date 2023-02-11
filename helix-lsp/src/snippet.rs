@@ -64,6 +64,7 @@ pub fn into_transaction<'a>(
     edit: &lsp_types::TextEdit,
     line_ending: &str,
     offset_encoding: OffsetEncoding,
+    include_placeholer: bool,
 ) -> helix_core::Transaction {
     use helix_core::{smallvec, Range, Selection, Transaction};
     use SnippetElement::*;
@@ -119,10 +120,14 @@ pub fn into_transaction<'a>(
                 // https://doc.rust-lang.org/beta/unstable-book/language-features/box-patterns.html
                 // would make this a bit nicer
                 Text(text) => {
-                    let len_chars = text.chars().count();
-                    tabstops.push((tabstop, Range::new(offset, offset + len_chars + 1)));
-                    offset += len_chars;
-                    insert.push_str(text);
+                    if include_placeholer {
+                        let len_chars = text.chars().count();
+                        tabstops.push((tabstop, Range::new(offset, offset + len_chars + 1)));
+                        offset += len_chars;
+                        insert.push_str(text);
+                    } else {
+                        tabstops.push((tabstop, Range::point(offset)));
+                    }
                 }
                 other => {
                     log::error!(
