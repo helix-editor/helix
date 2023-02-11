@@ -1212,6 +1212,7 @@ impl Component for EditorView {
             callback: None,
             on_next_key_callback: None,
             jobs: context.jobs,
+            blocking_callback: None,
         };
 
         match event {
@@ -1307,7 +1308,15 @@ impl Component for EditorView {
                 }
 
                 // appease borrowck
-                let callback = cx.callback.take();
+                let mut callback = cx.callback.take();
+                if let Some(blocking_callback) = cx.blocking_callback.take() {
+                    callback = Some(Box::new(move |compositor, cx| {
+                        cx.blocking_job(blocking_callback);
+                        if let Some(callback) = callback {
+                            callback(compositor, cx)
+                        }
+                    }));
+                }
 
                 // if the command consumed the last view, skip the render.
                 // on the next loop cycle the Application will then terminate.

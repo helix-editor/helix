@@ -1,7 +1,8 @@
+use crate::compositor::{Component, Compositor};
 use helix_view::Editor;
-
-use crate::compositor::Compositor;
 use std::pin::Pin;
+use std::task::Poll;
+use tokio::sync::watch;
 
 use futures_util::future::{Future, FutureExt};
 use futures_util::stream::{FuturesUnordered, StreamExt};
@@ -22,11 +23,107 @@ pub struct Job {
     pub wait: bool,
 }
 
+pub fn cancelation() -> (CancelSender, CancelReciver) {
+    let (sender, reciver) = watch::channel(());
+    (CancelSender(sender), CancelReciver(reciver))
+}
+
+#[derive(Debug)]
+pub struct CancelSender(watch::Sender<()>);
+
+/// A cancel flag that can be awaited in an async contex
+/// and cheaply checked with a non-blocking check for use in
+/// a synchronous call
+// using a watch intead of a Notify so we can implement is_cancelled
+#[derive(Clone, Debug)]
+pub struct CancelReciver(watch::Receiver<()>);
+
+impl CancelReciver {
+    pub fn is_cancelled(&self) -> bool {
+        !matches!(self.0.has_changed(), Ok(false))
+    }
+
+    pub async fn canceled(mut self) {
+        let _ = self.0.changed().await;
+    }
+}
+
+/// A Blocking Job is a job that would normally be executed synchronously
+/// and block the UI thread but is performed asynchrounsly instead so that:
+/// * The UI doesn't freeze (when resizing the window for example)
+/// * We don't perform blocking tasks on a normal tokio thread
+/// * The user can cancel an unresponsive task with C-c
+pub struct BlockingJob {
+    future: JobFuture,
+    // when blocking job is dropped all watchers are automatically notified
+    // so it looks like this is unused but it's use is infact in its Drop
+    // implementation. We could manuall call `self.cancel.send(())` but
+    // it's unnecessary as the `Drop` already handels that for us
+    cancel: CancelSender,
+    pub msg: &'static str,
+}
+
+impl BlockingJob {
+    pub fn new<F: Future<Output = anyhow::Result<Callback>> + 'static>(
+        f: F,
+        cancel: CancelSender,
+        msg: &'static str,
+    ) -> BlockingJob {
+        BlockingJob {
+            future: Box::pin(f.map(|r| r.map(Some))),
+            cancel,
+            msg,
+        }
+    }
+
+    pub fn push_layer<F: Future<Output = anyhow::Result<Box<dyn Component>>> + 'static>(
+        layer: F,
+        cancel: CancelSender,
+        msg: &'static str,
+    ) -> BlockingJob {
+        BlockingJob::new(
+            async {
+                let layer = layer.await?;
+                let callback =
+                    Callback::EditorCompositor(Box::new(move |_, compositor: &mut Compositor| {
+                        compositor.push(layer)
+                    }));
+                Ok(callback)
+            },
+            cancel,
+            msg,
+        )
+    }
+
+    pub fn non_blocking(self) -> Job {
+        Job {
+            future: Box::pin(self.future.map(move |res| {
+                drop(self.cancel);
+                res
+            })),
+            wait: false,
+        }
+    }
+
+    pub fn cancel(&self) {
+        let _ = self.cancel.0.send(());
+    }
+}
+
+impl Future for BlockingJob {
+    type Output = anyhow::Result<Option<Callback>>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        self.future.poll_unpin(cx)
+    }
+}
+
 #[derive(Default)]
 pub struct Jobs {
     pub futures: FuturesUnordered<JobFuture>,
     /// These are the ones that need to complete before we exit.
     pub wait_futures: FuturesUnordered<JobFuture>,
+    pub blocking_job: Option<BlockingJob>,
 }
 
 impl Job {
