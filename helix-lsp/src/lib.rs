@@ -1,5 +1,6 @@
 mod client;
 pub mod jsonrpc;
+pub mod remap;
 mod transport;
 
 pub use client::Client;
@@ -592,6 +593,11 @@ fn start_client(
         id,
         ls_config.timeout,
         doc_path,
+        config.language_server.as_ref().and_then(|ls| {
+            ls.path_mapping
+                .as_ref()
+                .map(|pm| (pm.from.clone(), pm.to.clone()))
+        }),
     )?;
 
     let client = Arc::new(client);

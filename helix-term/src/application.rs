@@ -5,7 +5,7 @@ use helix_core::{
     path::get_relative_path,
     pos_at_coords, syntax, Selection,
 };
-use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+use helix_lsp::{lsp, remap::LSPRemap, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
@@ -703,6 +703,17 @@ impl Application {
                         }
                     }
                     Notification::PublishDiagnostics(mut params) => {
+                        match self.editor.language_servers.get_by_id(server_id) {
+                            Some(language_server) => {
+                                if let Some((to, from)) = language_server.path_mapping() {
+                                    params.uri = params.uri.remap(from, to)
+                                }
+                            }
+                            None => {
+                                warn!("can't perform path mapping because language server with id `{}` can not be found", server_id);
+                            }
+                        };
+
                         let path = params.uri.to_file_path().unwrap();
                         let doc = self.editor.document_by_path_mut(&path);
 
@@ -977,10 +988,17 @@ impl Application {
                         Ok(serde_json::Value::Null)
                     }
                     MethodCall::ApplyWorkspaceEdit(params) => {
+                        let language_server = self.editor.language_servers.get_by_id(server_id);
+                        let path_mapping = language_server
+                            .and_then(|ls| ls.path_mapping())
+                            .cloned()
+                            .map(|(a, b)| (b, a));
+
                         apply_workspace_edit(
                             &mut self.editor,
                             helix_lsp::OffsetEncoding::Utf8,
                             &params.edit,
+                            path_mapping.as_ref(),
                         );
 
                         Ok(json!(lsp::ApplyWorkspaceEditResponse {

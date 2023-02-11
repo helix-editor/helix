@@ -1,5 +1,6 @@
 use crate::{
     jsonrpc,
+    remap::LSPRemap,
     transport::{Payload, Transport},
     Call, Error, OffsetEncoding, Result,
 };
@@ -9,13 +10,13 @@ use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp_types as lsp;
 use serde::Deserialize;
 use serde_json::Value;
-use std::collections::HashMap;
-use std::future::Future;
 use std::process::Stdio;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
 };
+use std::{collections::HashMap, path::Path};
+use std::{future::Future, path::PathBuf};
 use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},
@@ -38,6 +39,7 @@ pub struct Client {
     root_uri: Option<lsp::Url>,
     workspace_folders: Vec<lsp::WorkspaceFolder>,
     req_timeout: u64,
+    path_mapping: Option<(String, String)>,
 }
 
 impl Client {
@@ -52,6 +54,7 @@ impl Client {
         id: usize,
         req_timeout: u64,
         doc_path: Option<&std::path::PathBuf>,
+        path_mapping: Option<(String, String)>,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         // Resolve path to the binary
         let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
@@ -111,6 +114,7 @@ impl Client {
             root_path,
             root_uri,
             workspace_folders,
+            path_mapping,
         };
 
         Ok((client, server_rx, initialize_notify))
@@ -156,6 +160,10 @@ impl Client {
 
     pub fn workspace_folders(&self) -> &[lsp::WorkspaceFolder] {
         &self.workspace_folders
+    }
+
+    pub fn path_mapping(&self) -> Option<&(String, String)> {
+        self.path_mapping.as_ref()
     }
 
     /// Execute a RPC request on the language server.
@@ -280,14 +288,26 @@ impl Client {
             log::info!("Using custom LSP config: {}", config);
         }
 
+        let mut root_path = self.root_path.clone();
+        let mut root_uri = self.root_uri.clone();
+        let mut workspace_folders = self.workspace_folders.clone();
+
+        if let Some((from, to)) = &self.path_mapping {
+            root_path = replace_path(&root_path, from, to);
+            root_uri = root_uri.map(|p| p.remap(from, to));
+            workspace_folders.iter_mut().for_each(|wsf| {
+                wsf.uri = wsf.uri.remap(from, to);
+            });
+        }
+
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
             process_id: Some(std::process::id()),
-            workspace_folders: Some(self.workspace_folders.clone()),
+            workspace_folders: Some(workspace_folders),
             // root_path is obsolete, but some clients like pyright still use it so we specify both.
             // clients will prefer _uri if possible
-            root_path: self.root_path.to_str().map(|path| path.to_owned()),
-            root_uri: self.root_uri.clone(),
+            root_path: root_path.to_str().map(|path| path.to_owned()),
+            root_uri,
             initialization_options: self.config.clone(),
             capabilities: lsp::ClientCapabilities {
                 workspace: Some(lsp::WorkspaceClientCapabilities {
@@ -434,6 +454,12 @@ impl Client {
         doc: &Rope,
         language_id: String,
     ) -> impl Future<Output = Result<()>> {
+        let mut uri = uri;
+
+        if let Some((from, to)) = &self.path_mapping {
+            uri = uri.remap(from, to);
+        }
+
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
                 uri,
@@ -567,6 +593,11 @@ impl Client {
             _ => return None,
         };
 
+        let mut text_document = text_document;
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
+        }
+
         let changes = match sync_capabilities {
             lsp::TextDocumentSyncKind::FULL => {
                 vec![lsp::TextDocumentContentChangeEvent {
@@ -644,6 +675,11 @@ impl Client {
         // Return early if the server does not support completion.
         capabilities.completion_provider.as_ref()?;
 
+        let mut text_document = text_document;
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
+        }
+
         let params = lsp::CompletionParams {
             text_document_position: lsp::TextDocumentPositionParams {
                 text_document,
@@ -690,6 +726,12 @@ impl Client {
         // Return early if the server does not support signature help.
         capabilities.signature_help_provider.as_ref()?;
 
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
+        }
+
         let params = lsp::SignatureHelpParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
@@ -718,6 +760,12 @@ impl Client {
                 | lsp::HoverProviderCapability::Options(_),
             ) => (),
             _ => return None,
+        }
+
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::HoverParams {
@@ -766,6 +814,12 @@ impl Client {
             options
         };
 
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
+        }
+
         let params = lsp::DocumentFormattingParams {
             text_document,
             options,
@@ -795,6 +849,12 @@ impl Client {
             Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => (),
             _ => return None,
         };
+
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
+        }
 
         let params = lsp::DocumentRangeFormattingParams {
             text_document,
@@ -826,6 +886,12 @@ impl Client {
             _ => return None,
         }
 
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
+        }
+
         let params = lsp::DocumentHighlightParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
@@ -851,6 +917,12 @@ impl Client {
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
     ) -> impl Future<Output = Result<Value>> {
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
+        }
+
         let params = lsp::GotoDefinitionParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
@@ -877,6 +949,12 @@ impl Client {
         match capabilities.definition_provider {
             Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => (),
             _ => return None,
+        }
+
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         Some(self.goto_request::<lsp::request::GotoDefinition>(
@@ -928,6 +1006,12 @@ impl Client {
             _ => return None,
         }
 
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
+        }
+
         Some(self.goto_request::<lsp::request::GotoTypeDefinition>(
             text_document,
             position,
@@ -952,6 +1036,12 @@ impl Client {
             _ => return None,
         }
 
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
+        }
+
         Some(self.goto_request::<lsp::request::GotoImplementation>(
             text_document,
             position,
@@ -971,6 +1061,12 @@ impl Client {
         match capabilities.references_provider {
             Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => (),
             _ => return None,
+        }
+
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::ReferenceParams {
@@ -1000,6 +1096,12 @@ impl Client {
         match capabilities.document_symbol_provider {
             Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => (),
             _ => return None,
+        }
+
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
         }
 
         let params = lsp::DocumentSymbolParams {
@@ -1047,6 +1149,12 @@ impl Client {
             _ => return None,
         }
 
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
+        }
+
         let params = lsp::CodeActionParams {
             text_document,
             range,
@@ -1072,6 +1180,12 @@ impl Client {
             // None | Some(false)
             _ => return None,
         };
+
+        let mut text_document = text_document;
+
+        if let Some((from, to)) = &self.path_mapping {
+            text_document.uri = text_document.uri.remap(from, to);
+        }
 
         let params = lsp::RenameParams {
             text_document_position: lsp::TextDocumentPositionParams {
@@ -1109,4 +1223,9 @@ impl Client {
 
         Some(self.call::<lsp::request::ExecuteCommand>(params))
     }
+}
+
+fn replace_path(path: &Path, old: &str, new: &str) -> PathBuf {
+    path.strip_prefix(old)
+        .map_or(path.to_path_buf(), |s| Path::new(new).join(s))
 }
