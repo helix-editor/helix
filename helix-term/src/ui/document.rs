@@ -402,7 +402,7 @@ impl<'a> TextRenderer<'a> {
         is_in_indent_area: &mut bool,
         position: Position,
     ) {
-        let cut_off_start = self.col_offset.saturating_sub(position.col as usize);
+        let cut_off_start = self.col_offset.saturating_sub(position.col);
         let is_whitespace = grapheme.is_whitespace();
 
         // TODO is it correct to apply the whitspace style to all unicode white spaces?
@@ -413,18 +413,18 @@ impl<'a> TextRenderer<'a> {
         let width = grapheme.width();
         let grapheme = match grapheme {
             Grapheme::Tab { width } => {
-                let grapheme_tab_width = char_to_byte_idx(&self.tab, width as usize);
+                let grapheme_tab_width = char_to_byte_idx(&self.tab, width);
                 &self.tab[..grapheme_tab_width]
             }
             // TODO special rendering for other whitespaces?
             Grapheme::Other { ref g } if g == " " => &self.space,
             Grapheme::Other { ref g } if g == "\u{00A0}" => &self.nbsp,
-            Grapheme::Other { ref g } => &*g,
+            Grapheme::Other { ref g } => g,
             Grapheme::Newline => &self.newline,
         };
 
-        let in_bounds = self.col_offset <= (position.col as usize)
-            && (position.col as usize) < self.viewport.width as usize + self.col_offset;
+        let in_bounds = self.col_offset <= position.col
+            && position.col < self.viewport.width as usize + self.col_offset;
 
         if in_bounds {
             self.surface.set_string(
@@ -433,10 +433,10 @@ impl<'a> TextRenderer<'a> {
                 grapheme,
                 style,
             );
-        } else if cut_off_start != 0 && cut_off_start < width as usize {
+        } else if cut_off_start != 0 && cut_off_start < width {
             // partially on screen
             let rect = Rect::new(
-                self.viewport.x as u16,
+                self.viewport.x,
                 self.viewport.y + position.row as u16,
                 (width - cut_off_start) as u16,
                 1,

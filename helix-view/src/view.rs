@@ -243,7 +243,7 @@ impl View {
                 true
             }
             Some((visual_pos, _)) if visual_pos.row >= vertical_viewport_end - scrolloff => {
-                if CENTERING && visual_pos.row >= vertical_viewport_end as usize {
+                if CENTERING && visual_pos.row >= vertical_viewport_end {
                     // cursor out of view
                     return None;
                 }

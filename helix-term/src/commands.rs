@@ -73,13 +73,15 @@ use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+pub type OnKeyCallback = Box<dyn FnOnce(&mut Context, KeyEvent)>;
+
 pub struct Context<'a> {
     pub register: Option<char>,
     pub count: Option<NonZeroUsize>,
     pub editor: &'a mut Editor,
 
     pub callback: Option<crate::compositor::Callback>,
-    pub on_next_key_callback: Option<Box<dyn FnOnce(&mut Context, KeyEvent)>>,
+    pub on_next_key_callback: Option<OnKeyCallback>,
     pub jobs: &'a mut Jobs,
 }
 
@@ -957,9 +959,11 @@ fn goto_window(cx: &mut Context, align: Align) {
         Align::Bottom => {
             view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff + count)
         }
-    }
-    .max(view.offset.vertical_offset + scrolloff)
-    .min(view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff));
+    };
+    let visual_line = visual_line.clamp(
+        view.offset.vertical_offset + scrolloff,
+        view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff),
+    );
 
     let pos = view
         .pos_at_visual_coords(doc, visual_line as u16, 0, false)
@@ -1613,6 +1617,10 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
                 // This is Range::new(anchor, head), but it will place the cursor on the correct column
                 ranges.push(Range::point(anchor).put_cursor(text, head, true));
                 sels += 1;
+            }
+
+            if anchor_row == 0 && head_row == 0 {
+                break;
             }
 
             i += 1;
@@ -4783,7 +4791,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("a", "Argument/parameter (tree-sitter)"),
         ("c", "Comment (tree-sitter)"),
         ("T", "Test (tree-sitter)"),
-        ("m", "Closest surrounding pair to cursor"),
+        ("m", "Closest surrounding pair"),
         (" ", "... or any character acting as a pair"),
     ];
 
@@ -5035,7 +5043,10 @@ async fn shell_impl_async(
             log::error!("Shell error: {}", err);
             bail!("Shell error: {}", err);
         }
-        bail!("Shell command failed");
+        match output.status.code() {
+            Some(exit_code) => bail!("Shell command failed: status {}", exit_code),
+            None => bail!("Shell command failed"),
+        }
     } else if !output.stderr.is_empty() {
         log::debug!(
             "Command printed to stderr: {}",

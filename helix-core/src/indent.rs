@@ -604,7 +604,7 @@ pub fn treesitter_indent_for_pos(
                 &mut cursor,
                 text,
                 query_range,
-                new_line.then(|| (line, byte_pos)),
+                new_line.then_some((line, byte_pos)),
             );
             ts_parser.cursors.push(cursor);
             (query_result, deepest_preceding)
@@ -624,7 +624,7 @@ pub fn treesitter_indent_for_pos(
             tab_width,
         );
     }
-    let mut first_in_line = get_first_in_line(node, new_line.then(|| byte_pos));
+    let mut first_in_line = get_first_in_line(node, new_line.then_some(byte_pos));
 
     let mut result = Indentation::default();
     // We always keep track of all the indent changes on one line, in order to only indent once

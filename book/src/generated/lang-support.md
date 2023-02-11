@@ -56,6 +56,7 @@
 | haskell | ✓ | ✓ |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  | `elixir-ls` |
+| hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
@@ -93,6 +94,8 @@
 | openscad | ✓ |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |
 | pascal | ✓ | ✓ |  | `pasls` |
+| passwd | ✓ |  |  |  |
+| pem | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | ponylang | ✓ | ✓ | ✓ |  |
