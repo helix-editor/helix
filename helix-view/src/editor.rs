@@ -765,7 +765,7 @@ impl Default for Config {
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap::default(),
-            persistent_undo: true,
+            persistent_undo: false,
         }
     }
 }
@@ -1303,8 +1303,8 @@ impl Editor {
                 Some(self.syn_loader.clone()),
                 self.config.clone(),
             )?;
-            if let Err(_) = doc.load_history() {
-                self.set_error("failed to load history from disk");
+            if let Err(e) = doc.load_history() {
+                self.set_error(Cow::Owned(format!("failed to load history from disk: {e}")));
             }
 
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {

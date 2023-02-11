@@ -32,6 +32,8 @@ regex = "1"
 bitflags = "1.3"
 ahash = "0.8.3"
 hashbrown = { version = "0.13.2", features = ["raw"] }
+
+winapi = "0.3"
 sha1_smol = "1.0"
 
 log = "0.4"

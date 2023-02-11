@@ -587,8 +587,8 @@ impl Document {
 
         let last_saved_time = self.last_saved_time;
         let mut undo_file = self
-            .undo_file()
-            .ok_or(anyhow!("failed to acquire undo file lock"))
+            .undo_file(Some(&path))
+            .ok_or_else(|| anyhow!("failed to acquire undo file lock"))
             .map(FileLock::exclusive)??;
         let history = self.history.get_mut().clone();
         let last_saved_revision = self.get_last_saved_revision();
@@ -716,17 +716,16 @@ impl Document {
         Ok(())
     }
 
-    pub fn undo_file(&self) -> Option<PathBuf> {
-        self.path().map(|path| {
+    pub fn undo_file(&self, path: Option<&PathBuf>) -> Option<PathBuf> {
+        self.path().or(path).map(|path| {
             let undo_dir = helix_loader::cache_dir().join("undo");
             let escaped_path = helix_core::path::escape_path(path);
-            let res = undo_dir.join(escaped_path);
-            res
+            undo_dir.join(escaped_path)
         })
     }
 
     pub fn save_history(&mut self) -> anyhow::Result<()> {
-        if let Some(Ok(mut undo_file)) = self.undo_file().map(FileLock::exclusive) {
+        if let Some(Ok(mut undo_file)) = self.undo_file(None).map(FileLock::exclusive) {
             let last_saved_revision = self.get_last_saved_revision();
             let path = self.path().unwrap().clone();
             let history = self.history.get_mut();
@@ -738,7 +737,7 @@ impl Document {
     }
 
     pub fn load_history(&mut self) -> anyhow::Result<()> {
-        if let Some(Ok(undo_file)) = self.undo_file().map(FileLock::shared) {
+        if let Some(Ok(undo_file)) = self.undo_file(None).map(FileLock::shared) {
             let mut undo_file = undo_file.get()?;
             if undo_file.metadata()?.len() != 0 {
                 let (last_saved_revision, history) = helix_core::history::History::deserialize(

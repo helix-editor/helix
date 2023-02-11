@@ -1177,8 +1177,9 @@ fn reload(
         .map(|_| {
             view.ensure_cursor_in_view(doc, scrolloff);
         })?;
-    if let Err(_) = doc.load_history() {
-        cx.editor.set_error("failed to load history from disk");
+    if let Err(e) = doc.load_history() {
+        cx.editor
+            .set_error(Cow::Owned(format!("failed to load history from disk: {e}")));
     }
     Ok(())
 }

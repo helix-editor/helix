@@ -470,11 +470,15 @@ async fn test_character_info() -> anyhow::Result<()> {
         Some(&|app| {
             assert_eq!(r#""h" Dec 104 Hex 68"#, app.editor.get_status().unwrap().0);
         }),
-    );
+        false,
+    )
+    .await?;
+    Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
 async fn test_persistent_undo() -> anyhow::Result<()> {
-    let file = helpers::new_readonly_tempfile()?;
+    let file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
         .build()?;
@@ -486,7 +490,6 @@ async fn test_persistent_undo() -> anyhow::Result<()> {
             file.path().to_string_lossy()
         )),
         Some(&|app| {
-            let mut docs: Vec<_> = app.editor.documents().collect();
             assert!(!app.editor.is_err());
         }),
         false,

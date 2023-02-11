@@ -152,7 +152,7 @@ pub fn os_str_as_bytes<P: AsRef<std::ffi::OsStr>>(path: P) -> Vec<u8> {
     return path.to_str().unwrap().into();
 
     #[cfg(unix)]
-    return std::os::unix::ffi::OsStrExt::as_bytes(path.into()).to_vec();
+    return std::os::unix::ffi::OsStrExt::as_bytes(path).to_vec();
 }
 
 pub fn path_from_bytes(slice: &[u8]) -> Result<PathBuf, Utf8Error> {

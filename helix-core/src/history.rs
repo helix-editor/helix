@@ -757,10 +757,8 @@ mod test {
             history.commit_revision(&transaction, &state);
 
             let file = tempfile::NamedTempFile::new().unwrap();
-            history
-                .serialize(&mut buf, &file.path().to_path_buf(), 0)
-                .unwrap();
-            History::deserialize(&mut buf.as_slice(), &file.path().to_path_buf()).unwrap();
+            history.serialize(&mut buf, file.path(), 0).unwrap();
+            History::deserialize(&mut buf.as_slice(), file.path()).unwrap();
             true
         }
     );
