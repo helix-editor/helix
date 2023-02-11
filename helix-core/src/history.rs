@@ -7,6 +7,7 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
 #[derive(Debug, Clone)]
 pub struct State {
     pub doc: Rope,
@@ -88,8 +89,8 @@ impl Revision {
     fn serialize<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
         write_usize(writer, self.parent)?;
         write_usize(writer, self.last_child.map(|n| n.get()).unwrap_or(0))?;
-        crate::transaction::serialize_transaction(writer, &self.transaction)?;
-        crate::transaction::serialize_transaction(writer, &self.inversion)?;
+        self.transaction.serialize(writer)?;
+        self.inversion.serialize(writer)?;
 
         Ok(())
     }
@@ -100,8 +101,8 @@ impl Revision {
             0 => None,
             n => Some(unsafe { NonZeroUsize::new_unchecked(n) }),
         };
-        let transaction = Arc::new(crate::transaction::deserialize_transaction(reader)?);
-        let inversion = Arc::new(crate::transaction::deserialize_transaction(reader)?);
+        let transaction = Arc::new(Transaction::deserialize(reader)?);
+        let inversion = Arc::new(Transaction::deserialize(reader)?);
         Ok(Revision {
             parent,
             last_child,

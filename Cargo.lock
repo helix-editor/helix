@@ -1283,15 +1283,12 @@ dependencies = [
  "once_cell",
  "serde",
  "serde_json",
- "sha1_smol",
  "slotmap",
  "tokio",
  "tokio-stream",
  "toml",
  "url",
- "walkdir",
  "which",
- "winapi",
 ]
 
 [[package]]

@@ -99,6 +99,7 @@ pub struct DocumentSavedEvent {
     pub doc_id: DocumentId,
     pub path: PathBuf,
     pub text: Rope,
+    pub serialize_error: bool,
 }
 
 pub type DocumentSavedEventResult = Result<DocumentSavedEvent, anyhow::Error>;
@@ -586,14 +587,12 @@ impl Document {
         let encoding = self.encoding;
 
         let last_saved_time = self.last_saved_time;
-        let mut undo_file = self
-            .undo_file(Some(&path))
-            .ok_or_else(|| anyhow!("failed to acquire undo file lock"))
-            .map(FileLock::exclusive)??;
-        let history = self.history.get_mut().clone();
-        let last_saved_revision = self.get_last_saved_revision();
-        let save_history = self.config.load().persistent_undo;
-
+        let history = self
+            .config
+            .load()
+            .persistent_undo
+            .then(|| self.history.get_mut().clone());
+        let undo_file = self.undo_file(Some(&path)).unwrap();
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
             use tokio::{fs, fs::File};
@@ -621,20 +620,36 @@ impl Document {
 
             let mut file = File::create(&path).await?;
             to_writer(&mut file, encoding, &text).await?;
-            if save_history {
-                let path = path.clone();
-                tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
-                    history.serialize(undo_file.get_mut()?, &path, last_saved_revision)?;
-                    Ok(())
-                })
-                .await??;
-            }
+
+            let mut serialize_error = false;
+            if let Some(history) = history {
+                let res = {
+                    let path = path.clone();
+                    tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+                        let mut undo_file = std::fs::File::create(&undo_file)?;
+                        history.serialize(&mut undo_file, &path, current_rev)?;
+                        Ok(())
+                    })
+                    .await
+                    .map_err(|e| anyhow!(e))
+                    .and_then(std::convert::identity)
+                };
+
+                if let Err(e) = res {
+                    log::error!(
+                        "Failed to serialize history for {}: {e}",
+                        path.to_string_lossy()
+                    );
+                    serialize_error = true;
+                }
+            };
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
                 doc_id,
                 path,
                 text: text.clone(),
+                serialize_error,
             };
 
             if let Some(language_server) = language_server {
@@ -724,20 +739,12 @@ impl Document {
         })
     }
 
-    pub fn save_history(&mut self) -> anyhow::Result<()> {
-        if let Some(Ok(mut undo_file)) = self.undo_file(None).map(FileLock::exclusive) {
-            let last_saved_revision = self.get_last_saved_revision();
-            let path = self.path().unwrap().clone();
-            let history = self.history.get_mut();
-            let undo_file = undo_file.get_mut()?;
-            undo_file.set_len(0)?;
-            history.serialize(undo_file, &path, last_saved_revision)?;
-        }
-        Ok(())
-    }
-
     pub fn load_history(&mut self) -> anyhow::Result<()> {
-        if let Some(Ok(undo_file)) = self.undo_file(None).map(FileLock::shared) {
+        if !self.config.load().persistent_undo {
+            return Ok(());
+        }
+
+        if let Some(undo_file) = self.undo_file(None).map(FileLock::shared).transpose()? {
             let mut undo_file = undo_file.get()?;
             if undo_file.metadata()?.len() != 0 {
                 let (last_saved_revision, history) = helix_core::history::History::deserialize(

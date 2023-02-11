@@ -168,9 +168,12 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
+    let mut config = Config::default();
+    config.editor.persistent_undo = true;
+    let mut app = helpers::AppBuilder::new().with_config(config).build()?;
 
     test_key_sequence(
-        &mut AppBuilder::new().build()?,
+        &mut app,
         Some(format!("ihello<esc>:w {}<ret>", file.path().to_string_lossy()).as_ref()),
         Some(&|app| {
             assert!(!app.editor.is_err());

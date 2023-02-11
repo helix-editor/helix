@@ -479,7 +479,10 @@ async fn test_character_info() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_persistent_undo() -> anyhow::Result<()> {
     let file = tempfile::NamedTempFile::new()?;
+    let mut config = Config::default();
+    config.editor.persistent_undo = true;
     let mut app = helpers::AppBuilder::new()
+        .with_config(config)
         .with_file(file.path(), None)
         .build()?;
 

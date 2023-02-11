@@ -506,7 +506,7 @@ impl Application {
         }
     }
 
-    pub fn handle_document_write(&mut self, doc_save_event: DocumentSavedEventResult) {
+    pub async fn handle_document_write(&mut self, doc_save_event: DocumentSavedEventResult) {
         let doc_save_event = match doc_save_event {
             Ok(event) => event,
             Err(err) => {
@@ -514,6 +514,10 @@ impl Application {
                 return;
             }
         };
+
+        if doc_save_event.serialize_error {
+            self.editor.set_error("failed to serialize history");
+        }
 
         let doc = match self.editor.document_mut(doc_save_event.doc_id) {
             None => {
@@ -574,7 +578,7 @@ impl Application {
 
         match event {
             EditorEvent::DocumentSaved(event) => {
-                self.handle_document_write(event);
+                self.handle_document_write(event).await;
                 self.render().await;
             }
             EditorEvent::ConfigEvent(event) => {
