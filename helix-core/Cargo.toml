@@ -18,7 +18,6 @@ integration = []
 helix-loader = { version = "0.6", path = "../helix-loader" }
 
 ropey = { version = "1.6.0", default-features = false, features = ["simd"] }
-tokio = { version = "1", default-features = false, features = ["io-util"], optional = true }
 smallvec = "1.10"
 smartstring = "1.0.1"
 unicode-segmentation = "1.10"
