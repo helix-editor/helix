@@ -4791,7 +4791,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("a", "Argument/parameter (tree-sitter)"),
         ("c", "Comment (tree-sitter)"),
         ("T", "Test (tree-sitter)"),
-        ("m", "Closest surrounding pair to cursor"),
+        ("m", "Closest surrounding pair"),
         (" ", "... or any character acting as a pair"),
     ];
 
