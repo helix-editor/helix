@@ -179,40 +179,41 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         .max_depth(config.file_picker.max_depth)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
 
-    // We want some dotfiles to remain visible
-    let mut defined_dots = vec!["github", "gitattributes", "gitignore"];
 
-    if let Some(user_dots) = config.file_picker.include_hidden {
-       defined_dots.extend(defined_dots.iter().copied());
+    // We want some dotfiles to remain visible
+    let mut defined_dots = vec!["github".to_string(), 
+                                "gitattributes".to_string(), 
+                                "gitignore".to_string()];
+
+    if let Some(user_dots) = &config.file_picker.include_hidden {
+       defined_dots.extend(user_dots.to_owned().into_iter());
     }
 
-    let mut hidden_type_builder = TypesBuilder::new();
-    hidden_type_builder
-        .add_defaults()
-        .add(
-            "ignore files", 
-            ".{" + defined_dots.join(",").to_str() + "}")
-        .expect("Invalid type definition--hidden_type_builder");
-    hidden_type_builder.select("all");
-
-    let include_types = hidden_type_builder
-        .build()
-        .expect("failed to build include_types");
-    walk_builder.types(include_types);
+    let add_str = defined_dots.join(",").to_owned();
+    
 
     // We want to exclude files that the editor can't handle yet
     let mut type_builder = TypesBuilder::new();
     type_builder
         .add(
             "compressed",
-            "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
-        )
-        .expect("Invalid type definition");
-    type_builder.negate("all");
-    let excluded_types = type_builder
+            "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}") 
+        .expect("Invalid type definition -- compressed");
+        
+    type_builder
+        .add_defaults()
+        .add(
+            "hidden",
+            format!(".{{{}}}", add_str).as_str())
+        .expect("Invalid type definition -- hidden");
+
+    type_builder.select("all");
+    type_builder.negate("compressed");
+   
+    let defined_types = type_builder
         .build()
         .expect("failed to build excluded_types");
-    walk_builder.types(excluded_types);
+    walk_builder.types(defined_types);
 
     // We want files along with their modification date for sorting
     let files = walk_builder.build().filter_map(|entry| {
