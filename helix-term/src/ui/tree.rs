@@ -1,7 +1,9 @@
 use std::iter::Peekable;
+use std::slice::Iter;
 use std::{cmp::Ordering, path::PathBuf};
 
 use anyhow::Result;
+use helix_view::theme::Modifier;
 
 use crate::{
     compositor::{Context, EventResult},
@@ -20,19 +22,14 @@ pub trait TreeItem: Sized {
     fn text(&self, cx: &mut Context, selected: bool, params: &mut Self::Params) -> Spans;
     fn text_string(&self) -> String;
     fn is_child(&self, other: &Self) -> bool;
+    fn is_parent(&self) -> bool;
     fn cmp(&self, other: &Self) -> Ordering;
 
-    fn filter(&self, cx: &mut Context, s: &str, params: &mut Self::Params) -> bool {
-        self.text(cx, false, params)
-            .0
-            .into_iter()
-            .map(|s| s.content)
-            .collect::<Vec<_>>()
-            .concat()
-            .contains(s)
+    fn filter(&self, s: &str) -> bool {
+        self.text_string().contains(s)
     }
 
-    fn get_childs(&self) -> Result<Vec<Self>> {
+    fn get_children(&self) -> Result<Vec<Self>> {
         Ok(vec![])
     }
 }
@@ -48,47 +45,28 @@ fn tree_item_cmp<T: TreeItem>(item1: &T, item2: &T) -> Ordering {
     T::cmp(item1, item2)
 }
 
-fn vec_to_tree<T: TreeItem>(mut items: Vec<T>, level: usize) -> Vec<Elem<T>> {
-    fn get_childs<T, Iter>(iter: &mut Peekable<Iter>, elem: &mut Elem<T>)
-    where
-        T: TreeItem,
-        Iter: Iterator<Item = T>,
-    {
-        let level = elem.level + 1;
-        loop {
-            if !iter.peek().map_or(false, |next| next.is_child(&elem.item)) {
-                break;
-            }
-            let mut child = Elem::new(iter.next().unwrap(), level);
-            if iter.peek().map_or(false, |nc| nc.is_child(&child.item)) {
-                get_childs(iter, &mut child);
-            }
-            elem.folded.push(child);
-        }
-    }
-
+fn vec_to_tree<T: TreeItem>(mut items: Vec<T>) -> Vec<Tree<T>> {
     items.sort_by(tree_item_cmp);
-    let mut elems = Vec::with_capacity(items.len());
-    let mut iter = items.into_iter().peekable();
-    while let Some(item) = iter.next() {
-        let mut elem = Elem::new(item, level);
-        if iter.peek().map_or(false, |next| next.is_child(&elem.item)) {
-            get_childs(&mut iter, &mut elem);
-        }
-        expand_elems(&mut elems, elem);
-    }
-    elems
+    index_elems(
+        0,
+        items
+            .into_iter()
+            .map(|item| Tree::new(item, vec![]))
+            .collect(),
+    )
 }
 
 // return total elems's count contain self
-fn get_elems_recursion<T: TreeItem>(t: &mut Elem<T>, depth: usize) -> Result<usize> {
-    let mut childs = t.item.get_childs()?;
+fn get_elems_recursion<T: TreeItem>(t: &mut Tree<T>, depth: usize) -> Result<usize> {
+    let mut childs = t.item.get_children()?;
     childs.sort_by(tree_item_cmp);
     let mut elems = Vec::with_capacity(childs.len());
-    let level = t.level + 1;
+    // let level = t.level + 1;
+    let level = todo!();
+
     let mut total = 1;
     for child in childs {
-        let mut elem = Elem::new(child, level);
+        let mut elem = Tree::new(child, level);
         let count = if depth > 0 {
             get_elems_recursion(&mut elem, depth - 1)?
         } else {
@@ -97,12 +75,12 @@ fn get_elems_recursion<T: TreeItem>(t: &mut Elem<T>, depth: usize) -> Result<usi
         elems.push(elem);
         total += count;
     }
-    t.folded = elems;
+    t.children = elems;
     Ok(total)
 }
 
-fn expand_elems<T: TreeItem>(dist: &mut Vec<Elem<T>>, mut t: Elem<T>) {
-    let childs = std::mem::take(&mut t.folded);
+fn expand_elems<T: TreeItem>(dist: &mut Vec<Tree<T>>, mut t: Tree<T>) {
+    let childs = std::mem::take(&mut t.children);
     dist.push(t);
     for child in childs {
         expand_elems(dist, child)
@@ -117,39 +95,121 @@ pub enum TreeOp<T> {
     ReplaceTree(Vec<T>),
 }
 
-pub struct Elem<T> {
+#[derive(Debug, PartialEq, Eq)]
+pub struct Tree<T> {
     item: T,
-    level: usize,
-    folded: Vec<Self>,
+    parent_index: Option<usize>,
+    index: usize,
+    children: Vec<Self>,
+
+    /// Why do we need this property?
+    /// Can't we just use `!children.is_empty()`?
+    ///
+    /// Because we might have for example an open folder that is empty,
+    /// and user just added a new file under that folder,
+    /// and the user refreshes the whole tree.
+    ///
+    /// Without `open`, we will not refresh any node without children,
+    /// and thus the folder still appears empty after refreshing.
+    is_opened: bool,
 }
 
-impl<T: Clone> Clone for Elem<T> {
+impl<T: Clone> Clone for Tree<T> {
     fn clone(&self) -> Self {
         Self {
             item: self.item.clone(),
-            level: self.level,
-            folded: self.folded.clone(),
+            index: self.index,
+            children: self.children.clone(),
+            is_opened: false,
+            parent_index: self.parent_index,
         }
     }
 }
 
-impl<T> Elem<T> {
-    pub fn new(item: T, level: usize) -> Self {
+struct TreeIter<'a, T> {
+    current_index: usize,
+    tree: &'a Tree<T>,
+}
+
+impl<'a, T> Iterator for TreeIter<'a, T> {
+    type Item = &'a Tree<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.current_index;
+        self.current_index += 1;
+
+        self.tree.find_by_index(index)
+    }
+}
+
+impl<'a, T> DoubleEndedIterator for TreeIter<'a, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let index = self.current_index;
+        self.current_index -= 1;
+        self.tree.find_by_index(index)
+    }
+}
+
+impl<'a, T> ExactSizeIterator for TreeIter<'a, T> {
+    fn len(&self) -> usize {
+        self.tree.len()
+    }
+}
+
+impl<T> Tree<T> {
+    fn iter(&self) -> TreeIter<T> {
+        TreeIter {
+            tree: self,
+            current_index: 0,
+        }
+    }
+    pub fn new(item: T, children: Vec<Tree<T>>) -> Self {
         Self {
             item,
-            level,
-            folded: vec![],
+            index: 0,
+            parent_index: None,
+            children: index_elems(1, children),
+            is_opened: false,
         }
     }
 
     pub fn item(&self) -> &T {
         &self.item
     }
+
+    fn find_by_index(&self, index: usize) -> Option<&Tree<T>> {
+        if self.index == index {
+            Some(self)
+        } else {
+            self.children
+                .iter()
+                .find_map(|elem| elem.find_by_index(index))
+        }
+    }
+
+    fn find_by_index_mut(&mut self, index: usize) -> Option<&mut Tree<T>> {
+        if self.index == index {
+            Some(self)
+        } else {
+            self.children
+                .iter_mut()
+                .find_map(|elem| elem.find_by_index_mut(index))
+        }
+    }
+
+    fn len(&self) -> usize {
+        (1 as usize).saturating_add(self.children.iter().map(|elem| elem.len()).sum())
+    }
+
+    fn regenerate_index(&mut self) {
+        let items = std::mem::take(&mut self.children);
+        self.children = index_elems(1, items);
+    }
 }
 
-pub struct Tree<T: TreeItem> {
-    items: Vec<Elem<T>>,
-    recycle: Option<(String, Vec<Elem<T>>)>,
+pub struct TreeView<T: TreeItem> {
+    tree: Tree<T>,
+    recycle: Option<(String, Vec<Tree<T>>)>,
     selected: usize,           // select item index
     save_view: (usize, usize), // (selected, row)
     winline: usize,            // view row
@@ -168,10 +228,10 @@ pub struct Tree<T: TreeItem> {
     on_next_key: Option<Box<dyn FnMut(&mut Context, &mut Self, KeyEvent)>>,
 }
 
-impl<T: TreeItem> Tree<T> {
-    pub fn new(items: Vec<Elem<T>>) -> Self {
+impl<T: TreeItem> TreeView<T> {
+    pub fn new(root: T, items: Vec<Tree<T>>) -> Self {
         Self {
-            items,
+            tree: Tree::new(root, items),
             recycle: None,
             selected: 0,
             save_view: (0, 0),
@@ -188,22 +248,15 @@ impl<T: TreeItem> Tree<T> {
     }
 
     pub fn replace_with_new_items(&mut self, items: Vec<T>) {
-        let old = std::mem::replace(self, Self::new(vec_to_tree(items, 0)));
-        self.on_opened_fn = old.on_opened_fn;
-        self.on_folded_fn = old.on_folded_fn;
-        self.tree_symbol_style = old.tree_symbol_style;
+        todo!()
+        // let old = std::mem::replace(self, Self::new(vec_to_tree(items)));
+        // self.on_opened_fn = old.on_opened_fn;
+        // self.on_folded_fn = old.on_folded_fn;
+        // self.tree_symbol_style = old.tree_symbol_style;
     }
 
-    pub fn build_tree(items: Vec<T>) -> Self {
-        Self::new(vec_to_tree(items, 0))
-    }
-
-    pub fn build_from_root(t: T, depth: usize) -> Result<Self> {
-        let mut elem = Elem::new(t, 0);
-        let count = get_elems_recursion(&mut elem, depth)?;
-        let mut elems = Vec::with_capacity(count);
-        expand_elems(&mut elems, elem);
-        Ok(Self::new(elems))
+    pub fn build_tree(root: T, items: Vec<T>) -> Self {
+        Self::new(root, vec_to_tree(items))
     }
 
     pub fn with_enter_fn<F>(mut self, f: F) -> Self
@@ -227,34 +280,19 @@ impl<T: TreeItem> Tree<T> {
         self
     }
 
-    fn next_item(&self) -> Option<&Elem<T>> {
-        self.items.get(self.selected + 1)
-    }
-
-    fn next_not_descendant_pos(&self, index: usize) -> usize {
-        let item = &self.items[index];
-        self.find(index + 1, false, |n| n.level <= item.level)
-            .unwrap_or(self.items.len())
-    }
-
-    fn find_parent(&self, index: usize) -> Option<usize> {
-        let item = &self.items[index];
-        self.find(index, true, |p| p.level < item.level)
-    }
-
-    // rev start: start - 1
-    fn find<F>(&self, start: usize, rev: bool, f: F) -> Option<usize>
+    fn find<F>(&self, start: usize, reverse: bool, f: F) -> Option<usize>
     where
-        F: FnMut(&Elem<T>) -> bool,
+        F: FnMut(&Tree<T>) -> bool,
     {
-        let iter = self.items.iter();
-        if rev {
+        let iter = self.tree.iter();
+        if reverse {
             iter.take(start).rposition(f)
         } else {
             iter.skip(start).position(f).map(|p| p + start)
         }
     }
 
+    /// TODO: current_path should not be PathBuf, but Vec<String> so that Tree can be generic
     pub fn focus_path(&mut self, cx: &mut Context, current_path: PathBuf, current_root: &PathBuf) {
         let current_path = current_path.as_path().to_string_lossy().to_string();
         let current_root = current_root.as_path().to_string_lossy().to_string() + "/";
@@ -278,125 +316,162 @@ impl<T: TreeItem> Tree<T> {
         // For example, consider a project that contains multiple `Cargo.toml`.
         // Without `previous_item_index`, the first `Cargo.toml` will always be chosen,
         // regardless of which `Cargo.toml` the user wishes to find in the explorer.
-        let mut previous_item_index = 0;
-        for (index, node) in nodes {
-            let current_level = index + 1;
-            let is_last = index == len - 1;
-            match self
-                .items
-                .iter()
-                .enumerate()
-                .position(|(item_index, item)| {
-                    item_index >= previous_item_index
-                        && item.item.text_string().eq(node)
-                        && item.level == current_level
-                }) {
-                Some(index) => {
-                    if is_last {
-                        self.selected = index
-                    } else {
-                        let item = &self.items[index];
-                        let items = match item.item.get_childs() {
-                            Ok(items) => items,
-                            Err(e) => return cx.editor.set_error(format!("{e}")),
-                        };
-                        let inserts = vec_to_tree(items, current_level + 1);
-                        previous_item_index = index;
-                        let _: Vec<_> = self.items.splice(index + 1..index + 1, inserts).collect();
-                    }
-                }
-                None => cx.editor.set_error(format!(
-                    "The following file does not exist anymore: '{}'. node = {}",
-                    current_path, node
-                )),
-            }
-        }
+        // let mut previous_item_index = 0;
+        // for (index, node) in nodes {
+        //     let current_level = index + 1;
+        //     let is_last = index == len - 1;
+        //     match self
+        //         .items
+        //         .iter()
+        //         .enumerate()
+        //         .position(|(item_index, item)| {
+        //             item_index >= previous_item_index
+        //                 && item.item.text_string().eq(node)
+        //                 && item.level == current_level
+        //         }) {
+        //         Some(index) => {
+        //             if is_last {
+        //                 self.selected = index
+        //             } else {
+        //                 let item = &self.items[index];
+        //                 let items = match item.item.get_childs() {
+        //                     Ok(items) => items,
+        //                     Err(e) => return cx.editor.set_error(format!("{e}")),
+        //                 };
+        //                 let inserts = vec_to_tree(items, current_level + 1);
+        //                 previous_item_index = index;
+        //                 let _: Vec<_> = self.items.splice(index + 1..index + 1, inserts).collect();
+        //             }
+        //         }
+        //         None => cx.editor.set_error(format!(
+        //             "The following file does not exist anymore: '{}'. node = {}",
+        //             current_path, node
+        //         )),
+        //     }
+        // }
 
         // Center the selection
         self.winline = self.max_len / 2;
     }
-}
 
-impl<T: TreeItem> Tree<T> {
-    pub fn on_enter(&mut self, cx: &mut Context, params: &mut T::Params, selected_index: usize) {
-        if self.items.is_empty() {
+    fn regenerate_index(&mut self) {
+        self.tree.regenerate_index();
+    }
+
+    fn go_to_parent(&mut self) {
+        if let Some(parent) = self.current_parent() {
+            self.selected = parent.index
+        }
+    }
+
+    fn go_to_children(&mut self, cx: &mut Context) {
+        let current = self.current_mut();
+        if current.is_opened {
+            self.selected += 1;
             return;
         }
-        if let Some(next_level) = self.next_item().map(|elem| elem.level) {
-            let current = &mut self.items[selected_index];
-            let current_level = current.level;
-            if next_level > current_level {
-                if let Some(mut on_folded_fn) = self.on_folded_fn.take() {
-                    on_folded_fn(&mut current.item, cx, params);
-                    self.on_folded_fn = Some(on_folded_fn);
-                }
-                self.fold_current_child();
-                return;
-            }
+        let items = match current.item.get_children() {
+            Ok(items) => items,
+            Err(e) => return cx.editor.set_error(format!("{e}")),
+        };
+        if items.is_empty() {
+            return;
+        }
+        current.is_opened = true;
+        current.children = vec_to_tree(items);
+        self.selected += 1;
+        self.regenerate_index()
+    }
+}
+
+impl<T: TreeItem> TreeView<T> {
+    pub fn on_enter(&mut self, cx: &mut Context, params: &mut T::Params, selected_index: usize) {
+        // if let Some(next_level) = self.next_item().map(|elem| elem.level) {
+        //     let current = self.find_by_index(selected_index);
+        //     let current_level = current.level;
+        //     if next_level > current_level {
+        //         // if let Some(mut on_folded_fn) = self.on_folded_fn.take() {
+        //         //     on_folded_fn(&mut current.item, cx, params);
+        //         //     self.on_folded_fn = Some(on_folded_fn);
+        //         // }
+        //         self.fold_current_child();
+        //         return;
+        //     }
+        // }
+        //
+        let mut selected_item = self.find_by_index_mut(selected_index);
+        if selected_item.is_opened {
+            selected_item.is_opened = false;
+            selected_item.children = vec![];
+            self.regenerate_index();
+            return;
         }
 
         if let Some(mut on_open_fn) = self.on_opened_fn.take() {
             let mut f = || {
-                let current = &mut self.items[selected_index];
-                let items = match on_open_fn(&mut current.item, cx, params) {
+                let current = &mut self.find_by_index_mut(selected_index);
+                match on_open_fn(&mut current.item, cx, params) {
                     TreeOp::Restore => {
-                        let inserts = std::mem::take(&mut current.folded);
-                        let _: Vec<_> = self
-                            .items
-                            .splice(selected_index + 1..selected_index + 1, inserts)
-                            .collect();
+                        panic!();
+                        // let inserts = std::mem::take(&mut current.folded);
+                        // let _: Vec<_> = self
+                        //     .items
+                        //     .splice(selected_index + 1..selected_index + 1, inserts)
+                        //     .collect();
                         return;
                     }
-                    TreeOp::InsertChild(items) => items,
-                    TreeOp::GetChildsAndInsert => match current.item.get_childs() {
-                        Ok(items) => items,
-                        Err(e) => return cx.editor.set_error(format!("{e}")),
-                    },
-                    TreeOp::ReplaceTree(items) => return self.replace_with_new_items(items),
-                    TreeOp::Noop => return,
+                    TreeOp::InsertChild(items) => {
+                        items;
+                    }
+                    TreeOp::GetChildsAndInsert => {
+                        let items = match current.item.get_children() {
+                            Ok(items) => items,
+                            Err(e) => return cx.editor.set_error(format!("{e}")),
+                        };
+                        current.is_opened = true;
+                        current.children = vec_to_tree(items);
+                    }
+                    TreeOp::ReplaceTree(items) => {
+                        return self.replace_with_new_items(items);
+                    }
+                    TreeOp::Noop => {}
                 };
-                current.folded = vec![];
-                let inserts = vec_to_tree(items, current.level + 1);
-                let _: Vec<_> = self
-                    .items
-                    .splice(selected_index + 1..selected_index + 1, inserts)
-                    .collect();
+
+                // current.folded = vec![];
+                // let inserts = vec_to_tree(items, current.level + 1);
+                // let _: Vec<_> = self
+                //     .items
+                //     .splice(selected_index + 1..selected_index + 1, inserts)
+                //     .collect();
             };
             f();
+            self.regenerate_index();
             self.on_opened_fn = Some(on_open_fn)
         } else {
-            let current = &mut self.items[selected_index];
-            let inserts = std::mem::take(&mut current.folded);
-            let _: Vec<_> = self
-                .items
-                .splice(selected_index + 1..selected_index + 1, inserts)
-                .collect();
+            panic!();
+            self.find_by_index_mut(selected_index).children = vec![];
+            // let current = &mut self.items[selected_index];
+            // let inserts = std::mem::take(&mut current.folded);
+            // let _: Vec<_> = self
+            //     .items
+            //     .splice(selected_index + 1..selected_index + 1, inserts)
+            //     .collect();
         }
-    }
-
-    pub fn fold_current_level(&mut self) {
-        let start = match self.find_parent(self.selected) {
-            Some(start) => start,
-            None => return,
-        };
-        self.selected = start;
-        self.fold_current_child();
     }
 
     pub fn fold_current_child(&mut self) {
-        if self.selected + 1 >= self.items.len() {
-            return;
-        }
-        let pos = self.next_not_descendant_pos(self.selected);
-        if self.selected < pos {
-            self.items[self.selected].folded = self.items.drain(self.selected + 1..pos).collect();
+        if let Some(parent) = self.current_parent_mut() {
+            parent.is_opened = false;
+            parent.children = vec![];
+            self.selected = parent.index;
+            self.regenerate_index()
         }
     }
 
     pub fn search_next(&mut self, cx: &mut Context, s: &str, params: &mut T::Params) {
         let skip = std::cmp::max(2, self.save_view.0 + 1);
         self.selected = self
-            .find(skip, false, |e| e.item.filter(cx, s, params))
+            .find(skip, false, |e| e.item.filter(s))
             .unwrap_or(self.save_view.0);
 
         self.winline = (self.save_view.1 + self.selected).saturating_sub(self.save_view.0);
@@ -405,14 +480,14 @@ impl<T: TreeItem> Tree<T> {
     pub fn search_pre(&mut self, cx: &mut Context, s: &str, params: &mut T::Params) {
         let take = self.save_view.0;
         self.selected = self
-            .find(take, true, |e| e.item.filter(cx, s, params))
+            .find(take, true, |e| e.item.filter(s))
             .unwrap_or(self.save_view.0);
 
         self.winline = (self.save_view.1 + self.selected).saturating_sub(self.save_view.0);
     }
 
     pub fn move_down(&mut self, rows: usize) {
-        let len = self.items.len();
+        let len = self.tree.len();
         if len > 0 {
             self.selected = std::cmp::min(self.selected + rows, len.saturating_sub(1));
             self.winline = std::cmp::min(self.selected, self.winline + rows);
@@ -420,9 +495,9 @@ impl<T: TreeItem> Tree<T> {
     }
 
     pub fn move_up(&mut self, rows: usize) {
-        let len = self.items.len();
+        let len = self.tree.len();
         if len > 0 {
-            self.selected = self.selected.saturating_sub(rows);
+            self.selected = std::cmp::max(0, self.selected.saturating_sub(rows));
             self.winline = std::cmp::min(self.selected, self.winline.saturating_sub(rows));
         }
     }
@@ -470,12 +545,43 @@ impl<T: TreeItem> Tree<T> {
         (self.selected, self.winline) = self.save_view;
     }
 
-    pub fn current(&self) -> &Elem<T> {
-        &self.items[self.selected]
+    fn find_by_index(&self, index: usize) -> &Tree<T> {
+        self.tree
+            .iter()
+            .find_map(|item| item.find_by_index(index))
+            .unwrap()
+    }
+
+    fn find_by_index_mut(&mut self, index: usize) -> &mut Tree<T> {
+        self.tree.find_by_index_mut(index).unwrap()
+    }
+
+    pub fn current(&self) -> &Tree<T> {
+        self.find_by_index(self.selected)
+    }
+
+    pub fn current_mut(&mut self) -> &mut Tree<T> {
+        self.find_by_index_mut(self.selected)
+    }
+
+    fn current_parent(&self) -> Option<&Tree<T>> {
+        if let Some(parent_index) = self.current().parent_index {
+            Some(self.find_by_index(parent_index))
+        } else {
+            None
+        }
+    }
+
+    fn current_parent_mut(&mut self) -> Option<&mut Tree<T>> {
+        if let Some(parent_index) = self.current().parent_index {
+            Some(self.find_by_index_mut(parent_index))
+        } else {
+            None
+        }
     }
 
     pub fn current_item(&self) -> &T {
-        &self.items[self.selected].item
+        &self.current().item
     }
 
     pub fn row(&self) -> usize {
@@ -483,13 +589,14 @@ impl<T: TreeItem> Tree<T> {
     }
 
     pub fn remove_current(&mut self) -> T {
-        let elem = self.items.remove(self.selected);
-        self.selected = self.selected.saturating_sub(1);
-        elem.item
+        todo!()
+        // let elem = self.tree.remove(self.selected);
+        // self.selected = self.selected.saturating_sub(1);
+        // elem.item
     }
 
     pub fn replace_current(&mut self, item: T) {
-        self.items[self.selected].item = item;
+        self.current_mut().item = item
     }
 
     pub fn set_selected(&mut self, selected: usize) {
@@ -497,32 +604,16 @@ impl<T: TreeItem> Tree<T> {
     }
 
     pub fn insert_current_level(&mut self, item: T) {
-        let current = self.current();
-        let level = current.level;
-        let pos = match current.item.cmp(&item) {
-            Ordering::Less => self
-                .find(self.selected + 1, false, |e| {
-                    e.level < level || (e.level == level && e.item.cmp(&item) != Ordering::Less)
-                })
-                .unwrap_or(self.items.len()),
-
-            Ordering::Greater => {
-                match self.find(self.selected, true, |elem| {
-                    elem.level < level
-                        || (elem.level == level && elem.item.cmp(&item) != Ordering::Greater)
-                }) {
-                    Some(p) if self.items[p].level == level => self.next_not_descendant_pos(p),
-                    Some(p) => p + 1,
-                    None => 0,
-                }
-            }
-            Ordering::Equal => self.selected + 1,
-        };
-        self.items.insert(pos, Elem::new(item, level));
+        let current = self.current_mut();
+        current.children.push(Tree::new(item, vec![]));
+        current
+            .children
+            .sort_by(|a, b| tree_item_cmp(&a.item, &b.item));
+        self.regenerate_index()
     }
 }
 
-impl<T: TreeItem> Tree<T> {
+impl<T: TreeItem> TreeView<T> {
     pub fn render(
         &mut self,
         area: Rect,
@@ -537,76 +628,178 @@ impl<T: TreeItem> Tree<T> {
         self.max_len = 0;
         self.winline = std::cmp::min(self.winline, area.height.saturating_sub(1) as usize);
         let style = cx.editor.theme.get(&self.tree_symbol_style);
-        let last_item_index = self.items.len().saturating_sub(1);
+        let last_item_index = self.tree.len().saturating_sub(1);
         let skip = self.selected.saturating_sub(self.winline);
-        let iter = self
-            .items
+
+        let params = RenderElemParams {
+            tree: &self.tree,
+            prefix: &"".to_string(),
+            is_last: true,
+            level: 0,
+            selected: self.selected,
+        };
+
+        let rendered = render_tree(params);
+
+        let iter = rendered
             .iter()
             .skip(skip)
             .take(area.height as usize)
             .enumerate();
-        for (index, elem) in iter {
-            let row = index as u16;
-            let mut area = Rect::new(area.x, area.y + row, area.width, 1);
-            let indent = if elem.level > 0 {
-                if index + skip != last_item_index {
-                    format!("{}├─", "│ ".repeat(elem.level - 1))
-                } else {
-                    format!("└─{}", "┴─".repeat(elem.level - 1))
-                }
+
+        struct Indent(String);
+        struct Node {
+            name: String,
+            selected: bool,
+        }
+
+        struct RenderElemParams<'a, T> {
+            tree: &'a Tree<T>,
+            prefix: &'a String,
+            is_last: bool,
+            level: u16,
+            selected: usize,
+        }
+
+        cx.editor.set_error(format!("seleted = {}", self.selected));
+
+        fn render_tree<T: TreeItem>(
+            RenderElemParams {
+                tree,
+                prefix,
+                is_last,
+                level,
+                selected,
+            }: RenderElemParams<T>,
+        ) -> Vec<(Indent, Node)> {
+            let indent = if level > 0 {
+                let bar = if is_last { "└" } else { "├" };
+                let branch = if tree.is_opened { "┬" } else { "─" };
+                format!("{}{}{}", prefix, bar, branch)
             } else {
                 "".to_string()
             };
-
-            let indent_len = indent.chars().count();
-            if indent_len > self.col {
-                let indent: String = indent.chars().skip(self.col).collect();
-                if !indent.is_empty() {
-                    surface.set_stringn(area.x, area.y, &indent, area.width as usize, style);
-                    area = area.clip_left(indent.width() as u16);
-                }
-            };
-            let mut start_index = self.col.saturating_sub(indent_len);
-            let mut text = elem.item.text(cx, skip + index == self.selected, params);
-            self.max_len = self.max_len.max(text.width() + indent.len());
-            for span in text.0.iter_mut() {
-                if area.width == 0 {
-                    return;
-                }
-                if start_index == 0 {
-                    surface.set_span(area.x, area.y, span, area.width);
-                    area = area.clip_left(span.width() as u16);
-                } else {
-                    let span_width = span.width();
-                    if start_index > span_width {
-                        start_index -= span_width;
-                    } else {
-                        let content: String = span
-                            .content
-                            .chars()
-                            .filter(|c| {
-                                if start_index > 0 {
-                                    start_index = start_index.saturating_sub(c.to_string().width());
-                                    false
-                                } else {
-                                    true
-                                }
+            let folded_length = tree.children.len();
+            let head = (
+                Indent(indent),
+                Node {
+                    selected: selected == tree.index,
+                    name: format!(
+                        "{}{}",
+                        tree.item.text_string(),
+                        if tree.item.is_parent() {
+                            format!("{}", std::path::MAIN_SEPARATOR)
+                        } else {
+                            "".to_string()
+                        }
+                    ),
+                },
+            );
+            let prefix = format!("{}{}", prefix, if is_last { " " } else { "│" });
+            vec![head]
+                .into_iter()
+                .chain(
+                    tree.children
+                        .iter()
+                        .enumerate()
+                        .flat_map(|(local_index, elem)| {
+                            let is_last = local_index == folded_length - 1;
+                            render_tree(RenderElemParams {
+                                tree: elem,
+                                prefix: &prefix,
+                                is_last,
+                                level: level + 1,
+                                selected,
                             })
-                            .collect();
-                        surface.set_string_truncated(
-                            area.x,
-                            area.y,
-                            &content,
-                            area.width as usize,
-                            |_| span.style,
-                            false,
-                            false,
-                        );
-                        start_index = 0
-                    }
-                }
-            }
+                        }),
+                )
+                .collect()
         }
+
+        for (index, (indent, node)) in iter {
+            let area = Rect::new(area.x, area.y + index as u16, area.width, 1);
+            let indent_len = indent.0.chars().count() as u16;
+            surface.set_stringn(area.x, area.y, indent.0.clone(), indent_len as usize, style);
+
+            let style = if node.selected {
+                style.add_modifier(Modifier::REVERSED)
+            } else {
+                style
+            };
+            surface.set_stringn(
+                area.x.saturating_add(indent_len).saturating_add(1),
+                area.y,
+                node.name.clone(),
+                area.width
+                    .saturating_sub(indent_len)
+                    .saturating_sub(1)
+                    .into(),
+                style,
+            );
+        }
+        // let mut text = elem.item.text(cx, skip + index == self.selected, params);
+        // for (index, elem) in iter {
+        //     let row = index as u16;
+        //     let mut area = Rect::new(area.x, area.y + row, area.width, 1);
+        //     let indent = if elem.level > 0 {
+        //         if index + skip != last_item_index {
+        //             format!("{}├─", "│ ".repeat(elem.level - 1))
+        //         } else {
+        //             format!("└─{}", "┴─".repeat(elem.level - 1))
+        //         }
+        //     } else {
+        //         "".to_string()
+        //     };
+
+        //     let indent_len = indent.chars().count();
+        //     if indent_len > self.col {
+        //         let indent: String = indent.chars().skip(self.col).collect();
+        //         if !indent.is_empty() {
+        //             surface.set_stringn(area.x, area.y, &indent, area.width as usize, style);
+        //             area = area.clip_left(indent.width() as u16);
+        //         }
+        //     };
+        //     let mut start_index = self.col.saturating_sub(indent_len);
+        //     let mut text = elem.item.text(cx, skip + index == self.selected, params);
+        //     self.max_len = self.max_len.max(text.width() + indent.len());
+        //     for span in text.0.iter_mut() {
+        //         if area.width == 0 {
+        //             return;
+        //         }
+        //         if start_index == 0 {
+        //             surface.set_span(area.x, area.y, span, area.width);
+        //             area = area.clip_left(span.width() as u16);
+        //         } else {
+        //             let span_width = span.width();
+        //             if start_index > span_width {
+        //                 start_index -= span_width;
+        //             } else {
+        //                 let content: String = span
+        //                     .content
+        //                     .chars()
+        //                     .filter(|c| {
+        //                         if start_index > 0 {
+        //                             start_index = start_index.saturating_sub(c.to_string().width());
+        //                             false
+        //                         } else {
+        //                             true
+        //                         }
+        //                     })
+        //                     .collect();
+        //                 surface.set_string_truncated(
+        //                     area.x,
+        //                     area.y,
+        //                     &content,
+        //                     area.width as usize,
+        //                     |_| span.style,
+        //                     false,
+        //                     false,
+        //                 );
+        //                 start_index = 0
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     pub fn handle_event(
@@ -629,15 +822,12 @@ impl<T: TreeItem> Tree<T> {
             key!(i @ '0'..='9') => self.count = i.to_digit(10).unwrap() as usize + count * 10,
             key!('k') | shift!(Tab) | key!(Up) | ctrl!('k') => self.move_up(1.max(count)),
             key!('j') | key!(Tab) | key!(Down) | ctrl!('j') => self.move_down(1.max(count)),
-            key!('z') => self.fold_current_level(),
-            key!('h') => self.move_left(1.max(count)),
-            key!('l') => self.move_right(1.max(count)),
-            shift!('G') => self.move_down(usize::MAX / 2),
+            key!('z') => self.fold_current_child(),
+            key!('h') => self.go_to_parent(),
+            key!('l') => self.go_to_children(cx),
             key!(Enter) => self.on_enter(cx, params, self.selected),
             ctrl!('d') => self.move_down_half_page(),
             ctrl!('u') => self.move_up_half_page(),
-            shift!('D') => self.move_down_page(),
-            shift!('U') => self.move_up_page(),
             key!('g') => {
                 self.on_next_key = Some(Box::new(|_, tree, event| match event.into() {
                     key!('g') => tree.move_up(usize::MAX / 2),
@@ -652,88 +842,87 @@ impl<T: TreeItem> Tree<T> {
     }
 }
 
-impl<T: TreeItem + Clone> Tree<T> {
+impl<T: TreeItem + Clone> TreeView<T> {
     pub fn filter(&mut self, s: &str, cx: &mut Context, params: &mut T::Params) {
-        fn filter_recursion<T>(
-            elems: &Vec<Elem<T>>,
-            mut index: usize,
-            s: &str,
-            cx: &mut Context,
-            params: &mut T::Params,
-        ) -> (Vec<Elem<T>>, usize)
-        where
-            T: TreeItem + Clone,
-        {
-            let mut retain = vec![];
-            let elem = &elems[index];
-            loop {
-                let child = match elems.get(index + 1) {
-                    Some(child) if child.item.is_child(&elem.item) => child,
-                    _ => break,
-                };
-                index += 1;
-                let next = elems.get(index + 1);
-                if next.map_or(false, |n| n.item.is_child(&child.item)) {
-                    let (sub_retain, current_index) = filter_recursion(elems, index, s, cx, params);
-                    retain.extend(sub_retain);
-                    index = current_index;
-                } else if child.item.filter(cx, s, params) {
-                    retain.push(child.clone());
-                }
-            }
-            if !retain.is_empty() || elem.item.filter(cx, s, params) {
-                retain.insert(0, elem.clone());
-            }
-            (retain, index)
-        }
+        todo!()
+        // fn filter_recursion<T>(
+        //     elems: &Vec<Tree<T>>,
+        //     mut index: usize,
+        //     s: &str,
+        //     cx: &mut Context,
+        //     params: &mut T::Params,
+        // ) -> (Vec<Tree<T>>, usize)
+        // where
+        //     T: TreeItem + Clone,
+        // {
+        //     let mut retain = vec![];
+        //     let elem = &elems[index];
+        //     loop {
+        //         let child = match elems.get(index + 1) {
+        //             Some(child) if child.item.is_child(&elem.item) => child,
+        //             _ => break,
+        //         };
+        //         index += 1;
+        //         let next = elems.get(index + 1);
+        //         if next.map_or(false, |n| n.item.is_child(&child.item)) {
+        //             let (sub_retain, current_index) = filter_recursion(elems, index, s, cx, params);
+        //             retain.extend(sub_retain);
+        //             index = current_index;
+        //         } else if child.item.filter(s) {
+        //             retain.push(child.clone());
+        //         }
+        //     }
+        //     if !retain.is_empty() || elem.item.filter(s) {
+        //         retain.insert(0, elem.clone());
+        //     }
+        //     (retain, index)
+        // }
 
-        if s.is_empty() {
-            if let Some((_, recycle)) = self.recycle.take() {
-                self.items = recycle;
-                self.restore_view();
-                return;
-            }
-        }
+        // if s.is_empty() {
+        //     if let Some((_, recycle)) = self.recycle.take() {
+        //         // self.tree = recycle;
+        //         self.restore_view();
+        //         return;
+        //     }
+        // }
 
-        let mut retain = vec![];
-        let mut index = 0;
-        let items = match &self.recycle {
-            Some((pre, _)) if pre == s => return,
-            Some((pre, recycle)) if pre.contains(s) => recycle,
-            _ => &self.items,
-        };
-        while let Some(elem) = items.get(index) {
-            let next = items.get(index + 1);
-            if next.map_or(false, |n| n.item.is_child(&elem.item)) {
-                let (sub_items, current_index) = filter_recursion(items, index, s, cx, params);
-                index = current_index;
-                retain.extend(sub_items);
-            } else if elem.item.filter(cx, s, params) {
-                retain.push(elem.clone())
-            }
-            index += 1;
-        }
+        // let mut retain = vec![];
+        // let mut index = 0;
+        // let items = match &self.recycle {
+        //     Some((pre, _)) if pre == s => return,
+        //     Some((pre, recycle)) if pre.contains(s) => recycle,
+        //     _ => &self.tree,
+        // };
+        // while let Some(elem) = items.get(index) {
+        //     let next = items.get(index + 1);
+        //     if next.map_or(false, |n| n.item.is_child(&elem.item)) {
+        //         let (sub_items, current_index) = filter_recursion(items, index, s, cx, params);
+        //         index = current_index;
+        //         retain.extend(sub_items);
+        //     } else if elem.item.filter(s) {
+        //         retain.push(elem.clone())
+        //     }
+        //     index += 1;
+        // }
 
-        if retain.is_empty() {
-            if let Some((_, recycle)) = self.recycle.take() {
-                self.items = recycle;
-                self.restore_view();
-            }
-            return;
-        }
+        // if retain.is_empty() {
+        //     if let Some((_, recycle)) = self.recycle.take() {
+        //         self.tree = recycle;
+        //         self.restore_view();
+        //     }
+        //     return;
+        // }
 
-        let recycle = std::mem::replace(&mut self.items, retain);
-        if let Some(r) = self.recycle.as_mut() {
-            r.0 = s.into()
-        } else {
-            self.recycle = Some((s.into(), recycle));
-            self.save_view();
-        }
+        // let recycle = std::mem::replace(&mut self.tree, retain);
+        // if let Some(r) = self.recycle.as_mut() {
+        //     r.0 = s.into()
+        // } else {
+        //     self.recycle = Some((s.into(), recycle));
+        //     self.save_view();
+        // }
 
-        self.selected = self
-            .find(0, false, |elem| elem.item.filter(cx, s, params))
-            .unwrap_or(0);
-        self.winline = self.selected;
+        // self.selected = self.find(0, false, |elem| elem.item.filter(s)).unwrap_or(0);
+        // self.winline = self.selected;
     }
 
     pub fn clean_recycle(&mut self) {
@@ -741,8 +930,136 @@ impl<T: TreeItem + Clone> Tree<T> {
     }
 
     pub fn restore_recycle(&mut self) {
-        if let Some((_, recycle)) = self.recycle.take() {
-            self.items = recycle;
-        }
+        todo!();
+        // if let Some((_, recycle)) = self.recycle.take() {
+        //     self.tree = recycle;
+        // }
+    }
+}
+
+/// Recalculate the index of each item of a tree.
+///
+/// For example:
+///
+/// ```
+/// foo (0)
+///   bar (1)
+/// spam (2)
+///   jar (3)
+///     yo (4)
+/// ```
+fn index_elems<T>(start_index: usize, elems: Vec<Tree<T>>) -> Vec<Tree<T>> {
+    fn index_elems<'a, T>(
+        current_index: usize,
+        elems: Vec<Tree<T>>,
+        parent_index: Option<usize>,
+    ) -> (usize, Vec<Tree<T>>) {
+        elems
+            .into_iter()
+            .fold((current_index, vec![]), |(current_index, trees), elem| {
+                let index = current_index;
+                let item = elem.item;
+                let (current_index, folded) =
+                    index_elems(current_index + 1, elem.children, Some(index));
+                let tree = Tree {
+                    item,
+                    children: folded,
+                    index,
+                    is_opened: elem.is_opened,
+                    parent_index,
+                };
+                (
+                    current_index,
+                    trees.into_iter().chain(vec![tree].into_iter()).collect(),
+                )
+            })
+    }
+    index_elems(start_index, elems, None).1
+}
+
+#[cfg(test)]
+mod test_tree {
+    use super::{index_elems, Tree};
+
+    #[test]
+    fn test_indexs_elems_1() {
+        let result = index_elems(
+            0,
+            vec![
+                Tree::new("foo", vec![Tree::new("bar", vec![])]),
+                Tree::new(
+                    "spam",
+                    vec![Tree::new("jar", vec![Tree::new("yo", vec![])])],
+                ),
+            ],
+        );
+        assert_eq!(
+            result,
+            vec![
+                Tree {
+                    item: "foo",
+                    is_opened: false,
+                    index: 0,
+                    parent_index: None,
+                    children: vec![Tree {
+                        item: "bar",
+                        is_opened: false,
+                        index: 1,
+                        parent_index: Some(0),
+                        children: vec![]
+                    }]
+                },
+                Tree {
+                    item: "spam",
+                    is_opened: false,
+                    index: 2,
+                    parent_index: None,
+                    children: vec![Tree {
+                        item: "jar",
+                        is_opened: false,
+                        index: 3,
+                        parent_index: Some(2),
+                        children: vec![Tree {
+                            item: "yo",
+                            is_opened: false,
+                            index: 4,
+                            children: vec![],
+                            parent_index: Some(3)
+                        }]
+                    }]
+                }
+            ]
+        )
+    }
+
+    #[test]
+    fn test_iter_1() {
+        let tree = Tree::new(
+            "spam",
+            vec![
+                Tree::new("jar", vec![Tree::new("yo", vec![])]),
+                Tree::new("foo", vec![Tree::new("bar", vec![])]),
+            ],
+        );
+
+        let mut iter = tree.iter();
+        assert_eq!(iter.next().map(|tree| tree.item), Some("spam"));
+        assert_eq!(iter.next().map(|tree| tree.item), Some("jar"));
+        assert_eq!(iter.next().map(|tree| tree.item), Some("yo"));
+        assert_eq!(iter.next().map(|tree| tree.item), Some("foo"));
+        assert_eq!(iter.next().map(|tree| tree.item), Some("bar"));
+    }
+
+    #[test]
+    fn test_len_1() {
+        let tree = Tree::new(
+            "spam",
+            vec![
+                Tree::new("jar", vec![Tree::new("yo", vec![])]),
+                Tree::new("foo", vec![Tree::new("bar", vec![])]),
+            ],
+        );
+
+        assert_eq!(tree.len(), 5)
     }
 }

@@ -1,4 +1,4 @@
-use super::{Prompt, Tree, TreeItem, TreeOp};
+use super::{Prompt, TreeItem, TreeOp, TreeView};
 use crate::{
     compositor::{Component, Compositor, Context, EventResult},
     ctrl, key, shift, ui,
@@ -86,18 +86,20 @@ impl TreeItem for FileInfo {
             FileType::Parent | FileType::Dir | FileType::Root => "ui.explorer.dir",
             FileType::File | FileType::Exe | FileType::Placeholder => "ui.explorer.file",
         };
-        let mut style = theme.try_get(style).unwrap_or_else(|| theme.get("ui.text"));
-        if selected {
+        let style = theme.try_get(style).unwrap_or_else(|| theme.get("ui.text"));
+        let style = if !selected {
+            style
+        } else {
             let patch = match state.focus {
                 true => "ui.explorer.focus",
                 false => "ui.explorer.unfocus",
             };
             if let Some(patch) = theme.try_get(patch) {
-                style = style.patch(patch);
+                style.patch(patch)
             } else {
-                style = style.add_modifier(Modifier::REVERSED);
+                style.add_modifier(Modifier::REVERSED)
             }
-        }
+        };
         Spans::from(Span::styled(text, style))
     }
 
@@ -142,7 +144,7 @@ impl TreeItem for FileInfo {
         self.path.cmp(&other.path)
     }
 
-    fn get_childs(&self) -> Result<Vec<Self>> {
+    fn get_children(&self) -> Result<Vec<Self>> {
         match self.file_type {
             FileType::Root | FileType::Dir => {}
             _ => return Ok(vec![]),
@@ -173,7 +175,7 @@ impl TreeItem for FileInfo {
         Ok(ret)
     }
 
-    fn filter(&self, _cx: &mut Context, s: &str, _params: &mut Self::Params) -> bool {
+    fn filter(&self, s: &str) -> bool {
         if s.is_empty() {
             false
         } else {
@@ -183,6 +185,13 @@ impl TreeItem for FileInfo {
 
     fn text_string(&self) -> String {
         self.get_text().to_string()
+    }
+
+    fn is_parent(&self) -> bool {
+        match self.file_type {
+            FileType::Dir | FileType::Parent | FileType::Root => true,
+            _ => false,
+        }
     }
 }
 
@@ -245,7 +254,7 @@ impl State {
 }
 
 pub struct Explorer {
-    tree: Tree<FileInfo>,
+    tree: TreeView<FileInfo>,
     state: State,
     prompt: Option<(PromptAction, Prompt)>,
     #[allow(clippy::type_complexity)]
@@ -257,9 +266,10 @@ pub struct Explorer {
 impl Explorer {
     pub fn new(cx: &mut Context) -> Result<Self> {
         let current_root = std::env::current_dir().unwrap_or_else(|_| "./".into());
-        let items = Self::get_items(current_root.clone(), cx)?;
+        let root = FileInfo::root(current_root.clone());
+        let children = root.get_children()?;
         Ok(Self {
-            tree: Tree::build_tree(items).with_enter_fn(Self::toggle_current),
+            tree: TreeView::build_tree(root, children).with_enter_fn(Self::toggle_current),
             state: State::new(true, current_root),
             repeat_motion: None,
             prompt: None,
@@ -300,14 +310,13 @@ impl Explorer {
     }
 
     fn get_items(p: PathBuf, cx: &mut Context) -> Result<Vec<FileInfo>> {
-        let mut items = vec![FileInfo::parent(p.as_path())];
-        let root = FileInfo::root(p);
-        let childs = root.get_childs()?;
-        if cx.editor.config().explorer.is_tree() {
-            items.push(root)
-        }
-        items.extend(childs);
-        Ok(items)
+        todo!()
+        // let mut items = vec![FileInfo::parent(p.as_path())];
+
+        // if cx.editor.config().explorer.is_tree() {
+        //     items.push(root)
+        // }
+        // Ok(items)
     }
 
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, editor: &Editor) {
@@ -794,7 +803,10 @@ impl Component for Explorer {
                     match Self::get_items(p.to_path_buf(), cx) {
                         Ok(items) => {
                             self.state.current_root = p.to_path_buf();
-                            self.tree = Tree::build_tree(items).with_enter_fn(Self::toggle_current);
+                            let root = FileInfo::root(self.state.current_root.clone());
+                            let children = root.get_children().expect("TODO: handle error");
+                            self.tree = TreeView::build_tree(root, children)
+                                .with_enter_fn(Self::toggle_current);
                         }
                         Err(e) => cx.editor.set_error(format!("{e}")),
                     }
