@@ -1,65 +1,6 @@
-pub mod undo;
-
-use std::{
-    fs::{File, OpenOptions},
-    path::PathBuf,
-};
-
-use anyhow::{Context, Result};
-use helix_core::path::os_str_as_bytes;
-use sha1_smol::Sha1;
-
-pub struct Workspace {
-    path: PathBuf,
-    lock: Option<FileLock>,
-}
-
-impl Workspace {
-    // TODO: Allow custom session names to be passed.
-    pub fn new() -> Result<Self> {
-        let path = std::env::current_dir()?;
-        let bytes = os_str_as_bytes(path);
-        let hash = Sha1::from(bytes).digest().to_string();
-        let path = helix_loader::cache_dir().join("workspaces").join(hash);
-        Ok(Self { path, lock: None })
-    }
-
-    pub fn path(&self) -> PathBuf {
-        self.path.clone()
-    }
-
-    pub fn get(&mut self, path: &str) -> Result<File> {
-        if self.lock.is_none() {
-            let lock = FileLock::shared(self.path.join(".helix.lock"))?;
-            lock.lock()?;
-
-            self.lock = Some(lock);
-        }
-        let path = self.path.join(path);
-
-        OpenOptions::new()
-            .read(true)
-            .open(path)
-            .context("failed to open file")
-    }
-
-    pub fn get_mut(&mut self, path: &str) -> Result<File> {
-        if self.lock.is_none() {
-            let lock = FileLock::exclusive(self.path.join(".helix.lock"))?;
-            lock.lock()?;
-
-            self.lock = Some(lock);
-        }
-        let path = self.path.join(path);
-
-        OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(path)
-            .context("failed to open file")
-    }
-}
+use std::fs::{File, OpenOptions};
+use std::io::Result;
+use std::path::Path;
 
 pub struct FileLock {
     file: File,
@@ -67,7 +8,7 @@ pub struct FileLock {
 }
 
 impl FileLock {
-    pub fn exclusive(path: PathBuf) -> Result<Self> {
+    pub fn exclusive<P: AsRef<Path>>(path: P) -> Result<Self> {
         let file = Self::open_lock(path)?;
         Ok(Self {
             file,
@@ -75,7 +16,7 @@ impl FileLock {
         })
     }
 
-    pub fn shared(path: PathBuf) -> Result<Self> {
+    pub fn shared<P: AsRef<Path>>(path: P) -> Result<Self> {
         let file = Self::open_lock(path)?;
         Ok(Self { file, shared: true })
     }
@@ -94,8 +35,8 @@ impl FileLock {
         sys::lock(&self.file, self.shared)
     }
 
-    fn open_lock(path: PathBuf) -> std::io::Result<File> {
-        if let Some(parent) = path.parent() {
+    fn open_lock<P: AsRef<Path>>(path: P) -> Result<File> {
+        if let Some(parent) = path.as_ref().parent() {
             if !parent.exists() {
                 std::fs::DirBuilder::new().recursive(true).create(parent)?;
             }
@@ -117,9 +58,9 @@ impl Drop for FileLock {
 // `sys` impls from https://github.com/rust-lang/cargo/blob/fc2242a8c5606be36aecfd61dd464422271dad9d/src/cargo/util/flock.rs
 #[cfg(unix)]
 mod sys {
-    use anyhow::Result;
     use std::fs::File;
     use std::io::Error;
+    use std::io::Result;
     use std::os::unix::io::AsRawFd;
 
     pub(super) fn unlock(file: &File) -> Result<()> {
@@ -134,7 +75,7 @@ mod sys {
     fn flock(file: &File, flag: libc::c_int) -> Result<()> {
         let ret = unsafe { libc::flock(file.as_raw_fd(), flag) };
         if ret < 0 {
-            anyhow::bail!(Error::last_os_error())
+            Err(Error::last_os_error())
         } else {
             Ok(())
         }
@@ -143,7 +84,12 @@ mod sys {
 
 #[cfg(windows)]
 mod sys {
-    use std::{fs::File, io::Error, os::windows::prelude::AsRawHandle, path::Path};
+    use std::{
+        fs::File,
+        io::{Error, Result},
+        os::windows::prelude::AsRawHandle,
+        path::Path,
+    };
 
     use winapi::um::{
         fileapi::{LockFileEx, UnlockFile},
@@ -151,20 +97,20 @@ mod sys {
     };
 
     /// Blocks until the lock is acquired.
-    pub(super) fn lock(file: &File, shared: bool) -> anyhow::Result<()> {
+    pub(super) fn lock(file: &File, shared: bool) -> Result<()> {
         let flag = if shared { 0 } else { LOCKFILE_EXCLUSIVE_LOCK };
         unsafe {
             let mut overlapped = std::mem::zeroed();
             let ret = LockFileEx(file.as_raw_handle(), flag, 0, !0, !0, &mut overlapped);
             if ret == 0 {
-                anyhow::bail!(Error::last_os_error())
+                Err(Error::last_os_error())
             } else {
                 Ok(())
             }
         }
     }
 
-    pub(super) fn unlock(file: &File) -> std::io::Result<()> {
+    pub(super) fn unlock(file: &File) -> Result<()> {
         unsafe {
             let ret = UnlockFile(file.as_raw_handle(), 0, 0, !0, !0);
             if ret == 0 {

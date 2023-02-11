@@ -4,6 +4,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
+use helix_core::flock::FileLock;
 use helix_core::syntax::Highlight;
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::Range;
@@ -32,7 +33,6 @@ use helix_core::{
 };
 
 use crate::editor::{Config, RedrawHandle};
-use crate::workspace::FileLock;
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.

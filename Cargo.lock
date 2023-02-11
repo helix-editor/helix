@@ -1124,6 +1124,7 @@ dependencies = [
  "hashbrown 0.13.2",
  "helix-loader",
  "imara-diff",
+ "libc",
  "log",
  "once_cell",
  "quickcheck",
