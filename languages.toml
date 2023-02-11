@@ -190,7 +190,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-c", rev = "7175a6dd
 name = "cpp"
 scope = "source.cpp"
 injection-regex = "cpp"
-file-types = ["cc", "hh", "c++", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino"]
+file-types = ["cc", "hh", "c++", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino", "C", "H"]
 roots = []
 comment-token = "//"
 language-server = { command = "clangd" }
@@ -1072,8 +1072,8 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "f6bb
 name = "dockerfile"
 scope = "source.dockerfile"
 injection-regex = "docker|dockerfile"
-roots = ["Dockerfile"]
-file-types = ["Dockerfile", "dockerfile"]
+roots = ["Dockerfile", "Containerfile"]
+file-types = ["Dockerfile", "dockerfile", "Containerfile", "containerfile"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "docker-langserver", args = ["--stdio"] }
@@ -1967,7 +1967,7 @@ source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d1
 name = "xml"
 scope = "source.xml"
 injection-regex = "xml"
-file-types = ["xml"]
+file-types = ["xml", "mobileconfig", "plist"]
 indent = { tab-width = 2, unit = "  " }
 roots = []
 
@@ -2134,3 +2134,36 @@ grammar = "xml"
 '"' = '"'
 "'" = "'"
 "<" = ">"
+
+[[language]]
+name = "pem"
+scope = "source.pem"
+file-types = ["pem", "cert", "crt"]
+injection-regex = "pem"
+roots = []
+grammar = "pem"
+
+[[grammar]]
+name = "pem"
+source = { git = "https://github.com/mtoohey31/tree-sitter-pem", rev = "be67a4330a1aa507c7297bc322204f936ec1132c" }
+
+[[language]]
+name = "passwd"
+scope = "source.passwd"
+file-types = ["passwd"]
+roots = []
+
+[[grammar]]
+name = "passwd"
+source = { git = "https://github.com/ath3/tree-sitter-passwd", rev = "20239395eacdc2e0923a7e5683ad3605aee7b716" }
+
+[[language]]
+name = "hosts"
+scope = "source.hosts"
+file-types = ["hosts"]
+roots = []
+comment-token = "#"
+
+[[grammar]]
+name = "hosts"
+source = { git = "https://github.com/ath3/tree-sitter-hosts", rev = "301b9379ce7dfc8bdbe2c2699a6887dcb73953f9" }

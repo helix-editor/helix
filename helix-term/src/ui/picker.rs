@@ -70,6 +70,8 @@ impl From<DocumentId> for PathOrId {
     }
 }
 
+type FileCallback<T> = Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>;
+
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation = (PathOrId, Option<(usize, usize)>);
 
@@ -80,7 +82,7 @@ pub struct FilePicker<T: Item> {
     preview_cache: HashMap<PathBuf, CachedPreview>,
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
-    file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
+    file_fn: FileCallback<T>,
 }
 
 pub enum CachedPreview {
@@ -394,6 +396,8 @@ impl Ord for PickerMatch {
     }
 }
 
+type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
+
 pub struct Picker<T: Item> {
     options: Vec<T>,
     editor_data: T::Data,
@@ -415,7 +419,7 @@ pub struct Picker<T: Item> {
     /// Constraints for tabular formatting
     widths: Vec<Constraint>,
 
-    callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
+    callback_fn: PickerCallback<T>,
 }
 
 impl<T: Item> Picker<T> {
