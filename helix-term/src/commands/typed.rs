@@ -1187,21 +1187,20 @@ fn reload(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-          
+
     let scrolloff = cx.editor.config().scrolloff;
     let redraw_handle = cx.editor.redraw_handle.clone();
     let (view, doc) = current!(cx.editor);
-    
+
     if doc.is_modified() {
         bail!("Cannot reload unsaved buffer");
     }
-    
+
     doc.reload(view, &cx.editor.diff_providers, redraw_handle)
         .map(|_| {
             view.ensure_cursor_in_view(doc, scrolloff);
         })
 }
-
 
 fn force_reload_all(
     cx: &mut compositor::Context,
@@ -1263,7 +1262,7 @@ fn reload_all(
     }
 
     let mut unsaved_buffer_count = 0;
-        
+
     let scrolloff = cx.editor.config().scrolloff;
     let view_id = view!(cx.editor).id;
 
@@ -1284,15 +1283,15 @@ fn reload_all(
 
     for (doc_id, view_ids) in docs_view_ids {
         let doc = doc_mut!(cx.editor, &doc_id);
-        
+
         if doc.is_modified() {
             unsaved_buffer_count += 1;
             continue;
         }
-        
+
         // Every doc is guaranteed to have at least 1 view at this point.
         let view = view_mut!(cx.editor, view_ids[0]);
-      
+
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
@@ -1308,9 +1307,12 @@ fn reload_all(
     }
 
     if unsaved_buffer_count > 0 {
-        bail!("{}, unsaved buffer(s) remaining, all saved buffers reloaded", unsaved_buffer_count);
+        bail!(
+            "{}, unsaved buffer(s) remaining, all saved buffers reloaded",
+            unsaved_buffer_count
+        );
     }
-    
+
     Ok(())
 }
 
@@ -2355,7 +2357,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Discard changes and reload from the source file",
             fun: force_reload,
-            completer: None,  
+            completer: None,
         },
         TypableCommand {
             name: "reload",
