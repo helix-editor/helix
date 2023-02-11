@@ -1,22 +1,23 @@
 use helix_view::Editor;
 
 use crate::compositor::Compositor;
+use std::pin::Pin;
 
-use futures_util::future::{BoxFuture, Future, FutureExt};
+use futures_util::future::{Future, FutureExt};
 use futures_util::stream::{FuturesUnordered, StreamExt};
 
-pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
-pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
+pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor)>;
+pub type EditorCallback = Box<dyn FnOnce(&mut Editor)>;
 
 pub enum Callback {
     EditorCompositor(EditorCompositorCallback),
     Editor(EditorCallback),
 }
 
-pub type JobFuture = BoxFuture<'static, anyhow::Result<Option<Callback>>>;
+pub type JobFuture = Pin<Box<dyn Future<Output = anyhow::Result<Option<Callback>>>>>;
 
 pub struct Job {
-    pub future: BoxFuture<'static, anyhow::Result<Option<Callback>>>,
+    pub future: JobFuture,
     /// Do we need to wait for this job to finish before exiting?
     pub wait: bool,
 }
@@ -29,18 +30,16 @@ pub struct Jobs {
 }
 
 impl Job {
-    pub fn new<F: Future<Output = anyhow::Result<()>> + Send + 'static>(f: F) -> Self {
+    pub fn new<F: Future<Output = anyhow::Result<()>> + 'static>(f: F) -> Self {
         Self {
-            future: f.map(|r| r.map(|()| None)).boxed(),
+            future: Box::pin(f.map(|r| r.map(|()| None))),
             wait: false,
         }
     }
 
-    pub fn with_callback<F: Future<Output = anyhow::Result<Callback>> + Send + 'static>(
-        f: F,
-    ) -> Self {
+    pub fn with_callback<F: Future<Output = anyhow::Result<Callback>> + 'static>(f: F) -> Self {
         Self {
-            future: f.map(|r| r.map(Some)).boxed(),
+            future: Box::pin(f.map(|r| r.map(Some))),
             wait: false,
         }
     }
@@ -56,14 +55,11 @@ impl Jobs {
         Self::default()
     }
 
-    pub fn spawn<F: Future<Output = anyhow::Result<()>> + Send + 'static>(&mut self, f: F) {
+    pub fn spawn<F: Future<Output = anyhow::Result<()>> + 'static>(&mut self, f: F) {
         self.add(Job::new(f));
     }
 
-    pub fn callback<F: Future<Output = anyhow::Result<Callback>> + Send + 'static>(
-        &mut self,
-        f: F,
-    ) {
+    pub fn callback<F: Future<Output = anyhow::Result<Callback>> + 'static>(&mut self, f: F) {
         self.add(Job::with_callback(f));
     }
 
