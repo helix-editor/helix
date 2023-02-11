@@ -394,11 +394,29 @@ impl Application {
         // the configuration.
         self.editor.refresh_config();
 
+        match self.refresh_mouse(self.config.load().editor.mouse) {
+            Ok(_) => {}
+            Err(err) => {
+                self.editor.set_error(err.to_string());
+            }
+        }
+
         // reset view position in case softwrap was enabled/disabled
         let scrolloff = self.editor.config().scrolloff;
         for (view, _) in self.editor.tree.views_mut() {
             let doc = &self.editor.documents[&view.doc];
             view.ensure_cursor_in_view(doc, scrolloff)
+        }
+    }
+
+    /// refresh mouse state after config change
+    fn refresh_mouse(&self, enabled: bool) -> Result<(), Error> {
+        if enabled {
+            execute!(stdout(), EnableMouseCapture)
+                .map_err(|err| anyhow::anyhow!("Failed to enable mouse: {}", err))
+        } else {
+            execute!(stdout(), DisableMouseCapture)
+                .map_err(|err| anyhow::anyhow!("Failed to disable mouse: {}", err))
         }
     }
 
