@@ -473,7 +473,7 @@ async fn test_character_info() -> anyhow::Result<()> {
     );
 }
 
-async fn test_workspace_serde() -> anyhow::Result<()> {
+async fn test_persistent_undo() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
@@ -481,10 +481,13 @@ async fn test_workspace_serde() -> anyhow::Result<()> {
 
     test_key_sequence(
         &mut app,
-        Some("ihello<esc>:sw<ret>:bc!<ret>:ow<ret>"),
+        Some(&format!(
+            "ihello<esc>:w<ret>:bc!<ret>:o {}<ret>",
+            file.path().to_string_lossy()
+        )),
         Some(&|app| {
             let mut docs: Vec<_> = app.editor.documents().collect();
-            assert_eq!(2, docs.len());
+            assert!(!app.editor.is_err());
         }),
         false,
     )

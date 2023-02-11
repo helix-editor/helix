@@ -585,9 +585,7 @@ impl Document {
 
         let encoding = self.encoding;
 
-<<<<<<< HEAD
         let last_saved_time = self.last_saved_time;
-=======
         let mut undo_file = self
             .undo_file()
             .ok_or(anyhow!("failed to acquire undo file lock"))
@@ -595,7 +593,6 @@ impl Document {
         let history = self.history.get_mut().clone();
         let last_saved_revision = self.get_last_saved_revision();
         let save_history = self.config.load().persistent_undo;
->>>>>>> 974129e6 (wip)
 
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
