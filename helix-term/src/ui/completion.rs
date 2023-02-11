@@ -1,6 +1,10 @@
 use crate::compositor::{Component, Context, Event, EventResult};
-use helix_view::{editor::CompleteAction, ViewId};
-use tui::buffer::Buffer as Surface;
+use helix_view::{
+    editor::CompleteAction,
+    theme::{Modifier, Style},
+    ViewId,
+};
+use tui::{buffer::Buffer as Surface, text::Span};
 
 use std::borrow::Cow;
 
@@ -33,8 +37,20 @@ impl menu::Item for CompletionItem {
     }
 
     fn format(&self, _data: &Self::Data) -> menu::Row {
+        let deprecated = if let Some(tags) = &self.tags {
+            tags.contains(&lsp::CompletionItemTag::DEPRECATED)
+        } else {
+            self.deprecated.unwrap_or_default()
+        };
         menu::Row::new(vec![
-            menu::Cell::from(self.label.as_str()),
+            menu::Cell::from(Span::styled(
+                self.label.as_str(),
+                if deprecated {
+                    Style::default().add_modifier(Modifier::CROSSED_OUT)
+                } else {
+                    Style::default()
+                },
+            )),
             menu::Cell::from(match self.kind {
                 Some(lsp::CompletionItemKind::TEXT) => "text",
                 Some(lsp::CompletionItemKind::METHOD) => "method",

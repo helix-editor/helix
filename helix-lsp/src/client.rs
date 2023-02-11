@@ -318,6 +318,10 @@ impl Client {
                                 ],
                             }),
                             insert_replace_support: Some(true),
+                            deprecated_support: Some(true),
+                            tag_support: Some(lsp::TagSupport {
+                                value_set: vec![lsp::CompletionItemTag::DEPRECATED],
+                            }),
                             ..Default::default()
                         }),
                         completion_item_kind: Some(lsp::CompletionItemKindCapability {
