@@ -3,7 +3,7 @@ use futures_util::Stream;
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
-    pos_at_coords, syntax, Selection,
+    syntax,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{
@@ -223,8 +223,8 @@ impl Application {
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = doc_mut!(editor, &doc_id);
-                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-                        doc.set_selection(view_id, pos);
+                        let selection = pos.selection_for_doc(doc);
+                        doc.set_selection(view_id, selection);
                     }
                 }
                 editor.set_status(format!(

@@ -57,7 +57,10 @@ USAGE:
     hx [FLAGS] [files]...
 
 ARGS:
-    <files>...    Sets the input file to use, position can also be specified via file[:row[:col]]
+    <files>...    Open each file in a buffer. The cursor position can be specified via prefix 
+                  or postfix postion. `[+<line>[:col]|+:] file_name` or `file_name[:row[:col]]|:`.
+                  Prefixing the file name with a (`+:`) or postfixing with only a (`:`) will 
+                  position the cursor at the end of the file's buffer.
 
 FLAGS:
     -h, --help                     Prints help information
@@ -73,6 +76,7 @@ FLAGS:
     -V, --version                  Prints version information
     --vsplit                       Splits all given files vertically into different windows
     --hsplit                       Splits all given files horizontally into different windows
+        
 ",
         env!("CARGO_PKG_NAME"),
         VERSION_AND_GIT_HASH,
