@@ -743,8 +743,10 @@ impl Document {
             return Ok(());
         }
 
-        if let Some(undo_file) = self.undo_file(None) {
-            let mut undo_file = std::fs::File::open(undo_file)?;
+        if let Some(mut undo_file) = self
+            .undo_file(None)
+            .and_then(|path| std::fs::File::open(path).ok())
+        {
             if undo_file.metadata()?.len() != 0 {
                 let (last_saved_revision, history) = helix_core::history::History::deserialize(
                     &mut undo_file,

@@ -744,19 +744,21 @@ mod test {
     }
 
     quickcheck!(
-        fn serde_history(a: String, b: String) -> bool {
-            let old = Rope::from(a);
-            let new = Rope::from(b);
-            let transaction = crate::diff::compare_ropes(&old, &new);
+        fn serde_history(original: String, changes: Vec<String>) -> bool {
+            let mut history = History::default();
+            let mut original = Rope::from(original);
+
+            for c in changes.into_iter().map(Rope::from) {
+                let transaction = crate::diff::compare_ropes(&original, &c);
+                let state = State {
+                    doc: original,
+                    selection: Selection::point(0),
+                };
+                history.commit_revision(&transaction, &state);
+                original = c;
+            }
 
             let mut buf = Vec::new();
-            let mut history = History::default();
-            let state = State {
-                doc: old,
-                selection: Selection::point(0),
-            };
-            history.commit_revision(&transaction, &state);
-
             let file = tempfile::NamedTempFile::new().unwrap();
             history.serialize(&mut buf, file.path(), 0).unwrap();
             History::deserialize(&mut buf.as_slice(), file.path()).unwrap();

@@ -1179,7 +1179,7 @@ fn reload(
         })?;
     if let Err(e) = doc.load_history() {
         cx.editor
-            .set_error(Cow::Owned(format!("failed to load history from disk: {e}")));
+            .set_error(Cow::Owned(format!("failed to deserialize history: {e}")));
     }
     Ok(())
 }
