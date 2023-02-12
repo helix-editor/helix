@@ -367,6 +367,10 @@ impl Theme {
     pub fn rainbow_length(&self) -> usize {
         self.rainbow_length
     }
+
+    pub fn get_rainbow(&self, index: usize) -> Style {
+        self.highlights[index % self.rainbow_length]
+    }
 }
 
 fn default_rainbow() -> Vec<Style> {
