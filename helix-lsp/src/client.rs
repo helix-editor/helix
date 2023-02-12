@@ -6,6 +6,7 @@ use crate::{
 
 use helix_core::{find_root, ChangeSet, Rope};
 use helix_loader::{self, VERSION_AND_GIT_HASH};
+use lsp::PositionEncodingKind;
 use lsp_types as lsp;
 use serde::Deserialize;
 use serde_json::Value;
@@ -32,7 +33,6 @@ pub struct Client {
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
-    offset_encoding: OffsetEncoding,
     config: Option<Value>,
     root_path: std::path::PathBuf,
     root_uri: Option<lsp::Url>,
@@ -104,7 +104,6 @@ impl Client {
             server_tx,
             request_counter: AtomicU64::new(0),
             capabilities: OnceCell::new(),
-            offset_encoding: OffsetEncoding::Utf8,
             config,
             req_timeout,
 
@@ -147,7 +146,19 @@ impl Client {
     }
 
     pub fn offset_encoding(&self) -> OffsetEncoding {
-        self.offset_encoding
+        self.capabilities()
+            .position_encoding
+            .as_ref()
+            .and_then(|encoding| match encoding.as_str() {
+                "utf-8" => Some(OffsetEncoding::Utf8),
+                "utf-16" => Some(OffsetEncoding::Utf16),
+                "utf-32" => Some(OffsetEncoding::Utf32),
+                encoding => {
+                    log::error!("Server provided invalid position encording {encoding}, defaulting to utf-16");
+                    None
+                },
+            })
+            .unwrap_or_default()
     }
 
     pub fn config(&self) -> Option<&Value> {
@@ -377,6 +388,14 @@ impl Client {
                     work_done_progress: Some(true),
                     ..Default::default()
                 }),
+                general: Some(lsp::GeneralClientCapabilities {
+                    position_encodings: Some(vec![
+                        PositionEncodingKind::UTF32,
+                        PositionEncodingKind::UTF8,
+                        PositionEncodingKind::UTF16,
+                    ]),
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
             trace: None,
@@ -577,7 +596,7 @@ impl Client {
                 }]
             }
             lsp::TextDocumentSyncKind::INCREMENTAL => {
-                Self::changeset_to_changes(old_text, new_text, changes, self.offset_encoding)
+                Self::changeset_to_changes(old_text, new_text, changes, self.offset_encoding())
             }
             lsp::TextDocumentSyncKind::NONE => return None,
             kind => unimplemented!("{:?}", kind),
@@ -628,7 +647,7 @@ impl Client {
         Some(self.notify::<lsp::notification::DidSaveTextDocument>(
             lsp::DidSaveTextDocumentParams {
                 text_document,
-                text: include_text.then(|| text.into()),
+                text: include_text.then_some(text.into()),
             },
         ))
     }
@@ -1027,7 +1046,7 @@ impl Client {
             partial_result_params: lsp::PartialResultParams::default(),
         };
 
-        Some(self.call::<lsp::request::WorkspaceSymbol>(params))
+        Some(self.call::<lsp::request::WorkspaceSymbolRequest>(params))
     }
 
     pub fn code_actions(
