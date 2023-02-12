@@ -733,6 +733,31 @@ impl Client {
         Some(self.call::<lsp::request::SignatureHelpRequest>(params))
     }
 
+    pub fn text_document_range_inlay_hints(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        range: lsp::Range,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match capabilities.inlay_hint_provider {
+            Some(
+                lsp::OneOf::Left(true)
+                | lsp::OneOf::Right(lsp::InlayHintServerCapabilities::Options(_)),
+            ) => (),
+            _ => return None,
+        }
+
+        let params = lsp::InlayHintParams {
+            text_document,
+            range,
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+        };
+
+        Some(self.call::<lsp::request::InlayHintRequest>(params))
+    }
+
     pub fn text_document_hover(
         &self,
         text_document: lsp::TextDocumentIdentifier,
