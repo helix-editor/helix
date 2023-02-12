@@ -78,30 +78,30 @@ impl FileInfo {
 impl TreeItem for FileInfo {
     type Params = State;
 
-    fn text(&self, cx: &mut Context, selected: bool, state: &mut State) -> Spans {
-        let text = self.get_text();
-        let theme = &cx.editor.theme;
+    // fn text(&self, cx: &mut Context, selected: bool, state: &mut State) -> Spans {
+    //     let text = self.get_text();
+    //     let theme = &cx.editor.theme;
 
-        let style = match self.file_type {
-            FileType::Parent | FileType::Dir | FileType::Root => "ui.explorer.dir",
-            FileType::File | FileType::Exe | FileType::Placeholder => "ui.explorer.file",
-        };
-        let style = theme.try_get(style).unwrap_or_else(|| theme.get("ui.text"));
-        let style = if !selected {
-            style
-        } else {
-            let patch = match state.focus {
-                true => "ui.explorer.focus",
-                false => "ui.explorer.unfocus",
-            };
-            if let Some(patch) = theme.try_get(patch) {
-                style.patch(patch)
-            } else {
-                style.add_modifier(Modifier::REVERSED)
-            }
-        };
-        Spans::from(Span::styled(text, style))
-    }
+    //     let style = match self.file_type {
+    //         FileType::Parent | FileType::Dir | FileType::Root => "ui.explorer.dir",
+    //         FileType::File | FileType::Exe | FileType::Placeholder => "ui.explorer.file",
+    //     };
+    //     let style = theme.try_get(style).unwrap_or_else(|| theme.get("ui.text"));
+    //     let style = if !selected {
+    //         style
+    //     } else {
+    //         let patch = match state.focus {
+    //             true => "ui.explorer.focus",
+    //             false => "ui.explorer.unfocus",
+    //         };
+    //         if let Some(patch) = theme.try_get(patch) {
+    //             style.patch(patch)
+    //         } else {
+    //             style.add_modifier(Modifier::REVERSED)
+    //         }
+    //     };
+    //     Spans::from(Span::styled(text, style))
+    // }
 
     fn is_child(&self, other: &Self) -> bool {
         if let FileType::Parent = other.file_type {
@@ -173,14 +173,6 @@ impl TreeItem for FileInfo {
             })
         }
         Ok(ret)
-    }
-
-    fn filter(&self, s: &str) -> bool {
-        if s.is_empty() {
-            false
-        } else {
-            self.get_text().contains(s)
-        }
     }
 
     fn text_string(&self) -> String {
@@ -667,7 +659,7 @@ impl Explorer {
                             } else {
                                 explorer
                                     .tree
-                                    .search_pre(cx, &search_str, &mut explorer.state);
+                                    .search_previous(cx, &search_str, &mut explorer.state);
                             }
                         }
                     }))
@@ -684,7 +676,8 @@ impl Explorer {
                     if search_next {
                         self.tree.search_next(cx, prompt.line(), &mut self.state);
                     } else {
-                        self.tree.search_pre(cx, prompt.line(), &mut self.state);
+                        self.tree
+                            .search_previous(cx, prompt.line(), &mut self.state);
                     }
                 }
                 self.prompt = Some((action, prompt));

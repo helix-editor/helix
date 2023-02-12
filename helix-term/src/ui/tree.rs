@@ -17,14 +17,16 @@ use tui::{buffer::Buffer as Surface, text::Spans};
 pub trait TreeItem: Sized {
     type Params;
 
-    fn text(&self, cx: &mut Context, selected: bool, params: &mut Self::Params) -> Spans;
+    // fn text(&self, cx: &mut Context, selected: bool, params: &mut Self::Params) -> Spans;
     fn text_string(&self) -> String;
     fn is_child(&self, other: &Self) -> bool;
     fn is_parent(&self) -> bool;
     fn cmp(&self, other: &Self) -> Ordering;
 
     fn filter(&self, s: &str) -> bool {
-        self.text_string().contains(s)
+        self.text_string()
+            .to_lowercase()
+            .contains(&s.to_lowercase())
     }
 
     fn get_children(&self) -> Result<Vec<Self>> {
@@ -124,8 +126,10 @@ impl<T: Clone> Clone for Tree<T> {
     }
 }
 
+#[derive(Clone)]
 struct TreeIter<'a, T> {
-    current_index: usize,
+    current_index_forward: usize,
+    current_index_reverse: isize,
     tree: &'a Tree<T>,
 }
 
@@ -133,32 +137,40 @@ impl<'a, T> Iterator for TreeIter<'a, T> {
     type Item = &'a Tree<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.current_index;
-        self.current_index += 1;
+        let index = self.current_index_forward;
+        if index > self.tree.len().saturating_sub(1) {
+            None
+        } else {
+            self.current_index_forward = self.current_index_forward.saturating_add(1);
+            self.tree.find_by_index(index)
+        }
+    }
 
-        self.tree.find_by_index(index)
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.tree.len(), Some(self.tree.len()))
     }
 }
 
 impl<'a, T> DoubleEndedIterator for TreeIter<'a, T> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        let index = self.current_index;
-        self.current_index -= 1;
-        self.tree.find_by_index(index)
+        let index = self.current_index_reverse;
+        if index < 0 {
+            None
+        } else {
+            self.current_index_reverse = self.current_index_reverse.saturating_sub(1);
+            self.tree.find_by_index(index as usize)
+        }
     }
 }
 
-impl<'a, T> ExactSizeIterator for TreeIter<'a, T> {
-    fn len(&self) -> usize {
-        self.tree.len()
-    }
-}
+impl<'a, T> ExactSizeIterator for TreeIter<'a, T> {}
 
 impl<T> Tree<T> {
     fn iter(&self) -> TreeIter<T> {
         TreeIter {
             tree: self,
-            current_index: 0,
+            current_index_forward: 0,
+            current_index_reverse: (self.len() - 1) as isize,
         }
     }
     pub fn new(item: T, children: Vec<Tree<T>>) -> Self {
@@ -294,7 +306,7 @@ impl<T: TreeItem> TreeView<T> {
         if reverse {
             iter.take(start).rposition(f)
         } else {
-            iter.skip(start).position(f).map(|p| p + start)
+            iter.skip(start).position(f).map(|index| index + start)
         }
     }
 
@@ -490,7 +502,7 @@ impl<T: TreeItem> TreeView<T> {
         self.winline = (self.save_view.1 + self.selected).saturating_sub(self.save_view.0);
     }
 
-    pub fn search_pre(&mut self, cx: &mut Context, s: &str, params: &mut T::Params) {
+    pub fn search_previous(&mut self, cx: &mut Context, s: &str, params: &mut T::Params) {
         let take = self.save_view.0;
         self.selected = self
             .find(take, true, |e| e.item.filter(s))
@@ -644,8 +656,6 @@ impl<T: TreeItem> TreeView<T> {
         let style = cx.editor.theme.get(&self.tree_symbol_style);
         let last_item_index = self.tree.len().saturating_sub(1);
         let skip = self.selected.saturating_sub(self.winline);
-
-        cx.editor.set_error(format!("winline = {}", self.winline));
 
         let params = RenderElemParams {
             tree: &self.tree,
