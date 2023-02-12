@@ -10,7 +10,7 @@ use helix_lsp::{
 };
 use tui::{
     text::{Span, Spans},
-    widgets::Row,
+    widgets::{Cell, Row},
 };
 
 use super::{align_view, push_jump, Align, Context, Editor, Open};
@@ -92,17 +92,48 @@ impl ui::menu::Item for lsp::SymbolInformation {
     type Data = Option<lsp::Url>;
 
     fn format(&self, current_doc_path: &Self::Data) -> Row {
-        if current_doc_path.as_ref() == Some(&self.location.uri) {
-            self.name.as_str().into()
-        } else {
-            match self.location.uri.to_file_path() {
-                Ok(path) => {
-                    let get_relative_path = path::get_relative_path(path.as_path());
-                    format!("{} ({})", &self.name, get_relative_path.to_string_lossy()).into()
+        Row::new(vec![
+            Cell::from(match self.kind {
+                lsp::SymbolKind::FILE => "file",
+                lsp::SymbolKind::MODULE => "module",
+                lsp::SymbolKind::NAMESPACE => "namespace",
+                lsp::SymbolKind::PACKAGE => "package",
+                lsp::SymbolKind::CLASS => "class",
+                lsp::SymbolKind::METHOD => "method",
+                lsp::SymbolKind::PROPERTY => "property",
+                lsp::SymbolKind::FIELD => "field",
+                lsp::SymbolKind::CONSTRUCTOR => "constructor",
+                lsp::SymbolKind::ENUM => "enum",
+                lsp::SymbolKind::INTERFACE => "interface",
+                lsp::SymbolKind::FUNCTION => "function",
+                lsp::SymbolKind::VARIABLE => "variable",
+                lsp::SymbolKind::CONSTANT => "constant",
+                lsp::SymbolKind::STRING => "string",
+                lsp::SymbolKind::NUMBER => "number",
+                lsp::SymbolKind::BOOLEAN => "boolean",
+                lsp::SymbolKind::ARRAY => "array",
+                lsp::SymbolKind::OBJECT => "object",
+                lsp::SymbolKind::KEY => "key",
+                lsp::SymbolKind::NULL => "null",
+                lsp::SymbolKind::ENUM_MEMBER => "enum_member",
+                lsp::SymbolKind::STRUCT => "struct",
+                lsp::SymbolKind::EVENT => "event",
+                lsp::SymbolKind::OPERATOR => "operator",
+                lsp::SymbolKind::TYPE_PARAMETER => "type_parameter",
+                _ => "<unknown>",
+            }),
+            if current_doc_path.as_ref() == Some(&self.location.uri) {
+                self.name.as_str().into()
+            } else {
+                match self.location.uri.to_file_path() {
+                    Ok(path) => {
+                        let get_relative_path = path::get_relative_path(path.as_path());
+                        format!("{} ({})", &self.name, get_relative_path.to_string_lossy()).into()
+                    }
+                    Err(_) => format!("{} ({})", &self.name, &self.location.uri).into(),
                 }
-                Err(_) => format!("{} ({})", &self.name, &self.location.uri).into(),
-            }
-        }
+            },
+        ])
     }
 }
 
