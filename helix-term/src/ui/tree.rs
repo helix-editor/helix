@@ -7,7 +7,7 @@ use crate::{
     compositor::{Context, EventResult},
     ctrl, key, shift,
 };
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::{movement::Direction, unicode::width::UnicodeWidthStr};
 use helix_view::{
     graphics::Rect,
     input::{Event, KeyEvent},
@@ -142,7 +142,7 @@ impl<'a, T> Iterator for TreeIter<'a, T> {
             None
         } else {
             self.current_index_forward = self.current_index_forward.saturating_add(1);
-            self.tree.find_by_index(index)
+            self.tree.get(index)
         }
     }
 
@@ -158,7 +158,7 @@ impl<'a, T> DoubleEndedIterator for TreeIter<'a, T> {
             None
         } else {
             self.current_index_reverse = self.current_index_reverse.saturating_sub(1);
-            self.tree.find_by_index(index as usize)
+            self.tree.get(index as usize)
         }
     }
 }
@@ -166,13 +166,6 @@ impl<'a, T> DoubleEndedIterator for TreeIter<'a, T> {
 impl<'a, T> ExactSizeIterator for TreeIter<'a, T> {}
 
 impl<T> Tree<T> {
-    fn iter(&self) -> TreeIter<T> {
-        TreeIter {
-            tree: self,
-            current_index_forward: 0,
-            current_index_reverse: (self.len() - 1) as isize,
-        }
-    }
     pub fn new(item: T, children: Vec<Tree<T>>) -> Self {
         Self {
             item,
@@ -182,28 +175,50 @@ impl<T> Tree<T> {
             is_opened: false,
         }
     }
+    fn iter(&self) -> TreeIter<T> {
+        TreeIter {
+            tree: self,
+            current_index_forward: 0,
+            current_index_reverse: (self.len() - 1) as isize,
+        }
+    }
+
+    /// Find an element in the tree with given `predicate`.
+    /// `start_index` is inclusive if direction is `Forward`.
+    /// `start_index` is exclusive if direction is `Backward`.
+    pub fn find<F>(&self, start_index: usize, direction: Direction, predicate: F) -> Option<usize>
+    where
+        F: FnMut(&Tree<T>) -> bool,
+    {
+        let iter = self.iter();
+        match direction {
+            Direction::Forward => iter
+                .skip(start_index)
+                .position(predicate)
+                .map(|index| index + start_index),
+            Direction::Backward => iter.take(start_index).rposition(predicate),
+        }
+    }
 
     pub fn item(&self) -> &T {
         &self.item
     }
 
-    fn find_by_index(&self, index: usize) -> Option<&Tree<T>> {
+    fn get(&self, index: usize) -> Option<&Tree<T>> {
         if self.index == index {
             Some(self)
         } else {
-            self.children
-                .iter()
-                .find_map(|elem| elem.find_by_index(index))
+            self.children.iter().find_map(|elem| elem.get(index))
         }
     }
 
-    fn find_by_index_mut(&mut self, index: usize) -> Option<&mut Tree<T>> {
+    fn get_mut(&mut self, index: usize) -> Option<&mut Tree<T>> {
         if self.index == index {
             Some(self)
         } else {
             self.children
                 .iter_mut()
-                .find_map(|elem| elem.find_by_index_mut(index))
+                .find_map(|elem| elem.get_mut(index))
         }
     }
 
@@ -296,18 +311,6 @@ impl<T: TreeItem> TreeView<T> {
     pub fn tree_symbol_style(mut self, style: String) -> Self {
         self.tree_symbol_style = style;
         self
-    }
-
-    fn find<F>(&self, start: usize, reverse: bool, f: F) -> Option<usize>
-    where
-        F: FnMut(&Tree<T>) -> bool,
-    {
-        let iter = self.tree.iter();
-        if reverse {
-            iter.take(start).rposition(f)
-        } else {
-            iter.skip(start).position(f).map(|index| index + start)
-        }
     }
 
     /// Reveal item in the tree based on the given `segments`.
@@ -424,7 +427,7 @@ impl<T: TreeItem> TreeView<T> {
         //     }
         // }
         //
-        let mut selected_item = self.find_by_index_mut(selected_index);
+        let mut selected_item = self.get_mut(selected_index);
         if selected_item.is_opened {
             selected_item.is_opened = false;
             selected_item.children = vec![];
@@ -434,7 +437,7 @@ impl<T: TreeItem> TreeView<T> {
 
         if let Some(mut on_open_fn) = self.on_opened_fn.take() {
             let mut f = || {
-                let current = &mut self.find_by_index_mut(selected_index);
+                let current = &mut self.get_mut(selected_index);
                 match on_open_fn(&mut current.item, cx, params) {
                     TreeOp::Restore => {
                         panic!();
@@ -474,7 +477,7 @@ impl<T: TreeItem> TreeView<T> {
             self.on_opened_fn = Some(on_open_fn)
         } else {
             panic!();
-            self.find_by_index_mut(selected_index).children = vec![];
+            self.get_mut(selected_index).children = vec![];
             // let current = &mut self.items[selected_index];
             // let inserts = std::mem::take(&mut current.folded);
             // let _: Vec<_> = self
@@ -496,7 +499,8 @@ impl<T: TreeItem> TreeView<T> {
     pub fn search_next(&mut self, cx: &mut Context, s: &str, params: &mut T::Params) {
         let skip = std::cmp::max(2, self.save_view.0 + 1);
         self.selected = self
-            .find(skip, false, |e| e.item.filter(s))
+            .tree
+            .find(skip, Direction::Forward, |e| e.item.filter(s))
             .unwrap_or(self.save_view.0);
 
         self.winline = (self.save_view.1 + self.selected).saturating_sub(self.save_view.0);
@@ -505,7 +509,8 @@ impl<T: TreeItem> TreeView<T> {
     pub fn search_previous(&mut self, cx: &mut Context, s: &str, params: &mut T::Params) {
         let take = self.save_view.0;
         self.selected = self
-            .find(take, true, |e| e.item.filter(s))
+            .tree
+            .find(take, Direction::Backward, |e| e.item.filter(s))
             .unwrap_or(self.save_view.0);
 
         self.winline = (self.save_view.1 + self.selected).saturating_sub(self.save_view.0);
@@ -570,28 +575,25 @@ impl<T: TreeItem> TreeView<T> {
         (self.selected, self.winline) = self.save_view;
     }
 
-    fn find_by_index(&self, index: usize) -> &Tree<T> {
-        self.tree
-            .iter()
-            .find_map(|item| item.find_by_index(index))
-            .unwrap()
+    fn get(&self, index: usize) -> &Tree<T> {
+        self.tree.get(index).unwrap()
     }
 
-    fn find_by_index_mut(&mut self, index: usize) -> &mut Tree<T> {
-        self.tree.find_by_index_mut(index).unwrap()
+    fn get_mut(&mut self, index: usize) -> &mut Tree<T> {
+        self.tree.get_mut(index).unwrap()
     }
 
     pub fn current(&self) -> &Tree<T> {
-        self.find_by_index(self.selected)
+        self.get(self.selected)
     }
 
     pub fn current_mut(&mut self) -> &mut Tree<T> {
-        self.find_by_index_mut(self.selected)
+        self.get_mut(self.selected)
     }
 
     fn current_parent(&self) -> Option<&Tree<T>> {
         if let Some(parent_index) = self.current().parent_index {
-            Some(self.find_by_index(parent_index))
+            Some(self.get(parent_index))
         } else {
             None
         }
@@ -599,7 +601,7 @@ impl<T: TreeItem> TreeView<T> {
 
     fn current_parent_mut(&mut self) -> Option<&mut Tree<T>> {
         if let Some(parent_index) = self.current().parent_index {
-            Some(self.find_by_index_mut(parent_index))
+            Some(self.get_mut(parent_index))
         } else {
             None
         }
@@ -1011,10 +1013,12 @@ fn index_elems<T>(start_index: usize, elems: Vec<Tree<T>>) -> Vec<Tree<T>> {
 
 #[cfg(test)]
 mod test_tree {
+    use helix_core::movement::Direction;
+
     use super::{index_elems, Tree};
 
     #[test]
-    fn test_indexs_elems_1() {
+    fn test_indexs_elems() {
         let result = index_elems(
             0,
             vec![
@@ -1065,7 +1069,7 @@ mod test_tree {
     }
 
     #[test]
-    fn test_iter_1() {
+    fn test_iter() {
         let tree = Tree::new(
             "spam",
             vec![
@@ -1083,7 +1087,25 @@ mod test_tree {
     }
 
     #[test]
-    fn test_len_1() {
+    fn test_iter_double_ended() {
+        let tree = Tree::new(
+            "spam",
+            vec![
+                Tree::new("jar", vec![Tree::new("yo", vec![])]),
+                Tree::new("foo", vec![Tree::new("bar", vec![])]),
+            ],
+        );
+
+        let mut iter = tree.iter();
+        assert_eq!(iter.next_back().map(|tree| tree.item), Some("bar"));
+        assert_eq!(iter.next_back().map(|tree| tree.item), Some("foo"));
+        assert_eq!(iter.next_back().map(|tree| tree.item), Some("yo"));
+        assert_eq!(iter.next_back().map(|tree| tree.item), Some("jar"));
+        assert_eq!(iter.next_back().map(|tree| tree.item), Some("spam"));
+    }
+
+    #[test]
+    fn test_len() {
         let tree = Tree::new(
             "spam",
             vec![
@@ -1093,5 +1115,85 @@ mod test_tree {
         );
 
         assert_eq!(tree.len(), 5)
+    }
+
+    #[test]
+    fn test_find_forward() {
+        let tree = Tree::new(
+            ".cargo",
+            vec![
+                Tree::new("jar", vec![Tree::new("Cargo.toml", vec![])]),
+                Tree::new("Cargo.toml", vec![Tree::new("bar", vec![])]),
+            ],
+        );
+        let result = tree.find(0, Direction::Forward, |tree| {
+            tree.item.to_lowercase().contains(&"cargo".to_lowercase())
+        });
+
+        assert_eq!(result, Some(0));
+
+        let result = tree.find(1, Direction::Forward, |tree| {
+            tree.item.to_lowercase().contains(&"cargo".to_lowercase())
+        });
+
+        assert_eq!(result, Some(2));
+
+        let result = tree.find(2, Direction::Forward, |tree| {
+            tree.item.to_lowercase().contains(&"cargo".to_lowercase())
+        });
+
+        assert_eq!(result, Some(2));
+
+        let result = tree.find(3, Direction::Forward, |tree| {
+            tree.item.to_lowercase().contains(&"cargo".to_lowercase())
+        });
+
+        assert_eq!(result, Some(3));
+
+        let result = tree.find(4, Direction::Forward, |tree| {
+            tree.item.to_lowercase().contains(&"cargo".to_lowercase())
+        });
+
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_find_backward() {
+        let tree = Tree::new(
+            ".cargo",
+            vec![
+                Tree::new("jar", vec![Tree::new("Cargo.toml", vec![])]),
+                Tree::new("Cargo.toml", vec![Tree::new("bar", vec![])]),
+            ],
+        );
+        let result = tree.find(0, Direction::Backward, |tree| {
+            tree.item.to_lowercase().contains(&"cargo".to_lowercase())
+        });
+
+        assert_eq!(result, None);
+
+        let result = tree.find(1, Direction::Backward, |tree| {
+            tree.item.to_lowercase().contains(&"cargo".to_lowercase())
+        });
+
+        assert_eq!(result, Some(0));
+
+        let result = tree.find(2, Direction::Backward, |tree| {
+            tree.item.to_lowercase().contains(&"cargo".to_lowercase())
+        });
+
+        assert_eq!(result, Some(0));
+
+        let result = tree.find(3, Direction::Backward, |tree| {
+            tree.item.to_lowercase().contains(&"cargo".to_lowercase())
+        });
+
+        assert_eq!(result, Some(2));
+
+        let result = tree.find(4, Direction::Backward, |tree| {
+            tree.item.to_lowercase().contains(&"cargo".to_lowercase())
+        });
+
+        assert_eq!(result, Some(3));
     }
 }
