@@ -75,7 +75,11 @@ jobs:
         run: echo "TARGET_OPTION_ID=${STATUS_ID_STALLED}" >> $GITHUB_ENV
 
       - name: Approved
-        if: "github.event.pull_request_review && github.event.action == 'submitted' && github.event.review.state == 'approved'"
+        if: >-
+          github.event.pull_request_review &&
+          github.event.action == 'submitted' &&
+          github.event.review.state == 'approved' &&
+          github.event.review.author_association == 'COLLABORATOR'
         run: echo "TARGET_OPTION_ID=${STATUS_ID_APPROVED}" >> $GITHUB_ENV
 
       - name: Set fields
