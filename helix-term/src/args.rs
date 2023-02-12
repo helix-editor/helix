@@ -4,20 +4,20 @@ use anyhow::Result;
 use helix_core::{pos_at_coords, Position, Selection};
 use helix_view::{tree::Layout, Document};
 
-/// As files are parse from the CLI they can either contain an explicit postion or a request to
-/// jump to the end of the file. An explicit postion can be declared in either prefix or postfix
+/// As files are parsed from the CLI they can either contain an explicit position or a request to
+/// jump to the end of the file. An explicit position can be declared in either prefix or postfix
 /// notation.
 ///
 /// Prefix notation to open a file at line 10 `hx +10 Cargo.toml`.
 /// Postfix notation to open a file at line 10 `hx Cargo.toml:10`.
 ///
-/// Both notation can also be used to place ther cursor at the last line / Eof.
+/// Both notation can also be used to place there cursor at the last line / Eof.
 ///
 /// `hx +: Cargo.toml`
 /// `hx Cargo.toml:`
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PositionRequest {
-    /// Set the file cursor to the given postion,
+    /// Set the file cursor to the given position,
     Explicit(Position),
     /// Set the file cursor to the last line when opened
     Eof,
