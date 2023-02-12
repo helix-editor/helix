@@ -881,6 +881,8 @@ impl Document {
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
     fn apply_impl(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+        use helix_core::Assoc;
+
         let old_doc = self.text().clone();
 
         let success = transaction.changes().apply(&mut self.text);
@@ -929,10 +931,10 @@ impl Document {
                     .unwrap();
             }
 
+            let changes = transaction.changes();
+
             // map state.diagnostics over changes::map_pos too
             for diagnostic in &mut self.diagnostics {
-                use helix_core::Assoc;
-                let changes = transaction.changes();
                 diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
                 diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
                 diagnostic.line = self.text.char_to_line(diagnostic.range.start);
@@ -940,13 +942,35 @@ impl Document {
             self.diagnostics
                 .sort_unstable_by_key(|diagnostic| diagnostic.range);
 
+            // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
+            let apply_inlay_hint_changes = |annotations: &mut Rc<[InlineAnnotation]>| {
+                if let Some(data) = Rc::get_mut(annotations) {
+                    for inline in data.iter_mut() {
+                        inline.char_idx = changes.map_pos(inline.char_idx, Assoc::After);
+                    }
+                }
+            };
+
+            for text_annotation in self.inlay_hints.values_mut() {
+                let DocumentInlayHints {
+                    id: _,
+                    type_inlay_hints,
+                    parameter_inlay_hints,
+                    other_inlay_hints,
+                } = text_annotation;
+
+                apply_inlay_hint_changes(type_inlay_hints);
+                apply_inlay_hint_changes(parameter_inlay_hints);
+                apply_inlay_hint_changes(other_inlay_hints);
+            }
+
             // emit lsp notification
             if let Some(language_server) = self.language_server() {
                 let notify = language_server.text_document_did_change(
                     self.versioned_identifier(),
                     &old_doc,
                     self.text(),
-                    transaction.changes(),
+                    changes,
                 );
 
                 if let Some(notify) = notify {
