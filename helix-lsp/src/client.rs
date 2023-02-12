@@ -315,6 +315,9 @@ impl Client {
                     execute_command: Some(lsp::DynamicRegistrationClientCapabilities {
                         dynamic_registration: Some(false),
                     }),
+                    inlay_hint: Some(lsp::InlayHintWorkspaceClientCapabilities {
+                        refresh_support: Some(false),
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -385,6 +388,10 @@ impl Client {
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
                         ..Default::default()
+                    }),
+                    inlay_hint: Some(lsp::InlayHintClientCapabilities {
+                        dynamic_registration: Some(false),
+                        resolve_support: None,
                     }),
                     ..Default::default()
                 }),
