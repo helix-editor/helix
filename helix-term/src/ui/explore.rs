@@ -618,10 +618,9 @@ impl Explorer {
                     .handle_event(Event::Key(event), cx, &mut self.state);
             }
             key!(Enter) => {
-                self.tree.clean_recycle();
-                return self
-                    .tree
-                    .handle_event(Event::Key(event), cx, &mut self.state);
+                if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
+                    self.tree.filter(prompt.line(), cx, &mut self.state);
+                }
             }
             key!(Esc) | ctrl!('c') => self.tree.restore_recycle(),
             _ => {

@@ -165,6 +165,32 @@ impl<'a, T> DoubleEndedIterator for TreeIter<'a, T> {
 
 impl<'a, T> ExactSizeIterator for TreeIter<'a, T> {}
 
+impl<T: Clone> Tree<T> {
+    pub fn filter<P>(tree: &Tree<T>, predicate: &P) -> Option<Tree<T>>
+    where
+        P: Fn(&T) -> bool,
+    {
+        let children = tree
+            .children
+            .iter()
+            .filter_map(|tree| Self::filter(tree, predicate))
+            .collect::<Vec<_>>();
+        if predicate(&tree.item) || !children.is_empty() {
+            let mut tree = Tree {
+                item: tree.item.clone(),
+                parent_index: tree.parent_index,
+                index: tree.index,
+                is_opened: tree.is_opened,
+                children,
+            };
+            tree.regenerate_index();
+            Some(tree)
+        } else {
+            None
+        }
+    }
+}
+
 impl<T> Tree<T> {
     pub fn new(item: T, children: Vec<Tree<T>>) -> Self {
         Self {
@@ -234,7 +260,7 @@ impl<T> Tree<T> {
 
 pub struct TreeView<T: TreeItem> {
     tree: Tree<T>,
-    recycle: Option<(String, Vec<Tree<T>>)>,
+    recycle: Option<(String, Tree<T>)>,
     /// Selected item idex
     selected: usize,
 
@@ -878,85 +904,31 @@ impl<T: TreeItem> TreeView<T> {
 
 impl<T: TreeItem + Clone> TreeView<T> {
     pub fn filter(&mut self, s: &str, cx: &mut Context, params: &mut T::Params) {
-        todo!()
-        // fn filter_recursion<T>(
-        //     elems: &Vec<Tree<T>>,
-        //     mut index: usize,
-        //     s: &str,
-        //     cx: &mut Context,
-        //     params: &mut T::Params,
-        // ) -> (Vec<Tree<T>>, usize)
-        // where
-        //     T: TreeItem + Clone,
-        // {
-        //     let mut retain = vec![];
-        //     let elem = &elems[index];
-        //     loop {
-        //         let child = match elems.get(index + 1) {
-        //             Some(child) if child.item.is_child(&elem.item) => child,
-        //             _ => break,
-        //         };
-        //         index += 1;
-        //         let next = elems.get(index + 1);
-        //         if next.map_or(false, |n| n.item.is_child(&child.item)) {
-        //             let (sub_retain, current_index) = filter_recursion(elems, index, s, cx, params);
-        //             retain.extend(sub_retain);
-        //             index = current_index;
-        //         } else if child.item.filter(s) {
-        //             retain.push(child.clone());
-        //         }
-        //     }
-        //     if !retain.is_empty() || elem.item.filter(s) {
-        //         retain.insert(0, elem.clone());
-        //     }
-        //     (retain, index)
-        // }
+        if s.is_empty() {
+            self.restore_recycle();
+            return;
+        }
 
-        // if s.is_empty() {
-        //     if let Some((_, recycle)) = self.recycle.take() {
-        //         // self.tree = recycle;
-        //         self.restore_view();
-        //         return;
-        //     }
-        // }
+        let new_tree = Tree::filter(&self.tree, &|item: &T| {
+            item.text_string()
+                .to_lowercase()
+                .contains(&s.to_lowercase())
+        })
+        .unwrap_or_else(|| Tree {
+            item: self.tree.item.clone(),
+            children: vec![],
+            ..self.tree.clone()
+        });
+        let recycle = std::mem::replace(&mut self.tree, new_tree);
+        if let Some(r) = self.recycle.as_mut() {
+            r.0 = s.into()
+        } else {
+            self.recycle = Some((s.into(), recycle));
+            self.save_view();
+        }
 
-        // let mut retain = vec![];
-        // let mut index = 0;
-        // let items = match &self.recycle {
-        //     Some((pre, _)) if pre == s => return,
-        //     Some((pre, recycle)) if pre.contains(s) => recycle,
-        //     _ => &self.tree,
-        // };
-        // while let Some(elem) = items.get(index) {
-        //     let next = items.get(index + 1);
-        //     if next.map_or(false, |n| n.item.is_child(&elem.item)) {
-        //         let (sub_items, current_index) = filter_recursion(items, index, s, cx, params);
-        //         index = current_index;
-        //         retain.extend(sub_items);
-        //     } else if elem.item.filter(s) {
-        //         retain.push(elem.clone())
-        //     }
-        //     index += 1;
-        // }
-
-        // if retain.is_empty() {
-        //     if let Some((_, recycle)) = self.recycle.take() {
-        //         self.tree = recycle;
-        //         self.restore_view();
-        //     }
-        //     return;
-        // }
-
-        // let recycle = std::mem::replace(&mut self.tree, retain);
-        // if let Some(r) = self.recycle.as_mut() {
-        //     r.0 = s.into()
-        // } else {
-        //     self.recycle = Some((s.into(), recycle));
-        //     self.save_view();
-        // }
-
-        // self.selected = self.find(0, false, |elem| elem.item.filter(s)).unwrap_or(0);
-        // self.winline = self.selected;
+        self.selected = 0;
+        self.winline = 0
     }
 
     pub fn clean_recycle(&mut self) {
@@ -964,10 +936,10 @@ impl<T: TreeItem + Clone> TreeView<T> {
     }
 
     pub fn restore_recycle(&mut self) {
-        todo!();
-        // if let Some((_, recycle)) = self.recycle.take() {
-        //     self.tree = recycle;
-        // }
+        if let Some((_, recycle)) = self.recycle.take() {
+            self.tree = recycle;
+        }
+        self.restore_view();
     }
 }
 
@@ -1195,5 +1167,44 @@ mod test_tree {
         });
 
         assert_eq!(result, Some(3));
+    }
+
+    #[test]
+    fn test_filter() {
+        let tree = Tree::new(
+            ".cargo",
+            vec![
+                Tree::new("spam", vec![Tree::new("Cargo.toml", vec![])]),
+                Tree::new("Cargo.toml", vec![Tree::new("pam", vec![])]),
+                Tree::new("hello", vec![]),
+            ],
+        );
+
+        let result = Tree::filter(&tree, &|item| item.to_lowercase().contains("cargo"));
+        assert_eq!(
+            result,
+            Some(Tree::new(
+                ".cargo",
+                vec![
+                    Tree::new("spam", vec![Tree::new("Cargo.toml", vec![])]),
+                    Tree::new("Cargo.toml", vec![]),
+                ],
+            ))
+        );
+
+        let result = Tree::filter(&tree, &|item| item.to_lowercase().contains("pam"));
+        assert_eq!(
+            result,
+            Some(Tree::new(
+                ".cargo",
+                vec![
+                    Tree::new("spam", vec![]),
+                    Tree::new("Cargo.toml", vec![Tree::new("pam", vec![])]),
+                ],
+            ))
+        );
+
+        let result = Tree::filter(&tree, &|item| item.to_lowercase().contains("helix"));
+        assert_eq!(result, None)
     }
 }
