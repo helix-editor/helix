@@ -4,7 +4,6 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
-use helix_core::flock::FileLock;
 use helix_core::syntax::Highlight;
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::Range;
@@ -744,8 +743,8 @@ impl Document {
             return Ok(());
         }
 
-        if let Some(undo_file) = self.undo_file(None).map(FileLock::shared).transpose()? {
-            let mut undo_file = undo_file.get()?;
+        if let Some(undo_file) = self.undo_file(None) {
+            let mut undo_file = std::fs::File::open(undo_file)?;
             if undo_file.metadata()?.len() != 0 {
                 let (last_saved_revision, history) = helix_core::history::History::deserialize(
                     &mut undo_file,
