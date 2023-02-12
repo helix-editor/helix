@@ -1,4 +1,4 @@
-name: Categorize new items
+name: Categorize items
 on:
   issues:
     types:
@@ -11,6 +11,7 @@ on:
   pull_request_review:
     types:
       - submitted
+      - dismissed
 jobs:
   set-item-status:
     runs-on: ubuntu-latest
@@ -51,7 +52,7 @@ jobs:
         run: echo "TARGET_OPTION_ID=${STATUS_ID_WAITING_ON_AUTHOR}" >> $GITHUB_ENV
 
       - name: Waiting on author from review
-        if: "github.event.pull_request_review && github.event.action == 'submitted' && github.event.review.state == 'changes_requested'"
+        if: "github.event.review && github.event.action == 'submitted' && github.event.review.state == 'changes_requested'"
         run: echo "TARGET_OPTION_ID=${STATUS_ID_WAITING_ON_AUTHOR}" >> $GITHUB_ENV
 
       - name: Needs review
@@ -63,7 +64,7 @@ jobs:
         run: echo "TARGET_OPTION_ID=${STATUS_ID_NEEDS_RE_REVIEW}" >> $GITHUB_ENV
 
       - name: Needs re-review from review
-        if: "github.event.pull_request_review && github.event.action == 'dismissed'"
+        if: "github.event.review && github.event.action == 'dismissed'"
         run: echo "TARGET_OPTION_ID=${STATUS_ID_NEEDS_RE_REVIEW}" >> $GITHUB_ENV
 
       - name: Blocked
@@ -76,7 +77,7 @@ jobs:
 
       - name: Approved
         if: >-
-          github.event.pull_request_review &&
+          github.event.review &&
           github.event.action == 'submitted' &&
           github.event.review.state == 'approved' &&
           github.event.review.author_association == 'COLLABORATOR'

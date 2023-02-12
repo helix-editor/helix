@@ -1,6 +1,8 @@
 name: Build
 on:
   pull_request:
+    branches:
+      - '!nobuild-*'
   push:
     branches:
       - master
