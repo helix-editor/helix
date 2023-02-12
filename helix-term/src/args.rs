@@ -149,8 +149,8 @@ pub(crate) fn parse_positional_arg(
     arg: String,
     argv: &mut impl Iterator<Item = String>,
 ) -> Result<(PathBuf, PositionRequest)> {
-    let file = if arg.starts_with('+') {
-        let prefix_pos = parse_file_position(&arg[1..]);
+    let file = if let Some(s) = arg.strip_prefix('+') {
+        let prefix_pos = parse_file_position(s);
         let (path, postfix_pos) = match argv.next() {
             Some(file) => parse_file(file),
             None => anyhow::bail!("expected a file after a position"),
