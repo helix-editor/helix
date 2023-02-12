@@ -5,7 +5,7 @@ use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::syntax::Highlight;
-use helix_core::text_annotations::TextAnnotations;
+use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
 use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
@@ -17,6 +17,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -110,6 +111,11 @@ pub struct Document {
     text: Rope,
     selections: HashMap<ViewId, Selection>,
 
+    /// Inlay hints annotations for the document, by view.
+    ///
+    /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
+    inlay_hints: HashMap<ViewId, DocumentInlayHints>,
+
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
 
@@ -152,6 +158,55 @@ pub struct Document {
     diff_handle: Option<DiffHandle>,
 }
 
+/// Inlay hints for a single `(Document, View)` combo.
+///
+/// There are `*_inlay_hints` field for each kind of hints an LSP can send since we offer the
+/// option to style theme differently in the theme according to the (currently supported) kinds
+/// (`type`, `parameter` and the rest).
+///
+/// Inlay hints are always `InlineAnnotation`s, not overlays or line-ones: LSP may choose to place
+/// them anywhere in the text and will sometime offer config options to move them where the user
+/// wants them but it shouldn't be Helix who decides that so we use the most precise positioning.
+///
+/// The padding for inlay hints is stored directly before/after the hint text itself. This is
+/// necessary to ensure it's placed correctly instead of after all the time (or ignored because it
+/// came in a later layer and at the same `char_idx`).
+#[derive(Debug, Clone)]
+pub struct DocumentInlayHints {
+    /// Identifier for the inlay hints stored in this structure. To be checked to know if they have
+    /// to be recomputed on idle or not.
+    pub id: DocumentInlayHintsId,
+
+    /// Inlay hints of `TYPE` kind, if any.
+    pub type_inlay_hints: Rc<[InlineAnnotation]>,
+
+    /// Inlay hints of `PARAMETER` kind, if any.
+    pub parameter_inlay_hints: Rc<[InlineAnnotation]>,
+
+    /// Inlay hints that are neither `TYPE` nor `PARAMETER`.
+    ///
+    /// LSPs are not required to associate a kind to their inlay hints, for example Rust-Analyzer
+    /// currently never does (February 2023) and the LSP spec may add new kinds in the future that
+    /// we want to display even if we don't have some special highlighting for them.
+    pub other_inlay_hints: Rc<[InlineAnnotation]>,
+}
+
+/// Associated with a [`Document`] and [`ViewId`], uniquely identifies the state of inlay hints for
+/// for that document and view: if this changed since the last save, the inlay hints for the view
+/// should be recomputed.
+///
+/// We can't store the `ViewOffset` instead of the first and last asked-for lines because if
+/// softwrapping changes, the `ViewOffset` may not change while the displayed lines will.
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct DocumentInlayHintsId {
+    /// Document revision at which the inlay hints were requested.
+    pub revision: usize,
+    /// First line for which the inlay hints were requested.
+    pub first_line: usize,
+    /// Last line for which the inlay hints were requested.
+    pub last_line: usize,
+}
+
 use std::{fmt, mem};
 impl fmt::Debug for Document {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -159,6 +214,7 @@ impl fmt::Debug for Document {
             .field("id", &self.id)
             .field("text", &self.text)
             .field("selections", &self.selections)
+            .field("text_annotations", &self.inlay_hints)
             .field("path", &self.path)
             .field("encoding", &self.encoding)
             .field("restore_cursor", &self.restore_cursor)
@@ -173,6 +229,16 @@ impl fmt::Debug for Document {
             .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
             // .field("language_server", &self.language_server)
+            .finish()
+    }
+}
+
+impl fmt::Debug for DocumentInlayHintsId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Much more agreable to read when debugging
+        f.debug_struct("DocumentInlayHintsId")
+            .field("revision", &self.revision)
+            .field("lines", &(self.first_line..self.last_line))
             .finish()
     }
 }
@@ -379,6 +445,7 @@ impl Document {
             encoding,
             text,
             selections: HashMap::default(),
+            inlay_hints: HashMap::default(),
             indent_style: DEFAULT_INDENT,
             line_ending: DEFAULT_LINE_ENDING,
             restore_cursor: false,
@@ -806,9 +873,10 @@ impl Document {
         }
     }
 
-    /// Remove a view's selection from this document.
+    /// Remove a view's selection and inlay hints from this document.
     pub fn remove_view(&mut self, view_id: ViewId) {
         self.selections.remove(&view_id);
+        self.inlay_hints.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
@@ -1300,8 +1368,58 @@ impl Document {
         }
     }
 
-    pub fn text_annotations(&self, _theme: Option<&Theme>) -> TextAnnotations {
-        TextAnnotations::default()
+    pub fn text_annotations(&self, view_id: ViewId, theme: Option<&Theme>) -> TextAnnotations {
+        let mut text_annotations = TextAnnotations::default();
+
+        let DocumentInlayHints {
+            id: _,
+            type_inlay_hints,
+            parameter_inlay_hints,
+            other_inlay_hints,
+        } = match self.inlay_hints.get(&view_id) {
+            Some(doc_inlay_hints) => doc_inlay_hints,
+            None => return text_annotations,
+        };
+
+        let type_style = theme
+            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.type"))
+            .map(Highlight);
+        let parameter_style = theme
+            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.parameter"))
+            .map(Highlight);
+        let other_style = theme
+            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint"))
+            .map(Highlight);
+
+        let mut add_annotations = |annotations: &Rc<[_]>, style| {
+            if !annotations.is_empty() {
+                text_annotations.add_inline_annotations(Rc::clone(annotations), style);
+            }
+        };
+
+        // Overlapping annotations are ignored apart from the first so the order here is not random:
+        // types -> parameters -> others should hopefully be the "correct" order for most use cases.
+        add_annotations(type_inlay_hints, type_style);
+        add_annotations(parameter_inlay_hints, parameter_style);
+        add_annotations(other_inlay_hints, other_style);
+
+        text_annotations
+    }
+
+    /// Set the inlay hints for this document and `view_id`.
+    pub fn set_inlay_hints(&mut self, view_id: ViewId, inlay_hints: DocumentInlayHints) {
+        self.inlay_hints.insert(view_id, inlay_hints);
+    }
+
+    /// Get the inlay hints for this document and `view_id`.
+    pub fn get_inlay_hints(&self, view_id: ViewId) -> Option<&DocumentInlayHints> {
+        self.inlay_hints.get(&view_id)
+    }
+
+    /// Completely removes all the inlay hints saved for the document, dropping them to free memory
+    /// (since it often means inlay hints have been fully deactivated).
+    pub fn reset_all_inlay_hints(&mut self) {
+        self.inlay_hints = Default::default();
     }
 }
 

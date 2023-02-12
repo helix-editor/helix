@@ -402,9 +402,10 @@ impl View {
         Some(pos)
     }
 
+    /// Get the text annotations to display in the current view for the given document and theme.
     pub fn text_annotations(&self, doc: &Document, theme: Option<&Theme>) -> TextAnnotations {
         // TODO custom annotations for custom views like side by side diffs
-        doc.text_annotations(theme)
+        doc.text_annotations(self.id, theme)
     }
 
     pub fn text_pos_at_screen_coords(
