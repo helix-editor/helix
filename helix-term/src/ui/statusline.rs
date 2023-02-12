@@ -421,10 +421,7 @@ where
         .map(|p| p.to_string_lossy())
         .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
 
-    let title = format!(
-        " {} ",
-        path,
-    );
+    let title = format!(" {} ", path,);
 
     write(context, title, None)
 }
