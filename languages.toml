@@ -1450,7 +1450,7 @@ indent = { tab-width = 4, unit = "\t" }
 [[grammar]]
 name = "gdscript"
 source = { git = "https://github.com/PrestonKnopp/tree-sitter-gdscript", rev = "a56a6fcec3fb63ec3324bf9373aae7298861eb30" }
- 
+
 [[language]]
 name = "godot-resource"
 scope = "source.tscn"
