@@ -1,5 +1,3 @@
-use std::iter::Peekable;
-use std::slice::Iter;
 use std::{cmp::Ordering, path::PathBuf};
 
 use anyhow::Result;
@@ -210,9 +208,16 @@ impl<T> Tree<T> {
 pub struct TreeView<T: TreeItem> {
     tree: Tree<T>,
     recycle: Option<(String, Vec<Tree<T>>)>,
-    selected: usize,           // select item index
-    save_view: (usize, usize), // (selected, row)
-    winline: usize,            // view row
+    /// Selected item idex
+    selected: usize,
+
+    /// (selected, row)
+    save_view: (usize, usize),
+
+    /// View row
+    winline: usize,
+
+    area_height: usize,
     col: usize,
     max_len: usize,
     count: usize,
@@ -239,6 +244,7 @@ impl<T: TreeItem> TreeView<T> {
             col: 0,
             max_len: 0,
             count: 0,
+            area_height: 0,
             tree_symbol_style: "ui.text".into(),
             pre_render: None,
             on_opened_fn: None,
@@ -292,66 +298,73 @@ impl<T: TreeItem> TreeView<T> {
         }
     }
 
-    /// TODO: current_path should not be PathBuf, but Vec<String> so that Tree can be generic
-    pub fn focus_path(&mut self, cx: &mut Context, current_path: PathBuf, current_root: &PathBuf) {
-        let current_path = current_path.as_path().to_string_lossy().to_string();
-        let current_root = current_root.as_path().to_string_lossy().to_string() + "/";
-        let nodes = current_path
-            .strip_prefix(current_root.as_str())
-            .expect(
-                format!(
-                    "Failed to strip prefix '{}' from '{}'",
-                    current_root, current_path
-                )
-                .as_str(),
-            )
-            .split(std::path::MAIN_SEPARATOR)
-            .enumerate()
-            .collect::<Vec<(usize, &str)>>();
+    /// Reveal item in the tree based on the given `segments`.
+    ///
+    /// The name of the root should be excluded.
+    ///
+    /// Example `segments`:
+    /// ```
+    /// vec!["helix-term", "src", "ui", "tree.rs"]
+    /// ```
+    pub fn reveal_item(&mut self, segments: Vec<&str>) -> Result<(), String> {
+        // Expand the tree
+        segments.iter().fold(
+            Ok(&mut self.tree),
+            |current_tree, segment| match current_tree {
+                Err(err) => Err(err),
+                Ok(current_tree) => {
+                    match current_tree
+                        .children
+                        .iter_mut()
+                        .find(|tree| tree.item.text_string().eq(segment))
+                    {
+                        Some(tree) => {
+                            if !tree.is_opened {
+                                tree.children = vec_to_tree(
+                                    tree.item.get_children().map_err(|err| err.to_string())?,
+                                );
+                                if !tree.children.is_empty() {
+                                    tree.is_opened = true;
+                                }
+                            }
+                            Ok(tree)
+                        }
+                        None => Err(format!(
+                            "Unable to find path: '{}'. current_segment = {}",
+                            segments.join("/"),
+                            segment
+                        )),
+                    }
+                }
+            },
+        )?;
 
-        let len = nodes.len();
+        // Locate the item
+        self.regenerate_index();
+        self.selected = segments
+            .iter()
+            .fold(&self.tree, |tree, segment| {
+                tree.children
+                    .iter()
+                    .find(|tree| tree.item.text_string().eq(segment))
+                    .expect("Should be unreachable")
+            })
+            .index;
 
-        // `preivous_item_index` is necessary to avoid choosing the first file
-        // that is not the current file.
-        // For example, consider a project that contains multiple `Cargo.toml`.
-        // Without `previous_item_index`, the first `Cargo.toml` will always be chosen,
-        // regardless of which `Cargo.toml` the user wishes to find in the explorer.
-        // let mut previous_item_index = 0;
-        // for (index, node) in nodes {
-        //     let current_level = index + 1;
-        //     let is_last = index == len - 1;
-        //     match self
-        //         .items
-        //         .iter()
-        //         .enumerate()
-        //         .position(|(item_index, item)| {
-        //             item_index >= previous_item_index
-        //                 && item.item.text_string().eq(node)
-        //                 && item.level == current_level
-        //         }) {
-        //         Some(index) => {
-        //             if is_last {
-        //                 self.selected = index
-        //             } else {
-        //                 let item = &self.items[index];
-        //                 let items = match item.item.get_childs() {
-        //                     Ok(items) => items,
-        //                     Err(e) => return cx.editor.set_error(format!("{e}")),
-        //                 };
-        //                 let inserts = vec_to_tree(items, current_level + 1);
-        //                 previous_item_index = index;
-        //                 let _: Vec<_> = self.items.splice(index + 1..index + 1, inserts).collect();
-        //             }
-        //         }
-        //         None => cx.editor.set_error(format!(
-        //             "The following file does not exist anymore: '{}'. node = {}",
-        //             current_path, node
-        //         )),
-        //     }
-        // }
+        self.align_view_center();
+        Ok(())
+    }
 
-        // Center the selection
-        self.winline = self.max_len / 2;
+    fn align_view_center(&mut self) {
+        self.winline = self.area_height / 2
+    }
+
+    fn align_view_top(&mut self) {
+        self.winline = 0
+    }
+
+    fn align_view_bottom(&mut self) {
+        self.winline = self.area_height
     }
 
     fn regenerate_index(&mut self) {
@@ -626,10 +639,13 @@ impl<T: TreeItem> TreeView<T> {
         }
 
         self.max_len = 0;
-        self.winline = std::cmp::min(self.winline, area.height.saturating_sub(1) as usize);
+        self.area_height = area.height.saturating_sub(1) as usize;
+        self.winline = std::cmp::min(self.winline, self.area_height);
         let style = cx.editor.theme.get(&self.tree_symbol_style);
         let last_item_index = self.tree.len().saturating_sub(1);
         let skip = self.selected.saturating_sub(self.winline);
+
+        cx.editor.set_error(format!("winline = {}", self.winline));
 
         let params = RenderElemParams {
             tree: &self.tree,
@@ -660,8 +676,6 @@ impl<T: TreeItem> TreeView<T> {
             level: u16,
             selected: usize,
         }
-
-        cx.editor.set_error(format!("seleted = {}", self.selected));
 
         fn render_tree<T: TreeItem>(
             RenderElemParams {
@@ -822,7 +836,15 @@ impl<T: TreeItem> TreeView<T> {
             key!(i @ '0'..='9') => self.count = i.to_digit(10).unwrap() as usize + count * 10,
             key!('k') | shift!(Tab) | key!(Up) | ctrl!('k') => self.move_up(1.max(count)),
             key!('j') | key!(Tab) | key!(Down) | ctrl!('j') => self.move_down(1.max(count)),
-            key!('z') => self.fold_current_child(),
+            key!('z') => {
+                self.on_next_key = Some(Box::new(|_, tree, event| match event.into() {
+                    key!('f') => tree.fold_current_child(),
+                    key!('z') => tree.align_view_center(),
+                    key!('t') => tree.align_view_top(),
+                    key!('b') => tree.align_view_bottom(),
+                    _ => {}
+                }));
+            }
             key!('h') => self.go_to_parent(),
             key!('l') => self.go_to_children(cx),
             key!(Enter) => self.on_enter(cx, params, self.selected),

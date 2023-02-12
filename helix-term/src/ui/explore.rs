@@ -277,13 +277,31 @@ impl Explorer {
         })
     }
 
-    pub fn focus_current_file(&mut self, cx: &mut Context) {
+    pub fn reveal_current_file(&mut self, cx: &mut Context) {
         let current_document_path = doc!(cx.editor).path().cloned();
         match current_document_path {
             None => cx.editor.set_error("No opened document."),
-            Some(path) => {
-                self.tree.focus_path(cx, path, &self.state.current_root);
-                self.focus();
+            Some(current_path) => {
+                let current_root = &self.state.current_root;
+                let current_path = current_path.as_path().to_string_lossy().to_string();
+                let current_root = current_root.as_path().to_string_lossy().to_string() + "/";
+                let segments = current_path
+                    .strip_prefix(current_root.as_str())
+                    .expect(
+                        format!(
+                            "Failed to strip prefix '{}' from '{}'",
+                            current_root, current_path
+                        )
+                        .as_str(),
+                    )
+                    .split(std::path::MAIN_SEPARATOR)
+                    .collect::<Vec<_>>();
+                match self.tree.reveal_item(segments) {
+                    Ok(_) => {
+                        self.focus();
+                    }
+                    Err(error) => cx.editor.set_error(error),
+                }
             }
         }
     }
@@ -798,20 +816,20 @@ impl Component for Explorer {
                     self.repeat_motion = Some(repeat_motion);
                 }
             }
-            key!('b') => {
-                if let Some(p) = self.state.current_root.parent() {
-                    match Self::get_items(p.to_path_buf(), cx) {
-                        Ok(items) => {
-                            self.state.current_root = p.to_path_buf();
-                            let root = FileInfo::root(self.state.current_root.clone());
-                            let children = root.get_children().expect("TODO: handle error");
-                            self.tree = TreeView::build_tree(root, children)
-                                .with_enter_fn(Self::toggle_current);
-                        }
-                        Err(e) => cx.editor.set_error(format!("{e}")),
-                    }
-                }
-            }
+            // key!('b') => {
+            //     if let Some(p) = self.state.current_root.parent() {
+            //         match Self::get_items(p.to_path_buf(), cx) {
+            //             Ok(items) => {
+            //                 self.state.current_root = p.to_path_buf();
+            //                 let root = FileInfo::root(self.state.current_root.clone());
+            //                 let children = root.get_children().expect("TODO: handle error");
+            //                 self.tree = TreeView::build_tree(root, children)
+            //                     .with_enter_fn(Self::toggle_current);
+            //             }
+            //             Err(e) => cx.editor.set_error(format!("{e}")),
+            //         }
+            //     }
+            // }
             key!('f') => self.new_filter_prompt(),
             key!('/') => self.new_search_prompt(true),
             key!('?') => self.new_search_prompt(false),

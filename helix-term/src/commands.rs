@@ -434,7 +434,7 @@ impl MappableCommand {
         replay_macro, "Replay macro",
         command_palette, "Open command pallete",
         toggle_or_focus_explorer, "Toggle or focus explorer",
-        focus_current_file, "Focus current file in explorer",
+        reveal_current_file, "Reveal current file in explorer",
         close_explorer, "close explorer",
     );
 }
@@ -2232,16 +2232,16 @@ fn toggle_or_focus_explorer(cx: &mut Context) {
     ));
 }
 
-fn focus_current_file(cx: &mut Context) {
+fn reveal_current_file(cx: &mut Context) {
     cx.callback = Some(Box::new(
         |compositor: &mut Compositor, cx: &mut compositor::Context| {
             if let Some(editor) = compositor.find::<ui::EditorView>() {
                 match editor.explorer.as_mut() {
-                    Some(explore) => explore.content.focus_current_file(cx),
+                    Some(explore) => explore.content.reveal_current_file(cx),
                     None => match ui::Explorer::new(cx) {
                         Ok(explore) => {
                             let mut explorer = overlayed(explore);
-                            explorer.content.focus_current_file(cx);
+                            explorer.content.reveal_current_file(cx);
                             editor.explorer = Some(explorer);
                         }
                         Err(err) => cx.editor.set_error(format!("{}", err)),
