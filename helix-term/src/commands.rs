@@ -110,17 +110,7 @@ impl<'a> Context<'a> {
         T: for<'de> serde::Deserialize<'de> + Send + 'static,
         F: FnOnce(&mut Editor, &mut Compositor, T) + Send + 'static,
     {
-        let callback = Box::pin(async move {
-            let json = call.await?;
-            let response = serde_json::from_value(json)?;
-            let call: job::Callback = Callback::EditorCompositor(Box::new(
-                move |editor: &mut Editor, compositor: &mut Compositor| {
-                    callback(editor, compositor, response)
-                },
-            ));
-            Ok(call)
-        });
-        self.jobs.callback(callback);
+        self.jobs.callback(make_job_callback(call, callback));
     }
 
     /// Returns 1 if no explicit count was provided
@@ -128,6 +118,27 @@ impl<'a> Context<'a> {
     pub fn count(&self) -> usize {
         self.count.map_or(1, |v| v.get())
     }
+}
+
+#[inline]
+fn make_job_callback<T, F>(
+    call: impl Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
+    callback: F,
+) -> std::pin::Pin<Box<impl Future<Output = Result<Callback, anyhow::Error>>>>
+where
+    T: for<'de> serde::Deserialize<'de> + Send + 'static,
+    F: FnOnce(&mut Editor, &mut Compositor, T) + Send + 'static,
+{
+    Box::pin(async move {
+        let json = call.await?;
+        let response = serde_json::from_value(json)?;
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                callback(editor, compositor, response)
+            },
+        ));
+        Ok(call)
+    })
 }
 
 use helix_view::{align_view, Align};
