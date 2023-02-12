@@ -37,11 +37,10 @@ impl menu::Item for CompletionItem {
     }
 
     fn format(&self, _data: &Self::Data) -> menu::Row {
-        let deprecated = if let Some(tags) = &self.tags {
-            tags.contains(&lsp::CompletionItemTag::DEPRECATED)
-        } else {
-            self.deprecated.unwrap_or_default()
-        };
+        let deprecated = self.deprecated.unwrap_or_default()
+            || self.tags.as_ref().map_or(false, |tags| {
+                tags.contains(&lsp::CompletionItemTag::DEPRECATED)
+            });
         menu::Row::new(vec![
             menu::Cell::from(Span::styled(
                 self.label.as_str(),
