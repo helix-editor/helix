@@ -69,8 +69,12 @@ sudo dnf install helix
 
 ### Arch Linux community
 
-Releases are available in the `community` repository. Additionally, a
-[helix-git](https://aur.archlinux.org/packages/helix-git/) package is available
+Releases are available in the `community` repository:
+
+```sh
+sudo pacman -S helix
+```
+Additionally, a [helix-git](https://aur.archlinux.org/packages/helix-git/) package is available
 in the AUR, which builds the master branch.
 
 ### NixOS
