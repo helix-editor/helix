@@ -11,7 +11,7 @@ use helix_view::{tree::Layout, Document};
 /// Prefix notation to open a file at line 10 `hx +10 Cargo.toml`.
 /// Postfix notation to open a file at line 10 `hx Cargo.toml:10`.
 ///
-/// Both notation can also be used to place there cursor at the last line / Eof.
+/// Both notation can also be used to place the cursor at the last line / Eof.
 ///
 /// `hx +: Cargo.toml`
 /// `hx Cargo.toml:`
