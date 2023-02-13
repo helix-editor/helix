@@ -114,7 +114,7 @@ pub struct Document {
     /// Inlay hints annotations for the document, by view.
     ///
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
-    inlay_hints: HashMap<ViewId, DocumentInlayHints>,
+    pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
 
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
@@ -1392,42 +1392,8 @@ impl Document {
         }
     }
 
-    pub fn text_annotations(&self, view_id: ViewId, theme: Option<&Theme>) -> TextAnnotations {
-        let mut text_annotations = TextAnnotations::default();
-
-        let DocumentInlayHints {
-            id: _,
-            type_inlay_hints,
-            parameter_inlay_hints,
-            other_inlay_hints,
-        } = match self.inlay_hints.get(&view_id) {
-            Some(doc_inlay_hints) => doc_inlay_hints,
-            None => return text_annotations,
-        };
-
-        let type_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.type"))
-            .map(Highlight);
-        let parameter_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.parameter"))
-            .map(Highlight);
-        let other_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint"))
-            .map(Highlight);
-
-        let mut add_annotations = |annotations: &Rc<[_]>, style| {
-            if !annotations.is_empty() {
-                text_annotations.add_inline_annotations(Rc::clone(annotations), style);
-            }
-        };
-
-        // Overlapping annotations are ignored apart from the first so the order here is not random:
-        // types -> parameters -> others should hopefully be the "correct" order for most use cases.
-        add_annotations(type_inlay_hints, type_style);
-        add_annotations(parameter_inlay_hints, parameter_style);
-        add_annotations(other_inlay_hints, other_style);
-
-        text_annotations
+    pub fn text_annotations(&self, _theme: Option<&Theme>) -> TextAnnotations {
+        TextAnnotations::default()
     }
 
     /// Set the inlay hints for this document and `view_id`.
