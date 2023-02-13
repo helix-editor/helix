@@ -201,7 +201,7 @@ pub(crate) fn parse_file<'a>(s: impl Into<Cow<'a, str>>) -> (PathBuf, Option<Pos
 
 #[cfg(test)]
 mod tests {
-    use std::{iter::Peekable, path::PathBuf, str::FromStr};
+    use std::iter::Peekable;
 
     use helix_core::Position;
 
@@ -260,33 +260,27 @@ mod tests {
 
     #[test]
     fn should_parse_empty_file() {
-        assert_eq!(parse_file(""), (PathBuf::from_str("").unwrap(), None));
+        assert_eq!(parse_file(""), ("".to_owned().into(), None));
     }
 
     #[test]
     fn should_parse_empty_file_with_eof_pos() {
         assert_eq!(
             parse_file(":"),
-            (PathBuf::from_str("").unwrap(), Some(PositionRequest::Eof))
+            ("".to_owned().into(), Some(PositionRequest::Eof))
         );
     }
 
     #[test]
     fn should_parse_file_with_name_only() {
-        assert_eq!(
-            parse_file("file"),
-            (PathBuf::from_str("file").unwrap(), None)
-        );
+        assert_eq!(parse_file("file"), ("file".to_owned().into(), None));
     }
 
     #[test]
     fn should_parse_file_with_eof_pos() {
         assert_eq!(
             parse_file("file:"),
-            (
-                PathBuf::from_str("file").unwrap(),
-                Some(PositionRequest::Eof)
-            )
+            ("file".to_owned().into(), Some(PositionRequest::Eof))
         );
     }
 
@@ -295,7 +289,7 @@ mod tests {
         assert_eq!(
             parse_file("file:10"),
             (
-                PathBuf::from_str("file").unwrap(),
+                "file".to_owned().into(),
                 Some(PositionRequest::Explicit(Position { row: 9, col: 0 }))
             )
         );
@@ -306,7 +300,7 @@ mod tests {
         assert_eq!(
             parse_file("file:10:"),
             (
-                PathBuf::from_str("file").unwrap(),
+                "file".to_owned().into(),
                 Some(PositionRequest::Explicit(Position { row: 9, col: 0 }))
             )
         );
@@ -317,7 +311,7 @@ mod tests {
         assert_eq!(
             parse_file("file:10:20"),
             (
-                PathBuf::from_str("file").unwrap(),
+                "file".to_owned().into(),
                 Some(PositionRequest::Explicit(Position { row: 9, col: 19 }))
             )
         );
@@ -328,34 +322,22 @@ mod tests {
         let args = parse_args(&mut str_to_argv("hx Cargo.toml")).unwrap();
         assert_eq!(
             args.files,
-            [(
-                PathBuf::from_str("Cargo.toml").unwrap(),
-                PositionRequest::default()
-            )]
+            [("Cargo.toml".to_owned().into(), PositionRequest::default())]
         );
 
         let args = parse_args(&mut str_to_argv("hx Cargo.toml README")).unwrap();
         assert_eq!(
             args.files,
             [
-                (
-                    PathBuf::from_str("Cargo.toml").unwrap(),
-                    PositionRequest::default()
-                ),
-                (
-                    PathBuf::from_str("README").unwrap(),
-                    PositionRequest::default()
-                )
+                ("Cargo.toml".to_owned().into(), PositionRequest::default()),
+                ("README".to_owned().into(), PositionRequest::default())
             ]
         );
 
         let args = parse_args(&mut str_to_argv("hx -- Cargo.toml")).unwrap();
         assert_eq!(
             args.files,
-            [(
-                PathBuf::from_str("Cargo.toml").unwrap(),
-                PositionRequest::default()
-            )]
+            [("Cargo.toml".to_owned().into(), PositionRequest::default())]
         );
     }
 
@@ -365,7 +347,7 @@ mod tests {
         assert_eq!(
             args.files,
             [(
-                PathBuf::from_str("Cargo.toml").unwrap(),
+                "Cargo.toml".to_owned().into(),
                 PositionRequest::Explicit(Position { row: 9, col: 0 })
             )]
         );
@@ -373,10 +355,7 @@ mod tests {
         let args = parse_args(&mut str_to_argv("hx +: Cargo.toml")).unwrap();
         assert_eq!(
             args.files,
-            [(
-                PathBuf::from_str("Cargo.toml").unwrap(),
-                PositionRequest::Eof
-            )]
+            [("Cargo.toml".to_owned().into(), PositionRequest::Eof)]
         );
 
         let args = parse_args(&mut str_to_argv("hx +10 Cargo.toml +20 README")).unwrap();
@@ -384,11 +363,11 @@ mod tests {
             args.files,
             [
                 (
-                    PathBuf::from_str("Cargo.toml").unwrap(),
+                    "Cargo.toml".to_owned().into(),
                     PositionRequest::Explicit(Position { row: 9, col: 0 })
                 ),
                 (
-                    PathBuf::from_str("README").unwrap(),
+                    "README".to_owned().into(),
                     PositionRequest::Explicit(Position { row: 19, col: 0 })
                 )
             ]
@@ -401,11 +380,11 @@ mod tests {
             args.files,
             [
                 (
-                    PathBuf::from_str("Cargo.toml").unwrap(),
+                    "Cargo.toml".to_owned().into(),
                     PositionRequest::Explicit(Position { row: 9, col: 0 })
                 ),
                 (
-                    PathBuf::from_str("README").unwrap(),
+                    "README".to_owned().into(),
                     PositionRequest::Explicit(Position { row: 19, col: 0 })
                 )
             ]
@@ -418,16 +397,13 @@ mod tests {
         assert_eq!(
             args.files,
             [
+                ("CHANGELOG".to_owned().into(), PositionRequest::default(),),
                 (
-                    PathBuf::from_str("CHANGELOG").unwrap(),
-                    PositionRequest::default(),
-                ),
-                (
-                    PathBuf::from_str("Cargo.toml").unwrap(),
+                    "Cargo.toml".to_owned().into(),
                     PositionRequest::Explicit(Position { row: 9, col: 0 })
                 ),
                 (
-                    PathBuf::from_str("README").unwrap(),
+                    "README".to_owned().into(),
                     PositionRequest::Explicit(Position { row: 19, col: 0 })
                 )
             ]
@@ -452,7 +428,7 @@ mod tests {
         assert_eq!(
             args.files,
             [(
-                PathBuf::from_str("Cargo.toml").unwrap(),
+                "Cargo.toml".to_owned().into(),
                 PositionRequest::Explicit(Position { row: 9, col: 0 })
             )]
         );
@@ -460,10 +436,7 @@ mod tests {
         let args = parse_args(&mut str_to_argv("hx Cargo.toml:")).unwrap();
         assert_eq!(
             args.files,
-            [(
-                PathBuf::from_str("Cargo.toml").unwrap(),
-                PositionRequest::Eof
-            )]
+            [("Cargo.toml".to_owned().into(), PositionRequest::Eof)]
         );
 
         let args = parse_args(&mut str_to_argv("hx Cargo.toml:10 README:20")).unwrap();
@@ -471,11 +444,11 @@ mod tests {
             args.files,
             [
                 (
-                    PathBuf::from_str("Cargo.toml").unwrap(),
+                    "Cargo.toml".to_owned().into(),
                     PositionRequest::Explicit(Position { row: 9, col: 0 })
                 ),
                 (
-                    PathBuf::from_str("README").unwrap(),
+                    "README".to_owned().into(),
                     PositionRequest::Explicit(Position { row: 19, col: 0 })
                 )
             ]
@@ -487,11 +460,11 @@ mod tests {
             args.files,
             [
                 (
-                    PathBuf::from_str("Cargo.toml").unwrap(),
+                    "Cargo.toml".to_owned().into(),
                     PositionRequest::Explicit(Position { row: 9, col: 0 })
                 ),
                 (
-                    PathBuf::from_str("README").unwrap(),
+                    "README".to_owned().into(),
                     PositionRequest::Explicit(Position { row: 19, col: 0 })
                 )
             ]
@@ -503,7 +476,7 @@ mod tests {
         let args = parse_args(&mut str_to_argv("hx --config other/config.toml")).unwrap();
         assert_eq!(
             args.config_file,
-            Some(PathBuf::from_str("other/config.toml").unwrap())
+            Some("other/config.toml".to_owned().into())
         );
     }
 
