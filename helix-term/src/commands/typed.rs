@@ -7,6 +7,7 @@ use super::*;
 
 use helix_core::encoding;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
+use serde_json::Value;
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -1646,6 +1647,46 @@ fn set_option(
     Ok(())
 }
 
+/// Toggle boolean config option at runtime. Access nested values by dot
+/// syntax, for example to toggle smart case search, use `:toggle search.smart-
+/// case`.
+fn toggle_option(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:toggle key`");
+    }
+    let key = &args[0].to_lowercase();
+
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+
+    let mut config = serde_json::json!(&cx.editor.config().deref());
+    let pointer = format!("/{}", key.replace('.', "/"));
+    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+
+    if let Value::Bool(b) = *value {
+        *value = Value::Bool(!b);
+    } else {
+        anyhow::bail!("Key `{}` is not toggle-able", key)
+    }
+
+    // This unwrap should never fail because we only replace one boolean value
+    // with another, maintaining a valid json config
+    let config = serde_json::from_value(config).unwrap();
+
+    cx.editor
+        .config_events
+        .0
+        .send(ConfigEvent::Update(config))?;
+    Ok(())
+}
+
 /// Change the language of the current buffer at runtime.
 fn language(
     cx: &mut compositor::Context,
@@ -2382,6 +2423,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["set"],
             doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
             fun: set_option,
+            completer: Some(completers::setting),
+        },
+        TypableCommand {
+            name: "toggle-option",
+            aliases: &["toggle"],
+            doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
+            fun: toggle_option,
             completer: Some(completers::setting),
         },
         TypableCommand {
