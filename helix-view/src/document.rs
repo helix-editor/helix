@@ -591,7 +591,7 @@ impl Document {
             .load()
             .persistent_undo
             .then(|| self.history.get_mut().clone());
-        let undo_file = self.undo_file(Some(&path)).unwrap();
+        let undo_file = self.undo_file(Some(&path))?.unwrap();
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
             use tokio::{fs, fs::File};
@@ -730,12 +730,14 @@ impl Document {
         Ok(())
     }
 
-    pub fn undo_file(&self, path: Option<&PathBuf>) -> Option<PathBuf> {
-        self.path().or(path).map(|path| {
-            let undo_dir = helix_loader::cache_dir().join("undo");
+    pub fn undo_file(&self, path: Option<&PathBuf>) -> anyhow::Result<Option<PathBuf>> {
+        let undo_dir = helix_loader::cache_dir().join("undo");
+        std::fs::create_dir_all(&undo_dir)?;
+        let res = self.path().or(path).map(|path| {
             let escaped_path = helix_core::path::escape_path(path);
             undo_dir.join(escaped_path)
-        })
+        });
+        Ok(res)
     }
 
     pub fn load_history(&mut self) -> anyhow::Result<()> {
@@ -744,7 +746,7 @@ impl Document {
         }
 
         if let Some(mut undo_file) = self
-            .undo_file(None)
+            .undo_file(None)?
             .and_then(|path| std::fs::File::open(path).ok())
         {
             if undo_file.metadata()?.len() != 0 {
