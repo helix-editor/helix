@@ -55,7 +55,7 @@ use crate::{
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
 };
 
-use crate::job::{self, Jobs};
+use crate::job::{self, Job, Jobs};
 use futures_util::StreamExt;
 use std::{collections::HashMap, fmt, future::Future};
 use std::{collections::HashSet, num::NonZeroUsize};
@@ -455,6 +455,7 @@ impl MappableCommand {
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        test_buffer, "Run all tests in the current buffer",
         command_palette, "Open command palette",
     );
 }
@@ -5324,4 +5325,23 @@ fn replay_macro(cx: &mut Context) {
         // replaying recursively.
         cx.editor.macro_replaying.pop();
     }));
+}
+
+fn test_buffer(cx: &mut Context) {
+    let (_view, doc) = current_ref!(cx.editor);
+    let jobs = &mut cx.jobs;
+    let path = doc.path().map(|path| path.clone());
+
+    async fn run(path: PathBuf) -> anyhow::Result<()> {
+        let command = helix_test::run(path)?;
+        let execer = crate::executor::get();
+        execer.execute(command)?;
+        Ok(())
+    }
+
+    if let Some(path) = path {
+        jobs.add(Job::new(run(path)));
+    } else {
+        cx.editor.set_error("No path available for the current document");
+    }
 }

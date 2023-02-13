@@ -1,0 +1,8 @@
+[package]
+name = "helix-test"
+version = "0.6.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+helix-core = { version = "0.6", path = "../helix-core" }

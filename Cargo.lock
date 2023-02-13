@@ -1210,6 +1210,7 @@ dependencies = [
  "helix-dap",
  "helix-loader",
  "helix-lsp",
+ "helix-test",
  "helix-tui",
  "helix-vcs",
  "helix-view",
@@ -1228,6 +1229,14 @@ dependencies = [
  "tokio-stream",
  "toml",
  "which",
+]
+
+[[package]]
+name = "helix-test"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
+ "helix-core",
 ]
 
 [[package]]
