@@ -59,7 +59,7 @@ mod tests {
     };
     use helix_core::hashmap;
     use helix_view::{document::Mode, input::KeyEvent};
-    use std::collections::BTreeMap;
+    use std::{collections::BTreeMap, str::FromStr};
 
     #[test]
     fn parses_keymap_from_toml() {
@@ -107,6 +107,83 @@ mod tests {
                 ordered_keymap.insert(key_event, children[*order].clone());
             }
             ordered_keymap
+        }
+    }
+
+    #[test]
+    fn parses_custom_typable_command_label_from_toml() {
+        let sample_keymap = r#"
+            [keys.normal]
+            A-k = { description = "Edit Config", exec = ":open ~/.config/helix/config.toml" }
+        "#;
+        let parsed_node: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
+            .unwrap()
+            .keys
+            .get(&Mode::Normal)
+            .unwrap()
+            .traverse(&[KeyEvent::from_str("A-k").unwrap()])
+            .unwrap();
+
+        let parsed_description = parsed_node.get_description().unwrap();
+        assert_eq!(parsed_description, "Edit Config");
+
+        if let KeyTrieNode::MappableCommand(command) = parsed_node {
+            if let MappableCommand::Typable { name, .. } = command {
+                assert_eq!(name, "open".to_string());
+                return;
+            }
+        }
+        panic!("KeyTrieNode::MappableCommand::Typable expected.")
+    }
+
+    #[test]
+    fn parses_custom_command_sequence_label_from_toml() {
+        let sample_keymap = r#"
+            [keys.normal]
+            "C-r" = { "description" = "Sort selection", "exec" = ["split_selection_on_newline", ":sort", "collapse_selection", "keep_primary_selection"]             }
+        "#;
+
+        let parsed_node: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
+            .unwrap()
+            .keys
+            .get(&Mode::Normal)
+            .unwrap()
+            .traverse(&[KeyEvent::from_str("C-r").unwrap()])
+            .unwrap();
+
+        let parsed_description = parsed_node.get_description().unwrap();
+        assert_eq!(parsed_description, "Sort selection");
+
+        if let KeyTrieNode::CommandSequence(command_sequence) = parsed_node {
+            // IMPROVEMENT: Check that each command is correct
+            assert_eq!(command_sequence.get_commands().len(), 4)
+        } else {
+            panic!("KeyTrieNode::CommandSequence expected.")
+        }
+    }
+
+    #[test]
+    fn parses_custom_infobox_label_from_toml() {
+        let sample_keymap = r#"
+            [keys.normal]
+            b = { description = "Buffer menu", b = "buffer_picker", n = "goto_next_buffer" }
+        "#;
+
+        let parsed_node: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
+            .unwrap()
+            .keys
+            .get(&Mode::Normal)
+            .unwrap()
+            .traverse(&[KeyEvent::from_str("b").unwrap()])
+            .unwrap();
+
+        let parsed_description = parsed_node.get_description().unwrap();
+        assert_eq!(parsed_description, "Buffer menu");
+
+        if let KeyTrieNode::KeyTrie(_) = parsed_node {
+            return;
+        } else {
+            panic!("KeyTrieNode::KeyTrie expected.")
         }
     }
 

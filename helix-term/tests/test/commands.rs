@@ -67,7 +67,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     const RANGE: RangeInclusive<i32> = 1..=1000;
 
     for i in RANGE {
-        let cmd = format!("%c{}<esc>:w<ret>", i);
+        let cmd = format!("%c{}<esc>:w!<ret>", i);
         command.push_str(&cmd);
     }
 
@@ -128,6 +128,70 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
             #(|lo)#rem
             #(|ip)#sum
             #[|do]#lor
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // Copy the selection to previous line, skipping the first line in the file
+    test((
+        platform_line(indoc! {"\
+            test
+            #[testitem|]#
+            "})
+        .as_str(),
+        "<A-C>",
+        platform_line(indoc! {"\
+            test
+            #[testitem|]#
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // Copy the selection to previous line, including the first line in the file
+    test((
+        platform_line(indoc! {"\
+            test
+            #[test|]#
+            "})
+        .as_str(),
+        "<A-C>",
+        platform_line(indoc! {"\
+            #[test|]#
+            #(test|)#
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // Copy the selection to next line, skipping the last line in the file
+    test((
+        platform_line(indoc! {"\
+            #[testitem|]#
+            test
+            "})
+        .as_str(),
+        "C",
+        platform_line(indoc! {"\
+            #[testitem|]#
+            test
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // Copy the selection to next line, including the last line in the file
+    test((
+        platform_line(indoc! {"\
+            #[test|]#
+            test
+            "})
+        .as_str(),
+        "C",
+        platform_line(indoc! {"\
+            #(test|)#
+            #[test|]#
             "})
         .as_str(),
     ))
@@ -350,6 +414,64 @@ async fn test_extend_line() -> anyhow::Result<()> {
             "})
         .as_str(),
     ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_character_info() -> anyhow::Result<()> {
+    // UTF-8, single byte
+    test_key_sequence(
+        &mut helpers::AppBuilder::new().build()?,
+        Some("ih<esc>h:char<ret>"),
+        Some(&|app| {
+            assert_eq!(
+                r#""h" (U+0068) Dec 104 Hex 68"#,
+                app.editor.get_status().unwrap().0
+            );
+        }),
+        false,
+    )
+    .await?;
+
+    // UTF-8, multi-byte
+    test_key_sequence(
+        &mut helpers::AppBuilder::new().build()?,
+        Some("ië<esc>h:char<ret>"),
+        Some(&|app| {
+            assert_eq!(
+                r#""ë" (U+0065 U+0308) Hex 65 + cc 88"#,
+                app.editor.get_status().unwrap().0
+            );
+        }),
+        false,
+    )
+    .await?;
+
+    // Multiple characters displayed as one, escaped characters
+    test_key_sequence(
+        &mut helpers::AppBuilder::new().build()?,
+        Some(":line<minus>ending crlf<ret>:char<ret>"),
+        Some(&|app| {
+            assert_eq!(
+                r#""\r\n" (U+000d U+000a) Hex 0d + 0a"#,
+                app.editor.get_status().unwrap().0
+            );
+        }),
+        false,
+    )
+    .await?;
+
+    // Non-UTF-8
+    test_key_sequence(
+        &mut helpers::AppBuilder::new().build()?,
+        Some(":encoding ascii<ret>ih<esc>h:char<ret>"),
+        Some(&|app| {
+            assert_eq!(r#""h" Dec 104 Hex 68"#, app.editor.get_status().unwrap().0);
+        }),
+        false,
+    )
     .await?;
 
     Ok(())

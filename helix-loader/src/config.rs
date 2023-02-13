@@ -14,7 +14,7 @@ pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
         .chain([crate::config_dir()].into_iter())
         .map(|path| path.join("languages.toml"))
         .filter_map(|file| {
-            std::fs::read_to_string(&file)
+            std::fs::read_to_string(file)
                 .map(|config| toml::from_str(&config))
                 .ok()
         })

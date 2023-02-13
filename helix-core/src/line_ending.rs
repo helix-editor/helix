@@ -203,6 +203,13 @@ pub fn line_end_char_index(slice: &RopeSlice, line: usize) -> usize {
             .unwrap_or(0)
 }
 
+pub fn line_end_byte_index(slice: &RopeSlice, line: usize) -> usize {
+    slice.line_to_byte(line + 1)
+        - get_line_ending(&slice.line(line))
+            .map(|le| le.as_str().len())
+            .unwrap_or(0)
+}
+
 /// Fetches line `line_idx` from the passed rope slice, sans any line ending.
 pub fn line_without_line_ending<'a>(slice: &'a RopeSlice, line_idx: usize) -> RopeSlice<'a> {
     let start = slice.line_to_char(line_idx);

@@ -49,6 +49,31 @@ c = ":run-shell-command cargo build"
 t = ":run-shell-command cargo test"
 ```
 
+## Custom descriptions
+
+Remapping of singular typable commands or seqences of any commands, can be given a custom description for the keymap menus (infoboxes).
+This is the text on each row that's paired together with each key event trigger.
+
+```toml
+[keys.normal]
+A-k = { description = "Edit Config", exec = ":open ~/.config/helix/config.toml" }
+# (Note that the example example above mostly for illustrative purposes, a :config-open is provided out of the box.)
+"C-r" = { "description" = "Sort selection", "exec" = ["split_selection_on_newline", ":sort", "collapse_selection", "keep_primary_selection"]             }
+```
+
+A custom descriptions can also be defined for sub-menus.
+Aside from being them being shown in the parent-menu infobox,
+sub-menu descriptions also act as infobox titles for the submenu itself.
+
+```toml
+# A submenu accessed though space->f in normal mode.
+[keys.normal.space.f]
+description = "File"
+f = "file_picker"
+s = { description = "Save", exec = ":write" }
+c = { description = "Format", exec = ":format" }
+```
+
 ## Special keys and modifiers
 
 Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes

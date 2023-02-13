@@ -6,8 +6,8 @@ use std::collections::HashMap;
 pub fn default() -> HashMap<Mode, KeyTrie> {
     let normal = keytrie!({ "Normal mode"
         "h" | "left" => move_char_left,
-        "j" | "down" => move_line_down,
-        "k" | "up" => move_line_up,
+        "j" | "down" => move_visual_line_down,
+        "k" | "up" => move_visual_line_up,
         "l" | "right" => move_char_right,
 
         "t" => find_till_char,
@@ -43,6 +43,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "l" => goto_line_end,
             "s" => goto_first_nonwhitespace,
             "d" => goto_definition,
+            "D" => goto_declaration,
             "y" => goto_type_definition,
             "r" => goto_reference,
             "i" => goto_implementation,
@@ -53,6 +54,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "m" => goto_last_modified_file,
             "n" => goto_next_buffer,
             "p" => goto_previous_buffer,
+            "k" => move_line_up,
+            "j" => move_line_down,
             "." => goto_last_modification,
         },
         ":" => command_mode,
@@ -319,8 +322,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
     let mut select = normal.clone();
     select.merge_keytrie(keytrie!({ "Select mode"
         "h" | "left" => extend_char_left,
-        "j" | "down" => extend_line_down,
-        "k" | "up" => extend_line_up,
+        "j" | "down" => extend_visual_line_down,
+        "k" | "up" => extend_visual_line_up,
         "l" | "right" => extend_char_right,
 
         "w" => extend_next_word_start,
@@ -343,6 +346,10 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "esc" => exit_select_mode,
 
         "v" => normal_mode,
+        "g" => { "Goto"
+            "k" => extend_line_up,
+            "j" => extend_line_down,
+        },
     }));
     let insert = keytrie!({ "Insert mode"
         "esc" => normal_mode,
@@ -360,8 +367,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-j" | "ret" => insert_newline,
         "tab" => insert_tab,
 
-        "up" => move_line_up,
-        "down" => move_line_down,
+        "up" => move_visual_line_up,
+        "down" => move_visual_line_down,
         "left" => move_char_left,
         "right" => move_char_right,
         "pageup" => page_up,

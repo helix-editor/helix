@@ -35,6 +35,10 @@ impl KeyTrie {
         &self.children
     }
 
+    pub fn get_description(&self) -> &str {
+        &self.description
+    }
+
     // None symbolizes NotFound
     pub fn traverse(&self, key_events: &[KeyEvent]) -> Option<KeyTrieNode> {
         return _traverse(self, key_events, 0);
@@ -90,9 +94,9 @@ impl KeyTrie {
         }
     }
 
-    // IMPROVEMENT: cache sorting and update cache only when config is updated
+    // IMPROVEMENT: cache contents and update cache only when config is updated
     /// Open an info box for a given KeyTrie
-    /// Shows the children as possible KeyEvents and thier associated description.
+    /// Shows the children as possible KeyEvents with thier associated description.
     pub fn infobox(&self, sort_infobox: bool) -> Info {
         let mut body: InfoBoxBody = Vec::with_capacity(self.children.len());
         let mut key_event_order = Vec::with_capacity(self.children.len());
@@ -106,18 +110,27 @@ impl KeyTrie {
         }
 
         for (index, key_trie) in self.children.iter().enumerate() {
-            let description: &str = match key_trie {
+            let description: String = match key_trie {
                 KeyTrieNode::MappableCommand(ref command) => {
                     if command.name() == "no_op" {
                         continue;
                     }
-                    command.description()
+                    command.get_description().to_string()
                 }
-                KeyTrieNode::KeyTrie(ref key_trie) => &key_trie.description,
-                // FIX: default to a join of all command names
-                // NOTE: Giving same description for all sequences will place all sequence keyvents together.
-                // Regardless if the command sequence is different.
-                KeyTrieNode::CommandSequence(_) => "[Multiple commands]",
+                KeyTrieNode::CommandSequence(command_sequence) => {
+                    if let Some(custom_description) = command_sequence.get_description() {
+                        custom_description.to_string()
+                    } else {
+                        command_sequence
+                            .get_commands()
+                            .iter()
+                            .map(|command| command.name().to_string())
+                            .collect::<Vec<_>>()
+                            .join(" → ")
+                            .clone()
+                    }
+                }
+                KeyTrieNode::KeyTrie(key_trie) => key_trie.description.clone(),
             };
             let key_event = key_event_order[index];
             match body
@@ -129,7 +142,7 @@ impl KeyTrie {
             }
         }
 
-        // TODO: Add "A-" aknowledgement?
+        // TODO: Add "A-" acknowledgement?
         // Shortest keyevent (as string) appears first, unless is a "C-" KeyEvent
         // Those events will always be placed after the one letter KeyEvent
         for (key_events, _) in body.iter_mut() {
@@ -148,10 +161,10 @@ impl KeyTrie {
             body = keyevent_sort_infobox(body);
         }
 
-        let stringified_key_events_body: Vec<(String, &str)> = body
-            .iter()
-            .map(|(key_events, description)| (key_events.join(", "), *description))
-            .collect();
+        let mut stringified_key_events_body = Vec::with_capacity(body.len());
+        for (key_events, description) in body {
+            stringified_key_events_body.push((key_events.join(", "), description));
+        }
 
         Info::new(&self.description, &stringified_key_events_body)
     }
@@ -176,6 +189,7 @@ impl<'de> Deserialize<'de> for KeyTrie {
     {
         // NOTE: no assumption of pre-defined order in config
         let child_collection = HashMap::<KeyEvent, KeyTrieNode>::deserialize(deserializer)?;
+        // TODO: common pattern, generalize (found in keytrinode deserialize too)
         let mut child_order = HashMap::<KeyEvent, usize>::new();
         let mut children = Vec::new();
         for (key_event, keytrie_node) in child_collection {
@@ -191,9 +205,9 @@ impl<'de> Deserialize<'de> for KeyTrie {
     }
 }
 
-// (KeyEvents, Description)
-type InfoBoxRow<'a> = (Vec<String>, &'a str);
-type InfoBoxBody<'a> = Vec<InfoBoxRow<'a>>;
+/// (KeyEvents as strings, Description)
+type InfoBoxRow = (Vec<String>, String);
+type InfoBoxBody = Vec<InfoBoxRow>;
 /// Sorts by `ModifierKeyCode`, then by each `KeyCode` category, then by each `KeyEvent`.
 /// KeyCode::Char sorting is special in that lower-case and upper-case equivalents are
 /// placed together, and alphas are placed before the rest.
@@ -255,8 +269,6 @@ fn keyevent_sort_infobox(body: InfoBoxBody) -> InfoBoxBody {
                             y_index += 1;
                         }
 
-                        // TEMP: until drain_filter becomes stable. Migth also be worth implementing
-                        // FromIterator on InfoboxBody by then, last two for loops could then also be replaced by Iter::chain
                         let mut alphas = Vec::new();
                         let mut misc = Vec::new();
                         for infobox_row in infobox_rows {

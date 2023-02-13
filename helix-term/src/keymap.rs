@@ -88,8 +88,10 @@ impl Keymap {
             Some(KeyTrieNode::MappableCommand(cmd)) => {
                 return KeymapResult::Matched(cmd);
             }
-            Some(KeyTrieNode::CommandSequence(cmds)) => {
-                return KeymapResult::MatchedCommandSequence(cmds);
+            Some(KeyTrieNode::CommandSequence(command_sequence)) => {
+                return KeymapResult::MatchedCommandSequence(
+                    command_sequence.get_commands().clone(),
+                );
             }
             None => return KeymapResult::NotFound,
         };
@@ -107,9 +109,9 @@ impl Keymap {
                 self.pending_keys.clear();
                 KeymapResult::Matched(cmd)
             }
-            Some(KeyTrieNode::CommandSequence(cmds)) => {
+            Some(KeyTrieNode::CommandSequence(command_sequence)) => {
                 self.pending_keys.clear();
-                KeymapResult::MatchedCommandSequence(cmds)
+                KeymapResult::MatchedCommandSequence(command_sequence.get_commands().clone())
             }
             None => KeymapResult::Cancelled(self.pending_keys.drain(..).collect()),
         }
