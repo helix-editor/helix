@@ -72,7 +72,7 @@ impl Loader {
     fn load_theme(
         &self,
         name: &str,
-        base_them_name: &str,
+        base_theme_name: &str,
         only_default_dir: bool,
     ) -> Result<Value> {
         let path = self.path(name, only_default_dir);
@@ -94,8 +94,8 @@ impl Loader {
                 "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
                 _ => self.load_theme(
                     parent_theme_name,
-                    base_them_name,
-                    base_them_name == parent_theme_name,
+                    base_theme_name,
+                    base_theme_name == parent_theme_name,
                 )?,
             };
 
@@ -150,7 +150,7 @@ impl Loader {
 
     // Loads the theme data as `toml::Value` first from the user_dir then in default_dir
     fn load_toml(&self, path: PathBuf) -> Result<Value> {
-        let data = std::fs::read_to_string(&path)?;
+        let data = std::fs::read_to_string(path)?;
         let value = toml::from_str(&data)?;
 
         Ok(value)
@@ -314,8 +314,21 @@ impl Theme {
         &self.scopes
     }
 
-    pub fn find_scope_index(&self, scope: &str) -> Option<usize> {
+    pub fn find_scope_index_exact(&self, scope: &str) -> Option<usize> {
         self.scopes().iter().position(|s| s == scope)
+    }
+
+    pub fn find_scope_index(&self, mut scope: &str) -> Option<usize> {
+        loop {
+            if let Some(highlight) = self.find_scope_index_exact(scope) {
+                return Some(highlight);
+            }
+            if let Some(new_end) = scope.rfind('.') {
+                scope = &scope[..new_end];
+            } else {
+                return None;
+            }
+        }
     }
 
     pub fn is_16_color(&self) -> bool {

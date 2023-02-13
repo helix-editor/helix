@@ -1,7 +1,10 @@
 use futures_util::FutureExt;
 use helix_lsp::{
     block_on,
-    lsp::{self, CodeAction, CodeActionOrCommand, DiagnosticSeverity, NumberOrString},
+    lsp::{
+        self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
+        NumberOrString,
+    },
     util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
@@ -561,6 +564,7 @@ pub fn code_action(cx: &mut Context) {
                 .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, offset_encoding))
                 .collect(),
             only: None,
+            trigger_kind: Some(CodeActionTriggerKind::INVOKED),
         },
     ) {
         Some(future) => future,
@@ -912,6 +916,31 @@ fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Lo
             .collect(),
         None => Vec::new(),
     }
+}
+
+pub fn goto_declaration(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = doc.position(view.id, offset_encoding);
+
+    let future = match language_server.goto_declaration(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-declaration");
+            return;
+        }
+    };
+
+    cx.callback(
+        future,
+        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
+            let items = to_locations(response);
+            goto_impl(editor, compositor, items, offset_encoding);
+        },
+    );
 }
 
 pub fn goto_definition(cx: &mut Context) {

@@ -1,5 +1,5 @@
 use std::{
-    io::{Read, Write},
+    io::{Read, Seek, SeekFrom, Write},
     ops::RangeInclusive,
 };
 
@@ -31,6 +31,38 @@ async fn test_write() -> anyhow::Result<()> {
 
     assert_eq!(
         helpers::platform_line("the gostak distims the doshes"),
+        file_content
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_overwrite_protection() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    helpers::run_event_loop_until_idle(&mut app).await;
+
+    file.as_file_mut()
+        .write_all(helpers::platform_line("extremely important content").as_bytes())?;
+
+    file.as_file_mut().flush()?;
+    file.as_file_mut().sync_all()?;
+
+    test_key_sequence(&mut app, Some(":x<ret>"), None, false).await?;
+
+    file.as_file_mut().flush()?;
+    file.as_file_mut().sync_all()?;
+
+    file.seek(SeekFrom::Start(0))?;
+    let mut file_content = String::new();
+    file.as_file_mut().read_to_string(&mut file_content)?;
+
+    assert_eq!(
+        helpers::platform_line("extremely important content"),
         file_content
     );
 
@@ -70,13 +102,13 @@ async fn test_write_quit() -> anyhow::Result<()> {
 async fn test_write_concurrent() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut command = String::new();
-    const RANGE: RangeInclusive<i32> = 1..=5000;
+    const RANGE: RangeInclusive<i32> = 1..=1000;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
         .build()?;
 
     for i in RANGE {
-        let cmd = format!("%c{}<esc>:w<ret>", i);
+        let cmd = format!("%c{}<esc>:w!<ret>", i);
         command.push_str(&cmd);
     }
 

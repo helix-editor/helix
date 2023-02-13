@@ -118,7 +118,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     let test_case = test_case.into();
     let mut app = match app {
         Some(app) => app,
-        None => Application::new(Args::default(), Config::default(), test_syntax_conf(None))?,
+        None => Application::new(Args::default(), test_config(), test_syntax_conf(None))?,
     };
 
     let (view, doc) = helix_view::current!(app.editor);
@@ -143,26 +143,8 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 
 /// Generates language configs that merge in overrides, like a user language
 /// config. The argument string must be a raw TOML document.
-///
-/// By default, language server configuration is dropped from the languages.toml
-/// document. If a language-server is necessary for a test, it must be explicitly
-/// added in `overrides`.
 pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Configuration {
     let mut lang = helix_loader::config::default_lang_config();
-
-    for lang_config in lang
-        .as_table_mut()
-        .expect("Expected languages.toml to be a table")
-        .get_mut("language")
-        .expect("Expected languages.toml to have \"language\" keys")
-        .as_array_mut()
-        .expect("Expected an array of language configurations")
-    {
-        lang_config
-            .as_table_mut()
-            .expect("Expected language config to be a TOML table")
-            .remove("language-server");
-    }
 
     if let Some(overrides) = overrides {
         let override_toml = toml::from_str(&overrides).unwrap();
@@ -205,7 +187,7 @@ pub async fn test_with_config<T: Into<TestCase>>(
 pub async fn test<T: Into<TestCase>>(test_case: T) -> anyhow::Result<()> {
     test_with_config(
         Args::default(),
-        Config::default(),
+        test_config(),
         test_syntax_conf(None),
         test_case,
     )
@@ -224,6 +206,13 @@ pub fn temp_file_with_contents<S: AsRef<str>>(
     temp_file.flush()?;
     temp_file.as_file_mut().sync_all()?;
     Ok(temp_file)
+}
+
+/// Generates a config with defaults more suitable for integration tests
+pub fn test_config() -> Config {
+    let mut config = Config::default();
+    config.editor.lsp.enable = false;
+    config
 }
 
 /// Replaces all LF chars with the system's appropriate line feed
@@ -320,6 +309,12 @@ impl AppBuilder {
 
         Ok(app)
     }
+}
+
+pub async fn run_event_loop_until_idle(app: &mut Application) {
+    let (_, rx) = tokio::sync::mpsc::unbounded_channel();
+    let mut rx_stream = UnboundedReceiverStream::new(rx);
+    app.event_loop_until_idle(&mut rx_stream).await;
 }
 
 pub fn assert_file_has_content(file: &mut File, content: &str) -> anyhow::Result<()> {

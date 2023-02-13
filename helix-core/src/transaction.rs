@@ -481,6 +481,11 @@ impl Transaction {
         for (from, to, tendril) in changes {
             // Verify ranges are ordered and not overlapping
             debug_assert!(last <= from);
+            // Verify ranges are correct
+            debug_assert!(
+                from <= to,
+                "Edit end must end before it starts (should {from} <= {to})"
+            );
 
             // Retain from last "to" to current "from"
             changeset.retain(from - last);
