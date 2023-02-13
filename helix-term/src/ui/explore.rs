@@ -233,6 +233,7 @@ enum PromptAction {
     },
     RemoveDir,
     RemoveFile,
+    RenameFile,
     Filter,
 }
 
@@ -289,32 +290,34 @@ impl Explorer {
         }
     }
 
+    fn reveal_file(&mut self, cx: &mut Context, path: PathBuf) {
+        let current_root = &self.state.current_root;
+        let current_path = path.as_path().to_string_lossy().to_string();
+        let current_root = current_root.as_path().to_string_lossy().to_string() + "/";
+        let segments = current_path
+            .strip_prefix(current_root.as_str())
+            .expect(
+                format!(
+                    "Failed to strip prefix '{}' from '{}'",
+                    current_root, current_path
+                )
+                .as_str(),
+            )
+            .split(std::path::MAIN_SEPARATOR)
+            .collect::<Vec<_>>();
+        match self.tree.reveal_item(segments) {
+            Ok(_) => {
+                self.focus();
+            }
+            Err(error) => cx.editor.set_error(error.to_string()),
+        }
+    }
+
     pub fn reveal_current_file(&mut self, cx: &mut Context) {
         let current_document_path = doc!(cx.editor).path().cloned();
         match current_document_path {
             None => cx.editor.set_error("No opened document."),
-            Some(current_path) => {
-                let current_root = &self.state.current_root;
-                let current_path = current_path.as_path().to_string_lossy().to_string();
-                let current_root = current_root.as_path().to_string_lossy().to_string() + "/";
-                let segments = current_path
-                    .strip_prefix(current_root.as_str())
-                    .expect(
-                        format!(
-                            "Failed to strip prefix '{}' from '{}'",
-                            current_root, current_path
-                        )
-                        .as_str(),
-                    )
-                    .split(std::path::MAIN_SEPARATOR)
-                    .collect::<Vec<_>>();
-                match self.tree.reveal_item(segments) {
-                    Ok(_) => {
-                        self.focus();
-                    }
-                    Err(error) => cx.editor.set_error(error.to_string()),
-                }
-            }
+            Some(current_path) => self.reveal_file(cx, current_path),
         }
     }
 
@@ -465,6 +468,20 @@ impl Explorer {
             FileType::Parent => cx.editor.set_error("Parent is not removable."),
             FileType::Root => cx.editor.set_error("Root is not removable"),
         }
+    }
+
+    fn new_rename_prompt(&mut self) {
+        let name = self.tree.current_item().path.to_string_lossy();
+        self.prompt = Some((
+            PromptAction::RenameFile,
+            Prompt::new(
+                format!(" Rename to ").into(),
+                None,
+                ui::completers::none,
+                |_, _, _| {},
+            )
+            .with_line(name.to_string()),
+        ));
     }
 
     fn new_remove_file_prompt(&mut self, cx: &mut Context) {
@@ -807,6 +824,15 @@ impl Explorer {
                     }
                 }
             }
+            (PromptAction::RenameFile, key!(Enter)) => {
+                let item = self.tree.current_item();
+                if let Err(e) = std::fs::rename(&item.path, line) {
+                    cx.editor.set_error(format!("{e}"));
+                } else {
+                    self.tree.remove_current();
+                    self.reveal_file(cx, PathBuf::from(line))
+                }
+            }
             (_, key!(Esc) | ctrl!('c')) => {}
             _ => {
                 prompt.handle_event(Event::Key(event), cx);
@@ -907,16 +933,7 @@ impl Component for Explorer {
             }
             key!(']') => self.change_root(cx, self.tree.current_item().path.clone()),
             key!('d') => self.new_remove_prompt(cx),
-            key!('r') => {
-                self.on_next_key = Some(Box::new(|cx, explorer, event| {
-                    match event.into() {
-                        key!('d') => explorer.new_remove_dir_prompt(cx),
-                        key!('f') => explorer.new_remove_file_prompt(cx),
-                        _ => return EventResult::Ignored(None),
-                    };
-                    EventResult::Consumed(None)
-                }));
-            }
+            key!('r') => self.new_rename_prompt(),
             _ => {
                 self.tree
                     .handle_event(Event::Key(key_event), cx, &mut self.state);

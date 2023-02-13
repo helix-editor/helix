@@ -174,18 +174,61 @@ impl<T: TreeItem> Tree<T> {
         }
         Ok(())
     }
+
+    fn refresh(&mut self) -> Result<()> {
+        if !self.is_opened {
+            return Ok(());
+        }
+        let latest_children = vec_to_tree(self.item.get_children()?);
+        let filtered = std::mem::replace(&mut self.children, vec![])
+            .into_iter()
+            // Remove children that does not exists in latest_children
+            .filter(|tree| {
+                latest_children
+                    .iter()
+                    .any(|child| tree.item.name().eq(&child.item.name()))
+            })
+            .map(|mut tree| {
+                tree.refresh()?;
+                Ok(tree)
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        // Add new children
+        let new_nodes = latest_children
+            .into_iter()
+            .filter(|child| {
+                !filtered
+                    .iter()
+                    .any(|child_| child.item.name().eq(&child_.item.name()))
+            })
+            .collect::<Vec<_>>();
+
+        self.children = filtered.into_iter().chain(new_nodes).collect();
+
+        self.sort();
+
+        Ok(())
+    }
+
+    fn sort(&mut self) {
+        self.children
+            .sort_by(|a, b| tree_item_cmp(&a.item, &b.item))
+    }
 }
 
 impl<T> Tree<T> {
     pub fn new(item: T, children: Vec<Tree<T>>) -> Self {
+        let is_opened = !children.is_empty();
         Self {
             item,
             index: 0,
             parent_index: None,
             children: index_elems(0, children),
-            is_opened: false,
+            is_opened,
         }
     }
+
     fn iter(&self) -> TreeIter<T> {
         TreeIter {
             tree: self,
@@ -352,6 +395,8 @@ impl<T: TreeItem> TreeView<T> {
     /// vec!["helix-term", "src", "ui", "tree.rs"]
     /// ```
     pub fn reveal_item(&mut self, segments: Vec<&str>) -> Result<()> {
+        self.tree.refresh()?;
+
         // Expand the tree
         segments.iter().fold(
             Ok(&mut self.tree),
