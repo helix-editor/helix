@@ -1120,6 +1120,19 @@ impl Editor {
 
     fn _refresh(&mut self) {
         let config = self.config();
+
+        // Reset the inlay hints annotations *before* updating the views, that way we ensure they
+        // will disappear during the `.sync_change(doc)` call below.
+        //
+        // We can't simply check this config when rendering because inlay hints are only parts of
+        // the possible annotations, and others could still be active, so we need to selectively
+        // drop the inlay hints.
+        if !config.lsp.display_inlay_hints {
+            for doc in self.documents_mut() {
+                doc.reset_all_inlay_hints();
+            }
+        }
+
         for (view, _) in self.tree.views_mut() {
             let doc = doc_mut!(self, &view.doc);
             view.sync_changes(doc);

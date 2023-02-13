@@ -1400,9 +1400,6 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
 
 pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::job::Jobs) {
     if !editor.config().lsp.display_inlay_hints {
-        for doc in editor.documents.values_mut() {
-            doc.reset_all_inlay_hints();
-        }
         return;
     }
 
