@@ -747,7 +747,7 @@ impl<T: TreeItem> TreeView<T> {
         self.area_height = area.height.saturating_sub(1) as usize;
         self.winline = std::cmp::min(self.winline, self.area_height);
         let style = cx.editor.theme.get(&self.tree_symbol_style);
-        let last_item_index = self.tree.len().saturating_sub(1);
+        let ancestor_style = cx.editor.theme.get("ui.text.focus");
         let skip = self.selected.saturating_sub(self.winline);
 
         let params = RenderElemParams {
@@ -770,6 +770,7 @@ impl<T: TreeItem> TreeView<T> {
         struct Node {
             name: String,
             selected: bool,
+            descendant_selected: bool,
         }
 
         struct RenderElemParams<'a, T> {
@@ -801,6 +802,7 @@ impl<T: TreeItem> TreeView<T> {
                 Indent(indent),
                 Node {
                     selected: selected == tree.index,
+                    descendant_selected: selected != tree.index && tree.get(selected).is_some(),
                     name: format!(
                         "{}{}",
                         tree.item.name(),
@@ -851,7 +853,11 @@ impl<T: TreeItem> TreeView<T> {
                     .saturating_sub(indent_len)
                     .saturating_sub(1)
                     .into(),
-                style,
+                if node.descendant_selected {
+                    ancestor_style
+                } else {
+                    style
+                },
             );
         }
         // let mut text = elem.item.text(cx, skip + index == self.selected, params);
