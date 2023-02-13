@@ -5,7 +5,7 @@ use helix_lsp::{
         self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
         NumberOrString,
     },
-    util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
+    util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
 use tui::{
@@ -195,15 +195,15 @@ fn jump_to_location(
         }
     }
     let (view, doc) = current!(editor);
-    let definition_pos = location.range.start;
     // TODO: convert inside server
-    let new_pos = if let Some(new_pos) = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding)
-    {
-        new_pos
-    } else {
-        return;
-    };
-    doc.set_selection(view.id, Selection::point(new_pos));
+    let new_range =
+        if let Some(new_range) = lsp_range_to_range(doc.text(), location.range, offset_encoding) {
+            new_range
+        } else {
+            log::warn!("lsp position out of bounds - {:?}", location.range);
+            return;
+        };
+    doc.set_selection(view.id, Selection::single(new_range.anchor, new_range.head));
     align_view(doc, view, Align::Center);
 }
 
