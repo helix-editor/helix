@@ -208,6 +208,8 @@ impl<T: TreeItem> Tree<T> {
 
         self.sort();
 
+        self.regenerate_index();
+
         Ok(())
     }
 
