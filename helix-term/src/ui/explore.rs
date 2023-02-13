@@ -255,9 +255,9 @@ impl Explorer {
     }
 
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, editor: &Editor) {
-        if area.height <= 2 || area.width < 60 {
-            return;
-        }
+        // if area.height <= 2 || area.width < 60 {
+        //     return;
+        // }
         let item = self.tree.current().item();
         let head_area = render_block(area.clip_bottom(area.height - 2), surface, Borders::BOTTOM);
         let path_str = format!("{}", item.path.display());
@@ -567,19 +567,19 @@ impl Explorer {
 
         if self.is_focus() {
             const PREVIEW_AREA_MAX_WIDTH: u16 = 90;
-            const PREVIEW_AREA_MAX_HEIGHT: u16 = 25;
+            const PREVIEW_AREA_MAX_HEIGHT: u16 = 30;
             let preview_area_width = (area.width - side_area.width).min(PREVIEW_AREA_MAX_WIDTH);
             let preview_area_height = area.height.min(PREVIEW_AREA_MAX_HEIGHT);
 
             let preview_area = match position {
-                ExplorerPositionEmbed::Left => area.clip_left(side_area.width).clip_bottom(2),
+                ExplorerPositionEmbed::Left => area.clip_left(side_area.width),
                 ExplorerPositionEmbed::Right => (Rect {
                     x: area.width - side_area.width - preview_area_width,
                     ..area
                 })
-                .clip_right(side_area.width)
-                .clip_bottom(2),
-            };
+                .clip_right(side_area.width),
+            }
+            .clip_bottom(2);
             if preview_area.width < 30 || preview_area.height < 3 {
                 return;
             }
