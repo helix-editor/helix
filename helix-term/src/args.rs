@@ -11,7 +11,7 @@ use helix_view::{tree::Layout, Document};
 /// Prefix notation to open a file at line 10 `hx +10 Cargo.toml`.
 /// Postfix notation to open a file at line 10 `hx Cargo.toml:10`.
 ///
-/// Both notation can also be used to place the cursor at the last line / Eof.
+/// Both notations can also be used to place the cursor at the last line / Eof.
 ///
 /// `hx +: Cargo.toml`
 /// `hx Cargo.toml:`
@@ -203,8 +203,6 @@ pub(crate) fn parse_file<'a>(s: impl Into<Cow<'a, str>>) -> (PathBuf, Option<Pos
 mod tests {
     use std::{iter::Peekable, path::PathBuf, str::FromStr};
 
-    use assert_matches::assert_matches;
-
     use helix_core::Position;
 
     use super::{parse_args, parse_file, parse_file_position, PositionRequest};
@@ -216,13 +214,13 @@ mod tests {
 
     #[test]
     fn should_parse_file_position_eof() {
-        assert_matches!(parse_file_position(":"), Some(PositionRequest::Eof));
-        assert_matches!(parse_file_position("::"), Some(PositionRequest::Eof));
+        assert_eq!(parse_file_position(":"), Some(PositionRequest::Eof));
+        assert_eq!(parse_file_position("::"), Some(PositionRequest::Eof));
     }
 
     #[test]
     fn should_parse_file_position_line_only() {
-        assert_matches!(
+        assert_eq!(
             parse_file_position("10"),
             Some(PositionRequest::Explicit(Position { row: 9, col: 0 }))
         );
@@ -230,7 +228,7 @@ mod tests {
 
     #[test]
     fn should_parse_file_position_line_only_with_trailing_delimiter() {
-        assert_matches!(
+        assert_eq!(
             parse_file_position("10:"),
             Some(PositionRequest::Explicit(Position { row: 9, col: 0 }))
         );
@@ -238,7 +236,7 @@ mod tests {
 
     #[test]
     fn should_parse_file_position_line_col() {
-        assert_matches!(
+        assert_eq!(
             parse_file_position("10:20"),
             Some(PositionRequest::Explicit(Position { row: 9, col: 19 }))
         );
@@ -246,76 +244,82 @@ mod tests {
 
     #[test]
     fn should_parse_file_position_line_col_with_trailing_delimiter() {
-        assert_matches!(
+        assert_eq!(
             parse_file_position("10:20:"),
             Some(PositionRequest::Explicit(Position { row: 9, col: 19 }))
         );
     }
 
     #[test]
-    fn should_given_none_if_any_pos_arg_invalid() {
-        assert_matches!(parse_file_position("x"), None);
-        assert_matches!(parse_file_position("x:y"), None);
-        assert_matches!(parse_file_position("10:y"), None);
-        assert_matches!(parse_file_position("x:20"), None);
+    fn should_give_none_if_any_pos_arg_invalid() {
+        assert_eq!(parse_file_position("x"), None);
+        assert_eq!(parse_file_position("x:y"), None);
+        assert_eq!(parse_file_position("10:y"), None);
+        assert_eq!(parse_file_position("x:20"), None);
     }
 
     #[test]
     fn should_parse_empty_file() {
-        assert_matches!(
-            parse_file(""),
-            (path, None) if path == PathBuf::from_str("").unwrap()
-        );
+        assert_eq!(parse_file(""), (PathBuf::from_str("").unwrap(), None));
     }
 
     #[test]
     fn should_parse_empty_file_with_eof_pos() {
-        assert_matches!(
+        assert_eq!(
             parse_file(":"),
-            (path, Some(PositionRequest::Eof)) if path == PathBuf::from_str("").unwrap()
+            (PathBuf::from_str("").unwrap(), Some(PositionRequest::Eof))
         );
     }
 
     #[test]
     fn should_parse_file_with_name_only() {
-        assert_matches!(
+        assert_eq!(
             parse_file("file"),
-            (path, None) if path == PathBuf::from_str("file").unwrap()
+            (PathBuf::from_str("file").unwrap(), None)
         );
     }
 
     #[test]
     fn should_parse_file_with_eof_pos() {
-        assert_matches!(
+        assert_eq!(
             parse_file("file:"),
-            (path, Some(PositionRequest::Eof)) if path == PathBuf::from_str("file").unwrap()
+            (
+                PathBuf::from_str("file").unwrap(),
+                Some(PositionRequest::Eof)
+            )
         );
     }
 
     #[test]
     fn should_parse_file_with_line_pos() {
-        assert_matches!(
+        assert_eq!(
             parse_file("file:10"),
-            (path, Some(PositionRequest::Explicit(Position { row: 9, col: 0 })))
-                if path == PathBuf::from_str("file").unwrap()
+            (
+                PathBuf::from_str("file").unwrap(),
+                Some(PositionRequest::Explicit(Position { row: 9, col: 0 }))
+            )
         );
     }
 
     #[test]
     fn should_parse_file_with_line_pos_and_trailing_delimiter() {
-        assert_matches!(
+        assert_eq!(
             parse_file("file:10:"),
-            (path, Some(PositionRequest::Explicit(Position { row: 9, col: 0 })))
-                if path == PathBuf::from_str("file").unwrap()
+            (
+                PathBuf::from_str("file").unwrap(),
+                Some(PositionRequest::Explicit(Position { row: 9, col: 0 }))
+            )
         );
     }
 
     #[test]
     fn should_parse_file_with_line_and_col_pos() {
-        assert_matches!(
+        assert_eq!(
             parse_file("file:10:20"),
-            (path, Some(PositionRequest::Explicit(Position { row: 9, col: 19 })))
-                if path == PathBuf::from_str("file").unwrap()
+            (
+                PathBuf::from_str("file").unwrap(),
+                Some(PositionRequest::Explicit(Position { row: 9, col: 19 }))
+            )
         );
     }
 
