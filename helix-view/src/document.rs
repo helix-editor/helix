@@ -168,9 +168,10 @@ pub struct Document {
 /// them anywhere in the text and will sometime offer config options to move them where the user
 /// wants them but it shouldn't be Helix who decides that so we use the most precise positioning.
 ///
-/// The padding for inlay hints is stored directly before/after the hint text itself. This is
-/// necessary to ensure it's placed correctly instead of after all the time (or ignored because it
-/// came in a later layer and at the same `char_idx`).
+/// The padding for inlay hints needs to be stored separately for before and after (the LSP spec
+/// uses 'left' and 'right' but not all text is left to right so let's be correct) padding because
+/// the 'before' padding must be added to a layer *before* the regular inlay hints and the 'after'
+/// padding comes ... after.
 #[derive(Debug, Clone)]
 pub struct DocumentInlayHints {
     /// Identifier for the inlay hints stored in this structure. To be checked to know if they have
@@ -189,6 +190,11 @@ pub struct DocumentInlayHints {
     /// currently never does (February 2023) and the LSP spec may add new kinds in the future that
     /// we want to display even if we don't have some special highlighting for them.
     pub other_inlay_hints: Rc<[InlineAnnotation]>,
+
+    /// Inlay hint padding. When creating the final `TextAnnotations`, the `before` padding must be
+    /// added first, then the regular inlay hints, then the `after` padding.
+    pub padding_before_inlay_hints: Rc<[InlineAnnotation]>,
+    pub padding_after_inlay_hints: Rc<[InlineAnnotation]>,
 }
 
 /// Associated with a [`Document`] and [`ViewId`], uniquely identifies the state of inlay hints for
@@ -957,11 +963,15 @@ impl Document {
                     type_inlay_hints,
                     parameter_inlay_hints,
                     other_inlay_hints,
+                    padding_before_inlay_hints,
+                    padding_after_inlay_hints,
                 } = text_annotation;
 
+                apply_inlay_hint_changes(padding_before_inlay_hints);
                 apply_inlay_hint_changes(type_inlay_hints);
                 apply_inlay_hint_changes(parameter_inlay_hints);
                 apply_inlay_hint_changes(other_inlay_hints);
+                apply_inlay_hint_changes(padding_after_inlay_hints);
             }
 
             // emit lsp notification

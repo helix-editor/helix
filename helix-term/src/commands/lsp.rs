@@ -1504,9 +1504,11 @@ fn compute_inlay_hints_for_view(
             // avoid errors on our end.
             hints.sort_unstable_by_key(|inlay_hint| inlay_hint.position);
 
+            let mut padding_before_inlay_hints = Vec::new();
             let mut type_inlay_hints = Vec::new();
             let mut parameter_inlay_hints = Vec::new();
             let mut other_inlay_hints = Vec::new();
+            let mut padding_after_inlay_hints = Vec::new();
 
             let doc_text = doc.text();
 
@@ -1537,13 +1539,13 @@ fn compute_inlay_hints_for_view(
                 };
 
                 if let Some(true) = hint.padding_left {
-                    inlay_hints_vec.push(InlineAnnotation::new(char_idx, " "));
+                    padding_before_inlay_hints.push(InlineAnnotation::new(char_idx, " "));
                 }
 
                 inlay_hints_vec.push(InlineAnnotation::new(char_idx, label));
 
                 if let Some(true) = hint.padding_right {
-                    inlay_hints_vec.push(InlineAnnotation::new(char_idx, " "));
+                    padding_after_inlay_hints.push(InlineAnnotation::new(char_idx, " "));
                 }
             }
 
@@ -1554,6 +1556,8 @@ fn compute_inlay_hints_for_view(
                     type_inlay_hints: type_inlay_hints.into(),
                     parameter_inlay_hints: parameter_inlay_hints.into(),
                     other_inlay_hints: other_inlay_hints.into(),
+                    padding_before_inlay_hints: padding_before_inlay_hints.into(),
+                    padding_after_inlay_hints: padding_after_inlay_hints.into(),
                 },
             );
         },
