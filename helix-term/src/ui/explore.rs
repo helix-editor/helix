@@ -175,7 +175,7 @@ impl TreeItem for FileInfo {
         Ok(ret)
     }
 
-    fn text_string(&self) -> String {
+    fn name(&self) -> String {
         self.get_text().to_string()
     }
 
@@ -220,11 +220,11 @@ impl TreeItem for FileInfo {
 
 // }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 enum PromptAction {
     Search(bool), // search next/search pre
-    Mkdir,
-    CreateFile,
+    CreateFolder { folder_path: PathBuf },
+    CreateFile { folder_path: PathBuf },
     RemoveDir,
     RemoveFile,
     Filter,
@@ -258,15 +258,29 @@ pub struct Explorer {
 impl Explorer {
     pub fn new(cx: &mut Context) -> Result<Self> {
         let current_root = std::env::current_dir().unwrap_or_else(|_| "./".into());
-        let root = FileInfo::root(current_root.clone());
-        let children = root.get_children()?;
         Ok(Self {
-            tree: TreeView::build_tree(root, children).with_enter_fn(Self::toggle_current),
+            tree: Self::new_tree(current_root.clone())?,
             state: State::new(true, current_root),
             repeat_motion: None,
             prompt: None,
             on_next_key: None,
         })
+    }
+
+    fn new_tree(root: PathBuf) -> Result<TreeView<FileInfo>> {
+        let root = FileInfo::root(root.clone());
+        let children = root.get_children()?;
+        Ok(TreeView::build_tree(root, children).with_enter_fn(Self::toggle_current))
+    }
+
+    fn change_root(&mut self, cx: &mut Context, root: PathBuf) {
+        match Self::new_tree(root.clone()) {
+            Ok(tree) => {
+                self.state.current_root = root;
+                self.tree = tree;
+            }
+            Err(e) => cx.editor.set_error(format!("{e}")),
+        }
     }
 
     pub fn reveal_current_file(&mut self, cx: &mut Context) {
@@ -381,23 +395,50 @@ impl Explorer {
         ))
     }
 
-    fn new_mkdir_prompt(&mut self) {
+    fn new_create_folder_prompt(&mut self) -> Result<()> {
+        let folder_path = self.current_parent_folder_path()?;
         self.prompt = Some((
-            PromptAction::Mkdir,
-            Prompt::new("mkdir: ".into(), None, ui::completers::none, |_, _, _| {}),
-        ));
-    }
-
-    fn new_create_file_prompt(&mut self) {
-        self.prompt = Some((
-            PromptAction::CreateFile,
+            PromptAction::CreateFolder {
+                folder_path: folder_path.clone(),
+            },
             Prompt::new(
-                "create file: ".into(),
+                format!(" New folder: {}/", folder_path.to_string_lossy()).into(),
                 None,
                 ui::completers::none,
                 |_, _, _| {},
             ),
         ));
+        Ok(())
+    }
+
+    fn new_create_file_prompt(&mut self) -> Result<()> {
+        let folder_path = self.current_parent_folder_path()?;
+        self.prompt = Some((
+            PromptAction::CreateFile {
+                folder_path: folder_path.clone(),
+            },
+            Prompt::new(
+                format!(" New file: {}/", folder_path.to_string_lossy()).into(),
+                None,
+                ui::completers::none,
+                |_, _, _| {},
+            ),
+        ));
+        Ok(())
+    }
+
+    fn current_parent_folder_path(&self) -> Result<PathBuf> {
+        let current_item = self.tree.current_item();
+        Ok(current_item
+            .path
+            .parent()
+            .ok_or_else(|| {
+                anyhow::anyhow!(format!(
+                    "Unable to get parent directory of '{}'",
+                    current_item.path.to_string_lossy()
+                ))
+            })?
+            .to_path_buf())
     }
 
     fn new_remove_file_prompt(&mut self, cx: &mut Context) {
@@ -696,14 +737,14 @@ impl Explorer {
             _ => return EventResult::Ignored(None),
         };
         let line = prompt.line();
-        match (action, event.into()) {
-            (PromptAction::Mkdir, key!(Enter)) => {
-                if let Err(e) = self.new_path(line, true) {
+        match (&action, event.into()) {
+            (PromptAction::CreateFolder { folder_path }, key!(Enter)) => {
+                if let Err(e) = self.new_path(folder_path.clone(), line, true) {
                     cx.editor.set_error(format!("{e}"))
                 }
             }
-            (PromptAction::CreateFile, key!(Enter)) => {
-                if let Err(e) = self.new_path(line, false) {
+            (PromptAction::CreateFile { folder_path }, key!(Enter)) => {
+                if let Err(e) = self.new_path(folder_path.clone(), line, false) {
                     cx.editor.set_error(format!("{e}"))
                 }
             }
@@ -735,23 +776,15 @@ impl Explorer {
         EventResult::Consumed(None)
     }
 
-    fn new_path(&mut self, file_name: &str, is_dir: bool) -> Result<()> {
+    fn new_path(&mut self, current_parent: PathBuf, file_name: &str, is_dir: bool) -> Result<()> {
         let current = self.tree.current_item();
-        let current_parent = if current.file_type == FileType::Placeholder {
-            &current.path
-        } else {
-            current
-                .path
-                .parent()
-                .ok_or_else(|| anyhow::anyhow!("can not get parent dir"))?
-        };
         let p = helix_core::path::get_normalized_path(&current_parent.join(file_name));
         match p.parent() {
             Some(p) if p == current_parent => {}
             _ => bail!("The file name is not illegal"),
         };
 
-        let f = if is_dir {
+        let file = if is_dir {
             std::fs::create_dir(&p)?;
             FileInfo::new(p, FileType::Dir)
         } else {
@@ -760,9 +793,9 @@ impl Explorer {
             FileInfo::new(p, FileType::File)
         };
         if current.file_type == FileType::Placeholder {
-            self.tree.replace_current(f);
+            self.tree.replace_current(file);
         } else {
-            self.tree.insert_current_level(f);
+            self.tree.add_sibling_to_current_item(file)?;
         }
         Ok(())
     }
@@ -808,33 +841,25 @@ impl Component for Explorer {
                     self.repeat_motion = Some(repeat_motion);
                 }
             }
-            // key!('b') => {
-            //     if let Some(p) = self.state.current_root.parent() {
-            //         match Self::get_items(p.to_path_buf(), cx) {
-            //             Ok(items) => {
-            //                 self.state.current_root = p.to_path_buf();
-            //                 let root = FileInfo::root(self.state.current_root.clone());
-            //                 let children = root.get_children().expect("TODO: handle error");
-            //                 self.tree = TreeView::build_tree(root, children)
-            //                     .with_enter_fn(Self::toggle_current);
-            //             }
-            //             Err(e) => cx.editor.set_error(format!("{e}")),
-            //         }
-            //     }
-            // }
+            key!(Backspace) => {
+                if let Some(parent) = self.state.current_root.parent().clone() {
+                    self.change_root(cx, parent.to_path_buf())
+                }
+            }
             key!('f') => self.new_filter_prompt(),
             key!('/') => self.new_search_prompt(true),
             key!('?') => self.new_search_prompt(false),
-            key!('m') => {
-                self.on_next_key = Some(Box::new(|_, explorer, event| {
-                    match event.into() {
-                        key!('d') => explorer.new_mkdir_prompt(),
-                        key!('f') => explorer.new_create_file_prompt(),
-                        _ => return EventResult::Ignored(None),
-                    };
-                    EventResult::Consumed(None)
-                }));
+            key!('a') => {
+                if let Err(error) = self.new_create_file_prompt() {
+                    cx.editor.set_error(error.to_string())
+                }
             }
+            shift!('A') => {
+                if let Err(error) = self.new_create_folder_prompt() {
+                    cx.editor.set_error(error.to_string())
+                }
+            }
+            key!('o') => self.change_root(cx, self.tree.current_item().path.clone()),
             key!('r') => {
                 self.on_next_key = Some(Box::new(|cx, explorer, event| {
                     match event.into() {

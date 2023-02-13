@@ -18,15 +18,13 @@ pub trait TreeItem: Sized {
     type Params;
 
     // fn text(&self, cx: &mut Context, selected: bool, params: &mut Self::Params) -> Spans;
-    fn text_string(&self) -> String;
+    fn name(&self) -> String;
     fn is_child(&self, other: &Self) -> bool;
     fn is_parent(&self) -> bool;
     fn cmp(&self, other: &Self) -> Ordering;
 
     fn filter(&self, s: &str) -> bool {
-        self.text_string()
-            .to_lowercase()
-            .contains(&s.to_lowercase())
+        self.name().to_lowercase().contains(&s.to_lowercase())
     }
 
     fn get_children(&self) -> Result<Vec<Self>> {
@@ -357,7 +355,7 @@ impl<T: TreeItem> TreeView<T> {
                     match current_tree
                         .children
                         .iter_mut()
-                        .find(|tree| tree.item.text_string().eq(segment))
+                        .find(|tree| tree.item.name().eq(segment))
                     {
                         Some(tree) => {
                             if !tree.is_opened {
@@ -387,7 +385,7 @@ impl<T: TreeItem> TreeView<T> {
             .fold(&self.tree, |tree, segment| {
                 tree.children
                     .iter()
-                    .find(|tree| tree.item.text_string().eq(segment))
+                    .find(|tree| tree.item.name().eq(segment))
                     .expect("Should be unreachable")
             })
             .index;
@@ -656,13 +654,34 @@ impl<T: TreeItem> TreeView<T> {
         self.selected = selected
     }
 
-    pub fn insert_current_level(&mut self, item: T) {
-        let current = self.current_mut();
-        current.children.push(Tree::new(item, vec![]));
-        current
-            .children
-            .sort_by(|a, b| tree_item_cmp(&a.item, &b.item));
-        self.regenerate_index()
+    pub fn add_sibling_to_current_item(&mut self, item: T) -> Result<()> {
+        let current = self.current();
+        match current.parent_index {
+            None => Err(anyhow::anyhow!(format!(
+                "Current item = '{}' has no parent",
+                current.item.name()
+            ))),
+            Some(parent_index) => {
+                let parent = self.get_mut(parent_index);
+                let item_name = item.name();
+                parent.children.push(Tree::new(item, vec![]));
+                parent
+                    .children
+                    .sort_by(|a, b| tree_item_cmp(&a.item, &b.item));
+                self.regenerate_index();
+                let parent = self.get_mut(parent_index);
+
+                // Focus the added sibling
+                if let Some(tree) = parent
+                    .children
+                    .iter()
+                    .find(|tree| tree.item.name().eq(&item_name))
+                {
+                    self.selected = tree.index
+                };
+                Ok(())
+            }
+        }
     }
 }
 
@@ -738,7 +757,7 @@ impl<T: TreeItem> TreeView<T> {
                     selected: selected == tree.index,
                     name: format!(
                         "{}{}",
-                        tree.item.text_string(),
+                        tree.item.name(),
                         if tree.item.is_parent() {
                             format!("{}", std::path::MAIN_SEPARATOR)
                         } else {
@@ -910,9 +929,7 @@ impl<T: TreeItem + Clone> TreeView<T> {
         }
 
         let new_tree = Tree::filter(&self.tree, &|item: &T| {
-            item.text_string()
-                .to_lowercase()
-                .contains(&s.to_lowercase())
+            item.name().to_lowercase().contains(&s.to_lowercase())
         })
         .unwrap_or_else(|| Tree {
             item: self.tree.item.clone(),
