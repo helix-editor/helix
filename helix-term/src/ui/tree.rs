@@ -484,6 +484,25 @@ impl<T: TreeItem> TreeView<T> {
     }
 }
 
+pub fn tree_view_help() -> Vec<String> {
+    vec![
+        "j   Down",
+        "k   Up",
+        "h   Go to parent",
+        "l   Expand",
+        "zz  Align view center",
+        "zt  Align view top",
+        "zb  Align view bottom",
+        "gg  Go to top",
+        "ge  Go to end",
+        "^d  Page down",
+        "^u  Page up",
+    ]
+    .into_iter()
+    .map(|s| s.to_string())
+    .collect()
+}
+
 impl<T: TreeItem> TreeView<T> {
     pub fn on_enter(&mut self, cx: &mut Context, params: &mut T::Params, selected_index: usize) {
         // if let Some(next_level) = self.next_item().map(|elem| elem.level) {

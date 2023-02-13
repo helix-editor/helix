@@ -254,6 +254,7 @@ impl State {
 
 pub struct Explorer {
     tree: TreeView<FileInfo>,
+    show_help: bool,
     state: State,
     prompt: Option<(PromptAction, Prompt)>,
     #[allow(clippy::type_complexity)]
@@ -267,6 +268,7 @@ impl Explorer {
         let current_root = std::env::current_dir().unwrap_or_else(|_| "./".into());
         Ok(Self {
             tree: Self::new_tree(current_root.clone())?,
+            show_help: false,
             state: State::new(true, current_root),
             repeat_motion: None,
             prompt: None,
@@ -365,27 +367,47 @@ impl Explorer {
         surface.set_stringn(
             head_area.x,
             head_area.y,
-            path_str,
+            if self.show_help {
+                "[HELP]".to_string()
+            } else {
+                path_str
+            },
             head_area.width as usize,
             get_theme!(editor.theme, "ui.explorer.dir", "ui.text"),
         );
 
         let body_area = area.clip_top(2);
         let style = editor.theme.get("ui.text");
-        if let Ok(preview_content) = get_preview(&item.path, body_area.height as usize) {
-            preview_content
-                .into_iter()
-                .enumerate()
-                .for_each(|(row, line)| {
-                    surface.set_stringn(
-                        body_area.x,
-                        body_area.y + row as u16,
-                        line,
-                        body_area.width as usize,
-                        style,
-                    );
-                })
-        }
+        let content = if self.show_help {
+            vec![
+                "?    Toggle help",
+                "a    Add file",
+                "A    Add folder",
+                "r    Rename file/folder",
+                "d    Delete file",
+                "/    Search",
+                "f    Filter",
+                "[    Change root to parent",
+                "]    Change root to current",
+                "R    Refresh tree",
+            ]
+            .into_iter()
+            .map(|s| s.to_string())
+            .chain(ui::tree::tree_view_help())
+            .collect()
+        } else {
+            get_preview(&item.path, body_area.height as usize)
+                .unwrap_or_else(|err| vec![err.to_string()])
+        };
+        content.into_iter().enumerate().for_each(|(row, line)| {
+            surface.set_stringn(
+                body_area.x,
+                body_area.y + row as u16,
+                line,
+                body_area.width as usize,
+                style,
+            );
+        })
     }
 
     fn new_search_prompt(&mut self, search_next: bool) {
@@ -596,7 +618,15 @@ impl Explorer {
         self.render_preview(preview_area, surface, cx.editor);
 
         let list_area = render_block(area.clip_right(preview_area.width), surface, Borders::RIGHT);
-        self.tree.render(list_area, surface, cx, &mut self.state);
+        surface.set_stringn(
+            list_area.x,
+            list_area.y,
+            " Explorer: press ? for help",
+            list_area.width.into(),
+            cx.editor.theme.get("ui.text"),
+        );
+        self.tree
+            .render(list_area.clip_top(1), surface, cx, &mut self.state);
     }
 
     pub fn render_embed(
@@ -632,7 +662,15 @@ impl Explorer {
                 render_block(side_area.clip_right(1), surface, Borders::LEFT).clip_bottom(1)
             }
         };
-        self.tree.render(list_area, surface, cx, &mut self.state);
+        surface.set_stringn(
+            list_area.x,
+            list_area.y,
+            " Explorer: press ? for help",
+            list_area.width.into(),
+            cx.editor.theme.get("ui.text"),
+        );
+        self.tree
+            .render(list_area.clip_top(1), surface, cx, &mut self.state);
 
         {
             let statusline = if self.is_focus() {
@@ -871,6 +909,10 @@ impl Explorer {
         }
         Ok(())
     }
+
+    fn toggle_help(&mut self) {
+        self.show_help = !self.show_help
+    }
 }
 
 impl Component for Explorer {
@@ -915,7 +957,7 @@ impl Component for Explorer {
             }
             key!('f') => self.new_filter_prompt(),
             key!('/') => self.new_search_prompt(true),
-            key!('?') => self.new_search_prompt(false),
+            key!('?') => self.toggle_help(),
             key!('a') => {
                 if let Err(error) = self.new_create_file_prompt() {
                     cx.editor.set_error(error.to_string())
