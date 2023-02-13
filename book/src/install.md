@@ -123,8 +123,9 @@ elevated privileges - i.e. PowerShell or Cmd must be run as administrator.
 **PowerShell:**
 
 ```powershell
-New-Item -ItemType SymbolicLink -Target "runtime" -Path "$Env:AppData\helix\runtime"
+New-Item -ItemType Junction -Target "runtime" -Path "$Env:AppData\helix\runtime"
 ```
+Note: "runtime" must be the absolute path to the runtime directory.
 
 **Cmd:**
 

@@ -43,6 +43,7 @@
 | `:change-current-directory`, `:cd` | Change the current working directory. |
 | `:show-directory`, `:pwd` | Show the current working directory. |
 | `:encoding` | Set encoding. Based on `https://encoding.spec.whatwg.org`. |
+| `:character-info`, `:char` | Get info about the character under the primary cursor. |
 | `:reload` | Discard changes and reload from the source file. |
 | `:reload-all` | Discard changes and reload all documents from the source files. |
 | `:update` | Write changes only if the file has been modified. |
@@ -60,6 +61,7 @@
 | `:goto`, `:g` | Goto line number. |
 | `:set-language`, `:lang` | Set the language of current buffer. |
 | `:set-option`, `:set` | Set a config option at runtime.<br>For example to disable smart case search, use `:set search.smart-case false`. |
+| `:toggle-option`, `:toggle` | Toggle a boolean config option at runtime.<br>For example to toggle smart case search, use `:toggle search.smart-case`. |
 | `:get-option`, `:get` | Get the current value of a config option. |
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |

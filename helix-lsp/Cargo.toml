@@ -19,7 +19,7 @@ anyhow = "1.0"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 log = "0.4"
-lsp-types = { version = "0.93", features = ["proposed"] }
+lsp-types = { version = "0.94" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
