@@ -327,11 +327,11 @@ mod tests {
     fn should_parse_bare_files_args() {
         let args = parse_args(&mut str_to_argv("hx Cargo.toml")).unwrap();
         assert_eq!(
-            args.files[0],
-            (
+            args.files,
+            [(
                 PathBuf::from_str("Cargo.toml").unwrap(),
                 PositionRequest::default()
-            )
+            )]
         );
 
         let args = parse_args(&mut str_to_argv("hx Cargo.toml README")).unwrap();
@@ -351,11 +351,11 @@ mod tests {
 
         let args = parse_args(&mut str_to_argv("hx -- Cargo.toml")).unwrap();
         assert_eq!(
-            args.files[0],
-            (
+            args.files,
+            [(
                 PathBuf::from_str("Cargo.toml").unwrap(),
                 PositionRequest::default()
-            )
+            )]
         );
     }
 
