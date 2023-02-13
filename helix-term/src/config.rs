@@ -127,11 +127,9 @@ mod tests {
         let parsed_description = parsed_node.get_description().unwrap();
         assert_eq!(parsed_description, "Edit Config");
 
-        if let KeyTrieNode::MappableCommand(command) = parsed_node {
-            if let MappableCommand::Typable { name, .. } = command {
-                assert_eq!(name, "open".to_string());
-                return;
-            }
+        if let KeyTrieNode::MappableCommand(MappableCommand::Typable { name, .. }) = parsed_node {
+            assert_eq!(name, "open".to_string());
+            return;
         }
         panic!("KeyTrieNode::MappableCommand::Typable expected.")
     }
@@ -181,7 +179,6 @@ mod tests {
         assert_eq!(parsed_description, "Buffer menu");
 
         if let KeyTrieNode::KeyTrie(_) = parsed_node {
-            return;
         } else {
             panic!("KeyTrieNode::KeyTrie expected.")
         }
