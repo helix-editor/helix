@@ -59,7 +59,7 @@ pub enum TreeOp<T> {
     Restore,
     InsertChild(Vec<T>),
     GetChildsAndInsert,
-    ReplaceTree(Vec<T>),
+    ReplaceTree { root: T, children: Vec<T> },
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -550,8 +550,10 @@ impl<T: TreeItem> TreeView<T> {
                         current.is_opened = true;
                         current.children = vec_to_tree(items);
                     }
-                    TreeOp::ReplaceTree(items) => {
-                        return self.replace_with_new_items(items);
+                    TreeOp::ReplaceTree { root, children } => {
+                        self.tree = Tree::new(root, vec_to_tree(children));
+                        self.selected = 0;
+                        self.winline = 0;
                     }
                     TreeOp::Noop => {}
                 };

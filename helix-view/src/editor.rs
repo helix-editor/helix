@@ -132,7 +132,6 @@ pub enum ExplorerPositionEmbed {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ExplorerConfig {
-    pub style: ExplorerStyle,
     pub position: ExplorerPosition,
     /// explorer column width
     pub column_width: usize,
@@ -154,25 +153,11 @@ impl ExplorerConfig {
         }
     }
 
-    pub fn is_list(&self) -> bool {
-        match self.style {
-            ExplorerStyle::List => true,
-            ExplorerStyle::Tree => false,
-        }
-    }
-
-    pub fn is_tree(&self) -> bool {
-        match self.style {
-            ExplorerStyle::List => false,
-            ExplorerStyle::Tree => true,
-        }
-    }
 }
 
 impl Default for ExplorerConfig {
     fn default() -> Self {
         Self {
-            style: ExplorerStyle::Tree,
             position: ExplorerPosition::Left,
             column_width: 30,
         }

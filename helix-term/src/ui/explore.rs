@@ -7,7 +7,7 @@ use anyhow::{bail, ensure, Result};
 use helix_core::Position;
 use helix_view::{
     editor::{Action, ExplorerPositionEmbed},
-    graphics::{CursorKind, Modifier, Rect},
+    graphics::{CursorKind, Rect},
     input::{Event, KeyEvent},
     Editor,
 };
@@ -16,7 +16,6 @@ use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use tui::{
     buffer::Buffer as Surface,
-    text::{Span, Spans},
     widgets::{Block, Borders, Widget},
 };
 
@@ -29,10 +28,7 @@ macro_rules! get_theme {
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum FileType {
     File,
-    Dir,
-    Exe,
-    Placeholder,
-    Parent,
+    Folder,
     Root,
 }
 
@@ -54,20 +50,10 @@ impl FileInfo {
         }
     }
 
-    fn parent(path: &Path) -> Self {
-        let p = path.parent().unwrap_or_else(|| Path::new(""));
-        Self {
-            file_type: FileType::Parent,
-            path: p.to_path_buf(),
-        }
-    }
-
     fn get_text(&self) -> Cow<'static, str> {
         match self.file_type {
-            FileType::Parent => "..".into(),
-            FileType::Placeholder => "---".into(),
             FileType::Root => return format!("{}", self.path.display()).into(),
-            FileType::File | FileType::Exe | FileType::Dir => self
+            FileType::File | FileType::Folder => self
                 .path
                 .file_name()
                 .map_or("/".into(), |p| p.to_string_lossy().into_owned().into()),
@@ -78,65 +64,23 @@ impl FileInfo {
 impl TreeItem for FileInfo {
     type Params = State;
 
-    // fn text(&self, cx: &mut Context, selected: bool, state: &mut State) -> Spans {
-    //     let text = self.get_text();
-    //     let theme = &cx.editor.theme;
-
-    //     let style = match self.file_type {
-    //         FileType::Parent | FileType::Dir | FileType::Root => "ui.explorer.dir",
-    //         FileType::File | FileType::Exe | FileType::Placeholder => "ui.explorer.file",
-    //     };
-    //     let style = theme.try_get(style).unwrap_or_else(|| theme.get("ui.text"));
-    //     let style = if !selected {
-    //         style
-    //     } else {
-    //         let patch = match state.focus {
-    //             true => "ui.explorer.focus",
-    //             false => "ui.explorer.unfocus",
-    //         };
-    //         if let Some(patch) = theme.try_get(patch) {
-    //             style.patch(patch)
-    //         } else {
-    //             style.add_modifier(Modifier::REVERSED)
-    //         }
-    //     };
-    //     Spans::from(Span::styled(text, style))
-    // }
-
     fn is_child(&self, other: &Self) -> bool {
-        if let FileType::Parent = other.file_type {
-            return false;
-        }
-        if let FileType::Placeholder = self.file_type {
-            self.path == other.path
-        } else {
-            self.path.parent().map_or(false, |p| p == other.path)
-        }
+        self.path.parent().map_or(false, |p| p == other.path)
     }
 
     fn cmp(&self, other: &Self) -> Ordering {
         use FileType::*;
         match (self.file_type, other.file_type) {
-            (Parent, _) => return Ordering::Less,
-            (_, Parent) => return Ordering::Greater,
             (Root, _) => return Ordering::Less,
             (_, Root) => return Ordering::Greater,
             _ => {}
         };
 
-        if self.path == other.path {
-            match (self.file_type, other.file_type) {
-                (_, Placeholder) => return Ordering::Less,
-                (Placeholder, _) => return Ordering::Greater,
-                _ => {}
-            };
-        }
-
         if let (Some(p1), Some(p2)) = (self.path.parent(), other.path.parent()) {
             if p1 == p2 {
                 match (self.file_type, other.file_type) {
-                    (Dir, File | Exe) => return Ordering::Less,
-                    (File | Exe, Dir) => return Ordering::Greater,
+                    (Folder, File) => return Ordering::Less,
+                    (File, Folder) => return Ordering::Greater,
                     _ => {}
                 };
             }
@@ -146,18 +90,16 @@ impl TreeItem for FileInfo {
 
     fn get_children(&self) -> Result<Vec<Self>> {
         match self.file_type {
-            FileType::Root | FileType::Dir => {}
+            FileType::Root | FileType::Folder => {}
             _ => return Ok(vec![]),
         };
-        let mut ret: Vec<_> = std::fs::read_dir(&self.path)?
+        let ret: Vec<_> = std::fs::read_dir(&self.path)?
             .filter_map(|entry| entry.ok())
             .filter_map(|entry| {
                 entry.metadata().ok().map(|meta| {
-                    let is_exe = false;
-                    let file_type = match (meta.is_dir(), is_exe) {
-                        (true, _) => FileType::Dir,
-                        (_, false) => FileType::File,
-                        (_, true) => FileType::Exe,
+                    let file_type = match meta.is_dir() {
+                        true => FileType::Folder,
+                        false => FileType::File,
                     };
                     Self {
                         file_type,
@@ -166,12 +108,6 @@ impl TreeItem for FileInfo {
                 })
             })
             .collect();
-        if ret.is_empty() {
-            ret.push(Self {
-                path: self.path.clone(),
-                file_type: FileType::Placeholder,
-            })
-        }
         Ok(ret)
     }
 
@@ -181,48 +117,17 @@ impl TreeItem for FileInfo {
 
     fn is_parent(&self) -> bool {
         match self.file_type {
-            FileType::Dir | FileType::Parent | FileType::Root => true,
+            FileType::Folder | FileType::Root => true,
             _ => false,
         }
     }
 }
 
-// #[derive(Default, Debug, Clone)]
-// struct PathState {
-//     root: PathBuf,
-//     sub_items: Vec<FileInfo>,
-//     selected: usize,
-//     save_view: (usize, usize), // (selected, row)
-//     row: usize,
-//     col: usize,
-//     max_len: usize,
-// }
-
-// impl PathState {
-
-//     fn mkdir(&mut self, dir: &str) -> Result<()> {
-//         self.new_path(dir, FileType::Dir)
-//     }
-
-//     fn create_file(&mut self, f: &str) -> Result<()> {
-//         self.new_path(f, FileType::File)
-//     }
-
-//     fn remove_current_file(&mut self) -> Result<()> {
-//         let item = &self.sub_items[self.selected];
-//         std::fs::remove_file(item.path_with_root(&self.root))?;
-//         self.sub_items.remove(self.selected);
-//         if self.selected >= self.sub_items.len() {
-//             self.selected = self.sub_items.len() - 1;
-//         }
-//         Ok(())
-//     }
-
-// }
-
 #[derive(Clone, Debug)]
 enum PromptAction {
-    Search(bool), // search next/search pre
+    Search {
+        search_next: bool,
+    }, // search next/search pre
     CreateFolder {
         folder_path: PathBuf,
         parent_index: usize,
@@ -254,6 +159,7 @@ impl State {
 
 pub struct Explorer {
     tree: TreeView<FileInfo>,
+    history: Vec<TreeView<FileInfo>>,
     show_help: bool,
     state: State,
     prompt: Option<(PromptAction, Prompt)>,
@@ -264,10 +170,11 @@ pub struct Explorer {
 }
 
 impl Explorer {
-    pub fn new(cx: &mut Context) -> Result<Self> {
+    pub fn new() -> Result<Self> {
         let current_root = std::env::current_dir().unwrap_or_else(|_| "./".into());
         Ok(Self {
-            tree: Self::new_tree(current_root.clone())?,
+            tree: Self::new_tree_view(current_root.clone())?,
+            history: vec![],
             show_help: false,
             state: State::new(true, current_root),
             repeat_motion: None,
@@ -276,17 +183,27 @@ impl Explorer {
         })
     }
 
-    fn new_tree(root: PathBuf) -> Result<TreeView<FileInfo>> {
+    fn new_tree_view(root: PathBuf) -> Result<TreeView<FileInfo>> {
         let root = FileInfo::root(root.clone());
         let children = root.get_children()?;
         Ok(TreeView::build_tree(root, children).with_enter_fn(Self::toggle_current))
     }
 
+    fn push_history(&mut self, tree_view: TreeView<FileInfo>) {
+        self.history.push(tree_view);
+        const MAX_HISTORY_SIZE: usize = 20;
+        Vec::truncate(&mut self.history, MAX_HISTORY_SIZE)
+    }
+
     fn change_root(&mut self, cx: &mut Context, root: PathBuf) {
-        match Self::new_tree(root.clone()) {
+        if self.state.current_root.eq(&root) {
+            return;
+        }
+        match Self::new_tree_view(root.clone()) {
             Ok(tree) => {
+                let old_tree = std::mem::replace(&mut self.tree, tree);
+                self.push_history(old_tree);
                 self.state.current_root = root;
-                self.tree = tree;
             }
             Err(e) => cx.editor.set_error(format!("{e}")),
         }
@@ -323,15 +240,6 @@ impl Explorer {
         }
     }
 
-    // pub fn new_with_uri(uri: String) -> Result<Self> {
-    //     // support remote file?
-
-    //     let p = Path::new(&uri);
-    //     ensure!(p.exists(), "path: {uri} is not exist");
-    //     ensure!(p.is_dir(), "path: {uri} is not dir");
-    //     Ok(Self::default().with_list(get_sub(p, None)?))
-    // }
-
     pub fn focus(&mut self) {
         self.state.focus = true;
     }
@@ -344,24 +252,11 @@ impl Explorer {
         self.state.focus
     }
 
-    fn get_items(p: PathBuf, cx: &mut Context) -> Result<Vec<FileInfo>> {
-        todo!()
-        // let mut items = vec![FileInfo::parent(p.as_path())];
-
-        // if cx.editor.config().explorer.is_tree() {
-        //     items.push(root)
-        // }
-        // Ok(items)
-    }
-
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, editor: &Editor) {
         if area.height <= 2 || area.width < 60 {
             return;
         }
         let item = self.tree.current().item();
-        if item.file_type == FileType::Placeholder {
-            return;
-        }
         let head_area = render_block(area.clip_bottom(area.height - 2), surface, Borders::BOTTOM);
         let path_str = format!("{}", item.path.display());
         surface.set_stringn(
@@ -387,8 +282,9 @@ impl Explorer {
                 "d    Delete file",
                 "/    Search",
                 "f    Filter",
-                "[    Change root to parent",
-                "]    Change root to current",
+                "[    Change root to parent folder",
+                "]    Change root to current folder",
+                "^o   Go to previous root",
                 "R    Refresh tree",
             ]
             .into_iter()
@@ -413,8 +309,8 @@ impl Explorer {
     fn new_search_prompt(&mut self, search_next: bool) {
         self.tree.save_view();
         self.prompt = Some((
-            PromptAction::Search(search_next),
-            Prompt::new("search: ".into(), None, ui::completers::none, |_, _, _| {}),
+            PromptAction::Search { search_next },
+            Prompt::new(" Search: ".into(), None, ui::completers::none, |_, _, _| {}),
         ))
     }
 
@@ -422,7 +318,7 @@ impl Explorer {
         self.tree.save_view();
         self.prompt = Some((
             PromptAction::Filter,
-            Prompt::new("filter: ".into(), None, ui::completers::none, |_, _, _| {}),
+            Prompt::new(" Filter: ".into(), None, ui::completers::none, |_, _, _| {}),
         ))
     }
 
@@ -484,10 +380,8 @@ impl Explorer {
     fn new_remove_prompt(&mut self, cx: &mut Context) {
         let item = self.tree.current().item();
         match item.file_type {
-            FileType::Dir => self.new_remove_dir_prompt(cx),
-            FileType::Exe | FileType::File => self.new_remove_file_prompt(cx),
-            FileType::Placeholder => cx.editor.set_error("Placeholder is not removable."),
-            FileType::Parent => cx.editor.set_error("Parent is not removable."),
+            FileType::Folder => self.new_remove_dir_prompt(cx),
+            FileType::File => self.new_remove_file_prompt(cx),
             FileType::Root => cx.editor.set_error("Root is not removable"),
         }
     }
@@ -509,11 +403,6 @@ impl Explorer {
     fn new_remove_file_prompt(&mut self, cx: &mut Context) {
         let item = self.tree.current_item();
         let check = || {
-            ensure!(item.file_type != FileType::Placeholder, "The path is empty");
-            ensure!(
-                item.file_type != FileType::Parent,
-                "can not remove parent dir"
-            );
             ensure!(item.path.is_file(), "The path is not a file");
             let doc = cx.editor.document_by_path(&item.path);
             ensure!(doc.is_none(), "The file is opened");
@@ -533,11 +422,6 @@ impl Explorer {
     fn new_remove_dir_prompt(&mut self, cx: &mut Context) {
         let item = self.tree.current_item();
         let check = || {
-            ensure!(item.file_type != FileType::Placeholder, "The path is empty");
-            ensure!(
-                item.file_type != FileType::Parent,
-                "can not remove parent dir"
-            );
             ensure!(item.path.is_dir(), "The path is not a dir");
             let doc = cx.editor.documents().find(|doc| {
                 doc.path()
@@ -563,9 +447,6 @@ impl Explorer {
         cx: &mut Context,
         state: &mut State,
     ) -> TreeOp<FileInfo> {
-        if item.file_type == FileType::Placeholder {
-            return TreeOp::Noop;
-        }
         if item.path == Path::new("") {
             return TreeOp::Noop;
         }
@@ -585,17 +466,7 @@ impl Explorer {
         }
 
         if item.path.is_dir() {
-            if cx.editor.config().explorer.is_list() || item.file_type == FileType::Parent {
-                match Self::get_items(item.path.clone(), cx) {
-                    Ok(items) => {
-                        state.current_root = item.path.clone();
-                        return TreeOp::ReplaceTree(items);
-                    }
-                    Err(e) => cx.editor.set_error(format!("{e}")),
-                }
-            } else {
-                return TreeOp::GetChildsAndInsert;
-            }
+            return TreeOp::GetChildsAndInsert;
         }
         cx.editor.set_error("unkonw file type");
         TreeOp::Noop
@@ -758,7 +629,7 @@ impl Explorer {
     fn handle_search_event(&mut self, event: KeyEvent, cx: &mut Context) -> EventResult {
         let (action, mut prompt) = self.prompt.take().unwrap();
         let search_next = match action {
-            PromptAction::Search(search_next) => search_next,
+            PromptAction::Search { search_next } => search_next,
             _ => return EventResult::Ignored(None),
         };
         match event.into() {
@@ -771,7 +642,10 @@ impl Explorer {
                 let search_str = prompt.line().clone();
                 if !search_str.is_empty() {
                     self.repeat_motion = Some(Box::new(move |explorer, action, cx| {
-                        if let PromptAction::Search(is_next) = action {
+                        if let PromptAction::Search {
+                            search_next: is_next,
+                        } = action
+                        {
                             explorer.tree.save_view();
                             if is_next == search_next {
                                 explorer
@@ -809,7 +683,7 @@ impl Explorer {
 
     fn handle_prompt_event(&mut self, event: KeyEvent, cx: &mut Context) -> EventResult {
         match &self.prompt {
-            Some((PromptAction::Search(_), _)) => return self.handle_search_event(event, cx),
+            Some((PromptAction::Search { .. }, _)) => return self.handle_search_event(event, cx),
             Some((PromptAction::Filter, _)) => return self.handle_filter_event(event, cx),
             _ => {}
         };
@@ -887,31 +761,32 @@ impl Explorer {
         is_dir: bool,
         parent_index: usize,
     ) -> Result<()> {
-        let current = self.tree.current_item();
-        let p = helix_core::path::get_normalized_path(&current_parent.join(file_name));
-        match p.parent() {
+        let path = helix_core::path::get_normalized_path(&current_parent.join(file_name));
+        match path.parent() {
             Some(p) if p == current_parent => {}
             _ => bail!("The file name is not illegal"),
         };
 
         let file = if is_dir {
-            std::fs::create_dir(&p)?;
-            FileInfo::new(p, FileType::Dir)
+            std::fs::create_dir(&path)?;
+            FileInfo::new(path, FileType::Folder)
         } else {
             let mut fd = std::fs::OpenOptions::new();
-            fd.create_new(true).write(true).open(&p)?;
-            FileInfo::new(p, FileType::File)
+            fd.create_new(true).write(true).open(&path)?;
+            FileInfo::new(path, FileType::File)
         };
-        if current.file_type == FileType::Placeholder {
-            self.tree.replace_current(file);
-        } else {
-            self.tree.add_child(parent_index, file)?;
-        }
+        self.tree.add_child(parent_index, file)?;
         Ok(())
     }
 
     fn toggle_help(&mut self) {
         self.show_help = !self.show_help
+    }
+
+    fn go_to_previous_root(&mut self) {
+        if let Some(tree) = self.history.pop() {
+            self.tree = tree
+        }
     }
 }
 
@@ -945,13 +820,13 @@ impl Component for Explorer {
             ctrl!('c') => return close_fn,
             key!('n') => {
                 if let Some(mut repeat_motion) = self.repeat_motion.take() {
-                    repeat_motion(self, PromptAction::Search(true), cx);
+                    repeat_motion(self, PromptAction::Search { search_next: true }, cx);
                     self.repeat_motion = Some(repeat_motion);
                 }
             }
             shift!('N') => {
                 if let Some(mut repeat_motion) = self.repeat_motion.take() {
-                    repeat_motion(self, PromptAction::Search(false), cx);
+                    repeat_motion(self, PromptAction::Search { search_next: false }, cx);
                     self.repeat_motion = Some(repeat_motion);
                 }
             }
@@ -974,6 +849,7 @@ impl Component for Explorer {
                 }
             }
             key!(']') => self.change_root(cx, self.tree.current_item().path.clone()),
+            ctrl!('o') => self.go_to_previous_root(),
             key!('d') => self.new_remove_prompt(cx),
             key!('r') => self.new_rename_prompt(),
             shift!('R') => {
