@@ -238,5 +238,4 @@ Sets explorer side width and style.
  | Key            | Description                                                                              | Default |
  | ---            | -----------                                                                              | ------- |
  | `column-width` | explorer side width                                                                      | 30      |
- | `style`        | explorer item style, tree or list                                                        | tree    |
- | `position`     | explorer widget position, embed or overlay                                               | overlay |
+ | `position`     | explorer widget position, `overlay`, `right`, or `left`                                  | `left`  |
