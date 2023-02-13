@@ -51,7 +51,7 @@ pub struct State {
 ///    delete, we also store an inversion of the transaction.
 ///
 /// Using time to navigate the history: <https://github.com/helix-editor/helix/pull/194>
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct History {
     revisions: Vec<Revision>,
     current: usize,
@@ -67,6 +67,15 @@ struct Revision {
     // the deleted text.
     inversion: Arc<Transaction>,
     timestamp: Instant,
+}
+
+impl PartialEq for Revision {
+    fn eq(&self, other: &Self) -> bool {
+        self.parent == other.parent
+            && self.last_child == other.last_child
+            && self.transaction == other.transaction
+            && self.inversion == other.inversion
+    }
 }
 
 impl Default for History {
@@ -88,7 +97,6 @@ impl Default for History {
 impl Revision {
     fn serialize<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
         write_usize(writer, self.parent)?;
-        write_usize(writer, self.last_child.map(|n| n.get()).unwrap_or(0))?;
         self.transaction.serialize(writer)?;
         self.inversion.serialize(writer)?;
 
@@ -97,15 +105,11 @@ impl Revision {
 
     fn deserialize<R: Read>(reader: &mut R, timestamp: Instant) -> std::io::Result<Self> {
         let parent = read_usize(reader)?;
-        let last_child = match read_usize(reader)? {
-            0 => None,
-            n => Some(unsafe { NonZeroUsize::new_unchecked(n) }),
-        };
         let transaction = Arc::new(Transaction::deserialize(reader)?);
         let inversion = Arc::new(Transaction::deserialize(reader)?);
         Ok(Revision {
             parent,
-            last_child,
+            last_child: None,
             transaction,
             inversion,
             timestamp,
@@ -180,12 +184,24 @@ impl History {
                 ));
             }
 
-            let revisions = read_vec(reader, |reader| Revision::deserialize(reader, timestamp))?;
+            let len = read_usize(reader)?;
+            let mut revisions: Vec<Revision> = Vec::with_capacity(len);
+            for _ in 0..len {
+                let res = Revision::deserialize(reader, timestamp)?;
+                assert!(res.parent < revisions.len());
+                revisions[res.parent].last_child = NonZeroUsize::new(revisions.len());
+                revisions.push(res);
+            }
+
+            // let mut revisions = read_vec(reader, |reader| Revision::deserialize(reader, timestamp))?;
+
             let history = History { current, revisions };
             Ok((last_saved_revision, history))
         }
     }
+}
 
+impl History {
     pub fn commit_revision(&mut self, transaction: &Transaction, original: &State) {
         self.commit_revision_at_timestamp(transaction, original, Instant::now());
     }
@@ -761,8 +777,8 @@ mod test {
             let mut buf = Vec::new();
             let file = tempfile::NamedTempFile::new().unwrap();
             history.serialize(&mut buf, file.path(), 0).unwrap();
-            History::deserialize(&mut buf.as_slice(), file.path()).unwrap();
-            true
+            let (_, res) = History::deserialize(&mut buf.as_slice(), file.path()).unwrap();
+            history == res
         }
     );
 }
