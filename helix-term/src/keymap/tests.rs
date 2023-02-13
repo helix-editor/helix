@@ -1,7 +1,12 @@
 use crate::{
     commands::MappableCommand,
     key,
-    keymap::{keytrie::KeyTrie, keytrienode::KeyTrieNode, macros::keytrie, Keymap},
+    keymap::{
+        keytrie::KeyTrie,
+        keytrienode::{CommandSequence, KeyTrieNode},
+        macros::keytrie,
+        Keymap,
+    },
 };
 use arc_swap::ArcSwap;
 use helix_core::hashmap;
@@ -98,7 +103,7 @@ fn escaped_keymap() {
     )
     .unwrap();
 
-    let command_sequence = KeyTrieNode::CommandSequence(vec![
+    let command_sequence = KeyTrieNode::CommandSequence(CommandSequence::descriptionless(vec![
         MappableCommand::select_all,
         MappableCommand::Typable {
             name: "pipe".to_string(),
@@ -109,7 +114,7 @@ fn escaped_keymap() {
             ],
             description: "".to_string(),
         },
-    ]);
+    ]));
 
     assert_eq!(parsed_keytrie.get_children()[0], command_sequence);
 }

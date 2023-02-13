@@ -35,6 +35,10 @@ impl KeyTrie {
         &self.children
     }
 
+    pub fn get_description(&self) -> &str {
+        &self.description
+    }
+
     // None symbolizes NotFound
     pub fn traverse(&self, key_events: &[KeyEvent]) -> Option<KeyTrieNode> {
         return _traverse(self, key_events, 0);
@@ -111,14 +115,21 @@ impl KeyTrie {
                     if command.name() == "no_op" {
                         continue;
                     }
-                    command.description().to_string()
+                    command.get_description().to_string()
                 }
-                KeyTrieNode::CommandSequence(ref command_sequence) => command_sequence
-                    .iter()
-                    .map(|command| command.name().to_string())
-                    .collect::<Vec<_>>()
-                    .join(" → ")
-                    .clone(),
+                KeyTrieNode::CommandSequence(command_sequence) => {
+                    if let Some(custom_description) = command_sequence.get_description() {
+                        custom_description.to_string()
+                    } else {
+                        command_sequence
+                            .get_commands()
+                            .iter()
+                            .map(|command| command.name().to_string())
+                            .collect::<Vec<_>>()
+                            .join(" → ")
+                            .clone()
+                    }
+                }
                 KeyTrieNode::KeyTrie(key_trie) => key_trie.description.clone(),
             };
             let key_event = key_event_order[index];
@@ -131,7 +142,7 @@ impl KeyTrie {
             }
         }
 
-        // TODO: Add "A-" aknowledgement?
+        // TODO: Add "A-" acknowledgement?
         // Shortest keyevent (as string) appears first, unless is a "C-" KeyEvent
         // Those events will always be placed after the one letter KeyEvent
         for (key_events, _) in body.iter_mut() {
@@ -178,6 +189,7 @@ impl<'de> Deserialize<'de> for KeyTrie {
     {
         // NOTE: no assumption of pre-defined order in config
         let child_collection = HashMap::<KeyEvent, KeyTrieNode>::deserialize(deserializer)?;
+        // TODO: common pattern, generalize (found in keytrinode deserialize too)
         let mut child_order = HashMap::<KeyEvent, usize>::new();
         let mut children = Vec::new();
         for (key_event, keytrie_node) in child_collection {

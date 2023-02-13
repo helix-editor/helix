@@ -4,15 +4,49 @@ use helix_view::input::KeyEvent;
 use serde::{de::Visitor, Deserialize};
 use std::collections::HashMap;
 
-/// Each variant includes a documentaion property.
+/// Each variant includes a description property.
 /// For the MappableCommand and CommandSequence variants, the property is self explanatory.
-/// For KeyTrie, the documentation is used for respective infobox titles,
+/// For KeyTrie, the description is used for respective infobox titles,
 /// or infobox KeyEvent descriptions that in themselves trigger the opening of another infobox.
+/// See remapping.md for a further explanation of how descriptions are used.
 #[derive(Debug, Clone)]
 pub enum KeyTrieNode {
     MappableCommand(MappableCommand),
-    CommandSequence(Vec<MappableCommand>),
+    CommandSequence(CommandSequence),
     KeyTrie(KeyTrie),
+}
+
+impl KeyTrieNode {
+    pub fn get_description(&self) -> Option<&str> {
+        match self {
+            Self::MappableCommand(mappable_command) => Some(mappable_command.get_description()),
+            Self::CommandSequence(command_sequence) => command_sequence.get_description(),
+            Self::KeyTrie(node) => Some(node.get_description()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CommandSequence {
+    description: Option<String>,
+    commands: Vec<MappableCommand>,
+}
+
+impl CommandSequence {
+    pub fn descriptionless(commands: Vec<MappableCommand>) -> Self {
+        Self {
+            description: None,
+            commands,
+        }
+    }
+
+    pub fn get_commands(&self) -> &Vec<MappableCommand> {
+        &self.commands
+    }
+
+    pub fn get_description(&self) -> Option<&str> {
+        self.description.as_deref()
+    }
 }
 
 impl<'de> Deserialize<'de> for KeyTrieNode {
@@ -72,23 +106,82 @@ impl<'de> Visitor<'de> for KeyTrieNodeVisitor {
                     .map_err(serde::de::Error::custom)?,
             )
         }
-        Ok(KeyTrieNode::CommandSequence(commands))
+        Ok(KeyTrieNode::CommandSequence(CommandSequence {
+            description: None,
+            commands,
+        }))
     }
 
     fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
     where
         M: serde::de::MapAccess<'de>,
     {
-        let mut children = Vec::new();
-        let mut child_order = HashMap::new();
-        while let Some((key_event, key_trie_node)) = map.next_entry::<KeyEvent, KeyTrieNode>()? {
-            child_order.insert(key_event, children.len());
-            children.push(key_trie_node);
+        let into_keytrie =
+            |peeked_key: String, mut map: M, description: &str| -> Result<Self::Value, M::Error> {
+                let mut children = Vec::new();
+                let mut child_order = HashMap::new();
+
+                let key_event = peeked_key
+                    .parse::<KeyEvent>()
+                    .map_err(serde::de::Error::custom)?;
+                let keytrie_node = map.next_value::<KeyTrieNode>()?;
+
+                let mut trie_edge_node_pair = Some((key_event, keytrie_node));
+                while let Some((key_event, keytrie_node)) = trie_edge_node_pair {
+                    child_order.insert(key_event, children.len());
+                    children.push(keytrie_node);
+                    trie_edge_node_pair = map.next_entry::<KeyEvent, KeyTrieNode>()?;
+                }
+
+                Ok(KeyTrieNode::KeyTrie(KeyTrie::new(
+                    description,
+                    child_order,
+                    children,
+                )))
+            };
+
+        let first_key = map
+            .next_key::<String>()?
+            .expect("Maps without keys are undefined keymap remapping behaviour.");
+
+        if first_key != "description" {
+            return into_keytrie(first_key, map, "");
         }
-        Ok(KeyTrieNode::KeyTrie(KeyTrie::new(
-            "",
-            child_order,
-            children,
-        )))
+
+        let description = map.next_value::<String>()?;
+        let second_key = map
+            .next_key::<String>()?
+            .expect("Associated key when a 'description' key is provided");
+
+        if &second_key != "exec" {
+            return into_keytrie(second_key, map, &description);
+        }
+
+        let keytrie_node: KeyTrieNode = map.next_value::<KeyTrieNode>()?;
+        match keytrie_node {
+            KeyTrieNode::KeyTrie(_) => Err(serde::de::Error::custom(
+                "'exec' key reserved for command(s) only, omit when adding custom descriptions to nested remappings.",
+            )),
+            KeyTrieNode::MappableCommand(mappable_command) => {
+                match mappable_command {
+                    MappableCommand::Typable { name, args, .. } => {
+                        Ok(KeyTrieNode::MappableCommand(MappableCommand::Typable {
+                            name,
+                            args,
+                            description,
+                        }))
+                    }
+                    MappableCommand::Static { .. } => {
+                        Err(serde::de::Error::custom("Currently not possible to rename static commands, only typables. (Those that begin with a colon.) "))
+                    }
+                }
+            }
+            KeyTrieNode::CommandSequence(command_sequence) => {
+                Ok(KeyTrieNode::CommandSequence(CommandSequence {
+                    description: Some(description),
+                    commands: command_sequence.commands,
+                }))
+            }
+        }
     }
 }

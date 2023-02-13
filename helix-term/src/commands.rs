@@ -189,7 +189,7 @@ impl MappableCommand {
         }
     }
 
-    pub fn description(&self) -> &str {
+    pub fn get_description(&self) -> &str {
         match &self {
             Self::Typable { description, .. } => description,
             Self::Static { description, .. } => description,
@@ -486,8 +486,14 @@ impl std::str::FromStr for MappableCommand {
             typed::TYPABLE_COMMAND_MAP
                 .get(name)
                 .map(|cmd| MappableCommand::Typable {
-                    name: cmd.name.to_owned(),
-                    description: format!(":{} {}", cmd.name, args.join(" ")),
+                    name: cmd.name.to_string(),
+                    description: {
+                        if args.is_empty() {
+                            cmd.doc.to_string()
+                        } else {
+                            format!(":{} {}", cmd.name, args.join(" "))
+                        }
+                    },
                     args,
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
