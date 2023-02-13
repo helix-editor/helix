@@ -1002,6 +1002,10 @@ impl EditorView {
         event: &MouseEvent,
         cxt: &mut commands::Context,
     ) -> EventResult {
+        if event.kind != MouseEventKind::Moved {
+            cxt.editor.reset_idle_timer();
+        }
+
         let config = cxt.editor.config();
         let MouseEvent {
             kind,
