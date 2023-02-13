@@ -23,6 +23,12 @@ pub enum PositionRequest {
     Eof,
 }
 
+impl From<Position> for PositionRequest {
+    fn from(p: Position) -> Self {
+        Self::Explicit(p)
+    }
+}
+
 impl Default for PositionRequest {
     fn default() -> Self {
         PositionRequest::Explicit(Position::default())
@@ -170,16 +176,18 @@ pub(crate) fn parse_positional_arg(
 }
 
 pub(crate) fn parse_file_position(s: &str) -> Option<PositionRequest> {
-    if s.chars().all(|c| c == ':') {
+    let s = s.trim_matches(':');
+
+    if s.is_empty() {
         return Some(PositionRequest::Eof);
     }
 
-    let mut s = s.splitn(2, ':');
-    let row: usize = s.next()?.parse().ok()?;
-    let col: usize = s.next().and_then(|x| x.parse().ok()).unwrap_or_default();
-
+    let (row, col) = s.split_once(':').unwrap_or((s, "1"));
+    let row: usize = row.parse().ok()?;
+    let col: usize = col.parse().ok()?;
     let pos = Position::new(row.saturating_sub(1), col.saturating_sub(1));
-    Some(PositionRequest::Explicit(pos))
+
+    Some(pos.into())
 }
 
 /// Parse arg into [`PathBuf`] and position.
@@ -202,39 +210,108 @@ mod tests {
     use super::{parse_args, parse_file, parse_file_position, PositionRequest};
 
     #[test]
-    fn should_parse_file() {
+    fn should_parse_binary_only() {
+        parse_args(&mut str_to_argv("hx")).unwrap();
+    }
+
+    #[test]
+    fn should_parse_file_position_eof() {
+        assert_matches!(parse_file_position(":"), Some(PositionRequest::Eof));
+        assert_matches!(parse_file_position("::"), Some(PositionRequest::Eof));
+    }
+
+    #[test]
+    fn should_parse_file_position_line_only() {
+        assert_matches!(
+            parse_file_position("10"),
+            Some(PositionRequest::Explicit(Position { row: 9, col: 0 }))
+        );
+    }
+
+    #[test]
+    fn should_parse_file_position_line_only_with_trailing_delimiter() {
+        assert_matches!(
+            parse_file_position("10:"),
+            Some(PositionRequest::Explicit(Position { row: 9, col: 0 }))
+        );
+    }
+
+    #[test]
+    fn should_parse_file_position_line_col() {
+        assert_matches!(
+            parse_file_position("10:20"),
+            Some(PositionRequest::Explicit(Position { row: 9, col: 19 }))
+        );
+    }
+
+    #[test]
+    fn should_parse_file_position_line_col_with_trailing_delimiter() {
+        assert_matches!(
+            parse_file_position("10:20:"),
+            Some(PositionRequest::Explicit(Position { row: 9, col: 19 }))
+        );
+    }
+
+    #[test]
+    fn should_given_none_if_any_pos_arg_invalid() {
+        assert_matches!(parse_file_position("x"), None);
+        assert_matches!(parse_file_position("x:y"), None);
+        assert_matches!(parse_file_position("10:y"), None);
+        assert_matches!(parse_file_position("x:20"), None);
+    }
+
+    #[test]
+    fn should_parse_empty_file() {
         assert_matches!(
             parse_file(""),
             (path, None) if path == PathBuf::from_str("").unwrap()
         );
+    }
 
+    #[test]
+    fn should_parse_empty_file_with_eof_pos() {
         assert_matches!(
             parse_file(":"),
             (path, Some(PositionRequest::Eof)) if path == PathBuf::from_str("").unwrap()
         );
+    }
 
+    #[test]
+    fn should_parse_file_with_name_only() {
         assert_matches!(
             parse_file("file"),
             (path, None) if path == PathBuf::from_str("file").unwrap()
         );
+    }
 
+    #[test]
+    fn should_parse_file_with_eof_pos() {
         assert_matches!(
             parse_file("file:"),
             (path, Some(PositionRequest::Eof)) if path == PathBuf::from_str("file").unwrap()
         );
+    }
 
+    #[test]
+    fn should_parse_file_with_line_pos() {
         assert_matches!(
             parse_file("file:10"),
             (path, Some(PositionRequest::Explicit(Position { row: 9, col: 0 })))
                 if path == PathBuf::from_str("file").unwrap()
         );
+    }
 
+    #[test]
+    fn should_parse_file_with_line_pos_and_trailing_delimiter() {
         assert_matches!(
             parse_file("file:10:"),
             (path, Some(PositionRequest::Explicit(Position { row: 9, col: 0 })))
                 if path == PathBuf::from_str("file").unwrap()
         );
+    }
 
+    #[test]
+    fn should_parse_file_with_line_and_col_pos() {
         assert_matches!(
             parse_file("file:10:20"),
             (path, Some(PositionRequest::Explicit(Position { row: 9, col: 19 })))
@@ -243,82 +320,29 @@ mod tests {
     }
 
     #[test]
-    fn should_parse_file_position() {
-        assert_matches!(parse_file_position(":"), Some(PositionRequest::Eof));
-        assert_matches!(parse_file_position("::"), Some(PositionRequest::Eof));
-        assert_matches!(
-            parse_file_position("10"),
-            Some(PositionRequest::Explicit(Position { row: 9, col: 0 }))
-        );
-        assert_matches!(
-            parse_file_position("10:"),
-            Some(PositionRequest::Explicit(Position { row: 9, col: 0 }))
-        );
-        assert_matches!(
-            parse_file_position("10:20"),
-            Some(PositionRequest::Explicit(Position { row: 9, col: 19 }))
-        );
-        assert_matches!(parse_file_position("x"), None);
-        assert_matches!(parse_file_position("x:y"), None);
-    }
-
-    #[test]
-    fn should_parse_positional_args() {
+    fn should_parse_bare_files_args() {
         let args = parse_args(&mut str_to_argv("hx Cargo.toml")).unwrap();
         assert_eq!(
             args.files[0],
             (
                 PathBuf::from_str("Cargo.toml").unwrap(),
-                PositionRequest::Explicit(Position::default())
+                PositionRequest::default()
             )
         );
 
-        let args = parse_args(&mut str_to_argv("hx +10 Cargo.toml")).unwrap();
+        let args = parse_args(&mut str_to_argv("hx Cargo.toml README")).unwrap();
         assert_eq!(
-            args.files[0],
-            (
-                PathBuf::from_str("Cargo.toml").unwrap(),
-                PositionRequest::Explicit(Position { row: 9, col: 0 })
-            )
-        );
-
-        let args = parse_args(&mut str_to_argv("hx +: Cargo.toml")).unwrap();
-        assert_eq!(
-            args.files[0],
-            (
-                PathBuf::from_str("Cargo.toml").unwrap(),
-                PositionRequest::Eof
-            )
-        );
-
-        let args = parse_args(&mut str_to_argv("hx Cargo.toml:")).unwrap();
-        assert_eq!(
-            args.files[0],
-            (
-                PathBuf::from_str("Cargo.toml").unwrap(),
-                PositionRequest::Eof
-            )
-        );
-
-        parse_args(&mut str_to_argv("hx +10")).unwrap_err();
-        parse_args(&mut str_to_argv("hx +10 Cargo.toml +20")).unwrap_err();
-        parse_args(&mut str_to_argv("hx +10 Cargo.toml:20")).unwrap_err();
-        parse_args(&mut str_to_argv("hx +10 Cargo.toml:")).unwrap_err();
-
-        let args = parse_args(&mut str_to_argv("hx +10 Cargo.toml +20 README")).unwrap();
-        assert_eq!(
-            args.files[0],
-            (
-                PathBuf::from_str("Cargo.toml").unwrap(),
-                PositionRequest::Explicit(Position { row: 9, col: 0 })
-            )
-        );
-        assert_eq!(
-            args.files[1],
-            (
-                PathBuf::from_str("README").unwrap(),
-                PositionRequest::Explicit(Position { row: 19, col: 0 })
-            )
+            args.files,
+            [
+                (
+                    PathBuf::from_str("Cargo.toml").unwrap(),
+                    PositionRequest::default()
+                ),
+                (
+                    PathBuf::from_str("README").unwrap(),
+                    PositionRequest::default()
+                )
+            ]
         );
 
         let args = parse_args(&mut str_to_argv("hx -- Cargo.toml")).unwrap();
@@ -326,26 +350,147 @@ mod tests {
             args.files[0],
             (
                 PathBuf::from_str("Cargo.toml").unwrap(),
-                PositionRequest::Explicit(Position::default())
+                PositionRequest::default()
             )
+        );
+    }
+
+    #[test]
+    fn should_parse_prefix_pos_files() {
+        let args = parse_args(&mut str_to_argv("hx +10 Cargo.toml")).unwrap();
+        assert_eq!(
+            args.files,
+            [(
+                PathBuf::from_str("Cargo.toml").unwrap(),
+                PositionRequest::Explicit(Position { row: 9, col: 0 })
+            )]
+        );
+
+        let args = parse_args(&mut str_to_argv("hx +: Cargo.toml")).unwrap();
+        assert_eq!(
+            args.files,
+            [(
+                PathBuf::from_str("Cargo.toml").unwrap(),
+                PositionRequest::Eof
+            )]
+        );
+
+        let args = parse_args(&mut str_to_argv("hx +10 Cargo.toml +20 README")).unwrap();
+        assert_eq!(
+            args.files,
+            [
+                (
+                    PathBuf::from_str("Cargo.toml").unwrap(),
+                    PositionRequest::Explicit(Position { row: 9, col: 0 })
+                ),
+                (
+                    PathBuf::from_str("README").unwrap(),
+                    PositionRequest::Explicit(Position { row: 19, col: 0 })
+                )
+            ]
         );
 
         let args =
             parse_args(&mut str_to_argv("hx --vsplit -- +10 Cargo.toml +20 README")).unwrap();
         assert_eq!(args.split, Some(helix_view::tree::Layout::Vertical));
         assert_eq!(
-            args.files[0],
-            (
+            args.files,
+            [
+                (
+                    PathBuf::from_str("Cargo.toml").unwrap(),
+                    PositionRequest::Explicit(Position { row: 9, col: 0 })
+                ),
+                (
+                    PathBuf::from_str("README").unwrap(),
+                    PositionRequest::Explicit(Position { row: 19, col: 0 })
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn should_parse_intermixed_file_pos_notation() {
+        let args = parse_args(&mut str_to_argv("hx CHANGELOG +10 Cargo.toml README:20")).unwrap();
+        assert_eq!(
+            args.files,
+            [
+                (
+                    PathBuf::from_str("CHANGELOG").unwrap(),
+                    PositionRequest::default(),
+                ),
+                (
+                    PathBuf::from_str("Cargo.toml").unwrap(),
+                    PositionRequest::Explicit(Position { row: 9, col: 0 })
+                ),
+                (
+                    PathBuf::from_str("README").unwrap(),
+                    PositionRequest::Explicit(Position { row: 19, col: 0 })
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn should_fail_on_file_with_prefix_and_postfix_pos() {
+        parse_args(&mut str_to_argv("hx +10 Cargo.toml:20")).unwrap_err();
+        parse_args(&mut str_to_argv("hx +10 Cargo.toml:")).unwrap_err();
+    }
+
+    #[test]
+    fn should_fail_on_orphan_prefix_pos() {
+        parse_args(&mut str_to_argv("hx +10")).unwrap_err();
+        parse_args(&mut str_to_argv("hx +10 Cargo.toml +20")).unwrap_err();
+    }
+
+    #[test]
+    fn should_parse_postfix_pos_files() {
+        let args = parse_args(&mut str_to_argv("hx Cargo.toml:10")).unwrap();
+        assert_eq!(
+            args.files,
+            [(
                 PathBuf::from_str("Cargo.toml").unwrap(),
                 PositionRequest::Explicit(Position { row: 9, col: 0 })
-            )
+            )]
         );
+
+        let args = parse_args(&mut str_to_argv("hx Cargo.toml:")).unwrap();
         assert_eq!(
-            args.files[1],
-            (
-                PathBuf::from_str("README").unwrap(),
-                PositionRequest::Explicit(Position { row: 19, col: 0 })
-            )
+            args.files,
+            [(
+                PathBuf::from_str("Cargo.toml").unwrap(),
+                PositionRequest::Eof
+            )]
+        );
+
+        let args = parse_args(&mut str_to_argv("hx Cargo.toml:10 README:20")).unwrap();
+        assert_eq!(
+            args.files,
+            [
+                (
+                    PathBuf::from_str("Cargo.toml").unwrap(),
+                    PositionRequest::Explicit(Position { row: 9, col: 0 })
+                ),
+                (
+                    PathBuf::from_str("README").unwrap(),
+                    PositionRequest::Explicit(Position { row: 19, col: 0 })
+                )
+            ]
+        );
+
+        let args = parse_args(&mut str_to_argv("hx --vsplit -- Cargo.toml:10 README:20")).unwrap();
+        assert_eq!(args.split, Some(helix_view::tree::Layout::Vertical));
+        assert_eq!(
+            args.files,
+            [
+                (
+                    PathBuf::from_str("Cargo.toml").unwrap(),
+                    PositionRequest::Explicit(Position { row: 9, col: 0 })
+                ),
+                (
+                    PathBuf::from_str("README").unwrap(),
+                    PositionRequest::Explicit(Position { row: 19, col: 0 })
+                )
+            ]
         );
     }
 

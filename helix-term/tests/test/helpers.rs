@@ -279,7 +279,9 @@ impl AppBuilder {
         path: P,
         pos: Option<helix_core::Position>,
     ) -> Self {
-        self.args.files.push((path.into(), pos.unwrap_or_default()));
+        self.args
+            .files
+            .push((path.into(), pos.unwrap_or_default().into()));
         self
     }
 
