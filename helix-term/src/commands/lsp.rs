@@ -1455,7 +1455,7 @@ fn compute_inlay_hints_for_view(
             };
             // Don't recompute the annotations in case nothing has changed about the view
             if doc
-                .get_inlay_hints(view_id)
+                .inlay_hints(view_id)
                 .map_or(false, |dih| dih.id == new_doc_inlay_hint_id)
             {
                 return None;

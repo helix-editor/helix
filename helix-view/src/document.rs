@@ -1404,7 +1404,7 @@ impl Document {
     }
 
     /// Get the inlay hints for this document and `view_id`.
-    pub fn get_inlay_hints(&self, view_id: ViewId) -> Option<&DocumentInlayHints> {
+    pub fn inlay_hints(&self, view_id: ViewId) -> Option<&DocumentInlayHints> {
         self.inlay_hints.get(&view_id)
     }
 
