@@ -44,7 +44,7 @@ pub enum Error {
     Other(#[from] anyhow::Error),
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum OffsetEncoding {
     /// UTF-8 code units aka bytes
     Utf8,

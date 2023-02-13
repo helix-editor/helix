@@ -6,10 +6,12 @@ use futures_util::future::{BoxFuture, Future, FutureExt};
 use futures_util::stream::{FuturesUnordered, StreamExt};
 
 pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
+pub type EditorCompositorJobsCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor, &Jobs) + Send>;
 pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
 
 pub enum Callback {
     EditorCompositor(EditorCompositorCallback),
+    EditorCompositorJobs(EditorCompositorJobsCallback),
     Editor(EditorCallback),
 }
 
@@ -56,14 +58,11 @@ impl Jobs {
         Self::default()
     }
 
-    pub fn spawn<F: Future<Output = anyhow::Result<()>> + Send + 'static>(&mut self, f: F) {
+    pub fn spawn<F: Future<Output = anyhow::Result<()>> + Send + 'static>(&self, f: F) {
         self.add(Job::new(f));
     }
 
-    pub fn callback<F: Future<Output = anyhow::Result<Callback>> + Send + 'static>(
-        &mut self,
-        f: F,
-    ) {
+    pub fn callback<F: Future<Output = anyhow::Result<Callback>> + Send + 'static>(&self, f: F) {
         self.add(Job::with_callback(f));
     }
 
@@ -71,11 +70,13 @@ impl Jobs {
         &self,
         editor: &mut Editor,
         compositor: &mut Compositor,
+        jobs: &Jobs,
         call: anyhow::Result<Option<Callback>>,
     ) {
         match call {
             Ok(None) => {}
             Ok(Some(call)) => match call {
+                Callback::EditorCompositorJobs(call) => call(editor, compositor, jobs),
                 Callback::EditorCompositor(call) => call(editor, compositor),
                 Callback::Editor(call) => call(editor),
             },

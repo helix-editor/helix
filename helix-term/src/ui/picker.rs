@@ -9,7 +9,7 @@ use crate::{
         EditorView,
     },
 };
-use futures_util::future::BoxFuture;
+
 use tui::{
     buffer::Buffer as Surface,
     layout::Constraint,
@@ -17,7 +17,6 @@ use tui::{
     widgets::{Block, BorderType, Borders, Cell, Table},
 };
 
-use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use tui::widgets::Widget;
 
 use std::cmp::{self, Ordering};
@@ -36,7 +35,7 @@ use helix_view::{
     Document, DocumentId, Editor,
 };
 
-use super::{menu::Item, overlay::Overlay};
+use super::menu::{Item, OptionsManager};
 
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
@@ -124,13 +123,12 @@ impl Preview<'_, '_> {
 
 impl<T: Item> FilePicker<T> {
     pub fn new(
-        options: Vec<T>,
-        editor_data: T::Data,
+        option_manager: OptionsManager<T>,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         let truncate_start = true;
-        let mut picker = Picker::new(options, editor_data, callback_fn);
+        let mut picker = Picker::new(option_manager, callback_fn);
         picker.truncate_start = truncate_start;
 
         Self {
@@ -208,6 +206,11 @@ impl<T: Item> FilePicker<T> {
     }
 
     fn handle_idle_timeout(&mut self, cx: &mut Context) -> EventResult {
+        // fetch new options if there are item sources that support it
+        self.picker
+            .options_manager
+            .refetch_on_idle_timeout(cx.editor, cx.jobs);
+
         // Try to find a document in the cache
         let doc = self
             .current_file(cx.editor)
@@ -231,7 +234,7 @@ impl<T: Item> FilePicker<T> {
     }
 }
 
-impl<T: Item + 'static> Component for FilePicker<T> {
+impl<T: Item> Component for FilePicker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
         // |prompt   | |preview  |
@@ -399,19 +402,12 @@ impl Ord for PickerMatch {
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
 
 pub struct Picker<T: Item> {
-    options: Vec<T>,
-    editor_data: T::Data,
-    // filter: String,
-    matcher: Box<Matcher>,
-    matches: Vec<PickerMatch>,
-
     /// Current height of the completions box
     completion_height: u16,
-
-    cursor: usize,
+    /// Contains the data state (options, current cursor position, matches etc.)
+    options_manager: OptionsManager<T>,
     // pattern: String,
     prompt: Prompt,
-    previous_pattern: (String, FuzzyQuery),
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
     /// Whether to show the preview panel (default true)
@@ -424,8 +420,7 @@ pub struct Picker<T: Item> {
 
 impl<T: Item> Picker<T> {
     pub fn new(
-        options: Vec<T>,
-        editor_data: T::Data,
+        mut options_manager: OptionsManager<T>,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
@@ -434,35 +429,35 @@ impl<T: Item> Picker<T> {
             ui::completers::none,
             |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {},
         );
+        options_manager.set_cursor_selection_mode(true);
 
-        let n = options
-            .first()
-            .map(|option| option.format(&editor_data).cells.len())
+        let n = options_manager
+            .options()
+            .next()
+            .map(|(option, editor_data)| option.format(editor_data).cells.len())
             .unwrap_or_default();
-        let max_lens = options.iter().fold(vec![0; n], |mut acc, option| {
-            let row = option.format(&editor_data);
-            // maintain max for each column
-            for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
-                let width = cell.content.width();
-                if width > *acc {
-                    *acc = width;
-                }
-            }
-            acc
-        });
+        let max_lens =
+            options_manager
+                .options()
+                .fold(vec![0; n], |mut acc, (option, editor_data)| {
+                    let row = option.format(editor_data);
+                    // maintain max for each column
+                    for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
+                        let width = cell.content.width();
+                        if width > *acc {
+                            *acc = width;
+                        }
+                    }
+                    acc
+                });
         let widths = max_lens
             .into_iter()
             .map(|len| Constraint::Length(len as u16))
             .collect();
 
         let mut picker = Self {
-            options,
-            editor_data,
-            matcher: Box::default(),
-            matches: Vec::new(),
-            cursor: 0,
+            options_manager,
             prompt,
-            previous_pattern: (String::new(), FuzzyQuery::default()),
             truncate_start: true,
             show_preview: true,
             callback_fn: Box::new(callback_fn),
@@ -470,18 +465,7 @@ impl<T: Item> Picker<T> {
             widths,
         };
 
-        // scoring on empty input:
-        // TODO: just reuse score()
-        picker
-            .matches
-            .extend(picker.options.iter().enumerate().map(|(index, option)| {
-                let text = option.filter_text(&picker.editor_data);
-                PickerMatch {
-                    index,
-                    score: 0,
-                    len: text.chars().count(),
-                }
-            }));
+        picker.options_manager.score(None, true, true);
 
         picker
     }
@@ -489,98 +473,18 @@ impl<T: Item> Picker<T> {
     pub fn score(&mut self) {
         let pattern = self.prompt.line();
 
-        if pattern == &self.previous_pattern.0 {
-            return;
-        }
-
-        let (query, is_refined) = self
-            .previous_pattern
-            .1
-            .refine(pattern, &self.previous_pattern.0);
-
-        if pattern.is_empty() {
-            // Fast path for no pattern.
-            self.matches.clear();
-            self.matches
-                .extend(self.options.iter().enumerate().map(|(index, option)| {
-                    let text = option.filter_text(&self.editor_data);
-                    PickerMatch {
-                        index,
-                        score: 0,
-                        len: text.chars().count(),
-                    }
-                }));
-        } else if is_refined {
-            // optimization: if the pattern is a more specific version of the previous one
-            // then we can score the filtered set.
-            self.matches.retain_mut(|pmatch| {
-                let option = &self.options[pmatch.index];
-                let text = option.sort_text(&self.editor_data);
-
-                match query.fuzzy_match(&text, &self.matcher) {
-                    Some(s) => {
-                        // Update the score
-                        pmatch.score = s;
-                        true
-                    }
-                    None => false,
-                }
-            });
-
-            self.matches.sort_unstable();
-        } else {
-            self.force_score();
-        }
-
-        // reset cursor position
-        self.cursor = 0;
-        let pattern = self.prompt.line();
-        self.previous_pattern.0.clone_from(pattern);
-        self.previous_pattern.1 = query;
+        self.options_manager.score(Some(pattern), true, false);
     }
 
     pub fn force_score(&mut self) {
         let pattern = self.prompt.line();
 
-        let query = FuzzyQuery::new(pattern);
-        self.matches.clear();
-        self.matches.extend(
-            self.options
-                .iter()
-                .enumerate()
-                .filter_map(|(index, option)| {
-                    let text = option.filter_text(&self.editor_data);
-
-                    query
-                        .fuzzy_match(&text, &self.matcher)
-                        .map(|score| PickerMatch {
-                            index,
-                            score,
-                            len: text.chars().count(),
-                        })
-                }),
-        );
-
-        self.matches.sort_unstable();
+        self.options_manager.score(Some(pattern), true, true);
     }
 
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
     pub fn move_by(&mut self, amount: usize, direction: Direction) {
-        let len = self.matches.len();
-
-        if len == 0 {
-            // No results, can't move.
-            return;
-        }
-
-        match direction {
-            Direction::Forward => {
-                self.cursor = self.cursor.saturating_add(amount) % len;
-            }
-            Direction::Backward => {
-                self.cursor = self.cursor.saturating_add(len).saturating_sub(amount) % len;
-            }
-        }
+        self.options_manager.move_cursor_by(amount, direction);
     }
 
     /// Move the cursor down by exactly one page. After the last page comes the first page.
@@ -595,18 +499,16 @@ impl<T: Item> Picker<T> {
 
     /// Move the cursor to the first entry
     pub fn to_start(&mut self) {
-        self.cursor = 0;
+        self.options_manager.to_start()
     }
 
     /// Move the cursor to the last entry
     pub fn to_end(&mut self) {
-        self.cursor = self.matches.len().saturating_sub(1);
+        self.options_manager.to_end()
     }
 
     pub fn selection(&self) -> Option<&T> {
-        self.matches
-            .get(self.cursor)
-            .map(|pmatch| &self.options[pmatch.index])
+        self.options_manager.selection()
     }
 
     pub fn toggle_preview(&mut self) {
@@ -627,7 +529,7 @@ impl<T: Item> Picker<T> {
 // - on input change:
 //  - score all the names in relation to input
 
-impl<T: Item + 'static> Component for Picker<T> {
+impl<T: Item> Component for Picker<T> {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         self.completion_height = viewport.1.saturating_sub(4);
         Some(viewport)
@@ -638,6 +540,11 @@ impl<T: Item + 'static> Component for Picker<T> {
             Event::Key(event) => *event,
             Event::Paste(..) => return self.prompt_handle_event(event, cx),
             Event::Resize(..) => return EventResult::Consumed(None),
+            Event::IdleTimeout => {
+                self.options_manager
+                    .refetch_on_idle_timeout(cx.editor, cx.jobs);
+                return EventResult::Consumed(None);
+            }
             _ => return EventResult::Ignored(None),
         };
 
@@ -706,6 +613,8 @@ impl<T: Item + 'static> Component for Picker<T> {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        self.options_manager.poll_for_new_options();
+
         let text_style = cx.editor.theme.get("ui.text");
         let selected = cx.editor.theme.get("ui.text.focus");
         let highlight_style = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
@@ -727,7 +636,11 @@ impl<T: Item + 'static> Component for Picker<T> {
 
         let area = inner.clip_left(1).with_height(1);
 
-        let count = format!("{}/{}", self.matches.len(), self.options.len());
+        let count = format!(
+            "{}/{}",
+            self.options_manager.matches_len(),
+            self.options_manager.options_len()
+        );
         surface.set_stringn(
             (area.x + area.width).saturating_sub(count.len() as u16 + 1),
             area.y,
@@ -752,16 +665,18 @@ impl<T: Item + 'static> Component for Picker<T> {
         let inner = inner.clip_top(2);
 
         let rows = inner.height;
-        let offset = self.cursor - (self.cursor % std::cmp::max(1, rows as usize));
-        let cursor = self.cursor.saturating_sub(offset);
+        // TODO check None for sel.cursor
+        let cursor = self.options_manager.cursor().unwrap_or_default();
+
+        let offset = cursor - (cursor % std::cmp::max(1, rows as usize));
+        let cursor = cursor.saturating_sub(offset);
 
         let options = self
-            .matches
-            .iter()
+            .options_manager
+            .matches()
             .skip(offset)
             .take(rows as usize)
-            .map(|pmatch| &self.options[pmatch.index])
-            .map(|option| option.format(&self.editor_data))
+            .map(|(option, editor_data)| option.format(editor_data))
             .map(|mut row| {
                 const TEMP_CELL_SEP: &str = " ";
 
@@ -776,7 +691,7 @@ impl<T: Item + 'static> Component for Picker<T> {
                 // might be inconsistencies. This is the best we can do since only the
                 // text in Row is displayed to the end user.
                 let (_score, highlights) = FuzzyQuery::new(self.prompt.line())
-                    .fuzzy_indicies(&line, &self.matcher)
+                    .fuzzy_indicies(&line, self.options_manager.matcher())
                     .unwrap_or_default();
 
                 let highlight_byte_ranges: Vec<_> = line
@@ -876,80 +791,5 @@ impl<T: Item + 'static> Component for Picker<T> {
         let area = inner.clip_left(1).with_height(1);
 
         self.prompt.cursor(area, editor)
-    }
-}
-
-/// Returns a new list of options to replace the contents of the picker
-/// when called with the current picker query,
-pub type DynQueryCallback<T> =
-    Box<dyn Fn(String, &mut Editor) -> BoxFuture<'static, anyhow::Result<Vec<T>>>>;
-
-/// A picker that updates its contents via a callback whenever the
-/// query string changes. Useful for live grep, workspace symbols, etc.
-pub struct DynamicPicker<T: ui::menu::Item + Send> {
-    file_picker: FilePicker<T>,
-    query_callback: DynQueryCallback<T>,
-    query: String,
-}
-
-impl<T: ui::menu::Item + Send> DynamicPicker<T> {
-    pub const ID: &'static str = "dynamic-picker";
-
-    pub fn new(file_picker: FilePicker<T>, query_callback: DynQueryCallback<T>) -> Self {
-        Self {
-            file_picker,
-            query_callback,
-            query: String::new(),
-        }
-    }
-}
-
-impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        self.file_picker.render(area, surface, cx);
-    }
-
-    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
-        let event_result = self.file_picker.handle_event(event, cx);
-        let current_query = self.file_picker.picker.prompt.line();
-
-        if !matches!(event, Event::IdleTimeout) || self.query == *current_query {
-            return event_result;
-        }
-
-        self.query.clone_from(current_query);
-
-        let new_options = (self.query_callback)(current_query.to_owned(), cx.editor);
-
-        cx.jobs.callback(async move {
-            let new_options = new_options.await?;
-            let callback =
-                crate::job::Callback::EditorCompositor(Box::new(move |editor, compositor| {
-                    // Wrapping of pickers in overlay is done outside the picker code,
-                    // so this is fragile and will break if wrapped in some other widget.
-                    let picker = match compositor.find_id::<Overlay<DynamicPicker<T>>>(Self::ID) {
-                        Some(overlay) => &mut overlay.content.file_picker.picker,
-                        None => return,
-                    };
-                    picker.options = new_options;
-                    picker.cursor = 0;
-                    picker.force_score();
-                    editor.reset_idle_timer();
-                }));
-            anyhow::Ok(callback)
-        });
-        EventResult::Consumed(None)
-    }
-
-    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
-        self.file_picker.cursor(area, ctx)
-    }
-
-    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        self.file_picker.required_size(viewport)
-    }
-
-    fn id(&self) -> Option<&'static str> {
-        Some(Self::ID)
     }
 }

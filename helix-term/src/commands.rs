@@ -52,11 +52,16 @@ use crate::{
     filter_picker_entry,
     job::Callback,
     keymap::ReverseKeymap,
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
+    ui::{
+        self,
+        menu::{ItemSource, OptionsManager},
+        overlay::overlayed,
+        FilePicker, Picker, Popup, Prompt, PromptEvent,
+    },
 };
 
 use crate::job::{self, Jobs};
-use futures_util::StreamExt;
+use futures_util::{FutureExt, StreamExt};
 use std::{collections::HashMap, fmt, future::Future};
 use std::{collections::HashSet, num::NonZeroUsize};
 
@@ -2097,9 +2102,9 @@ fn global_search(cx: &mut Context) {
                     return;
                 }
 
+                let option_manager = OptionsManager::create_from_items(all_matches, current_path);
                 let picker = FilePicker::new(
-                    all_matches,
-                    current_path,
+                    option_manager,
                     move |cx, FileResult { path, line_num }, action| {
                         match cx.editor.open(path, action) {
                             Ok(_) => {}
@@ -2473,13 +2478,16 @@ fn buffer_picker(cx: &mut Context) {
         is_current: doc.id() == current,
     };
 
-    let picker = FilePicker::new(
+    let option_manager = OptionsManager::create_from_items(
         cx.editor
             .documents
             .values()
             .map(|doc| new_meta(doc))
             .collect(),
         (),
+    );
+    let picker = FilePicker::new(
+        option_manager,
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
         },
@@ -2551,7 +2559,7 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
-    let picker = FilePicker::new(
+    let option_manager = OptionsManager::create_from_items(
         cx.editor
             .tree
             .views()
@@ -2562,6 +2570,9 @@ fn jumplist_picker(cx: &mut Context) {
             })
             .collect(),
         (),
+    );
+    let picker = FilePicker::new(
+        option_manager,
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
@@ -2623,7 +2634,8 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+            let option_manager = OptionsManager::create_from_items(commands, keymap);
+            let picker = Picker::new(option_manager, move |cx, command, _action| {
                 let mut ctx = Context {
                     register: None,
                     count: std::num::NonZeroUsize::new(1),
@@ -4169,6 +4181,7 @@ pub fn completion(cx: &mut Context) {
         None => return,
     };
 
+    let language_server_id = language_server.id();
     let offset_encoding = language_server.offset_encoding();
     let text = doc.text().slice(..);
     let cursor = doc.selection(view.id).primary().cursor(text);
@@ -4191,39 +4204,52 @@ pub fn completion(cx: &mut Context) {
     let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
     let start_offset = cursor.saturating_sub(offset);
 
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::CompletionResponse>| {
+    let completion_item_source = ItemSource::from_async_data(
+        async move {
+            let json = future.await?;
+            let response: helix_lsp::lsp::CompletionResponse = serde_json::from_value(json)?;
+
+            let mut items = match response {
+                lsp::CompletionResponse::Array(items) => items,
+                // TODO: do something with is_incomplete
+                lsp::CompletionResponse::List(helix_lsp::lsp::CompletionList {
+                    is_incomplete: _is_incomplete,
+                    items,
+                }) => items,
+            };
+
+            // Sort completion items according to their preselect status (given by the LSP server)
+            items.sort_by_key(|item| !item.preselect.unwrap_or(false));
+            Ok(items
+                .into_iter()
+                .map(|item| ui::CompletionItem::LSP {
+                    item,
+                    language_server_id,
+                    offset_encoding,
+                })
+                .collect())
+        }
+        .boxed(),
+        (),
+    );
+
+    OptionsManager::create_from_item_sources(
+        vec![completion_item_source],
+        cx.editor,
+        cx.jobs,
+        move |editor, compositor, option_manager| {
             if editor.mode != Mode::Insert {
                 // we're not in insert mode anymore
                 return;
             }
 
-            let items = match response {
-                Some(lsp::CompletionResponse::Array(items)) => items,
-                // TODO: do something with is_incomplete
-                Some(lsp::CompletionResponse::List(lsp::CompletionList {
-                    is_incomplete: _is_incomplete,
-                    items,
-                })) => items,
-                None => Vec::new(),
-            };
-
-            if items.is_empty() {
-                // editor.set_error("No completion available");
-                return;
-            }
             let size = compositor.size();
             let ui = compositor.find::<ui::EditorView>().unwrap();
-            ui.set_completion(
-                editor,
-                items,
-                offset_encoding,
-                start_offset,
-                trigger_offset,
-                size,
-            );
+            ui.set_completion(editor, option_manager, start_offset, trigger_offset, size);
         },
+        Some(Box::new(|editor: &mut Editor| {
+            editor.set_error("No completion available")
+        })),
     );
 }
 

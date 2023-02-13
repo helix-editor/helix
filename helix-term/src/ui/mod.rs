@@ -17,11 +17,12 @@ mod text;
 use crate::compositor::{Component, Compositor};
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
-pub use completion::Completion;
+use crate::ui::menu::OptionsManager;
+pub use completion::{Completion, CompletionItem};
 pub use editor::EditorView;
 pub use markdown::Markdown;
 pub use menu::Menu;
-pub use picker::{DynamicPicker, FileLocation, FilePicker, Picker};
+pub use picker::{FileLocation, FilePicker, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
@@ -217,9 +218,9 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
+    let option_manager = OptionsManager::create_from_items(files, root);
     FilePicker::new(
-        files,
-        root,
+        option_manager,
         move |cx, path: &PathBuf, action| {
             if let Err(e) = cx.editor.open(path, action) {
                 let err = if let Some(err) = e.source() {

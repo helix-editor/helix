@@ -2,9 +2,15 @@ use super::{Context, Editor};
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, Jobs},
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
+    ui::{
+        self,
+        menu::{ItemSource, OptionsManager},
+        overlay::overlayed,
+        FilePicker, Picker, Popup, Prompt, PromptEvent, Text,
+    },
 };
 use dap::{StackFrame, Thread, ThreadStates};
+use futures_util::FutureExt;
 use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
@@ -61,21 +67,30 @@ fn thread_picker(
     let debugger = debugger!(cx.editor);
 
     let future = debugger.threads();
-    dap_callback(
+
+    let thread_states = debugger!(cx.editor).thread_states.clone();
+    let item_source = ItemSource::from_async_data(
+        async move {
+            let response: dap::requests::ThreadsResponse = serde_json::from_value(future.await?)?;
+
+            Ok(response.threads)
+        }
+        .boxed(),
+        thread_states,
+    );
+
+    OptionsManager::create_from_item_sources(
+        vec![item_source],
+        cx.editor,
         cx.jobs,
-        future,
-        move |editor, compositor, response: dap::requests::ThreadsResponse| {
-            let threads = response.threads;
-            if threads.len() == 1 {
-                callback_fn(editor, &threads[0]);
+        move |editor, compositor, option_manager| {
+            if option_manager.options_len() == 1 {
+                callback_fn(editor, option_manager.options().next().unwrap().0);
                 return;
             }
-            let debugger = debugger!(editor);
 
-            let thread_states = debugger.thread_states.clone();
             let picker = FilePicker::new(
-                threads,
-                thread_states,
+                option_manager,
                 move |cx, thread, _action| callback_fn(cx.editor, thread),
                 move |editor, thread| {
                     let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
@@ -90,6 +105,7 @@ fn thread_picker(
             );
             compositor.push(Box::new(picker));
         },
+        None,
     );
 }
 
@@ -270,9 +286,9 @@ pub fn dap_launch(cx: &mut Context) {
 
     let templates = config.templates.clone();
 
+    let option_manager = OptionsManager::create_from_items(templates, ());
     cx.push_layer(Box::new(overlayed(Picker::new(
-        templates,
-        (),
+        option_manager,
         |cx, template, _action| {
             let completions = template.completion.clone();
             let name = template.name.clone();
@@ -681,9 +697,9 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
 
     let frames = debugger.stack_frames[&thread_id].clone();
 
+    let option_manager = OptionsManager::create_from_items(frames, ());
     let picker = FilePicker::new(
-        frames,
-        (),
+        option_manager,
         move |cx, frame, _action| {
             let debugger = debugger!(cx.editor);
             // TODO: this should be simpler to find

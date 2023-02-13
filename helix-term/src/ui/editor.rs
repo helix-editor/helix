@@ -32,8 +32,8 @@ use std::{num::NonZeroUsize, path::PathBuf, rc::Rc};
 
 use tui::buffer::Buffer as Surface;
 
-use super::statusline;
 use super::{document::LineDecoration, lsp::SignatureHelp};
+use super::{menu::OptionsManager, statusline, CompletionItem};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
@@ -943,14 +943,12 @@ impl EditorView {
     pub fn set_completion(
         &mut self,
         editor: &mut Editor,
-        items: Vec<helix_lsp::lsp::CompletionItem>,
-        offset_encoding: helix_lsp::OffsetEncoding,
+        option_manager: OptionsManager<CompletionItem>,
         start_offset: usize,
         trigger_offset: usize,
         size: Rect,
     ) {
-        let mut completion =
-            Completion::new(editor, items, offset_encoding, start_offset, trigger_offset);
+        let mut completion = Completion::new(editor, option_manager, start_offset, trigger_offset);
 
         if completion.is_empty() {
             // skip if we got no completion results

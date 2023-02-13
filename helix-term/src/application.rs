@@ -348,11 +348,11 @@ impl Application {
                     self.handle_signals(signal).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, &self.jobs, callback);
                     self.render().await;
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, &self.jobs, callback);
                     self.render().await;
                 }
                 event = self.editor.wait_event() => {

@@ -1,10 +1,7 @@
 use futures_util::FutureExt;
 use helix_lsp::{
     block_on,
-    lsp::{
-        self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
-        NumberOrString,
-    },
+    lsp::{self, CodeAction, CodeActionTriggerKind, DiagnosticSeverity, NumberOrString},
     util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
@@ -21,8 +18,11 @@ use helix_view::{document::Mode, editor::Action, theme::Style};
 use crate::{
     compositor::{self, Compositor},
     ui::{
-        self, lsp::SignatureHelp, overlay::overlayed, DynamicPicker, FileLocation, FilePicker,
-        Popup, PromptEvent,
+        self,
+        lsp::SignatureHelp,
+        menu::{ItemSource, Menu, OptionsManager},
+        overlay::overlayed,
+        FileLocation, FilePicker, Popup, PromptEvent,
     },
 };
 
@@ -208,14 +208,13 @@ fn jump_to_location(
 }
 
 fn sym_picker(
-    symbols: Vec<lsp::SymbolInformation>,
+    option_manager: OptionsManager<lsp::SymbolInformation>,
     current_path: Option<lsp::Url>,
     offset_encoding: OffsetEncoding,
 ) -> FilePicker<lsp::SymbolInformation> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
     FilePicker::new(
-        symbols,
-        current_path.clone(),
+        option_manager,
         move |cx, symbol, action| {
             let (view, doc) = current!(cx.editor);
             push_jump(view, doc);
@@ -288,9 +287,9 @@ fn diag_picker(
         error: cx.editor.theme.get("error"),
     };
 
+    let option_manager = OptionsManager::create_from_items(flat_diag, (styles, format));
     FilePicker::new(
-        flat_diag,
-        (styles, format),
+        option_manager,
         move |cx, PickerDiagnostic { url, diag }, action| {
             if current_path.as_ref() == Some(url) {
                 let (view, doc) = current!(cx.editor);
@@ -369,7 +368,9 @@ pub fn symbol_picker(cx: &mut Context) {
                     }
                 };
 
-                let picker = sym_picker(symbols, current_url, offset_encoding);
+                let option_manager =
+                    OptionsManager::create_from_items(symbols, current_url.clone());
+                let picker = sym_picker(option_manager, current_url, offset_encoding);
                 compositor.push(Box::new(overlayed(picker)))
             }
         },
@@ -380,58 +381,50 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
     let current_url = doc.url();
     let language_server = language_server!(cx.editor, doc);
+    let language_server_id = language_server.id();
     let offset_encoding = language_server.offset_encoding();
-    let future = match language_server.workspace_symbols("".to_string()) {
-        Some(future) => future,
-        None => {
-            cx.editor
-                .set_error("Language server does not support workspace symbols");
-            return;
+
+    let workspace_symbols_fetcher = Box::new(move |pattern: &str, editor: &mut Editor| {
+        let language_server = match editor.language_servers.get_by_id(language_server_id) {
+            Some(language_server) => language_server,
+            None => {
+                editor.set_error("Language server is not available");
+                return async { Ok(vec![]) }.boxed();
+            }
+        };
+        let symbol_request = match language_server.workspace_symbols(pattern.to_string()) {
+            Some(future) => future,
+            None => {
+                editor.set_error("Language server does not support workspace symbols");
+                return async { Ok(vec![]) }.boxed();
+            }
+        };
+        async move {
+            let json = symbol_request.await?;
+            let response: Option<Vec<lsp::SymbolInformation>> = serde_json::from_value(json)?;
+
+            Ok(response.unwrap_or_default())
         }
-    };
+        .boxed()
+    });
+    let item_source = ItemSource::from_async_refetch_on_idle_timeout_with_pattern(
+        workspace_symbols_fetcher,
+        current_url.clone(),
+    );
 
-    cx.callback(
-        future,
-        move |_editor, compositor, response: Option<Vec<lsp::SymbolInformation>>| {
-            let symbols = response.unwrap_or_default();
-            let picker = sym_picker(symbols, current_url, offset_encoding);
-            let get_symbols = |query: String, editor: &mut Editor| {
-                let doc = doc!(editor);
-                let language_server = match doc.language_server() {
-                    Some(s) => s,
-                    None => {
-                        // This should not generally happen since the picker will not
-                        // even open in the first place if there is no server.
-                        return async move { Err(anyhow::anyhow!("LSP not active")) }.boxed();
-                    }
-                };
-                let symbol_request = match language_server.workspace_symbols(query) {
-                    Some(future) => future,
-                    None => {
-                        // This should also not happen since the language server must have
-                        // supported workspace symbols before to reach this block.
-                        return async move {
-                            Err(anyhow::anyhow!(
-                                "Language server does not support workspace symbols"
-                            ))
-                        }
-                        .boxed();
-                    }
-                };
-
-                let future = async move {
-                    let json = symbol_request.await?;
-                    let response: Option<Vec<lsp::SymbolInformation>> =
-                        serde_json::from_value(json)?;
-
-                    Ok(response.unwrap_or_default())
-                };
-                future.boxed()
-            };
-            let dyn_picker = DynamicPicker::new(picker, Box::new(get_symbols));
-            compositor.push(Box::new(overlayed(dyn_picker)))
+    OptionsManager::create_from_item_sources(
+        vec![item_source],
+        cx.editor,
+        cx.jobs,
+        move |_editor, compositor, option_manager| {
+            compositor.push(Box::new(overlayed(sym_picker(
+                option_manager,
+                current_url,
+                offset_encoding,
+            ))))
         },
-    )
+        None,
+    );
 }
 
 pub fn diagnostics_picker(cx: &mut Context) {
@@ -472,10 +465,15 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
-impl ui::menu::Item for lsp::CodeActionOrCommand {
+struct CodeActionOrCommandItem {
+    lsp_item: lsp::CodeActionOrCommand,
+    offset_encoding: OffsetEncoding,
+}
+
+impl ui::menu::Item for CodeActionOrCommandItem {
     type Data = ();
     fn format(&self, _data: &Self::Data) -> Row {
-        match self {
+        match &self.lsp_item {
             lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
             lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
         }
@@ -495,8 +493,8 @@ impl ui::menu::Item for lsp::CodeActionOrCommand {
 /// just without the headings.
 ///
 /// The order used here is modeled after the [vscode sourcecode](https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeActionWidget.ts>)
-fn action_category(action: &CodeActionOrCommand) -> u32 {
-    if let CodeActionOrCommand::CodeAction(CodeAction {
+fn action_category(action: &lsp::CodeActionOrCommand) -> u32 {
+    if let lsp::CodeActionOrCommand::CodeAction(CodeAction {
         kind: Some(kind), ..
     }) = action
     {
@@ -519,25 +517,27 @@ fn action_category(action: &CodeActionOrCommand) -> u32 {
     }
 }
 
-fn action_prefered(action: &CodeActionOrCommand) -> bool {
+fn action_prefered(action: &lsp::CodeActionOrCommand) -> bool {
     matches!(
         action,
-        CodeActionOrCommand::CodeAction(CodeAction {
+        lsp::CodeActionOrCommand::CodeAction(CodeAction {
             is_preferred: Some(true),
             ..
         })
     )
 }
 
-fn action_fixes_diagnostics(action: &CodeActionOrCommand) -> bool {
+fn action_fixes_diagnostics(action: &lsp::CodeActionOrCommand) -> bool {
     matches!(
         action,
-        CodeActionOrCommand::CodeAction(CodeAction {
+        lsp::CodeActionOrCommand::CodeAction(CodeAction {
             diagnostics: Some(diagnostics),
             ..
         }) if !diagnostics.is_empty()
     )
 }
+
+pub struct CodeActionItemSource;
 
 pub fn code_action(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
@@ -575,72 +575,83 @@ pub fn code_action(cx: &mut Context) {
         }
     };
 
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::CodeActionResponse>| {
-            let mut actions = match response {
-                Some(a) => a,
-                None => return,
-            };
+    let item_source = async move {
+        let json = future.await?;
+        let mut actions: lsp::CodeActionResponse = serde_json::from_value(json)?;
 
-            // remove disabled code actions
-            actions.retain(|action| {
-                matches!(
-                    action,
-                    CodeActionOrCommand::Command(_)
-                        | CodeActionOrCommand::CodeAction(CodeAction { disabled: None, .. })
-                )
-            });
+        // remove disabled code actions
+        actions.retain(|action| {
+            matches!(
+                action,
+                lsp::CodeActionOrCommand::Command(_)
+                    | lsp::CodeActionOrCommand::CodeAction(CodeAction { disabled: None, .. })
+            )
+        });
 
-            if actions.is_empty() {
-                editor.set_status("No code actions available");
-                return;
+        if actions.is_empty() {
+            return Ok(vec![]);
+        }
+
+        // Sort codeactions into a useful order. This behaviour is only partially described in the LSP spec.
+        // Many details are modeled after vscode because langauge servers are usually tested against it.
+        // VScode sorts the codeaction two times:
+        //
+        // First the codeactions that fix some diagnostics are moved to the front.
+        // If both codeactions fix some diagnostics (or both fix none) the codeaction
+        // that is marked with `is_preffered` is shown first. The codeactions are then shown in seperate
+        // submenus that only contain a certain category (see `action_category`) of actions.
+        //
+        // Below this done in in a single sorting step
+        actions.sort_by(|action1, action2| {
+            // sort actions by category
+            let order = action_category(action1).cmp(&action_category(action2));
+            if order != Ordering::Equal {
+                return order;
+            }
+            // within the categories sort by relevancy.
+            // Modeled after the `codeActionsComparator` function in vscode:
+            // https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeAction.ts
+
+            // if one code action fixes a diagnostic but the other one doesn't show it first
+            let order = action_fixes_diagnostics(action1)
+                .cmp(&action_fixes_diagnostics(action2))
+                .reverse();
+            if order != Ordering::Equal {
+                return order;
             }
 
-            // Sort codeactions into a useful order. This behaviour is only partially described in the LSP spec.
-            // Many details are modeled after vscode because langauge servers are usually tested against it.
-            // VScode sorts the codeaction two times:
-            //
-            // First the codeactions that fix some diagnostics are moved to the front.
-            // If both codeactions fix some diagnostics (or both fix none) the codeaction
-            // that is marked with `is_preffered` is shown first. The codeactions are then shown in seperate
-            // submenus that only contain a certain category (see `action_category`) of actions.
-            //
-            // Below this done in in a single sorting step
-            actions.sort_by(|action1, action2| {
-                // sort actions by category
-                let order = action_category(action1).cmp(&action_category(action2));
-                if order != Ordering::Equal {
-                    return order;
-                }
-                // within the categories sort by relevancy.
-                // Modeled after the `codeActionsComparator` function in vscode:
-                // https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeAction.ts
+            // if one of the codeactions is marked as prefered show it first
+            // otherwise keep the original LSP sorting
+            action_prefered(action1)
+                .cmp(&action_prefered(action2))
+                .reverse()
+        });
 
-                // if one code action fixes a diagnostic but the other one doesn't show it first
-                let order = action_fixes_diagnostics(action1)
-                    .cmp(&action_fixes_diagnostics(action2))
-                    .reverse();
-                if order != Ordering::Equal {
-                    return order;
-                }
+        Ok(actions
+            .into_iter()
+            .map(|lsp_item| CodeActionOrCommandItem {
+                lsp_item,
+                offset_encoding,
+            })
+            .collect())
+    }
+    .boxed();
 
-                // if one of the codeactions is marked as prefered show it first
-                // otherwise keep the original LSP sorting
-                action_prefered(action1)
-                    .cmp(&action_prefered(action2))
-                    .reverse()
-            });
-
-            let mut picker = ui::Menu::new(actions, (), move |editor, code_action, event| {
+    OptionsManager::create_from_item_sources(
+        vec![ItemSource::from_async_data(item_source, ())],
+        cx.editor,
+        cx.jobs,
+        move |_editor, compositor, options_manager| {
+            let mut picker = Menu::new(options_manager, move |editor, code_action, event| {
                 if event != PromptEvent::Validate {
                     return;
                 }
 
                 // always present here
                 let code_action = code_action.unwrap();
+                let offset_encoding = code_action.offset_encoding;
 
-                match code_action {
+                match &code_action.lsp_item {
                     lsp::CodeActionOrCommand::Command(command) => {
                         log::debug!("code action command: {:?}", command);
                         execute_lsp_command(editor, command.clone());
@@ -665,7 +676,10 @@ pub fn code_action(cx: &mut Context) {
             let popup = Popup::new("code-action", picker).with_scrollbar(false);
             compositor.replace_or_push("code-action", popup);
         },
-    )
+        Some(Box::new(|editor| {
+            editor.set_status("No code actions available")
+        })),
+    );
 }
 
 impl ui::menu::Item for lsp::Command {
@@ -890,9 +904,9 @@ fn goto_impl(
             editor.set_error("No definition found.");
         }
         _locations => {
+            let option_manager = OptionsManager::create_from_items(locations, cwdir);
             let picker = FilePicker::new(
-                locations,
-                cwdir,
+                option_manager,
                 move |cx, location, action| {
                     jump_to_location(cx.editor, location, offset_encoding, action)
                 },
