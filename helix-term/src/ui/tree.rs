@@ -54,37 +54,6 @@ fn vec_to_tree<T: TreeItem>(mut items: Vec<T>) -> Vec<Tree<T>> {
     )
 }
 
-// return total elems's count contain self
-fn get_elems_recursion<T: TreeItem>(t: &mut Tree<T>, depth: usize) -> Result<usize> {
-    let mut childs = t.item.get_children()?;
-    childs.sort_by(tree_item_cmp);
-    let mut elems = Vec::with_capacity(childs.len());
-    // let level = t.level + 1;
-    let level = todo!();
-
-    let mut total = 1;
-    for child in childs {
-        let mut elem = Tree::new(child, level);
-        let count = if depth > 0 {
-            get_elems_recursion(&mut elem, depth - 1)?
-        } else {
-            1
-        };
-        elems.push(elem);
-        total += count;
-    }
-    t.children = elems;
-    Ok(total)
-}
-
-fn expand_elems<T: TreeItem>(dist: &mut Vec<Tree<T>>, mut t: Tree<T>) {
-    let childs = std::mem::take(&mut t.children);
-    dist.push(t);
-    for child in childs {
-        expand_elems(dist, child)
-    }
-}
-
 pub enum TreeOp<T> {
     Noop,
     Restore,
@@ -187,6 +156,24 @@ impl<T: Clone> Tree<T> {
             None
         }
     }
+
+    pub fn parent_index(&self) -> Option<usize> {
+        self.parent_index
+    }
+
+    pub fn index(&self) -> usize {
+        self.index
+    }
+}
+
+impl<T: TreeItem> Tree<T> {
+    fn open(&mut self) -> Result<()> {
+        self.children = vec_to_tree(self.item.get_children()?);
+        if !self.children.is_empty() {
+            self.is_opened = true;
+        }
+        Ok(())
+    }
 }
 
 impl<T> Tree<T> {
@@ -195,7 +182,7 @@ impl<T> Tree<T> {
             item,
             index: 0,
             parent_index: None,
-            children: index_elems(1, children),
+            children: index_elems(0, children),
             is_opened: false,
         }
     }
@@ -252,7 +239,26 @@ impl<T> Tree<T> {
 
     fn regenerate_index(&mut self) {
         let items = std::mem::take(&mut self.children);
-        self.children = index_elems(1, items);
+        self.children = index_elems(0, items);
+    }
+
+    fn remove(&mut self, index: usize) {
+        let children = std::mem::replace(&mut self.children, vec![]);
+        self.children = children
+            .into_iter()
+            .filter_map(|tree| {
+                if tree.index == index {
+                    None
+                } else {
+                    Some(tree)
+                }
+            })
+            .map(|mut tree| {
+                tree.remove(index);
+                tree
+            })
+            .collect();
+        self.regenerate_index()
     }
 }
 
@@ -345,7 +351,7 @@ impl<T: TreeItem> TreeView<T> {
     /// ```
     /// vec!["helix-term", "src", "ui", "tree.rs"]
     /// ```
-    pub fn reveal_item(&mut self, segments: Vec<&str>) -> Result<(), String> {
+    pub fn reveal_item(&mut self, segments: Vec<&str>) -> Result<()> {
         // Expand the tree
         segments.iter().fold(
             Ok(&mut self.tree),
@@ -359,20 +365,15 @@ impl<T: TreeItem> TreeView<T> {
                     {
                         Some(tree) => {
                             if !tree.is_opened {
-                                tree.children = vec_to_tree(
-                                    tree.item.get_children().map_err(|err| err.to_string())?,
-                                );
-                                if !tree.children.is_empty() {
-                                    tree.is_opened = true;
-                                }
+                                tree.open()?;
                             }
                             Ok(tree)
                         }
-                        None => Err(format!(
+                        None => Err(anyhow::anyhow!(format!(
                             "Unable to find path: '{}'. current_segment = {}",
                             segments.join("/"),
                             segment
-                        )),
+                        ))),
                     }
                 }
             },
@@ -416,23 +417,19 @@ impl<T: TreeItem> TreeView<T> {
         }
     }
 
-    fn go_to_children(&mut self, cx: &mut Context) {
+    fn go_to_children(&mut self, cx: &mut Context) -> Result<()> {
         let current = self.current_mut();
         if current.is_opened {
             self.selected += 1;
-            return;
+            Ok(())
+        } else {
+            current.open()?;
+            if !current.children.is_empty() {
+                self.selected += 1;
+                self.regenerate_index();
+            }
+            Ok(())
         }
-        let items = match current.item.get_children() {
-            Ok(items) => items,
-            Err(e) => return cx.editor.set_error(format!("{e}")),
-        };
-        if items.is_empty() {
-            return;
-        }
-        current.is_opened = true;
-        current.children = vec_to_tree(items);
-        self.selected += 1;
-        self.regenerate_index()
     }
 }
 
@@ -639,11 +636,8 @@ impl<T: TreeItem> TreeView<T> {
         self.winline
     }
 
-    pub fn remove_current(&mut self) -> T {
-        todo!()
-        // let elem = self.tree.remove(self.selected);
-        // self.selected = self.selected.saturating_sub(1);
-        // elem.item
+    pub fn remove_current(&mut self) {
+        self.tree.remove(self.selected)
     }
 
     pub fn replace_current(&mut self, item: T) {
@@ -654,25 +648,26 @@ impl<T: TreeItem> TreeView<T> {
         self.selected = selected
     }
 
-    pub fn add_sibling_to_current_item(&mut self, item: T) -> Result<()> {
-        let current = self.current();
-        match current.parent_index {
+    pub fn add_child(&mut self, index: usize, item: T) -> Result<()> {
+        match self.tree.get_mut(index) {
             None => Err(anyhow::anyhow!(format!(
-                "Current item = '{}' has no parent",
-                current.item.name()
+                "No item found at index = {}",
+                index
             ))),
-            Some(parent_index) => {
-                let parent = self.get_mut(parent_index);
+            Some(tree) => {
                 let item_name = item.name();
-                parent.children.push(Tree::new(item, vec![]));
-                parent
-                    .children
+                if !tree.is_opened {
+                    tree.open()?;
+                }
+                tree.children.push(Tree::new(item, vec![]));
+                tree.children
                     .sort_by(|a, b| tree_item_cmp(&a.item, &b.item));
                 self.regenerate_index();
-                let parent = self.get_mut(parent_index);
+
+                let tree = self.get_mut(index);
 
                 // Focus the added sibling
-                if let Some(tree) = parent
+                if let Some(tree) = tree
                     .children
                     .iter()
                     .find(|tree| tree.item.name().eq(&item_name))
@@ -903,7 +898,10 @@ impl<T: TreeItem> TreeView<T> {
                 }));
             }
             key!('h') => self.go_to_parent(),
-            key!('l') => self.go_to_children(cx),
+            key!('l') => match self.go_to_children(cx) {
+                Ok(_) => {}
+                Err(err) => cx.editor.set_error(err.to_string()),
+            },
             key!(Enter) => self.on_enter(cx, params, self.selected),
             ctrl!('d') => self.move_down_half_page(),
             ctrl!('u') => self.move_up_half_page(),
@@ -971,25 +969,24 @@ impl<T: TreeItem + Clone> TreeView<T> {
 ///   jar (3)
 ///     yo (4)
 /// ```
-fn index_elems<T>(start_index: usize, elems: Vec<Tree<T>>) -> Vec<Tree<T>> {
+fn index_elems<T>(parent_index: usize, elems: Vec<Tree<T>>) -> Vec<Tree<T>> {
     fn index_elems<'a, T>(
         current_index: usize,
         elems: Vec<Tree<T>>,
-        parent_index: Option<usize>,
+        parent_index: usize,
     ) -> (usize, Vec<Tree<T>>) {
         elems
             .into_iter()
             .fold((current_index, vec![]), |(current_index, trees), elem| {
                 let index = current_index;
                 let item = elem.item;
-                let (current_index, folded) =
-                    index_elems(current_index + 1, elem.children, Some(index));
+                let (current_index, folded) = index_elems(current_index + 1, elem.children, index);
                 let tree = Tree {
                     item,
                     children: folded,
                     index,
                     is_opened: elem.is_opened,
-                    parent_index,
+                    parent_index: Some(parent_index),
                 };
                 (
                     current_index,
@@ -997,7 +994,7 @@ fn index_elems<T>(start_index: usize, elems: Vec<Tree<T>>) -> Vec<Tree<T>> {
                 )
             })
     }
-    index_elems(start_index, elems, None).1
+    index_elems(parent_index + 1, elems, parent_index).1
 }
 
 #[cfg(test)]
@@ -1008,8 +1005,8 @@ mod test_tree {
 
     #[test]
     fn test_indexs_elems() {
-        let result = index_elems(
-            0,
+        let result = Tree::new(
+            "root",
             vec![
                 Tree::new("foo", vec![Tree::new("bar", vec![])]),
                 Tree::new(
@@ -1018,43 +1015,12 @@ mod test_tree {
                 ),
             ],
         );
-        assert_eq!(
-            result,
-            vec![
-                Tree {
-                    item: "foo",
-                    is_opened: false,
-                    index: 0,
-                    parent_index: None,
-                    children: vec![Tree {
-                        item: "bar",
-                        is_opened: false,
-                        index: 1,
-                        parent_index: Some(0),
-                        children: vec![]
-                    }]
-                },
-                Tree {
-                    item: "spam",
-                    is_opened: false,
-                    index: 2,
-                    parent_index: None,
-                    children: vec![Tree {
-                        item: "jar",
-                        is_opened: false,
-                        index: 3,
-                        parent_index: Some(2),
-                        children: vec![Tree {
-                            item: "yo",
-                            is_opened: false,
-                            index: 4,
-                            children: vec![],
-                            parent_index: Some(3)
-                        }]
-                    }]
-                }
-            ]
-        )
+        assert_eq!(result.get(0).unwrap().item, "root");
+        assert_eq!(result.get(1).unwrap().item, "foo");
+        assert_eq!(result.get(2).unwrap().item, "bar");
+        assert_eq!(result.get(3).unwrap().item, "spam");
+        assert_eq!(result.get(4).unwrap().item, "jar");
+        assert_eq!(result.get(5).unwrap().item, "yo");
     }
 
     #[test]
@@ -1223,5 +1189,41 @@ mod test_tree {
 
         let result = Tree::filter(&tree, &|item| item.to_lowercase().contains("helix"));
         assert_eq!(result, None)
+    }
+
+    #[test]
+    fn test_remove() {
+        let mut tree = Tree::new(
+            ".cargo",
+            vec![
+                Tree::new("spam", vec![Tree::new("Cargo.toml", vec![])]),
+                Tree::new("Cargo.toml", vec![Tree::new("pam", vec![])]),
+                Tree::new("hello", vec![]),
+            ],
+        );
+
+        tree.remove(2);
+
+        assert_eq!(
+            tree,
+            Tree::new(
+                ".cargo",
+                vec![
+                    Tree::new("spam", vec![]),
+                    Tree::new("Cargo.toml", vec![Tree::new("pam", vec![])]),
+                    Tree::new("hello", vec![]),
+                ],
+            )
+        );
+
+        tree.remove(2);
+
+        assert_eq!(
+            tree,
+            Tree::new(
+                ".cargo",
+                vec![Tree::new("spam", vec![]), Tree::new("hello", vec![]),],
+            )
+        )
     }
 }
