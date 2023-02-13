@@ -75,7 +75,7 @@ impl JumpList {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Jump> {
-        self.jumps.iter().rev()
+        self.jumps.iter()
     }
 
     /// Applies a [`Transaction`] of changes to the jumplist.
