@@ -2222,7 +2222,7 @@ fn toggle_or_focus_explorer(cx: &mut Context) {
             if let Some(editor) = compositor.find::<ui::EditorView>() {
                 match editor.explorer.as_mut() {
                     Some(explore) => explore.content.focus(),
-                    None => match ui::Explorer::new() {
+                    None => match ui::Explorer::new(cx) {
                         Ok(explore) => editor.explorer = Some(overlayed(explore)),
                         Err(err) => cx.editor.set_error(format!("{}", err)),
                     },
@@ -2238,7 +2238,7 @@ fn reveal_current_file(cx: &mut Context) {
             if let Some(editor) = compositor.find::<ui::EditorView>() {
                 match editor.explorer.as_mut() {
                     Some(explore) => explore.content.reveal_current_file(cx),
-                    None => match ui::Explorer::new() {
+                    None => match ui::Explorer::new(cx) {
                         Ok(explore) => {
                             let mut explorer = overlayed(explore);
                             explorer.content.reveal_current_file(cx);

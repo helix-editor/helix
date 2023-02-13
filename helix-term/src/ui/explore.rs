@@ -167,10 +167,11 @@ pub struct Explorer {
     on_next_key: Option<Box<dyn FnMut(&mut Context, &mut Self, KeyEvent) -> EventResult>>,
     #[allow(clippy::type_complexity)]
     repeat_motion: Option<Box<dyn FnMut(&mut Self, PromptAction, &mut Context) + 'static>>,
+    column_width: u16,
 }
 
 impl Explorer {
-    pub fn new() -> Result<Self> {
+    pub fn new(cx: &mut Context) -> Result<Self> {
         let current_root = std::env::current_dir().unwrap_or_else(|_| "./".into());
         Ok(Self {
             tree: Self::new_tree_view(current_root.clone())?,
@@ -180,6 +181,7 @@ impl Explorer {
             repeat_motion: None,
             prompt: None,
             on_next_key: None,
+            column_width: cx.editor.config().explorer.column_width as u16,
         })
     }
 
@@ -474,11 +476,10 @@ impl Explorer {
 
     fn render_float(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let background = cx.editor.theme.get("ui.background");
-        let column_width = cx.editor.config().explorer.column_width as u16;
         surface.clear_with(area, background);
         let area = render_block(area, surface, Borders::ALL);
 
-        let mut preview_area = area.clip_left(column_width + 1);
+        let mut preview_area = area.clip_left(self.column_width + 1);
         if let Some((_, prompt)) = self.prompt.as_mut() {
             let area = preview_area.clip_bottom(2);
             let promp_area =
@@ -507,9 +508,7 @@ impl Explorer {
         cx: &mut Context,
         position: &ExplorerPositionEmbed,
     ) {
-        let config = &cx.editor.config().explorer;
-
-        let width = area.width.min(config.column_width as u16 + 2);
+        let width = area.width.min(self.column_width + 2);
 
         let side_area = match position {
             ExplorerPositionEmbed::Left => Rect { width, ..area },
@@ -857,6 +856,8 @@ impl Component for Explorer {
                     cx.editor.set_error(error.to_string())
                 }
             }
+            key!('-') => self.column_width = self.column_width.saturating_sub(1),
+            key!('+') => self.column_width = self.column_width.saturating_add(1),
             _ => {
                 self.tree
                     .handle_event(Event::Key(key_event), cx, &mut self.state);
@@ -886,7 +887,7 @@ impl Component for Explorer {
         };
         let config = &editor.config().explorer;
         let (x, y) = if config.is_overlay() {
-            let colw = config.column_width as u16;
+            let colw = self.column_width as u16;
             if area.width > colw {
                 (area.x + colw + 2, area.y + area.height - 2)
             } else {
