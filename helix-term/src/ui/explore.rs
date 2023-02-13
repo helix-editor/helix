@@ -145,6 +145,7 @@ enum PromptAction {
 #[derive(Clone, Debug)]
 struct State {
     focus: bool,
+    open: bool,
     current_root: PathBuf,
 }
 
@@ -153,6 +154,7 @@ impl State {
         Self {
             focus,
             current_root,
+            open: true,
         }
     }
 }
@@ -244,10 +246,16 @@ impl Explorer {
 
     pub fn focus(&mut self) {
         self.state.focus = true;
+        self.state.open = true;
     }
 
     pub fn unfocus(&mut self) {
         self.state.focus = false;
+    }
+
+    pub fn close(&mut self) {
+        self.state.focus = false;
+        self.state.open = false;
     }
 
     pub fn is_focus(&self) -> bool {
@@ -287,7 +295,8 @@ impl Explorer {
                 "[    Change root to parent folder",
                 "]    Change root to current folder",
                 "^o   Go to previous root",
-                "R    Refresh tree",
+                "R    Refresh",
+                "q    Close",
             ]
             .into_iter()
             .map(|s| s.to_string())
@@ -508,6 +517,9 @@ impl Explorer {
         cx: &mut Context,
         position: &ExplorerPositionEmbed,
     ) {
+        if !self.state.open {
+            return;
+        }
         let width = area.width.min(self.column_width + 2);
 
         let side_area = match position {
@@ -787,6 +799,14 @@ impl Explorer {
             self.tree = tree
         }
     }
+
+    pub fn is_opened(&self) -> bool {
+        self.state.open
+    }
+
+    pub fn column_width(&self) -> u16 {
+        self.column_width
+    }
 }
 
 impl Component for Explorer {
@@ -808,15 +828,9 @@ impl Component for Explorer {
             return EventResult::Consumed(c);
         }
 
-        let close_fn = EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _| {
-            if let Some(editor) = compositor.find::<ui::EditorView>() {
-                editor.explorer = None;
-            }
-        })));
-
         match key_event.into() {
             key!(Esc) => self.unfocus(),
-            ctrl!('c') => return close_fn,
+            key!('q') => self.close(),
             key!('n') => {
                 if let Some(mut repeat_motion) = self.repeat_motion.take() {
                     repeat_motion(self, PromptAction::Search { search_next: true }, cx);

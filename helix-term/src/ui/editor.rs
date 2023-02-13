@@ -1269,8 +1269,16 @@ impl Component for EditorView {
 
         // if the terminal size suddenly changed, we need to trigger a resize
         let editor_area = area.clip_bottom(1);
-        let explorer_column_width = config.explorer.column_width as u16 + 2;
-        let editor_area = if self.explorer.is_some() {
+
+        let editor_area = if let Some(explorer) = &self.explorer {
+            let explorer_column_width = if explorer.content.is_opened() {
+                explorer.content.column_width().saturating_add(2)
+            } else {
+                0
+            };
+            // For future developer:
+            // We should have a Dock trait that allows a component to dock to the top/left/bottom/right
+            // of another component.
             match config.explorer.position {
                 ExplorerPosition::Overlay => editor_area,
                 ExplorerPosition::Left => editor_area.clip_left(explorer_column_width),

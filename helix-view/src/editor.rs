@@ -152,7 +152,6 @@ impl ExplorerConfig {
             _ => false,
         }
     }
-
 }
 
 impl Default for ExplorerConfig {
