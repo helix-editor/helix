@@ -478,6 +478,10 @@ impl<T: TreeItem> TreeView<T> {
             Ok(())
         }
     }
+
+    pub fn refresh(&mut self) -> Result<()> {
+        self.tree.refresh()
+    }
 }
 
 impl<T: TreeItem> TreeView<T> {

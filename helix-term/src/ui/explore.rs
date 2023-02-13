@@ -934,6 +934,11 @@ impl Component for Explorer {
             key!(']') => self.change_root(cx, self.tree.current_item().path.clone()),
             key!('d') => self.new_remove_prompt(cx),
             key!('r') => self.new_rename_prompt(),
+            shift!('R') => {
+                if let Err(error) = self.tree.refresh() {
+                    cx.editor.set_error(error.to_string())
+                }
+            }
             _ => {
                 self.tree
                     .handle_event(Event::Key(key_event), cx, &mut self.state);
