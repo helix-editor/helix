@@ -1392,6 +1392,8 @@ impl Document {
         }
     }
 
+    /// Get the text annotations that apply to the whole document, those that do not apply to any
+    /// specific view.
     pub fn text_annotations(&self, _theme: Option<&Theme>) -> TextAnnotations {
         TextAnnotations::default()
     }
