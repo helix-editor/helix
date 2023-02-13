@@ -1404,7 +1404,7 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
     }
 
     for (view, _) in editor.tree.views() {
-        let doc = match editor.documents.get_mut(&view.doc) {
+        let doc = match editor.documents.get(&view.doc) {
             Some(doc) => doc,
             None => continue,
         };
@@ -1416,11 +1416,10 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
 
 fn compute_inlay_hints_for_view(
     view: &View,
-    doc: &mut Document,
+    doc: &Document,
 ) -> Option<std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>>>>> {
     let view_id = view.id;
     let doc_id = view.doc;
-    let revision = doc.get_current_revision();
 
     let language_server = doc.language_server()?;
 
@@ -1446,14 +1445,14 @@ fn compute_inlay_hints_for_view(
                 .min(len_lines);
 
             let new_doc_inlay_hint_id = DocumentInlayHintsId {
-                revision,
                 first_line,
                 last_line,
             };
             // Don't recompute the annotations in case nothing has changed about the view
-            if doc
-                .inlay_hints(view_id)
-                .map_or(false, |dih| dih.id == new_doc_inlay_hint_id)
+            if !doc.inlay_hints_oudated
+                && doc
+                    .inlay_hints(view_id)
+                    .map_or(false, |dih| dih.id == new_doc_inlay_hint_id)
             {
                 return None;
             }
@@ -1490,14 +1489,17 @@ fn compute_inlay_hints_for_view(
                 None => return,
             };
 
-            let mut hints = match response {
-                Some(h) if !h.is_empty() => h,
-                _ => return,
-            };
-
-            let offset_encoding = match doc.language_server() {
-                Some(ls) => ls.offset_encoding(),
-                None => return,
+            // If we have neither hints nor an LSP, empty the inlay hints since they're now oudated
+            let (mut hints, offset_encoding) = match (response, doc.language_server()) {
+                (Some(h), Some(ls)) if !h.is_empty() => (h, ls.offset_encoding()),
+                _ => {
+                    doc.set_inlay_hints(
+                        view_id,
+                        DocumentInlayHints::empty_with_id(new_doc_inlay_hints_id),
+                    );
+                    doc.inlay_hints_oudated = false;
+                    return;
+                }
             };
 
             // Most language servers will already send them sorted but ensure this is the case to
@@ -1560,6 +1562,7 @@ fn compute_inlay_hints_for_view(
                     padding_after_inlay_hints: padding_after_inlay_hints.into(),
                 },
             );
+            doc.inlay_hints_oudated = false;
         },
     );
 

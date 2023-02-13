@@ -115,6 +115,9 @@ pub struct Document {
     ///
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
+    /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
+    /// update from the LSP
+    pub inlay_hints_oudated: bool,
 
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
@@ -197,6 +200,20 @@ pub struct DocumentInlayHints {
     pub padding_after_inlay_hints: Rc<[InlineAnnotation]>,
 }
 
+impl DocumentInlayHints {
+    /// Generate an empty list of inlay hints with the given ID.
+    pub fn empty_with_id(id: DocumentInlayHintsId) -> Self {
+        Self {
+            id,
+            type_inlay_hints: Rc::new([]),
+            parameter_inlay_hints: Rc::new([]),
+            other_inlay_hints: Rc::new([]),
+            padding_before_inlay_hints: Rc::new([]),
+            padding_after_inlay_hints: Rc::new([]),
+        }
+    }
+}
+
 /// Associated with a [`Document`] and [`ViewId`], uniquely identifies the state of inlay hints for
 /// for that document and view: if this changed since the last save, the inlay hints for the view
 /// should be recomputed.
@@ -205,8 +222,6 @@ pub struct DocumentInlayHints {
 /// softwrapping changes, the `ViewOffset` may not change while the displayed lines will.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct DocumentInlayHintsId {
-    /// Document revision at which the inlay hints were requested.
-    pub revision: usize,
     /// First line for which the inlay hints were requested.
     pub first_line: usize,
     /// Last line for which the inlay hints were requested.
@@ -220,6 +235,7 @@ impl fmt::Debug for Document {
             .field("id", &self.id)
             .field("text", &self.text)
             .field("selections", &self.selections)
+            .field("inlay_hints_oudated", &self.inlay_hints_oudated)
             .field("text_annotations", &self.inlay_hints)
             .field("path", &self.path)
             .field("encoding", &self.encoding)
@@ -243,7 +259,6 @@ impl fmt::Debug for DocumentInlayHintsId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Much more agreable to read when debugging
         f.debug_struct("DocumentInlayHintsId")
-            .field("revision", &self.revision)
             .field("lines", &(self.first_line..self.last_line))
             .finish()
     }
@@ -452,6 +467,7 @@ impl Document {
             text,
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
+            inlay_hints_oudated: false,
             indent_style: DEFAULT_INDENT,
             line_ending: DEFAULT_LINE_ENDING,
             restore_cursor: false,
@@ -957,6 +973,7 @@ impl Document {
                 }
             };
 
+            self.inlay_hints_oudated = true;
             for text_annotation in self.inlay_hints.values_mut() {
                 let DocumentInlayHints {
                     id: _,
