@@ -157,6 +157,14 @@ fn display_language(lang_str: String) -> std::io::Result<()> {
         "debug adapter",
         lang.debugger.as_ref().map(|dap| dap.command.to_string()),
     )?;
+    if lang.formatter.is_some() {
+        probe_protocol(
+            "external formatter",
+            lang.formatter
+                .as_ref()
+                .map(|fmtcfg| fmtcfg.command.to_string()),
+        )?;
+    }
 
     for feature in TsFeature::all() {
         let supported =
