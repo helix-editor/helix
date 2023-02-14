@@ -216,16 +216,16 @@ fn merge_toml_by_config_paths(config_paths: Vec<PathBuf>) -> Result<toml::Value,
 /// For example:
 ///
 /// left:
-///   [[language]]
+///   [\[language\]]
 ///   name = "toml"
 ///   language-server = { command = "taplo", args = ["lsp", "stdio"] }
 ///
 /// right:
-///   [[language]]
+///   [\[language\]]
 ///   language-server = { command = "/usr/bin/taplo" }
 ///
 /// result:
-///   [[language]]
+///   [\[language\]]
 ///   name = "toml"
 ///   language-server = { command = "/usr/bin/taplo" }
 pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usize) -> toml::Value {
