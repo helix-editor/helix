@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{borrow::Cow, cmp::Ordering};
 
 use anyhow::Result;
 use helix_view::theme::Modifier;
@@ -156,19 +156,31 @@ impl<T: Clone + TreeItem> Tree<T> {
 }
 
 impl<T: TreeItem> Tree<T> {
-    fn open(&mut self) -> Result<()> {
-        self.children = vec_to_tree(self.item.get_children()?);
-        if !self.children.is_empty() {
+    fn open(&mut self, filter: &String) -> Result<()> {
+        if self.item.is_parent() {
+            self.children = vec_to_tree(
+                self.item
+                    .get_children()?
+                    .into_iter()
+                    .filter(|item| item.name().to_lowercase().contains(&filter.to_lowercase()))
+                    .collect(),
+            );
             self.is_opened = true;
         }
         Ok(())
     }
 
-    fn refresh(&mut self) -> Result<()> {
+    fn refresh(&mut self, filter: &String) -> Result<()> {
         if !self.is_opened {
             return Ok(());
         }
-        let latest_children = vec_to_tree(self.item.get_children()?);
+        let latest_children = vec_to_tree(
+            self.item
+                .get_children()?
+                .into_iter()
+                .filter(|item| item.name().to_lowercase().contains(&filter.to_lowercase()))
+                .collect(),
+        );
         let filtered = std::mem::replace(&mut self.children, vec![])
             .into_iter()
             // Remove children that does not exists in latest_children
@@ -178,7 +190,7 @@ impl<T: TreeItem> Tree<T> {
                     .any(|child| tree.item.name().eq(&child.item.name()))
             })
             .map(|mut tree| {
-                tree.refresh()?;
+                tree.refresh(filter)?;
                 Ok(tree)
             })
             .collect::<Result<Vec<_>>>()?;
@@ -249,12 +261,47 @@ impl<T> Tree<T> {
         &self.item
     }
 
-    fn get(&self, index: usize) -> Option<&Tree<T>> {
+    fn get<'a>(&'a self, index: usize) -> Option<&'a Tree<T>> {
         if self.index == index {
             Some(self)
         } else {
             self.children.iter().find_map(|elem| elem.get(index))
         }
+        // self.traverse(None, &|result, current_index, tree| {
+        //     result.or_else(|| {
+        //         if index == current_index {
+        //             Some(tree)
+        //         } else {
+        //             None
+        //         }
+        //     })
+        // })
+    }
+    fn traverse<'a, U, F>(&'a self, init: U, f: &F) -> U
+    where
+        F: Fn(U, usize, &'a Tree<T>) -> U,
+    {
+        fn traverse<'a, T, U, F>(
+            tree: &'a Tree<T>,
+            current_index: usize,
+            init: U,
+            f: &F,
+        ) -> (usize, U)
+        where
+            F: Fn(U, usize, &'a Tree<T>) -> U,
+        {
+            let mut result = f(init, current_index, &tree);
+            let mut current_index = current_index;
+            for tree in &tree.children {
+                (current_index, result) = traverse(tree, current_index + 1, result, f)
+            }
+            (current_index, result)
+            // tree.children.iter().fold(
+            //     (current_index, f(init, 0, &tree)),
+            //     |(current_index, result), tree| traverse(tree, current_index + 1, result, &f),
+            // )
+        }
+        traverse(self, 0, init, f).1
     }
 
     fn get_mut(&mut self, index: usize) -> Option<&mut Tree<T>> {
@@ -384,8 +431,8 @@ impl<T: TreeItem> TreeView<T> {
     /// ```
     /// vec!["helix-term", "src", "ui", "tree.rs"]
     /// ```
-    pub fn reveal_item(&mut self, segments: Vec<&str>) -> Result<()> {
-        self.tree.refresh()?;
+    pub fn reveal_item(&mut self, segments: Vec<&str>, filter: &String) -> Result<()> {
+        self.tree.refresh(filter)?;
 
         // Expand the tree
         segments.iter().fold(
@@ -400,7 +447,7 @@ impl<T: TreeItem> TreeView<T> {
                     {
                         Some(tree) => {
                             if !tree.is_opened {
-                                tree.open()?;
+                                tree.open(filter)?;
                             }
                             Ok(tree)
                         }
@@ -452,13 +499,13 @@ impl<T: TreeItem> TreeView<T> {
         }
     }
 
-    fn go_to_children(&mut self) -> Result<()> {
+    fn go_to_children(&mut self, filter: &String) -> Result<()> {
         let current = self.current_mut();
         if current.is_opened {
             self.selected += 1;
             Ok(())
         } else {
-            current.open()?;
+            current.open(filter)?;
             if !current.children.is_empty() {
                 self.selected += 1;
                 self.regenerate_index();
@@ -467,8 +514,8 @@ impl<T: TreeItem> TreeView<T> {
         }
     }
 
-    pub fn refresh(&mut self) -> Result<()> {
-        self.tree.refresh()
+    pub fn refresh(&mut self, filter: &String) -> Result<()> {
+        self.tree.refresh(filter)
     }
 }
 
@@ -492,7 +539,13 @@ pub fn tree_view_help() -> Vec<String> {
 }
 
 impl<T: TreeItem> TreeView<T> {
-    pub fn on_enter(&mut self, cx: &mut Context, params: &mut T::Params, selected_index: usize) {
+    pub fn on_enter(
+        &mut self,
+        cx: &mut Context,
+        params: &mut T::Params,
+        selected_index: usize,
+        filter: &String,
+    ) {
         // if let Some(next_level) = self.next_item().map(|elem| elem.level) {
         //     let current = self.find_by_index(selected_index);
         //     let current_level = current.level;
@@ -516,15 +569,12 @@ impl<T: TreeItem> TreeView<T> {
 
         if let Some(mut on_open_fn) = self.on_opened_fn.take() {
             let mut f = || {
-                let current = &mut self.get_mut(selected_index);
+                let current = self.current_mut();
                 match on_open_fn(&mut current.item, cx, params) {
                     TreeOp::GetChildsAndInsert => {
-                        let items = match current.item.get_children() {
-                            Ok(items) => items,
-                            Err(e) => return cx.editor.set_error(format!("{e}")),
-                        };
-                        current.is_opened = true;
-                        current.children = vec_to_tree(items);
+                        if let Err(err) = current.open(filter) {
+                            cx.editor.set_error(format!("{err}"))
+                        }
                     }
                     TreeOp::Noop => {}
                 };
@@ -675,7 +725,7 @@ impl<T: TreeItem> TreeView<T> {
         self.selected = selected
     }
 
-    pub fn add_child(&mut self, index: usize, item: T) -> Result<()> {
+    pub fn add_child(&mut self, index: usize, item: T, filter: &String) -> Result<()> {
         match self.tree.get_mut(index) {
             None => Err(anyhow::anyhow!(format!(
                 "No item found at index = {}",
@@ -684,7 +734,7 @@ impl<T: TreeItem> TreeView<T> {
             Some(tree) => {
                 let item_name = item.name();
                 if !tree.is_opened {
-                    tree.open()?;
+                    tree.open(filter)?;
                 }
                 tree.children.push(Tree::new(item, vec![]));
                 tree.children
@@ -707,14 +757,8 @@ impl<T: TreeItem> TreeView<T> {
     }
 }
 
-impl<T: TreeItem> TreeView<T> {
-    pub fn render(
-        &mut self,
-        area: Rect,
-        surface: &mut Surface,
-        cx: &mut Context,
-        params: &mut T::Params,
-    ) {
+impl<T: TreeItem + Clone> TreeView<T> {
+    pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context, filter: &String) {
         if let Some(pre_render) = self.pre_render.take() {
             pre_render(self, area);
         }
@@ -732,6 +776,7 @@ impl<T: TreeItem> TreeView<T> {
             is_last: true,
             level: 0,
             selected: self.selected,
+            filter,
         };
 
         let rendered = render_tree(params);
@@ -755,6 +800,7 @@ impl<T: TreeItem> TreeView<T> {
             is_last: bool,
             level: u16,
             selected: usize,
+            filter: &'a str,
         }
 
         fn render_tree<T: TreeItem>(
@@ -764,6 +810,7 @@ impl<T: TreeItem> TreeView<T> {
                 is_last,
                 level,
                 selected,
+                filter,
             }: RenderElemParams<T>,
         ) -> Vec<(Indent, Node)> {
             let indent = if level > 0 {
@@ -805,6 +852,7 @@ impl<T: TreeItem> TreeView<T> {
                                 is_last,
                                 level: level + 1,
                                 selected,
+                                filter,
                             })
                         }),
                 )
@@ -843,6 +891,7 @@ impl<T: TreeItem> TreeView<T> {
         event: Event,
         cx: &mut Context,
         params: &mut T::Params,
+        filter: &String,
     ) -> EventResult {
         let key_event = match event {
             Event::Key(event) => event,
@@ -868,11 +917,11 @@ impl<T: TreeItem> TreeView<T> {
                 }));
             }
             key!('h') => self.go_to_parent(),
-            key!('l') => match self.go_to_children() {
+            key!('l') => match self.go_to_children(filter) {
                 Ok(_) => {}
                 Err(err) => cx.editor.set_error(err.to_string()),
             },
-            key!(Enter) => self.on_enter(cx, params, self.selected),
+            key!(Enter) => self.on_enter(cx, params, self.selected, filter),
             ctrl!('d') => self.move_down_half_page(),
             ctrl!('u') => self.move_up_half_page(),
             key!('g') => {
@@ -976,7 +1025,7 @@ mod test_tree {
     use super::Tree;
 
     #[test]
-    fn test_indexs_elems() {
+    fn test_get() {
         let result = Tree::new(
             "root",
             vec![

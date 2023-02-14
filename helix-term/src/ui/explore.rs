@@ -9,7 +9,7 @@ use helix_view::{
     editor::{Action, ExplorerPositionEmbed},
     graphics::{CursorKind, Rect},
     input::{Event, KeyEvent},
-    Editor,
+    DocumentId, Editor,
 };
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -137,8 +137,8 @@ enum PromptAction {
         parent_index: usize,
     },
     RemoveDir,
-    RemoveFile,
-    RenameFile,
+    RemoveFile(Option<DocumentId>),
+    RenameFile(Option<DocumentId>),
     Filter,
 }
 
@@ -232,7 +232,7 @@ impl Explorer {
             )
             .split(std::path::MAIN_SEPARATOR)
             .collect::<Vec<_>>();
-        self.tree.reveal_item(segments)?;
+        self.tree.reveal_item(segments, &self.state.filter)?;
         self.focus();
         Ok(())
     }
@@ -332,7 +332,8 @@ impl Explorer {
         self.tree.save_view();
         self.prompt = Some((
             PromptAction::Filter,
-            Prompt::new(" Filter: ".into(), None, ui::completers::none, |_, _, _| {}),
+            Prompt::new(" Filter: ".into(), None, ui::completers::none, |_, _, _| {})
+                .with_line(self.state.filter.clone()),
         ))
     }
 
@@ -400,17 +401,17 @@ impl Explorer {
         }
     }
 
-    fn new_rename_prompt(&mut self) {
-        let name = self.tree.current_item().path.to_string_lossy();
+    fn new_rename_prompt(&mut self, cx: &mut Context) {
+        let path = self.tree.current_item().path.clone();
         self.prompt = Some((
-            PromptAction::RenameFile,
+            PromptAction::RenameFile(cx.editor.document_by_path(&path).map(|doc| doc.id())),
             Prompt::new(
                 format!(" Rename to ").into(),
                 None,
                 ui::completers::none,
                 |_, _, _| {},
             )
-            .with_line(name.to_string()),
+            .with_line(path.to_string_lossy().to_string()),
         ));
     }
 
@@ -419,18 +420,18 @@ impl Explorer {
         let check = || {
             ensure!(item.path.is_file(), "The path is not a file");
             let doc = cx.editor.document_by_path(&item.path);
-            ensure!(doc.is_none(), "The file is opened");
-            Ok(())
+            Ok(doc.map(|doc| doc.id()))
         };
-        if let Err(e) = check() {
-            cx.editor.set_error(format!("{e}"));
-            return;
+        match check() {
+            Err(err) => cx.editor.set_error(format!("{err}")),
+            Ok(document_id) => {
+                let p = format!(" Delete file: '{}'? y/n: ", item.path.display());
+                self.prompt = Some((
+                    PromptAction::RemoveFile(document_id),
+                    Prompt::new(p.into(), None, ui::completers::none, |_, _, _| {}),
+                ));
+            }
         }
-        let p = format!(" Delete file: '{}'? y/n: ", item.path.display());
-        self.prompt = Some((
-            PromptAction::RemoveFile,
-            Prompt::new(p.into(), None, ui::completers::none, |_, _, _| {}),
-        ));
     }
 
     fn new_remove_dir_prompt(&mut self, cx: &mut Context) {
@@ -506,7 +507,7 @@ impl Explorer {
             cx.editor.theme.get("ui.text"),
         );
         self.tree
-            .render(list_area.clip_top(1), surface, cx, &mut self.state);
+            .render(list_area.clip_top(1), surface, cx, &self.state.filter);
     }
 
     pub fn render_embed(
@@ -553,7 +554,7 @@ impl Explorer {
             cx.editor.theme.get("ui.text"),
         );
         self.tree
-            .render(list_area.clip_top(1), surface, cx, &mut self.state);
+            .render(list_area.clip_top(1), surface, cx, &self.state.filter);
 
         {
             let statusline = if self.is_focus() {
@@ -618,9 +619,10 @@ impl Explorer {
         match event.into() {
             key!(Tab) | key!(Down) | ctrl!('j') => {
                 self.tree.clean_recycle();
+                let filter = self.state.filter.clone();
                 return self
                     .tree
-                    .handle_event(Event::Key(event), cx, &mut self.state);
+                    .handle_event(Event::Key(event), cx, &mut self.state, &filter);
             }
             key!(Enter) => {
                 if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
@@ -632,6 +634,7 @@ impl Explorer {
                 if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
                     self.tree.filter(prompt.line());
                 }
+                self.state.filter = prompt.line().clone();
                 self.prompt = Some((action, prompt));
             }
         };
@@ -646,9 +649,10 @@ impl Explorer {
         };
         match event.into() {
             key!(Tab) | key!(Down) | ctrl!('j') => {
+                let filter = self.state.filter.clone();
                 return self
                     .tree
-                    .handle_event(Event::Key(event), cx, &mut self.state)
+                    .handle_event(Event::Key(event), cx, &mut self.state, &filter);
             }
             key!(Enter) => {
                 let search_str = prompt.line().clone();
@@ -727,18 +731,24 @@ impl Explorer {
                         explorer.tree.remove_current();
                     }
                 }
-                (PromptAction::RemoveFile, key!(Enter)) => {
+                (PromptAction::RemoveFile(document_id), key!(Enter)) => {
                     if line == "y" {
                         let item = explorer.tree.current_item();
                         std::fs::remove_file(&item.path).map_err(anyhow::Error::from)?;
                         explorer.tree.remove_current();
+                        if let Some(id) = document_id {
+                            cx.editor.close_document(*id, true)?
+                        }
                     }
                 }
-                (PromptAction::RenameFile, key!(Enter)) => {
+                (PromptAction::RenameFile(document_id), key!(Enter)) => {
                     let item = explorer.tree.current_item();
                     std::fs::rename(&item.path, line)?;
                     explorer.tree.remove_current();
                     explorer.reveal_file(PathBuf::from(line))?;
+                    if let Some(id) = document_id {
+                        cx.editor.close_document(*id, true)?
+                    }
                 }
                 (_, key!(Esc) | ctrl!('c')) => {}
                 _ => {
@@ -778,7 +788,8 @@ impl Explorer {
             fd.create_new(true).write(true).open(&path)?;
             FileInfo::new(path, FileType::File)
         };
-        self.tree.add_child(parent_index, file)?;
+        self.tree
+            .add_child(parent_index, file, &self.state.filter)?;
         Ok(())
     }
 
@@ -868,17 +879,18 @@ impl Component for Explorer {
             key!(']') => self.change_root(cx, self.tree.current_item().path.clone()),
             ctrl!('o') => self.go_to_previous_root(),
             key!('d') => self.new_remove_prompt(cx),
-            key!('r') => self.new_rename_prompt(),
+            key!('r') => self.new_rename_prompt(cx),
             shift!('R') => {
-                if let Err(error) = self.tree.refresh() {
+                if let Err(error) = self.tree.refresh(&self.state.filter) {
                     cx.editor.set_error(error.to_string())
                 }
             }
             key!('-') => self.decrease_size(),
             key!('+') => self.increase_size(),
             _ => {
+                let filter = self.state.filter.clone();
                 self.tree
-                    .handle_event(Event::Key(key_event), cx, &mut self.state);
+                    .handle_event(Event::Key(key_event), cx, &mut self.state, &filter);
             }
         }
 
