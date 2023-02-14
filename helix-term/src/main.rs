@@ -47,6 +47,7 @@ async fn main_impl() -> Result<i32> {
     }
 
     helix_loader::setup_config_file(args.config_file.clone());
+
     let mut config = Config::merged().unwrap_or_else(|err| {
         eprintln!("Bad config: {}", err);
         eprintln!("Press <ENTER> to continue with default config");
