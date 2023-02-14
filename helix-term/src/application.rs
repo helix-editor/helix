@@ -193,7 +193,7 @@ impl Application {
                 compositor.push(Box::new(overlayed(picker)));
             } else {
                 let nr_of_files = args.files.len();
-                for (i, (file, pos)) in args.files.into_iter().enumerate() {
+                for (i, (file, position_request)) in args.files.into_iter().enumerate() {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
@@ -219,7 +219,7 @@ impl Application {
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = doc_mut!(editor, &doc_id);
-                        let selection = pos.selection_for_doc(doc);
+                        let selection = position_request.selection_for_doc(doc);
                         doc.set_selection(view_id, selection);
                     }
                 }
