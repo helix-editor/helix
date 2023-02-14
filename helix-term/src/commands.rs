@@ -960,10 +960,9 @@ fn goto_window(cx: &mut Context, align: Align) {
             view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff + count)
         }
     };
-    let visual_line = visual_line.clamp(
-        view.offset.vertical_offset + scrolloff,
-        view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff),
-    );
+    let visual_line = visual_line
+        .max(view.offset.vertical_offset + scrolloff)
+        .min(view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff));
 
     let pos = view
         .pos_at_visual_coords(doc, visual_line as u16, 0, false)
