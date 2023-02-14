@@ -454,15 +454,17 @@ impl<T: TreeItem> TreeView<T> {
 
         // Locate the item
         self.regenerate_index();
-        self.selected = segments
-            .iter()
-            .fold(&self.tree, |tree, segment| {
-                tree.children
-                    .iter()
-                    .find(|tree| tree.item.name().eq(segment))
-                    .expect("Should be unreachable")
-            })
-            .index;
+        self.set_selected(
+            segments
+                .iter()
+                .fold(&self.tree, |tree, segment| {
+                    tree.children
+                        .iter()
+                        .find(|tree| tree.item.name().eq(segment))
+                        .expect("Should be unreachable")
+                })
+                .index,
+        );
 
         self.align_view_center();
         Ok(())
@@ -486,7 +488,7 @@ impl<T: TreeItem> TreeView<T> {
 
     fn go_to_parent(&mut self) {
         if let Some(parent) = self.current_parent() {
-            self.selected = parent.index
+            self.set_selected(parent.index)
         }
     }
 
@@ -587,20 +589,22 @@ impl<T: TreeItem> TreeView<T> {
 
     pub fn search_next(&mut self, s: &str) {
         let skip = std::cmp::max(2, self.save_view.0 + 1);
-        self.selected = self
-            .tree
-            .find(skip, Direction::Forward, |e| e.item.filter(s))
-            .unwrap_or(self.save_view.0);
+        self.set_selected(
+            self.tree
+                .find(skip, Direction::Forward, |e| e.item.filter(s))
+                .unwrap_or(self.save_view.0),
+        );
 
         self.winline = (self.save_view.1 + self.selected).saturating_sub(self.save_view.0);
     }
 
     pub fn search_previous(&mut self, s: &str) {
         let take = self.save_view.0;
-        self.selected = self
-            .tree
-            .find(take, Direction::Backward, |e| e.item.filter(s))
-            .unwrap_or(self.save_view.0);
+        self.set_selected(
+            self.tree
+                .find(take, Direction::Backward, |e| e.item.filter(s))
+                .unwrap_or(self.save_view.0),
+        );
 
         self.winline = (self.save_view.1 + self.selected).saturating_sub(self.save_view.0);
     }
@@ -608,16 +612,33 @@ impl<T: TreeItem> TreeView<T> {
     pub fn move_down(&mut self, rows: usize) {
         let len = self.tree.len();
         if len > 0 {
-            self.selected = std::cmp::min(self.selected + rows, len.saturating_sub(1));
-            self.winline = std::cmp::min(self.selected, self.winline + rows);
+            self.set_selected(std::cmp::min(self.selected + rows, len.saturating_sub(1)))
         }
+    }
+
+    fn set_selected(&mut self, selected: usize) {
+        if selected > self.selected {
+            // Move down
+            self.winline = std::cmp::min(
+                selected,
+                self.winline
+                    .saturating_add(selected.saturating_sub(self.selected)),
+            );
+        } else {
+            // Move up
+            self.winline = std::cmp::min(
+                selected,
+                self.winline
+                    .saturating_sub(self.selected.saturating_sub(selected)),
+            );
+        }
+        self.selected = selected;
     }
 
     pub fn move_up(&mut self, rows: usize) {
         let len = self.tree.len();
         if len > 0 {
-            self.selected = std::cmp::max(0, self.selected.saturating_sub(rows));
-            self.winline = std::cmp::min(self.selected, self.winline.saturating_sub(rows));
+            self.set_selected(std::cmp::max(0, self.selected.saturating_sub(rows)))
         }
     }
 
@@ -712,10 +733,6 @@ impl<T: TreeItem> TreeView<T> {
         self.current_mut().item = item
     }
 
-    pub fn set_selected(&mut self, selected: usize) {
-        self.selected = selected
-    }
-
     pub fn add_child(&mut self, index: usize, item: T, filter: &String) -> Result<()> {
         match self.tree.get_mut(index) {
             None => Err(anyhow::anyhow!(format!(
@@ -732,7 +749,7 @@ impl<T: TreeItem> TreeView<T> {
                     .sort_by(|a, b| tree_item_cmp(&a.item, &b.item));
                 self.regenerate_index();
 
-                let tree = self.get_mut(index);
+                let tree = self.get(index);
 
                 // Focus the added sibling
                 if let Some(tree) = tree
@@ -740,7 +757,8 @@ impl<T: TreeItem> TreeView<T> {
                     .iter()
                     .find(|tree| tree.item.name().eq(&item_name))
                 {
-                    self.selected = tree.index
+                    let index = tree.index;
+                    self.set_selected(index)
                 };
                 Ok(())
             }
