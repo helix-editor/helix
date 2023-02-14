@@ -1,6 +1,6 @@
 use super::{Prompt, TreeItem, TreeOp, TreeView};
 use crate::{
-    compositor::{Component, Compositor, Context, EventResult},
+    compositor::{Component, Context, EventResult},
     ctrl, key, shift, ui,
 };
 use anyhow::{bail, ensure, Result};
@@ -148,6 +148,7 @@ struct State {
     open: bool,
     current_root: PathBuf,
     area_width: u16,
+    filter: String,
 }
 
 impl State {
@@ -157,6 +158,7 @@ impl State {
             current_root,
             open: true,
             area_width: 0,
+            filter: "".to_string(),
         }
     }
 }
@@ -215,7 +217,7 @@ impl Explorer {
         }
     }
 
-    fn reveal_file(&mut self, cx: &mut Context, path: PathBuf) {
+    fn reveal_file(&mut self, path: PathBuf) -> Result<()> {
         let current_root = &self.state.current_root;
         let current_path = path.as_path().to_string_lossy().to_string();
         let current_root = current_root.as_path().to_string_lossy().to_string() + "/";
@@ -230,19 +232,16 @@ impl Explorer {
             )
             .split(std::path::MAIN_SEPARATOR)
             .collect::<Vec<_>>();
-        match self.tree.reveal_item(segments) {
-            Ok(_) => {
-                self.focus();
-            }
-            Err(error) => cx.editor.set_error(error.to_string()),
-        }
+        self.tree.reveal_item(segments)?;
+        self.focus();
+        Ok(())
     }
 
-    pub fn reveal_current_file(&mut self, cx: &mut Context) {
+    pub fn reveal_current_file(&mut self, cx: &mut Context) -> Result<()> {
         let current_document_path = doc!(cx.editor).path().cloned();
         match current_document_path {
-            None => cx.editor.set_error("No opened document."),
-            Some(current_path) => self.reveal_file(cx, current_path),
+            None => Err(anyhow::anyhow!("No opened document.")),
+            Some(current_path) => self.reveal_file(current_path),
         }
     }
 
@@ -457,11 +456,7 @@ impl Explorer {
         ));
     }
 
-    fn toggle_current(
-        item: &mut FileInfo,
-        cx: &mut Context,
-        state: &mut State,
-    ) -> TreeOp<FileInfo> {
+    fn toggle_current(item: &mut FileInfo, cx: &mut Context, state: &mut State) -> TreeOp {
         if item.path == Path::new("") {
             return TreeOp::Noop;
         }
@@ -629,13 +624,13 @@ impl Explorer {
             }
             key!(Enter) => {
                 if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
-                    self.tree.filter(prompt.line(), cx, &mut self.state);
+                    self.tree.filter(prompt.line());
                 }
             }
             key!(Esc) | ctrl!('c') => self.tree.restore_recycle(),
             _ => {
                 if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
-                    self.tree.filter(prompt.line(), cx, &mut self.state);
+                    self.tree.filter(prompt.line());
                 }
                 self.prompt = Some((action, prompt));
             }
@@ -658,20 +653,16 @@ impl Explorer {
             key!(Enter) => {
                 let search_str = prompt.line().clone();
                 if !search_str.is_empty() {
-                    self.repeat_motion = Some(Box::new(move |explorer, action, cx| {
+                    self.repeat_motion = Some(Box::new(move |explorer, action, _| {
                         if let PromptAction::Search {
                             search_next: is_next,
                         } = action
                         {
                             explorer.tree.save_view();
                             if is_next == search_next {
-                                explorer
-                                    .tree
-                                    .search_next(cx, &search_str, &mut explorer.state);
+                                explorer.tree.search_next(&search_str);
                             } else {
-                                explorer
-                                    .tree
-                                    .search_previous(cx, &search_str, &mut explorer.state);
+                                explorer.tree.search_previous(&search_str);
                             }
                         }
                     }))
@@ -686,10 +677,9 @@ impl Explorer {
             _ => {
                 if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
                     if search_next {
-                        self.tree.search_next(cx, prompt.line(), &mut self.state);
+                        self.tree.search_next(prompt.line());
                     } else {
-                        self.tree
-                            .search_previous(cx, prompt.line(), &mut self.state);
+                        self.tree.search_previous(prompt.line());
                     }
                 }
                 self.prompt = Some((action, prompt));
@@ -704,71 +694,67 @@ impl Explorer {
             Some((PromptAction::Filter, _)) => return self.handle_filter_event(event, cx),
             _ => {}
         };
-        let (action, mut prompt) = match self.prompt.take() {
-            Some((action, p)) => (action, p),
-            _ => return EventResult::Ignored(None),
-        };
-        let line = prompt.line();
-        match (&action, event.into()) {
-            (
-                PromptAction::CreateFolder {
-                    folder_path,
-                    parent_index,
-                },
-                key!(Enter),
-            ) => {
-                if let Err(e) = self.new_path(folder_path.clone(), line, true, *parent_index) {
-                    cx.editor.set_error(format!("{e}"))
-                }
-            }
-            (
-                PromptAction::CreateFile {
-                    folder_path,
-                    parent_index,
-                },
-                key!(Enter),
-            ) => {
-                if let Err(e) = self.new_path(folder_path.clone(), line, false, *parent_index) {
-                    cx.editor.set_error(format!("{e}"))
-                }
-            }
-            (PromptAction::RemoveDir, key!(Enter)) => {
-                if line == "y" {
-                    let item = self.tree.current_item();
-                    if let Err(e) = std::fs::remove_dir_all(&item.path) {
-                        cx.editor.set_error(format!("{e}"));
-                    } else {
-                        self.tree.fold_current_child();
-                        self.tree.remove_current();
+        fn handle_prompt_event(
+            explorer: &mut Explorer,
+            event: KeyEvent,
+            cx: &mut Context,
+        ) -> Result<EventResult> {
+            let (action, mut prompt) = match explorer.prompt.take() {
+                Some((action, p)) => (action, p),
+                _ => return Ok(EventResult::Ignored(None)),
+            };
+            let line = prompt.line();
+            match (&action, event.into()) {
+                (
+                    PromptAction::CreateFolder {
+                        folder_path,
+                        parent_index,
+                    },
+                    key!(Enter),
+                ) => explorer.new_path(folder_path.clone(), line, true, *parent_index)?,
+                (
+                    PromptAction::CreateFile {
+                        folder_path,
+                        parent_index,
+                    },
+                    key!(Enter),
+                ) => explorer.new_path(folder_path.clone(), line, false, *parent_index)?,
+                (PromptAction::RemoveDir, key!(Enter)) => {
+                    if line == "y" {
+                        let item = explorer.tree.current_item();
+                        std::fs::remove_dir_all(&item.path)?;
+                        explorer.tree.fold_current_child();
+                        explorer.tree.remove_current();
                     }
                 }
-            }
-            (PromptAction::RemoveFile, key!(Enter)) => {
-                if line == "y" {
-                    let item = self.tree.current_item();
-                    if let Err(e) = std::fs::remove_file(&item.path) {
-                        cx.editor.set_error(format!("{e}"));
-                    } else {
-                        self.tree.remove_current();
+                (PromptAction::RemoveFile, key!(Enter)) => {
+                    if line == "y" {
+                        let item = explorer.tree.current_item();
+                        std::fs::remove_file(&item.path).map_err(anyhow::Error::from)?;
+                        explorer.tree.remove_current();
                     }
                 }
-            }
-            (PromptAction::RenameFile, key!(Enter)) => {
-                let item = self.tree.current_item();
-                if let Err(e) = std::fs::rename(&item.path, line) {
-                    cx.editor.set_error(format!("{e}"));
-                } else {
-                    self.tree.remove_current();
-                    self.reveal_file(cx, PathBuf::from(line))
+                (PromptAction::RenameFile, key!(Enter)) => {
+                    let item = explorer.tree.current_item();
+                    std::fs::rename(&item.path, line)?;
+                    explorer.tree.remove_current();
+                    explorer.reveal_file(PathBuf::from(line))?;
+                }
+                (_, key!(Esc) | ctrl!('c')) => {}
+                _ => {
+                    prompt.handle_event(Event::Key(event), cx);
+                    explorer.prompt = Some((action, prompt));
                 }
             }
-            (_, key!(Esc) | ctrl!('c')) => {}
-            _ => {
-                prompt.handle_event(Event::Key(event), cx);
-                self.prompt = Some((action, prompt));
+            Ok(EventResult::Consumed(None))
+        }
+        match handle_prompt_event(self, event, cx) {
+            Ok(event_result) => event_result,
+            Err(err) => {
+                cx.editor.set_error(err.to_string());
+                EventResult::Consumed(None)
             }
         }
-        EventResult::Consumed(None)
     }
 
     fn new_path(

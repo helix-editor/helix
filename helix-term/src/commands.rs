@@ -433,7 +433,7 @@ impl MappableCommand {
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command pallete",
-        toggle_or_focus_explorer, "Toggle or focus explorer",
+        open_or_focus_explorer, "Open or focus explorer",
         reveal_current_file, "Reveal current file in explorer",
         close_explorer, "close explorer",
     );
@@ -2216,7 +2216,7 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
-fn toggle_or_focus_explorer(cx: &mut Context) {
+fn open_or_focus_explorer(cx: &mut Context) {
     cx.callback = Some(Box::new(
         |compositor: &mut Compositor, cx: &mut compositor::Context| {
             if let Some(editor) = compositor.find::<ui::EditorView>() {
@@ -2236,17 +2236,19 @@ fn reveal_current_file(cx: &mut Context) {
     cx.callback = Some(Box::new(
         |compositor: &mut Compositor, cx: &mut compositor::Context| {
             if let Some(editor) = compositor.find::<ui::EditorView>() {
-                match editor.explorer.as_mut() {
+                (|| match editor.explorer.as_mut() {
                     Some(explore) => explore.content.reveal_current_file(cx),
-                    None => match ui::Explorer::new(cx) {
-                        Ok(explore) => {
-                            let mut explorer = overlayed(explore);
-                            explorer.content.reveal_current_file(cx);
-                            editor.explorer = Some(explorer);
-                        }
-                        Err(err) => cx.editor.set_error(format!("{}", err)),
-                    },
-                }
+                    None => {
+                        editor.explorer = Some(overlayed(ui::Explorer::new(cx)?));
+                        let explorer = editor.explorer.as_mut().unwrap();
+                        explorer.content.reveal_current_file(cx)?;
+                        explorer.content.focus();
+                        Ok(())
+                    }
+                })()
+                .unwrap_or_else(|err| {
+                    cx.editor.set_error(err.to_string())
+                })
             }
         },
     ));

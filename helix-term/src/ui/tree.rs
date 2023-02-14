@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, path::PathBuf};
+use std::cmp::Ordering;
 
 use anyhow::Result;
 use helix_view::theme::Modifier;
@@ -7,12 +7,12 @@ use crate::{
     compositor::{Context, EventResult},
     ctrl, key, shift,
 };
-use helix_core::{movement::Direction, unicode::width::UnicodeWidthStr};
+use helix_core::movement::Direction;
 use helix_view::{
     graphics::Rect,
     input::{Event, KeyEvent},
 };
-use tui::{buffer::Buffer as Surface, text::Spans};
+use tui::buffer::Buffer as Surface;
 
 pub trait TreeItem: Sized {
     type Params;
@@ -54,12 +54,9 @@ fn vec_to_tree<T: TreeItem>(mut items: Vec<T>) -> Vec<Tree<T>> {
     )
 }
 
-pub enum TreeOp<T> {
+pub enum TreeOp {
     Noop,
-    Restore,
-    InsertChild(Vec<T>),
     GetChildsAndInsert,
-    ReplaceTree { root: T, children: Vec<T> },
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -132,7 +129,7 @@ impl<'a, T> DoubleEndedIterator for TreeIter<'a, T> {
 
 impl<'a, T> ExactSizeIterator for TreeIter<'a, T> {}
 
-impl<T: Clone> Tree<T> {
+impl<T: Clone + TreeItem> Tree<T> {
     pub fn filter<P>(tree: &Tree<T>, predicate: &P) -> Option<Tree<T>>
     where
         P: Fn(&T) -> bool,
@@ -142,7 +139,7 @@ impl<T: Clone> Tree<T> {
             .iter()
             .filter_map(|tree| Self::filter(tree, predicate))
             .collect::<Vec<_>>();
-        if predicate(&tree.item) || !children.is_empty() {
+        if tree.item.is_parent() || predicate(&tree.item) || !children.is_empty() {
             let mut tree = Tree {
                 item: tree.item.clone(),
                 parent_index: tree.parent_index,
@@ -155,14 +152,6 @@ impl<T: Clone> Tree<T> {
         } else {
             None
         }
-    }
-
-    pub fn parent_index(&self) -> Option<usize> {
-        self.parent_index
-    }
-
-    pub fn index(&self) -> usize {
-        self.index
     }
 }
 
@@ -305,6 +294,14 @@ impl<T> Tree<T> {
             .collect();
         self.regenerate_index()
     }
+
+    pub fn parent_index(&self) -> Option<usize> {
+        self.parent_index
+    }
+
+    pub fn index(&self) -> usize {
+        self.index
+    }
 }
 
 pub struct TreeView<T: TreeItem> {
@@ -327,8 +324,7 @@ pub struct TreeView<T: TreeItem> {
     #[allow(clippy::type_complexity)]
     pre_render: Option<Box<dyn Fn(&mut Self, Rect) + 'static>>,
     #[allow(clippy::type_complexity)]
-    on_opened_fn:
-        Option<Box<dyn FnMut(&mut T, &mut Context, &mut T::Params) -> TreeOp<T> + 'static>>,
+    on_opened_fn: Option<Box<dyn FnMut(&mut T, &mut Context, &mut T::Params) -> TreeOp + 'static>>,
     #[allow(clippy::type_complexity)]
     on_folded_fn: Option<Box<dyn FnMut(&mut T, &mut Context, &mut T::Params) + 'static>>,
     #[allow(clippy::type_complexity)]
@@ -355,21 +351,13 @@ impl<T: TreeItem> TreeView<T> {
         }
     }
 
-    pub fn replace_with_new_items(&mut self, items: Vec<T>) {
-        todo!()
-        // let old = std::mem::replace(self, Self::new(vec_to_tree(items)));
-        // self.on_opened_fn = old.on_opened_fn;
-        // self.on_folded_fn = old.on_folded_fn;
-        // self.tree_symbol_style = old.tree_symbol_style;
-    }
-
     pub fn build_tree(root: T, items: Vec<T>) -> Self {
         Self::new(root, vec_to_tree(items))
     }
 
     pub fn with_enter_fn<F>(mut self, f: F) -> Self
     where
-        F: FnMut(&mut T, &mut Context, &mut T::Params) -> TreeOp<T> + 'static,
+        F: FnMut(&mut T, &mut Context, &mut T::Params) -> TreeOp + 'static,
     {
         self.on_opened_fn = Some(Box::new(f));
         self
@@ -464,7 +452,7 @@ impl<T: TreeItem> TreeView<T> {
         }
     }
 
-    fn go_to_children(&mut self, cx: &mut Context) -> Result<()> {
+    fn go_to_children(&mut self) -> Result<()> {
         let current = self.current_mut();
         if current.is_opened {
             self.selected += 1;
@@ -530,18 +518,6 @@ impl<T: TreeItem> TreeView<T> {
             let mut f = || {
                 let current = &mut self.get_mut(selected_index);
                 match on_open_fn(&mut current.item, cx, params) {
-                    TreeOp::Restore => {
-                        panic!();
-                        // let inserts = std::mem::take(&mut current.folded);
-                        // let _: Vec<_> = self
-                        //     .items
-                        //     .splice(selected_index + 1..selected_index + 1, inserts)
-                        //     .collect();
-                        return;
-                    }
-                    TreeOp::InsertChild(items) => {
-                        items;
-                    }
                     TreeOp::GetChildsAndInsert => {
                         let items = match current.item.get_children() {
                             Ok(items) => items,
@@ -550,33 +526,12 @@ impl<T: TreeItem> TreeView<T> {
                         current.is_opened = true;
                         current.children = vec_to_tree(items);
                     }
-                    TreeOp::ReplaceTree { root, children } => {
-                        self.tree = Tree::new(root, vec_to_tree(children));
-                        self.selected = 0;
-                        self.winline = 0;
-                    }
                     TreeOp::Noop => {}
                 };
-
-                // current.folded = vec![];
-                // let inserts = vec_to_tree(items, current.level + 1);
-                // let _: Vec<_> = self
-                //     .items
-                //     .splice(selected_index + 1..selected_index + 1, inserts)
-                //     .collect();
             };
             f();
             self.regenerate_index();
             self.on_opened_fn = Some(on_open_fn)
-        } else {
-            panic!();
-            self.get_mut(selected_index).children = vec![];
-            // let current = &mut self.items[selected_index];
-            // let inserts = std::mem::take(&mut current.folded);
-            // let _: Vec<_> = self
-            //     .items
-            //     .splice(selected_index + 1..selected_index + 1, inserts)
-            //     .collect();
         }
     }
 
@@ -589,7 +544,7 @@ impl<T: TreeItem> TreeView<T> {
         }
     }
 
-    pub fn search_next(&mut self, cx: &mut Context, s: &str, params: &mut T::Params) {
+    pub fn search_next(&mut self, s: &str) {
         let skip = std::cmp::max(2, self.save_view.0 + 1);
         self.selected = self
             .tree
@@ -599,7 +554,7 @@ impl<T: TreeItem> TreeView<T> {
         self.winline = (self.save_view.1 + self.selected).saturating_sub(self.save_view.0);
     }
 
-    pub fn search_previous(&mut self, cx: &mut Context, s: &str, params: &mut T::Params) {
+    pub fn search_previous(&mut self, s: &str) {
         let take = self.save_view.0;
         self.selected = self
             .tree
@@ -881,69 +836,6 @@ impl<T: TreeItem> TreeView<T> {
                 },
             );
         }
-        // let mut text = elem.item.text(cx, skip + index == self.selected, params);
-        // for (index, elem) in iter {
-        //     let row = index as u16;
-        //     let mut area = Rect::new(area.x, area.y + row, area.width, 1);
-        //     let indent = if elem.level > 0 {
-        //         if index + skip != last_item_index {
-        //             format!("{}├─", "│ ".repeat(elem.level - 1))
-        //         } else {
-        //             format!("└─{}", "┴─".repeat(elem.level - 1))
-        //         }
-        //     } else {
-        //         "".to_string()
-        //     };
-
-        //     let indent_len = indent.chars().count();
-        //     if indent_len > self.col {
-        //         let indent: String = indent.chars().skip(self.col).collect();
-        //         if !indent.is_empty() {
-        //             surface.set_stringn(area.x, area.y, &indent, area.width as usize, style);
-        //             area = area.clip_left(indent.width() as u16);
-        //         }
-        //     };
-        //     let mut start_index = self.col.saturating_sub(indent_len);
-        //     let mut text = elem.item.text(cx, skip + index == self.selected, params);
-        //     self.max_len = self.max_len.max(text.width() + indent.len());
-        //     for span in text.0.iter_mut() {
-        //         if area.width == 0 {
-        //             return;
-        //         }
-        //         if start_index == 0 {
-        //             surface.set_span(area.x, area.y, span, area.width);
-        //             area = area.clip_left(span.width() as u16);
-        //         } else {
-        //             let span_width = span.width();
-        //             if start_index > span_width {
-        //                 start_index -= span_width;
-        //             } else {
-        //                 let content: String = span
-        //                     .content
-        //                     .chars()
-        //                     .filter(|c| {
-        //                         if start_index > 0 {
-        //                             start_index = start_index.saturating_sub(c.to_string().width());
-        //                             false
-        //                         } else {
-        //                             true
-        //                         }
-        //                     })
-        //                     .collect();
-        //                 surface.set_string_truncated(
-        //                     area.x,
-        //                     area.y,
-        //                     &content,
-        //                     area.width as usize,
-        //                     |_| span.style,
-        //                     false,
-        //                     false,
-        //                 );
-        //                 start_index = 0
-        //             }
-        //         }
-        //     }
-        // }
     }
 
     pub fn handle_event(
@@ -976,7 +868,7 @@ impl<T: TreeItem> TreeView<T> {
                 }));
             }
             key!('h') => self.go_to_parent(),
-            key!('l') => match self.go_to_children(cx) {
+            key!('l') => match self.go_to_children() {
                 Ok(_) => {}
                 Err(err) => cx.editor.set_error(err.to_string()),
             },
@@ -998,7 +890,7 @@ impl<T: TreeItem> TreeView<T> {
 }
 
 impl<T: TreeItem + Clone> TreeView<T> {
-    pub fn filter(&mut self, s: &str, cx: &mut Context, params: &mut T::Params) {
+    pub fn filter(&mut self, s: &str) {
         if s.is_empty() {
             self.restore_recycle();
             return;
@@ -1079,7 +971,9 @@ fn index_elems<T>(parent_index: usize, elems: Vec<Tree<T>>) -> Vec<Tree<T>> {
 mod test_tree {
     use helix_core::movement::Direction;
 
-    use super::{index_elems, Tree};
+    use crate::ui::TreeItem;
+
+    use super::Tree;
 
     #[test]
     fn test_indexs_elems() {
@@ -1232,41 +1126,91 @@ mod test_tree {
 
     #[test]
     fn test_filter() {
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        struct MyItem<'a>(bool, &'a str);
+        impl<'a> TreeItem for MyItem<'a> {
+            type Params = ();
+            fn name(&self) -> String {
+                self.0.to_string()
+            }
+            fn is_child(&self, _: &Self) -> bool {
+                !self.0
+            }
+            fn is_parent(&self) -> bool {
+                self.0
+            }
+            fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                self.1.cmp(other.1)
+            }
+        }
         let tree = Tree::new(
-            ".cargo",
+            MyItem(false, ".cargo"),
             vec![
-                Tree::new("spam", vec![Tree::new("Cargo.toml", vec![])]),
-                Tree::new("Cargo.toml", vec![Tree::new("pam", vec![])]),
-                Tree::new("hello", vec![]),
+                Tree::new(
+                    MyItem(true, "spam"),
+                    vec![Tree::new(MyItem(false, "Cargo.toml"), vec![])],
+                ),
+                Tree::new(
+                    MyItem(true, "Cargo.toml"),
+                    vec![Tree::new(MyItem(false, "pam"), vec![])],
+                ),
+                Tree::new(MyItem(false, "hello"), vec![]),
             ],
         );
 
-        let result = Tree::filter(&tree, &|item| item.to_lowercase().contains("cargo"));
+        let result = Tree::filter(&tree, &|item| item.1.to_lowercase().contains("cargo"));
         assert_eq!(
             result,
             Some(Tree::new(
-                ".cargo",
+                MyItem(false, ".cargo"),
                 vec![
-                    Tree::new("spam", vec![Tree::new("Cargo.toml", vec![])]),
-                    Tree::new("Cargo.toml", vec![]),
+                    Tree::new(
+                        MyItem(true, "spam"),
+                        vec![Tree::new(MyItem(false, "Cargo.toml"), vec![])]
+                    ),
+                    Tree {
+                        is_opened: true,
+                        ..Tree::new(MyItem(true, "Cargo.toml"), vec![])
+                    },
                 ],
             ))
         );
 
-        let result = Tree::filter(&tree, &|item| item.to_lowercase().contains("pam"));
+        let result = Tree::filter(&tree, &|item| item.1.to_lowercase().contains("pam"));
         assert_eq!(
             result,
             Some(Tree::new(
-                ".cargo",
+                MyItem(false, ".cargo"),
                 vec![
-                    Tree::new("spam", vec![]),
-                    Tree::new("Cargo.toml", vec![Tree::new("pam", vec![])]),
+                    Tree {
+                        is_opened: true,
+                        ..Tree::new(MyItem(true, "spam"), vec![])
+                    },
+                    Tree::new(
+                        MyItem(true, "Cargo.toml"),
+                        vec![Tree::new(MyItem(false, "pam"), vec![])]
+                    ),
                 ],
             ))
         );
 
-        let result = Tree::filter(&tree, &|item| item.to_lowercase().contains("helix"));
-        assert_eq!(result, None)
+        let result = Tree::filter(&tree, &|item| item.1.to_lowercase().contains("helix"));
+        assert_eq!(
+            result,
+            Some(Tree::new(
+                MyItem(false, ".cargo"),
+                vec![
+                    Tree {
+                        is_opened: true,
+                        ..Tree::new(MyItem(true, "spam"), vec![])
+                    },
+                    Tree {
+                        is_opened: true,
+                        ..Tree::new(MyItem(true, "Cargo.toml"), vec![])
+                    }
+                ],
+            ))
+        )
     }
 
     #[test]
