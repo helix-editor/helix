@@ -6,7 +6,7 @@ on:
       - master
   merge_group:
   schedule:
-    - cron: '00 01 * * *'
+    - cron: "00 01 * * *"
 
 jobs:
   check:
@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.63
+        uses: dtolnay/rust-toolchain@1.65
 
       - uses: Swatinem/rust-cache@v2
 
@@ -66,7 +66,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.63
+        uses: dtolnay/rust-toolchain@1.65
         with:
           components: rustfmt, clippy
 
@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.63
+        uses: dtolnay/rust-toolchain@1.65
 
       - uses: Swatinem/rust-cache@v2
 
@@ -107,4 +107,3 @@ jobs:
           git diff-files --quiet \
             || (echo "Run 'cargo xtask docgen', commit the changes and push again" \
             && exit 1)
-
