@@ -1181,12 +1181,14 @@ fn reload(
 
 fn reload_all(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
+   
+    let ignore_err = args.iter().any(|x|  *x == "!");
 
     let scrolloff = cx.editor.config().scrolloff;
     let view_id = view!(cx.editor).id;
@@ -1216,7 +1218,16 @@ fn reload_all(
         view.sync_changes(doc);
 
         let redraw_handle = cx.editor.redraw_handle.clone();
-        doc.reload(view, &cx.editor.diff_providers, redraw_handle)?;
+
+        match doc.reload(view, &cx.editor.diff_providers, redraw_handle){
+            Ok(_) => {},
+            Err(err) => {
+                if !ignore_err { 
+                    return Err(err)
+                }
+            }
+        }
+
 
         for view_id in view_ids {
             let view = view_mut!(cx.editor, view_id);
@@ -1226,6 +1237,15 @@ fn reload_all(
         }
     }
 
+    Ok(())
+}
+
+fn force_reload_all( 
+    cx: &mut compositor::Context, 
+    _args: &[Cow<str>], 
+    event: PromptEvent, 
+)-> anyhow::Result<()> {
+    reload_all(cx, &[Cow::Borrowed("!")], event)?;
     Ok(())
 }
 
@@ -2277,6 +2297,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Discard changes and reload all documents from the source files.",
             fun: reload_all,
+            completer: None,
+        }, 
+        TypableCommand {
+            name: "reload-all!",
+            aliases: &[],
+            doc: "Discard changes and reload all documents from the source files.",
+            fun: force_reload_all,
             completer: None,
         },
         TypableCommand {
