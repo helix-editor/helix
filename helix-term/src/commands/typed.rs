@@ -63,7 +63,8 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
-        let (path, pos) = args::parse_file(arg);
+        let (path, pos) = args::parse_file(arg.to_owned());
+        let pos = pos.unwrap_or_default();
         let path = helix_core::path::expand_tilde(&path);
         // If the path is a directory, open a file picker on that directory and update the status
         // message
@@ -82,8 +83,8 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             // Otherwise, just open the file
             let _ = cx.editor.open(&path, Action::Replace)?;
             let (view, doc) = current!(cx.editor);
-            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-            doc.set_selection(view.id, pos);
+            let selection = pos.selection_for_doc(doc);
+            doc.set_selection(view.id, selection);
             // does not affect opening a buffer without pos
             align_view(doc, view, Align::Center);
         }

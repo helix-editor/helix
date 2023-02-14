@@ -36,7 +36,7 @@ use helix_core::{
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
     movement::{self, move_vertically_visual, Direction, Movement},
-    object, pos_at_coords,
+    object,
     regex::{self, Regex, RegexBuilder},
     search::{self, CharMatcher},
     selection, shellwords, surround,

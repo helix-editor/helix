@@ -414,7 +414,7 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
 async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::Result<()> {
     test_with_config(
         Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
+            files: vec![(PathBuf::from("foo.rs"), PositionRequest::default())],
             ..Default::default()
         },
         Config::default(),
@@ -446,7 +446,7 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
 async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Result<()> {
     test_with_config(
         Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
+            files: vec![(PathBuf::from("foo.rs"), PositionRequest::default())],
             ..Default::default()
         },
         Config::default(),
@@ -479,7 +479,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
     // Note: the anchor stays put and the head moves back.
     test_with_config(
         Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
+            files: vec![(PathBuf::from("foo.rs"), PositionRequest::default())],
             ..Default::default()
         },
         Config::default(),
@@ -510,7 +510,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
 
     test_with_config(
         Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
+            files: vec![(PathBuf::from("foo.rs"), PositionRequest::default())],
             ..Default::default()
         },
         Config::default(),
