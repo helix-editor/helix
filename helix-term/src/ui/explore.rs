@@ -147,6 +147,7 @@ struct State {
     focus: bool,
     open: bool,
     current_root: PathBuf,
+    area_width: u16,
 }
 
 impl State {
@@ -155,6 +156,7 @@ impl State {
             focus,
             current_root,
             open: true,
+            area_width: 0,
         }
     }
 }
@@ -296,6 +298,8 @@ impl Explorer {
                 "]    Change root to current folder",
                 "^o   Go to previous root",
                 "R    Refresh",
+                "+    Increase size",
+                "-    Decrease size",
                 "q    Close",
             ]
             .into_iter()
@@ -522,6 +526,8 @@ impl Explorer {
         }
         let width = area.width.min(self.column_width + 2);
 
+        self.state.area_width = area.width;
+
         let side_area = match position {
             ExplorerPositionEmbed::Left => Rect { width, ..area },
             ExplorerPositionEmbed::Right => Rect {
@@ -545,7 +551,7 @@ impl Explorer {
             }
         };
         surface.set_stringn(
-            list_area.x,
+            list_area.x.saturating_sub(1),
             list_area.y,
             " Explorer: press ? for help",
             list_area.width.into(),
@@ -807,6 +813,18 @@ impl Explorer {
     pub fn column_width(&self) -> u16 {
         self.column_width
     }
+
+    fn increase_size(&mut self) {
+        const EDITOR_MIN_WIDTH: u16 = 10;
+        self.column_width = std::cmp::min(
+            self.state.area_width.saturating_sub(EDITOR_MIN_WIDTH),
+            self.column_width.saturating_add(1),
+        )
+    }
+
+    fn decrease_size(&mut self) {
+        self.column_width = self.column_width.saturating_sub(1)
+    }
 }
 
 impl Component for Explorer {
@@ -870,8 +888,8 @@ impl Component for Explorer {
                     cx.editor.set_error(error.to_string())
                 }
             }
-            key!('-') => self.column_width = self.column_width.saturating_sub(1),
-            key!('+') => self.column_width = self.column_width.saturating_add(1),
+            key!('-') => self.decrease_size(),
+            key!('+') => self.increase_size(),
             _ => {
                 self.tree
                     .handle_event(Event::Key(key_event), cx, &mut self.state);
