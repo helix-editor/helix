@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cmp::Ordering};
+use std::cmp::Ordering;
 
 use anyhow::Result;
 use helix_view::theme::Modifier;
@@ -139,7 +139,7 @@ impl<T: Clone + TreeItem> Tree<T> {
             .iter()
             .filter_map(|tree| Self::filter(tree, predicate))
             .collect::<Vec<_>>();
-        if tree.item.is_parent() || predicate(&tree.item) || !children.is_empty() {
+        if tree.item.is_parent() || predicate(&tree.item) {
             let mut tree = Tree {
                 item: tree.item.clone(),
                 parent_index: tree.parent_index,
@@ -178,7 +178,9 @@ impl<T: TreeItem> Tree<T> {
             self.item
                 .get_children()?
                 .into_iter()
-                .filter(|item| item.name().to_lowercase().contains(&filter.to_lowercase()))
+                .filter(|item| {
+                    item.is_parent() || item.name().to_lowercase().contains(&filter.to_lowercase())
+                })
                 .collect(),
         );
         let filtered = std::mem::replace(&mut self.children, vec![])
@@ -267,15 +269,6 @@ impl<T> Tree<T> {
         } else {
             self.children.iter().find_map(|elem| elem.get(index))
         }
-        // self.traverse(None, &|result, current_index, tree| {
-        //     result.or_else(|| {
-        //         if index == current_index {
-        //             Some(tree)
-        //         } else {
-        //             None
-        //         }
-        //     })
-        // })
     }
     fn traverse<'a, U, F>(&'a self, init: U, f: &F) -> U
     where
@@ -353,7 +346,6 @@ impl<T> Tree<T> {
 
 pub struct TreeView<T: TreeItem> {
     tree: Tree<T>,
-    recycle: Option<(String, Tree<T>)>,
     /// Selected item idex
     selected: usize,
 
@@ -382,7 +374,6 @@ impl<T: TreeItem> TreeView<T> {
     pub fn new(root: T, items: Vec<Tree<T>>) -> Self {
         Self {
             tree: Tree::new(root, items),
-            recycle: None,
             selected: 0,
             save_view: (0, 0),
             winline: 0,
@@ -935,45 +926,6 @@ impl<T: TreeItem + Clone> TreeView<T> {
         }
 
         EventResult::Consumed(None)
-    }
-}
-
-impl<T: TreeItem + Clone> TreeView<T> {
-    pub fn filter(&mut self, s: &str) {
-        if s.is_empty() {
-            self.restore_recycle();
-            return;
-        }
-
-        let new_tree = Tree::filter(&self.tree, &|item: &T| {
-            item.name().to_lowercase().contains(&s.to_lowercase())
-        })
-        .unwrap_or_else(|| Tree {
-            item: self.tree.item.clone(),
-            children: vec![],
-            ..self.tree.clone()
-        });
-        let recycle = std::mem::replace(&mut self.tree, new_tree);
-        if let Some(r) = self.recycle.as_mut() {
-            r.0 = s.into()
-        } else {
-            self.recycle = Some((s.into(), recycle));
-            self.save_view();
-        }
-
-        self.selected = 0;
-        self.winline = 0
-    }
-
-    pub fn clean_recycle(&mut self) {
-        self.recycle = None;
-    }
-
-    pub fn restore_recycle(&mut self) {
-        if let Some((_, recycle)) = self.recycle.take() {
-            self.tree = recycle;
-        }
-        self.restore_view();
     }
 }
 

@@ -240,7 +240,7 @@ impl Explorer {
     pub fn reveal_current_file(&mut self, cx: &mut Context) -> Result<()> {
         let current_document_path = doc!(cx.editor).path().cloned();
         match current_document_path {
-            None => Err(anyhow::anyhow!("No opened document.")),
+            None => Ok(()),
             Some(current_path) => self.reveal_file(current_path),
         }
     }
@@ -499,15 +499,26 @@ impl Explorer {
         self.render_preview(preview_area, surface, cx.editor);
 
         let list_area = render_block(area.clip_right(preview_area.width), surface, Borders::RIGHT);
+        self.render_tree(list_area, surface, cx)
+    }
+
+    fn render_tree(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         surface.set_stringn(
-            list_area.x,
-            list_area.y,
+            area.x,
+            area.y,
             " Explorer: press ? for help",
-            list_area.width.into(),
+            area.width.into(),
+            cx.editor.theme.get("ui.text"),
+        );
+        surface.set_stringn(
+            area.x,
+            area.y.saturating_add(1),
+            format!(" [FILTER]: {}", self.state.filter),
+            area.width.into(),
             cx.editor.theme.get("ui.text"),
         );
         self.tree
-            .render(list_area.clip_top(1), surface, cx, &self.state.filter);
+            .render(area.clip_top(2), surface, cx, &self.state.filter);
     }
 
     pub fn render_embed(
@@ -546,15 +557,7 @@ impl Explorer {
                 render_block(side_area.clip_right(1), surface, Borders::LEFT).clip_bottom(1)
             }
         };
-        surface.set_stringn(
-            list_area.x.saturating_sub(1),
-            list_area.y,
-            " Explorer: press ? for help",
-            list_area.width.into(),
-            cx.editor.theme.get("ui.text"),
-        );
-        self.tree
-            .render(list_area.clip_top(1), surface, cx, &self.state.filter);
+        self.render_tree(list_area, surface, cx);
 
         {
             let statusline = if self.is_focus() {
@@ -568,15 +571,6 @@ impl Explorer {
                 ExplorerPositionEmbed::Right => area.clip_left(1),
             };
             surface.clear_with(area, statusline);
-            // surface.set_string_truncated(
-            //     area.x,
-            //     area.y,
-            //     &self.path_state.root.to_string_lossy(),
-            //     area.width as usize,
-            //     |_| statusline,
-            //     true,
-            //     true,
-            // );
         }
 
         if self.is_focus() {
@@ -616,28 +610,27 @@ impl Explorer {
 
     fn handle_filter_event(&mut self, event: KeyEvent, cx: &mut Context) -> EventResult {
         let (action, mut prompt) = self.prompt.take().unwrap();
-        match event.into() {
-            key!(Tab) | key!(Down) | ctrl!('j') => {
-                self.tree.clean_recycle();
-                let filter = self.state.filter.clone();
-                return self
-                    .tree
-                    .handle_event(Event::Key(event), cx, &mut self.state, &filter);
-            }
-            key!(Enter) => {
-                if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
-                    self.tree.filter(prompt.line());
+        (|| -> Result<()> {
+            match event.into() {
+                key!(Enter) => {
+                    if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
+                        self.tree.refresh(prompt.line())?;
+                    }
                 }
-            }
-            key!(Esc) | ctrl!('c') => self.tree.restore_recycle(),
-            _ => {
-                if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
-                    self.tree.filter(prompt.line());
+                key!(Esc) | ctrl!('c') => {
+                    self.state.filter.clear();
                 }
-                self.state.filter = prompt.line().clone();
-                self.prompt = Some((action, prompt));
-            }
-        };
+                _ => {
+                    if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
+                        self.tree.refresh(prompt.line())?;
+                    }
+                    self.state.filter = prompt.line().clone();
+                    self.prompt = Some((action, prompt));
+                }
+            };
+            Ok(())
+        })()
+        .unwrap_or_else(|err| cx.editor.set_error(format!("{err}")));
         EventResult::Consumed(None)
     }
 
@@ -673,9 +666,6 @@ impl Explorer {
                 } else {
                     self.repeat_motion = None;
                 }
-                // return self
-                //     .tree
-                //     .handle_event(Event::Key(event), cx, &mut self.state);
             }
             key!(Esc) | ctrl!('c') => self.tree.restore_view(),
             _ => {
