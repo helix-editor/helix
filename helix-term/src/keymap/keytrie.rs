@@ -143,7 +143,7 @@ impl KeyTrie {
         }
 
         // TODO: Add "A-" acknowledgement?
-        // Shortest keyevent (as string) appears first, unless is a "C-" KeyEvent
+        // Shortest keyevent (as string) appears first, unless it's a "C-" KeyEvent
         // Those events will always be placed after the one letter KeyEvent
         for (key_events, _) in body.iter_mut() {
             key_events.sort_unstable_by(|a, b| {
@@ -189,7 +189,6 @@ impl<'de> Deserialize<'de> for KeyTrie {
     {
         // NOTE: no assumption of pre-defined order in config
         let child_collection = HashMap::<KeyEvent, KeyTrieNode>::deserialize(deserializer)?;
-        // TODO: common pattern, generalize (found in keytrinode deserialize too)
         let mut child_order = HashMap::<KeyEvent, usize>::new();
         let mut children = Vec::new();
         for (key_event, keytrie_node) in child_collection {
