@@ -25,6 +25,7 @@ FLAGS:
     -V, --version                  Prints version information
     --vsplit                       Splits all given files vertically into different windows
     --hsplit                       Splits all given files horizontally into different windows
+    +N                             Goto line number N
 ",
         pkg_name = env!("CARGO_PKG_NAME"),
         version = helix_loader::VERSION_AND_GIT_HASH,
