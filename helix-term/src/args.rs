@@ -4,22 +4,9 @@ use anyhow::Result;
 use helix_core::{pos_at_coords, Position, Selection};
 use helix_view::{tree::Layout, Document};
 
-/// As files are parsed from the CLI they can either contain an explicit position or a request to
-/// jump to the end of the file. An explicit position can be declared in either prefix or postfix
-/// notation.
-///
-/// Prefix notation to open a file at line 10 `hx +10 Cargo.toml`.
-/// Postfix notation to open a file at line 10 `hx Cargo.toml:10`.
-///
-/// Both notations can also be used to place the cursor at the last line / Eof.
-///
-/// `hx +: Cargo.toml`
-/// `hx Cargo.toml:`
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PositionRequest {
-    /// Set the file cursor to the given position,
     Explicit(Position),
-    /// Set the file cursor to the last line when opened
     Eof,
 }
 
@@ -36,7 +23,6 @@ impl Default for PositionRequest {
 }
 
 impl PositionRequest {
-    /// Return a Selection based on this PositionRequest.
     pub(crate) fn selection_for_doc(self, doc: &Document) -> Selection {
         let text = doc.text().slice(..);
         match self {
@@ -131,7 +117,7 @@ fn parse_args(argv: &mut Peekable<impl Iterator<Item = String>>) -> Result<Args>
                         _ => anyhow::bail!("unexpected short arg {}", chr),
                     }
                 }
-           }
+            }
             _ => {
                 let file = parse_positional_arg(arg, argv)?;
                 args.files.push(file);
@@ -139,7 +125,6 @@ fn parse_args(argv: &mut Peekable<impl Iterator<Item = String>>) -> Result<Args>
         }
     }
 
-    // push the remaining args, if any to the files
     while let Some(arg) = argv.next() {
         let file = parse_positional_arg(arg, argv)?;
         args.files.push(file);
@@ -148,7 +133,6 @@ fn parse_args(argv: &mut Peekable<impl Iterator<Item = String>>) -> Result<Args>
     Ok(args)
 }
 
-/// Parse a positional arg. All of which are expected to be file related.
 /// If an arg is a prefixed file position, then the next arg is expected to be a file.
 /// File paths are not validated, that's left to the consumer.
 pub(crate) fn parse_positional_arg(
@@ -190,7 +174,6 @@ pub(crate) fn parse_file_position(s: &str) -> Option<PositionRequest> {
     Some(pos.into())
 }
 
-/// Parse arg into [`PathBuf`] and position.
 pub(crate) fn parse_file<'a>(s: impl Into<Cow<'a, str>>) -> (PathBuf, Option<PositionRequest>) {
     let s = s.into();
     match s.split_once(':') {
@@ -209,7 +192,7 @@ mod tests {
 
     #[test]
     fn should_parse_binary_only() {
-        parse_args(&mut str_to_argv("hx")).unwrap();
+        parse_args(&mut str_to_arg_peekable("hx")).unwrap();
     }
 
     #[test]
@@ -319,13 +302,13 @@ mod tests {
 
     #[test]
     fn should_parse_bare_files_args() {
-        let args = parse_args(&mut str_to_argv("hx Cargo.toml")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable("hx Cargo.toml")).unwrap();
         assert_eq!(
             args.files,
             [("Cargo.toml".to_owned().into(), PositionRequest::default())]
         );
 
-        let args = parse_args(&mut str_to_argv("hx Cargo.toml README")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable("hx Cargo.toml README")).unwrap();
         assert_eq!(
             args.files,
             [
@@ -334,7 +317,7 @@ mod tests {
             ]
         );
 
-        let args = parse_args(&mut str_to_argv("hx -- Cargo.toml")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable("hx -- Cargo.toml")).unwrap();
         assert_eq!(
             args.files,
             [("Cargo.toml".to_owned().into(), PositionRequest::default())]
@@ -343,7 +326,7 @@ mod tests {
 
     #[test]
     fn should_parse_prefix_pos_files() {
-        let args = parse_args(&mut str_to_argv("hx +10 Cargo.toml")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable("hx +10 Cargo.toml")).unwrap();
         assert_eq!(
             args.files,
             [(
@@ -352,13 +335,13 @@ mod tests {
             )]
         );
 
-        let args = parse_args(&mut str_to_argv("hx +: Cargo.toml")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable("hx +: Cargo.toml")).unwrap();
         assert_eq!(
             args.files,
             [("Cargo.toml".to_owned().into(), PositionRequest::Eof)]
         );
 
-        let args = parse_args(&mut str_to_argv("hx +10 Cargo.toml +20 README")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable("hx +10 Cargo.toml +20 README")).unwrap();
         assert_eq!(
             args.files,
             [
@@ -373,8 +356,10 @@ mod tests {
             ]
         );
 
-        let args =
-            parse_args(&mut str_to_argv("hx --vsplit -- +10 Cargo.toml +20 README")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable(
+            "hx --vsplit -- +10 Cargo.toml +20 README",
+        ))
+        .unwrap();
         assert_eq!(args.split, Some(helix_view::tree::Layout::Vertical));
         assert_eq!(
             args.files,
@@ -393,7 +378,10 @@ mod tests {
 
     #[test]
     fn should_parse_intermixed_file_pos_notation() {
-        let args = parse_args(&mut str_to_argv("hx CHANGELOG +10 Cargo.toml README:20")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable(
+            "hx CHANGELOG +10 Cargo.toml README:20",
+        ))
+        .unwrap();
         assert_eq!(
             args.files,
             [
@@ -412,19 +400,19 @@ mod tests {
 
     #[test]
     fn should_fail_on_file_with_prefix_and_postfix_pos() {
-        parse_args(&mut str_to_argv("hx +10 Cargo.toml:20")).unwrap_err();
-        parse_args(&mut str_to_argv("hx +10 Cargo.toml:")).unwrap_err();
+        parse_args(&mut str_to_arg_peekable("hx +10 Cargo.toml:20")).unwrap_err();
+        parse_args(&mut str_to_arg_peekable("hx +10 Cargo.toml:")).unwrap_err();
     }
 
     #[test]
     fn should_fail_on_orphan_prefix_pos() {
-        parse_args(&mut str_to_argv("hx +10")).unwrap_err();
-        parse_args(&mut str_to_argv("hx +10 Cargo.toml +20")).unwrap_err();
+        parse_args(&mut str_to_arg_peekable("hx +10")).unwrap_err();
+        parse_args(&mut str_to_arg_peekable("hx +10 Cargo.toml +20")).unwrap_err();
     }
 
     #[test]
     fn should_parse_postfix_pos_files() {
-        let args = parse_args(&mut str_to_argv("hx Cargo.toml:10")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable("hx Cargo.toml:10")).unwrap();
         assert_eq!(
             args.files,
             [(
@@ -433,13 +421,13 @@ mod tests {
             )]
         );
 
-        let args = parse_args(&mut str_to_argv("hx Cargo.toml:")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable("hx Cargo.toml:")).unwrap();
         assert_eq!(
             args.files,
             [("Cargo.toml".to_owned().into(), PositionRequest::Eof)]
         );
 
-        let args = parse_args(&mut str_to_argv("hx Cargo.toml:10 README:20")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable("hx Cargo.toml:10 README:20")).unwrap();
         assert_eq!(
             args.files,
             [
@@ -454,7 +442,10 @@ mod tests {
             ]
         );
 
-        let args = parse_args(&mut str_to_argv("hx --vsplit -- Cargo.toml:10 README:20")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable(
+            "hx --vsplit -- Cargo.toml:10 README:20",
+        ))
+        .unwrap();
         assert_eq!(args.split, Some(helix_view::tree::Layout::Vertical));
         assert_eq!(
             args.files,
@@ -473,7 +464,7 @@ mod tests {
 
     #[test]
     fn should_parse_config() {
-        let args = parse_args(&mut str_to_argv("hx --config other/config.toml")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable("hx --config other/config.toml")).unwrap();
         assert_eq!(
             args.config_file,
             Some("other/config.toml".to_owned().into())
@@ -482,17 +473,16 @@ mod tests {
 
     #[test]
     fn should_parse_layout() {
-        let args = parse_args(&mut str_to_argv("hx --vsplit Cargo.toml")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable("hx --vsplit Cargo.toml")).unwrap();
         assert_eq!(args.split, Some(helix_view::tree::Layout::Vertical));
 
-        let args = parse_args(&mut str_to_argv("hx --hsplit Cargo.toml")).unwrap();
+        let args = parse_args(&mut str_to_arg_peekable("hx --hsplit Cargo.toml")).unwrap();
         assert_eq!(args.split, Some(helix_view::tree::Layout::Horizontal));
 
-        parse_args(&mut str_to_argv("hx --hsplit -vsplit Cargo.toml")).unwrap_err();
+        parse_args(&mut str_to_arg_peekable("hx --hsplit -vsplit Cargo.toml")).unwrap_err();
     }
 
-    /// Return a peekable Iterator of arguments naively split on whitespace
-    fn str_to_argv(s: &'static str) -> Peekable<impl Iterator<Item = String>> {
+    fn str_to_arg_peekable(s: &'static str) -> Peekable<impl Iterator<Item = String>> {
         s.split_whitespace().map(ToOwned::to_owned).peekable()
     }
 }
