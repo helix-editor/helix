@@ -3,7 +3,7 @@ use std::path::Path;
 use git::objs::tree::EntryMode;
 use git::sec::trust::DefaultForLevel;
 use git::{Commit, ObjectId, Repository, ThreadSafeRepository};
-use git_repository as git;
+use gix as git;
 
 use crate::DiffProvider;
 
