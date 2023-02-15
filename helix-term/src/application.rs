@@ -420,23 +420,26 @@ impl Application {
         let mut refresh_config = || -> Result<(), Error> {
             let merged_user_config = Config::merged()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
+            self.config.store(Arc::new(merged_user_config));
+
             self.refresh_language_config()?;
 
             if let Some(theme) = &self.config.load().theme {
-                let true_color = self.config.load().editor.true_color || crate::true_color();
                 let theme = self
                     .theme_loader
                     .load(theme)
                     .map_err(|err| anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err))?;
 
-                if true_color || theme.is_16_color() {
+                if self.config.load().editor.true_color
+                    || crate::true_color()
+                    || theme.is_16_color()
+                {
                     self.editor.set_theme(theme);
                 } else {
                     anyhow::bail!("Theme requires truecolor support, which is not available!")
                 }
             }
 
-            self.config.store(Arc::new(merged_user_config));
             Ok(())
         };
 
