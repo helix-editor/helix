@@ -923,13 +923,12 @@ pub enum CloseError {
 impl Editor {
     pub fn new(
         mut area: Rect,
-        theme_loader: theme::Loader,
         lang_configs_loader: Arc<syntax::Loader>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
-
+        let theme_loader = theme::Loader::new(&helix_loader::theme_dirs());
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
 

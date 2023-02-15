@@ -25,7 +25,6 @@ use helix_view::{
     document::DocumentSavedEventResult,
     editor::{ConfigEvent, EditorEvent},
     graphics::Rect,
-    theme,
     tree::Layout,
     Align, Editor,
 };
@@ -134,26 +133,6 @@ impl Application {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
-        let mut theme_parent_dirs = vec![helix_loader::user_config_dir()];
-        theme_parent_dirs.extend_from_slice(helix_loader::get_runtime_dirs());
-        let theme_loader = theme::Loader::new(&theme_parent_dirs);
-
-        let true_color = config.editor.true_color || crate::true_color();
-        let theme = config
-            .theme
-            .as_ref()
-            .and_then(|theme| {
-                theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-            })
-            .unwrap_or_else(|| theme_loader.default_theme(true_color));
-
         let lang_configs_loader = std::sync::Arc::new(syntax::Loader::new(langauge_configurations));
 
         #[cfg(not(feature = "integration"))]
@@ -168,7 +147,6 @@ impl Application {
         let config = Arc::new(ArcSwap::from_pointee(config));
         let mut editor = Editor::new(
             area,
-            theme_loader,
             lang_configs_loader.clone(),
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
@@ -248,6 +226,23 @@ impl Application {
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
+        let true_color = config.load().editor.true_color || crate::true_color();
+        let theme = config
+            .load()
+            .theme
+            .as_ref()
+            .and_then(|theme| {
+                editor
+                    .theme_loader
+                    .load(theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| (true_color || theme.is_16_color()))
+            })
+            .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
         editor.set_theme(theme);
 
         #[cfg(windows)]
