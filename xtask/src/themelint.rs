@@ -1,8 +1,7 @@
 use crate::DynError;
 use helix_loader::repo_paths;
-use helix_view::theme::Loader;
 use helix_view::theme::Modifier;
-use helix_view::Theme;
+use helix_view::theme::Theme;
 
 struct Rule {
     fg: Option<&'static str>,
@@ -178,7 +177,7 @@ pub fn lint(file: String) -> Result<(), DynError> {
 }
 
 pub fn lint_all() -> Result<(), DynError> {
-    let files = Loader::read_names(repo_paths::themes().as_path());
+    let files = Theme::read_names(repo_paths::themes().as_path());
     let files_count = files.len();
     let ok_files_count = files
         .into_iter()

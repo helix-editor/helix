@@ -280,9 +280,10 @@ pub mod completers {
     }
 
     pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
-        let mut names = theme::Loader::read_names(&helix_loader::user_config_dir().join("themes"));
+        // TODO: theme names vec should be created in Theme where it reads all themes in its themes_dirs
+        let mut names = theme::Theme::read_names(&helix_loader::user_config_dir().join("themes"));
         for rt_dir in helix_loader::get_runtime_dirs() {
-            names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
+            names.extend(theme::Theme::read_names(&rt_dir.join("themes")));
         }
         names.push("default".into());
         names.push("base16_default".into());

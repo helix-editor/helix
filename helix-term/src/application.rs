@@ -26,7 +26,7 @@ use helix_view::{
     editor::{Action, ConfigEvent, EditorEvent},
     graphics::Rect,
     tree::Layout,
-    Align, Editor,
+    Align, Editor, Theme,
 };
 use log::{debug, error, warn};
 use std::{
@@ -122,6 +122,7 @@ impl Application {
     pub fn new(
         args: Args,
         config: Config,
+        theme: Theme,
         langauge_configurations: LanguageConfigurations,
     ) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
@@ -139,10 +140,11 @@ impl Application {
 
         let mut editor = Editor::new(
             area,
-            Arc::new(syntax::Loader::new(langauge_configurations)),
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
+            theme,
+            Arc::new(syntax::Loader::new(langauge_configurations)),
         );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -218,25 +220,6 @@ impl Application {
                 .new_file_from_stdin(Action::VerticalSplit)
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
-
-        let true_color = config.load().editor.true_color;
-        let theme = config
-            .load()
-            .theme
-            .as_ref()
-            .and_then(|theme| {
-                editor
-                    .theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-            })
-            .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
-        editor.set_theme(theme);
 
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
@@ -397,14 +380,9 @@ impl Application {
                 document.detect_language(self.editor.lang_configs_loader.clone());
             }
 
-            if let Some(theme) = &self.config.load().theme {
-                let theme =
-                    self.editor.theme_loader.load(theme).map_err(|err| {
-                        anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err)
-                    })?;
-
-                self.editor.check_theme_color_support(&theme)?;
-                self.editor.set_theme(theme);
+            if let Some(theme_name) = &self.config.load().theme {
+                self.editor
+                    .set_theme(self.editor.theme.update(theme_name.clone())?);
             }
 
             Ok(())

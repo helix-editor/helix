@@ -780,21 +780,15 @@ fn theme(
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
             } else if let Some(theme_name) = args.first() {
-                if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
-                    cx.editor.check_theme_color_support(&theme)?;
+                if let Ok(theme) = cx.editor.theme.update(theme_name.to_string()) {
                     cx.editor.set_theme_preview(theme);
                 };
             };
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
-                let theme = cx
-                    .editor
-                    .theme_loader
-                    .load(theme_name)
-                    .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
-                cx.editor.check_theme_color_support(&theme)?;
-                cx.editor.set_theme(theme);
+                cx.editor
+                    .set_theme(cx.editor.theme.update(theme_name.to_string())?);
             } else {
                 let name = cx.editor.theme.name().to_string();
                 cx.editor.set_status(name);

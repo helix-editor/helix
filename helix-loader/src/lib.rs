@@ -75,7 +75,7 @@ pub fn get_runtime_dirs() -> &'static [PathBuf] {
 pub fn theme_dirs() -> Vec<PathBuf> {
     let mut theme_dirs = vec![user_config_dir()];
     theme_dirs.extend_from_slice(get_runtime_dirs());
-    theme_dirs
+    theme_dirs.iter().map(|p| p.join("themes")).collect()
 }
 
 pub fn user_lang_config_file() -> PathBuf {

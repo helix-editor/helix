@@ -35,160 +35,10 @@ pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
     ..Theme::from(BASE16_DEFAULT_THEME_DATA.clone())
 });
 
-#[derive(Clone, Debug)]
-pub struct Loader {
-    /// Order implies search priority, highest first.
-    theme_dirs: Vec<PathBuf>,
-}
-impl Loader {
-    /// Creates a new `Loader` for themes from multiple directories.
-    /// Looks for the subdirectory "themes" in each supplied dir from `dirs`.
-    /// Order implies search priority, highest first.
-    pub fn new(dirs: &[PathBuf]) -> Self {
-        Self {
-            theme_dirs: dirs.iter().map(|p| p.join("themes")).collect(),
-        }
-    }
-
-    /// Recursively load a theme, merging with any inherited parent themes.
-    ///
-    /// The paths that have been visited in the inheritance hierarchy are tracked
-    /// to detect and avoid cycling.
-    ///
-    /// It is possible for one file to inherit from another file with the same name,
-    /// so long as the second file is in a themes directory with a lower priority.
-    /// However, it is not recommended that users do this as it will make tracing
-    /// errors more difficult.
-    pub fn load(&self, name: &str) -> Result<Theme> {
-        // NOTE: assumes that default and base16 aren't inherited.
-        if name == "default" {
-            return Ok(self.default());
-        }
-        if name == "base16_default" {
-            return Ok(self.base16_default());
-        }
-
-        let theme = self._load(name, &mut HashSet::new()).map(Theme::from)?;
-
-        Ok(Theme {
-            name: name.into(),
-            ..theme
-        })
-    }
-
-    fn _load(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<Value> {
-        let path = self
-            .find_remaining_path(name, visited_paths)
-            .ok_or_else(|| anyhow!("Theme: not found or recursively inheriting: {}", name))?;
-        let theme_string = std::fs::read_to_string(&path)?;
-        let theme_toml: toml::Value = toml::from_str(&theme_string)?;
-
-        let inherits = theme_toml.get("inherits");
-
-        let theme_toml = if let Some(parent_theme_name) = inherits {
-            let parent_theme_name = parent_theme_name.as_str().ok_or_else(|| {
-                anyhow!(
-                    "Theme: expected 'inherits' to be a string: {}",
-                    parent_theme_name
-                )
-            })?;
-
-            let parent_theme_toml = match parent_theme_name {
-                // load default themes's toml from const.
-                "default" => DEFAULT_THEME_DATA.clone(),
-                "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
-                _ => self._load(parent_theme_name, visited_paths)?,
-            };
-
-            self.merge_themes(parent_theme_toml, theme_toml)
-        } else {
-            theme_toml
-        };
-
-        Ok(theme_toml)
-    }
-
-    fn merge_themes(&self, parent_theme_toml: Value, theme_toml: Value) -> Value {
-        let parent_palette = parent_theme_toml.get("palette");
-        let palette = theme_toml.get("palette");
-
-        // handle the table seperately since it needs a `merge_depth` of 2
-        // this would conflict with the rest of the theme merge strategy
-        let palette_values = match (parent_palette, palette) {
-            (Some(parent_palette), Some(palette)) => {
-                merge_toml_values(parent_palette.clone(), palette.clone(), 2)
-            }
-            (Some(parent_palette), None) => parent_palette.clone(),
-            (None, Some(palette)) => palette.clone(),
-            (None, None) => Map::new().into(),
-        };
-
-        // add the palette correctly as nested table
-        let mut palette = Map::new();
-        palette.insert(String::from("palette"), palette_values);
-
-        // merge the theme into the parent theme
-        let theme = merge_toml_values(parent_theme_toml, theme_toml, 1);
-        // merge the before specially handled palette into the theme
-        merge_toml_values(theme, palette.into(), 1)
-    }
-
-    pub fn read_names(path: &Path) -> Vec<String> {
-        std::fs::read_dir(path)
-            .map(|entries| {
-                entries
-                    .filter_map(|entry| {
-                        let entry = entry.ok()?;
-                        let path = entry.path();
-                        (path.extension()? == "toml")
-                            .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
-
-    fn find_remaining_path(
-        &self,
-        name: &str,
-        visited_paths: &mut HashSet<PathBuf>,
-    ) -> Option<PathBuf> {
-        let filename = format!("{}.toml", name);
-
-        self.theme_dirs.iter().find_map(|dir| {
-            let path = dir.join(&filename);
-            if path.exists() && !visited_paths.contains(&path) {
-                visited_paths.insert(path.clone());
-                Some(path)
-            } else {
-                None
-            }
-        })
-    }
-
-    pub fn default_theme(&self, true_color: bool) -> Theme {
-        if true_color {
-            self.default()
-        } else {
-            self.base16_default()
-        }
-    }
-
-    /// Returns the default theme
-    pub fn default(&self) -> Theme {
-        DEFAULT_THEME.clone()
-    }
-
-    /// Returns the alternative 16-color default theme
-    pub fn base16_default(&self) -> Theme {
-        BASE16_DEFAULT_THEME.clone()
-    }
-}
-
 #[derive(Clone, Debug, Default)]
 pub struct Theme {
     name: String,
-
+    true_color_support: bool,
     // UI styles are stored in a HashMap
     styles: HashMap<String, Style>,
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
@@ -270,6 +120,145 @@ fn build_theme_values(
 }
 
 impl Theme {
+    pub fn new(theme_name: Option<String>, true_color_support: bool) -> Result<Theme> {
+        if let Some(theme_name) = theme_name {
+            let theme = Self::load(&theme_name)?;
+            if !true_color_support && !theme.is_16_color() {
+                anyhow::bail!("Unsupported theme: theme requires true color support")
+            }
+            Ok(Self {
+                true_color_support,
+                ..theme
+            })
+        } else if true_color_support {
+            Ok(Self {
+                true_color_support,
+                ..DEFAULT_THEME.clone()
+            })
+        } else {
+            Ok(Self {
+                true_color_support,
+                ..BASE16_DEFAULT_THEME.clone()
+            })
+        }
+    }
+
+    pub fn update(&self, theme_name: String) -> Result<Theme> {
+        Self::new(Some(theme_name), self.true_color_support)
+    }
+
+    /// Recursively load a theme, merging with any inherited parent themes.
+    ///
+    /// The paths that have been visited in the inheritance hierarchy are tracked
+    /// to detect and avoid cycling.
+    ///
+    /// It is possible for one file to inherit from another file with the same name,
+    /// so long as the second file is in a themes directory with a lower priority.
+    /// However, it is not recommended that users do this as it will make tracing
+    /// errors more difficult.
+    fn load(name: &str) -> Result<Theme> {
+        // NOTE: assumes that default and base16 aren't inherited.
+        if name == "default" {
+            return Ok(DEFAULT_THEME.clone());
+        }
+        if name == "base16_default" {
+            return Ok(BASE16_DEFAULT_THEME.clone());
+        }
+
+        match Self::_load(name, &mut HashSet::new()).map(Theme::from) {
+            Ok(theme) => Ok(Theme {
+                name: name.into(),
+                ..theme
+            }),
+            Err(err) => Err(anyhow::anyhow!("Failed to load theme `{}`: {}", name, err)),
+        }
+    }
+
+    fn _load(name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<Value> {
+        let path = Self::find_remaining_path(name, visited_paths)
+            .ok_or_else(|| anyhow!("Theme: not found or recursively inheriting: {}", name))?;
+        let theme_string = std::fs::read_to_string(&path)?;
+        let theme_toml: toml::Value = toml::from_str(&theme_string)?;
+
+        let inherits = theme_toml.get("inherits");
+
+        let theme_toml = if let Some(parent_theme_name) = inherits {
+            let parent_theme_name = parent_theme_name.as_str().ok_or_else(|| {
+                anyhow!(
+                    "Theme: expected 'inherits' to be a string: {}",
+                    parent_theme_name
+                )
+            })?;
+
+            let parent_theme_toml = match parent_theme_name {
+                // load default themes's toml from const.
+                "default" => DEFAULT_THEME_DATA.clone(),
+                "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
+                _ => Self::_load(parent_theme_name, visited_paths)?,
+            };
+
+            Self::merge_themes(parent_theme_toml, theme_toml)
+        } else {
+            theme_toml
+        };
+
+        Ok(theme_toml)
+    }
+
+    fn merge_themes(parent_theme_toml: Value, theme_toml: Value) -> Value {
+        let parent_palette = parent_theme_toml.get("palette");
+        let palette = theme_toml.get("palette");
+
+        // handle the table seperately since it needs a `merge_depth` of 2
+        // this would conflict with the rest of the theme merge strategy
+        let palette_values = match (parent_palette, palette) {
+            (Some(parent_palette), Some(palette)) => {
+                merge_toml_values(parent_palette.clone(), palette.clone(), 2)
+            }
+            (Some(parent_palette), None) => parent_palette.clone(),
+            (None, Some(palette)) => palette.clone(),
+            (None, None) => Map::new().into(),
+        };
+
+        // add the palette correctly as nested table
+        let mut palette = Map::new();
+        palette.insert(String::from("palette"), palette_values);
+
+        // merge the theme into the parent theme
+        let theme = merge_toml_values(parent_theme_toml, theme_toml, 1);
+        // merge the before specially handled palette into the theme
+        merge_toml_values(theme, palette.into(), 1)
+    }
+
+    pub fn read_names(path: &Path) -> Vec<String> {
+        std::fs::read_dir(path)
+            .map(|entries| {
+                entries
+                    .filter_map(|entry| {
+                        let entry = entry.ok()?;
+                        let path = entry.path();
+                        (path.extension()? == "toml")
+                            .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    fn find_remaining_path(name: &str, visited_paths: &mut HashSet<PathBuf>) -> Option<PathBuf> {
+        let filename = format!("{}.toml", name);
+
+        helix_loader::theme_dirs().iter().find_map(|dir| {
+            let path = dir.join(&filename);
+            if path.exists() && !visited_paths.contains(&path) {
+                visited_paths.insert(path.clone());
+                Some(path)
+            } else {
+                None
+            }
+        })
+    }
+
     #[inline]
     pub fn highlight(&self, index: usize) -> Style {
         self.highlights[index]

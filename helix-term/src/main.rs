@@ -7,6 +7,7 @@ use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::Config;
+use helix_view::Theme;
 use std::path::PathBuf;
 
 fn main() -> Result<()> {
@@ -71,8 +72,26 @@ async fn main_impl() -> Result<i32> {
         LanguageConfigurations::default()
     });
 
+    let true_color_support = {
+        config.editor.true_color || {
+            if cfg!(windows) {
+                true
+            } else {
+                std::env::var("COLORTERM")
+                    .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
+                    .unwrap_or(false)
+            }
+        }
+    };
+    let theme = Theme::new(config.theme.clone(), true_color_support).unwrap_or_else(|err| {
+        eprintln!("Bad theme config: {}", err);
+        eprintln!("Press <ENTER> to continue with default theme config");
+        let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut []);
+        Theme::new(None, true_color_support).expect("default themes must be correct")
+    });
+
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args, config, language_configurations)
+    let mut app = Application::new(args, config, theme, language_configurations)
         .context("unable to create new application")?;
     app.run(&mut EventStream::new()).await
 }

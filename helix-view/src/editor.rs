@@ -5,7 +5,7 @@ use crate::{
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
-    theme::{self, Theme},
+    theme::Theme,
     tree::{self, Tree},
     view::ViewPosition,
     Align, Document, DocumentId, View, ViewId,
@@ -752,13 +752,7 @@ impl Default for Config {
             file_picker: FilePickerConfig::default(),
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
-            true_color: if cfg!(windows) {
-                true
-            } else {
-                std::env::var("COLORTERM")
-                    .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
-                    .unwrap_or(false)
-            },
+            true_color: false,
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
@@ -838,7 +832,6 @@ pub struct Editor {
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 
     pub lang_configs_loader: Arc<syntax::Loader>,
-    pub theme_loader: theme::Loader,
     /// last_theme is used for theme previews. We store the current theme here,
     /// and if previewing is cancelled, we can return to it.
     pub last_theme: Option<Theme>,
@@ -929,16 +922,18 @@ pub enum CloseError {
 impl Editor {
     pub fn new(
         mut area: Rect,
-        lang_configs_loader: Arc<syntax::Loader>,
         config: Arc<dyn DynAccess<Config>>,
+        theme: Theme,
+        lang_configs_loader: Arc<syntax::Loader>,
     ) -> Self {
         let conf = config.load();
+
         let auto_pairs = (&conf.auto_pairs).into();
-        let theme_loader = theme::Loader::new(&helix_loader::theme_dirs());
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
 
-        Self {
+        // TEMP: until its decided on what to do with set_theme
+        let mut editor_temp = Self {
             mode: Mode::Normal,
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
@@ -950,7 +945,7 @@ impl Editor {
             selected_register: None,
             macro_recording: None,
             macro_replaying: Vec::new(),
-            theme: theme_loader.default(),
+            theme: theme.clone(),
             language_servers: helix_lsp::Registry::new(),
             diagnostics: BTreeMap::new(),
             diff_providers: DiffProviderRegistry::default(),
@@ -958,7 +953,6 @@ impl Editor {
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
             lang_configs_loader,
-            theme_loader,
             last_theme: None,
             last_line_number: None,
             registers: Registers::default(),
@@ -975,7 +969,9 @@ impl Editor {
             redraw_handle: Default::default(),
             needs_redraw: false,
             cursor_cache: Cell::new(None),
-        }
+        };
+        editor_temp.set_theme(theme);
+        editor_temp
     }
 
     /// Current editing mode for the [`Editor`].
@@ -1042,13 +1038,6 @@ impl Editor {
             .unwrap_or(false)
     }
 
-    pub fn check_theme_color_support(&self, theme: &Theme) -> anyhow::Result<()> {
-        if !(self.config.load().true_color || theme.is_16_color()) {
-            anyhow::bail!("Unsupported theme: theme requires true color support");
-        }
-        Ok(())
-    }
-
     pub fn unset_theme_preview(&mut self) {
         if let Some(last_theme) = self.last_theme.take() {
             self.set_theme(last_theme);
@@ -1071,9 +1060,7 @@ impl Editor {
             return;
         }
 
-        let scopes = theme.scopes();
-        self.lang_configs_loader.set_scopes(scopes.to_vec());
-
+        self.lang_configs_loader.set_scopes(theme.scopes().to_vec());
         match preview {
             ThemeAction::Preview => {
                 let last_theme = std::mem::replace(&mut self.theme, theme);

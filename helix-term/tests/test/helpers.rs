@@ -11,7 +11,7 @@ use helix_core::{
     diagnostic::Severity, syntax::LanguageConfigurations, test, Selection, Transaction,
 };
 use helix_term::{application::Application, args::Args, config::Config};
-use helix_view::{doc, input::parse_macro, Editor};
+use helix_view::{doc, input::parse_macro, Editor, Theme};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -120,7 +120,12 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     let test_case = test_case.into();
     let mut app = match app {
         Some(app) => app,
-        None => Application::new(Args::default(), test_config(), test_syntax_conf(None))?,
+        None => Application::new(
+            Args::default(),
+            test_config(),
+            Theme::new(None, true)?,
+            test_syntax_conf(None),
+        )?,
     };
 
     let (view, doc) = helix_view::current!(app.editor);
@@ -173,7 +178,7 @@ pub async fn test_with_config<T: Into<TestCase>>(
     test_case: T,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
-    let app = Application::new(args, config, syn_conf)?;
+    let app = Application::new(args, config, Theme::new(None, true)?, syn_conf)?;
 
     test_key_sequence_with_input_text(
         Some(app),
@@ -304,7 +309,12 @@ impl AppBuilder {
     }
 
     pub fn build(self) -> anyhow::Result<Application> {
-        let mut app = Application::new(self.args, self.config, self.syn_conf)?;
+        let mut app = Application::new(
+            self.args,
+            self.config,
+            Theme::new(None, true)?,
+            self.syn_conf,
+        )?;
 
         if let Some((text, selection)) = self.input {
             let (view, doc) = helix_view::current!(app.editor);
