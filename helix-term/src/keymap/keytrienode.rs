@@ -121,13 +121,14 @@ impl<'de> Visitor<'de> for KeyTrieNodeVisitor {
                 let mut children = Vec::new();
                 let mut child_order = HashMap::new();
                 let mut keytrie_is_sticky = false;
+                let mut user_explicit_sticky = false;
                 let mut next_key = Some(peeked_key);
 
                 while let Some(ref peeked_key) = next_key {
                     if peeked_key == "sticky" {
                         keytrie_is_sticky = map.next_value::<bool>()?;
-                    }
-                    else {
+                        user_explicit_sticky = true;
+                    } else {
                         let key_event = peeked_key
                             .parse::<KeyEvent>()
                             .map_err(serde::de::Error::custom)?;
@@ -138,12 +139,9 @@ impl<'de> Visitor<'de> for KeyTrieNodeVisitor {
                     next_key = map.next_key::<String>()?;
                 }
 
-                let mut keytrie = KeyTrie::new(
-                    description,
-                    child_order,
-                    children,
-                );
+                let mut keytrie = KeyTrie::new(description, child_order, children);
                 keytrie.is_sticky = keytrie_is_sticky;
+                keytrie.explicitly_set_sticky = user_explicit_sticky;
                 Ok(KeyTrieNode::KeyTrie(keytrie))
             };
 

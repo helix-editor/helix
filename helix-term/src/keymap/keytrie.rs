@@ -11,6 +11,8 @@ pub struct KeyTrie {
     child_order: HashMap<KeyEvent, usize>,
     children: Vec<KeyTrieNode>,
     pub is_sticky: bool,
+    /// Used to respect pre-defined stickyness.
+    pub explicitly_set_sticky: bool,
 }
 
 impl KeyTrie {
@@ -24,6 +26,7 @@ impl KeyTrie {
             child_order,
             children,
             is_sticky: false,
+            explicitly_set_sticky: false,
         }
     }
 
@@ -63,33 +66,28 @@ impl KeyTrie {
         }
     }
 
+    /// Other takes precedent.
     pub fn merge_keytrie(&mut self, other_keytrie: Self) {
+        if other_keytrie.explicitly_set_sticky {
+            self.is_sticky = other_keytrie.is_sticky;
+        }
+
         for (other_key_event, other_index) in other_keytrie.get_child_order() {
             let other_child_keytrie_node = &other_keytrie.get_children()[*other_index];
-            match other_child_keytrie_node {
-                KeyTrieNode::KeyTrie(ref other_child_keytrie) => {
-                    if let Some(self_index) = self.child_order.get(other_key_event) {
-                        if let KeyTrieNode::KeyTrie(ref mut self_clashing_child_key_trie) =
-                            self.children[*self_index]
-                        {
-                            self_clashing_child_key_trie.merge_keytrie(other_child_keytrie.clone());
-                        }
-                    } else {
-                        self.child_order
-                            .insert(*other_key_event, self.children.len());
-                        self.children
-                            .push(KeyTrieNode::KeyTrie(other_child_keytrie.clone()));
+            if let Some(existing_index) = self.child_order.get(other_key_event) {
+                if let KeyTrieNode::KeyTrie(ref mut self_clashing_child_key_trie) =
+                    self.children[*existing_index]
+                {
+                    if let KeyTrieNode::KeyTrie(other_child_keytrie) = other_child_keytrie_node {
+                        self_clashing_child_key_trie.merge_keytrie(other_child_keytrie.clone());
+                        continue;
                     }
                 }
-                KeyTrieNode::MappableCommand(_) | KeyTrieNode::CommandSequence(_) => {
-                    if let Some(existing_index) = self.child_order.get(other_key_event) {
-                        self.children[*existing_index] = other_child_keytrie_node.clone();
-                    } else {
-                        self.child_order
-                            .insert(*other_key_event, self.children.len());
-                        self.children.push(other_child_keytrie_node.clone());
-                    }
-                }
+                self.children[*existing_index] = other_child_keytrie_node.clone();
+            } else {
+                self.child_order
+                    .insert(*other_key_event, self.children.len());
+                self.children.push(other_child_keytrie_node.clone());
             }
         }
     }

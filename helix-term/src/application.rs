@@ -1,3 +1,14 @@
+use arc_swap::{access::Map, ArcSwap};
+use futures_util::Stream;
+use helix_core::{
+    diagnostic::{DiagnosticTag, NumberOrString},
+    path::get_relative_path,
+    syntax,
+    syntax::LanguageConfigurations,
+};
+use serde_json::json;
+use tui::backend::Backend;
+
 use crate::{
     args::Args,
     commands::apply_workspace_edit,
@@ -7,22 +18,7 @@ use crate::{
     keymap::Keymap,
     ui::{self, overlay::overlayed},
 };
-use anyhow::{Context, Error};
-use arc_swap::{access::Map, ArcSwap};
-use crossterm::{
-    event::{
-        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent,
-    },
-    execute, terminal,
-    tty::IsTty,
-};
-use futures_util::Stream;
-use helix_core::{
-    diagnostic::{DiagnosticTag, NumberOrString},
-    path::get_relative_path,
-    syntax::{self, LanguageConfigurations},
-};
+
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{
     align_view,
@@ -34,15 +30,23 @@ use helix_view::{
     Align, Editor,
 };
 use log::{debug, error, warn};
-use serde_json::json;
 use std::{
     io::{stdin, stdout, Write},
     path::Path,
     sync::Arc,
     time::{Duration, Instant},
 };
-use tui::backend::Backend;
 
+use anyhow::{Context, Error};
+
+use crossterm::{
+    event::{
+        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
+        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent,
+    },
+    execute, terminal,
+    tty::IsTty,
+};
 #[cfg(not(windows))]
 use {
     signal_hook::{consts::signal, low_level},
@@ -126,7 +130,7 @@ impl Application {
     pub fn new(
         args: Args,
         config: Config,
-        langauge_configurations: syntax::LanguageConfigurations,
+        langauge_configurations: LanguageConfigurations,
     ) -> Result<Self, Error> {
         use helix_view::editor::Action;
         #[cfg(feature = "integration")]

@@ -1,8 +1,9 @@
 use std::fmt::Write;
 use std::ops::Deref;
 
-use super::*;
 use crate::job::*;
+
+use super::*;
 
 use helix_core::encoding;
 use helix_view::editor::{Action, CloseError, ConfigEvent};

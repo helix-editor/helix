@@ -111,19 +111,41 @@ mod tests {
     }
 
     #[test]
+    fn false_to_true_sticky_override() {
+        let sample_keymap = r#"
+            [keys.normal.space]
+            sticky = true
+        "#;
+        assert!(_normal_mode_keytrie("space", sample_keymap).is_sticky)
+    }
+
+    #[test]
+    fn true_to_undefined_remains_sticky() {
+        // NOTE: assumes Z binding is predefined as sticky.
+        let sample_keymap = r#"
+            [keys.normal.Z]
+            c = "no_op"
+        "#;
+        assert!(_normal_mode_keytrie("Z", sample_keymap).is_sticky)
+    }
+
+    #[test]
+    fn true_to_false_sticky_override() {
+        // NOTE: assumes Z binding is predefined as sticky.
+        let sample_keymap = r#"
+                [keys.normal.Z]
+                sticky = false
+        "#;
+        assert!(!_normal_mode_keytrie("Z", sample_keymap).is_sticky)
+    }
+
+    #[test]
     fn parses_custom_typable_command_label_from_toml() {
         let sample_keymap = r#"
             [keys.normal]
             A-k = { description = "Edit Config", exec = ":open ~/.config/helix/config.toml" }
         "#;
-        let parsed_node: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
-            .unwrap()
-            .keys
-            .get(&Mode::Normal)
-            .unwrap()
-            .traverse(&[KeyEvent::from_str("A-k").unwrap()])
-            .unwrap();
-
+        let parsed_node: KeyTrieNode = _normal_mode_keytrie_node("A-k", sample_keymap);
         let parsed_description = parsed_node.get_description().unwrap();
         assert_eq!(parsed_description, "Edit Config");
 
@@ -141,14 +163,7 @@ mod tests {
             "C-r" = { "description" = "Sort selection", "exec" = ["split_selection_on_newline", ":sort", "collapse_selection", "keep_primary_selection"]             }
         "#;
 
-        let parsed_node: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
-            .unwrap()
-            .keys
-            .get(&Mode::Normal)
-            .unwrap()
-            .traverse(&[KeyEvent::from_str("C-r").unwrap()])
-            .unwrap();
-
+        let parsed_node: KeyTrieNode = _normal_mode_keytrie_node("C-r", sample_keymap);
         let parsed_description = parsed_node.get_description().unwrap();
         assert_eq!(parsed_description, "Sort selection");
 
@@ -163,25 +178,13 @@ mod tests {
     #[test]
     fn parses_custom_infobox_label_from_toml() {
         let sample_keymap = r#"
-            [keys.normal]
-            b = { description = "Buffer menu", b = "buffer_picker", n = "goto_next_buffer" }
+            [keys.normal.b]
+            description = "Buffer menu"
+            b = "buffer_picker"
+            n = "goto_next_buffer" 
         "#;
-
-        let parsed_node: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
-            .unwrap()
-            .keys
-            .get(&Mode::Normal)
-            .unwrap()
-            .traverse(&[KeyEvent::from_str("b").unwrap()])
-            .unwrap();
-
-        let parsed_description = parsed_node.get_description().unwrap();
-        assert_eq!(parsed_description, "Buffer menu");
-
-        if let KeyTrieNode::KeyTrie(_) = parsed_node {
-        } else {
-            panic!("KeyTrieNode::KeyTrie expected.")
-        }
+        let parsed_node: KeyTrieNode = _normal_mode_keytrie_node("b", sample_keymap);
+        assert_eq!(parsed_node.get_description().unwrap(), "Buffer menu");
     }
 
     #[test]
@@ -204,6 +207,9 @@ mod tests {
                             "$" => goto_line_end,
                             "g" => delete_char_forward,
                         },
+                        "b" => { "Buffer menu"
+                            "b" => buffer_picker,
+                        },
                     })
 
             },
@@ -219,7 +225,7 @@ mod tests {
         assert_eq!(
             keymap_normal_root_key_trie.traverse(&[key!('i')]).unwrap(),
             KeyTrieNode::MappableCommand(MappableCommand::normal_mode),
-            "User supplied mappable command should ovveride default mappable command bound to the same key event."
+            "User supplied mappable command should override default mappable command bound to the same key event."
         );
         assert_eq!(
             keymap_normal_root_key_trie.traverse(&[key!('无')]).unwrap(),
@@ -256,6 +262,12 @@ mod tests {
             KeyTrieNode::MappableCommand(MappableCommand::goto_last_line),
             "Default mappable commands that aren't ovveridden should exist in merged keymap."
         );
+        // Assumes that `b` is a MappableCommand in default keymap
+        assert_ne!(
+            keymap_normal_root_key_trie.traverse(&[key!('b')]).unwrap(),
+            KeyTrieNode::MappableCommand(MappableCommand::move_prev_word_start),
+            "Keytrie can override default mappable command."
+        );
 
         // Huh?
         assert!(
@@ -273,5 +285,26 @@ mod tests {
             .unwrap()
             .get_children()
             .is_empty());
+    }
+
+    fn _normal_mode_keytrie(key_event_str: &str, sample_keymap: &str) -> KeyTrie {
+        if let KeyTrieNode::KeyTrie(_parsed_keytrie) =
+            _normal_mode_keytrie_node(key_event_str, sample_keymap)
+        {
+            _parsed_keytrie
+        } else {
+            panic!("KeyTrieNode::KeyTrie expected.")
+        }
+    }
+
+    fn _normal_mode_keytrie_node(key_event_str: &str, sample_keymap: &str) -> KeyTrieNode {
+        toml::from_str::<Config>(sample_keymap)
+            .unwrap()
+            .merge_in_default_keymap()
+            .keys
+            .get(&Mode::Normal)
+            .unwrap()
+            .traverse(&[KeyEvent::from_str(key_event_str).unwrap()])
+            .unwrap()
     }
 }
