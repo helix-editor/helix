@@ -2241,9 +2241,7 @@ fn reveal_current_file(cx: &mut Context) {
                     None => {
                         editor.explorer = Some(overlayed(ui::Explorer::new(cx)?));
                         let explorer = editor.explorer.as_mut().unwrap();
-                        explorer.content.focus();
-                        explorer.content.reveal_current_file(cx)?;
-                        Ok(())
+                        explorer.content.reveal_current_file(cx)
                     }
                 })()
                 .unwrap_or_else(|err| {

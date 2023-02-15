@@ -233,11 +233,11 @@ impl Explorer {
             .split(std::path::MAIN_SEPARATOR)
             .collect::<Vec<_>>();
         self.tree.reveal_item(segments, &self.state.filter)?;
-        self.focus();
         Ok(())
     }
 
     pub fn reveal_current_file(&mut self, cx: &mut Context) -> Result<()> {
+        self.focus();
         let current_document_path = doc!(cx.editor).path().cloned();
         match current_document_path {
             None => Ok(()),
@@ -717,7 +717,6 @@ impl Explorer {
                     if line == "y" {
                         let item = explorer.tree.current_item();
                         std::fs::remove_dir_all(&item.path)?;
-                        explorer.tree.fold_current_child();
                         explorer.tree.remove_current();
                     }
                 }

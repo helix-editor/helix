@@ -129,60 +129,25 @@ impl<'a, T> DoubleEndedIterator for TreeIter<'a, T> {
 
 impl<'a, T> ExactSizeIterator for TreeIter<'a, T> {}
 
-impl<T: Clone + TreeItem> Tree<T> {
-    pub fn filter<P>(tree: &Tree<T>, predicate: &P) -> Option<Tree<T>>
-    where
-        P: Fn(&T) -> bool,
-    {
-        let children = tree
-            .children
-            .iter()
-            .filter_map(|tree| Self::filter(tree, predicate))
-            .collect::<Vec<_>>();
-        if tree.item.is_parent() || predicate(&tree.item) {
-            let mut tree = Tree {
-                item: tree.item.clone(),
-                parent_index: tree.parent_index,
-                index: tree.index,
-                is_opened: tree.is_opened,
-                children,
-            };
-            tree.regenerate_index();
-            Some(tree)
-        } else {
-            None
-        }
-    }
-}
-
 impl<T: TreeItem> Tree<T> {
     fn open(&mut self, filter: &String) -> Result<()> {
         if self.item.is_parent() {
-            self.children = vec_to_tree(
-                self.item
-                    .get_children()?
-                    .into_iter()
-                    .filter(|item| item.name().to_lowercase().contains(&filter.to_lowercase()))
-                    .collect(),
-            );
+            self.children = self.get_filtered_children(filter)?;
             self.is_opened = true;
         }
         Ok(())
+    }
+
+    fn close(&mut self) {
+        self.is_opened = false;
+        self.children = vec![];
     }
 
     fn refresh(&mut self, filter: &String) -> Result<()> {
         if !self.is_opened {
             return Ok(());
         }
-        let latest_children = vec_to_tree(
-            self.item
-                .get_children()?
-                .into_iter()
-                .filter(|item| {
-                    item.is_parent() || item.name().to_lowercase().contains(&filter.to_lowercase())
-                })
-                .collect(),
-        );
+        let latest_children = self.get_filtered_children(filter)?;
         let filtered = std::mem::replace(&mut self.children, vec![])
             .into_iter()
             // Remove children that does not exists in latest_children
@@ -214,6 +179,18 @@ impl<T: TreeItem> Tree<T> {
         self.regenerate_index();
 
         Ok(())
+    }
+
+    fn get_filtered_children(&self, filter: &String) -> Result<Vec<Tree<T>>> {
+        Ok(vec_to_tree(
+            self.item
+                .get_children()?
+                .into_iter()
+                .filter(|item| {
+                    item.is_parent() || item.name().to_lowercase().contains(&filter.to_lowercase())
+                })
+                .collect(),
+        ))
     }
 
     fn sort(&mut self) {
@@ -514,23 +491,9 @@ impl<T: TreeItem> TreeView<T> {
         selected_index: usize,
         filter: &String,
     ) {
-        // if let Some(next_level) = self.next_item().map(|elem| elem.level) {
-        //     let current = self.find_by_index(selected_index);
-        //     let current_level = current.level;
-        //     if next_level > current_level {
-        //         // if let Some(mut on_folded_fn) = self.on_folded_fn.take() {
-        //         //     on_folded_fn(&mut current.item, cx, params);
-        //         //     self.on_folded_fn = Some(on_folded_fn);
-        //         // }
-        //         self.fold_current_child();
-        //         return;
-        //     }
-        // }
-        //
-        let mut selected_item = self.get_mut(selected_index);
+        let selected_item = self.get_mut(selected_index);
         if selected_item.is_opened {
-            selected_item.is_opened = false;
-            selected_item.children = vec![];
+            selected_item.close();
             self.regenerate_index();
             return;
         }
@@ -550,15 +513,6 @@ impl<T: TreeItem> TreeView<T> {
             f();
             self.regenerate_index();
             self.on_opened_fn = Some(on_open_fn)
-        }
-    }
-
-    pub fn fold_current_child(&mut self) {
-        if let Some(parent) = self.current_parent_mut() {
-            parent.is_opened = false;
-            parent.children = vec![];
-            self.selected = parent.index;
-            self.regenerate_index()
         }
     }
 
@@ -684,14 +638,6 @@ impl<T: TreeItem> TreeView<T> {
         }
     }
 
-    fn current_parent_mut(&mut self) -> Option<&mut Tree<T>> {
-        if let Some(parent_index) = self.current().parent_index {
-            Some(self.get_mut(parent_index))
-        } else {
-            None
-        }
-    }
-
     pub fn current_item(&self) -> &T {
         &self.current().item
     }
@@ -718,10 +664,10 @@ impl<T: TreeItem> TreeView<T> {
                 let item_name = item.name();
                 if !tree.is_opened {
                     tree.open(filter)?;
+                } else {
+                    tree.refresh(filter)?;
                 }
-                tree.children.push(Tree::new(item, vec![]));
-                tree.children
-                    .sort_by(|a, b| tree_item_cmp(&a.item, &b.item));
+
                 self.regenerate_index();
 
                 let tree = self.get(index);
@@ -893,7 +839,6 @@ impl<T: TreeItem + Clone> TreeView<T> {
             key!('j') | key!(Tab) | key!(Down) | ctrl!('j') => self.move_down(1.max(count)),
             key!('z') => {
                 self.on_next_key = Some(Box::new(|_, tree, event| match event.into() {
-                    key!('f') => tree.fold_current_child(),
                     key!('z') => tree.align_view_center(),
                     key!('t') => tree.align_view_top(),
                     key!('b') => tree.align_view_bottom(),
@@ -964,8 +909,6 @@ fn index_elems<T>(parent_index: usize, elems: Vec<Tree<T>>) -> Vec<Tree<T>> {
 #[cfg(test)]
 mod test_tree {
     use helix_core::movement::Direction;
-
-    use crate::ui::TreeItem;
 
     use super::Tree;
 
@@ -1116,95 +1059,6 @@ mod test_tree {
         });
 
         assert_eq!(result, Some(3));
-    }
-
-    #[test]
-    fn test_filter() {
-        #[derive(Clone, Debug, PartialEq, Eq)]
-        struct MyItem<'a>(bool, &'a str);
-        impl<'a> TreeItem for MyItem<'a> {
-            type Params = ();
-            fn name(&self) -> String {
-                self.0.to_string()
-            }
-            fn is_child(&self, _: &Self) -> bool {
-                !self.0
-            }
-            fn is_parent(&self) -> bool {
-                self.0
-            }
-            fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-                self.1.cmp(other.1)
-            }
-        }
-        let tree = Tree::new(
-            MyItem(false, ".cargo"),
-            vec![
-                Tree::new(
-                    MyItem(true, "spam"),
-                    vec![Tree::new(MyItem(false, "Cargo.toml"), vec![])],
-                ),
-                Tree::new(
-                    MyItem(true, "Cargo.toml"),
-                    vec![Tree::new(MyItem(false, "pam"), vec![])],
-                ),
-                Tree::new(MyItem(false, "hello"), vec![]),
-            ],
-        );
-
-        let result = Tree::filter(&tree, &|item| item.1.to_lowercase().contains("cargo"));
-        assert_eq!(
-            result,
-            Some(Tree::new(
-                MyItem(false, ".cargo"),
-                vec![
-                    Tree::new(
-                        MyItem(true, "spam"),
-                        vec![Tree::new(MyItem(false, "Cargo.toml"), vec![])]
-                    ),
-                    Tree {
-                        is_opened: true,
-                        ..Tree::new(MyItem(true, "Cargo.toml"), vec![])
-                    },
-                ],
-            ))
-        );
-
-        let result = Tree::filter(&tree, &|item| item.1.to_lowercase().contains("pam"));
-        assert_eq!(
-            result,
-            Some(Tree::new(
-                MyItem(false, ".cargo"),
-                vec![
-                    Tree {
-                        is_opened: true,
-                        ..Tree::new(MyItem(true, "spam"), vec![])
-                    },
-                    Tree::new(
-                        MyItem(true, "Cargo.toml"),
-                        vec![Tree::new(MyItem(false, "pam"), vec![])]
-                    ),
-                ],
-            ))
-        );
-
-        let result = Tree::filter(&tree, &|item| item.1.to_lowercase().contains("helix"));
-        assert_eq!(
-            result,
-            Some(Tree::new(
-                MyItem(false, ".cargo"),
-                vec![
-                    Tree {
-                        is_opened: true,
-                        ..Tree::new(MyItem(true, "spam"), vec![])
-                    },
-                    Tree {
-                        is_opened: true,
-                        ..Tree::new(MyItem(true, "Cargo.toml"), vec![])
-                    }
-                ],
-            ))
-        )
     }
 
     #[test]
