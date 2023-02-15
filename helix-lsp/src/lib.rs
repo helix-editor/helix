@@ -427,10 +427,7 @@ impl Registry {
         }
     }
 
-    pub fn stop(
-        &mut self,
-        language_config: &LanguageConfiguration,
-    ) {
+    pub fn stop(&mut self, language_config: &LanguageConfiguration) {
         let scope = language_config.scope.clone();
 
         if let Some((_, client)) = self.inner.remove(&scope) {
