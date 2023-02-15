@@ -120,6 +120,71 @@ mod tests {
     }
 
     #[test]
+    fn false_to_true_sticky_override() {
+        let sample_keymap = r#"
+            [keys.normal.space]
+            sticky = true
+        "#;
+        let space_keytrie: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
+            .unwrap()
+            .merge_in_default_keymap()
+            .keys
+            .get(&Mode::Normal)
+            .unwrap()
+            .traverse(&[KeyEvent::from_str("space").unwrap()])
+            .unwrap();
+        if let KeyTrieNode::KeyTrie(_space_keytrie) = space_keytrie {
+            assert!(_space_keytrie.is_sticky)
+        } else {
+            panic!("KeyTrieNode::KeyTrie expected.")
+        }
+    }
+
+    #[test]
+    fn true_to_undefined_remains_sticky() {
+        // NOTE: assumes Z binding is predefined as sticky.
+        let sample_keymap = r#"
+                [keys.normal.Z]
+                c = "no_op"
+            "#;
+        let sticky_keytrie: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
+            .unwrap()
+            .merge_in_default_keymap()
+            .keys
+            .get(&Mode::Normal)
+            .unwrap()
+            .traverse(&[KeyEvent::from_str("Z").unwrap()])
+            .unwrap();
+        if let KeyTrieNode::KeyTrie(_sticky_keytrie) = sticky_keytrie {
+            assert!(_sticky_keytrie.is_sticky)
+        } else {
+            panic!("KeyTrieNode::KeyTrie expected.")
+        }
+    }
+
+    #[test]
+    fn true_to_false_sticky_override() {
+        // NOTE: assumes Z binding is predefined as sticky.
+        let sample_keymap = r#"
+                [keys.normal.Z]
+                sticky = false
+            "#;
+        let sticky_keytrie: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
+            .unwrap()
+            .merge_in_default_keymap()
+            .keys
+            .get(&Mode::Normal)
+            .unwrap()
+            .traverse(&[KeyEvent::from_str("Z").unwrap()])
+            .unwrap();
+        if let KeyTrieNode::KeyTrie(_sticky_keytrie) = sticky_keytrie {
+            assert!(!_sticky_keytrie.is_sticky)
+        } else {
+            panic!("KeyTrieNode::KeyTrie expected.")
+        }
+    }
+
+    #[test]
     fn parses_custom_typable_command_label_from_toml() {
         let sample_keymap = r#"
             [keys.normal]
