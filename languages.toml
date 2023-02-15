@@ -2007,7 +2007,7 @@ source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "c917790ab9a
 [[language]]
 name = "env"
 scope = "source.env"
-file-types = [".env", ".env.local", ".env.development", ".env.production", ".envrc"]
+file-types = [".env", ".env.local", ".env.development", ".env.production", ".env.dist", ".envrc"]
 injection-regex = "env"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
