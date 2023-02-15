@@ -26,7 +26,7 @@ impl KeyTrie {
             child_order,
             children,
             is_sticky: false,
-            explicitly_set_sticky: false
+            explicitly_set_sticky: false,
         }
     }
 
@@ -71,7 +71,7 @@ impl KeyTrie {
         if other_keytrie.explicitly_set_sticky {
             self.is_sticky = other_keytrie.is_sticky;
         }
-        
+
         for (other_key_event, other_index) in other_keytrie.get_child_order() {
             let other_child_keytrie_node = &other_keytrie.get_children()[*other_index];
             match other_child_keytrie_node {
