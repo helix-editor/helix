@@ -435,7 +435,7 @@ impl Registry {
 
         if let Some((_, client)) = self.inner.remove(&scope) {
             tokio::spawn(async move {
-                let _ = client.force_shutdown().await;    
+                let _ = client.force_shutdown().await;
             });
         }
     }

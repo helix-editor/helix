@@ -1235,11 +1235,23 @@ fn lsp_stop(
     }
 
     let (_view, doc) = current!(cx.editor);
+
+    let ls_id = doc
+        .language_server().map(|ls| ls.id())
+        .context("LSP not running for the current document")?;
+
     let config = doc
         .language_config()
         .context("LSP not defined for the current document")?;
+    cx.editor.language_servers.stop(&config);
 
-    cx.editor.language_servers.stop(config);
+    cx.editor.documents_mut()
+        .filter(|doc| doc.language_server().map_or(false, |ls| ls.id() == ls_id))
+        .for_each(|doc| {
+            doc.set_language_server(None);
+            log::warn!("XXX STOPPING for {:?}", doc.path());
+        });  
+
     Ok(())
 }
 
