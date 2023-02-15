@@ -924,7 +924,7 @@ impl Editor {
     pub fn new(
         mut area: Rect,
         theme_loader: Arc<theme::Loader>,
-        syn_loader: Arc<syntax::Loader>,
+        lang_configs_loader: Arc<syntax::Loader>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
         let conf = config.load();
@@ -952,7 +952,7 @@ impl Editor {
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
-            lang_configs_loader: syn_loader,
+            lang_configs_loader,
             theme_loader,
             last_theme: None,
             last_line_number: None,

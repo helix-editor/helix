@@ -262,12 +262,8 @@ impl Application {
             compositor,
             terminal,
             editor,
-
             config,
-
-            theme_loader,
             lang_configs_loader,
-
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
@@ -426,6 +422,7 @@ impl Application {
 
             if let Some(theme) = &self.config.load().theme {
                 let theme = self
+                    .editor
                     .theme_loader
                     .load(theme)
                     .map_err(|err| anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err))?;

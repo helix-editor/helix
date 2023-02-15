@@ -406,7 +406,7 @@ impl Document {
     pub fn open(
         path: &Path,
         encoding: Option<&'static encoding::Encoding>,
-        config_loader: Option<Arc<syntax::Loader>>,
+        lang_configs_loader: Option<Arc<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
@@ -423,7 +423,7 @@ impl Document {
 
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
-        if let Some(loader) = config_loader {
+        if let Some(loader) = lang_configs_loader {
             doc.detect_language(loader);
         }
 
