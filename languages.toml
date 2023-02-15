@@ -2167,3 +2167,16 @@ comment-token = "#"
 [[grammar]]
 name = "hosts"
 source = { git = "https://github.com/ath3/tree-sitter-hosts", rev = "301b9379ce7dfc8bdbe2c2699a6887dcb73953f9" }
+
+[[language]]
+name = "fsharp"
+scope = "source.fsharp"
+injection-regex = "^fsharp$"
+file-types = ["fs"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "fsharp"
+source = { git = "https://github.com/Nsidorenco/tree-sitter-fsharp", rev = "700c8371016ec9dc68ac31c67328ef5c8b216cf5" }
