@@ -2608,13 +2608,11 @@ impl ui::menu::Item for MappableCommand {
                     Cell::from(""),
                     Cell::from(description.as_str()),
                 ];
-                match command_list.get(name as &String) {
-                    Some(key_events) => {
-                        row[1] = Cell::from(key_events.join(", "));
-                    }
-                    None => {}
+                if let Some(key_events) = command_list.get(name as &String) {
+                    row[1] = Cell::from(key_events.join(", "));
                 }
-                return Row::new(row);
+
+                Row::new(row)
             }
             MappableCommand::Static {
                 description: doc,
@@ -2622,13 +2620,11 @@ impl ui::menu::Item for MappableCommand {
                 ..
             } => {
                 let mut row: Vec<Cell> = vec![Cell::from(*name), Cell::from(""), Cell::from(*doc)];
-                match command_list.get(*name) {
-                    Some(key_events) => {
-                        row[1] = Cell::from(key_events.join(", "));
-                    }
-                    None => {}
+                if let Some(key_events) = command_list.get(*name) {
+                    row[1] = Cell::from(key_events.join(", "));
                 }
-                return Row::new(row);
+
+                Row::new(row)
             }
         }
     }

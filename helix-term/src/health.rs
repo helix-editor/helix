@@ -45,7 +45,7 @@ fn display_paths() -> std::io::Result<()> {
     for rt_dir in rt_dirs {
         write!(stdout, "- {};", rt_dir.display())?;
 
-        if let Ok(path) = std::fs::read_link(&rt_dir) {
+        if let Ok(path) = std::fs::read_link(rt_dir) {
             let msg = format!(" (symlinked to {})", path.display());
             write!(stdout, "{}", msg.yellow())?;
         }
