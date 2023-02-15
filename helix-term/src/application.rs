@@ -23,7 +23,7 @@ use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
-    editor::{ConfigEvent, EditorEvent},
+    editor::{Action, ConfigEvent, EditorEvent},
     graphics::Rect,
     tree::Layout,
     Align, Editor,
@@ -129,22 +129,20 @@ impl Application {
         config: Config,
         langauge_configurations: LanguageConfigurations,
     ) -> Result<Self, Error> {
-        use helix_view::editor::Action;
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
-        let lang_configs_loader = std::sync::Arc::new(syntax::Loader::new(langauge_configurations));
-
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout());
-
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
 
         let terminal = Terminal::new(backend)?;
         let area = terminal.size().expect("couldn't get terminal size");
-        let mut compositor = Compositor::new(area);
+
         let config = Arc::new(ArcSwap::from_pointee(config));
+        let lang_configs_loader = std::sync::Arc::new(syntax::Loader::new(langauge_configurations));
+
         let mut editor = Editor::new(
             area,
             lang_configs_loader.clone(),
@@ -156,8 +154,9 @@ impl Application {
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
         }));
-        let editor_view = Box::new(ui::EditorView::new(Keymap::new(keys)));
-        compositor.push(editor_view);
+
+        let mut compositor = Compositor::new(area);
+        compositor.push(Box::new(ui::EditorView::new(Keymap::new(keys))));
 
         if args.load_tutor {
             let path = helix_loader::get_runtime_file(Path::new("tutor"));

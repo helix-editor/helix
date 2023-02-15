@@ -74,8 +74,7 @@ async fn main_impl() -> Result<i32> {
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config, language_configurations)
         .context("unable to create new application")?;
-    let exit_code = app.run(&mut EventStream::new()).await?;
-    Ok(exit_code)
+    app.run(&mut EventStream::new()).await
 }
 
 fn setup_logging(logpath: Option<PathBuf>, verbosity: u64) -> Result<()> {
