@@ -120,24 +120,31 @@ impl<'de> Visitor<'de> for KeyTrieNodeVisitor {
             |peeked_key: String, mut map: M, description: &str| -> Result<Self::Value, M::Error> {
                 let mut children = Vec::new();
                 let mut child_order = HashMap::new();
+                let mut keytrie_is_sticky = false;
+                let mut next_key = Some(peeked_key);
 
-                let key_event = peeked_key
-                    .parse::<KeyEvent>()
-                    .map_err(serde::de::Error::custom)?;
-                let keytrie_node = map.next_value::<KeyTrieNode>()?;
-
-                let mut trie_edge_node_pair = Some((key_event, keytrie_node));
-                while let Some((key_event, keytrie_node)) = trie_edge_node_pair {
-                    child_order.insert(key_event, children.len());
-                    children.push(keytrie_node);
-                    trie_edge_node_pair = map.next_entry::<KeyEvent, KeyTrieNode>()?;
+                while let Some(ref peeked_key) = next_key {
+                    if peeked_key == "sticky" {
+                        keytrie_is_sticky = map.next_value::<bool>()?;
+                    }
+                    else {
+                        let key_event = peeked_key
+                            .parse::<KeyEvent>()
+                            .map_err(serde::de::Error::custom)?;
+                        let keytrie_node = map.next_value::<KeyTrieNode>()?;
+                        child_order.insert(key_event, children.len());
+                        children.push(keytrie_node);
+                    }
+                    next_key = map.next_key::<String>()?;
                 }
 
-                Ok(KeyTrieNode::KeyTrie(KeyTrie::new(
+                let mut keytrie = KeyTrie::new(
                     description,
                     child_order,
                     children,
-                )))
+                );
+                keytrie.is_sticky = keytrie_is_sticky;
+                Ok(KeyTrieNode::KeyTrie(keytrie))
             };
 
         let first_key = map
