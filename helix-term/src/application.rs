@@ -390,27 +390,19 @@ impl Application {
         }
     }
 
-    /// refresh language config after config change
-    fn refresh_language_config(&mut self) -> Result<(), Error> {
-        let language_configs = LanguageConfigurations::merged()
-            .map_err(|err| anyhow::anyhow!("Failed to load merged language config: {}", err))?;
-
-        self.lang_configs_loader = std::sync::Arc::new(syntax::Loader::new(language_configs));
-        self.editor.lang_configs_loader = self.lang_configs_loader.clone();
-        for document in self.editor.documents.values_mut() {
-            document.detect_language(self.lang_configs_loader.clone());
-        }
-
-        Ok(())
-    }
-
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
             let merged_user_config = Config::merged()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.config.store(Arc::new(merged_user_config));
 
-            self.refresh_language_config()?;
+            let language_configs = LanguageConfigurations::merged()
+                .map_err(|err| anyhow::anyhow!("Failed to load merged language config: {}", err))?;
+            self.lang_configs_loader = std::sync::Arc::new(syntax::Loader::new(language_configs));
+            self.editor.lang_configs_loader = self.lang_configs_loader.clone();
+            for document in self.editor.documents.values_mut() {
+                document.detect_language(self.lang_configs_loader.clone());
+            }
 
             if let Some(theme) = &self.config.load().theme {
                 let theme =
