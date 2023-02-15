@@ -157,7 +157,7 @@ impl ExplorerConfig {
 impl Default for ExplorerConfig {
     fn default() -> Self {
         Self {
-            position: ExplorerPosition::Right,
+            position: ExplorerPosition::Left,
             column_width: 30,
         }
     }
