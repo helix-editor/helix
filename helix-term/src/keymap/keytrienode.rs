@@ -145,18 +145,18 @@ impl<'de> Visitor<'de> for KeyTrieNodeVisitor {
                 Ok(KeyTrieNode::KeyTrie(keytrie))
             };
 
-        let first_key = map
-            .next_key::<String>()?
-            .expect("Maps without keys are undefined keymap remapping behaviour.");
+        let Some(first_key) = map.next_key::<String>()? else {
+            return Err(serde::de::Error::custom("Maps without keys are undefined keymap remapping behaviour."))
+        };
 
         if first_key != "description" {
             return into_keytrie(first_key, map, "");
         }
 
         let description = map.next_value::<String>()?;
-        let second_key = map
-            .next_key::<String>()?
-            .expect("Associated key when a 'description' key is provided");
+        let Some(second_key) = map.next_key::<String>()? else {
+            return Err(serde::de::Error::custom("Associated key when a 'description' key is provided"))
+        };
 
         if &second_key != "exec" {
             return into_keytrie(second_key, map, &description);
