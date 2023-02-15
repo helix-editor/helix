@@ -72,12 +72,7 @@ pub struct Application {
     compositor: Compositor,
     terminal: Terminal,
     pub editor: Editor,
-
     config: Arc<ArcSwap<Config>>,
-
-    #[allow(dead_code)]
-    lang_configs_loader: Arc<syntax::Loader>,
-
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
@@ -141,11 +136,10 @@ impl Application {
         let area = terminal.size().expect("couldn't get terminal size");
 
         let config = Arc::new(ArcSwap::from_pointee(config));
-        let lang_configs_loader = std::sync::Arc::new(syntax::Loader::new(langauge_configurations));
 
         let mut editor = Editor::new(
             area,
-            lang_configs_loader.clone(),
+            Arc::new(syntax::Loader::new(langauge_configurations)),
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
@@ -255,7 +249,6 @@ impl Application {
             terminal,
             editor,
             config,
-            lang_configs_loader,
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
@@ -398,10 +391,11 @@ impl Application {
 
             let language_configs = LanguageConfigurations::merged()
                 .map_err(|err| anyhow::anyhow!("Failed to load merged language config: {}", err))?;
-            self.lang_configs_loader = std::sync::Arc::new(syntax::Loader::new(language_configs));
-            self.editor.lang_configs_loader = self.lang_configs_loader.clone();
+
+            self.editor.lang_configs_loader = Arc::new(syntax::Loader::new(language_configs));
+            self.editor.lang_configs_loader = self.editor.lang_configs_loader.clone();
             for document in self.editor.documents.values_mut() {
-                document.detect_language(self.lang_configs_loader.clone());
+                document.detect_language(self.editor.lang_configs_loader.clone());
             }
 
             if let Some(theme) = &self.config.load().theme {
