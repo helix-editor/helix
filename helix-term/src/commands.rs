@@ -3,29 +3,10 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
+use helix_vcs::Hunk;
 pub use lsp::*;
 pub use typed::*;
 
-use crate::{
-    args,
-    commands::insert::*,
-    compositor::{self, Component, Compositor},
-    filter_picker_entry,
-    job::{self, Callback, Jobs},
-    keymap::CommandList,
-    ui::{
-        self,
-        menu::{Cell, Row},
-        overlay::overlayed,
-        FilePicker, Picker, Popup, Prompt, PromptEvent,
-    },
-};
-
-use anyhow::{anyhow, bail, ensure, Context as _};
-use futures_util::StreamExt;
-use fuzzy_matcher::FuzzyMatcher;
-use grep_regex::RegexMatcherBuilder;
-use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use helix_core::{
     char_idx_at_visual_offset, comment,
     doc_formatter::TextFormat,
@@ -35,7 +16,7 @@ use helix_core::{
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
-    movement::{self, move_vertically_visual, Direction, Movement},
+    movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
     search::{self, CharMatcher},
@@ -47,7 +28,6 @@ use helix_core::{
     visual_offset_from_block, LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice,
     Selection, SmallVec, Tendril, Transaction,
 };
-use helix_vcs::Hunk;
 use helix_view::{
     clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
@@ -59,17 +39,42 @@ use helix_view::{
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
-use ignore::{DirEntry, WalkBuilder, WalkState};
-use once_cell::sync::Lazy;
-use serde::de::{self, Deserialize, Deserializer};
+
+use anyhow::{anyhow, bail, ensure, Context as _};
+use fuzzy_matcher::FuzzyMatcher;
+use insert::*;
+use movement::Movement;
+
+use crate::{
+    args,
+    compositor::{self, Component, Compositor},
+    filter_picker_entry,
+    job::Callback,
+    keymap::CommandList,
+    ui::{
+        self,
+        menu::{Cell, Row},
+        overlay::overlayed,
+        FilePicker, Picker, Popup, Prompt, PromptEvent,
+    },
+};
+
+use crate::job::{self, Jobs};
+use futures_util::StreamExt;
+use std::{collections::HashMap, fmt, future::Future};
+use std::{collections::HashSet, num::NonZeroUsize};
+
 use std::{
     borrow::Cow,
-    collections::{HashMap, HashSet},
-    fmt,
-    future::Future,
-    num::NonZeroUsize,
     path::{Path, PathBuf},
 };
+
+use once_cell::sync::Lazy;
+use serde::de::{self, Deserialize, Deserializer};
+
+use grep_regex::RegexMatcherBuilder;
+use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
+use ignore::{DirEntry, WalkBuilder, WalkState};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub type OnKeyCallback = Box<dyn FnOnce(&mut Context, KeyEvent)>;
