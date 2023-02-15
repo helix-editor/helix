@@ -133,7 +133,7 @@ impl Application {
         let backend = TestBackend::new(120, 150);
 
         let terminal = Terminal::new(backend)?;
-        let area = terminal.size().expect("couldn't get terminal size");
+        let area = terminal.size();
 
         let config = Arc::new(ArcSwap::from_pointee(config));
 
@@ -447,7 +447,7 @@ impl Application {
             signal::SIGCONT => {
                 self.claim_term().await.unwrap();
                 // redraw the terminal
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
                 self.compositor.resize(area);
                 self.terminal.clear().expect("couldn't clear terminal");
 
@@ -594,7 +594,7 @@ impl Application {
                     .resize(Rect::new(0, 0, width, height))
                     .expect("Unable to resize terminal");
 
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
 
                 self.compositor.resize(area);
 
