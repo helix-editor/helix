@@ -752,7 +752,13 @@ impl Default for Config {
             file_picker: FilePickerConfig::default(),
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
-            true_color: false,
+            true_color: if cfg!(windows) {
+                true
+            } else {
+                std::env::var("COLORTERM")
+                    .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
+                    .unwrap_or(false)
+            },
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),

@@ -219,7 +219,7 @@ impl Application {
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
-        let true_color = config.load().editor.true_color || crate::true_color();
+        let true_color = config.load().editor.true_color;
         let theme = config
             .load()
             .theme
@@ -403,10 +403,7 @@ impl Application {
                         anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err)
                     })?;
 
-                if self.config.load().editor.true_color
-                    || crate::true_color()
-                    || theme.is_16_color()
-                {
+                if self.config.load().editor.true_color || theme.is_16_color() {
                     self.editor.set_theme(theme);
                 } else {
                     anyhow::bail!("Theme requires truecolor support, which is not available!")

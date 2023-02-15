@@ -771,7 +771,7 @@ fn theme(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let true_color = cx.editor.config.load().true_color || crate::true_color();
+    let true_color = cx.editor.config.load().true_color;
     match event {
         PromptEvent::Abort => {
             cx.editor.unset_theme_preview();
