@@ -81,6 +81,8 @@ impl KeyTrie {
                             self.children[*self_index]
                         {
                             self_clashing_child_key_trie.merge_keytrie(other_child_keytrie.clone());
+                        } else {
+                            self.children[*self_index] = other_child_keytrie_node.clone();
                         }
                     } else {
                         self.child_order

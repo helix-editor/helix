@@ -187,12 +187,12 @@ mod tests {
     #[test]
     fn parses_custom_infobox_label_from_toml() {
         let sample_keymap = r#"
-            [keys.normal.A-b]
+            [keys.normal.b]
             description = "Buffer menu"
             b = "buffer_picker"
             n = "goto_next_buffer" 
         "#;
-        let parsed_node: KeyTrieNode = _normal_mode_keytrie_node("A-b", sample_keymap);
+        let parsed_node: KeyTrieNode = _normal_mode_keytrie_node("b", sample_keymap);
         assert_eq!(parsed_node.get_description().unwrap(), "Buffer menu");
     }
 
@@ -215,6 +215,9 @@ mod tests {
                         "g" => { "Merge into goto mode"
                             "$" => goto_line_end,
                             "g" => delete_char_forward,
+                        },
+                        "b" => { "Buffer menu"
+                            "b" => buffer_picker,
                         },
                     })
 
@@ -267,6 +270,12 @@ mod tests {
                 .unwrap(),
             KeyTrieNode::MappableCommand(MappableCommand::goto_last_line),
             "Default mappable commands that aren't ovveridden should exist in merged keymap."
+        );
+        // Assumes that `b` is a MappableCommand in default keymap
+        assert_ne!(
+            keymap_normal_root_key_trie.traverse(&[key!('b')]).unwrap(),
+            KeyTrieNode::MappableCommand(MappableCommand::move_prev_word_start),
+            "Keytrie can override default mappable command."
         );
 
         // Huh?
