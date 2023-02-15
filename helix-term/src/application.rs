@@ -393,7 +393,6 @@ impl Application {
                 .map_err(|err| anyhow::anyhow!("Failed to load merged language config: {}", err))?;
 
             self.editor.lang_configs_loader = Arc::new(syntax::Loader::new(language_configs));
-            self.editor.lang_configs_loader = self.editor.lang_configs_loader.clone();
             for document in self.editor.documents.values_mut() {
                 document.detect_language(self.editor.lang_configs_loader.clone());
             }
@@ -517,12 +516,10 @@ impl Application {
                 return;
             }
 
-            let loader = self.editor.lang_configs_loader.clone();
-
             // borrowing the same doc again to get around the borrow checker
             let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
             let id = doc.id();
-            doc.detect_language(loader);
+            doc.detect_language(self.editor.lang_configs_loader.clone());
             let _ = self.editor.refresh_language_server(id);
         }
 
