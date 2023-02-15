@@ -101,5 +101,7 @@ Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 
 Keys can be disabled by binding them to the `no_op` command.
 
+Making a mode "sticky" can be achieved by adding `sticky = true` to the mapping.
+
 Commands can be found at [Keymap](https://docs.helix-editor.com/keymap.html) Commands.
 > Commands can also be found in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs) at the invocation of `static_commands!` macro and the `TypableCommandList`.
