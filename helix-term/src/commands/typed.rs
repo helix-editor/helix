@@ -771,7 +771,6 @@ fn theme(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let true_color = cx.editor.config.load().true_color;
     match event {
         PromptEvent::Abort => {
             cx.editor.unset_theme_preview();
@@ -782,9 +781,7 @@ fn theme(
                 cx.editor.unset_theme_preview();
             } else if let Some(theme_name) = args.first() {
                 if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
-                    if !(true_color || theme.is_16_color()) {
-                        bail!("Unsupported theme: theme requires true color support");
-                    }
+                    cx.editor.check_theme_color_support(&theme)?;
                     cx.editor.set_theme_preview(theme);
                 };
             };
@@ -796,13 +793,10 @@ fn theme(
                     .theme_loader
                     .load(theme_name)
                     .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
-                if !(true_color || theme.is_16_color()) {
-                    bail!("Unsupported theme: theme requires true color support");
-                }
+                cx.editor.check_theme_color_support(&theme)?;
                 cx.editor.set_theme(theme);
             } else {
                 let name = cx.editor.theme.name().to_string();
-
                 cx.editor.set_status(name);
             }
         }

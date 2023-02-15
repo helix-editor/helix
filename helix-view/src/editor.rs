@@ -1042,6 +1042,13 @@ impl Editor {
             .unwrap_or(false)
     }
 
+    pub fn check_theme_color_support(&self, theme: &Theme) -> anyhow::Result<()> {
+        if !(self.config.load().true_color || theme.is_16_color()) {
+            anyhow::bail!("Unsupported theme: theme requires true color support");
+        }
+        Ok(())
+    }
+
     pub fn unset_theme_preview(&mut self) {
         if let Some(last_theme) = self.last_theme.take() {
             self.set_theme(last_theme);
