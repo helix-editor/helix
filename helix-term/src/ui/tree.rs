@@ -270,32 +270,6 @@ impl<T> Tree<T> {
             self.children.iter().find_map(|elem| elem.get(index))
         }
     }
-    fn traverse<'a, U, F>(&'a self, init: U, f: &F) -> U
-    where
-        F: Fn(U, usize, &'a Tree<T>) -> U,
-    {
-        fn traverse<'a, T, U, F>(
-            tree: &'a Tree<T>,
-            current_index: usize,
-            init: U,
-            f: &F,
-        ) -> (usize, U)
-        where
-            F: Fn(U, usize, &'a Tree<T>) -> U,
-        {
-            let mut result = f(init, current_index, &tree);
-            let mut current_index = current_index;
-            for tree in &tree.children {
-                (current_index, result) = traverse(tree, current_index + 1, result, f)
-            }
-            (current_index, result)
-            // tree.children.iter().fold(
-            //     (current_index, f(init, 0, &tree)),
-            //     |(current_index, result), tree| traverse(tree, current_index + 1, result, &f),
-            // )
-        }
-        traverse(self, 0, init, f).1
-    }
 
     fn get_mut(&mut self, index: usize) -> Option<&mut Tree<T>> {
         if self.index == index {
@@ -488,7 +462,8 @@ impl<T: TreeItem> TreeView<T> {
 
     fn go_to_parent(&mut self) {
         if let Some(parent) = self.current_parent() {
-            self.set_selected(parent.index)
+            let index = parent.index;
+            self.set_selected(index)
         }
     }
 

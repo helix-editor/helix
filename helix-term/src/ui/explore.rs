@@ -863,7 +863,8 @@ impl Component for Explorer {
             }
             key!('[') => {
                 if let Some(parent) = self.state.current_root.parent().clone() {
-                    self.change_root(cx, parent.to_path_buf())
+                    let path = parent.to_path_buf();
+                    self.change_root(cx, path)
                 }
             }
             key!(']') => self.change_root(cx, self.tree.current_item().path.clone()),
