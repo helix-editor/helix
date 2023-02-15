@@ -5,6 +5,7 @@ Helix releases are versioned in the Calendar Versioning scheme:
 we'll use `<tag>` as a placeholder for the tag being published.
 
 * Merge the changelog PR
+* Add new `<release>` entry in `contrib/Helix.appdata.xml` with release information according to the [AppStream spec](https://www.freedesktop.org/software/appstream/docs/sect-Metadata-Releases.html)
 * Tag and push
     * `git tag -s -m "<tag>" -a <tag> && git push`
     * Make sure to switch to master and pull first
@@ -23,7 +24,7 @@ we'll use `<tag>` as a placeholder for the tag being published.
 * Post to reddit
     * [Example post](https://www.reddit.com/r/rust/comments/uzp5ze/helix_editor_2205_released/)
 
-[homebrew formula]: https://github.com/helix-editor/homebrew-helix/blob/master/Formula/helix.rb
+[homebrew formula]: https://github.com/Homebrew/homebrew-core/blob/master/Formula/helix.rb
 
 ## Changelog Curation
 

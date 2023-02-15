@@ -250,6 +250,36 @@ impl Transport {
                         }
                     };
                 }
+                Err(Error::StreamClosed) => {
+                    // Close any outstanding requests.
+                    for (id, tx) in transport.pending_requests.lock().await.drain() {
+                        match tx.send(Err(Error::StreamClosed)).await {
+                            Ok(_) => (),
+                            Err(_) => {
+                                error!("Could not close request on a closed channel (id={:?})", id)
+                            }
+                        }
+                    }
+
+                    // Hack: inject a terminated notification so we trigger code that needs to happen after exit
+                    use lsp_types::notification::Notification as _;
+                    let notification =
+                        ServerMessage::Call(jsonrpc::Call::Notification(jsonrpc::Notification {
+                            jsonrpc: None,
+                            method: lsp_types::notification::Exit::METHOD.to_string(),
+                            params: jsonrpc::Params::None,
+                        }));
+                    match transport
+                        .process_server_message(&client_tx, notification)
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(err) => {
+                            error!("err: <- {:?}", err);
+                        }
+                    }
+                    break;
+                }
                 Err(err) => {
                     error!("err: <- {:?}", err);
                     break;

@@ -53,7 +53,10 @@ impl Component for SignatureHelp {
 
         let active_param_span = self.active_param_range.map(|(start, end)| {
             vec![(
-                cx.editor.theme.find_scope_index("ui.selection").unwrap(),
+                cx.editor
+                    .theme
+                    .find_scope_index_exact("ui.selection")
+                    .unwrap(),
                 start..end,
             )]
         });
@@ -68,8 +71,9 @@ impl Component for SignatureHelp {
 
         let (_, sig_text_height) = crate::ui::text::required_size(&sig_text, area.width);
         let sig_text_area = area.clip_top(1).with_height(sig_text_height);
+        let sig_text_area = sig_text_area.inner(&margin).intersection(surface.area);
         let sig_text_para = Paragraph::new(sig_text).wrap(Wrap { trim: false });
-        sig_text_para.render(sig_text_area.inner(&margin), surface);
+        sig_text_para.render(sig_text_area, surface);
 
         if self.signature_doc.is_none() {
             return;

@@ -7,8 +7,8 @@ use helix_core::hashmap;
 pub fn default() -> HashMap<Mode, Keymap> {
     let normal = keymap!({ "Normal mode"
         "h" | "left" => move_char_left,
-        "j" | "down" => move_line_down,
-        "k" | "up" => move_line_up,
+        "j" | "down" => move_visual_line_down,
+        "k" | "up" => move_visual_line_up,
         "l" | "right" => move_char_right,
 
         "t" => find_till_char,
@@ -44,6 +44,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "l" => goto_line_end,
             "s" => goto_first_nonwhitespace,
             "d" => goto_definition,
+            "D" => goto_declaration,
             "y" => goto_type_definition,
             "r" => goto_reference,
             "i" => goto_implementation,
@@ -54,14 +55,16 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "m" => goto_last_modified_file,
             "n" => goto_next_buffer,
             "p" => goto_previous_buffer,
+            "k" => move_line_up,
+            "j" => move_line_down,
             "." => goto_last_modification,
         },
         ":" => command_mode,
 
         "i" => insert_mode,
-        "I" => prepend_to_line,
+        "I" => insert_at_line_start,
         "a" => append_mode,
-        "A" => append_to_line,
+        "A" => insert_at_line_end,
         "o" => open_below,
         "O" => open_above,
 
@@ -76,6 +79,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "s" => select_regex,
         "A-s" => split_selection_on_newline,
+        "A-_" => merge_consecutive_selections,
         "S" => split_selection,
         ";" => collapse_selection,
         "A-;" => flip_selections,
@@ -85,7 +89,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "A-n" | "A-right" => select_next_sibling,
 
         "%" => select_all,
-        "x" => extend_line,
+        "x" => extend_line_below,
         "X" => extend_to_line_bounds,
         "A-x" => shrink_to_line_bounds,
 
@@ -100,22 +104,26 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
+            "g" => goto_prev_change,
+            "G" => goto_first_change,
             "f" => goto_prev_function,
-            "c" => goto_prev_class,
+            "t" => goto_prev_class,
             "a" => goto_prev_parameter,
-            "o" => goto_prev_comment,
-            "t" => goto_prev_test,
+            "c" => goto_prev_comment,
+            "T" => goto_prev_test,
             "p" => goto_prev_paragraph,
             "space" => add_newline_above,
         },
         "]" => { "Right bracket"
             "d" => goto_next_diag,
             "D" => goto_last_diag,
+            "g" => goto_next_change,
+            "G" => goto_last_change,
             "f" => goto_next_function,
-            "c" => goto_next_class,
+            "t" => goto_next_class,
             "a" => goto_next_parameter,
-            "o" => goto_next_comment,
-            "t" => goto_next_test,
+            "c" => goto_next_comment,
+            "T" => goto_next_test,
             "p" => goto_next_paragraph,
             "space" => add_newline_below,
         },
@@ -144,6 +152,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "<" => unindent,
         "=" => format_selections,
         "J" => join_selections,
+        "A-J" => join_selections_space,
         "K" => keep_selections,
         "A-K" => remove_selections,
 
@@ -197,7 +206,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         // z family for save/restore/combine from/to sels from register
 
-        "tab" => jump_forward, // tab == <C-i>
+        "C-i" | "tab" => jump_forward, // tab == <C-i>
         "C-o" => jump_backward,
         "C-s" => save_selection,
 
@@ -208,11 +217,11 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" => jumplist_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,
-            "g" => diagnostics_picker,
-            "G" => workspace_diagnostics_picker,
+            "d" => diagnostics_picker,
+            "D" => workspace_diagnostics_picker,
             "a" => code_action,
             "'" => last_picker,
-            "d" => { "Debug (experimental)" sticky=true
+            "g" => { "Debug (experimental)" sticky=true
                 "l" => dap_launch,
                 "b" => dap_toggle_breakpoint,
                 "c" => dap_continue,
@@ -316,8 +325,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
     let mut select = normal.clone();
     select.merge_nodes(keymap!({ "Select mode"
         "h" | "left" => extend_char_left,
-        "j" | "down" => extend_line_down,
-        "k" | "up" => extend_line_up,
+        "j" | "down" => extend_visual_line_down,
+        "k" | "up" => extend_visual_line_up,
         "l" | "right" => extend_char_right,
 
         "w" => extend_next_word_start,
@@ -340,47 +349,35 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "esc" => exit_select_mode,
 
         "v" => normal_mode,
+        "g" => { "Goto"
+            "k" => extend_line_up,
+            "j" => extend_line_down,
+        },
     }));
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
 
-        "backspace" => delete_char_backward,
-        "C-h" => delete_char_backward,
-        "del" => delete_char_forward,
-        "C-d" => delete_char_forward,
-        "ret" => insert_newline,
-        "C-j" => insert_newline,
-        "tab" => insert_tab,
-        "C-w" => delete_word_backward,
-        "A-backspace" => delete_word_backward,
-        "A-d" => delete_word_forward,
-        "A-del" => delete_word_forward,
         "C-s" => commit_undo_checkpoint,
+        "C-x" => completion,
+        "C-r" => insert_register,
 
+        "C-w" | "A-backspace" => delete_word_backward,
+        "A-d" | "A-del" => delete_word_forward,
+        "C-u" => kill_to_line_start,
+        "C-k" => kill_to_line_end,
+        "C-h" | "backspace" => delete_char_backward,
+        "C-d" | "del" => delete_char_forward,
+        "C-j" | "ret" => insert_newline,
+        "tab" => insert_tab,
+
+        "up" => move_visual_line_up,
+        "down" => move_visual_line_down,
         "left" => move_char_left,
-        "C-b" => move_char_left,
-        "down" => move_line_down,
-        "up" => move_line_up,
         "right" => move_char_right,
-        "C-f" => move_char_right,
-        "A-b" => move_prev_word_end,
-        "C-left" => move_prev_word_end,
-        "A-f" => move_next_word_start,
-        "C-right" => move_next_word_start,
-        "A-<" => goto_file_start,
-        "A->" => goto_file_end,
         "pageup" => page_up,
         "pagedown" => page_down,
         "home" => goto_line_start,
-        "C-a" => goto_line_start,
         "end" => goto_line_end_newline,
-        "C-e" => goto_line_end_newline,
-
-        "C-k" => kill_to_line_end,
-        "C-u" => kill_to_line_start,
-
-        "C-x" => completion,
-        "C-r" => insert_register,
     });
     hashmap!(
         Mode::Normal => Keymap::new(normal),

@@ -6,24 +6,26 @@
 "ui.text.focus" = { fg = "yellow", modifiers= ["bold"] }
 "ui.menu" = { fg = "base8", bg = "base3" }
 "ui.menu.selected" = { fg = "base2", bg = "yellow" }
-"ui.virtual.whitespace" = "base5"
+"ui.virtual.whitespace" = "base4"
+"ui.virtual.ruler" = { bg = "base1" }
 
 "info" = "base8"
 "hint" = "base8"
 
 # background color
 "ui.background" = { bg = "base2" }
-"ui.statusline.inactive" = { fg = "base8", bg = "base8x0c" }
 
 # status bars, panels, modals, autocompletion
-"ui.statusline" = { bg = "base4" }
+"ui.statusline" = { fg = "base8", bg = "base4" }
+"ui.statusline.inactive" = { fg = "base8", bg = "base8x0c" }
 "ui.popup" = { bg = "base3" }
 "ui.window" = { bg = "base3" }
-"ui.help" = { bg = "base3" }
+"ui.help" = { fg = "base8", bg = "base3" }
 
 # active line, highlighting
 "ui.selection" = { bg = "base4" }
 "ui.cursor.match" = { bg = "base4" }
+"ui.cursorline" = { bg = "base1" }
 
 # comments, nord3 based lighter color
 "comment" = { fg = "base5", modifiers = ["italic"] }
@@ -51,7 +53,7 @@
 "constructor" = "blue"
 "function" = "green"
 "function.macro" = { fg = "blue" }
-"function.builtin" = { fg = "cyan" }
+"function.builtin" = { fg = "blue" }
 
 # operator, tags, units, punctuations
 "operator" = "red"
@@ -63,7 +65,7 @@
 "variable.parameter" = "#f59762"
 
 # error
-"error" = { bg = "red", fg = "yellow" }
+"error" = { fg = "red", modifiers = ["bold"] }
 
 # annotations, decorators
 "special" = "#f59762"
@@ -85,12 +87,16 @@
 "diff.minus" = "red"
 
 # make diagnostic underlined, to distinguish with selection text.
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.info" = { underline = { color = "base8", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "base8", style = "curl" } }
 
 # markup highlight, no need for `markup.raw` and `markup.list`, make them to be default
 "markup.heading" = "green"
 "markup.bold" = { fg = "orange", modifiers = ["bold"] }
 "markup.italic" = { fg = "orange", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "orange", modifiers = ["underlined"] }
 "markup.link.text" = "yellow"
 "markup.quote" = "green"

@@ -318,7 +318,7 @@ pub struct TreeView<T: TreeItem> {
     #[allow(clippy::type_complexity)]
     on_folded_fn: Option<Box<dyn FnMut(&mut T, &mut Context, &mut T::Params) + 'static>>,
     #[allow(clippy::type_complexity)]
-    on_next_key: Option<Box<dyn FnMut(&mut Context, &mut Self, KeyEvent)>>,
+    on_next_key: Option<Box<dyn FnMut(&mut Context, &mut Self, &KeyEvent)>>,
 }
 
 impl<T: TreeItem> TreeView<T> {
@@ -548,15 +548,13 @@ impl<T: TreeItem> TreeView<T> {
     fn set_selected(&mut self, selected: usize) {
         if selected > self.selected {
             // Move down
-            self.winline = std::cmp::min(
-                selected,
+            self.winline = selected.min(
                 self.winline
                     .saturating_add(selected.saturating_sub(self.selected)),
             );
         } else {
             // Move up
-            self.winline = std::cmp::min(
-                selected,
+            self.winline = selected.min(
                 self.winline
                     .saturating_sub(self.selected.saturating_sub(selected)),
             );
@@ -567,7 +565,7 @@ impl<T: TreeItem> TreeView<T> {
     pub fn move_up(&mut self, rows: usize) {
         let len = self.tree.len();
         if len > 0 {
-            self.set_selected(std::cmp::max(0, self.selected.saturating_sub(rows)))
+            self.set_selected(self.selected.saturating_sub(rows).max(0))
         }
     }
 
@@ -647,7 +645,8 @@ impl<T: TreeItem> TreeView<T> {
     }
 
     pub fn remove_current(&mut self) {
-        self.tree.remove(self.selected)
+        self.tree.remove(self.selected);
+        self.set_selected(self.selected.min(self.tree.len().saturating_sub(1)));
     }
 
     pub fn replace_current(&mut self, item: T) {
@@ -695,7 +694,7 @@ impl<T: TreeItem + Clone> TreeView<T> {
 
         self.max_len = 0;
         self.area_height = area.height.saturating_sub(1) as usize;
-        self.winline = std::cmp::min(self.winline, self.area_height);
+        self.winline = self.winline.min(self.area_height);
         let style = cx.editor.theme.get(&self.tree_symbol_style);
         let ancestor_style = cx.editor.theme.get("ui.text.focus");
         let skip = self.selected.saturating_sub(self.winline);
@@ -818,7 +817,7 @@ impl<T: TreeItem + Clone> TreeView<T> {
 
     pub fn handle_event(
         &mut self,
-        event: Event,
+        event: &Event,
         cx: &mut Context,
         params: &mut T::Params,
         filter: &String,
@@ -833,12 +832,12 @@ impl<T: TreeItem + Clone> TreeView<T> {
             return EventResult::Consumed(None);
         }
         let count = std::mem::replace(&mut self.count, 0);
-        match key_event.into() {
+        match key_event {
             key!(i @ '0'..='9') => self.count = i.to_digit(10).unwrap() as usize + count * 10,
             key!('k') | shift!(Tab) | key!(Up) | ctrl!('k') => self.move_up(1.max(count)),
             key!('j') | key!(Tab) | key!(Down) | ctrl!('j') => self.move_down(1.max(count)),
             key!('z') => {
-                self.on_next_key = Some(Box::new(|_, tree, event| match event.into() {
+                self.on_next_key = Some(Box::new(|_, tree, event| match event {
                     key!('z') => tree.align_view_center(),
                     key!('t') => tree.align_view_top(),
                     key!('b') => tree.align_view_bottom(),
@@ -854,7 +853,7 @@ impl<T: TreeItem + Clone> TreeView<T> {
             ctrl!('d') => self.move_down_half_page(),
             ctrl!('u') => self.move_up_half_page(),
             key!('g') => {
-                self.on_next_key = Some(Box::new(|_, tree, event| match event.into() {
+                self.on_next_key = Some(Box::new(|_, tree, event| match event {
                     key!('g') => tree.move_up(usize::MAX / 2),
                     key!('e') => tree.move_down(usize::MAX / 2),
                     _ => {}

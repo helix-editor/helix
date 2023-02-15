@@ -1,9 +1,11 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, cmp::Ordering};
 
 use crate::{
     chars::char_is_line_ending,
+    doc_formatter::{DocumentFormatter, TextFormat},
     graphemes::{ensure_grapheme_boundary_prev, grapheme_width, RopeGraphemes},
     line_ending::line_end_char_index,
+    text_annotations::TextAnnotations,
     RopeSlice,
 };
 
@@ -73,6 +75,13 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
 /// Takes \t, double-width characters (CJK) into account as well as text
 /// not in the document in the future.
 /// See [`coords_at_pos`] for an "objective" one.
+///
+/// This function should be used very rarely. Usually `visual_offset_from_anchor`
+/// or `visual_offset_from_block` is preferable. However when you want to compute the
+/// actual visual row/column in the text (not what is actually shown on screen)
+/// then you should use this function. For example aligning text should ignore virtual
+/// text and softwrap.
+#[deprecated = "Doesn't account for softwrap or decorations, use visual_offset_from_anchor instead"]
 pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Position {
     let line = text.char_to_line(pos);
 
@@ -91,6 +100,82 @@ pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Po
     }
 
     Position::new(line, col)
+}
+
+/// Returns the visual offset from the start of the first visual line
+/// in the block that contains anchor.
+/// Text is always wrapped at blocks, they usually correspond to
+/// actual line breaks but for very long lines
+/// softwrapping positions are estimated with an O(1) algorithm
+/// to ensure consistent performance for large lines (currently unimplemented)
+///
+/// Usualy you want to use `visual_offset_from_anchor` instead but this function
+/// can be useful (and faster) if
+/// * You already know the visual position of the block
+/// * You only care about the horizontal offset (column) and not the vertical offset (row)
+pub fn visual_offset_from_block(
+    text: RopeSlice,
+    anchor: usize,
+    pos: usize,
+    text_fmt: &TextFormat,
+    annotations: &TextAnnotations,
+) -> (Position, usize) {
+    let mut last_pos = Position::default();
+    let (formatter, block_start) =
+        DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, annotations, anchor);
+    let mut char_pos = block_start;
+
+    for (grapheme, vpos) in formatter {
+        last_pos = vpos;
+        char_pos += grapheme.doc_chars();
+
+        if char_pos > pos {
+            return (last_pos, block_start);
+        }
+    }
+
+    (last_pos, block_start)
+}
+
+/// Returns the visual offset from the start of the visual line
+/// that contains anchor.
+pub fn visual_offset_from_anchor(
+    text: RopeSlice,
+    anchor: usize,
+    pos: usize,
+    text_fmt: &TextFormat,
+    annotations: &TextAnnotations,
+    max_rows: usize,
+) -> Option<(Position, usize)> {
+    let (formatter, block_start) =
+        DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, annotations, anchor);
+    let mut char_pos = block_start;
+    let mut anchor_line = None;
+    let mut last_pos = Position::default();
+
+    for (grapheme, vpos) in formatter {
+        last_pos = vpos;
+        char_pos += grapheme.doc_chars();
+
+        if char_pos > anchor && anchor_line.is_none() {
+            anchor_line = Some(last_pos.row);
+        }
+        if char_pos > pos {
+            last_pos.row -= anchor_line.unwrap();
+            return Some((last_pos, block_start));
+        }
+
+        if let Some(anchor_line) = anchor_line {
+            if vpos.row >= anchor_line + max_rows {
+                return None;
+            }
+        }
+    }
+
+    let anchor_line = anchor_line.unwrap_or(last_pos.row);
+    last_pos.row -= anchor_line;
+
+    Some((last_pos, block_start))
 }
 
 /// Convert (line, column) coordinates to a character index.
@@ -140,6 +225,11 @@ pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending
 /// If the `column` coordinate is past the end of the given line, the
 /// line-end position (in this case, just before the line ending
 /// character) will be returned.
+/// This function should be used very rarely. Usually `char_idx_at_visual_offset` is preferable.
+/// However when you want to compute a char position from the visual row/column in the text
+/// (not what is actually shown on screen) then you should use this function.
+/// For example aligning text should ignore virtual text and softwrap.
+#[deprecated = "Doesn't account for softwrap or decorations, use char_idx_at_visual_offset instead"]
 pub fn pos_at_visual_coords(text: RopeSlice, coords: Position, tab_width: usize) -> usize {
     let Position { mut row, col } = coords;
     row = row.min(text.len_lines() - 1);
@@ -167,6 +257,120 @@ pub fn pos_at_visual_coords(text: RopeSlice, coords: Position, tab_width: usize)
     }
 
     line_start + col_char_offset
+}
+
+/// Returns the char index on the visual line `row_offset` below the visual line of
+/// the provided char index `anchor` that is closest to the supplied visual `column`.
+///
+/// If the targeted visual line is entirely covered by virtual text the last
+/// char position before the virtual text and a virtual offset is returned instead.
+///
+/// If no (text) grapheme starts at exactly at the specified column the
+/// start of the grapheme to the left is returned. If there is no grapheme
+/// to the left (for example if the line starts with virtual text) then the positiong
+/// of the next grapheme to the right is returned.
+///
+/// If the `line` coordinate is beyond the end of the file, the EOF
+/// position will be returned.
+///
+/// If the `column` coordinate is past the end of the given line, the
+/// line-end position (in this case, just before the line ending
+/// character) will be returned.
+///
+/// # Returns
+///
+/// `(real_char_idx, virtual_lines)`
+///
+/// The nearest character idx "closest" (see above) to the specified visual offset
+/// on the visual line is returned if the visual line contains any text:
+/// If the visual line at the specified offset is a virtual line generated by a `LineAnnotation`
+/// the previous char_index is returned, together with the remaining vertical offset (`virtual_lines`)
+pub fn char_idx_at_visual_offset<'a>(
+    text: RopeSlice<'a>,
+    mut anchor: usize,
+    mut row_offset: isize,
+    column: usize,
+    text_fmt: &TextFormat,
+    annotations: &TextAnnotations,
+) -> (usize, usize) {
+    // convert row relative to visual line containing anchor to row relative to a block containing anchor (anchor may change)
+    loop {
+        let (visual_pos_in_block, block_char_offset) =
+            visual_offset_from_block(text, anchor, anchor, text_fmt, annotations);
+        row_offset += visual_pos_in_block.row as isize;
+        anchor = block_char_offset;
+        if row_offset >= 0 {
+            break;
+        }
+
+        if block_char_offset == 0 {
+            row_offset = 0;
+            break;
+        }
+        // the row_offset is negative so we need to look at the previous block
+        // set the anchor to the last char before the current block
+        // this char index is also always a line earlier so increase the row_offset by 1
+        anchor -= 1;
+        row_offset += 1;
+    }
+
+    char_idx_at_visual_block_offset(
+        text,
+        anchor,
+        row_offset as usize,
+        column,
+        text_fmt,
+        annotations,
+    )
+}
+
+/// This function behaves the same as `char_idx_at_visual_offset`, except that
+/// the vertical offset `row` is always computed relative to the block that contains `anchor`
+/// instead of the visual line that contains `anchor`.
+/// Usually `char_idx_at_visual_offset` is more useful but this function can be
+/// used in some situations as an optimization when `visual_offset_from_block` was used
+///
+/// # Returns
+///
+/// `(real_char_idx, virtual_lines)`
+///
+/// See `char_idx_at_visual_offset` for details
+pub fn char_idx_at_visual_block_offset(
+    text: RopeSlice,
+    anchor: usize,
+    row: usize,
+    column: usize,
+    text_fmt: &TextFormat,
+    annotations: &TextAnnotations,
+) -> (usize, usize) {
+    let (formatter, mut char_idx) =
+        DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, annotations, anchor);
+    let mut last_char_idx = char_idx;
+    let mut last_char_idx_on_line = None;
+    let mut last_row = 0;
+    for (grapheme, grapheme_pos) in formatter {
+        match grapheme_pos.row.cmp(&row) {
+            Ordering::Equal => {
+                if grapheme_pos.col + grapheme.width() > column {
+                    if !grapheme.is_virtual() {
+                        return (char_idx, 0);
+                    } else if let Some(char_idx) = last_char_idx_on_line {
+                        return (char_idx, 0);
+                    }
+                } else if !grapheme.is_virtual() {
+                    last_char_idx_on_line = Some(char_idx)
+                }
+            }
+            Ordering::Greater => return (last_char_idx, row - last_row),
+            _ => (),
+        }
+
+        last_char_idx = char_idx;
+        last_row = grapheme_pos.row;
+        char_idx += grapheme.doc_chars();
+    }
+
+    (char_idx, 0)
 }
 
 #[cfg(test)]
@@ -228,6 +432,7 @@ mod test {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_visual_coords_at_pos() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
         let slice = text.slice(..);
@@ -275,6 +480,130 @@ mod test {
         assert_eq!(visual_coords_at_pos(slice, 2, 8), (0, 9).into());
     }
 
+    #[test]
+    fn test_visual_off_from_block() {
+        let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
+        let slice = text.slice(..);
+        let annot = TextAnnotations::default();
+        let text_fmt = TextFormat::default();
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 0, &text_fmt, &annot).0,
+            (0, 0).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 5, &text_fmt, &annot).0,
+            (0, 5).into()
+        ); // position on \n
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 6, &text_fmt, &annot).0,
+            (1, 0).into()
+        ); // position on w
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 7, &text_fmt, &annot).0,
+            (1, 1).into()
+        ); // position on o
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 10, &text_fmt, &annot).0,
+            (1, 4).into()
+        ); // position on d
+
+        // Test with wide characters.
+        let text = Rope::from("今日はいい\n");
+        let slice = text.slice(..);
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 0, &text_fmt, &annot).0,
+            (0, 0).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 1, &text_fmt, &annot).0,
+            (0, 2).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 2, &text_fmt, &annot).0,
+            (0, 4).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 3, &text_fmt, &annot).0,
+            (0, 6).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 4, &text_fmt, &annot).0,
+            (0, 8).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 5, &text_fmt, &annot).0,
+            (0, 10).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 6, &text_fmt, &annot).0,
+            (1, 0).into()
+        );
+
+        // Test with grapheme clusters.
+        let text = Rope::from("a̐éö̲\r\n");
+        let slice = text.slice(..);
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 0, &text_fmt, &annot).0,
+            (0, 0).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 2, &text_fmt, &annot).0,
+            (0, 1).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 4, &text_fmt, &annot).0,
+            (0, 2).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 7, &text_fmt, &annot).0,
+            (0, 3).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 9, &text_fmt, &annot).0,
+            (1, 0).into()
+        );
+
+        // Test with wide-character grapheme clusters.
+        // TODO: account for cluster.
+        let text = Rope::from("किमपि\n");
+        let slice = text.slice(..);
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 0, &text_fmt, &annot).0,
+            (0, 0).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 2, &text_fmt, &annot).0,
+            (0, 2).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 3, &text_fmt, &annot).0,
+            (0, 3).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 5, &text_fmt, &annot).0,
+            (0, 5).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 6, &text_fmt, &annot).0,
+            (1, 0).into()
+        );
+
+        // Test with tabs.
+        let text = Rope::from("\tHello\n");
+        let slice = text.slice(..);
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 0, &text_fmt, &annot).0,
+            (0, 0).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 1, &text_fmt, &annot).0,
+            (0, 4).into()
+        );
+        assert_eq!(
+            visual_offset_from_block(slice, 0, 2, &text_fmt, &annot).0,
+            (0, 5).into()
+        );
+    }
     #[test]
     fn test_pos_at_coords() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
@@ -341,6 +670,7 @@ mod test {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_pos_at_visual_coords() {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
         let slice = text.slice(..);
@@ -404,5 +734,101 @@ mod test {
         assert_eq!(pos_at_visual_coords(slice, (10, 0).into(), 4), 0);
         assert_eq!(pos_at_visual_coords(slice, (0, 10).into(), 4), 0);
         assert_eq!(pos_at_visual_coords(slice, (10, 10).into(), 4), 0);
+    }
+
+    #[test]
+    fn test_char_idx_at_visual_row_offset() {
+        let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ\nfoo");
+        let slice = text.slice(..);
+        let mut text_fmt = TextFormat::default();
+        for i in 0isize..3isize {
+            for j in -2isize..=2isize {
+                if !(0..3).contains(&(i + j)) {
+                    continue;
+                }
+                println!("{i} {j}");
+                assert_eq!(
+                    char_idx_at_visual_offset(
+                        slice,
+                        slice.line_to_char(i as usize),
+                        j,
+                        3,
+                        &text_fmt,
+                        &TextAnnotations::default(),
+                    )
+                    .0,
+                    slice.line_to_char((i + j) as usize) + 3
+                );
+            }
+        }
+
+        text_fmt.soft_wrap = true;
+        let mut softwrapped_text = "foo ".repeat(10);
+        softwrapped_text.push('\n');
+        let last_char = softwrapped_text.len() - 1;
+
+        let text = Rope::from(softwrapped_text.repeat(3));
+        let slice = text.slice(..);
+        assert_eq!(
+            char_idx_at_visual_offset(
+                slice,
+                last_char,
+                0,
+                0,
+                &text_fmt,
+                &TextAnnotations::default(),
+            )
+            .0,
+            32
+        );
+        assert_eq!(
+            char_idx_at_visual_offset(
+                slice,
+                last_char,
+                -1,
+                0,
+                &text_fmt,
+                &TextAnnotations::default(),
+            )
+            .0,
+            16
+        );
+        assert_eq!(
+            char_idx_at_visual_offset(
+                slice,
+                last_char,
+                -2,
+                0,
+                &text_fmt,
+                &TextAnnotations::default(),
+            )
+            .0,
+            0
+        );
+        assert_eq!(
+            char_idx_at_visual_offset(
+                slice,
+                softwrapped_text.len() + last_char,
+                -2,
+                0,
+                &text_fmt,
+                &TextAnnotations::default(),
+            )
+            .0,
+            softwrapped_text.len()
+        );
+
+        assert_eq!(
+            char_idx_at_visual_offset(
+                slice,
+                softwrapped_text.len() + last_char,
+                -5,
+                0,
+                &text_fmt,
+                &TextAnnotations::default(),
+            )
+            .0,
+            0
+        );
     }
 }

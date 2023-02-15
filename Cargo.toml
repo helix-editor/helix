@@ -7,15 +7,13 @@ members = [
   "helix-lsp",
   "helix-dap",
   "helix-loader",
+  "helix-vcs",
   "xtask",
 ]
 
 default-members = [
   "helix-term"
 ]
-
-[profile.dev]
-split-debuginfo = "unpacked"
 
 [profile.release]
 lto = "thin"
@@ -27,3 +25,9 @@ lto = "fat"
 codegen-units = 1
 # strip = "debuginfo" # TODO: or strip = true
 opt-level = 3
+
+[profile.integration]
+inherits = "test"
+package.helix-core.opt-level = 2
+package.helix-tui.opt-level = 2
+package.helix-term.opt-level = 2

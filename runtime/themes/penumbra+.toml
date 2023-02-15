@@ -43,9 +43,12 @@ info = "sky"
 warning = "yellow"
 error = "red"
 
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.hint".underline = { color = "sky-", style = "curl" } 
+"diagnostic.info".underline = { color = "sky", style = "curl" } 
+"diagnostic.warning".underline = { color = "yellow", style = "curl" } 
+"diagnostic.error".underline = { color = "red", style = "curl" } 
 
-"ui.background" = "sky+"
+"ui.background" = { bg = "shade" }
 "ui.background.separator" = "sky"
 
 "ui.cursor" = { modifiers = ["reversed"] }
@@ -72,13 +75,13 @@ diagnostic = { modifiers = ["underlined"] }
 "ui.popup.info" = { bg = "shade" }
 
 "ui.window" = "sky"
-"ui.help" = "sky"
+"ui.help" = { fg = "sky", bg = "shade-" }
 
 "ui.text" = "sky"
 "ui.text.focus" = "blue"
 "ui.text.info" = "sky"
 
-"ui.virtual.ruler" = { bg = "shade+" }
+"ui.virtual.ruler" = { bg = "shade-" }
 "ui.virtual.whitespace" = "sky-"
 "ui.virtual.indent-guide" = "shade+"
 
@@ -92,6 +95,7 @@ diagnostic = { modifiers = ["underlined"] }
 "markup.list" = "sky"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { modifiers = ["underlined"] }
 "markup.link.text" = "magenta"
 "markup.quote" = "green"

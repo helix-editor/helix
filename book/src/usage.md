@@ -2,7 +2,7 @@
 
 (Currently not fully documented, see the [keymappings](./keymap.md) list for more.)
 
-See [tutor.txt](https://github.com/helix-editor/helix/blob/master/runtime/tutor.txt) (accessible via `hx --tutor` or `:tutor`) for a vimtutor-like introduction.
+See [tutor](https://github.com/helix-editor/helix/blob/master/runtime/tutor) (accessible via `hx --tutor` or `:tutor`) for a vimtutor-like introduction.
 
 ## Registers
 
@@ -53,7 +53,7 @@ Multiple characters are currently not supported, but planned.
 
 ## Syntax-tree Motions
 
-`A-p`, `A-o`, `A-i`, and `A-n` (or `Alt` and arrow keys) move the primary
+`Alt-p`, `Alt-o`, `Alt-i`, and `Alt-n` (or `Alt` and arrow keys) move the primary
 selection according to the selection's place in the syntax tree. Let's walk
 through an example to get familiar with them. Many languages have a syntax like
 so for function calls:
@@ -100,13 +100,13 @@ in the tree above.
 func([arg1], arg2, arg3)
 ```
 
-Using `A-n` would select the next sibling in the syntax tree: `arg2`.
+Using `Alt-n` would select the next sibling in the syntax tree: `arg2`.
 
 ```
 func(arg1, [arg2], arg3)
 ```
 
-While `A-o` would expand the selection to the parent node. In the tree above we
+While `Alt-o` would expand the selection to the parent node. In the tree above we
 can see that we would select the `arguments` node.
 
 ```
@@ -114,10 +114,10 @@ func[(arg1, arg2, arg3)]
 ```
 
 There is also some nuanced behavior that prevents you from getting stuck on a
-node with no sibling. If we have a selection on `arg1`, `A-p` would bring us
+node with no sibling. If we have a selection on `arg1`, `Alt-p` would bring us
 to the previous child node. Since `arg1` doesn't have a sibling to its left,
-though, we climb the syntax tree and then take the previous selection. So `A-p`
-will move the selection over to the "func" `identifier`.
+though, we climb the syntax tree and then take the previous selection. So
+`Alt-p` will move the selection over to the "func" `identifier`.
 
 ```
 [func](arg1, arg2, arg3)
@@ -125,18 +125,17 @@ will move the selection over to the "func" `identifier`.
 
 ## Textobjects
 
-Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
-
 ![textobject-demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
 ![textobject-treesitter-demo](https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif)
 
-- `ma` - Select around the object (`va` in vim, `<alt-a>` in kakoune)
-- `mi` - Select inside the object (`vi` in vim, `<alt-i>` in kakoune)
+- `ma` - Select around the object (`va` in Vim, `<alt-a>` in Kakoune)
+- `mi` - Select inside the object (`vi` in Vim, `<alt-i>` in Kakoune)
 
 | Key after `mi` or `ma` | Textobject selected      |
 | ---                    | ---                      |
 | `w`                    | Word                     |
 | `W`                    | WORD                     |
+| `p`                    | Paragraph                |
 | `(`, `[`, `'`, etc     | Specified surround pairs |
 | `m`                    | Closest surround pair    |
 | `f`                    | Function                 |
@@ -144,6 +143,7 @@ Currently supported: `word`, `surround`, `function`, `class`, `parameter`.
 | `a`                    | Argument/parameter       |
 | `o`                    | Comment                  |
 | `t`                    | Test                     |
+| `g`                    | Change                   |
 
 > NOTE: `f`, `c`, etc need a tree-sitter grammar active for the current
 document and a special tree-sitter query file to work properly. [Only

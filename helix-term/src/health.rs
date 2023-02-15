@@ -83,6 +83,33 @@ pub fn general() -> std::io::Result<()> {
     Ok(())
 }
 
+pub fn clipboard() -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    let board = get_clipboard_provider();
+    match board.name().as_ref() {
+        "none" => {
+            writeln!(
+                stdout,
+                "{}",
+                "System clipboard provider: Not installed".red()
+            )?;
+            writeln!(
+                stdout,
+                "    {}",
+                "For troubleshooting system clipboard issues, refer".red()
+            )?;
+            writeln!(stdout, "    {}",
+                "https://github.com/helix-editor/helix/wiki/Troubleshooting#copypaste-fromto-system-clipboard-not-working"
+            .red().underlined())?;
+        }
+        name => writeln!(stdout, "System clipboard provider: {}", name)?,
+    }
+
+    Ok(())
+}
+
 pub fn languages_all() -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
@@ -256,7 +283,7 @@ fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::R
     if let Some(cmd) = server_cmd {
         let path = match which::which(&cmd) {
             Ok(path) => path.display().to_string().green(),
-            Err(_) => "Not found in $PATH".to_string().red(),
+            Err(_) => format!("'{}' not found in $PATH", cmd).red(),
         };
         writeln!(stdout, "Binary for {}: {}", protocol_name, path)?;
     }
@@ -281,13 +308,15 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
 
 pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
     match health_arg.as_deref() {
-        Some("all") => languages_all()?,
-        Some(lang) => language(lang.to_string())?,
-        None => {
+        Some("languages") => languages_all()?,
+        Some("clipboard") => clipboard()?,
+        None | Some("all") => {
             general()?;
+            clipboard()?;
             writeln!(std::io::stdout().lock())?;
             languages_all()?;
         }
+        Some(lang) => language(lang.to_string())?,
     }
     Ok(())
 }

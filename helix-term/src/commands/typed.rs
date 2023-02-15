@@ -1,8 +1,13 @@
+use std::fmt::Write;
 use std::ops::Deref;
+
+use crate::job::Job;
 
 use super::*;
 
-use helix_view::editor::{Action, ConfigEvent};
+use helix_core::encoding;
+use helix_view::editor::{Action, CloseError, ConfigEvent};
+use serde_json::Value;
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -16,6 +21,8 @@ pub struct TypableCommand {
 }
 
 fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    log::debug!("quitting...");
+
     if event != PromptEvent::Validate {
         return Ok(());
     }
@@ -27,6 +34,7 @@ fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         buffers_remaining_impl(cx.editor)?
     }
 
+    cx.block_try_flush_writes()?;
     cx.editor.close(view!(cx.editor).id);
 
     Ok(())
@@ -43,6 +51,7 @@ fn force_quit(
 
     ensure!(args.is_empty(), ":quit! takes no arguments");
 
+    cx.block_try_flush_writes()?;
     cx.editor.close(view!(cx.editor).id);
 
     Ok(())
@@ -56,23 +65,63 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
         let (path, pos) = args::parse_file(arg);
-        let _ = cx.editor.open(&path, Action::Replace)?;
-        let (view, doc) = current!(cx.editor);
-        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-        doc.set_selection(view.id, pos);
-        // does not affect opening a buffer without pos
-        align_view(doc, view, Align::Center);
+        let path = helix_core::path::expand_tilde(&path);
+        // If the path is a directory, open a file picker on that directory and update the status
+        // message
+        if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
+            let callback = async move {
+                let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+                    move |editor: &mut Editor, compositor: &mut Compositor| {
+                        let picker = ui::file_picker(path, &editor.config());
+                        compositor.push(Box::new(overlayed(picker)));
+                    },
+                ));
+                Ok(call)
+            };
+            cx.jobs.callback(callback);
+        } else {
+            // Otherwise, just open the file
+            let _ = cx.editor.open(&path, Action::Replace)?;
+            let (view, doc) = current!(cx.editor);
+            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+            doc.set_selection(view.id, pos);
+            // does not affect opening a buffer without pos
+            align_view(doc, view, Align::Center);
+        }
     }
     Ok(())
 }
 
 fn buffer_close_by_ids_impl(
-    editor: &mut Editor,
+    cx: &mut compositor::Context,
     doc_ids: &[DocumentId],
     force: bool,
 ) -> anyhow::Result<()> {
-    for &doc_id in doc_ids {
-        editor.close_document(doc_id, force)?;
+    cx.block_try_flush_writes()?;
+
+    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
+        .iter()
+        .filter_map(|&doc_id| {
+            if let Err(CloseError::BufferModified(name)) = cx.editor.close_document(doc_id, force) {
+                Some((doc_id, name))
+            } else {
+                None
+            }
+        })
+        .unzip();
+
+    if let Some(first) = modified_ids.first() {
+        let current = doc!(cx.editor);
+        // If the current document is unmodified, and there are modified
+        // documents, switch focus to the first modified doc.
+        if !modified_ids.contains(&current.id()) {
+            cx.editor.switch(*first, Action::Replace);
+        }
+        bail!(
+            "{} unsaved buffer(s) remaining: {:?}",
+            modified_names.len(),
+            modified_names
+        );
     }
 
     Ok(())
@@ -125,7 +174,7 @@ fn buffer_close(
     }
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, false)
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close(
@@ -138,7 +187,7 @@ fn force_buffer_close(
     }
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_gather_others_impl(editor: &mut Editor) -> Vec<DocumentId> {
@@ -160,7 +209,7 @@ fn buffer_close_others(
     }
 
     let document_ids = buffer_gather_others_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, false)
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close_others(
@@ -173,7 +222,7 @@ fn force_buffer_close_others(
     }
 
     let document_ids = buffer_gather_others_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_gather_all_impl(editor: &mut Editor) -> Vec<DocumentId> {
@@ -190,7 +239,7 @@ fn buffer_close_all(
     }
 
     let document_ids = buffer_gather_all_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, false)
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn force_buffer_close_all(
@@ -203,7 +252,7 @@ fn force_buffer_close_all(
     }
 
     let document_ids = buffer_gather_all_impl(cx.editor);
-    buffer_close_by_ids_impl(cx.editor, &document_ids, true)
+    buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
 fn buffer_next(
@@ -237,39 +286,30 @@ fn write_impl(
     path: Option<&Cow<str>>,
     force: bool,
 ) -> anyhow::Result<()> {
-    let auto_format = cx.editor.config().auto_format;
+    let editor_auto_fmt = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
-    let doc = doc_mut!(cx.editor);
+    let (view, doc) = current!(cx.editor);
+    let path = path.map(AsRef::as_ref);
 
-    if let Some(ref path) = path {
-        doc.set_path(Some(path.as_ref().as_ref()))
-            .context("invalid filepath")?;
-    }
-    if doc.path().is_none() {
-        bail!("cannot write a buffer without a filename");
-    }
-    let fmt = if auto_format {
+    let fmt = if editor_auto_fmt {
         doc.auto_format().map(|fmt| {
-            let shared = fmt.shared();
             let callback = make_format_callback(
                 doc.id(),
                 doc.version(),
-                Modified::SetUnmodified,
-                shared.clone(),
+                view.id,
+                fmt,
+                Some((path.map(Into::into), force)),
             );
-            jobs.callback(callback);
-            shared
+
+            jobs.add(Job::with_callback(callback).wait_before_exiting());
         })
     } else {
         None
     };
-    let future = doc.format_and_save(fmt, force);
-    cx.jobs.add(Job::new(future).wait_before_exiting());
 
-    if path.is_some() {
+    if fmt.is_none() {
         let id = doc.id();
-        doc.detect_language(cx.editor.syn_loader.clone());
-        let _ = cx.editor.refresh_language_server(id);
+        cx.editor.save(id, path, force)?;
     }
 
     Ok(())
@@ -322,10 +362,9 @@ fn format(
         return Ok(());
     }
 
-    let doc = doc!(cx.editor);
+    let (view, doc) = current!(cx.editor);
     if let Some(format) = doc.format() {
-        let callback =
-            make_format_callback(doc.id(), doc.version(), Modified::LeaveModified, format);
+        let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
         cx.jobs.callback(callback);
     }
 
@@ -442,7 +481,7 @@ fn set_line_ending(
         }),
     );
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
+    doc.append_changes_to_history(view);
 
     Ok(())
 }
@@ -459,7 +498,7 @@ fn earlier(
     let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
     let (view, doc) = current!(cx.editor);
-    let success = doc.earlier(view.id, uk);
+    let success = doc.earlier(view, uk);
     if !success {
         cx.editor.set_status("Already at oldest change");
     }
@@ -478,7 +517,7 @@ fn later(
 
     let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
     let (view, doc) = current!(cx.editor);
-    let success = doc.later(view.id, uk);
+    let success = doc.later(view, uk);
     if !success {
         cx.editor.set_status("Already at newest change");
     }
@@ -496,7 +535,7 @@ fn write_quit(
     }
 
     write_impl(cx, args.first(), false)?;
-    helix_lsp::block_on(cx.jobs.finish())?;
+    cx.block_try_flush_writes()?;
     quit(cx, &[], event)
 }
 
@@ -510,135 +549,157 @@ fn force_write_quit(
     }
 
     write_impl(cx, args.first(), true)?;
+    cx.block_try_flush_writes()?;
     force_quit(cx, &[], event)
 }
 
-/// Results an error if there are modified buffers remaining and sets editor error,
-/// otherwise returns `Ok(())`
+/// Results in an error if there are modified buffers remaining and sets editor
+/// error, otherwise returns `Ok(())`. If the current document is unmodified,
+/// and there are modified documents, switches focus to one of them.
 pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
-    let modified: Vec<_> = editor
+    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = editor
         .documents()
         .filter(|doc| doc.is_modified())
-        .map(|doc| {
-            doc.relative_path()
-                .map(|path| path.to_string_lossy().to_string())
-                .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
-        })
-        .collect();
-    if !modified.is_empty() {
+        .map(|doc| (doc.id(), doc.display_name()))
+        .unzip();
+    if let Some(first) = modified_ids.first() {
+        let current = doc!(editor);
+        // If the current document is unmodified, and there are modified
+        // documents, switch focus to the first modified doc.
+        if !modified_ids.contains(&current.id()) {
+            editor.switch(*first, Action::Replace);
+        }
         bail!(
             "{} unsaved buffer(s) remaining: {:?}",
-            modified.len(),
-            modified
+            modified_names.len(),
+            modified_names
         );
     }
     Ok(())
 }
 
-fn write_all_impl(
+pub fn write_all_impl(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
-    event: PromptEvent,
-    quit: bool,
     force: bool,
+    write_scratch: bool,
 ) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
-    let mut errors = String::new();
+    let mut errors: Vec<&'static str> = Vec::new();
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
+    let current_view = view!(cx.editor);
+
     // save all documents
-    for doc in &mut cx.editor.documents.values_mut() {
-        if doc.path().is_none() {
-            errors.push_str("cannot write a buffer without a filename\n");
-            continue;
-        }
+    let saves: Vec<_> = cx
+        .editor
+        .documents
+        .values_mut()
+        .filter_map(|doc| {
+            if !doc.is_modified() {
+                return None;
+            }
+            if doc.path().is_none() {
+                if write_scratch {
+                    errors.push("cannot write a buffer without a filename\n");
+                }
+                return None;
+            }
 
-        if !doc.is_modified() {
-            continue;
-        }
+            // Look for a view to apply the formatting change to. If the document
+            // is in the current view, just use that. Otherwise, since we don't
+            // have any other metric available for better selection, just pick
+            // the first view arbitrarily so that we still commit the document
+            // state for undos. If somehow we have a document that has not been
+            // initialized with any view, initialize it with the current view.
+            let target_view = if doc.selections().contains_key(&current_view.id) {
+                current_view.id
+            } else if let Some(view) = doc.selections().keys().next() {
+                *view
+            } else {
+                doc.ensure_view_init(current_view.id);
+                current_view.id
+            };
 
-        let fmt = if auto_format {
-            doc.auto_format().map(|fmt| {
-                let shared = fmt.shared();
-                let callback = make_format_callback(
-                    doc.id(),
-                    doc.version(),
-                    Modified::SetUnmodified,
-                    shared.clone(),
-                );
-                jobs.callback(callback);
-                shared
-            })
-        } else {
+            let fmt = if auto_format {
+                doc.auto_format().map(|fmt| {
+                    let callback = make_format_callback(
+                        doc.id(),
+                        doc.version(),
+                        target_view,
+                        fmt,
+                        Some((None, force)),
+                    );
+                    jobs.add(Job::with_callback(callback).wait_before_exiting());
+                })
+            } else {
+                None
+            };
+
+            if fmt.is_none() {
+                return Some(doc.id());
+            }
+
             None
-        };
-        let future = doc.format_and_save(fmt, force);
-        jobs.add(Job::new(future).wait_before_exiting());
+        })
+        .collect();
+
+    // manually call save for the rest of docs that don't have a formatter
+    for id in saves {
+        cx.editor.save::<PathBuf>(id, None, force)?;
     }
 
-    if quit {
-        if !force {
-            buffers_remaining_impl(cx.editor)?;
-        }
-
-        // close all views
-        let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
-        for view_id in views {
-            cx.editor.close(view_id);
-        }
+    if !errors.is_empty() && !force {
+        bail!("{:?}", errors);
     }
 
-    bail!(errors)
+    Ok(())
 }
 
 fn write_all(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    write_all_impl(cx, args, event, false, false)
+    write_all_impl(cx, false, true)
 }
 
 fn write_all_quit(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    write_all_impl(cx, args, event, true, false)
+    write_all_impl(cx, false, true)?;
+    quit_all_impl(cx, false)
 }
 
 fn force_write_all_quit(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    write_all_impl(cx, args, event, true, true)
+    let _ = write_all_impl(cx, true, true);
+    quit_all_impl(cx, true)
 }
 
-fn quit_all_impl(editor: &mut Editor, force: bool) -> anyhow::Result<()> {
+fn quit_all_impl(cx: &mut compositor::Context, force: bool) -> anyhow::Result<()> {
+    cx.block_try_flush_writes()?;
     if !force {
-        buffers_remaining_impl(editor)?;
+        buffers_remaining_impl(cx.editor)?;
     }
 
     // close all views
-    let views: Vec<_> = editor.tree.views().map(|(view, _)| view.id).collect();
+    let views: Vec<_> = cx.editor.tree.views().map(|(view, _)| view.id).collect();
     for view_id in views {
-        editor.close(view_id);
+        cx.editor.close(view_id);
     }
 
     Ok(())
@@ -653,7 +714,7 @@ fn quit_all(
         return Ok(());
     }
 
-    quit_all_impl(cx.editor, false)
+    quit_all_impl(cx, false)
 }
 
 fn force_quit_all(
@@ -665,7 +726,7 @@ fn force_quit_all(
         return Ok(());
     }
 
-    quit_all_impl(cx.editor, true)
+    quit_all_impl(cx, true)
 }
 
 fn cquit(
@@ -681,9 +742,9 @@ fn cquit(
         .first()
         .and_then(|code| code.parse::<i32>().ok())
         .unwrap_or(1);
-    cx.editor.exit_code = exit_code;
 
-    quit_all_impl(cx.editor, false)
+    cx.editor.exit_code = exit_code;
+    quit_all_impl(cx, false)
 }
 
 fn force_cquit(
@@ -701,7 +762,7 @@ fn force_cquit(
         .unwrap_or(1);
     cx.editor.exit_code = exit_code;
 
-    quit_all_impl(cx.editor, true)
+    quit_all_impl(cx, true)
 }
 
 fn theme(
@@ -715,7 +776,10 @@ fn theme(
             cx.editor.unset_theme_preview();
         }
         PromptEvent::Update => {
-            if let Some(theme_name) = args.first() {
+            if args.is_empty() {
+                // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
+                cx.editor.unset_theme_preview();
+            } else if let Some(theme_name) = args.first() {
                 if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
@@ -725,16 +789,21 @@ fn theme(
             };
         }
         PromptEvent::Validate => {
-            let theme_name = args.first().with_context(|| "Theme name not provided")?;
-            let theme = cx
-                .editor
-                .theme_loader
-                .load(theme_name)
-                .with_context(|| "Theme does not exist")?;
-            if !(true_color || theme.is_16_color()) {
-                bail!("Unsupported theme: theme requires true color support");
+            if let Some(theme_name) = args.first() {
+                let theme = cx
+                    .editor
+                    .theme_loader
+                    .load(theme_name)
+                    .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
+                if !(true_color || theme.is_16_color()) {
+                    bail!("Unsupported theme: theme requires true color support");
+                }
+                cx.editor.set_theme(theme);
+            } else {
+                let name = cx.editor.theme.name().to_string();
+
+                cx.editor.set_status(name);
             }
-            cx.editor.set_theme(theme);
         }
     };
 
@@ -847,6 +916,7 @@ fn replace_selections_with_clipboard_impl(
     cx: &mut compositor::Context,
     clipboard_type: ClipboardType,
 ) -> anyhow::Result<()> {
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
 
     match cx.editor.clipboard_provider.get_contents(clipboard_type) {
@@ -857,7 +927,8 @@ fn replace_selections_with_clipboard_impl(
             });
 
             doc.apply(&transaction, view.id);
-            doc.append_changes_to_history(view.id);
+            doc.append_changes_to_history(view);
+            view.ensure_cursor_in_view(doc, scrolloff);
             Ok(())
         }
         Err(e) => Err(e.context("Couldn't get system clipboard contents")),
@@ -965,6 +1036,131 @@ fn set_encoding(
     }
 }
 
+/// Shows info about the character under the primary cursor.
+fn get_character_info(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current_ref!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let grapheme_start = doc.selection(view.id).primary().cursor(text);
+    let grapheme_end = graphemes::next_grapheme_boundary(text, grapheme_start);
+
+    if grapheme_start == grapheme_end {
+        return Ok(());
+    }
+
+    let grapheme = text.slice(grapheme_start..grapheme_end).to_string();
+    let encoding = doc.encoding();
+
+    let printable = grapheme.chars().fold(String::new(), |mut s, c| {
+        match c {
+            '\0' => s.push_str("\\0"),
+            '\t' => s.push_str("\\t"),
+            '\n' => s.push_str("\\n"),
+            '\r' => s.push_str("\\r"),
+            _ => s.push(c),
+        }
+
+        s
+    });
+
+    // Convert to Unicode codepoints if in UTF-8
+    let unicode = if encoding == encoding::UTF_8 {
+        let mut unicode = " (".to_owned();
+
+        for (i, char) in grapheme.chars().enumerate() {
+            if i != 0 {
+                unicode.push(' ');
+            }
+
+            unicode.push_str("U+");
+
+            let codepoint: u32 = if char.is_ascii() {
+                char.into()
+            } else {
+                // Not ascii means it will be multi-byte, so strip out the extra
+                // bits that encode the length & mark continuation bytes
+
+                let s = String::from(char);
+                let bytes = s.as_bytes();
+
+                // First byte starts with 2-4 ones then a zero, so strip those off
+                let first = bytes[0];
+                let codepoint = first & (0xFF >> (first.leading_ones() + 1));
+                let mut codepoint = u32::from(codepoint);
+
+                // Following bytes start with 10
+                for byte in bytes.iter().skip(1) {
+                    codepoint <<= 6;
+                    codepoint += u32::from(*byte) & 0x3F;
+                }
+
+                codepoint
+            };
+
+            write!(unicode, "{codepoint:0>4x}").unwrap();
+        }
+
+        unicode.push(')');
+        unicode
+    } else {
+        String::new()
+    };
+
+    // Give the decimal value for ascii characters
+    let dec = if encoding.is_ascii_compatible() && grapheme.len() == 1 {
+        format!(" Dec {}", grapheme.as_bytes()[0])
+    } else {
+        String::new()
+    };
+
+    let hex = {
+        let mut encoder = encoding.new_encoder();
+        let max_encoded_len = encoder
+            .max_buffer_length_from_utf8_without_replacement(grapheme.len())
+            .unwrap();
+        let mut bytes = Vec::with_capacity(max_encoded_len);
+        let mut current_byte = 0;
+        let mut hex = String::new();
+
+        for (i, char) in grapheme.chars().enumerate() {
+            if i != 0 {
+                hex.push_str(" +");
+            }
+
+            let (result, _input_bytes_read) = encoder.encode_from_utf8_to_vec_without_replacement(
+                &char.to_string(),
+                &mut bytes,
+                true,
+            );
+
+            if let encoding::EncoderResult::Unmappable(char) = result {
+                bail!("{char:?} cannot be mapped to {}", encoding.name());
+            }
+
+            for byte in &bytes[current_byte..] {
+                write!(hex, " {byte:0>2x}").unwrap();
+            }
+
+            current_byte = bytes.len();
+        }
+
+        hex
+    };
+
+    cx.editor
+        .set_status(format!("\"{printable}\"{unicode}{dec} Hex{hex}"));
+
+    Ok(())
+}
+
 /// Reload the [`Document`] from its source file.
 fn reload(
     cx: &mut compositor::Context,
@@ -976,10 +1172,185 @@ fn reload(
     }
 
     let scrolloff = cx.editor.config().scrolloff;
+    let redraw_handle = cx.editor.redraw_handle.clone();
     let (view, doc) = current!(cx.editor);
-    doc.reload(view.id).map(|_| {
-        view.ensure_cursor_in_view(doc, scrolloff);
-    })
+    doc.reload(view, &cx.editor.diff_providers, redraw_handle)
+        .map(|_| {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        })
+}
+
+fn reload_all(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let scrolloff = cx.editor.config().scrolloff;
+    let view_id = view!(cx.editor).id;
+
+    let docs_view_ids: Vec<(DocumentId, Vec<ViewId>)> = cx
+        .editor
+        .documents_mut()
+        .map(|doc| {
+            let mut view_ids: Vec<_> = doc.selections().keys().cloned().collect();
+
+            if view_ids.is_empty() {
+                doc.ensure_view_init(view_id);
+                view_ids.push(view_id);
+            };
+
+            (doc.id(), view_ids)
+        })
+        .collect();
+
+    for (doc_id, view_ids) in docs_view_ids {
+        let doc = doc_mut!(cx.editor, &doc_id);
+
+        // Every doc is guaranteed to have at least 1 view at this point.
+        let view = view_mut!(cx.editor, view_ids[0]);
+
+        // Ensure that the view is synced with the document's history.
+        view.sync_changes(doc);
+
+        let redraw_handle = cx.editor.redraw_handle.clone();
+        doc.reload(view, &cx.editor.diff_providers, redraw_handle)?;
+
+        for view_id in view_ids {
+            let view = view_mut!(cx.editor, view_id);
+            if view.doc.eq(&doc_id) {
+                view.ensure_cursor_in_view(doc, scrolloff);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Update the [`Document`] if it has been modified.
+fn update(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_view, doc) = current!(cx.editor);
+    if doc.is_modified() {
+        write(cx, args, event)
+    } else {
+        Ok(())
+    }
+}
+
+fn lsp_workspace_command(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_, doc) = current!(cx.editor);
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => {
+            cx.editor
+                .set_status("Language server not active for current buffer");
+            return Ok(());
+        }
+    };
+
+    let options = match &language_server.capabilities().execute_command_provider {
+        Some(options) => options,
+        None => {
+            cx.editor
+                .set_status("Workspace commands are not supported for this language server");
+            return Ok(());
+        }
+    };
+    if args.is_empty() {
+        let commands = options
+            .commands
+            .iter()
+            .map(|command| helix_lsp::lsp::Command {
+                title: command.clone(),
+                command: command.clone(),
+                arguments: None,
+            })
+            .collect::<Vec<_>>();
+        let callback = async move {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |_editor: &mut Editor, compositor: &mut Compositor| {
+                    let picker = ui::Picker::new(commands, (), |cx, command, _action| {
+                        execute_lsp_command(cx.editor, command.clone());
+                    });
+                    compositor.push(Box::new(overlayed(picker)))
+                },
+            ));
+            Ok(call)
+        };
+        cx.jobs.callback(callback);
+    } else {
+        let command = args.join(" ");
+        if options.commands.iter().any(|c| c == &command) {
+            execute_lsp_command(
+                cx.editor,
+                helix_lsp::lsp::Command {
+                    title: command.clone(),
+                    arguments: None,
+                    command,
+                },
+            );
+        } else {
+            cx.editor.set_status(format!(
+                "`{command}` is not supported for this language server"
+            ));
+            return Ok(());
+        }
+    }
+    Ok(())
+}
+
+fn lsp_restart(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_view, doc) = current!(cx.editor);
+    let config = doc
+        .language_config()
+        .context("LSP not defined for the current document")?;
+
+    let scope = config.scope.clone();
+    cx.editor.language_servers.restart(config, doc.path())?;
+
+    // This collect is needed because refresh_language_server would need to re-borrow editor.
+    let document_ids_to_refresh: Vec<DocumentId> = cx
+        .editor
+        .documents()
+        .filter_map(|doc| match doc.language_config() {
+            Some(config) if config.scope.eq(&scope) => Some(doc.id()),
+            _ => None,
+        })
+        .collect();
+
+    for document_id in document_ids_to_refresh {
+        cx.editor.refresh_language_server(document_id);
+    }
+
+    Ok(())
 }
 
 fn tree_sitter_scopes(
@@ -996,7 +1367,22 @@ fn tree_sitter_scopes(
 
     let pos = doc.selection(view.id).primary().cursor(text);
     let scopes = indent::get_scopes(doc.syntax(), text, pos);
-    cx.editor.set_status(format!("scopes: {:?}", &scopes));
+
+    let contents = format!("```json\n{:?}\n````", scopes);
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let popup = Popup::new("hover", contents).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
     Ok(())
 }
 
@@ -1147,7 +1533,7 @@ fn tutor(
         return Ok(());
     }
 
-    let path = helix_loader::runtime_dir().join("tutor.txt");
+    let path = helix_loader::runtime_dir().join("tutor");
     cx.editor.open(&path, Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
     doc_mut!(cx.editor).set_path(None)?;
@@ -1159,18 +1545,41 @@ pub(super) fn goto_line_number(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
+    match event {
+        PromptEvent::Abort => {
+            if let Some(line_number) = cx.editor.last_line_number {
+                goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
+                let (view, doc) = current!(cx.editor);
+                view.ensure_cursor_in_view(doc, line_number);
+                cx.editor.last_line_number = None;
+            }
+            return Ok(());
+        }
+        PromptEvent::Validate => {
+            ensure!(!args.is_empty(), "Line number required");
+            cx.editor.last_line_number = None;
+        }
+        PromptEvent::Update => {
+            if args.is_empty() {
+                if let Some(line_number) = cx.editor.last_line_number {
+                    // When a user hits backspace and there are no numbers left,
+                    // we can bring them back to their original line
+                    goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
+                    let (view, doc) = current!(cx.editor);
+                    view.ensure_cursor_in_view(doc, line_number);
+                    cx.editor.last_line_number = None;
+                }
+                return Ok(());
+            }
+            let (view, doc) = current!(cx.editor);
+            let text = doc.text().slice(..);
+            let line = doc.selection(view.id).primary().cursor_line(text);
+            cx.editor.last_line_number.get_or_insert(line + 1);
+        }
     }
-
-    ensure!(!args.is_empty(), "Line number required");
-
     let line = args[0].parse::<usize>()?;
-
     goto_line_impl(cx.editor, NonZeroUsize::new(line));
-
     let (view, doc) = current!(cx.editor);
-
     view.ensure_cursor_in_view(doc, line);
     Ok(())
 }
@@ -1238,6 +1647,46 @@ fn set_option(
     Ok(())
 }
 
+/// Toggle boolean config option at runtime. Access nested values by dot
+/// syntax, for example to toggle smart case search, use `:toggle search.smart-
+/// case`.
+fn toggle_option(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:toggle key`");
+    }
+    let key = &args[0].to_lowercase();
+
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+
+    let mut config = serde_json::json!(&cx.editor.config().deref());
+    let pointer = format!("/{}", key.replace('.', "/"));
+    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+
+    if let Value::Bool(b) = *value {
+        *value = Value::Bool(!b);
+    } else {
+        anyhow::bail!("Key `{}` is not toggle-able", key)
+    }
+
+    // This unwrap should never fail because we only replace one boolean value
+    // with another, maintaining a valid json config
+    let config = serde_json::from_value(config).unwrap();
+
+    cx.editor
+        .config_events
+        .0
+        .send(ConfigEvent::Update(config))?;
+    Ok(())
+}
+
 /// Change the language of the current buffer at runtime.
 fn language(
     cx: &mut compositor::Context,
@@ -1253,7 +1702,12 @@ fn language(
     }
 
     let doc = doc_mut!(cx.editor);
-    doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone());
+
+    if args[0] == "text" {
+        doc.set_language(None, None)
+    } else {
+        doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone())?;
+    }
     doc.detect_indent_and_line_ending();
 
     let id = doc.id();
@@ -1286,6 +1740,7 @@ fn sort_impl(
     _args: &[Cow<str>],
     reverse: bool,
 ) -> anyhow::Result<()> {
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -1310,7 +1765,8 @@ fn sort_impl(
     );
 
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
 }
@@ -1324,6 +1780,7 @@ fn reflow(
         return Ok(());
     }
 
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
 
     const DEFAULT_MAX_LEN: usize = 79;
@@ -1353,7 +1810,8 @@ fn reflow(
     });
 
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view.id);
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
 }
@@ -1379,15 +1837,18 @@ fn tree_sitter_subtree(
             .root_node()
             .descendant_for_byte_range(from, to)
         {
-            let contents = format!("```tsq\n{}\n```", selected_node.to_sexp());
+            let mut contents = String::from("```tsq\n");
+            helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
+            contents.push_str("\n```");
 
             let callback = async move {
-                let call: job::Callback =
-                    Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+                let call: job::Callback = Callback::EditorCompositor(Box::new(
+                    move |editor: &mut Editor, compositor: &mut Compositor| {
                         let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                         let popup = Popup::new("hover", contents).auto_close(true);
                         compositor.replace_or_push("hover", popup);
-                    });
+                    },
+                ));
                 Ok(call)
             };
 
@@ -1466,13 +1927,30 @@ fn insert_output(
     Ok(())
 }
 
+fn pipe_to(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::Ignore)
+}
+
 fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::Replace)
+}
+
+fn pipe_impl(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+    behavior: &ShellBehavior,
+) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
     ensure!(!args.is_empty(), "Shell command required");
-    shell(cx, &args.join(" "), &ShellBehavior::Replace);
+    shell(cx, &args.join(" "), behavior);
     Ok(())
 }
 
@@ -1488,15 +1966,15 @@ fn run_shell_command(
     let shell = &cx.editor.config().shell;
     let (output, success) = shell_impl(shell, &args.join(" "), None)?;
     if success {
-        cx.editor.set_status("Command succeed");
+        cx.editor.set_status("Command succeeded");
     } else {
         cx.editor.set_error("Command failed");
     }
 
     if !output.is_empty() {
         let callback = async move {
-            let call: job::Callback =
-                Box::new(move |editor: &mut Editor, compositor: &mut Compositor| {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor| {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output),
                         editor.syn_loader.clone(),
@@ -1505,7 +1983,8 @@ fn run_shell_command(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
                     ));
                     compositor.replace_or_push("shell", popup);
-                });
+                },
+            ));
             Ok(call)
         };
 
@@ -1718,7 +2197,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "theme",
             aliases: &[],
-            doc: "Change the editor theme.",
+            doc: "Change the editor theme (show current theme if no name specified).",
             fun: theme,
             completer: Some(completers::theme),
         },
@@ -1821,10 +2300,45 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
+            name: "character-info",
+            aliases: &["char"],
+            doc: "Get info about the character under the primary cursor.",
+            fun: get_character_info,
+            completer: None,
+        },
+        TypableCommand {
             name: "reload",
             aliases: &[],
             doc: "Discard changes and reload from the source file.",
             fun: reload,
+            completer: None,
+        },
+        TypableCommand {
+            name: "reload-all",
+            aliases: &[],
+            doc: "Discard changes and reload all documents from the source files.",
+            fun: reload_all,
+            completer: None,
+        },
+        TypableCommand {
+            name: "update",
+            aliases: &[],
+            doc: "Write changes only if the file has been modified.",
+            fun: update,
+            completer: None,
+        },
+        TypableCommand {
+            name: "lsp-workspace-command",
+            aliases: &[],
+            doc: "Open workspace command picker",
+            fun: lsp_workspace_command,
+            completer: Some(completers::lsp_workspace_command),
+        },
+        TypableCommand {
+            name: "lsp-restart",
+            aliases: &[],
+            doc: "Restarts the Language Server that is in use by the current doc",
+            fun: lsp_restart,
             completer: None,
         },
         TypableCommand {
@@ -1912,6 +2426,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: Some(completers::setting),
         },
         TypableCommand {
+            name: "toggle-option",
+            aliases: &["toggle"],
+            doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
+            fun: toggle_option,
+            completer: Some(completers::setting),
+        },
+        TypableCommand {
             name: "get-option",
             aliases: &["get"],
             doc: "Get the current value of a config option.",
@@ -1970,7 +2491,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "insert-output",
             aliases: &[],
-            doc: "Run shell command, inserting output after each selection.",
+            doc: "Run shell command, inserting output before each selection.",
             fun: insert_output,
             completer: None,
         },
@@ -1989,11 +2510,18 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
+            name: "pipe-to",
+            aliases: &[],
+            doc: "Pipe each selection to the shell command, ignoring output.",
+            fun: pipe_to,
+            completer: None,
+        },
+        TypableCommand {
             name: "run-shell-command",
             aliases: &["sh"],
             doc: "Run a shell command",
             fun: run_shell_command,
-            completer: Some(completers::directory),
+            completer: Some(completers::filename),
         },
     ];
 
@@ -2008,7 +2536,10 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
             .collect()
     });
 
-pub fn command_mode(cx: &mut Context) {
+#[allow(clippy::unnecessary_unwrap)]
+pub(super) fn command_mode(cx: &mut Context) {
+    use shellwords::Shellwords;
+
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
@@ -2016,12 +2547,11 @@ pub fn command_mode(cx: &mut Context) {
             static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
                 Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
 
-            // we use .this over split_whitespace() because we care about empty segments
-            let parts = input.split(' ').collect::<Vec<&str>>();
+            let shellwords = Shellwords::from(input);
+            let words = shellwords.words();
 
-            // simple heuristic: if there's no just one part, complete command name.
-            // if there's a space, per command completion kicks in.
-            if parts.len() <= 1 {
+            if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
+                // If the command has not been finished yet, complete commands.
                 let mut matches: Vec<_> = typed::TYPABLE_COMMAND_LIST
                     .iter()
                     .filter_map(|command| {
@@ -2037,18 +2567,29 @@ pub fn command_mode(cx: &mut Context) {
                     .map(|(name, _)| (0.., name.into()))
                     .collect()
             } else {
-                let part = parts.last().unwrap();
+                // Otherwise, use the command's completer and the last shellword
+                // as completion input.
+                let (part, part_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {
+                    (&Cow::Borrowed(""), 0)
+                } else {
+                    (
+                        words.last().unwrap(),
+                        shellwords.parts().last().unwrap().len(),
+                    )
+                };
 
                 if let Some(typed::TypableCommand {
                     completer: Some(completer),
                     ..
-                }) = typed::TYPABLE_COMMAND_MAP.get(parts[0])
+                }) = typed::TYPABLE_COMMAND_MAP.get(&words[0] as &str)
                 {
                     completer(editor, part)
                         .into_iter()
                         .map(|(range, file)| {
+                            let file = shellwords::escape(file);
+
                             // offset ranges to input
-                            let offset = input.len() - part.len();
+                            let offset = input.len() - part_len;
                             let range = (range.start + offset)..;
                             (range, file)
                         })
@@ -2074,7 +2615,8 @@ pub fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let args = shellwords::shellwords(input);
+                let shellwords = Shellwords::from(input);
+                let args = shellwords.words();
 
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));

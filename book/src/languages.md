@@ -35,11 +35,11 @@ Each language is configured by adding a `[[language]]` section to a
 [[language]]
 name = "mylang"
 scope = "source.mylang"
-injection-regex = "^mylang$"
+injection-regex = "mylang"
 file-types = ["mylang", "myl"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-language-server = { command = "mylang-lsp", args = ["--stdio"] }
+language-server = { command = "mylang-lsp", args = ["--stdio"], environment = { "ENV1" = "value1", "ENV2" = "value2" } }
 formatter = { command = "mylang-formatter" , args = ["--stdin"] }
 ```
 
@@ -50,7 +50,7 @@ These configuration keys are available:
 | `name`                | The name of the language                                      |
 | `scope`               | A string like `source.js` that identifies the language. Currently, we strive to match the scope names used by popular TextMate grammars and by the Linguist library. Usually `source.<name>` or `text.<name>` in case of markup languages |
 | `injection-regex`     | regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential [language injection][treesitter-language-injection] site. |
-| `file-types`          | The filetypes of the language, for example `["yml", "yaml"]`. Extensions and full file names are supported.  |
+| `file-types`          | The filetypes of the language, for example `["yml", "yaml"]`. See the file-type detection section below. |
 | `shebangs`            | The interpreters from the shebang line, for example `["sh", "bash"]` |
 | `roots`               | A set of marker files to look for when trying to find the workspace root. For example `Cargo.lock`, `yarn.lock` |
 | `auto-format`         | Whether to autoformat this language when saving               |
@@ -61,6 +61,33 @@ These configuration keys are available:
 | `config`              | Language Server configuration                                 |
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
 | `formatter`           | The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout |
+| `max-line-length`     | Maximum line length. Used for the `:reflow` command and soft-wrapping           |
+
+### File-type detection and the `file-types` key
+
+Helix determines which language configuration to use with the `file-types` key
+from the above section. `file-types` is a list of strings or tables, for
+example:
+
+```toml
+file-types = ["Makefile", "toml", { suffix = ".git/config" }]
+```
+
+When determining a language configuration to use, Helix searches the file-types
+with the following priorities:
+
+1. Exact match: if the filename of a file is an exact match of a string in a
+   `file-types` list, that language wins. In the example above, `"Makefile"`
+   will match against `Makefile` files.
+2. Extension: if there are no exact matches, any `file-types` string that
+   matches the file extension of a given file wins. In the example above, the
+   `"toml"` matches files like `Cargo.toml` or `languages.toml`.
+3. Suffix: if there are still no matches, any values in `suffix` tables
+   are checked against the full path of the given file. In the example above,
+   the `{ suffix = ".git/config" }` would match against any `config` files
+   in `.git` directories. Note: `/` is used as the directory separator but is
+   replaced at runtime with the appropriate path separator for the operating
+   system, so this rule would match against `.git\config` files on Windows.
 
 ### Language Server configuration
 
@@ -72,6 +99,7 @@ The `language-server` field takes the following keys:
 | `args`        | A list of arguments to pass to the language server binary             |
 | `timeout`     | The maximum time a request to the language server may take, in seconds. Defaults to `20` |
 | `language-id` | The language name to pass to the language server. Some language servers support multiple languages and use this field to determine which one is being served in a buffer |
+| `environment` | Any environment variables that will be used when starting the language server `{ "KEY1" = "Value1", "KEY2" = "Value2" }` |
 
 The top-level `config` field is used to configure the LSP initialization options. A `format`
 sub-table within `config` can be used to pass extra formatting options to

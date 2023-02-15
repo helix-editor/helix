@@ -34,6 +34,7 @@
 "markup.list" = "theme_red"
 "markup.bold" = { fg = "theme_yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "theme_magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "theme_yellow", modifiers = ["underlined"] }
 "markup.link.text" = "theme_red"
 "markup.quote" = "theme_cyan"
@@ -51,6 +52,7 @@
 "ui.background" = { bg = "bg0" }
 "ui.linenr" = { fg = "bg3" }
 "ui.linenr.selected" = { fg = "theme_yellow" }
+"ui.cursorline" = { bg = "bg2" }
 "ui.statusline" = { fg = "fg1", bg = "bg2" }
 "ui.statusline.inactive" = { fg = "fg4", bg = "bg1" }
 "ui.statusline.normal" = { fg = "bg1", bg = "theme_cyan" }
@@ -71,7 +73,10 @@
 "ui.virtual" = "base-dim"
 "ui.virtual.ruler" = { bg = "bg1" }
 
-"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { style = "curl", color = "meta" } }
+"diagnostic.error" = { underline = { style = "curl", color = "#e0211d" } }
+"diagnostic.info" = { underline = { style = "curl", color = "theme_yellow" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "bg2" } }
 
 "ui.explorer.file" = { fg = "fg1" }
 "ui.explorer.dir" = { fg = "#715ab1" }

@@ -61,12 +61,16 @@ impl<T: Component + 'static> Component for Overlay<T> {
         Some((width, height))
     }
 
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
         self.content.handle_event(event, ctx)
     }
 
     fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
         let dimensions = (self.calc_child_size)(area);
         self.content.cursor(dimensions, ctx)
+    }
+
+    fn id(&self) -> Option<&'static str> {
+        self.content.id()
     }
 }

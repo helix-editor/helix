@@ -14,6 +14,7 @@ pub struct Args {
     pub build_grammars: bool,
     pub split: Option<Layout>,
     pub verbosity: u64,
+    pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
     pub files: Vec<(PathBuf, Position)>,
 }
@@ -31,8 +32,14 @@ impl Args {
                 "--version" => args.display_version = true,
                 "--help" => args.display_help = true,
                 "--tutor" => args.load_tutor = true,
-                "--vsplit" => args.split = Some(Layout::Vertical),
-                "--hsplit" => args.split = Some(Layout::Horizontal),
+                "--vsplit" => match args.split {
+                    Some(_) => anyhow::bail!("can only set a split once of a specific type"),
+                    None => args.split = Some(Layout::Vertical),
+                },
+                "--hsplit" => match args.split {
+                    Some(_) => anyhow::bail!("can only set a split once of a specific type"),
+                    None => args.split = Some(Layout::Horizontal),
+                },
                 "--health" => {
                     args.health = true;
                     args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));
@@ -47,6 +54,10 @@ impl Args {
                 "-c" | "--config" => match argv.next().as_deref() {
                     Some(path) => args.config_file = Some(path.into()),
                     None => anyhow::bail!("--config must specify a path to read"),
+                },
+                "--log" => match argv.next().as_deref() {
+                    Some(path) => args.log_file = Some(path.into()),
+                    None => anyhow::bail!("--log must specify a path to write"),
                 },
                 arg if arg.starts_with("--") => {
                     anyhow::bail!("unexpected double dash argument: {}", arg)

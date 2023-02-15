@@ -1,5 +1,5 @@
+; Indentation queries for helix
 [
-  (method_expression)
   (function_expression)
   (array_literal)
   (dictionary_literal)
@@ -7,10 +7,11 @@
   (iteration_statement)
 ] @indent
 
+; question - what about else, elif
 [
   ")"
   "]"
   "}"
-  "endif"
-  "endforeach"
+  (endif)
+  (endforeach)
 ] @outdent

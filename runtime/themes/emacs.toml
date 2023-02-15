@@ -37,6 +37,7 @@
 "markup.list" = { fg = "black" }
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "royalblue3", modifiers = ["underlined"] }
 "markup.link.text" = { fg = "royalblue3" }
 "markup.quote" = { fg = "gray60" }
@@ -45,7 +46,7 @@
 
 "ui.background" = { fg = "black", bg = "white" }
 "ui.background.separator" = { fg = "black", bg = "white" }
-"ui.cursor" =  { fg = "white", bg = "gray70" }
+"ui.cursor" = { fg = "white", bg = "gray70" }
 "ui.cursor.primary" = { fg = "white", bg = "black" }
 "ui.cursor.match" = { fg = "black", bg = "turquoise" }
 "ui.cursor.select" = { fg = "white", bg = "black" }
@@ -54,6 +55,9 @@
 "ui.linenr.selected" = { fg = "gray80" }
 "ui.statusline" = { fg = "black", bg = "gray75" }
 "ui.statusline.inactive" = { fg = "gray20", bg = "gray90" }
+"ui.bufferline" = { fg = "gray36", bg = "gray90", modifiers = ["underlined"] }
+"ui.bufferline.active" = { fg = "gray0", bg = "gray99" }
+"ui.bufferline.background" = { bg = "gray75" }
 "ui.popup" = { fg = "black", bg = "gray97" }
 "ui.popup.info" = { fg = "black", bg = "gray97" }
 "ui.window" = { fg = "black" }
@@ -65,19 +69,23 @@
 "ui.selection" = { bg = "lightgoldenrod1" }
 "ui.selection.primary" = { bg = "lightgoldenrod2" }
 "ui.virtual.whitespace" = "highlight"
-"ui.virtual.ruler" = { bg ="gray95" }
+"ui.virtual.ruler" = { bg = "gray95" }
 "ui.cursorline.primary" = { bg = "darkseagreen2" }
 "ui.cursorline.secondary" = { bg = "darkseagreen2" }
 
-"diff.plus" = { fg = "#22aa22", bg = "#eeffee" }
-"diff.delta" = { fg = "#aaaa22", bg = "#ffffcc" }
-"diff.minus" = { fg = "#aa2222", bg = "#ffdddd" }
+"diff.plus" = { fg = "green3" }
+"diff.delta" = { fg = "orange2" }
+"diff.minus" = { fg = "red2" }
 
 "error" = { fg = "red1" }
 "warning" = { fg = "dark_orange" }
 "info" = { fg = "forest_green" }
 "hint" = { fg = "dark_cyan" }
-"diagnostic" = { modifiers = ["underlined"] }
+
+"diagnostic.error" = { underline = { color = "red1", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "dark_orange", style = "curl" } }
+"diagnostic.info" = { underline = { color = "forest_green", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "dark_cyan", style = "curl" } }
 
 [palette]
 black = "#000000"

@@ -170,7 +170,7 @@ pub struct Explorer {
     state: State,
     prompt: Option<(PromptAction, Prompt)>,
     #[allow(clippy::type_complexity)]
-    on_next_key: Option<Box<dyn FnMut(&mut Context, &mut Self, KeyEvent) -> EventResult>>,
+    on_next_key: Option<Box<dyn FnMut(&mut Context, &mut Self, &KeyEvent) -> EventResult>>,
     #[allow(clippy::type_complexity)]
     repeat_motion: Option<Box<dyn FnMut(&mut Self, PromptAction, &mut Context) + 'static>>,
     column_width: u16,
@@ -328,12 +328,12 @@ impl Explorer {
         ))
     }
 
-    fn new_filter_prompt(&mut self) {
+    fn new_filter_prompt(&mut self, cx: &mut Context) {
         self.tree.save_view();
         self.prompt = Some((
             PromptAction::Filter,
             Prompt::new(" Filter: ".into(), None, ui::completers::none, |_, _, _| {})
-                .with_line(self.state.filter.clone()),
+                .with_line(self.state.filter.clone(), cx.editor),
         ))
     }
 
@@ -411,7 +411,7 @@ impl Explorer {
                 ui::completers::none,
                 |_, _, _| {},
             )
-            .with_line(path.to_string_lossy().to_string()),
+            .with_line(path.to_string_lossy().to_string(), cx.editor),
         ));
     }
 
@@ -608,12 +608,12 @@ impl Explorer {
         }
     }
 
-    fn handle_filter_event(&mut self, event: KeyEvent, cx: &mut Context) -> EventResult {
+    fn handle_filter_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
         let (action, mut prompt) = self.prompt.take().unwrap();
         (|| -> Result<()> {
-            match event.into() {
+            match event {
                 key!(Enter) => {
-                    if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
+                    if let EventResult::Consumed(_) = prompt.handle_event(&Event::Key(*event), cx) {
                         self.tree.refresh(prompt.line())?;
                     }
                 }
@@ -621,7 +621,7 @@ impl Explorer {
                     self.state.filter.clear();
                 }
                 _ => {
-                    if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
+                    if let EventResult::Consumed(_) = prompt.handle_event(&Event::Key(*event), cx) {
                         self.tree.refresh(prompt.line())?;
                     }
                     self.state.filter = prompt.line().clone();
@@ -634,18 +634,18 @@ impl Explorer {
         EventResult::Consumed(None)
     }
 
-    fn handle_search_event(&mut self, event: KeyEvent, cx: &mut Context) -> EventResult {
+    fn handle_search_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
         let (action, mut prompt) = self.prompt.take().unwrap();
         let search_next = match action {
             PromptAction::Search { search_next } => search_next,
             _ => return EventResult::Ignored(None),
         };
-        match event.into() {
+        match event {
             key!(Tab) | key!(Down) | ctrl!('j') => {
                 let filter = self.state.filter.clone();
                 return self
                     .tree
-                    .handle_event(Event::Key(event), cx, &mut self.state, &filter);
+                    .handle_event(&Event::Key(*event), cx, &mut self.state, &filter);
             }
             key!(Enter) => {
                 let search_str = prompt.line().clone();
@@ -669,7 +669,7 @@ impl Explorer {
             }
             key!(Esc) | ctrl!('c') => self.tree.restore_view(),
             _ => {
-                if let EventResult::Consumed(_) = prompt.handle_event(Event::Key(event), cx) {
+                if let EventResult::Consumed(_) = prompt.handle_event(&Event::Key(*event), cx) {
                     if search_next {
                         self.tree.search_next(prompt.line());
                     } else {
@@ -682,7 +682,7 @@ impl Explorer {
         EventResult::Consumed(None)
     }
 
-    fn handle_prompt_event(&mut self, event: KeyEvent, cx: &mut Context) -> EventResult {
+    fn handle_prompt_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
         match &self.prompt {
             Some((PromptAction::Search { .. }, _)) => return self.handle_search_event(event, cx),
             Some((PromptAction::Filter, _)) => return self.handle_filter_event(event, cx),
@@ -690,7 +690,7 @@ impl Explorer {
         };
         fn handle_prompt_event(
             explorer: &mut Explorer,
-            event: KeyEvent,
+            event: &KeyEvent,
             cx: &mut Context,
         ) -> Result<EventResult> {
             let (action, mut prompt) = match explorer.prompt.take() {
@@ -698,7 +698,7 @@ impl Explorer {
                 _ => return Ok(EventResult::Ignored(None)),
             };
             let line = prompt.line();
-            match (&action, event.into()) {
+            match (&action, event) {
                 (
                     PromptAction::CreateFolder {
                         folder_path,
@@ -741,7 +741,7 @@ impl Explorer {
                 }
                 (_, key!(Esc) | ctrl!('c')) => {}
                 _ => {
-                    prompt.handle_event(Event::Key(event), cx);
+                    prompt.handle_event(&Event::Key(*event), cx);
                     explorer.prompt = Some((action, prompt));
                 }
             }
@@ -815,7 +815,7 @@ impl Explorer {
 
 impl Component for Explorer {
     /// Process input events, return true if handled.
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let key_event = match event {
             Event::Key(event) => event,
             Event::Resize(..) => return EventResult::Consumed(None),
@@ -832,7 +832,7 @@ impl Component for Explorer {
             return EventResult::Consumed(c);
         }
 
-        match key_event.into() {
+        match key_event {
             key!(Esc) => self.unfocus(),
             key!('q') => self.close(),
             key!('n') => {
@@ -847,7 +847,7 @@ impl Component for Explorer {
                     self.repeat_motion = Some(repeat_motion);
                 }
             }
-            key!('f') => self.new_filter_prompt(),
+            key!('f') => self.new_filter_prompt(cx),
             key!('/') => self.new_search_prompt(true),
             key!('?') => self.toggle_help(),
             key!('a') => {
@@ -880,7 +880,7 @@ impl Component for Explorer {
             _ => {
                 let filter = self.state.filter.clone();
                 self.tree
-                    .handle_event(Event::Key(key_event), cx, &mut self.state, &filter);
+                    .handle_event(&Event::Key(*key_event), cx, &mut self.state, &filter);
             }
         }
 

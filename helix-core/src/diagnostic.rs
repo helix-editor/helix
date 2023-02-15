@@ -29,6 +29,12 @@ pub enum NumberOrString {
     String(String),
 }
 
+#[derive(Debug, Clone)]
+pub enum DiagnosticTag {
+    Unnecessary,
+    Deprecated,
+}
+
 /// Corresponds to [`lsp_types::Diagnostic`](https://docs.rs/lsp-types/0.91.0/lsp_types/struct.Diagnostic.html)
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
@@ -37,4 +43,7 @@ pub struct Diagnostic {
     pub message: String,
     pub severity: Option<Severity>,
     pub code: Option<NumberOrString>,
+    pub tags: Vec<DiagnosticTag>,
+    pub source: Option<String>,
+    pub data: Option<serde_json::Value>,
 }

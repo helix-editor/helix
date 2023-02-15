@@ -5,7 +5,14 @@ use crate::compositor::Compositor;
 use futures_util::future::{BoxFuture, Future, FutureExt};
 use futures_util::stream::{FuturesUnordered, StreamExt};
 
-pub type Callback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
+pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
+pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
+
+pub enum Callback {
+    EditorCompositor(EditorCompositorCallback),
+    Editor(EditorCallback),
+}
+
 pub type JobFuture = BoxFuture<'static, anyhow::Result<Option<Callback>>>;
 
 pub struct Job {
@@ -68,9 +75,10 @@ impl Jobs {
     ) {
         match call {
             Ok(None) => {}
-            Ok(Some(call)) => {
-                call(editor, compositor);
-            }
+            Ok(Some(call)) => match call {
+                Callback::EditorCompositor(call) => call(editor, compositor),
+                Callback::Editor(call) => call(editor),
+            },
             Err(e) => {
                 editor.set_error(format!("Async job failed: {}", e));
             }
@@ -93,13 +101,32 @@ impl Jobs {
     }
 
     /// Blocks until all the jobs that need to be waited on are done.
-    pub async fn finish(&mut self) -> anyhow::Result<()> {
+    pub async fn finish(
+        &mut self,
+        editor: &mut Editor,
+        mut compositor: Option<&mut Compositor>,
+    ) -> anyhow::Result<()> {
         log::debug!("waiting on jobs...");
         let mut wait_futures = std::mem::take(&mut self.wait_futures);
+
         while let (Some(job), tail) = wait_futures.into_future().await {
             match job {
-                Ok(_) => {
+                Ok(callback) => {
                     wait_futures = tail;
+
+                    if let Some(callback) = callback {
+                        // clippy doesn't realize this is an error without the derefs
+                        #[allow(clippy::needless_option_as_deref)]
+                        match callback {
+                            Callback::EditorCompositor(call) if compositor.is_some() => {
+                                call(editor, compositor.as_deref_mut().unwrap())
+                            }
+                            Callback::Editor(call) => call(editor),
+
+                            // skip callbacks for which we don't have the necessary references
+                            _ => (),
+                        }
+                    }
                 }
                 Err(e) => {
                     self.wait_futures = tail;

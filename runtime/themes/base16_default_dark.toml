@@ -37,6 +37,7 @@
 "markup.list" = "base08"
 "markup.bold" = { fg = "base0A", modifiers = ["bold"] }
 "markup.italic" = { fg = "base0E", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "base09", modifiers = ["underlined"] }
 "markup.link.text" = "base08"
 "markup.quote" = "base0C"
@@ -59,6 +60,9 @@
 "ui.explorer.exe" = { fg = "base05" }
 "ui.explorer.focus" = { modifiers = ["reversed"] }
 "ui.explorer.unfocus" = { bg = "base02" }
+
+"ui.bufferline" = { fg = "base04", bg = "base00" }
+"ui.bufferline.active" = { fg = "base06", bg = "base01" }
 
 [palette]
 base00 = "#181818" # Default Background
