@@ -125,41 +125,17 @@ mod tests {
             [keys.normal.space]
             sticky = true
         "#;
-        let space_keytrie: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
-            .unwrap()
-            .merge_in_default_keymap()
-            .keys
-            .get(&Mode::Normal)
-            .unwrap()
-            .traverse(&[KeyEvent::from_str("space").unwrap()])
-            .unwrap();
-        if let KeyTrieNode::KeyTrie(_space_keytrie) = space_keytrie {
-            assert!(_space_keytrie.is_sticky)
-        } else {
-            panic!("KeyTrieNode::KeyTrie expected.")
-        }
+        assert!(_normal_mode_keytrie("space", sample_keymap).is_sticky)
     }
 
     #[test]
     fn true_to_undefined_remains_sticky() {
         // NOTE: assumes Z binding is predefined as sticky.
         let sample_keymap = r#"
-                [keys.normal.Z]
-                c = "no_op"
-            "#;
-        let sticky_keytrie: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
-            .unwrap()
-            .merge_in_default_keymap()
-            .keys
-            .get(&Mode::Normal)
-            .unwrap()
-            .traverse(&[KeyEvent::from_str("Z").unwrap()])
-            .unwrap();
-        if let KeyTrieNode::KeyTrie(_sticky_keytrie) = sticky_keytrie {
-            assert!(_sticky_keytrie.is_sticky)
-        } else {
-            panic!("KeyTrieNode::KeyTrie expected.")
-        }
+            [keys.normal.Z]
+            c = "no_op"
+        "#;
+        assert!(_normal_mode_keytrie("Z", sample_keymap).is_sticky)
     }
 
     #[test]
@@ -168,20 +144,8 @@ mod tests {
         let sample_keymap = r#"
                 [keys.normal.Z]
                 sticky = false
-            "#;
-        let sticky_keytrie: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
-            .unwrap()
-            .merge_in_default_keymap()
-            .keys
-            .get(&Mode::Normal)
-            .unwrap()
-            .traverse(&[KeyEvent::from_str("Z").unwrap()])
-            .unwrap();
-        if let KeyTrieNode::KeyTrie(_sticky_keytrie) = sticky_keytrie {
-            assert!(!_sticky_keytrie.is_sticky)
-        } else {
-            panic!("KeyTrieNode::KeyTrie expected.")
-        }
+        "#;
+        assert!(!_normal_mode_keytrie("Z", sample_keymap).is_sticky)
     }
 
     #[test]
@@ -190,14 +154,7 @@ mod tests {
             [keys.normal]
             A-k = { description = "Edit Config", exec = ":open ~/.config/helix/config.toml" }
         "#;
-        let parsed_node: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
-            .unwrap()
-            .keys
-            .get(&Mode::Normal)
-            .unwrap()
-            .traverse(&[KeyEvent::from_str("A-k").unwrap()])
-            .unwrap();
-
+        let parsed_node: KeyTrieNode = _normal_mode_keytrie_node("A-k", sample_keymap);
         let parsed_description = parsed_node.get_description().unwrap();
         assert_eq!(parsed_description, "Edit Config");
 
@@ -215,14 +172,7 @@ mod tests {
             "C-r" = { "description" = "Sort selection", "exec" = ["split_selection_on_newline", ":sort", "collapse_selection", "keep_primary_selection"]             }
         "#;
 
-        let parsed_node: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
-            .unwrap()
-            .keys
-            .get(&Mode::Normal)
-            .unwrap()
-            .traverse(&[KeyEvent::from_str("C-r").unwrap()])
-            .unwrap();
-
+        let parsed_node: KeyTrieNode = _normal_mode_keytrie_node("C-r", sample_keymap);
         let parsed_description = parsed_node.get_description().unwrap();
         assert_eq!(parsed_description, "Sort selection");
 
@@ -237,25 +187,13 @@ mod tests {
     #[test]
     fn parses_custom_infobox_label_from_toml() {
         let sample_keymap = r#"
-            [keys.normal]
-            b = { description = "Buffer menu", b = "buffer_picker", n = "goto_next_buffer" }
+            [keys.normal.A-b]
+            description = "Buffer menu"
+            b = "buffer_picker"
+            n = "goto_next_buffer" 
         "#;
-
-        let parsed_node: KeyTrieNode = toml::from_str::<Config>(sample_keymap)
-            .unwrap()
-            .keys
-            .get(&Mode::Normal)
-            .unwrap()
-            .traverse(&[KeyEvent::from_str("b").unwrap()])
-            .unwrap();
-
-        let parsed_description = parsed_node.get_description().unwrap();
-        assert_eq!(parsed_description, "Buffer menu");
-
-        if let KeyTrieNode::KeyTrie(_) = parsed_node {
-        } else {
-            panic!("KeyTrieNode::KeyTrie expected.")
-        }
+        let parsed_node: KeyTrieNode = _normal_mode_keytrie_node("A-b", sample_keymap);
+        assert_eq!(parsed_node.get_description().unwrap(), "Buffer menu");
     }
 
     #[test]
@@ -293,7 +231,7 @@ mod tests {
         assert_eq!(
             keymap_normal_root_key_trie.traverse(&[key!('i')]).unwrap(),
             KeyTrieNode::MappableCommand(MappableCommand::normal_mode),
-            "User supplied mappable command should ovveride default mappable command bound to the same key event."
+            "User supplied mappable command should override default mappable command bound to the same key event."
         );
         assert_eq!(
             keymap_normal_root_key_trie.traverse(&[key!('无')]).unwrap(),
@@ -347,5 +285,26 @@ mod tests {
             .unwrap()
             .get_children()
             .is_empty());
+    }
+
+    fn _normal_mode_keytrie(key_event_str: &str, sample_keymap: &str) -> KeyTrie {
+        if let KeyTrieNode::KeyTrie(_parsed_keytrie) =
+            _normal_mode_keytrie_node(key_event_str, sample_keymap)
+        {
+            _parsed_keytrie
+        } else {
+            panic!("KeyTrieNode::KeyTrie expected.")
+        }
+    }
+
+    fn _normal_mode_keytrie_node(key_event_str: &str, sample_keymap: &str) -> KeyTrieNode {
+        toml::from_str::<Config>(sample_keymap)
+            .unwrap()
+            .merge_in_default_keymap()
+            .keys
+            .get(&Mode::Normal)
+            .unwrap()
+            .traverse(&[KeyEvent::from_str(key_event_str).unwrap()])
+            .unwrap()
     }
 }
