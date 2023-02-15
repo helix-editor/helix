@@ -832,7 +832,7 @@ pub struct Editor {
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 
     pub lang_configs_loader: Arc<syntax::Loader>,
-    pub theme_loader: Arc<theme::Loader>,
+    pub theme_loader: theme::Loader,
     /// last_theme is used for theme previews. We store the current theme here,
     /// and if previewing is cancelled, we can return to it.
     pub last_theme: Option<Theme>,
@@ -923,7 +923,7 @@ pub enum CloseError {
 impl Editor {
     pub fn new(
         mut area: Rect,
-        theme_loader: Arc<theme::Loader>,
+        theme_loader: theme::Loader,
         lang_configs_loader: Arc<syntax::Loader>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Self {

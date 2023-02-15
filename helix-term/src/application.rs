@@ -77,8 +77,6 @@ pub struct Application {
     config: Arc<ArcSwap<Config>>,
 
     #[allow(dead_code)]
-    theme_loader: Arc<theme::Loader>,
-    #[allow(dead_code)]
     lang_configs_loader: Arc<syntax::Loader>,
 
     signals: Signals,
@@ -138,7 +136,7 @@ impl Application {
 
         let mut theme_parent_dirs = vec![helix_loader::user_config_dir()];
         theme_parent_dirs.extend_from_slice(helix_loader::get_runtime_dirs());
-        let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
+        let theme_loader = theme::Loader::new(&theme_parent_dirs);
 
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
@@ -170,7 +168,7 @@ impl Application {
         let config = Arc::new(ArcSwap::from_pointee(config));
         let mut editor = Editor::new(
             area,
-            theme_loader.clone(),
+            theme_loader,
             lang_configs_loader.clone(),
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
@@ -421,11 +419,10 @@ impl Application {
             self.refresh_language_config()?;
 
             if let Some(theme) = &self.config.load().theme {
-                let theme = self
-                    .editor
-                    .theme_loader
-                    .load(theme)
-                    .map_err(|err| anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err))?;
+                let theme =
+                    self.editor.theme_loader.load(theme).map_err(|err| {
+                        anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err)
+                    })?;
 
                 if self.config.load().editor.true_color
                     || crate::true_color()
