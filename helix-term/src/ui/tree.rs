@@ -548,15 +548,13 @@ impl<T: TreeItem> TreeView<T> {
     fn set_selected(&mut self, selected: usize) {
         if selected > self.selected {
             // Move down
-            self.winline = std::cmp::min(
-                selected,
+            self.winline = selected.min(
                 self.winline
                     .saturating_add(selected.saturating_sub(self.selected)),
             );
         } else {
             // Move up
-            self.winline = std::cmp::min(
-                selected,
+            self.winline = selected.min(
                 self.winline
                     .saturating_sub(self.selected.saturating_sub(selected)),
             );
@@ -567,7 +565,7 @@ impl<T: TreeItem> TreeView<T> {
     pub fn move_up(&mut self, rows: usize) {
         let len = self.tree.len();
         if len > 0 {
-            self.set_selected(std::cmp::max(0, self.selected.saturating_sub(rows)))
+            self.set_selected(self.selected.saturating_sub(rows).max(0))
         }
     }
 
@@ -647,7 +645,8 @@ impl<T: TreeItem> TreeView<T> {
     }
 
     pub fn remove_current(&mut self) {
-        self.tree.remove(self.selected)
+        self.tree.remove(self.selected);
+        self.set_selected(self.selected.min(self.tree.len().saturating_sub(1)));
     }
 
     pub fn replace_current(&mut self, item: T) {
@@ -695,7 +694,7 @@ impl<T: TreeItem + Clone> TreeView<T> {
 
         self.max_len = 0;
         self.area_height = area.height.saturating_sub(1) as usize;
-        self.winline = std::cmp::min(self.winline, self.area_height);
+        self.winline = self.winline.min(self.area_height);
         let style = cx.editor.theme.get(&self.tree_symbol_style);
         let ancestor_style = cx.editor.theme.get("ui.text.focus");
         let skip = self.selected.saturating_sub(self.winline);
