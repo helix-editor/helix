@@ -97,19 +97,27 @@ async fn main_impl() -> Result<i32> {
     app.run(&mut EventStream::new()).await
 }
 
-fn setup_logging(logpath: Option<PathBuf>, verbosity: u64) -> Result<()> {
-    helix_loader::setup_log_file(logpath);
-
-    let mut base_config = fern::Dispatch::new();
-    base_config = match verbosity {
-        0 => base_config.level(log::LevelFilter::Warn),
-        1 => base_config.level(log::LevelFilter::Info),
-        2 => base_config.level(log::LevelFilter::Debug),
-        _3_or_more => base_config.level(log::LevelFilter::Trace),
+fn setup_logging(_logpath: Option<PathBuf>, verbosity: u64) -> Result<()> {
+    let log_level = match verbosity {
+        0 => match std::env::var("HELIX_LOG_LEVEL") {
+            Ok(str) => str.parse()?,
+            Err(_) => log::LevelFilter::Warn,
+        },
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _3_or_more => log::LevelFilter::Trace,
     };
 
-    // Separate file config so we can include year, month and day in file logs
-    let file_config = fern::Dispatch::new()
+    #[cfg(feature = "integration")]
+    let logger: fern::Output = std::io::stdout().into();
+
+    #[cfg(not(feature = "integration"))]
+    let logger: fern::Output = {
+        helix_loader::setup_log_file(_logpath);
+        fern::log_file(helix_loader::log_file())?.into()
+    };
+
+    fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
                 "{} {} [{}] {}",
@@ -119,7 +127,8 @@ fn setup_logging(logpath: Option<PathBuf>, verbosity: u64) -> Result<()> {
                 message
             ))
         })
-        .chain(fern::log_file(helix_loader::log_file())?);
-    base_config.chain(file_config).apply()?;
-    Ok(())
+        .level(log_level)
+        .chain(logger)
+        .apply()
+        .map_err(|err| anyhow::anyhow!(err))
 }

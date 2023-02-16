@@ -79,28 +79,6 @@ pub struct Application {
     last_render: Instant,
 }
 
-#[cfg(feature = "integration")]
-fn setup_integration_logging() {
-    let level = std::env::var("HELIX_LOG_LEVEL")
-        .map(|lvl| lvl.parse().unwrap())
-        .unwrap_or(log::LevelFilter::Info);
-
-    // Separate file config so we can include year, month and day in file logs
-    let _ = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .level(level)
-        .chain(std::io::stdout())
-        .apply();
-}
-
 fn restore_term() -> Result<(), Error> {
     let mut stdout = stdout();
     // reset cursor shape
@@ -125,9 +103,6 @@ impl Application {
         theme: Theme,
         langauge_configurations: LanguageConfigurations,
     ) -> Result<Self, Error> {
-        #[cfg(feature = "integration")]
-        setup_integration_logging();
-
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout());
         #[cfg(feature = "integration")]

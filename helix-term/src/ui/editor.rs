@@ -794,7 +794,7 @@ impl EditorView {
         let mut last_mode = mode;
         self.pseudo_pending.extend(self.keymap.pending());
         let key_result = self.keymap.get(mode, event);
-        let sort_infobox = cxt.editor.config.load().sorted_infobox;
+        let sort_infobox = cxt.editor.config().sorted_infobox;
         cxt.editor.autoinfo = self
             .keymap
             .sticky_keytrie()
