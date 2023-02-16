@@ -702,7 +702,6 @@ impl<T: TreeItem + Clone> TreeView<T> {
         let params = RenderElemParams {
             tree: &self.tree,
             prefix: &"".to_string(),
-            is_last: true,
             level: 0,
             selected: self.selected,
             filter,
@@ -726,8 +725,7 @@ impl<T: TreeItem + Clone> TreeView<T> {
         struct RenderElemParams<'a, T> {
             tree: &'a Tree<T>,
             prefix: &'a String,
-            is_last: bool,
-            level: u16,
+            level: usize,
             selected: usize,
             filter: &'a str,
         }
@@ -736,20 +734,25 @@ impl<T: TreeItem + Clone> TreeView<T> {
             RenderElemParams {
                 tree,
                 prefix,
-                is_last,
                 level,
                 selected,
                 filter,
             }: RenderElemParams<T>,
         ) -> Vec<(Indent, Node)> {
             let indent = if level > 0 {
-                let bar = if is_last { "└" } else { "├" };
-                let branch = if tree.is_opened { "┬" } else { "─" };
-                format!("{}{}{}", prefix, bar, branch)
+                let indicator = if tree.item().is_parent() {
+                    if tree.is_opened {
+                        ""
+                    } else {
+                        ""
+                    }
+                } else {
+                    " "
+                };
+                format!("{}{}", prefix, indicator)
             } else {
                 "".to_string()
             };
-            let folded_length = tree.children.len();
             let head = (
                 Indent(indent),
                 Node {
@@ -766,25 +769,18 @@ impl<T: TreeItem + Clone> TreeView<T> {
                     ),
                 },
             );
-            let prefix = format!("{}{}", prefix, if is_last { " " } else { "│" });
+            let prefix = format!("{}{}", prefix, if level == 0 { "" } else { "  " });
             vec![head]
                 .into_iter()
-                .chain(
-                    tree.children
-                        .iter()
-                        .enumerate()
-                        .flat_map(|(local_index, elem)| {
-                            let is_last = local_index == folded_length - 1;
-                            render_tree(RenderElemParams {
-                                tree: elem,
-                                prefix: &prefix,
-                                is_last,
-                                level: level + 1,
-                                selected,
-                                filter,
-                            })
-                        }),
-                )
+                .chain(tree.children.iter().flat_map(|elem| {
+                    render_tree(RenderElemParams {
+                        tree: elem,
+                        prefix: &prefix,
+                        level: level + 1,
+                        selected,
+                        filter,
+                    })
+                }))
                 .collect()
         }
 
@@ -798,8 +794,14 @@ impl<T: TreeItem + Clone> TreeView<T> {
             } else {
                 style
             };
+            let x = area.x.saturating_add(indent_len);
+            let x = if indent_len > 0 {
+                x.saturating_add(1)
+            } else {
+                x
+            };
             surface.set_stringn(
-                area.x.saturating_add(indent_len).saturating_add(1),
+                x,
                 area.y,
                 node.name.clone(),
                 area.width

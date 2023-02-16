@@ -506,14 +506,14 @@ impl Explorer {
         surface.set_stringn(
             area.x,
             area.y,
-            " Explorer: press ? for help",
+            "Explorer: press ? for help",
             area.width.into(),
             cx.editor.theme.get("ui.text"),
         );
         surface.set_stringn(
             area.x,
             area.y.saturating_add(1),
-            format!(" [FILTER]: {}", self.state.filter),
+            format!("[FILTER]: {}", self.state.filter),
             area.width.into(),
             cx.editor.theme.get("ui.text"),
         );
