@@ -2,7 +2,7 @@ use crate::parse::*;
 use crate::{Assoc, ChangeSet, Range, Rope, Selection, Transaction};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::io::{Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::num::NonZeroUsize;
 use std::path::Path;
 use std::sync::Arc;
@@ -117,7 +117,8 @@ impl Revision {
     }
 }
 
-const HEADER_TAG: &str = "Helix Undofile 1\n";
+// Temporarily 3 for review.
+const HEADER_TAG: &str = "Helix Undofile 3\n";
 
 fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
     const BUF_SIZE: usize = 8192;
@@ -136,28 +137,60 @@ fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
 }
 
 impl History {
-    pub fn serialize<W: Write>(
+    pub fn serialize<W: Write + Read + Seek>(
         &self,
         writer: &mut W,
         path: &Path,
         last_saved_revision: usize,
+        append: bool,
     ) -> std::io::Result<()> {
-        write_string(writer, HEADER_TAG)?;
-        write_usize(writer, self.current)?;
-        write_usize(writer, last_saved_revision)?;
-
-        let last_mtime = std::fs::metadata(path)?
+        let mtime = std::fs::metadata(path)?
             .modified()?
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        write_u64(writer, last_mtime)?;
+        write_string(writer, HEADER_TAG)?;
+        write_usize(writer, self.current)?;
+        write_usize(writer, last_saved_revision)?;
+        write_u64(writer, mtime)?;
         writer.write_all(&get_hash(&mut std::fs::File::open(path)?)?)?;
-        write_vec(writer, &self.revisions, |writer, rev| rev.serialize(writer))?;
+
+        if append {
+            let pos = writer.stream_position()?;
+            let len = read_usize(writer)?;
+            writer.seek(SeekFrom::Start(pos))?;
+            write_usize(writer, self.revisions.len())?;
+            writer.seek(SeekFrom::End(0))?;
+            for rev in &self.revisions[len..] {
+                rev.serialize(writer)?;
+            }
+        } else {
+            write_vec(writer, &self.revisions, |writer, rev| rev.serialize(writer))?;
+        }
         Ok(())
     }
 
     pub fn deserialize<R: Read>(reader: &mut R, path: &Path) -> std::io::Result<(usize, Self)> {
+        let (current, last_saved_revision) = Self::read_header(reader, path)?;
+        let timestamp = Instant::now();
+        let len = read_usize(reader)?;
+        let mut revisions: Vec<Revision> = Vec::with_capacity(len);
+        for _ in 0..len {
+            let res = Revision::deserialize(reader, timestamp)?;
+            debug_assert!(res.parent <= revisions.len());
+
+            if !revisions.is_empty() {
+                revisions.get_mut(res.parent).unwrap().last_child =
+                    NonZeroUsize::new(revisions.len());
+            }
+            revisions.push(res);
+        }
+
+        let history = History { current, revisions };
+        Ok((last_saved_revision, history))
+    }
+
+    pub fn read_header<R: Read>(reader: &mut R, path: &Path) -> std::io::Result<(usize, usize)> {
         let header = read_string(reader)?;
         if HEADER_TAG != header {
             Err(std::io::Error::new(
@@ -165,7 +198,6 @@ impl History {
                 "missing undofile header",
             ))
         } else {
-            let timestamp = Instant::now();
             let current = read_usize(reader)?;
             let last_saved_revision = read_usize(reader)?;
             let mtime = read_u64(reader)?;
@@ -183,20 +215,7 @@ impl History {
                     "outdated undo file",
                 ));
             }
-
-            let len = read_usize(reader)?;
-            let mut revisions: Vec<Revision> = Vec::with_capacity(len);
-            for _ in 0..len {
-                let res = Revision::deserialize(reader, timestamp)?;
-                assert!(res.parent < revisions.len());
-                revisions[res.parent].last_child = NonZeroUsize::new(revisions.len());
-                revisions.push(res);
-            }
-
-            // let mut revisions = read_vec(reader, |reader| Revision::deserialize(reader, timestamp))?;
-
-            let history = History { current, revisions };
-            Ok((last_saved_revision, history))
+            Ok((current, last_saved_revision))
         }
     }
 }
@@ -760,24 +779,37 @@ mod test {
     }
 
     quickcheck!(
-        fn serde_history(original: String, changes: Vec<String>) -> bool {
+        fn serde_history(original: String, changes_a: Vec<String>, changes_b: Vec<String>) -> bool {
+            fn create_changes(history: &mut History, doc: &mut Rope, changes: Vec<String>) {
+                for c in changes.into_iter().map(Rope::from) {
+                    let transaction = crate::diff::compare_ropes(&doc, &c);
+                    let state = State {
+                        doc: doc.clone(),
+                        selection: Selection::point(0),
+                    };
+                    history.commit_revision(&transaction, &state);
+                    *doc = c;
+                }
+            }
+
             let mut history = History::default();
             let mut original = Rope::from(original);
 
-            for c in changes.into_iter().map(Rope::from) {
-                let transaction = crate::diff::compare_ropes(&original, &c);
-                let state = State {
-                    doc: original,
-                    selection: Selection::point(0),
-                };
-                history.commit_revision(&transaction, &state);
-                original = c;
-            }
-
-            let mut buf = Vec::new();
+            create_changes(&mut history, &mut original, changes_a);
+            let mut cursor = std::io::Cursor::new(Vec::new());
             let file = tempfile::NamedTempFile::new().unwrap();
-            history.serialize(&mut buf, file.path(), 0).unwrap();
-            let (_, res) = History::deserialize(&mut buf.as_slice(), file.path()).unwrap();
+            history
+                .serialize(&mut cursor, file.path(), 0, false)
+                .unwrap();
+            let (_, res) = History::deserialize(&mut cursor, file.path()).unwrap();
+            assert_eq!(history, res);
+
+            create_changes(&mut history, &mut original, changes_b);
+            let mut cursor = std::io::Cursor::new(Vec::new());
+            history
+                .serialize(&mut cursor, file.path(), 0, true)
+                .unwrap();
+            let (_, res) = History::deserialize(&mut cursor, file.path()).unwrap();
             history == res
         }
     );

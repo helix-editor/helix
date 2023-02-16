@@ -625,8 +625,15 @@ impl Document {
                 let res = {
                     let path = path.clone();
                     tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
-                        let mut undo_file = std::fs::File::create(&undo_file)?;
-                        history.serialize(&mut undo_file, &path, current_rev)?;
+                        use std::fs;
+                        let append =
+                            History::read_header(&mut fs::File::open(&undo_file)?, &path).is_ok();
+                        let mut undo_file = std::fs::OpenOptions::new()
+                            .write(true)
+                            .truncate(!append)
+                            .read(true)
+                            .open(&undo_file)?;
+                        history.serialize(&mut undo_file, &path, current_rev, append)?;
                         Ok(())
                     })
                     .await
