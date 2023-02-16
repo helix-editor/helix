@@ -27,8 +27,8 @@ use helix_core::{
     textobject,
     tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
-    visual_offset_from_block, LineEnding, Position, Range, Rope, RopeGraphemes, RopeSlice,
-    Selection, SmallVec, Tendril, Transaction,
+    visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
+    RopeSlice, Selection, SmallVec, Tendril, Transaction,
 };
 use helix_view::{
     clipboard::ClipboardType,
@@ -795,10 +795,7 @@ fn extend_to_line_start(cx: &mut Context) {
 }
 
 fn kill_to_line_start(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
+    delete_by_selection_insert_mode(cx, move |text, range| {
         let line = range.cursor_line(text);
         let first_char = text.line_to_char(line);
         let anchor = range.cursor(text);
@@ -817,32 +814,23 @@ fn kill_to_line_start(cx: &mut Context) {
             // select until start of line
             first_char
         };
-        Range::new(head, anchor)
+        (head, anchor)
     });
-    delete_selection_insert_mode(doc, view, &selection);
-
-    lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
 }
 
 fn kill_to_line_end(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
+    delete_by_selection_insert_mode(cx, |text, range| {
         let line = range.cursor_line(text);
         let line_end_pos = line_end_char_index(&text, line);
         let pos = range.cursor(text);
 
-        let mut new_range = range.put_cursor(text, line_end_pos, true);
-        // don't want to remove the line separator itself if the cursor doesn't reach the end of line.
-        if pos != line_end_pos {
-            new_range.head = line_end_pos;
+        // if the cursor is on the newline char delete that
+        if pos == line_end_pos {
+            (pos, text.line_to_char(line + 1))
+        } else {
+            (pos, line_end_pos)
         }
-        new_range
     });
-    delete_selection_insert_mode(doc, view, &selection);
-
-    lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
 }
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
@@ -2331,10 +2319,18 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
 }
 
 #[inline]
-fn delete_selection_insert_mode(doc: &mut Document, view: &mut View, selection: &Selection) {
+fn delete_by_selection_insert_mode(
+    cx: &mut Context,
+    mut f: impl FnMut(RopeSlice, &Range) -> Deletion,
+) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
     let transaction =
-        Transaction::delete_by_selection(doc.text(), selection, |range| (range.from(), range.to()));
+        Transaction::delete_by_selection(doc.text(), doc.selection(view.id), |range| {
+            f(text, range)
+        });
     doc.apply(&transaction, view.id);
+    lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
 }
 
 fn delete_selection(cx: &mut Context) {
@@ -3494,46 +3490,28 @@ pub mod insert {
 
     pub fn delete_char_forward(cx: &mut Context) {
         let count = cx.count();
-        let (view, doc) = current!(cx.editor);
-        let text = doc.text().slice(..);
-        let transaction =
-            Transaction::delete_by_selection(doc.text(), doc.selection(view.id), |range| {
-                let pos = range.cursor(text);
-                (pos, graphemes::nth_next_grapheme_boundary(text, pos, count))
-            });
-        doc.apply(&transaction, view.id);
-
-        lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
+        delete_by_selection_insert_mode(cx, |text, range| {
+            let pos = range.cursor(text);
+            (pos, graphemes::nth_next_grapheme_boundary(text, pos, count))
+        })
     }
 
     pub fn delete_word_backward(cx: &mut Context) {
         let count = cx.count();
-        let (view, doc) = current!(cx.editor);
-        let text = doc.text().slice(..);
-
-        let selection = doc.selection(view.id).clone().transform(|range| {
-            let anchor = movement::move_prev_word_start(text, range, count).from();
+        delete_by_selection_insert_mode(cx, |text, range| {
+            let anchor = movement::move_prev_word_start(text, *range, count).from();
             let next = Range::new(anchor, range.cursor(text));
-            exclude_cursor(text, next, range)
+            let range = exclude_cursor(text, next, *range);
+            (range.from(), range.to())
         });
-        delete_selection_insert_mode(doc, view, &selection);
-
-        lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 
     pub fn delete_word_forward(cx: &mut Context) {
         let count = cx.count();
-        let (view, doc) = current!(cx.editor);
-        let text = doc.text().slice(..);
-
-        let selection = doc.selection(view.id).clone().transform(|range| {
-            let head = movement::move_next_word_end(text, range, count).to();
-            Range::new(range.cursor(text), head)
+        delete_by_selection_insert_mode(cx, |text, range| {
+            let head = movement::move_next_word_end(text, *range, count).to();
+            (range.cursor(text), head)
         });
-
-        delete_selection_insert_mode(doc, view, &selection);
-
-        lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 }
 
