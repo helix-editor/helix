@@ -385,3 +385,47 @@ async fn test_character_info() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_delete_char_backward() -> anyhow::Result<()> {
+    // don't panic when deleting overlapping ranges
+    test((
+        platform_line("#(x|)# #[x|]#").as_str(),
+        "c<space><backspace><esc>",
+        platform_line("#[\n|]#").as_str(),
+    ))
+    .await?;
+    test((
+        platform_line("#( |)##( |)#a#( |)#axx#[x|]#a").as_str(),
+        "li<backspace><esc>",
+        platform_line("#(a|)##(|a)#xx#[|a]#").as_str(),
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_delete_word_backward() -> anyhow::Result<()> {
+    // don't panic when deleting overlapping ranges
+    test((
+        platform_line("fo#[o|]#ba#(r|)#").as_str(),
+        "a<C-w><esc>",
+        platform_line("#[\n|]#").as_str(),
+    ))
+    .await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_delete_word_forward() -> anyhow::Result<()> {
+    // don't panic when deleting overlapping ranges
+    test((
+        platform_line("fo#[o|]#b#(|ar)#").as_str(),
+        "i<A-d><esc>",
+        platform_line("fo#[\n|]#").as_str(),
+    ))
+    .await?;
+    Ok(())
+}
+
