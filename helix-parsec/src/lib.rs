@@ -3,8 +3,6 @@
 //! This module provides parsers and parser combinators which can be used
 //! together to build parsers by functional composition.
 
-use regex::Regex;
-
 // This module implements parser combinators following https://bodil.lol/parser-combinators/.
 // `sym` (trait implementation for `&'static str`), `map`, `pred` (filter), `one_or_more`,
 // `zero_or_more`, as well as the `Parser` trait originate mostly from that post.
@@ -102,32 +100,6 @@ impl<'a> Parser<'a> for &'static str {
 /// ```
 pub fn token<'a>(literal: &'static str) -> impl Parser<'a, Output = &'a str> {
     literal
-}
-
-/// A parser which matches the pattern described by the given regular expression.
-///
-/// The pattern must match from the beginning of the input as if the regular expression
-/// included the `^` anchor. Using a `^` anchor in the regular expression is
-/// recommended in order to reduce any work done by the regex on non-matching input.
-///
-/// # Examples
-///
-/// ```
-/// use helix_parsec::{pattern, Parser};
-/// use regex::Regex;
-/// let regex = Regex::new(r"Hello, \w+!").unwrap();
-/// let parser = pattern(&regex);
-/// assert_eq!(Ok(("", "Hello, world!")), parser.parse("Hello, world!"));
-/// assert_eq!(Err("Hey, you!"), parser.parse("Hey, you!"));
-/// assert_eq!(Err("Oh Hello, world!"), parser.parse("Oh Hello, world!"));
-/// ```
-pub fn pattern<'a>(regex: &'a Regex) -> impl Parser<'a, Output = &'a str> {
-    move |input: &'a str| match regex.find(input) {
-        Some(match_) if match_.start() == 0 => {
-            Ok((&input[match_.end()..], &input[0..match_.end()]))
-        }
-        _ => Err(input),
-    }
 }
 
 /// A parser which matches all values until the specified pattern is found.
