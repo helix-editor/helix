@@ -11,7 +11,7 @@ pub struct Config {
     #[serde(default = "default::default")]
     pub keys: HashMap<Mode, KeyTrie>,
     #[serde(default)]
-    pub editor: helix_view::editor::Config,
+    pub editor: helix_view::editor::EditorConfig,
 }
 
 impl Config {
@@ -45,7 +45,7 @@ impl Default for Config {
         Config {
             theme: None,
             keys: default::default(),
-            editor: helix_view::editor::Config::default(),
+            editor: helix_view::editor::EditorConfig::default(),
         }
     }
 }

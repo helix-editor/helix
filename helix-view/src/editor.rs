@@ -212,7 +212,7 @@ impl Default for FilePickerConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct Config {
+pub struct EditorConfig {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
     /// Number of lines to scroll at once. Defaults to 3
@@ -725,7 +725,7 @@ impl Default for IndentGuidesConfig {
     }
 }
 
-impl Default for Config {
+impl Default for EditorConfig {
     fn default() -> Self {
         Self {
             scrolloff: 5,
@@ -842,7 +842,7 @@ pub struct Editor {
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
-    pub config: Arc<dyn DynAccess<Config>>,
+    pub config: Arc<dyn DynAccess<EditorConfig>>,
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
@@ -887,7 +887,7 @@ pub enum EditorEvent {
 #[derive(Debug, Clone)]
 pub enum ConfigEvent {
     Refresh,
-    Update(Box<Config>),
+    Update(Box<EditorConfig>),
 }
 
 enum ThemeAction {
@@ -922,7 +922,7 @@ pub enum CloseError {
 impl Editor {
     pub fn new(
         mut area: Rect,
-        config: Arc<dyn DynAccess<Config>>,
+        config: Arc<dyn DynAccess<EditorConfig>>,
         theme: Theme,
         lang_configs_loader: Arc<syntax::Loader>,
     ) -> Self {
@@ -978,7 +978,7 @@ impl Editor {
         self.mode
     }
 
-    pub fn config(&self) -> DynGuard<Config> {
+    pub fn config(&self) -> DynGuard<EditorConfig> {
         self.config.load()
     }
 

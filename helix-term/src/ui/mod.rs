@@ -158,7 +158,10 @@ pub fn regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
+pub fn file_picker(
+    root: PathBuf,
+    config: &helix_view::editor::EditorConfig,
+) -> FilePicker<PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
 
@@ -240,7 +243,7 @@ pub mod completers {
     use fuzzy_matcher::FuzzyMatcher;
     use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::Theme;
-    use helix_view::{editor::Config, Editor};
+    use helix_view::{editor::EditorConfig, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::cmp::Reverse;
@@ -321,7 +324,7 @@ pub mod completers {
     pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             let mut keys = Vec::new();
-            let json = serde_json::json!(Config::default());
+            let json = serde_json::json!(EditorConfig::default());
             get_keys(&json, &mut keys, None);
             keys
         });

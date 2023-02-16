@@ -31,7 +31,7 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
-use crate::editor::{Config, RedrawHandle};
+use crate::editor::{EditorConfig, RedrawHandle};
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -132,7 +132,7 @@ pub struct Document {
     // it back as it separated from the edits. We could split out the parts manually but that will
     // be more troublesome.
     pub history: Cell<History>,
-    pub config: Arc<dyn DynAccess<Config>>,
+    pub config: Arc<dyn DynAccess<EditorConfig>>,
 
     pub savepoint: Option<Transaction>,
 
@@ -365,7 +365,7 @@ impl Document {
     pub fn from(
         text: Rope,
         encoding: Option<&'static encoding::Encoding>,
-        config: Arc<dyn DynAccess<Config>>,
+        config: Arc<dyn DynAccess<EditorConfig>>,
     ) -> Self {
         let encoding = encoding.unwrap_or(encoding::UTF_8);
         let changes = ChangeSet::new(&text);
@@ -396,7 +396,7 @@ impl Document {
             config,
         }
     }
-    pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
+    pub fn default(config: Arc<dyn DynAccess<EditorConfig>>) -> Self {
         let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
         Self::from(text, None, config)
     }
@@ -407,7 +407,7 @@ impl Document {
         path: &Path,
         encoding: Option<&'static encoding::Encoding>,
         lang_configs_loader: Option<Arc<syntax::Loader>>,
-        config: Arc<dyn DynAccess<Config>>,
+        config: Arc<dyn DynAccess<EditorConfig>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding) = if path.exists() {
@@ -1306,7 +1306,7 @@ mod test {
         let mut doc = Document::from(
             text,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))),
         );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(0, 0));
@@ -1344,7 +1344,7 @@ mod test {
         let mut doc = Document::from(
             text,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))),
         );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));
@@ -1458,7 +1458,7 @@ mod test {
     #[test]
     fn test_line_ending() {
         assert_eq!(
-            Document::default(Arc::new(ArcSwap::new(Arc::new(Config::default()))))
+            Document::default(Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))))
                 .text()
                 .to_string(),
             DEFAULT_LINE_ENDING.as_str()
