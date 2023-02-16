@@ -177,7 +177,7 @@ pub fn lint(file: String) -> Result<(), DynError> {
 }
 
 pub fn lint_all() -> Result<(), DynError> {
-    let files = Theme::read_names(repo_paths::themes().as_path());
+    let files = Theme::read_names();
     let files_count = files.len();
     let ok_files_count = files
         .into_iter()

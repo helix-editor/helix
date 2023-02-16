@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
+    path::PathBuf,
     str,
 };
 
@@ -230,19 +230,33 @@ impl Theme {
         merge_toml_values(theme, palette.into(), 1)
     }
 
-    pub fn read_names(path: &Path) -> Vec<String> {
-        std::fs::read_dir(path)
-            .map(|entries| {
-                entries
-                    .filter_map(|entry| {
-                        let entry = entry.ok()?;
-                        let path = entry.path();
-                        (path.extension()? == "toml")
-                            .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
+    pub fn read_names() -> Vec<String> {
+        let mut theme_names = helix_loader::theme_dirs()
+            .iter()
+            .flat_map(|dir| {
+                std::fs::read_dir(dir)
+                    .map(|entries| {
+                        entries
+                            .filter_map(|entry| {
+                                let entry = entry.ok()?;
+                                let path = entry.path();
+                                (path.extension()? == "toml").then(|| {
+                                    path.file_stem().unwrap().to_string_lossy().into_owned()
+                                })
+                            })
+                            .collect::<Vec<String>>()
                     })
-                    .collect()
+                    .unwrap_or_default()
             })
-            .unwrap_or_default()
+            .chain(
+                vec!["default", "base16_default"]
+                    .iter()
+                    .map(|theme_name| theme_name.to_string()),
+            )
+            .collect::<Vec<String>>();
+        theme_names.sort_unstable();
+        theme_names.dedup();
+        theme_names
     }
 
     fn find_remaining_path(name: &str, visited_paths: &mut HashSet<PathBuf>) -> Option<PathBuf> {

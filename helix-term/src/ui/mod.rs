@@ -239,7 +239,7 @@ pub mod completers {
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
     use helix_view::document::SCRATCH_BUFFER_NAME;
-    use helix_view::theme;
+    use helix_view::Theme;
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
@@ -280,17 +280,7 @@ pub mod completers {
     }
 
     pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
-        // TODO: theme names vec should be created in Theme where it reads all themes in its themes_dirs
-        let mut names = theme::Theme::read_names(&helix_loader::user_config_dir().join("themes"));
-        for rt_dir in helix_loader::get_runtime_dirs() {
-            names.extend(theme::Theme::read_names(&rt_dir.join("themes")));
-        }
-        names.push("default".into());
-        names.push("base16_default".into());
-        names.sort();
-        names.dedup();
-
-        let mut names: Vec<_> = names
+        let mut names: Vec<_> = Theme::read_names()
             .into_iter()
             .map(|name| ((0..), Cow::from(name)))
             .collect();
