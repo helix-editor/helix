@@ -1,4 +1,4 @@
-use super::{Prompt, TreeItem, TreeOp, TreeView};
+use super::{Prompt, TreeOp, TreeView, TreeViewItem};
 use crate::{
     compositor::{Component, Context, EventResult},
     ctrl, key, shift, ui,
@@ -61,12 +61,8 @@ impl FileInfo {
     }
 }
 
-impl TreeItem for FileInfo {
+impl TreeViewItem for FileInfo {
     type Params = State;
-
-    fn is_child(&self, other: &Self) -> bool {
-        self.path.parent().map_or(false, |p| p == other.path)
-    }
 
     fn cmp(&self, other: &Self) -> Ordering {
         use FileType::*;

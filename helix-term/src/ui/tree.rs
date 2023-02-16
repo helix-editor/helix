@@ -14,12 +14,11 @@ use helix_view::{
 };
 use tui::buffer::Buffer as Surface;
 
-pub trait TreeItem: Sized {
+pub trait TreeViewItem: Sized {
     type Params;
 
     // fn text(&self, cx: &mut Context, selected: bool, params: &mut Self::Params) -> Spans;
     fn name(&self) -> String;
-    fn is_child(&self, other: &Self) -> bool;
     fn is_parent(&self) -> bool;
     fn cmp(&self, other: &Self) -> Ordering;
 
@@ -27,23 +26,14 @@ pub trait TreeItem: Sized {
         self.name().to_lowercase().contains(&s.to_lowercase())
     }
 
-    fn get_children(&self) -> Result<Vec<Self>> {
-        Ok(vec![])
-    }
+    fn get_children(&self) -> Result<Vec<Self>>;
 }
 
-fn tree_item_cmp<T: TreeItem>(item1: &T, item2: &T) -> Ordering {
-    if item1.is_child(item2) {
-        return Ordering::Greater;
-    }
-    if item2.is_child(item1) {
-        return Ordering::Less;
-    }
-
+fn tree_item_cmp<T: TreeViewItem>(item1: &T, item2: &T) -> Ordering {
     T::cmp(item1, item2)
 }
 
-fn vec_to_tree<T: TreeItem>(mut items: Vec<T>) -> Vec<Tree<T>> {
+pub fn vec_to_tree<T: TreeViewItem>(mut items: Vec<T>) -> Vec<Tree<T>> {
     items.sort_by(tree_item_cmp);
     index_elems(
         0,
@@ -129,7 +119,7 @@ impl<'a, T> DoubleEndedIterator for TreeIter<'a, T> {
 
 impl<'a, T> ExactSizeIterator for TreeIter<'a, T> {}
 
-impl<T: TreeItem> Tree<T> {
+impl<T: TreeViewItem> Tree<T> {
     fn open(&mut self, filter: &String) -> Result<()> {
         if self.item.is_parent() {
             self.children = self.get_filtered_children(filter)?;
@@ -295,7 +285,7 @@ impl<T> Tree<T> {
     }
 }
 
-pub struct TreeView<T: TreeItem> {
+pub struct TreeView<T: TreeViewItem> {
     tree: Tree<T>,
     /// Selected item idex
     selected: usize,
@@ -306,13 +296,11 @@ pub struct TreeView<T: TreeItem> {
     /// View row
     winline: usize,
 
-    area_height: usize,
-    col: usize,
+    previous_area: Rect,
+    column: usize,
     max_len: usize,
     count: usize,
     tree_symbol_style: String,
-    #[allow(clippy::type_complexity)]
-    pre_render: Option<Box<dyn Fn(&mut Self, Rect) + 'static>>,
     #[allow(clippy::type_complexity)]
     on_opened_fn: Option<Box<dyn FnMut(&mut T, &mut Context, &mut T::Params) -> TreeOp + 'static>>,
     #[allow(clippy::type_complexity)]
@@ -321,19 +309,18 @@ pub struct TreeView<T: TreeItem> {
     on_next_key: Option<Box<dyn FnMut(&mut Context, &mut Self, &KeyEvent)>>,
 }
 
-impl<T: TreeItem> TreeView<T> {
+impl<T: TreeViewItem> TreeView<T> {
     pub fn new(root: T, items: Vec<Tree<T>>) -> Self {
         Self {
             tree: Tree::new(root, items),
             selected: 0,
             save_view: (0, 0),
             winline: 0,
-            col: 0,
+            column: 0,
             max_len: 0,
             count: 0,
-            area_height: 0,
+            previous_area: Rect::new(0, 0, 0, 0),
             tree_symbol_style: "ui.text".into(),
-            pre_render: None,
             on_opened_fn: None,
             on_folded_fn: None,
             on_next_key: None,
@@ -422,7 +409,7 @@ impl<T: TreeItem> TreeView<T> {
     }
 
     fn align_view_center(&mut self) {
-        self.winline = self.area_height / 2
+        self.winline = self.previous_area.height as usize / 2
     }
 
     fn align_view_top(&mut self) {
@@ -430,7 +417,7 @@ impl<T: TreeItem> TreeView<T> {
     }
 
     fn align_view_bottom(&mut self) {
-        self.winline = self.area_height
+        self.winline = self.previous_area.height as usize
     }
 
     fn regenerate_index(&mut self) {
@@ -447,12 +434,12 @@ impl<T: TreeItem> TreeView<T> {
     fn go_to_children(&mut self, filter: &String) -> Result<()> {
         let current = self.current_mut();
         if current.is_opened {
-            self.selected += 1;
+            self.set_selected(self.selected + 1);
             Ok(())
         } else {
             current.open(filter)?;
             if !current.children.is_empty() {
-                self.selected += 1;
+                self.set_selected(self.selected + 1);
                 self.regenerate_index();
             }
             Ok(())
@@ -462,19 +449,33 @@ impl<T: TreeItem> TreeView<T> {
     pub fn refresh(&mut self, filter: &String) -> Result<()> {
         self.tree.refresh(filter)
     }
+
+    fn go_to_first(&mut self) {
+        self.move_up(usize::MAX / 2)
+    }
+
+    fn go_to_last(&mut self) {
+        self.move_down(usize::MAX / 2)
+    }
+
+    fn set_previous_area(&mut self, area: Rect) {
+        self.previous_area = area
+    }
 }
 
 pub fn tree_view_help() -> Vec<String> {
     vec![
-        "j   Down",
-        "k   Up",
-        "h   Go to parent",
-        "l   Expand",
+        "j/↓ Down",
+        "k/↑ Up",
+        "h/← Go to parent",
+        "l/→ Expand",
+        "L   Scroll right",
+        "H   Scroll left",
         "zz  Align view center",
         "zt  Align view top",
         "zb  Align view bottom",
-        "gg  Go to top",
-        "ge  Go to end",
+        "gg  Go to first",
+        "ge  Go to last",
         "^d  Page down",
         "^u  Page up",
     ]
@@ -483,7 +484,7 @@ pub fn tree_view_help() -> Vec<String> {
     .collect()
 }
 
-impl<T: TreeItem> TreeView<T> {
+impl<T: TreeViewItem> TreeView<T> {
     pub fn on_enter(
         &mut self,
         cx: &mut Context,
@@ -570,38 +571,30 @@ impl<T: TreeItem> TreeView<T> {
     }
 
     pub fn move_left(&mut self, cols: usize) {
-        self.col = self.col.saturating_sub(cols);
+        self.column = self.column.saturating_sub(cols);
     }
 
     pub fn move_right(&mut self, cols: usize) {
-        self.pre_render = Some(Box::new(move |tree: &mut Self, area: Rect| {
-            let max_scroll = tree.max_len.saturating_sub(area.width as usize);
-            tree.col = max_scroll.min(tree.col + cols);
-        }));
+        let max_scroll = self
+            .max_len
+            .saturating_sub(self.previous_area.width as usize);
+        self.column = max_scroll.min(self.column + cols);
     }
 
     pub fn move_down_half_page(&mut self) {
-        self.pre_render = Some(Box::new(|tree: &mut Self, area: Rect| {
-            tree.move_down((area.height / 2) as usize);
-        }));
+        self.move_down(self.previous_area.height as usize / 2)
     }
 
     pub fn move_up_half_page(&mut self) {
-        self.pre_render = Some(Box::new(|tree: &mut Self, area: Rect| {
-            tree.move_up((area.height / 2) as usize);
-        }));
+        self.move_up(self.previous_area.height as usize / 2);
     }
 
     pub fn move_down_page(&mut self) {
-        self.pre_render = Some(Box::new(|tree: &mut Self, area: Rect| {
-            tree.move_down((area.height) as usize);
-        }));
+        self.move_down(self.previous_area.height as usize);
     }
 
     pub fn move_up_page(&mut self) {
-        self.pre_render = Some(Box::new(|tree: &mut Self, area: Rect| {
-            tree.move_up((area.height) as usize);
-        }));
+        self.move_up(self.previous_area.height as usize);
     }
 
     pub fn save_view(&mut self) {
@@ -686,135 +679,158 @@ impl<T: TreeItem> TreeView<T> {
     }
 }
 
-impl<T: TreeItem + Clone> TreeView<T> {
-    pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context, filter: &String) {
-        if let Some(pre_render) = self.pre_render.take() {
-            pre_render(self, area);
-        }
+struct RenderedLine {
+    indent: String,
+    name: String,
+    selected: bool,
+    descendant_selected: bool,
+}
+struct RenderTreeParams<'a, T> {
+    tree: &'a Tree<T>,
+    prefix: &'a String,
+    level: usize,
+    selected: usize,
+    filter: &'a str,
+    column_start: usize,
+    max_width: usize,
+}
 
-        self.max_len = 0;
-        self.area_height = area.height.saturating_sub(1) as usize;
-        self.winline = self.winline.min(self.area_height);
-        let style = cx.editor.theme.get(&self.tree_symbol_style);
-        let ancestor_style = cx.editor.theme.get("ui.text.focus");
-        let skip = self.selected.saturating_sub(self.winline);
-
-        let params = RenderElemParams {
-            tree: &self.tree,
-            prefix: &"".to_string(),
-            level: 0,
-            selected: self.selected,
-            filter,
+fn render_tree<T: TreeViewItem>(
+    RenderTreeParams {
+        tree,
+        prefix,
+        level,
+        selected,
+        filter,
+        column_start,
+        max_width,
+    }: RenderTreeParams<T>,
+) -> Vec<RenderedLine> {
+    let indent = if level > 0 {
+        let indicator = if tree.item().is_parent() {
+            if tree.is_opened {
+                ""
+            } else {
+                ""
+            }
+        } else {
+            " "
         };
-
-        let rendered = render_tree(params);
-
-        let iter = rendered
-            .iter()
-            .skip(skip)
-            .take(area.height as usize)
-            .enumerate();
-
-        struct Indent(String);
-        struct Node {
-            name: String,
-            selected: bool,
-            descendant_selected: bool,
-        }
-
-        struct RenderElemParams<'a, T> {
-            tree: &'a Tree<T>,
-            prefix: &'a String,
-            level: usize,
-            selected: usize,
-            filter: &'a str,
-        }
-
-        fn render_tree<T: TreeItem>(
-            RenderElemParams {
-                tree,
-                prefix,
-                level,
+        format!("{}{} ", prefix, indicator)
+    } else {
+        "".to_string()
+    };
+    let indent = indent[column_start..].to_string();
+    let indent_len = indent.len();
+    let name = tree.item.name();
+    println!("{max_width}");
+    let head = RenderedLine {
+        indent,
+        selected: selected == tree.index,
+        descendant_selected: selected != tree.index && tree.get(selected).is_some(),
+        name: name[..(max_width - indent_len).clamp(0, name.len())].to_string(),
+    };
+    let prefix = format!("{}{}", prefix, if level == 0 { "" } else { "  " });
+    vec![head]
+        .into_iter()
+        .chain(tree.children.iter().flat_map(|elem| {
+            render_tree(RenderTreeParams {
+                tree: elem,
+                prefix: &prefix,
+                level: level + 1,
                 selected,
                 filter,
-            }: RenderElemParams<T>,
-        ) -> Vec<(Indent, Node)> {
-            let indent = if level > 0 {
-                let indicator = if tree.item().is_parent() {
-                    if tree.is_opened {
-                        ""
-                    } else {
-                        ""
-                    }
-                } else {
-                    " "
-                };
-                format!("{}{}", prefix, indicator)
-            } else {
-                "".to_string()
-            };
-            let head = (
-                Indent(indent),
-                Node {
-                    selected: selected == tree.index,
-                    descendant_selected: selected != tree.index && tree.get(selected).is_some(),
-                    name: format!(
-                        "{}{}",
-                        tree.item.name(),
-                        if tree.item.is_parent() {
-                            format!("{}", std::path::MAIN_SEPARATOR)
-                        } else {
-                            "".to_string()
-                        }
-                    ),
-                },
-            );
-            let prefix = format!("{}{}", prefix, if level == 0 { "" } else { "  " });
-            vec![head]
-                .into_iter()
-                .chain(tree.children.iter().flat_map(|elem| {
-                    render_tree(RenderElemParams {
-                        tree: elem,
-                        prefix: &prefix,
-                        level: level + 1,
-                        selected,
-                        filter,
-                    })
-                }))
-                .collect()
-        }
+                column_start,
+                max_width,
+            })
+        }))
+        .collect()
+}
 
-        for (index, (indent, node)) in iter {
+impl<T: TreeViewItem + Clone> TreeView<T> {
+    pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context, filter: &String) {
+        self.max_len = 0;
+        let style = cx.editor.theme.get(&self.tree_symbol_style);
+        let ancestor_style = cx.editor.theme.get("ui.text.focus");
+
+        let iter = self.render_lines(area, filter).into_iter().enumerate();
+
+        for (index, line) in iter {
             let area = Rect::new(area.x, area.y + index as u16, area.width, 1);
-            let indent_len = indent.0.chars().count() as u16;
-            surface.set_stringn(area.x, area.y, indent.0.clone(), indent_len as usize, style);
+            let indent_len = line.indent.chars().count() as u16;
+            surface.set_stringn(
+                area.x,
+                area.y,
+                line.indent.clone(),
+                indent_len as usize,
+                style,
+            );
 
-            let style = if node.selected {
+            let style = if line.selected {
                 style.add_modifier(Modifier::REVERSED)
             } else {
                 style
             };
             let x = area.x.saturating_add(indent_len);
-            let x = if indent_len > 0 {
-                x.saturating_add(1)
-            } else {
-                x
-            };
             surface.set_stringn(
                 x,
                 area.y,
-                node.name.clone(),
+                line.name.clone(),
                 area.width
                     .saturating_sub(indent_len)
                     .saturating_sub(1)
                     .into(),
-                if node.descendant_selected {
+                if line.descendant_selected {
                     ancestor_style
                 } else {
                     style
                 },
             );
         }
+    }
+
+    fn render_to_string(&mut self, filter: &String) -> String {
+        let area = self.previous_area;
+        let lines = self.render_lines(area, filter);
+        lines
+            .into_iter()
+            .map(|line| {
+                let name = if line.selected {
+                    format!("({})", line.name)
+                } else if line.descendant_selected {
+                    format!("[{}]", line.name)
+                } else {
+                    line.name
+                };
+                format!("{}{}", line.indent, name)
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    fn render_lines(&mut self, area: Rect, filter: &String) -> Vec<RenderedLine> {
+        self.previous_area = area;
+        self.winline = self
+            .winline
+            .min(self.previous_area.height.saturating_sub(1) as usize);
+        let skip = self.selected.saturating_sub(self.winline);
+        let params = RenderTreeParams {
+            tree: &self.tree,
+            prefix: &"".to_string(),
+            level: 0,
+            selected: self.selected,
+            filter,
+            column_start: self.column,
+            max_width: self.previous_area.width as usize,
+        };
+
+        let lines = render_tree(params);
+
+        lines
+            .into_iter()
+            .skip(skip)
+            .take(area.height as usize)
+            .collect()
     }
 
     pub fn handle_event(
@@ -836,8 +852,8 @@ impl<T: TreeItem + Clone> TreeView<T> {
         let count = std::mem::replace(&mut self.count, 0);
         match key_event {
             key!(i @ '0'..='9') => self.count = i.to_digit(10).unwrap() as usize + count * 10,
-            key!('k') | shift!(Tab) | key!(Up) | ctrl!('k') => self.move_up(1.max(count)),
-            key!('j') | key!(Tab) | key!(Down) | ctrl!('j') => self.move_down(1.max(count)),
+            key!('k') | key!(Up) => self.move_up(1.max(count)),
+            key!('j') | key!(Down) => self.move_down(1.max(count)),
             key!('z') => {
                 self.on_next_key = Some(Box::new(|_, tree, event| match event {
                     key!('z') => tree.align_view_center(),
@@ -846,18 +862,20 @@ impl<T: TreeItem + Clone> TreeView<T> {
                     _ => {}
                 }));
             }
-            key!('h') => self.go_to_parent(),
-            key!('l') => match self.go_to_children(filter) {
+            key!('h') | key!(Left) => self.go_to_parent(),
+            key!('l') | key!(Right) => match self.go_to_children(filter) {
                 Ok(_) => {}
                 Err(err) => cx.editor.set_error(err.to_string()),
             },
+            shift!('H') => self.move_left(1),
+            shift!('L') => self.move_right(1),
             key!(Enter) => self.on_enter(cx, params, self.selected, filter),
             ctrl!('d') => self.move_down_half_page(),
             ctrl!('u') => self.move_up_half_page(),
             key!('g') => {
                 self.on_next_key = Some(Box::new(|_, tree, event| match event {
-                    key!('g') => tree.move_up(usize::MAX / 2),
-                    key!('e') => tree.move_down(usize::MAX / 2),
+                    key!('g') => tree.go_to_first(),
+                    key!('e') => tree.go_to_last(),
                     _ => {}
                 }));
             }
@@ -905,6 +923,421 @@ fn index_elems<T>(parent_index: usize, elems: Vec<Tree<T>>) -> Vec<Tree<T>> {
             })
     }
     index_elems(parent_index + 1, elems, parent_index).1
+}
+
+#[cfg(test)]
+mod test_tree_view {
+    use helix_view::graphics::Rect;
+
+    use super::{vec_to_tree, TreeView, TreeViewItem};
+    use pretty_assertions::assert_eq;
+
+    #[derive(Clone)]
+    struct Item<'a> {
+        name: &'a str,
+    }
+
+    fn item<'a>(name: &'a str) -> Item<'a> {
+        Item { name }
+    }
+
+    impl<'a> TreeViewItem for Item<'a> {
+        type Params = ();
+
+        fn name(&self) -> String {
+            self.name.to_string()
+        }
+
+        fn is_parent(&self) -> bool {
+            self.name.len() > 2
+        }
+
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            self.name.cmp(other.name)
+        }
+
+        fn get_children(&self) -> anyhow::Result<Vec<Self>> {
+            if self.is_parent() {
+                let (left, right) = self.name.split_at(self.name.len() / 2);
+                Ok(vec![item(left), item(right)])
+            } else {
+                Ok(vec![])
+            }
+        }
+    }
+
+    fn dummy_tree_view<'a>() -> TreeView<Item<'a>> {
+        let root = item("who_lives_in_a_pineapple_under_the_sea");
+        let mut view = TreeView::new(
+            root,
+            vec_to_tree(vec![
+                item("gary_the_snail"),
+                item("krabby_patty"),
+                item("larry_the_lobster"),
+                item("patrick_star"),
+                item("sandy_cheeks"),
+                item("spongebob_squarepants"),
+                item("mrs_puff"),
+                item("king_neptune"),
+                item("karen"),
+                item("plankton"),
+            ]),
+        );
+
+        view.set_previous_area(dummy_area());
+
+        view
+    }
+
+    fn dummy_area() -> Rect {
+        Rect::new(0, 0, 50, 5)
+    }
+
+    fn render<'a>(view: &mut TreeView<Item<'a>>) -> String {
+        view.render_to_string(&"".to_string())
+    }
+
+    #[test]
+    fn test_init() {
+        let mut view = dummy_tree_view();
+
+        // Expect the items to be sorted
+        assert_eq!(
+            render(&mut view),
+            "
+(who_lives_in_a_pineapple_under_the_sea)
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_move_up_down() {
+        let mut view = dummy_tree_view();
+        view.move_down(1);
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ (gary_the_snail)
+ karen
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+
+        view.move_down(3);
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ gary_the_snail
+ karen
+ king_neptune
+ (krabby_patty)
+"
+            .trim()
+        );
+
+        view.move_down(1);
+        assert_eq!(
+            render(&mut view),
+            "
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+ (larry_the_lobster)
+"
+            .trim()
+        );
+
+        view.move_up(1);
+        assert_eq!(
+            render(&mut view),
+            "
+ gary_the_snail
+ karen
+ king_neptune
+ (krabby_patty)
+ larry_the_lobster
+"
+            .trim()
+        );
+
+        view.move_up(3);
+        assert_eq!(
+            render(&mut view),
+            "
+ (gary_the_snail)
+ karen
+ king_neptune
+ krabby_patty
+ larry_the_lobster
+"
+            .trim()
+        );
+
+        view.move_up(1);
+        assert_eq!(
+            render(&mut view),
+            "
+(who_lives_in_a_pineapple_under_the_sea)
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_align_view() {
+        let mut view = dummy_tree_view();
+        view.move_down(5);
+        assert_eq!(
+            render(&mut view),
+            "
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+ (larry_the_lobster)
+"
+            .trim()
+        );
+
+        view.align_view_center();
+        assert_eq!(
+            render(&mut view),
+            "
+ king_neptune
+ krabby_patty
+ (larry_the_lobster)
+ mrs_puff
+ patrick_star
+"
+            .trim()
+        );
+
+        view.align_view_bottom();
+        assert_eq!(
+            render(&mut view),
+            "
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+ (larry_the_lobster)
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_go_to_first_last() {
+        let mut view = dummy_tree_view();
+
+        view.go_to_last();
+        assert_eq!(
+            render(&mut view),
+            "
+ mrs_puff
+ patrick_star
+ plankton
+ sandy_cheeks
+ (spongebob_squarepants)
+"
+            .trim()
+        );
+
+        view.go_to_first();
+        assert_eq!(
+            render(&mut view),
+            "
+(who_lives_in_a_pineapple_under_the_sea)
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_move_half() {
+        let mut view = dummy_tree_view();
+        view.move_down_half_page();
+        assert_eq!(view.selected, 2);
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ gary_the_snail
+ (karen)
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+
+        view.move_down_half_page();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ gary_the_snail
+ karen
+ king_neptune
+ (krabby_patty)
+"
+            .trim()
+        );
+
+        view.move_down_half_page();
+        assert_eq!(
+            render(&mut view),
+            "
+ karen
+ king_neptune
+ krabby_patty
+ larry_the_lobster
+ (mrs_puff)
+"
+            .trim()
+        );
+
+        view.move_up_half_page();
+        assert_eq!(
+            render(&mut view),
+            "
+ karen
+ king_neptune
+ (krabby_patty)
+ larry_the_lobster
+ mrs_puff
+"
+            .trim()
+        );
+
+        view.move_up_half_page();
+        assert_eq!(
+            render(&mut view),
+            "
+ (karen)
+ king_neptune
+ krabby_patty
+ larry_the_lobster
+ mrs_puff
+"
+            .trim()
+        );
+
+        view.move_up_half_page();
+        assert_eq!(
+            render(&mut view),
+            "
+(who_lives_in_a_pineapple_under_the_sea)
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn go_to_children_parent() {
+        let filter = "".to_string();
+        let mut view = dummy_tree_view();
+        view.move_down(1);
+        view.go_to_children(&filter).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ [gary_the_snail]
+   (e_snail)
+   gary_th
+ karen
+ "
+            .trim()
+        );
+
+        view.move_down(1);
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ [gary_the_snail]
+   e_snail
+   (gary_th)
+ karen
+ "
+            .trim()
+        );
+
+        view.go_to_parent();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ (gary_the_snail)
+   e_snail
+   gary_th
+ karen
+ "
+            .trim()
+        );
+
+        view.go_to_last();
+        view.go_to_parent();
+        assert_eq!(
+            render(&mut view),
+            "
+(who_lives_in_a_pineapple_under_the_sea)
+ gary_the_snail
+   e_snail
+   gary_th
+ karen
+ "
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_move_left_right() {
+        let mut view = dummy_tree_view();
+        view.set_previous_area(dummy_area().with_width(20));
+
+        assert_eq!(
+            render(&mut view),
+            "
+(who_lives_in_a_pinea)
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+
+        view.move_right(1);
+        assert_eq!(
+            render(&mut view),
+            "
+"
+            .trim()
+        )
+    }
 }
 
 #[cfg(test)]

@@ -23,9 +23,18 @@ TODO
 - [x] bug: "h" does not realign preview
 - [x] bug: reveal file does not realign preview
 - [] "l" goes back to previous child if any history
-- [] refactor, add tree.expand_children() method
+- [x] Merge conflicts
+- [x] Remove comments
+- [x] fix warnings
+- [x] refactor, add tree.expand_children() method
+- [] add integration testing (test explorer rendering)
 - [] search highlight matching word
-- [] fix warnings
 - [] Error didn't clear
-- [] Remove comments
-- [] Merge conflicts
+- [] bind "o" to open/close file/folder
+- [] on focus indication
+- [] should preview be there by default?
+- [] support creating files and folder and the same time (`mkdir -p`)
+- [] Fix panic bugs (see github comments)
+- [] Sticky ancestors
+- [] Ctrl-o should work for 'h', 'gg', 'ge', etc
+- [] explorer(preview): content not sorted
