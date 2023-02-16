@@ -72,6 +72,7 @@ impl Theme {
         }
     }
 
+    // HELP: don't know why, this in a impl Default block makes Helix hang on startup.
     pub fn default() -> Theme {
         if Self::get_true_color_support() {
             DEFAULT_THEME.clone()
