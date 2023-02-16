@@ -46,79 +46,6 @@ pub struct Theme {
     highlights: Vec<Style>,
 }
 
-impl From<Value> for Theme {
-    fn from(value: Value) -> Self {
-        if let Value::Table(table) = value {
-            let (styles, scopes, highlights) = build_theme_values(table);
-
-            Self {
-                styles,
-                scopes,
-                highlights,
-                ..Default::default()
-            }
-        } else {
-            warn!("Expected theme TOML value to be a table, found {:?}", value);
-            Default::default()
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for Theme {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let values = Map::<String, Value>::deserialize(deserializer)?;
-
-        let (styles, scopes, highlights) = build_theme_values(values);
-
-        Ok(Self {
-            styles,
-            scopes,
-            highlights,
-            ..Default::default()
-        })
-    }
-}
-
-fn build_theme_values(
-    mut values: Map<String, Value>,
-) -> (HashMap<String, Style>, Vec<String>, Vec<Style>) {
-    let mut styles = HashMap::new();
-    let mut scopes = Vec::new();
-    let mut highlights = Vec::new();
-
-    // TODO: alert user of parsing failures in editor
-    let palette = values
-        .remove("palette")
-        .map(|value| {
-            ThemePalette::try_from(value).unwrap_or_else(|err| {
-                warn!("{}", err);
-                ThemePalette::default()
-            })
-        })
-        .unwrap_or_default();
-    // remove inherits from value to prevent errors
-    let _ = values.remove("inherits");
-    styles.reserve(values.len());
-    scopes.reserve(values.len());
-    highlights.reserve(values.len());
-    for (name, style_value) in values {
-        let mut style = Style::default();
-        if let Err(err) = palette.parse_style(&mut style, style_value) {
-            warn!("{}", err);
-        }
-
-        // these are used both as UI and as highlights
-        styles.insert(name.clone(), style);
-        scopes.push(name);
-        highlights.push(style);
-    }
-
-    (styles, scopes, highlights)
-}
-
 impl Theme {
     pub fn new(theme_name: Option<String>, true_color_support: bool) -> Result<Theme> {
         if let Some(theme_name) = theme_name {
@@ -332,33 +259,81 @@ impl Theme {
     }
 }
 
-struct ThemePalette {
-    palette: HashMap<String, Color>,
-}
+impl From<Value> for Theme {
+    fn from(value: Value) -> Self {
+        if let Value::Table(table) = value {
+            let (styles, scopes, highlights) = build_theme_values(table);
 
-impl Default for ThemePalette {
-    fn default() -> Self {
-        Self {
-            palette: hashmap! {
-                "black".to_string() => Color::Black,
-                "red".to_string() => Color::Red,
-                "green".to_string() => Color::Green,
-                "yellow".to_string() => Color::Yellow,
-                "blue".to_string() => Color::Blue,
-                "magenta".to_string() => Color::Magenta,
-                "cyan".to_string() => Color::Cyan,
-                "gray".to_string() => Color::Gray,
-                "light-red".to_string() => Color::LightRed,
-                "light-green".to_string() => Color::LightGreen,
-                "light-yellow".to_string() => Color::LightYellow,
-                "light-blue".to_string() => Color::LightBlue,
-                "light-magenta".to_string() => Color::LightMagenta,
-                "light-cyan".to_string() => Color::LightCyan,
-                "light-gray".to_string() => Color::LightGray,
-                "white".to_string() => Color::White,
-            },
+            Self {
+                styles,
+                scopes,
+                highlights,
+                ..Default::default()
+            }
+        } else {
+            warn!("Expected theme TOML value to be a table, found {:?}", value);
+            Default::default()
         }
     }
+}
+
+impl<'de> Deserialize<'de> for Theme {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let values = Map::<String, Value>::deserialize(deserializer)?;
+
+        let (styles, scopes, highlights) = build_theme_values(values);
+
+        Ok(Self {
+            styles,
+            scopes,
+            highlights,
+            ..Default::default()
+        })
+    }
+}
+
+fn build_theme_values(
+    mut values: Map<String, Value>,
+) -> (HashMap<String, Style>, Vec<String>, Vec<Style>) {
+    let mut styles = HashMap::new();
+    let mut scopes = Vec::new();
+    let mut highlights = Vec::new();
+
+    // TODO: alert user of parsing failures in editor
+    let palette = values
+        .remove("palette")
+        .map(|value| {
+            ThemePalette::try_from(value).unwrap_or_else(|err| {
+                warn!("{}", err);
+                ThemePalette::default()
+            })
+        })
+        .unwrap_or_default();
+    // remove inherits from value to prevent errors
+    let _ = values.remove("inherits");
+    styles.reserve(values.len());
+    scopes.reserve(values.len());
+    highlights.reserve(values.len());
+    for (name, style_value) in values {
+        let mut style = Style::default();
+        if let Err(err) = palette.parse_style(&mut style, style_value) {
+            warn!("{}", err);
+        }
+
+        // these are used both as UI and as highlights
+        styles.insert(name.clone(), style);
+        scopes.push(name);
+        highlights.push(style);
+    }
+
+    (styles, scopes, highlights)
+}
+
+struct ThemePalette {
+    palette: HashMap<String, Color>,
 }
 
 impl ThemePalette {
@@ -459,6 +434,31 @@ impl ThemePalette {
             *style = style.fg(self.parse_color(value)?);
         }
         Ok(())
+    }
+}
+
+impl Default for ThemePalette {
+    fn default() -> Self {
+        Self {
+            palette: hashmap! {
+                "black".to_string() => Color::Black,
+                "red".to_string() => Color::Red,
+                "green".to_string() => Color::Green,
+                "yellow".to_string() => Color::Yellow,
+                "blue".to_string() => Color::Blue,
+                "magenta".to_string() => Color::Magenta,
+                "cyan".to_string() => Color::Cyan,
+                "gray".to_string() => Color::Gray,
+                "light-red".to_string() => Color::LightRed,
+                "light-green".to_string() => Color::LightGreen,
+                "light-yellow".to_string() => Color::LightYellow,
+                "light-blue".to_string() => Color::LightBlue,
+                "light-magenta".to_string() => Color::LightMagenta,
+                "light-cyan".to_string() => Color::LightCyan,
+                "light-gray".to_string() => Color::LightGray,
+                "white".to_string() => Color::White,
+            },
+        }
     }
 }
 
