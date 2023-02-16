@@ -49,28 +49,13 @@ async fn main_impl() -> Result<i32> {
 
     helix_loader::setup_config_file(args.config_file.clone());
 
-    let mut config = Config::merged().unwrap_or_else(|err| {
-        eprintln!("Bad config: {}", err);
-        eprintln!("Press <ENTER> to continue with default config");
-        let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut []);
-        Config::default()
-    });
+    let mut config = check_config_load(Config::merged(), None, "");
     if config.editor.load_local_config {
         // NOTE: deserializes user config once again
-        config = Config::merged_local_config().unwrap_or_else(|err| {
-            eprintln!("Bad local config: {}", err);
-            eprintln!("Press <ENTER> to continue with default and user config");
-            let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut []);
-            config
-        });
+        config = check_config_load(Config::merged_local_config(), Some(config), "");
     }
-
-    let language_configurations = LanguageConfigurations::merged().unwrap_or_else(|err| {
-        eprintln!("Bad language config: {}", err);
-        eprintln!("Press <ENTER> to continue with default language config");
-        let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut []);
-        LanguageConfigurations::default()
-    });
+    let language_configurations =
+        check_config_load(LanguageConfigurations::merged(), None, "language");
 
     let true_color_support = {
         config.editor.true_color || {
@@ -83,14 +68,10 @@ async fn main_impl() -> Result<i32> {
             }
         }
     };
+
     Theme::set_true_color_support(true_color_support);
     let theme: Theme = match config.theme.as_deref() {
-        Some(theme_name) => Theme::new(theme_name).unwrap_or_else(|err| {
-            eprintln!("Bad theme config: {}", err);
-            eprintln!("Press <ENTER> to continue with default theme config");
-            let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut []);
-            Theme::default()
-        }),
+        Some(theme_name) => check_config_load(Theme::new(theme_name), None, "theme"),
         None => Theme::default(),
     };
 
@@ -134,4 +115,20 @@ fn setup_logging(_logpath: Option<PathBuf>, verbosity: u64) -> Result<()> {
         .chain(logger)
         .apply()
         .map_err(|err| anyhow::anyhow!(err))
+}
+
+fn check_config_load<T: Default>(
+    user_load_result: Result<T>,
+    alt_to_default: Option<T>,
+    cfg_type: &str,
+) -> T {
+    user_load_result.unwrap_or_else(|err| {
+        eprintln!("Bad {} config: {}", cfg_type, err);
+        eprintln!("Press <ENTER> to continue with default {} config", cfg_type);
+        let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut []);
+        match alt_to_default {
+            Some(alt) => alt,
+            None => T::default(),
+        }
+    })
 }

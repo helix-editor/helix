@@ -6,7 +6,10 @@ use crate::job::*;
 use super::*;
 
 use helix_core::encoding;
-use helix_view::{editor::{Action, CloseError, ConfigEvent}, Theme};
+use helix_view::{
+    editor::{Action, CloseError, ConfigEvent},
+    Theme,
+};
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
