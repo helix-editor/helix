@@ -68,10 +68,6 @@ impl Theme {
         Ok(theme)
     }
 
-    pub fn update(&self, theme_name: &str) -> Result<Theme> {
-        Self::new(theme_name)
-    }
-
     pub fn default() -> Theme {
         if Self::get_true_color_support() {
             DEFAULT_THEME.clone()

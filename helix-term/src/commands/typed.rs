@@ -6,7 +6,7 @@ use crate::job::*;
 use super::*;
 
 use helix_core::encoding;
-use helix_view::editor::{Action, CloseError, ConfigEvent};
+use helix_view::{editor::{Action, CloseError, ConfigEvent}, Theme};
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
@@ -780,14 +780,14 @@ fn theme(
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
             } else if let Some(theme_name) = args.first() {
-                if let Ok(theme) = cx.editor.theme.update(theme_name) {
+                if let Ok(theme) = Theme::new(theme_name) {
                     cx.editor.set_theme_preview(theme);
                 };
             };
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
-                cx.editor.set_theme(cx.editor.theme.update(theme_name)?);
+                cx.editor.set_theme(Theme::new(theme_name)?);
             } else {
                 let name = cx.editor.theme.name().to_string();
                 cx.editor.set_status(name);
