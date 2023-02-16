@@ -928,7 +928,6 @@ impl Editor {
     ) -> Self {
         let conf = config.load();
 
-        let auto_pairs = (&conf.auto_pairs).into();
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
 
@@ -963,7 +962,7 @@ impl Editor {
             last_motion: None,
             last_completion: None,
             config,
-            auto_pairs,
+            auto_pairs: (&conf.auto_pairs).into(),
             exit_code: 0,
             config_events: unbounded_channel(),
             redraw_handle: Default::default(),
