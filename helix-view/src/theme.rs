@@ -25,15 +25,11 @@ pub static BASE16_DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
     toml::from_str(str::from_utf8(bytes).unwrap()).expect("Failed to parse base 16 default theme")
 });
 
-pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
-    name: "default".into(),
-    ..Theme::from(DEFAULT_THEME_DATA.clone())
-});
+pub static DEFAULT_THEME: Lazy<Theme> =
+    Lazy::new(|| Theme::parse_named("default".into(), DEFAULT_THEME_DATA.clone()).0);
 
-pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
-    name: "base16_default".into(),
-    ..Theme::from(BASE16_DEFAULT_THEME_DATA.clone())
-});
+pub static BASE16_DEFAULT_THEME: Lazy<Theme> =
+    Lazy::new(|| Theme::parse_named("base16_default".into(), BASE16_DEFAULT_THEME_DATA.clone()).0);
 
 #[derive(Clone, Debug)]
 pub struct Loader {
@@ -49,21 +45,24 @@ impl Loader {
         }
     }
 
-    /// Loads a theme first looking in the `user_dir` then in `default_dir`
     pub fn load(&self, name: &str) -> Result<Theme> {
+        self.load_with_warnings(name).map(|r| r.0)
+    }
+
+    /// Loads a theme first looking in the `user_dir` then in `default_dir`
+    pub fn load_with_warnings(&self, name: &str) -> Result<(Theme, Vec<String>)> {
         if name == "default" {
-            return Ok(self.default());
+            return Ok((self.default(), Vec::new()));
         }
         if name == "base16_default" {
-            return Ok(self.base16_default());
+            return Ok((self.base16_default(), Vec::new()));
         }
 
-        let theme = self.load_theme(name, name, false).map(Theme::from)?;
+        let theme = self
+            .load_theme(name, name, false)
+            .map(|toml| Theme::parse_named(name.into(), toml))?;
 
-        Ok(Theme {
-            name: name.into(),
-            ..theme
-        })
+        Ok(theme)
     }
 
     // load the theme and its parent recursively and merge them
@@ -202,22 +201,31 @@ pub struct Theme {
 
     // UI styles are stored in a HashMap
     styles: HashMap<String, Style>,
+
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
     highlights: Vec<Style>,
 }
 
-impl From<Value> for Theme {
-    fn from(value: Value) -> Self {
+impl Theme {
+    fn parse_named(name: String, value: Value) -> (Self, Vec<String>) {
         if let Value::Table(table) = value {
-            let (styles, scopes, highlights) = build_theme_values(table);
+            // TODO: alert user of parsing failures in editor
+            let theme_values = build_theme_values(table);
 
-            Self {
-                styles,
-                scopes,
-                highlights,
-                ..Default::default()
+            for warning in &theme_values.warnings {
+                warn!("Theme: parse failure for '{}': {}", name, warning);
             }
+
+            (
+                Self {
+                    name,
+                    styles: theme_values.styles,
+                    scopes: theme_values.scopes,
+                    highlights: theme_values.highlights,
+                },
+                theme_values.warnings,
+            )
         } else {
             warn!("Expected theme TOML value to be a table, found {:?}", value);
             Default::default()
@@ -232,52 +240,64 @@ impl<'de> Deserialize<'de> for Theme {
     {
         let values = Map::<String, Value>::deserialize(deserializer)?;
 
-        let (styles, scopes, highlights) = build_theme_values(values);
+        let theme_values = build_theme_values(values);
 
         Ok(Self {
-            styles,
-            scopes,
-            highlights,
+            styles: theme_values.styles,
+            scopes: theme_values.scopes,
+            highlights: theme_values.highlights,
             ..Default::default()
         })
     }
 }
 
-fn build_theme_values(
-    mut values: Map<String, Value>,
-) -> (HashMap<String, Style>, Vec<String>, Vec<Style>) {
-    let mut styles = HashMap::new();
-    let mut scopes = Vec::new();
-    let mut highlights = Vec::new();
+#[derive(Debug, Default)]
+struct ThemeValues {
+    styles: HashMap<String, Style>,
+    scopes: Vec<String>,
+    highlights: Vec<Style>,
+    warnings: Vec<String>,
+}
 
-    // TODO: alert user of parsing failures in editor
+impl ThemeValues {
+    fn with_capacity(cap: usize) -> ThemeValues {
+        ThemeValues {
+            styles: HashMap::with_capacity(cap),
+            scopes: Vec::with_capacity(cap),
+            highlights: Vec::with_capacity(cap),
+            warnings: Vec::new(),
+        }
+    }
+}
+
+fn build_theme_values(mut values: Map<String, Value>) -> ThemeValues {
     let palette = values
         .remove("palette")
         .map(|value| {
             ThemePalette::try_from(value).unwrap_or_else(|err| {
-                warn!("{}", err);
+                warn!("build_theme_values: {}", err);
                 ThemePalette::default()
             })
         })
         .unwrap_or_default();
+
     // remove inherits from value to prevent errors
     let _ = values.remove("inherits");
-    styles.reserve(values.len());
-    scopes.reserve(values.len());
-    highlights.reserve(values.len());
+    let mut result = ThemeValues::with_capacity(values.len());
+
     for (name, style_value) in values {
         let mut style = Style::default();
         if let Err(err) = palette.parse_style(&mut style, style_value) {
-            warn!("{}", err);
+            result.warnings.push(format!("{}", err))
         }
 
         // these are used both as UI and as highlights
-        styles.insert(name.clone(), style);
-        scopes.push(name);
-        highlights.push(style);
+        result.styles.insert(name.clone(), style);
+        result.scopes.push(name);
+        result.highlights.push(style);
     }
 
-    (styles, scopes, highlights)
+    result
 }
 
 impl Theme {
@@ -390,7 +410,7 @@ impl ThemePalette {
             }
         }
 
-        Err(format!("Theme: malformed hexcode: {}", s))
+        Err(format!("malformed hexcode: {}", s))
     }
 
     fn parse_value_as_str(value: &Value) -> Result<&str, String> {
@@ -407,6 +427,7 @@ impl ThemePalette {
             .copied()
             .ok_or("")
             .or_else(|_| Self::hex_string_to_rgb(value))
+            .map_err(|e| format!("error loading color '{}': {}", value, e))
     }
 
     pub fn parse_modifier(value: &Value) -> Result<Modifier, String> {
