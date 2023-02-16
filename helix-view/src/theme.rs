@@ -61,11 +61,15 @@ impl Theme {
     }
 
     pub fn new(theme_name: &str) -> Result<Theme> {
-        let theme = Self::load(theme_name)?;
-        if !Self::get_true_color_support() && !theme.is_16_color() {
-            anyhow::bail!("Unsupported theme: theme requires true color support")
+        if theme_name.is_empty() {
+            Ok(Self::default())
+        } else {
+            let theme = Self::load(theme_name)?;
+            if !Self::get_true_color_support() && !theme.is_16_color() {
+                anyhow::bail!("Unsupported theme: true color support is required")
+            }
+            Ok(theme)
         }
-        Ok(theme)
     }
 
     pub fn default() -> Theme {

@@ -7,7 +7,8 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    pub theme: Option<String>,
+    #[serde(default)]
+    pub theme: String,
     #[serde(default = "default::default")]
     pub keys: HashMap<Mode, KeyTrie>,
     #[serde(default)]
@@ -43,7 +44,7 @@ impl Config {
 impl Default for Config {
     fn default() -> Config {
         Config {
-            theme: None,
+            theme: String::default(),
             keys: default::default(),
             editor: helix_view::editor::EditorConfig::default(),
         }

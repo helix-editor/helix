@@ -64,10 +64,7 @@ async fn main_impl() -> Result<i32> {
                 .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
                 .unwrap_or(false),
     );
-    let theme: Theme = match config.theme.as_deref() {
-        Some(theme_name) => check_config_load(Theme::new(theme_name), None, "theme"),
-        None => Theme::default(),
-    };
+    let theme = check_config_load(Theme::new(&config.theme), None, "theme");
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config, theme, language_configurations)

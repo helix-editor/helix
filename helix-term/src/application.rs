@@ -355,9 +355,8 @@ impl Application {
                 document.detect_language(self.editor.lang_configs_loader.clone());
             }
 
-            if let Some(theme_name) = &self.config.load().theme {
-                self.editor.set_theme(Theme::new(theme_name)?);
-            }
+            self.editor
+                .set_theme(Theme::new(&self.config.load().theme)?);
 
             Ok(())
         };
