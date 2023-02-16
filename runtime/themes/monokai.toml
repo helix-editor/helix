@@ -78,7 +78,7 @@
 "ui.statusline" = { fg = "active_text", bg = "#414339" }
 "ui.statusline.inactive" = { fg = "active_text", bg = "#75715e" }
 
-"ui.text" = { fg = "text", bg = "background" }
+"ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "active_text" }
 
 "warning" = { fg = "#cca700" }
