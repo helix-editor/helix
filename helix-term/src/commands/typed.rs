@@ -1739,24 +1739,20 @@ fn reflow(
         return Ok(());
     }
 
-    const DEFAULT_MAX_LEN: usize = 79;
-
     let scrolloff = cx.editor.config().scrolloff;
-    let cfg_text_width = cx.editor.config().text_width;
+    let cfg_text_width: usize = cx.editor.config().text_width;
     let (view, doc) = current!(cx.editor);
 
     // Find the text_width by checking the following sources in order:
     //   - The passed argument in `args`
     //   - The configured text-width for this language in languages.toml
-    //   - The configured text-width in config.toml
-    //   - The const default we set above
+    //   - The configured text-width in the config.toml
     let text_width: usize = args
         .get(0)
         .map(|num| num.parse::<usize>())
         .transpose()?
         .or_else(|| doc.language_config().and_then(|config| config.text_width))
-        .or(cfg_text_width)
-        .unwrap_or(DEFAULT_MAX_LEN);
+        .unwrap_or(cfg_text_width);
 
     let rope = doc.text();
 
