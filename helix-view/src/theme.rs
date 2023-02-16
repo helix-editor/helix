@@ -47,9 +47,9 @@ pub struct Theme {
 }
 
 impl Theme {
-    pub fn new(theme_name: Option<String>, true_color_support: bool) -> Result<Theme> {
+    pub fn new(theme_name: Option<&str>, true_color_support: bool) -> Result<Theme> {
         if let Some(theme_name) = theme_name {
-            let theme = Self::load(&theme_name)?;
+            let theme = Self::load(theme_name)?;
             if !true_color_support && !theme.is_16_color() {
                 anyhow::bail!("Unsupported theme: theme requires true color support")
             }
@@ -70,7 +70,7 @@ impl Theme {
         }
     }
 
-    pub fn update(&self, theme_name: String) -> Result<Theme> {
+    pub fn update(&self, theme_name: &str) -> Result<Theme> {
         Self::new(Some(theme_name), self.true_color_support)
     }
 

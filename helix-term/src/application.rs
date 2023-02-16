@@ -381,8 +381,7 @@ impl Application {
             }
 
             if let Some(theme_name) = &self.config.load().theme {
-                self.editor
-                    .set_theme(self.editor.theme.update(theme_name.clone())?);
+                self.editor.set_theme(self.editor.theme.update(theme_name)?);
             }
 
             Ok(())

@@ -83,7 +83,8 @@ async fn main_impl() -> Result<i32> {
             }
         }
     };
-    let theme = Theme::new(config.theme.clone(), true_color_support).unwrap_or_else(|err| {
+
+    let theme = Theme::new(config.theme.as_deref(), true_color_support).unwrap_or_else(|err| {
         eprintln!("Bad theme config: {}", err);
         eprintln!("Press <ENTER> to continue with default theme config");
         let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut []);

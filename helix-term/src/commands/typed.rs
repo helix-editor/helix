@@ -780,15 +780,14 @@ fn theme(
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
             } else if let Some(theme_name) = args.first() {
-                if let Ok(theme) = cx.editor.theme.update(theme_name.to_string()) {
+                if let Ok(theme) = cx.editor.theme.update(theme_name) {
                     cx.editor.set_theme_preview(theme);
                 };
             };
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
-                cx.editor
-                    .set_theme(cx.editor.theme.update(theme_name.to_string())?);
+                cx.editor.set_theme(cx.editor.theme.update(theme_name)?);
             } else {
                 let name = cx.editor.theme.name().to_string();
                 cx.editor.set_status(name);
