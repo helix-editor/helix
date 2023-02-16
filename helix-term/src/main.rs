@@ -53,10 +53,6 @@ async fn main_impl() -> Result<i32> {
         // NOTE: deserializes user config once again
         config = check_config_load(Config::merged_local_config(), Some(config), "");
     }
-
-    let language_configurations =
-        check_config_load(LanguageConfigurations::merged(), None, "language");
-
     Theme::set_true_color_support(
         config.editor.true_color
             || cfg!(windows)
@@ -64,11 +60,15 @@ async fn main_impl() -> Result<i32> {
                 .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
                 .unwrap_or(false),
     );
-    let theme = check_config_load(Theme::new(&config.theme), None, "theme");
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args, config, theme, language_configurations)
-        .context("unable to create new application")?;
+    let mut app = Application::new(
+        args,
+        check_config_load(Theme::new(&config.theme), None, "theme"),
+        check_config_load(LanguageConfigurations::merged(), None, "language"),
+        config,
+    )
+    .context("unable to create new application")?;
     app.run(&mut EventStream::new()).await
 }
 

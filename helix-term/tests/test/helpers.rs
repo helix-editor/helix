@@ -122,9 +122,9 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
         Some(app) => app,
         None => Application::new(
             Args::default(),
-            test_config(),
             Theme::default(),
             test_syntax_conf(None),
+            test_config(),
         )?,
     };
 
@@ -182,7 +182,7 @@ pub async fn test_with_config<T: Into<TestCase>>(
         Theme::set_true_color_support(true);
     });
     let test_case = test_case.into();
-    let app = Application::new(args, config, Theme::default(), syn_conf)?;
+    let app = Application::new(args, Theme::default(), syn_conf, config)?;
 
     test_key_sequence_with_input_text(
         Some(app),
@@ -313,7 +313,7 @@ impl AppBuilder {
     }
 
     pub fn build(self) -> anyhow::Result<Application> {
-        let mut app = Application::new(self.args, self.config, Theme::default(), self.syn_conf)?;
+        let mut app = Application::new(self.args, Theme::default(), self.syn_conf, self.config)?;
 
         if let Some((text, selection)) = self.input {
             let (view, doc) = helix_view::current!(app.editor);

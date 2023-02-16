@@ -99,9 +99,9 @@ fn restore_term() -> Result<(), Error> {
 impl Application {
     pub fn new(
         args: Args,
-        config: Config,
         theme: Theme,
         langauge_configurations: LanguageConfigurations,
+        config: Config,
     ) -> Result<Self, Error> {
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout());
