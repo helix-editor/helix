@@ -2315,9 +2315,8 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
     };
 
     // then delete
-    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        (range.from(), range.to(), None)
-    });
+    let transaction =
+        Transaction::delete_by_selection(doc.text(), selection, |range| (range.from(), range.to()));
     doc.apply(&transaction, view.id);
 
     match op {
@@ -2333,9 +2332,8 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
 
 #[inline]
 fn delete_selection_insert_mode(doc: &mut Document, view: &mut View, selection: &Selection) {
-    let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        (range.from(), range.to(), None)
-    });
+    let transaction =
+        Transaction::delete_by_selection(doc.text(), selection, |range| (range.from(), range.to()));
     doc.apply(&transaction, view.id);
 }
 
@@ -3422,10 +3420,10 @@ pub mod insert {
         let auto_pairs = doc.auto_pairs(cx.editor);
 
         let transaction =
-            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            Transaction::delete_by_selection(doc.text(), doc.selection(view.id), |range| {
                 let pos = range.cursor(text);
                 if pos == 0 {
-                    return (pos, pos, None);
+                    return (pos, pos);
                 }
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 // consider to delete by indent level if all characters before `pos` are indent units.
@@ -3433,11 +3431,7 @@ pub mod insert {
                 if !fragment.is_empty() && fragment.chars().all(|ch| ch == ' ' || ch == '\t') {
                     if text.get_char(pos.saturating_sub(1)) == Some('\t') {
                         // fast path, delete one char
-                        (
-                            graphemes::nth_prev_grapheme_boundary(text, pos, 1),
-                            pos,
-                            None,
-                        )
+                        (graphemes::nth_prev_grapheme_boundary(text, pos, 1), pos)
                     } else {
                         let width: usize = fragment
                             .chars()
@@ -3464,7 +3458,7 @@ pub mod insert {
                                 _ => break,
                             }
                         }
-                        (start, pos, None) // delete!
+                        (start, pos) // delete!
                     }
                 } else {
                     match (
@@ -3482,17 +3476,12 @@ pub mod insert {
                             (
                                 graphemes::nth_prev_grapheme_boundary(text, pos, count),
                                 graphemes::nth_next_grapheme_boundary(text, pos, count),
-                                None,
                             )
                         }
                         _ =>
                         // delete 1 char
                         {
-                            (
-                                graphemes::nth_prev_grapheme_boundary(text, pos, count),
-                                pos,
-                                None,
-                            )
+                            (graphemes::nth_prev_grapheme_boundary(text, pos, count), pos)
                         }
                     }
                 }
@@ -3508,13 +3497,9 @@ pub mod insert {
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let transaction =
-            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            Transaction::delete_by_selection(doc.text(), doc.selection(view.id), |range| {
                 let pos = range.cursor(text);
-                (
-                    pos,
-                    graphemes::nth_next_grapheme_boundary(text, pos, count),
-                    None,
-                )
+                (pos, graphemes::nth_next_grapheme_boundary(text, pos, count))
             });
         doc.apply(&transaction, view.id);
 
