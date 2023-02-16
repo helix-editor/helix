@@ -1195,9 +1195,6 @@ dependencies = [
 [[package]]
 name = "helix-parsec"
 version = "0.6.0"
-dependencies = [
- "regex",
-]
 
 [[package]]
 name = "helix-term"

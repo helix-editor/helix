@@ -11,4 +11,3 @@ homepage = "https://helix-editor.com"
 include = ["src/**/*", "README.md"]
 
 [dependencies]
-regex = "1"
