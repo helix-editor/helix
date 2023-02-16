@@ -1236,7 +1236,17 @@ impl Document {
             .language_config()
             .and_then(|config| config.text_width)
             .unwrap_or(config.text_width);
-        if config.soft_wrap.wrap_at_text_width {
+        let soft_wrap_at_text_width = self
+            .language_config()
+            .and_then(|config| {
+                config
+                    .soft_wrap
+                    .as_ref()
+                    .and_then(|soft_wrap| soft_wrap.wrap_at_text_width)
+            })
+            .or(config.soft_wrap.wrap_at_text_width)
+            .unwrap_or(false);
+        if soft_wrap_at_text_width {
             // We increase max_line_len by 1 because softwrap considers the newline character
             // as part of the line length while the "typical" expectation is that this is not the case.
             // In particular other commands like :reflow do not count the line terminator.
@@ -1245,17 +1255,37 @@ impl Document {
             viewport_width = viewport_width.min(text_width as u16 + 1)
         }
         let config = self.config.load();
-        let soft_wrap = &config.soft_wrap;
+        let editor_soft_wrap = &config.soft_wrap;
+        let language_soft_wrap = self
+            .language
+            .as_ref()
+            .and_then(|config| config.soft_wrap.as_ref());
+        let enable_soft_wrap = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.enable)
+            .or(editor_soft_wrap.enable)
+            .unwrap_or(false);
+        let max_wrap = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.max_wrap)
+            .or(config.soft_wrap.max_wrap)
+            .unwrap_or(20);
+        let max_indent_retain = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.max_indent_retain)
+            .or(editor_soft_wrap.max_indent_retain)
+            .unwrap_or(40);
+        let wrap_indicator = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.wrap_indicator.clone())
+            .or_else(|| config.soft_wrap.wrap_indicator.clone())
+            .unwrap_or_else(|| "↪ ".into());
         let tab_width = self.tab_width() as u16;
         TextFormat {
-            soft_wrap: soft_wrap.enable && viewport_width > 10,
+            soft_wrap: enable_soft_wrap && viewport_width > 10,
             tab_width,
-            max_wrap: soft_wrap.max_wrap.min(viewport_width / 4),
-            max_indent_retain: soft_wrap.max_indent_retain.min(viewport_width * 2 / 5),
+            max_wrap: max_wrap.min(viewport_width / 4),
+            max_indent_retain: max_indent_retain.min(viewport_width * 2 / 5),
             // avoid spinning forever when the window manager
             // sets the size to something tiny
             viewport_width,
-            wrap_indicator: soft_wrap.wrap_indicator.clone().into_boxed_str(),
+            wrap_indicator: wrap_indicator.into_boxed_str(),
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
                 .map(Highlight),

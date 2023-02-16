@@ -43,7 +43,7 @@ pub use helix_core::register::Registers;
 use helix_core::Position;
 use helix_core::{
     auto_pairs::AutoPairs,
-    syntax::{self, AutoPairConfig},
+    syntax::{self, AutoPairConfig, SoftWrap},
     Change,
 };
 use helix_dap as dap;
@@ -276,46 +276,6 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
-pub struct SoftWrap {
-    /// Soft wrap lines that exceed viewport width. Default to off
-    pub enable: bool,
-    /// Maximum space left free at the end of the line.
-    /// This space is used to wrap text at word boundaries. If that is not possible within this limit
-    /// the word is simply split at the end of the line.
-    ///
-    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
-    ///
-    /// Default to 20
-    pub max_wrap: u16,
-    /// Maximum number of indentation that can be carried over from the previous line when softwrapping.
-    /// If a line is indented further then this limit it is rendered at the start of the viewport instead.
-    ///
-    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
-    ///
-    /// Default to 40
-    pub max_indent_retain: u16,
-    /// Indicator placed at the beginning of softwrapped lines
-    ///
-    /// Defaults to ↪
-    pub wrap_indicator: String,
-    /// Softwrap at `text_width` instead of viewport width if it is shorter
-    pub wrap_at_text_width: bool,
-}
-
-impl Default for SoftWrap {
-    fn default() -> Self {
-        SoftWrap {
-            enable: false,
-            max_wrap: 20,
-            max_indent_retain: 40,
-            wrap_indicator: "↪ ".into(),
-            wrap_at_text_width: true,
-        }
-    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
