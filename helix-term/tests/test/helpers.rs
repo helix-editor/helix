@@ -123,7 +123,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
         None => Application::new(
             Args::default(),
             test_config(),
-            Theme::default(true),
+            Theme::default(),
             test_syntax_conf(None),
         )?,
     };
@@ -168,6 +168,7 @@ pub fn test_syntax_conf(overrides: Option<String>) -> LanguageConfigurations {
     lang.try_into().unwrap()
 }
 
+static SETUP: std::sync::Once = std::sync::Once::new();
 /// Use this for very simple test cases where there is one input
 /// document, selection, and sequence of key presses, and you just
 /// want to verify the resulting document and selection.
@@ -177,8 +178,11 @@ pub async fn test_with_config<T: Into<TestCase>>(
     syn_conf: LanguageConfigurations,
     test_case: T,
 ) -> anyhow::Result<()> {
+    SETUP.call_once(|| {
+        Theme::set_true_color_support(true);
+    });
     let test_case = test_case.into();
-    let app = Application::new(args, config, Theme::default(true), syn_conf)?;
+    let app = Application::new(args, config, Theme::default(), syn_conf)?;
 
     test_key_sequence_with_input_text(
         Some(app),
@@ -309,8 +313,7 @@ impl AppBuilder {
     }
 
     pub fn build(self) -> anyhow::Result<Application> {
-        let mut app =
-            Application::new(self.args, self.config, Theme::default(true), self.syn_conf)?;
+        let mut app = Application::new(self.args, self.config, Theme::default(), self.syn_conf)?;
 
         if let Some((text, selection)) = self.input {
             let (view, doc) = helix_view::current!(app.editor);

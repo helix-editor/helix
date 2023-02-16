@@ -83,14 +83,15 @@ async fn main_impl() -> Result<i32> {
             }
         }
     };
+    Theme::set_true_color_support(true_color_support);
     let theme: Theme = match config.theme.as_deref() {
-        Some(theme_name) => Theme::new(theme_name, true_color_support).unwrap_or_else(|err| {
+        Some(theme_name) => Theme::new(theme_name).unwrap_or_else(|err| {
             eprintln!("Bad theme config: {}", err);
             eprintln!("Press <ENTER> to continue with default theme config");
             let _wait_for_enter = std::io::Read::read(&mut std::io::stdin(), &mut []);
-            Theme::default(true_color_support)
+            Theme::default()
         }),
-        None => Theme::default(true_color_support),
+        None => Theme::default(),
     };
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool

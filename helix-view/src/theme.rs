@@ -35,10 +35,11 @@ pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
     ..Theme::from(BASE16_DEFAULT_THEME_DATA.clone())
 });
 
+static TRUE_COLOR_SUPPORT: once_cell::sync::OnceCell<bool> = once_cell::sync::OnceCell::new();
+
 #[derive(Clone, Debug, Default)]
 pub struct Theme {
     name: String,
-    true_color_support: bool,
     // UI styles are stored in a HashMap
     styles: HashMap<String, Style>,
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
@@ -47,32 +48,35 @@ pub struct Theme {
 }
 
 impl Theme {
-    pub fn new(theme_name: &str, true_color_support: bool) -> Result<Theme> {
+    pub fn set_true_color_support(true_color_support: bool) {
+        TRUE_COLOR_SUPPORT
+            .set(true_color_support)
+            .expect("method should only be called once on program startup.");
+    }
+
+    fn get_true_color_support() -> bool {
+        *TRUE_COLOR_SUPPORT
+            .get()
+            .expect("true color support should have been set on program startup.")
+    }
+
+    pub fn new(theme_name: &str) -> Result<Theme> {
         let theme = Self::load(theme_name)?;
-        if !true_color_support && !theme.is_16_color() {
+        if !Self::get_true_color_support() && !theme.is_16_color() {
             anyhow::bail!("Unsupported theme: theme requires true color support")
         }
-        Ok(Self {
-            true_color_support,
-            ..theme
-        })
+        Ok(theme)
     }
 
     pub fn update(&self, theme_name: &str) -> Result<Theme> {
-        Self::new(theme_name, self.true_color_support)
+        Self::new(theme_name)
     }
 
-    pub fn default(true_color_support: bool) -> Theme {
-        if true_color_support {
-            Self {
-                true_color_support,
-                ..DEFAULT_THEME.clone()
-            }
+    pub fn default() -> Theme {
+        if Self::get_true_color_support() {
+            DEFAULT_THEME.clone()
         } else {
-            Self {
-                true_color_support,
-                ..BASE16_DEFAULT_THEME.clone()
-            }
+            BASE16_DEFAULT_THEME.clone()
         }
     }
 
