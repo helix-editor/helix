@@ -431,9 +431,6 @@ impl View {
         let other_style = theme
             .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint"))
             .map(Highlight);
-        let padding_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.padding"))
-            .map(Highlight);
 
         let mut add_annotations = |annotations: &Rc<[_]>, style| {
             if !annotations.is_empty() {
@@ -444,11 +441,11 @@ impl View {
         // Overlapping annotations are ignored apart from the first so the order here is not random:
         // types -> parameters -> others should hopefully be the "correct" order for most use cases,
         // with the padding coming before and after as expected.
-        add_annotations(padding_before_inlay_hints, padding_style);
+        add_annotations(padding_before_inlay_hints, None);
         add_annotations(type_inlay_hints, type_style);
         add_annotations(parameter_inlay_hints, parameter_style);
         add_annotations(other_inlay_hints, other_style);
-        add_annotations(padding_after_inlay_hints, padding_style);
+        add_annotations(padding_after_inlay_hints, None);
 
         text_annotations
     }
