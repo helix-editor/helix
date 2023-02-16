@@ -47,31 +47,33 @@ pub struct Theme {
 }
 
 impl Theme {
-    pub fn new(theme_name: Option<&str>, true_color_support: bool) -> Result<Theme> {
-        if let Some(theme_name) = theme_name {
-            let theme = Self::load(theme_name)?;
-            if !true_color_support && !theme.is_16_color() {
-                anyhow::bail!("Unsupported theme: theme requires true color support")
-            }
-            Ok(Self {
-                true_color_support,
-                ..theme
-            })
-        } else if true_color_support {
-            Ok(Self {
-                true_color_support,
-                ..DEFAULT_THEME.clone()
-            })
-        } else {
-            Ok(Self {
-                true_color_support,
-                ..BASE16_DEFAULT_THEME.clone()
-            })
+    pub fn new(theme_name: &str, true_color_support: bool) -> Result<Theme> {
+        let theme = Self::load(theme_name)?;
+        if !true_color_support && !theme.is_16_color() {
+            anyhow::bail!("Unsupported theme: theme requires true color support")
         }
+        Ok(Self {
+            true_color_support,
+            ..theme
+        })
     }
 
     pub fn update(&self, theme_name: &str) -> Result<Theme> {
-        Self::new(Some(theme_name), self.true_color_support)
+        Self::new(theme_name, self.true_color_support)
+    }
+
+    pub fn default(true_color_support: bool) -> Theme {
+        if true_color_support {
+            Self {
+                true_color_support,
+                ..DEFAULT_THEME.clone()
+            }
+        } else {
+            Self {
+                true_color_support,
+                ..BASE16_DEFAULT_THEME.clone()
+            }
+        }
     }
 
     /// Recursively load a theme, merging with any inherited parent themes.
