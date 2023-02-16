@@ -48,28 +48,22 @@ async fn main_impl() -> Result<i32> {
     }
 
     helix_loader::setup_config_file(args.config_file.clone());
-
     let mut config = check_config_load(Config::merged(), None, "");
     if config.editor.load_local_config {
         // NOTE: deserializes user config once again
         config = check_config_load(Config::merged_local_config(), Some(config), "");
     }
+
     let language_configurations =
         check_config_load(LanguageConfigurations::merged(), None, "language");
 
-    let true_color_support = {
-        config.editor.true_color || {
-            if cfg!(windows) {
-                true
-            } else {
-                std::env::var("COLORTERM")
-                    .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
-                    .unwrap_or(false)
-            }
-        }
-    };
-
-    Theme::set_true_color_support(true_color_support);
+    Theme::set_true_color_support(
+        config.editor.true_color
+            || cfg!(windows)
+            || std::env::var("COLORTERM")
+                .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
+                .unwrap_or(false),
+    );
     let theme: Theme = match config.theme.as_deref() {
         Some(theme_name) => check_config_load(Theme::new(theme_name), None, "theme"),
         None => Theme::default(),
