@@ -1,15 +1,15 @@
 use crate::compositor::{Component, Context, Event, EventResult};
-use helix_view::{editor::CompleteAction, ViewId};
-use tui::buffer::Buffer as Surface;
+use helix_view::{
+    editor::CompleteAction,
+    theme::{Modifier, Style},
+    ViewId,
+};
+use tui::{buffer::Buffer as Surface, text::Span};
 
 use std::borrow::Cow;
 
 use helix_core::{Change, Transaction};
-use helix_view::{
-    graphics::Rect,
-    input::{KeyCode, KeyEvent},
-    Document, Editor,
-};
+use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
@@ -33,8 +33,19 @@ impl menu::Item for CompletionItem {
     }
 
     fn format(&self, _data: &Self::Data) -> menu::Row {
+        let deprecated = self.deprecated.unwrap_or_default()
+            || self.tags.as_ref().map_or(false, |tags| {
+                tags.contains(&lsp::CompletionItemTag::DEPRECATED)
+            });
         menu::Row::new(vec![
-            menu::Cell::from(self.label.as_str()),
+            menu::Cell::from(Span::styled(
+                self.label.as_str(),
+                if deprecated {
+                    Style::default().add_modifier(Modifier::CROSSED_OUT)
+                } else {
+                    Style::default()
+                },
+            )),
             menu::Cell::from(match self.kind {
                 Some(lsp::CompletionItemKind::TEXT) => "text",
                 Some(lsp::CompletionItemKind::METHOD) => "method",
@@ -239,7 +250,9 @@ impl Completion {
                 }
             };
         });
-        let popup = Popup::new(Self::ID, menu).with_scrollbar(false);
+        let popup = Popup::new(Self::ID, menu)
+            .with_scrollbar(false)
+            .ignore_escape_key(true);
         let mut completion = Self {
             popup,
             start_offset,
@@ -363,13 +376,6 @@ impl Completion {
 
 impl Component for Completion {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
-        // let the Editor handle Esc instead
-        if let Event::Key(KeyEvent {
-            code: KeyCode::Esc, ..
-        }) = event
-        {
-            return EventResult::Ignored(None);
-        }
         self.popup.handle_event(event, cx)
     }
 
