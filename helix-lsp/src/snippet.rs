@@ -1,9 +1,7 @@
 use std::borrow::Cow;
 
 use anyhow::{anyhow, Result};
-use helix_core::SmallVec;
-
-use crate::{util::lsp_pos_to_pos, OffsetEncoding};
+use helix_core::{SmallVec, smallvec};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum CaseChange {
@@ -34,7 +32,7 @@ pub enum SnippetElement<'a> {
     },
     Placeholder {
         tabstop: usize,
-        value: Box<SnippetElement<'a>>,
+        value: Vec<SnippetElement<'a>>,
     },
     Choice {
         tabstop: usize,
@@ -57,141 +55,108 @@ pub fn parse(s: &str) -> Result<Snippet<'_>> {
     parser::parse(s).map_err(|rest| anyhow!("Failed to parse snippet. Remaining input: {}", rest))
 }
 
-pub fn into_transaction<'a>(
-    snippet: Snippet<'a>,
-    doc: &helix_core::Rope,
-    selection: &helix_core::Selection,
-    edit: &lsp_types::TextEdit,
-    line_ending: &str,
-    offset_encoding: OffsetEncoding,
+fn render_elements(
+    snippet_elements: &[SnippetElement<'_>],
+    insert: &mut String,
+    offset: &mut usize,
+    tabstops: &mut Vec<(usize, (usize, usize))>,
+    newline_with_offset: &String,
     include_placeholer: bool,
-) -> helix_core::Transaction {
-    use helix_core::{smallvec, Range, Transaction};
+) {
     use SnippetElement::*;
 
-    let text = doc.slice(..);
-    let primary_cursor = selection.primary().cursor(text);
-
-    let start_offset = match lsp_pos_to_pos(doc, edit.range.start, offset_encoding) {
-        Some(start) => start as i128 - primary_cursor as i128,
-        None => return Transaction::new(doc),
-    };
-    let end_offset = match lsp_pos_to_pos(doc, edit.range.end, offset_encoding) {
-        Some(end) => end as i128 - primary_cursor as i128,
-        None => return Transaction::new(doc),
-    };
-
-    let newline_with_offset = format!(
-        "{line_ending}{blank:width$}",
-        width = edit.range.start.character as usize,
-        blank = ""
-    );
-
-    let mut offset = 0;
-    let mut insert = String::new();
-    let mut tabstops: Vec<(usize, usize, usize)> = Vec::new();
-
-    for element in snippet.elements {
+    for element in snippet_elements {
         match element {
-            Text(text) => {
+            &Text(text) => {
                 // small optimization to avoid calling replace when it's unnecessary
                 let text = if text.contains('\n') {
-                    Cow::Owned(text.replace('\n', &newline_with_offset))
+                    Cow::Owned(text.replace('\n', newline_with_offset))
                 } else {
                     Cow::Borrowed(text)
                 };
-                offset += text.chars().count();
+                *offset += text.chars().count();
                 insert.push_str(&text);
             }
-            Variable {
-                name: _name,
-                regex: None,
+            &Variable {
+                name: _,
+                regex: _,
                 r#default,
             } => {
                 // TODO: variables. For now, fall back to the default, which defaults to "".
                 let text = r#default.unwrap_or_default();
-                offset += text.chars().count();
+                *offset += text.chars().count();
                 insert.push_str(text);
             }
-            Tabstop { tabstop } => {
-                tabstops.push((tabstop, offset, offset));
+            &Tabstop { tabstop } => {
+                tabstops.push((tabstop, (*offset, *offset)));
             }
-            Placeholder { tabstop, value } => match value.as_ref() {
-                // https://doc.rust-lang.org/beta/unstable-book/language-features/box-patterns.html
-                // would make this a bit nicer
-                Text(text) => {
-                    if include_placeholer {
-                        let len_chars = text.chars().count();
-                        tabstops.push((tabstop, offset, offset + len_chars + 1));
-                        offset += len_chars;
-                        insert.push_str(text);
-                    } else {
-                        tabstops.push((tabstop, offset, offset));
-                    }
-                }
-                other => {
-                    log::error!(
-                        "Discarding snippet: generating a transaction for placeholder contents {:?} is unimplemented.",
-                        other
+            Placeholder {
+                tabstop,
+                value: inner_snippet_elements,
+            } => {
+                let start_offset = *offset;
+                if include_placeholer {
+                    render_elements(
+                        inner_snippet_elements,
+                        insert,
+                        offset,
+                        tabstops,
+                        newline_with_offset,
+                        include_placeholer,
                     );
-                    return Transaction::new(doc);
                 }
-            },
-            other => {
-                log::error!(
-                    "Discarding snippet: generating a transaction for {:?} is unimplemented.",
-                    other
-                );
-                return Transaction::new(doc);
+                tabstops.push((*tabstop, (start_offset, *offset)));
+            }
+            &Choice {
+                tabstop,
+                choices: _,
+            } => {
+                // TODO: choices
+                tabstops.push((tabstop, (*offset, *offset)));
             }
         }
     }
+}
 
-    let transaction = Transaction::change_by_selection(doc, selection, |range| {
-        let cursor = range.cursor(text);
-        (
-            (cursor as i128 + start_offset) as usize,
-            (cursor as i128 + end_offset) as usize,
-            Some(insert.clone().into()),
-        )
-    });
+#[allow(clippy::type_complexity)] // only used one time
+pub fn render(
+    snippet: &Snippet<'_>,
+    newline_with_offset: String,
+    include_placeholer: bool,
+) -> (String, Vec<SmallVec<[(usize, usize); 1]>>) {
+    let mut insert = String::new();
+    let mut tabstops = Vec::new();
+    let mut offset = 0;
+
+    render_elements(
+        &snippet.elements,
+        &mut insert,
+        &mut offset,
+        &mut tabstops,
+        &newline_with_offset,
+        include_placeholer,
+    );
 
     // sort in ascending order (except for 0, which should always be the last one (per lsp doc))
-    tabstops.sort_unstable_by_key(|(n, _o1, _o2)| if *n == 0 { usize::MAX } else { *n });
+    tabstops.sort_unstable_by_key(|(n, _)| if *n == 0 { usize::MAX } else { *n });
 
     // merge tabstops with the same index (we take advantage of the fact that we just sorted them
     // above to simply look backwards)
     let mut ntabstops = Vec::<SmallVec<[(usize, usize); 1]>>::new();
     {
         let mut prev = None;
-        for (tabstop, o1, o2) in tabstops {
+        for (tabstop, r) in tabstops {
             if prev == Some(tabstop) {
                 let len_1 = ntabstops.len() - 1;
-                ntabstops[len_1].push((o1, o2));
+                ntabstops[len_1].push(r);
             } else {
                 prev = Some(tabstop);
-                ntabstops.push(smallvec![(o1, o2)]);
+                ntabstops.push(smallvec![r]);
             }
         }
     }
 
-    if let Some(first) = ntabstops.first() {
-        let cursor_offset = insert.chars().count() as i128 - (end_offset - start_offset);
-        let mut extra_offset = start_offset;
-        transaction.with_selection(selection.clone().transform_iter(|range| {
-            let cursor = range.cursor(text);
-            let iter = first.iter().map(move |first| {
-                Range::new(
-                    (cursor as i128 + first.0 as i128 + extra_offset) as usize,
-                    (cursor as i128 + first.1 as i128 + extra_offset) as usize,
-                )
-            });
-            extra_offset += cursor_offset;
-            iter
-        }))
-    } else {
-        transaction
-    }
+    (insert, ntabstops)
 }
 
 mod parser {
@@ -343,14 +308,15 @@ mod parser {
     fn placeholder<'a>() -> impl Parser<'a, Output = SnippetElement<'a>> {
         // TODO: why doesn't parse_as work?
         // let value = reparse_as(take_until(|c| c == '}'), anything());
+        // TODO: fix this to parse nested placeholders (take until terminates too early)
         let value = filter_map(take_until(|c| c == '}'), |s| {
-            anything().parse(s).map(|parse_result| parse_result.1).ok()
+            snippet().parse(s).map(|parse_result| parse_result.1).ok()
         });
 
         map(seq!("${", digit(), ":", value, "}"), |seq| {
             SnippetElement::Placeholder {
                 tabstop: seq.1,
-                value: Box::new(seq.3),
+                value: seq.3.elements,
             }
         })
     }
@@ -430,7 +396,7 @@ mod parser {
                         Text("match("),
                         Placeholder {
                             tabstop: 1,
-                            value: Box::new(Text("Arg1")),
+                            value: vec!(Text("Arg1")),
                         },
                         Text(")")
                     ]
@@ -447,16 +413,29 @@ mod parser {
                         Text("local "),
                         Placeholder {
                             tabstop: 1,
-                            value: Box::new(Text("var")),
+                            value: vec!(Text("var")),
                         },
                         Text(" = "),
                         Placeholder {
                             tabstop: 1,
-                            value: Box::new(Text("value")),
+                            value: vec!(Text("value")),
                         },
                     ]
                 }),
                 parse("local ${1:var} = ${1:value}")
+            )
+        }
+
+        #[test]
+        fn parse_tabstop_nested_in_placeholder() {
+            assert_eq!(
+                Ok(Snippet {
+                    elements: vec![Placeholder {
+                        tabstop: 1,
+                        value: vec!(Text("var, "), Tabstop { tabstop: 2 },),
+                    },]
+                }),
+                parse("${1:var, $2}")
             )
         }
 
