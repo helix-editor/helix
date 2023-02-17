@@ -6,10 +6,9 @@ use crate::job::*;
 use super::*;
 
 use helix_core::encoding;
-use helix_view::{
-    editor::{Action, CloseError, ConfigEvent},
-    Theme,
-};
+use helix_view::document::DEFAULT_LANGUAGE_NAME;
+use helix_view::editor::{Action, CloseError, ConfigEvent};
+use helix_view::Theme;
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
@@ -1688,13 +1687,20 @@ fn language(
         return Ok(());
     }
 
+    if args.is_empty() {
+        let doc = doc!(cx.editor);
+        let language = &doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+        cx.editor.set_status(language.to_string());
+        return Ok(());
+    }
+
     if args.len() != 1 {
         anyhow::bail!("Bad arguments. Usage: `:set-language language`");
     }
 
     let doc = doc_mut!(cx.editor);
 
-    if args[0] == "text" {
+    if args[0] == DEFAULT_LANGUAGE_NAME {
         doc.set_language(None, None)
     } else {
         doc.set_language_by_language_id(&args[0], cx.editor.lang_configs_loader.clone())?;
@@ -2406,7 +2412,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "set-language",
             aliases: &["lang"],
-            doc: "Set the language of current buffer.",
+            doc: "Set the language of current buffer (show current language if no value specified).",
             fun: language,
             completer: Some(completers::language),
         },
