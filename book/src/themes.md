@@ -4,12 +4,7 @@ To use a theme add `theme = "<name>"` to the top of your [`config.toml`](./confi
 
 ## Creating a theme
 
-To create a theme file:
-
-1. Create a 'themes' folder in your user configuration folder (e.g.
-   `~/.config/helix/themes`, or `%AppData%\helix\themes` on Windows).
-2. Create a file with the name of your theme as the file name (e.g.
-   `mytheme.toml`) and place it in your `themes` folder.
+Create a file with the name of your theme as the file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/helix/themes` or `%AppData%\helix\themes` on Windows). The directory might have to be created beforehand.
 
 > 💡 The names "default" and "base16_default" are reserved for built-in themes
 > and cannot be overridden by user-defined themes.
