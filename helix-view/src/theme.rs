@@ -37,7 +37,7 @@ pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
 
 static TRUE_COLOR_SUPPORT: once_cell::sync::OnceCell<bool> = once_cell::sync::OnceCell::new();
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Theme {
     name: String,
     // UI styles are stored in a HashMap
@@ -69,15 +69,6 @@ impl Theme {
                 anyhow::bail!("Unsupported theme: true color support is required")
             }
             Ok(theme)
-        }
-    }
-
-    // HELP: don't know why, this in a impl Default block makes Helix hang on startup.
-    pub fn default() -> Theme {
-        if Self::get_true_color_support() {
-            DEFAULT_THEME.clone()
-        } else {
-            BASE16_DEFAULT_THEME.clone()
         }
     }
 
@@ -266,20 +257,32 @@ impl Theme {
     }
 }
 
+impl Default for Theme {
+    fn default() -> Theme {
+        if Self::get_true_color_support() {
+            DEFAULT_THEME.clone()
+        } else {
+            BASE16_DEFAULT_THEME.clone()
+        }
+    }
+}
+
 impl From<Value> for Theme {
     fn from(value: Value) -> Self {
         if let Value::Table(table) = value {
             let (styles, scopes, highlights) = build_theme_values(table);
 
             Self {
+                // Can not spread with ..Default::default here as it would lead
+                // to infinite recursion when loading defaulf theme from value.
+                name: String::default(),
                 styles,
                 scopes,
                 highlights,
-                ..Default::default()
             }
         } else {
             warn!("Expected theme TOML value to be a table, found {:?}", value);
-            Default::default()
+            Theme::default()
         }
     }
 }
@@ -294,10 +297,10 @@ impl<'de> Deserialize<'de> for Theme {
         let (styles, scopes, highlights) = build_theme_values(values);
 
         Ok(Self {
+            name: String::default(),
             styles,
             scopes,
             highlights,
-            ..Default::default()
         })
     }
 }
