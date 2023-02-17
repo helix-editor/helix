@@ -3182,6 +3182,11 @@ pub mod insert {
                 _ => return,
             }
         }
+        /* Only autocomplete on timer after the user has input character,
+        not when they are moving around the document. */
+        if doc.moved_since_changed() {
+            return;
+        }
         super::completion(cx);
     }
 

@@ -172,6 +172,7 @@ pub struct Document {
 
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
+    moved_since_changed: bool,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -497,6 +498,7 @@ impl Document {
             modified_since_accessed: false,
             language_server: None,
             diff_handle: None,
+            moved_since_changed: false,
             config,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
@@ -1048,6 +1050,10 @@ impl Document {
             });
         }
 
+        if self.moved_since_changed {
+            self.moved_since_changed = false;
+        }
+
         let success = self.apply_impl(transaction, view_id);
 
         if !transaction.changes().is_empty() {
@@ -1121,6 +1127,10 @@ impl Document {
         self.apply(&revert, view.id);
         *revert = Transaction::new(self.text()).with_selection(self.selection(view.id).clone());
         self.savepoints.push(savepoint_ref)
+    }
+
+    pub fn register_insert_mode_movement(&mut self) {
+        self.moved_since_changed = true;
     }
 
     fn earlier_later_impl(&mut self, view: &mut View, uk: UndoKind, earlier: bool) -> bool {
@@ -1227,6 +1237,10 @@ impl Document {
         let current_revision = history.current_revision();
         self.history.set(history);
         current_revision
+    }
+
+    pub fn moved_since_changed(&self) -> bool {
+        self.moved_since_changed
     }
 
     /// Corresponding language scope name. Usually `source.<lang>`.
