@@ -116,54 +116,55 @@ impl<'de> Visitor<'de> for KeyTrieNodeVisitor {
     where
         M: serde::de::MapAccess<'de>,
     {
-        let into_keytrie =
-            |peeked_key: String, mut map: M, description: &str| -> Result<Self::Value, M::Error> {
-                let mut children = Vec::new();
-                let mut child_order = HashMap::new();
-                let mut keytrie_is_sticky = false;
-                let mut user_explicit_sticky = false;
-                let mut next_key = Some(peeked_key);
+        let into_keytrie = |peeked_key: String,
+                            mut map: M,
+                            description: &str,
+                            user_explicit_description: bool|
+         -> Result<Self::Value, M::Error> {
+            let mut children = Vec::new();
+            let mut child_order = HashMap::new();
+            let mut keytrie_is_sticky = false;
+            let mut user_explicit_sticky = false;
+            let mut next_key = Some(peeked_key);
 
-                while let Some(ref peeked_key) = next_key {
-                    if peeked_key == "sticky" {
-                        keytrie_is_sticky = map.next_value::<bool>()?;
-                        user_explicit_sticky = true;
-                    } else {
-                        let key_event = peeked_key
-                            .parse::<KeyEvent>()
-                            .map_err(serde::de::Error::custom)?;
-                        let keytrie_node = map.next_value::<KeyTrieNode>()?;
-                        child_order.insert(key_event, children.len());
-                        children.push(keytrie_node);
-                    }
-                    next_key = map.next_key::<String>()?;
+            while let Some(ref peeked_key) = next_key {
+                if peeked_key == "sticky" {
+                    keytrie_is_sticky = map.next_value::<bool>()?;
+                    user_explicit_sticky = true;
+                } else {
+                    let key_event = peeked_key
+                        .parse::<KeyEvent>()
+                        .map_err(serde::de::Error::custom)?;
+                    let keytrie_node = map.next_value::<KeyTrieNode>()?;
+                    child_order.insert(key_event, children.len());
+                    children.push(keytrie_node);
                 }
+                next_key = map.next_key::<String>()?;
+            }
 
-                let mut keytrie = KeyTrie::new(description, child_order, children);
-                keytrie.is_sticky = keytrie_is_sticky;
-                keytrie.explicitly_set_sticky = user_explicit_sticky;
-                Ok(KeyTrieNode::KeyTrie(keytrie))
-            };
+            let mut keytrie = KeyTrie::new(description, child_order, children);
+            keytrie.is_sticky = keytrie_is_sticky;
+            keytrie.explicitly_set_sticky = user_explicit_sticky;
+            keytrie.explicitly_set_description = user_explicit_description;
+            Ok(KeyTrieNode::KeyTrie(keytrie))
+        };
 
         let Some(first_key) = map.next_key::<String>()? else {
             return Err(serde::de::Error::custom("Maps without keys are undefined keymap remapping behaviour."))
         };
 
         if first_key != "description" {
-            return into_keytrie(first_key, map, "");
+            return into_keytrie(first_key, map, "", false);
         }
 
         let description = map.next_value::<String>()?;
-        let Some(second_key) = map.next_key::<String>()? else {
-            return Err(serde::de::Error::custom("Associated key when a 'description' key is provided"))
-        };
 
-        if &second_key != "exec" {
-            return into_keytrie(second_key, map, &description);
-        }
-
-        let keytrie_node: KeyTrieNode = map.next_value::<KeyTrieNode>()?;
-        match keytrie_node {
+        if let Some(second_key) = map.next_key::<String>()? {
+            if &second_key != "exec" {
+                return into_keytrie(second_key, map, &description, true);
+            }
+            let keytrie_node: KeyTrieNode = map.next_value::<KeyTrieNode>()?;
+            match keytrie_node {
             KeyTrieNode::KeyTrie(_) => Err(serde::de::Error::custom(
                 "'exec' key reserved for command(s) only, omit when adding custom descriptions to nested remappings.",
             )),
@@ -180,13 +181,18 @@ impl<'de> Visitor<'de> for KeyTrieNodeVisitor {
                         Err(serde::de::Error::custom("Currently not possible to rename static commands, only typables. (Those that begin with a colon.) "))
                     }
                 }
-            }
+            },
             KeyTrieNode::CommandSequence(command_sequence) => {
                 Ok(KeyTrieNode::CommandSequence(CommandSequence {
                     description: Some(description),
                     commands: command_sequence.commands,
                 }))
             }
+        }
+        } else {
+            let mut keytrie_node = KeyTrie::new(&description, HashMap::new(), Vec::new());
+            keytrie_node.explicitly_set_description = true;
+            Ok(KeyTrieNode::KeyTrie(keytrie_node))
         }
     }
 }

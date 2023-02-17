@@ -2611,7 +2611,6 @@ impl ui::menu::Item for MappableCommand {
                 if let Some(key_events) = command_list.get(name as &String) {
                     row[1] = Cell::from(key_events.join(", "));
                 }
-
                 Row::new(row)
             }
             MappableCommand::Static {
@@ -2623,7 +2622,6 @@ impl ui::menu::Item for MappableCommand {
                 if let Some(key_events) = command_list.get(*name) {
                     row[1] = Cell::from(key_events.join(", "));
                 }
-
                 Row::new(row)
             }
         }
