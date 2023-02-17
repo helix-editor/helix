@@ -138,14 +138,14 @@ impl Completion {
                         )
                     {
                         match snippet::parse(&edit.new_text) {
-                            Ok(snippet) => snippet::into_transaction(
-                                snippet,
+                            Ok(snippet) => util::generate_transaction_from_snippet(
                                 doc.text(),
                                 doc.selection(view_id),
-                                &edit,
+                                &edit.range,
+                                snippet,
                                 doc.line_ending.as_str(),
-                                offset_encoding,
                                 include_placeholder,
+                                offset_encoding,
                             ),
                             Err(err) => {
                                 log::error!(
