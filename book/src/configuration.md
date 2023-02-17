@@ -57,7 +57,7 @@ on unix operating systems.
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file. | `[]` |
 | `bufferline` | Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use) | `never` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
-| `text-width` | Set the maximum line width for text wrapping (either softwrapping, or hardwrapping with `:reflow`) | `80` |
+| `text-width` | Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap_at_text_width` is set | `80` |
 
 ### `[editor.statusline]` Section
 
