@@ -21,6 +21,11 @@
 "variable.parameter" = { fg = "blue_text", bg = "blue_bg" }
 
 "diagnostic" = { modifiers = ["underlined"] }
+
+"diagnostic.info" = { underline = { color = "orange_text", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "orange_text", style = "curl" } }
+"diagnostic.error" = { underline = { color = "diff_delete", style = "curl" } }
+
 "info" = { fg = "orange_text", bg = "orange_bg" }
 "hint" = { modifiers = ["bold"] }
 "warning" = { fg = "orange_text", bg = "orange_bg" }
@@ -32,14 +37,15 @@
 "markup.raw" = { fg = "orange_text", bg = "orange_bg" }
 "markup.raw.inline" = { fg = "orange_text", bg = "orange_bg" }
 "markup.raw.block" = { fg = "orange_text", bg = "orange_bg" }
+"markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "blue_text", bg = "blue_bg", modifiers = [
   "underlined",
 ] }
 "markup.link.label" = { fg = "blue_text", bg = "blue_bg" }
 "markup.link.text" = { fg = "blue_text", bg = "blue_bg" }
 "markup.quote" = { fg = "teal_text", bg = "teal_bg" }
-"markup.bold" = { modifiers = ["bold"] }
 "markup.list" = { fg = "purple_text", bg = "purple_bg" }
 
 "ui.background" = { fg = "base1", bg = "base7" }

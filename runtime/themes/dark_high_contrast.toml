@@ -84,6 +84,7 @@
 "markup.list" = "pink"
 "markup.bold" = { fg = "emerald_green", modifiers = ["bold"] }
 "markup.italic" = { fg = "blue", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "blue", underline = { color = "blue", style = "line" } }
 "markup.link.text" = "pink"
 "markup.quote" = "yellow"

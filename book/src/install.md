@@ -69,7 +69,7 @@ choco install helix
 
 **MSYS2:**
 
-Choose the proper command for your system from below:
+Choose the [proper command](https://www.msys2.org/docs/package-naming/) for your system from below:
 
   - For 32 bit Windows 7 or above:
 
@@ -99,6 +99,14 @@ cargo install --path helix-term --locked
 
 This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars in `./runtime/grammars`.
 
+If you are using the musl-libc instead of glibc the following environment variable must be set during the build
+to ensure tree sitter grammars can be loaded correctly:
+
+```
+RUSTFLAGS="-C target-feature=-crt-static"
+```
+
+
 Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
 config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overridden
 via the `HELIX_RUNTIME` environment variable.
@@ -115,8 +123,9 @@ elevated privileges - i.e. PowerShell or Cmd must be run as administrator.
 **PowerShell:**
 
 ```powershell
-New-Item -ItemType SymbolicLink -Target "runtime" -Path "$Env:AppData\helix\runtime"
+New-Item -ItemType Junction -Target "runtime" -Path "$Env:AppData\helix\runtime"
 ```
+Note: "runtime" must be the absolute path to the runtime directory.
 
 **Cmd:**
 

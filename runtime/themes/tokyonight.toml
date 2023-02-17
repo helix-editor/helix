@@ -54,13 +54,17 @@
 "warning" = { fg = "yellow" }
 "info" = { fg = "blue" }
 "hint" = { fg = "teal" }
-"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
+"diagnostic.info" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "teal" } }
 "special" = { fg = "orange" }
 
 "markup.heading" = { fg = "cyan", modifiers = ["bold"] }
 "markup.list" = { fg = "cyan" }
 "markup.bold" = { fg = "orange", modifiers = ["bold"] }
 "markup.italic" = { fg = "yellow", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "green" }
 "markup.link.text" = { fg = "light-gray" }
 "markup.quote" = { fg = "yellow", modifiers = ["italic"] }

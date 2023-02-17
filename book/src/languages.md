@@ -35,7 +35,7 @@ Each language is configured by adding a `[[language]]` section to a
 [[language]]
 name = "mylang"
 scope = "source.mylang"
-injection-regex = "^mylang$"
+injection-regex = "mylang"
 file-types = ["mylang", "myl"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
@@ -61,7 +61,7 @@ These configuration keys are available:
 | `config`              | Language Server configuration                                 |
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
 | `formatter`           | The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout |
-| `max-line-length`     | Maximum line length. Used for the `:reflow` command           |
+| `max-line-length`     | Maximum line length. Used for the `:reflow` command and soft-wrapping           |
 
 ### File-type detection and the `file-types` key
 

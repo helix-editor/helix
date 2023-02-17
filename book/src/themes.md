@@ -252,10 +252,14 @@ These scopes are used for theming the editor interface.
 | `ui.background`             |                                                                                                |
 | `ui.background.separator`   | Picker separator below input line                                                              |
 | `ui.cursor`                 |                                                                                                |
+| `ui.cursor.normal`          |                                                                                                |
 | `ui.cursor.insert`          |                                                                                                |
 | `ui.cursor.select`          |                                                                                                |
 | `ui.cursor.match`           | Matching bracket etc.                                                                          |
 | `ui.cursor.primary`         | Cursor with primary selection                                                                  |
+| `ui.cursor.primary.normal`  |                                                                                                |
+| `ui.cursor.primary.insert`  |                                                                                                |
+| `ui.cursor.primary.select`  |                                                                                                |
 | `ui.gutter`                 | Gutter                                                                                         |
 | `ui.gutter.selected`        | Gutter for the line the cursor is on                                                           |
 | `ui.linenr`                 | Line numbers                                                                                   |
@@ -265,7 +269,7 @@ These scopes are used for theming the editor interface.
 | `ui.statusline.normal`      | Statusline mode during normal mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.insert`      | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.select`      | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
-| `ui.popup`                  | Documentation popups (e.g Space + k)                                                             |
+| `ui.popup`                  | Documentation popups (e.g Space + k)                                                           |
 | `ui.popup.info`             | Prompt for multiple key options                                                                |
 | `ui.window`                 | Border lines separating splits                                                                 |
 | `ui.help`                   | Description box for commands                                                                   |
@@ -274,8 +278,9 @@ These scopes are used for theming the editor interface.
 | `ui.text.inactive`          | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`              | The key: command text in `ui.popup.info` boxes                                                 |
 | `ui.virtual.ruler`          | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
-| `ui.virtual.whitespace`     | Visible whitespace characters                                                                 |
+| `ui.virtual.whitespace`     | Visible whitespace characters                                                                  |
 | `ui.virtual.indent-guide`   | Vertical indent width guides                                                                   |
+| `ui.virtual.wrap`           | Soft-wrap indicator (see the [`editor.soft-wrap` config][editor-section])                      |
 | `ui.menu`                   | Code and command completion menus                                                              |
 | `ui.menu.selected`          | Selected autocomplete item                                                                     |
 | `ui.menu.scroll`            | `fg` sets thumb color, `bg` sets track color of scrollbar                                      |

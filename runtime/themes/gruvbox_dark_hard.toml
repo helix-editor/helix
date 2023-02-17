@@ -21,7 +21,7 @@
 "function.macro" = "aqua1"
 "function.builtin" = "yellow1"
 "tag" = "red1"
-"comment" = { fg = "gray1", modifiers = ["italic"]  }
+"comment" = { fg = "gray1", modifiers = ["italic"] }
 "constant" = { fg = "purple1" }
 "constant.builtin" = { fg = "purple1", modifiers = ["bold"] }
 "string" = "green1"
@@ -34,12 +34,11 @@
 "diff.delta" = "orange1"
 "diff.minus" = "red1"
 
-"warning" = { fg = "orange1", bg = "bg1" }
-"error" = { fg = "red1", bg = "bg1" }
-"info" = { fg = "aqua1", bg = "bg1" }
-"hint" = { fg = "blue1", bg = "bg1" }
+"warning" = "orange1"
+"error" = "red1"
+"info" = "aqua1"
+"hint" = "blue1"
 
-"diagnostic" = { modifiers = ["underlined"] }
 "diagnostic.error" = { underline = { style = "curl", color = "red0" } }
 "diagnostic.warning" = { underline = { style = "curl", color = "orange1" } }
 "diagnostic.info" = { underline = { style = "curl", color = "aqua1" } }
@@ -71,6 +70,7 @@
 "markup.heading" = "aqua1"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "green1", modifiers = ["underlined"] }
 "markup.link.text" = "red1"
 "markup.raw" = "red1"
@@ -91,8 +91,8 @@ fg4 = "#a89984" # gray0
 gray0 = "#a89984"
 gray1 = "#928374"
 
-red0 = "#cc241d" # neutral
-red1 = "#fb4934" # bright
+red0 = "#cc241d"    # neutral
+red1 = "#fb4934"    # bright
 green0 = "#98971a"
 green1 = "#b8bb26"
 yellow0 = "#d79921"
