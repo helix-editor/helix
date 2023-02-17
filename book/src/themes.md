@@ -41,7 +41,7 @@ For inspiration, you can find the default `theme.toml`
 user-submitted themes
 [here](https://github.com/helix-editor/helix/blob/master/runtime/themes).
 
-### Using the Linter
+### Using the linter
 
 Use the supplied linting tool to check for errors and missing scopes:
 
@@ -49,7 +49,7 @@ Use the supplied linting tool to check for errors and missing scopes:
 cargo xtask themelint onedark # replace onedark with <name>
 ```
 
-## The Details of Theme Creation
+## The details of theme creation
 
 ### Color palettes
 
@@ -112,7 +112,7 @@ your terminal emulator.
 > 💡 The `underlined` modifier is deprecated and only available for backwards compatibility.
 > Its behavior is equivalent to setting `underline.style="line"`.
 
-### Underline Style
+### Underline style
 
 One of the following values may be used as a value for `underline.style`, providing it is
 supported by your terminal emulator.

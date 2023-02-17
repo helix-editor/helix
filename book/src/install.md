@@ -17,8 +17,8 @@
     - [MSYS2](#msys2)
   - [Building from source](#building-from-source)
     - [Configuring Helix's runtime files](#configuring-helixs-runtime-files)
-    - [Validating the Installation](#validating-the-installation)
-    - [Configure the Desktop Shortcut](#configure-the-desktop-shortcut)
+    - [Validating the installation](#validating-the-installation)
+    - [Configure the desktop shortcut](#configure-the-desktop-shortcut)
 <!--toc:end-->
 
 To install Helix, follow the instructions specific to your operating system.
@@ -191,7 +191,7 @@ Or, create a symlink in `%appdata%\helix\` that links to the source code directo
    > 💡 On Windows, creating a symbolic link may require running PowerShell or
    > Cmd as an administrator.
 
-### Validating the Installation
+### Validating the installation
 
 To make sure everything is set up as expected you should run the Helix health
 check:
@@ -203,7 +203,7 @@ hx --health
 For more information on the health check results refer to
 [Health check](https://github.com/helix-editor/helix/wiki/Healthcheck).
 
-### Configure the Desktop Shortcut
+### Configure the desktop shortcut
 
 If your desktop environment supports the
 [XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html)

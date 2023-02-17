@@ -3,12 +3,12 @@
 <!--toc:start-->
 - [Using Helix](#using-helix)
   - [Registers](#registers)
-    - [User-defined Registers](#user-defined-registers)
-    - [Special Registers](#special-registers)
+    - [User-defined registers](#user-defined-registers)
+    - [Special registers](#special-registers)
   - [Surround](#surround)
-  - [Selecting and Manipulating Text with Textobjects](#selecting-and-manipulating-text-with-textobjects)
-  - [Navigating Using Tree-sitter Textobjects](#navigating-using-tree-sitter-textobjects)
-  - [Moving the Selection with Syntax-aware Motions](#moving-the-selection-with-syntax-aware-motions)
+  - [Selecting and manipulating text with textobjects](#selecting-and-manipulating-text-with-textobjects)
+  - [Navigating using tree-sitter textobjects](#navigating-using-tree-sitter-textobjects)
+  - [Moving the selection with syntax-aware motions](#moving-the-selection-with-syntax-aware-motions)
 <!--toc:end-->
 
 For a full interactive introduction to Helix, refer to the
@@ -25,7 +25,7 @@ result of a search. Registers can be used to cut, copy, and paste text, similar
 to the clipboard in other text editors. Usage is similar to Vim, with `"` being
 used to select a register.
 
-### User-defined Registers
+### User-defined registers
 
 Helix allows you to create your own named registers for storing text, for
 example:
@@ -38,7 +38,7 @@ If a register is selected before invoking a change or delete command, the select
 - `"hc` - Store the selection in register `h` and then change it (delete and enter insert mode).
 - `"md` - Store the selection in register `m` and delete it.
 
-### Special Registers
+### Special registers
 
 | Register character | Contains              |
 | ---                | ---                   |
@@ -76,7 +76,7 @@ Surround can also act on multiple selections. For example, to change every occur
 
 Multiple characters are currently not supported, but planned for future release.
 
-## Selecting and Manipulating Text with Textobjects
+## Selecting and manipulating text with textobjects
 
 In Helix, textobjects are a way to select, manipulate and operate on a piece of
 text in a structured way. They allow you to refer to blocks of text based on
@@ -108,7 +108,7 @@ document and a special tree-sitter query file to work properly. [Only
 some grammars][lang-support] currently have the query file implemented.
 Contributions are welcome!
 
-## Navigating Using Tree-sitter Textobjects
+## Navigating using tree-sitter textobjects
 
 Navigating between functions, classes, parameters, and other elements is
 possible using tree-sitter and textobject queries. For
@@ -123,7 +123,7 @@ documentation.
 > 💡 This feature relies on tree-sitter textobjects
 > and requires the corresponding query file to work properly.
 
-## Moving the Selection with Syntax-aware Motions
+## Moving the selection with syntax-aware motions
 
 `Alt-p`, `Alt-o`, `Alt-i`, and `Alt-n` (or `Alt` and arrow keys) allow you to move the 
 selection according to its location in the syntax tree. For example, many languages have the

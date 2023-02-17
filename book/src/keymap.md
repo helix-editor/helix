@@ -14,7 +14,7 @@
     - [Space mode](#space-mode)
       - [Popup](#popup)
     - [Unimpaired](#unimpaired)
-- [Insert Mode](#insert-mode)
+- [Insert mode](#insert-mode)
 - [Select / extend mode](#select-extend-mode)
 - [Picker](#picker)
 - [Prompt](#prompt)

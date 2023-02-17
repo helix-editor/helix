@@ -1,4 +1,4 @@
-# Adding Textobject Queries
+# Adding textobject queries
 
 Helix supports textobjects that are language specific, such as functions, classes, etc.
 These textobjects require an accompanying tree-sitter grammar and a `textobjects.scm` query file
@@ -28,7 +28,7 @@ The following [captures][tree-sitter-captures] are recognized:
 
 [Example query files][textobject-examples] can be found in the helix GitHub repository.
 
-## Queries for Textobject Based Navigation
+## Queries for textobject based navigation
 
 Tree-sitter based navigation in Helix is done using captures in the
 following order:
