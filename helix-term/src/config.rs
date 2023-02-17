@@ -197,6 +197,30 @@ mod tests {
     }
 
     #[test]
+    fn parses_custom_infobox_label_override_from_toml() {
+        let sample_keymap = r#"
+            [keys.normal.space]
+            description = "To the moon"
+            b = "buffer_picker"
+        "#;
+        let parsed_node: KeyTrieNode = _normal_mode_keytrie_node("space", sample_keymap);
+        assert_eq!(parsed_node.get_description().unwrap(), "To the moon");
+    }
+
+    #[test]
+    fn parses_empty_custom_infobox_label_override_from_toml() {
+        let sample_keymap = r#"
+            [keys.normal.space]
+            description = "To the moon"
+        "#;
+        let parsed_node: KeyTrie = _normal_mode_keytrie("space", sample_keymap);
+        assert!(
+            parsed_node.get_children().len() > 2,
+            "Empty custom label override does not override other defualt mappings in keytrie."
+        );
+    }
+
+    #[test]
     fn keys_resolve_to_correct_defaults() {
         let serde_default = toml::from_str::<Config>("").unwrap().keys;
         assert_eq!(serde_default, default::default());

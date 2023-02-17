@@ -13,6 +13,8 @@ pub struct KeyTrie {
     pub is_sticky: bool,
     /// Used to respect pre-defined stickyness.
     pub explicitly_set_sticky: bool,
+    /// Used to override pre-defined descriptions.
+    pub explicitly_set_description: bool,
 }
 
 impl KeyTrie {
@@ -27,6 +29,7 @@ impl KeyTrie {
             children,
             is_sticky: false,
             explicitly_set_sticky: false,
+            explicitly_set_description: false,
         }
     }
 
@@ -70,6 +73,10 @@ impl KeyTrie {
     pub fn merge_keytrie(&mut self, other_keytrie: Self) {
         if other_keytrie.explicitly_set_sticky {
             self.is_sticky = other_keytrie.is_sticky;
+        }
+
+        if other_keytrie.explicitly_set_description {
+            self.description = other_keytrie.description.clone();
         }
 
         for (other_key_event, other_index) in other_keytrie.get_child_order() {
