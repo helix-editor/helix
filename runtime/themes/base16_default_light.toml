@@ -37,6 +37,7 @@
 "markup.list" = "base08"
 "markup.bold" = { fg = "base0A", modifiers = ["bold"] }
 "markup.italic" = { fg = "base0E", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "base09", modifiers = ["underlined"] }
 "markup.link.text" = "base08"
 "markup.quote" = "base0C"

@@ -46,6 +46,7 @@
 "markup.list" = "red"
 "markup.bold" = { fg = "yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
 "markup.link.text" = "red"
 "markup.quote" = "cyan"
@@ -77,7 +78,7 @@
 "ui.statusline" = { fg = "active_text", bg = "#414339" }
 "ui.statusline.inactive" = { fg = "active_text", bg = "#75715e" }
 
-"ui.text" = { fg = "text", bg = "background" }
+"ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "active_text" }
 
 "warning" = { fg = "#cca700" }

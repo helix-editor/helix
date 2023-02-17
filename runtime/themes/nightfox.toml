@@ -55,6 +55,7 @@
 "markup.list" = { fg = "magenta", modifiers = ["bold"] }
 "markup.bold" = { fg = "orange", modifiers = ["bold"] }
 "markup.italic" = { fg = "pink" }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link" = { fg = "yellow-bright", modifiers = ["bold"] }
 "markup.quote" = { fg = "blue" }
 

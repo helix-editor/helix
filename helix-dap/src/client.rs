@@ -254,7 +254,7 @@ impl Client {
             // TODO: specifiable timeout, delay other calls until initialize success
             timeout(Duration::from_secs(20), callback_rx.recv())
                 .await
-                .map_err(|_| Error::Timeout)? // return Timeout
+                .map_err(|_| Error::Timeout(id))? // return Timeout
                 .ok_or(Error::StreamClosed)?
                 .map(|response| response.body.unwrap_or_default())
             // TODO: check response.success

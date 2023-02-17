@@ -1,9 +1,10 @@
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
+    str,
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use helix_core::hashmap;
 use helix_loader::merge_toml_values;
 use log::warn;
@@ -15,12 +16,13 @@ use crate::graphics::UnderlineStyle;
 pub use crate::graphics::{Color, Modifier, Style};
 
 pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
-    toml::from_slice(include_bytes!("../../theme.toml")).expect("Failed to parse default theme")
+    let bytes = include_bytes!("../../theme.toml");
+    toml::from_str(str::from_utf8(bytes).unwrap()).expect("Failed to parse base default theme")
 });
 
 pub static BASE16_DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
-    toml::from_slice(include_bytes!("../../base16_theme.toml"))
-        .expect("Failed to parse base 16 default theme")
+    let bytes = include_bytes!("../../base16_theme.toml");
+    toml::from_str(str::from_utf8(bytes).unwrap()).expect("Failed to parse base 16 default theme")
 });
 
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
@@ -80,6 +82,7 @@ impl Loader {
         let path = self
             .path(name, visited_paths)
             .ok_or_else(|| anyhow!("Theme: not found or recursively inheriting: {}", name))?;
+
         let theme_toml = self.load_toml(path)?;
 
         let inherits = theme_toml.get("inherits");
@@ -150,8 +153,8 @@ impl Loader {
 
     // Loads the theme data as `toml::Value`
     fn load_toml(&self, path: PathBuf) -> Result<Value> {
-        let data = std::fs::read(&path)?;
-        let value = toml::from_slice(data.as_slice())?;
+        let data = std::fs::read_to_string(path)?;
+        let value = toml::from_str(&data)?;
 
         Ok(value)
     }
@@ -214,16 +217,18 @@ pub struct Theme {
 
 impl From<Value> for Theme {
     fn from(value: Value) -> Self {
-        let values: Result<HashMap<String, Value>> =
-            toml::from_str(&value.to_string()).context("Failed to load theme");
+        if let Value::Table(table) = value {
+            let (styles, scopes, highlights) = build_theme_values(table);
 
-        let (styles, scopes, highlights) = build_theme_values(values);
-
-        Self {
-            styles,
-            scopes,
-            highlights,
-            ..Default::default()
+            Self {
+                styles,
+                scopes,
+                highlights,
+                ..Default::default()
+            }
+        } else {
+            warn!("Expected theme TOML value to be a table, found {:?}", value);
+            Default::default()
         }
     }
 }
@@ -233,9 +238,9 @@ impl<'de> Deserialize<'de> for Theme {
     where
         D: Deserializer<'de>,
     {
-        let values = HashMap::<String, Value>::deserialize(deserializer)?;
+        let values = Map::<String, Value>::deserialize(deserializer)?;
 
-        let (styles, scopes, highlights) = build_theme_values(Ok(values));
+        let (styles, scopes, highlights) = build_theme_values(values);
 
         Ok(Self {
             styles,
@@ -247,39 +252,37 @@ impl<'de> Deserialize<'de> for Theme {
 }
 
 fn build_theme_values(
-    values: Result<HashMap<String, Value>>,
+    mut values: Map<String, Value>,
 ) -> (HashMap<String, Style>, Vec<String>, Vec<Style>) {
     let mut styles = HashMap::new();
     let mut scopes = Vec::new();
     let mut highlights = Vec::new();
 
-    if let Ok(mut colors) = values {
-        // TODO: alert user of parsing failures in editor
-        let palette = colors
-            .remove("palette")
-            .map(|value| {
-                ThemePalette::try_from(value).unwrap_or_else(|err| {
-                    warn!("{}", err);
-                    ThemePalette::default()
-                })
-            })
-            .unwrap_or_default();
-        // remove inherits from value to prevent errors
-        let _ = colors.remove("inherits");
-        styles.reserve(colors.len());
-        scopes.reserve(colors.len());
-        highlights.reserve(colors.len());
-        for (name, style_value) in colors {
-            let mut style = Style::default();
-            if let Err(err) = palette.parse_style(&mut style, style_value) {
+    // TODO: alert user of parsing failures in editor
+    let palette = values
+        .remove("palette")
+        .map(|value| {
+            ThemePalette::try_from(value).unwrap_or_else(|err| {
                 warn!("{}", err);
-            }
-
-            // these are used both as UI and as highlights
-            styles.insert(name.clone(), style);
-            scopes.push(name);
-            highlights.push(style);
+                ThemePalette::default()
+            })
+        })
+        .unwrap_or_default();
+    // remove inherits from value to prevent errors
+    let _ = values.remove("inherits");
+    styles.reserve(values.len());
+    scopes.reserve(values.len());
+    highlights.reserve(values.len());
+    for (name, style_value) in values {
+        let mut style = Style::default();
+        if let Err(err) = palette.parse_style(&mut style, style_value) {
+            warn!("{}", err);
         }
+
+        // these are used both as UI and as highlights
+        styles.insert(name.clone(), style);
+        scopes.push(name);
+        highlights.push(style);
     }
 
     (styles, scopes, highlights)
@@ -319,8 +322,21 @@ impl Theme {
         &self.scopes
     }
 
-    pub fn find_scope_index(&self, scope: &str) -> Option<usize> {
+    pub fn find_scope_index_exact(&self, scope: &str) -> Option<usize> {
         self.scopes().iter().position(|s| s == scope)
+    }
+
+    pub fn find_scope_index(&self, mut scope: &str) -> Option<usize> {
+        loop {
+            if let Some(highlight) = self.find_scope_index_exact(scope) {
+                return Some(highlight);
+            }
+            if let Some(new_end) = scope.rfind('.') {
+                scope = &scope[..new_end];
+            } else {
+                return None;
+            }
+        }
     }
 
     pub fn is_16_color(&self) -> bool {
@@ -522,10 +538,8 @@ mod tests {
 
         let mut style = Style::default();
         let palette = ThemePalette::default();
-        if let Value::Table(entries) = table {
-            for (_name, value) in entries {
-                palette.parse_style(&mut style, value).unwrap();
-            }
+        for (_name, value) in table {
+            palette.parse_style(&mut style, value).unwrap();
         }
 
         assert_eq!(

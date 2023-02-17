@@ -1,4 +1,5 @@
 mod completion;
+mod document;
 pub(crate) mod editor;
 mod fuzzy_match;
 mod info;
@@ -14,6 +15,7 @@ mod statusline;
 mod text;
 
 use crate::compositor::{Component, Compositor};
+use crate::filter_picker_entry;
 use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
@@ -162,6 +164,9 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     let now = Instant::now();
 
+    let dedup_symlinks = config.file_picker.deduplicate_links;
+    let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
+
     let mut walk_builder = WalkBuilder::new(&root);
     walk_builder
         .hidden(config.file_picker.hidden)
@@ -172,10 +177,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         .git_global(config.file_picker.git_global)
         .git_exclude(config.file_picker.git_exclude)
         .max_depth(config.file_picker.max_depth)
-        // We always want to ignore the .git directory, otherwise if
-        // `ignore` is turned off above, we end up with a lot of noise
-        // in our picker.
-        .filter_entry(|entry| entry.file_name() != ".git");
+        .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
 
     // We want to exclude files that the editor can't handle yet
     let mut type_builder = TypesBuilder::new();
@@ -194,14 +196,11 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     // We want files along with their modification date for sorting
     let files = walk_builder.build().filter_map(|entry| {
         let entry = entry.ok()?;
-
         // This is faster than entry.path().is_dir() since it uses cached fs::Metadata fetched by ignore/walkdir
-        let is_dir = entry.file_type().map_or(false, |ft| ft.is_dir());
-        if is_dir {
-            // Will give a false positive if metadata cannot be read (eg. permission error)
-            None
-        } else {
+        if entry.file_type()?.is_file() {
             Some(entry.into_path())
+        } else {
+            None
         }
     });
 

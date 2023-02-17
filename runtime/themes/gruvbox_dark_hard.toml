@@ -70,6 +70,7 @@
 "markup.heading" = "aqua1"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "green1", modifiers = ["underlined"] }
 "markup.link.text" = "red1"
 "markup.raw" = "red1"
