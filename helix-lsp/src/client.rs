@@ -201,7 +201,7 @@ impl Client {
 
             let request = jsonrpc::MethodCall {
                 jsonrpc: Some(jsonrpc::Version::V2),
-                id,
+                id: id.clone(),
                 method: R::METHOD.to_string(),
                 params: Self::value_into_params(params),
             };
@@ -218,7 +218,7 @@ impl Client {
             // TODO: delay other calls until initialize success
             timeout(Duration::from_secs(timeout_secs), rx.recv())
                 .await
-                .map_err(|_| Error::Timeout)? // return Timeout
+                .map_err(|_| Error::Timeout(id))? // return Timeout
                 .ok_or(Error::StreamClosed)?
         }
     }
@@ -329,6 +329,10 @@ impl Client {
                                 ],
                             }),
                             insert_replace_support: Some(true),
+                            deprecated_support: Some(true),
+                            tag_support: Some(lsp::TagSupport {
+                                value_set: vec![lsp::CompletionItemTag::DEPRECATED],
+                            }),
                             ..Default::default()
                         }),
                         completion_item_kind: Some(lsp::CompletionItemKindCapability {
