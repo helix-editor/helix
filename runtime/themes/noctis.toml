@@ -150,6 +150,7 @@
 
 'markup.bold' = { modifiers = ["bold"] } # Bold text.
 'markup.italic' = { modifiers = ["italic"] } # Italicised text.
+"markup.strikethrough" = { modifiers = ["crossed_out"] } # Crossed out text.
 
 'markup.link' = { fg = "light-blue", modifiers = ["underlined"] }
 'markup.link.url' = { } # Urls pointed to by links.

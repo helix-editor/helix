@@ -4,7 +4,7 @@ use crate::{
     compositor::{Callback, Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
 };
-use tui::{buffer::Buffer as Surface, text::Spans, widgets::Table};
+use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
@@ -18,20 +18,16 @@ pub trait Item {
     /// Additional editor state that is used for label calculation.
     type Data;
 
-    fn label(&self, data: &Self::Data) -> Spans;
+    fn format(&self, data: &Self::Data) -> Row;
 
     fn sort_text(&self, data: &Self::Data) -> Cow<str> {
-        let label: String = self.label(data).into();
+        let label: String = self.format(data).cell_text().collect();
         label.into()
     }
 
     fn filter_text(&self, data: &Self::Data) -> Cow<str> {
-        let label: String = self.label(data).into();
+        let label: String = self.format(data).cell_text().collect();
         label.into()
-    }
-
-    fn row(&self, data: &Self::Data) -> Row {
-        Row::new(vec![Cell::from(self.label(data))])
     }
 }
 
@@ -39,13 +35,15 @@ impl Item for PathBuf {
     /// Root prefix to strip.
     type Data = PathBuf;
 
-    fn label(&self, root_path: &Self::Data) -> Spans {
+    fn format(&self, root_path: &Self::Data) -> Row {
         self.strip_prefix(root_path)
             .unwrap_or(self)
             .to_string_lossy()
             .into()
     }
 }
+
+pub type MenuCallback<T> = Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>;
 
 pub struct Menu<T: Item> {
     options: Vec<T>,
@@ -59,7 +57,7 @@ pub struct Menu<T: Item> {
 
     widths: Vec<Constraint>,
 
-    callback_fn: Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>,
+    callback_fn: MenuCallback<T>,
 
     scroll: usize,
     size: (u16, u16),
@@ -81,7 +79,7 @@ impl<T: Item> Menu<T> {
         Self {
             options,
             editor_data,
-            matcher: Box::new(Matcher::default()),
+            matcher: Box::new(Matcher::default().ignore_case()),
             matches,
             cursor: None,
             widths: Vec::new(),
@@ -144,10 +142,10 @@ impl<T: Item> Menu<T> {
         let n = self
             .options
             .first()
-            .map(|option| option.row(&self.editor_data).cells.len())
+            .map(|option| option.format(&self.editor_data).cells.len())
             .unwrap_or_default();
         let max_lens = self.options.iter().fold(vec![0; n], |mut acc, option| {
-            let row = option.row(&self.editor_data);
+            let row = option.format(&self.editor_data);
             // maintain max for each column
             for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
                 let width = cell.content.width();
@@ -256,12 +254,12 @@ impl<T: Item + 'static> Component for Menu<T> {
                 return EventResult::Consumed(close_fn);
             }
             // arrow up/ctrl-p/shift-tab prev completion choice (including updating the doc)
-            shift!(Tab) | key!(Up) | ctrl!('p') | ctrl!('k') => {
+            shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_up();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
-            key!(Tab) | key!(Down) | ctrl!('n') | ctrl!('j') => {
+            key!(Tab) | key!(Down) | ctrl!('n') => {
                 // arrow down/ctrl-n/tab advances completion choice (including updating the doc)
                 self.move_down();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
@@ -331,7 +329,9 @@ impl<T: Item + 'static> Component for Menu<T> {
             (a + b - 1) / b
         }
 
-        let rows = options.iter().map(|option| option.row(&self.editor_data));
+        let rows = options
+            .iter()
+            .map(|option| option.format(&self.editor_data));
         let table = Table::new(rows)
             .style(style)
             .highlight_style(selected)
