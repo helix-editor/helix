@@ -258,6 +258,8 @@
   (keyword_timestamp)
   (keyword_timestamptz)
 
+  (keyword_interval)
+
   (keyword_geometry)
   (keyword_geography)
   (keyword_box2d)
