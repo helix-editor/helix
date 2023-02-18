@@ -124,6 +124,7 @@
   (keyword_engine)
   (keyword_default)
   (keyword_cascade)
+  (keyword_restrict)
   (keyword_with)
   (keyword_no)
   (keyword_data)
