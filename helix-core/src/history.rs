@@ -156,9 +156,8 @@ impl History {
         writer.write_all(&get_hash(&mut std::fs::File::open(path)?)?)?;
 
         if append {
-            let pos = writer.stream_position()?;
             let len = read_usize(writer)?;
-            writer.seek(SeekFrom::Start(pos))?;
+            writer.seek(SeekFrom::Current(-8))?;
             write_usize(writer, self.revisions.len())?;
             writer.seek(SeekFrom::End(0))?;
             for rev in &self.revisions[len..] {
