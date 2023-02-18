@@ -173,6 +173,8 @@
   (keyword_like)
   (keyword_similar)
   (keyword_preserve)
+  (keyword_unsigned)
+  (keyword_zerofill)
 ] @keyword
 
 [
@@ -196,9 +198,11 @@
   (keyword_smallserial)
   (keyword_serial)
   (keyword_bigserial)
-  (keyword_smallint)
-  (keyword_int)
 
+  (tinyint)
+  (smallint)
+  (mediumint)
+  (int)
   (bigint)
   (decimal)
   (numeric)
