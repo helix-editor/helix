@@ -800,14 +800,16 @@ mod test {
             history
                 .serialize(&mut cursor, file.path(), 0, false)
                 .unwrap();
+            cursor.set_position(0);
             let (_, res) = History::deserialize(&mut cursor, file.path()).unwrap();
             assert_eq!(history, res);
 
             create_changes(&mut history, &mut original, changes_b);
-            let mut cursor = std::io::Cursor::new(Vec::new());
+            cursor.set_position(0);
             history
                 .serialize(&mut cursor, file.path(), 0, true)
                 .unwrap();
+            cursor.set_position(0);
             let (_, res) = History::deserialize(&mut cursor, file.path()).unwrap();
             history == res
         }
