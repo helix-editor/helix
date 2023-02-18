@@ -1,5 +1,6 @@
 use helix_core::{coords_at_pos, encoding, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
+use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -405,7 +406,7 @@ fn render_file_type<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let file_type = context.doc.language_name().unwrap_or("text");
+    let file_type = context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
 
     write(context, format!(" {} ", file_type), None);
 }

@@ -1449,13 +1449,13 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "gdscript"
-source = { git = "https://github.com/PrestonKnopp/tree-sitter-gdscript", rev = "2a6abdaa47fcb91397e09a97c7433fd995ea46c6" }
+source = { git = "https://github.com/PrestonKnopp/tree-sitter-gdscript", rev = "a56a6fcec3fb63ec3324bf9373aae7298861eb30" }
 
 [[language]]
 name = "godot-resource"
 scope = "source.tscn"
 injection-regex = "godot"
-file-types = ["tscn","tres"]
+file-types = ["tscn", "tres", "godot", "gdextension"]
 shebangs = []
 roots = ["project.godot"]
 auto-format = false
@@ -2007,7 +2007,7 @@ source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "c917790ab9a
 [[language]]
 name = "env"
 scope = "source.env"
-file-types = [".env", ".env.local", ".env.development", ".env.production", ".envrc"]
+file-types = [".env", ".env.local", ".env.development", ".env.production", ".env.dist", ".envrc"]
 injection-regex = "env"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }

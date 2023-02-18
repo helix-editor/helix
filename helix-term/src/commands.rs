@@ -1018,10 +1018,9 @@ fn goto_window(cx: &mut Context, align: Align) {
             view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff + count)
         }
     };
-    let visual_line = visual_line.clamp(
-        view.offset.vertical_offset + scrolloff,
-        view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff),
-    );
+    let visual_line = visual_line
+        .max(view.offset.vertical_offset + scrolloff)
+        .min(view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff));
 
     let pos = view
         .pos_at_visual_coords(doc, visual_line as u16, 0, false)
@@ -3491,8 +3490,8 @@ pub mod insert {
         let count = cx.count();
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
-        let indent_unit = doc.indent_style.as_str();
-        let tab_size = doc.tab_width();
+        let tab_width = doc.tab_width();
+        let indent_width = doc.indent_width();
         let auto_pairs = doc.auto_pairs(cx.editor);
 
         let transaction =
@@ -3513,18 +3512,11 @@ pub mod insert {
                             None,
                         )
                     } else {
-                        let unit_len = indent_unit.chars().count();
-                        // NOTE: indent_unit always contains 'only spaces' or 'only tab' according to `IndentStyle` definition.
-                        let unit_size = if indent_unit.starts_with('\t') {
-                            tab_size * unit_len
-                        } else {
-                            unit_len
-                        };
                         let width: usize = fragment
                             .chars()
                             .map(|ch| {
                                 if ch == '\t' {
-                                    tab_size
+                                    tab_width
                                 } else {
                                     // it can be none if it still meet control characters other than '\t'
                                     // here just set the width to 1 (or some value better?).
@@ -3532,9 +3524,9 @@ pub mod insert {
                                 }
                             })
                             .sum();
-                        let mut drop = width % unit_size; // round down to nearest unit
+                        let mut drop = width % indent_width; // round down to nearest unit
                         if drop == 0 {
-                            drop = unit_size
+                            drop = indent_width
                         }; // if it's already at a unit, consume a whole unit
                         let mut chars = fragment.chars().rev();
                         let mut start = pos;
@@ -4076,7 +4068,7 @@ fn unindent(cx: &mut Context) {
     let lines = get_lines(doc, view.id);
     let mut changes = Vec::with_capacity(lines.len());
     let tab_width = doc.tab_width();
-    let indent_width = count * tab_width;
+    let indent_width = count * doc.indent_width();
 
     for line_idx in lines {
         let line = doc.text().line(line_idx);

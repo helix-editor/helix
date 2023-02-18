@@ -145,7 +145,8 @@ impl ui::menu::Item for PickerDiagnostic {
         let path = match format {
             DiagnosticsFormat::HideSourcePath => String::new(),
             DiagnosticsFormat::ShowSourcePath => {
-                let path = path::get_truncated_path(self.url.path());
+                let file_path = self.url.to_file_path().unwrap();
+                let path = path::get_truncated_path(file_path);
                 format!("{}: ", path.to_string_lossy())
             }
         };

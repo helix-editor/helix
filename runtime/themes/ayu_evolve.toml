@@ -3,7 +3,6 @@ inherits = 'ayu_dark'
 "keyword.control" = "orange"
 "keyword.storage" = "yellow"
 "keyword.storage.modifier" = "magenta"
-"variable.other.member" = "gray"
 "variable" = "light_gray"
 "constructor" = "magenta"
 "type.builtin" = { fg = "blue", modifiers = ["italic"] }

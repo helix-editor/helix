@@ -59,8 +59,9 @@
 | `:hsplit-new`, `:hnew` | Open a scratch buffer in a horizontal split. |
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Goto line number. |
-| `:set-language`, `:lang` | Set the language of current buffer. |
+| `:set-language`, `:lang` | Set the language of current buffer (show current language if no value specified). |
 | `:set-option`, `:set` | Set a config option at runtime.<br>For example to disable smart case search, use `:set search.smart-case false`. |
+| `:toggle-option`, `:toggle` | Toggle a boolean config option at runtime.<br>For example to toggle smart case search, use `:toggle search.smart-case`. |
 | `:get-option`, `:get` | Get the current value of a config option. |
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |

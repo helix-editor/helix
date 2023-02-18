@@ -830,8 +830,8 @@ lines.
  --> 3) Another point.
  --> 6) Last point.
 
- Note: If there isn't a number under the selection the cursor
-       will jump to the next number in the line and act on it.
+
+
 
 
 =================================================================
