@@ -137,12 +137,12 @@ fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
 }
 
 impl History {
-    pub fn serialize<W: Write + Read + Seek>(
+    pub fn serialize<W: Write + Seek>(
         &self,
         writer: &mut W,
         path: &Path,
+        revision: usize,
         last_saved_revision: usize,
-        append: bool,
     ) -> std::io::Result<()> {
         let mtime = std::fs::metadata(path)?
             .modified()?
@@ -151,20 +151,14 @@ impl History {
             .as_secs();
         write_string(writer, HEADER_TAG)?;
         write_usize(writer, self.current)?;
-        write_usize(writer, last_saved_revision)?;
+        write_usize(writer, revision)?;
         write_u64(writer, mtime)?;
         writer.write_all(&get_hash(&mut std::fs::File::open(path)?)?)?;
 
-        if append {
-            let len = read_usize(writer)?;
-            writer.seek(SeekFrom::Current(-8))?;
-            write_usize(writer, self.revisions.len())?;
-            writer.seek(SeekFrom::End(0))?;
-            for rev in &self.revisions[len..] {
-                rev.serialize(writer)?;
-            }
-        } else {
-            write_vec(writer, &self.revisions, |writer, rev| rev.serialize(writer))?;
+        write_usize(writer, self.revisions.len())?;
+        writer.seek(SeekFrom::End(0))?;
+        for rev in &self.revisions[last_saved_revision..] {
+            rev.serialize(writer)?;
         }
         Ok(())
     }
@@ -187,6 +181,23 @@ impl History {
 
         let history = History { current, revisions };
         Ok((last_saved_revision, history))
+    }
+
+    pub fn merge(&mut self, mut other: History, offset: usize) -> std::io::Result<()> {
+        let revisions = self.revisions.split_off(offset);
+        let len = other.revisions.len();
+        for r in revisions {
+            let parent = if r.parent < offset {
+                r.parent
+            } else {
+                len + (r.parent - offset)
+            };
+            other.revisions.get_mut(parent).unwrap().last_child =
+                NonZeroUsize::new(other.revisions.len());
+            other.revisions.push(r);
+        }
+        self.revisions = other.revisions;
+        Ok(())
     }
 
     pub fn read_header<R: Read>(reader: &mut R, path: &Path) -> std::io::Result<(usize, usize)> {
@@ -257,6 +268,11 @@ impl History {
     #[inline]
     pub const fn at_root(&self) -> bool {
         self.current == 0
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.revisions.len() <= 1
     }
 
     /// Returns the changes since the given revision composed into a transaction.
@@ -797,17 +813,17 @@ mod test {
             create_changes(&mut history, &mut original, changes_a);
             let mut cursor = std::io::Cursor::new(Vec::new());
             let file = tempfile::NamedTempFile::new().unwrap();
-            history
-                .serialize(&mut cursor, file.path(), 0, false)
-                .unwrap();
+            history.serialize(&mut cursor, file.path(), 0, 0).unwrap();
             cursor.set_position(0);
             let (_, res) = History::deserialize(&mut cursor, file.path()).unwrap();
             assert_eq!(history, res);
 
+            let last_saved_revision = history.revisions.len();
+
             cursor.set_position(0);
             create_changes(&mut history, &mut original, changes_b);
             history
-                .serialize(&mut cursor, file.path(), 0, true)
+                .serialize(&mut cursor, file.path(), 0, last_saved_revision)
                 .unwrap();
             cursor.set_position(0);
             let (_, res) = History::deserialize(&mut cursor, file.path()).unwrap();

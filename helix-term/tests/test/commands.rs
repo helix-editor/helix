@@ -486,6 +486,7 @@ async fn test_persistent_undo() -> anyhow::Result<()> {
         .with_file(file.path(), None)
         .build()?;
 
+    // TODO: Test if the history file is valid.
     test_key_sequence(
         &mut app,
         Some(&format!(

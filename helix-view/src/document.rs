@@ -20,6 +20,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::SystemTime;
+use tokio::fs::OpenOptions;
 
 use helix_core::{
     encoding,
@@ -590,8 +591,10 @@ impl Document {
             .config
             .load()
             .persistent_undo
-            .then(|| self.history.get_mut().clone());
-        let undo_file = self.undo_file(Some(&path))?.unwrap();
+            .then(|| self.history.get_mut().clone())
+            .filter(|history| !history.is_empty());
+        let undofile_path = self.undo_file(Some(&path))?.unwrap();
+        let last_saved_revision = self.get_last_saved_revision();
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
             use tokio::{fs, fs::File};
@@ -624,16 +627,26 @@ impl Document {
             if let Some(history) = history {
                 let res = {
                     let path = path.clone();
+                    let mut undofile = OpenOptions::new()
+                        .write(true)
+                        .read(true)
+                        .create(true)
+                        .open(&undofile_path)
+                        .await?
+                        .into_std()
+                        .await;
                     tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
-                        use std::fs;
-                        let append =
-                            History::read_header(&mut fs::File::open(&undo_file)?, &path).is_ok();
-                        let mut undo_file = std::fs::OpenOptions::new()
-                            .write(true)
-                            .truncate(!append)
-                            .read(true)
-                            .open(&undo_file)?;
-                        history.serialize(&mut undo_file, &path, current_rev, append)?;
+                        if History::deserialize(&mut std::fs::File::open(&undofile_path)?, &path)
+                            .is_ok()
+                        {
+                            undofile.set_len(0)?;
+                        }
+                        history.serialize(
+                            &mut undofile,
+                            &path,
+                            current_rev,
+                            last_saved_revision,
+                        )?;
                         Ok(())
                     })
                     .await
@@ -717,14 +730,16 @@ impl Document {
         let mut file = std::fs::File::open(&path)?;
         let (rope, ..) = from_reader(&mut file, Some(encoding))?;
 
-        // Calculate the difference between the buffer and source text, and apply it.
-        // This is not considered a modification of the contents of the file regardless
-        // of the encoding.
-        let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
-        self.apply(&transaction, view.id);
-        self.append_changes_to_history(view);
-        self.reset_modified();
-
+        if let Err(e) = self.load_history() {
+            log::error!("{}", e);
+            // Calculate the difference between the buffer and source text, and apply it.
+            // This is not considered a modification of the contents of the file regardless
+            // of the encoding.
+            let transaction = helix_core::diff::compare_ropes(self.text(), &rope);
+            self.apply(&transaction, view.id);
+            self.append_changes_to_history(view);
+            self.reset_modified();
+        }
         self.last_saved_time = SystemTime::now();
 
         self.detect_indent_and_line_ending();
@@ -761,7 +776,15 @@ impl Document {
                     &mut undo_file,
                     self.path().unwrap(),
                 )?;
-                self.history.set(history);
+
+                if self.history.get_mut().is_empty()
+                    || self.get_current_revision() == last_saved_revision
+                {
+                    self.history.set(history);
+                } else {
+                    let offset = self.get_last_saved_revision() + 1;
+                    self.history.get_mut().merge(history, offset)?;
+                }
                 self.set_last_saved_revision(last_saved_revision);
             }
         }

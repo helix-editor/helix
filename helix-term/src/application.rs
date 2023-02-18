@@ -515,10 +515,6 @@ impl Application {
             }
         };
 
-        if doc_save_event.serialize_error {
-            self.editor.set_error("failed to serialize history");
-        }
-
         let doc = match self.editor.document_mut(doc_save_event.doc_id) {
             None => {
                 warn!(
@@ -570,6 +566,9 @@ impl Application {
             lines,
             bytes
         ));
+        if doc_save_event.serialize_error {
+            self.editor.set_error("failed to serialize history");
+        }
     }
 
     #[inline(always)]
