@@ -781,7 +781,7 @@ mod test {
         fn serde_history(original: String, changes_a: Vec<String>, changes_b: Vec<String>) -> bool {
             fn create_changes(history: &mut History, doc: &mut Rope, changes: Vec<String>) {
                 for c in changes.into_iter().map(Rope::from) {
-                    let transaction = crate::diff::compare_ropes(&doc, &c);
+                    let transaction = crate::diff::compare_ropes(doc, &c);
                     let state = State {
                         doc: doc.clone(),
                         selection: Selection::point(0),
@@ -804,8 +804,8 @@ mod test {
             let (_, res) = History::deserialize(&mut cursor, file.path()).unwrap();
             assert_eq!(history, res);
 
-            create_changes(&mut history, &mut original, changes_b);
             cursor.set_position(0);
+            create_changes(&mut history, &mut original, changes_b);
             history
                 .serialize(&mut cursor, file.path(), 0, true)
                 .unwrap();

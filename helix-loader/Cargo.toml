@@ -13,6 +13,9 @@ homepage = "https://helix-editor.com"
 name = "hx-loader"
 path = "src/main.rs"
 
+[features]
+integration = []
+
 [dependencies]
 anyhow = "1"
 serde = { version = "1.0", features = ["derive"] }

@@ -70,9 +70,13 @@ pub fn local_config_dirs() -> Vec<PathBuf> {
 }
 
 pub fn cache_dir() -> PathBuf {
-    // TODO: allow env var override
-    let strategy = choose_base_strategy().expect("Unable to find the config directory!");
-    let mut path = strategy.cache_dir();
+    let mut path = if cfg!(feature = "integration") {
+        std::env::temp_dir()
+    } else {
+        // TODO: allow env var override
+        let strategy = choose_base_strategy().expect("Unable to find the config directory!");
+        strategy.cache_dir()
+    };
     path.push("helix");
     path
 }
