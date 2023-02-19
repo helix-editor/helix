@@ -118,7 +118,7 @@ impl Revision {
 }
 
 // Temporarily 3 for review.
-const HEADER_TAG: &str = "Helix Undofile 3\n";
+const HEADER_TAG: &str = "Helix Undofile 4\n";
 
 fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
     const BUF_SIZE: usize = 8192;
@@ -155,6 +155,7 @@ impl History {
         write_u64(writer, mtime)?;
         writer.write_all(&get_hash(&mut std::fs::File::open(path)?)?)?;
 
+        // Append new revisions to the end of the file.
         write_usize(writer, self.revisions.len())?;
         writer.seek(SeekFrom::End(0))?;
         for rev in &self.revisions[last_saved_revision..] {

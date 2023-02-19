@@ -636,6 +636,7 @@ impl Document {
                         .into_std()
                         .await;
                     tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+                        // Truncate the file if it's not a valid undofile.
                         if History::deserialize(&mut std::fs::File::open(&undofile_path)?, &path)
                             .is_ok()
                         {
@@ -1386,7 +1387,8 @@ impl Display for FormatterError {
 
 #[cfg(test)]
 mod test {
-    use arc_swap::ArcSwap;
+    use arc_swap::{access::Map, ArcSwap};
+    use quickcheck::Gen;
 
     use super::*;
 
@@ -1554,6 +1556,98 @@ mod test {
                 .to_string(),
             DEFAULT_LINE_ENDING.as_str()
         );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn reload_history() {
+        let test_fn: fn(Vec<String>) -> bool = |changes| -> bool {
+            let len = changes.len() / 3;
+            let mut original = Rope::new();
+            let mut iter = changes.into_iter();
+
+            let changes_a: Vec<_> = iter
+                .by_ref()
+                .take(len)
+                .map(|c| {
+                    let c = Rope::from(c);
+                    let transaction = helix_core::diff::compare_ropes(&original, &c);
+                    original = c;
+                    transaction
+                })
+                .collect();
+            let mut original_concurrent = original.clone();
+
+            let changes_b: Vec<_> = iter
+                .by_ref()
+                .take(len)
+                .map(|c| {
+                    let c = Rope::from(c);
+                    let transaction = helix_core::diff::compare_ropes(&original, &c);
+                    original = c;
+                    transaction
+                })
+                .collect();
+            let changes_c: Vec<_> = iter
+                .take(len)
+                .map(|c| {
+                    let c = Rope::from(c);
+                    let transaction = helix_core::diff::compare_ropes(&original_concurrent, &c);
+                    original_concurrent = c;
+                    transaction
+                })
+                .collect();
+
+            let file = tempfile::NamedTempFile::new().unwrap();
+            let mut config = Config::default();
+            config.persistent_undo = true;
+
+            let view_id = ViewId::default();
+            let config = Arc::new(ArcSwap::new(Arc::new(config)));
+            let mut doc_1 = Document::open(file.path(), None, None, config.clone()).unwrap();
+            doc_1.ensure_view_init(view_id);
+
+            // Make changes & save document A
+            for c in changes_a {
+                doc_1.apply(&c, view_id);
+            }
+            helix_lsp::block_on(doc_1.save::<PathBuf>(None, true).unwrap()).unwrap();
+
+            let mut doc_2 = Document::open(file.path(), None, None, config.clone()).unwrap();
+            let mut doc_3 = Document::open(file.path(), None, None, config.clone()).unwrap();
+            doc_2.ensure_view_init(view_id);
+            doc_3.ensure_view_init(view_id);
+
+            // Make changes in A and B at the same time.
+            for c in changes_b {
+                doc_1.apply(&c, view_id);
+            }
+
+            for c in changes_c {
+                doc_2.apply(&c, view_id);
+            }
+            helix_lsp::block_on(doc_2.save::<PathBuf>(None, true).unwrap()).unwrap();
+
+            doc_1.load_history().unwrap();
+            doc_3.load_history().unwrap();
+
+            assert_eq!(doc_2.history.get_mut(), doc_3.history.get_mut());
+
+            helix_lsp::block_on(doc_1.save::<PathBuf>(None, true).unwrap()).unwrap();
+            doc_2.load_history().unwrap();
+            doc_3.load_history().unwrap();
+            doc_1.history.get_mut() == doc_2.history.get_mut()
+                && doc_1.history.get_mut() == doc_3.history.get_mut()
+        };
+        let handles: Vec<_> = (0..100)
+            .map(|_| {
+                tokio::task::spawn_blocking(move || {
+                    quickcheck::QuickCheck::new()
+                        .max_tests(1)
+                        .quickcheck(test_fn);
+                })
+            })
+            .collect();
+        futures_util::future::try_join_all(handles).await.unwrap();
     }
 
     macro_rules! decode {

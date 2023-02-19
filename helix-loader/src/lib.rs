@@ -70,7 +70,7 @@ pub fn local_config_dirs() -> Vec<PathBuf> {
 }
 
 pub fn cache_dir() -> PathBuf {
-    let mut path = if cfg!(feature = "integration") {
+    let mut path = if cfg!(feature = "integration") || cfg!(test) {
         std::env::temp_dir()
     } else {
         // TODO: allow env var override
