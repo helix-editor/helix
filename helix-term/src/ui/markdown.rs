@@ -1,4 +1,4 @@
-use crate::compositor::{Component, Context};
+use crate::compositor::{Component, CompositorContext};
 use tui::{
     buffer::Buffer as Surface,
     text::{Span, Spans, Text},
@@ -327,7 +327,7 @@ impl Markdown {
 }
 
 impl Component for Markdown {
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut CompositorContext) {
         use tui::widgets::{Paragraph, Widget, Wrap};
 
         let text = self.parse(Some(&cx.editor.theme));

@@ -1,6 +1,6 @@
 use crate::{
     alt,
-    compositor::{Component, Compositor, Context, Event, EventResult},
+    compositor::{Component, Compositor, CompositorContext, Event, EventResult},
     ctrl, key, shift,
     ui::{
         self,
@@ -126,7 +126,7 @@ impl<T: Item> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
         editor_data: T::Data,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+        callback_fn: impl Fn(&mut CompositorContext, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         let truncate_start = true;
@@ -207,7 +207,7 @@ impl<T: Item> FilePicker<T> {
         }
     }
 
-    fn handle_idle_timeout(&mut self, cx: &mut Context) -> EventResult {
+    fn handle_idle_timeout(&mut self, cx: &mut CompositorContext) -> EventResult {
         // Try to find a document in the cache
         let doc = self
             .current_file(cx.editor)
@@ -232,7 +232,7 @@ impl<T: Item> FilePicker<T> {
 }
 
 impl<T: Item + 'static> Component for FilePicker<T> {
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut CompositorContext) {
         // +---------+ +---------+
         // |prompt   | |preview  |
         // +---------+ |         |
@@ -348,7 +348,7 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         }
     }
 
-    fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, ctx: &mut CompositorContext) -> EventResult {
         if let Event::IdleTimeout = event {
             return self.handle_idle_timeout(ctx);
         }
@@ -396,7 +396,7 @@ impl Ord for PickerMatch {
     }
 }
 
-type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
+type PickerCallback<T> = Box<dyn Fn(&mut CompositorContext, &T, Action)>;
 
 pub struct Picker<T: Item> {
     options: Vec<T>,
@@ -426,13 +426,13 @@ impl<T: Item> Picker<T> {
     pub fn new(
         options: Vec<T>,
         editor_data: T::Data,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+        callback_fn: impl Fn(&mut CompositorContext, &T, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
             None,
             ui::completers::none,
-            |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {},
+            |_editor: &mut CompositorContext, _pattern: &str, _event: PromptEvent| {},
         );
 
         let n = options
@@ -613,7 +613,7 @@ impl<T: Item> Picker<T> {
         self.show_preview = !self.show_preview;
     }
 
-    fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+    fn prompt_handle_event(&mut self, event: &Event, cx: &mut CompositorContext) -> EventResult {
         if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
             // TODO: recalculate only if pattern changed
             self.score();
@@ -633,7 +633,7 @@ impl<T: Item + 'static> Component for Picker<T> {
         Some(viewport)
     }
 
-    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut CompositorContext) -> EventResult {
         let key_event = match event {
             Event::Key(event) => *event,
             Event::Paste(..) => return self.prompt_handle_event(event, cx),
@@ -705,7 +705,7 @@ impl<T: Item + 'static> Component for Picker<T> {
         EventResult::Consumed(None)
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut CompositorContext) {
         let text_style = cx.editor.theme.get("ui.text");
         let selected = cx.editor.theme.get("ui.text.focus");
         let highlight_style = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
@@ -905,11 +905,11 @@ impl<T: ui::menu::Item + Send> DynamicPicker<T> {
 }
 
 impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut CompositorContext) {
         self.file_picker.render(area, surface, cx);
     }
 
-    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut CompositorContext) -> EventResult {
         let event_result = self.file_picker.handle_event(event, cx);
         let current_query = self.file_picker.picker.prompt.line();
 

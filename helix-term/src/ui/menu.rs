@@ -1,7 +1,7 @@
 use std::{borrow::Cow, path::PathBuf};
 
 use crate::{
-    compositor::{Callback, Component, Compositor, Context, Event, EventResult},
+    compositor::{Callback, Component, Compositor, CompositorContext, Event, EventResult},
     ctrl, key, shift,
 };
 use tui::{buffer::Buffer as Surface, widgets::Table};
@@ -236,7 +236,7 @@ impl<T: Item + PartialEq> Menu<T> {
 use super::PromptEvent as MenuEvent;
 
 impl<T: Item + 'static> Component for Menu<T> {
-    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut CompositorContext) -> EventResult {
         let event = match event {
             Event::Key(event) => *event,
             _ => return EventResult::Ignored(None),
@@ -302,7 +302,7 @@ impl<T: Item + 'static> Component for Menu<T> {
         Some(self.size)
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut CompositorContext) {
         let theme = &cx.editor.theme;
         let style = theme
             .try_get("ui.menu")

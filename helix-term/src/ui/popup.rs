@@ -1,6 +1,6 @@
 use crate::{
     commands::Open,
-    compositor::{Callback, Component, Context, Event, EventResult},
+    compositor::{Callback, Component, CompositorContext, Event, EventResult},
     ctrl, key,
 };
 use tui::buffer::Buffer as Surface;
@@ -88,7 +88,7 @@ impl<T: Component> Popup<T> {
 
     /// Calculate the position where the popup should be rendered and return the coordinates of the
     /// top left corner.
-    pub fn get_rel_position(&mut self, viewport: Rect, cx: &Context) -> (u16, u16) {
+    pub fn get_rel_position(&mut self, viewport: Rect, cx: &CompositorContext) -> (u16, u16) {
         let position = self
             .position
             .get_or_insert_with(|| cx.editor.cursor().0.unwrap_or_default());
@@ -158,7 +158,7 @@ impl<T: Component> Popup<T> {
 }
 
 impl<T: Component> Component for Popup<T> {
-    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut CompositorContext) -> EventResult {
         let key = match event {
             Event::Key(event) => *event,
             Event::Resize(_, _) => {
@@ -231,7 +231,7 @@ impl<T: Component> Component for Popup<T> {
         Some(self.size)
     }
 
-    fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut CompositorContext) {
         // trigger required_size so we recalculate if the child changed
         self.required_size((viewport.width, viewport.height));
 

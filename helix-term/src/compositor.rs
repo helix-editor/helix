@@ -6,8 +6,8 @@ use helix_view::graphics::{CursorKind, Rect};
 
 use tui::buffer::Buffer as Surface;
 
-pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
-pub type SyncCallback = Box<dyn FnOnce(&mut Compositor, &mut Context) + Sync>;
+pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut CompositorContext)>;
+pub type SyncCallback = Box<dyn FnOnce(&mut Compositor, &mut CompositorContext) + Sync>;
 
 // Cursive-inspired
 pub enum EventResult {
@@ -20,13 +20,13 @@ use helix_view::Editor;
 
 pub use helix_view::input::Event;
 
-pub struct Context<'a> {
+pub struct CompositorContext<'a> {
     pub editor: &'a mut Editor,
     pub scroll: Option<usize>,
     pub jobs: &'a mut Jobs,
 }
 
-impl<'a> Context<'a> {
+impl<'a> CompositorContext<'a> {
     /// Waits on all pending jobs, and then tries to flush all pending write
     /// operations for all documents.
     pub fn block_try_flush_writes(&mut self) -> anyhow::Result<()> {
@@ -38,7 +38,7 @@ impl<'a> Context<'a> {
 
 pub trait Component: Any + AnyComponent {
     /// Process input events, return true if handled.
-    fn handle_event(&mut self, _event: &Event, _ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, _event: &Event, _ctx: &mut CompositorContext) -> EventResult {
         EventResult::Ignored(None)
     }
     // , args: ()
@@ -49,7 +49,7 @@ pub trait Component: Any + AnyComponent {
     }
 
     /// Render the component onto the provided surface.
-    fn render(&mut self, area: Rect, frame: &mut Surface, ctx: &mut Context);
+    fn render(&mut self, area: Rect, frame: &mut Surface, ctx: &mut CompositorContext);
 
     /// Get cursor position and cursor kind.
     fn cursor(&self, _area: Rect, _ctx: &Editor) -> (Option<Position>, CursorKind) {
@@ -128,7 +128,7 @@ impl Compositor {
         Some(self.layers.remove(idx))
     }
 
-    pub fn handle_event(&mut self, event: &Event, cx: &mut Context) -> bool {
+    pub fn handle_event(&mut self, event: &Event, cx: &mut CompositorContext) -> bool {
         // If it is a key event and a macro is being recorded, push the key event to the recording.
         if let (Event::Key(key), Some((_, keys))) = (event, &mut cx.editor.macro_recording) {
             keys.push(*key);
@@ -165,7 +165,7 @@ impl Compositor {
         consumed
     }
 
-    pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut CompositorContext) {
         for layer in &mut self.layers {
             layer.render(area, surface, cx);
         }

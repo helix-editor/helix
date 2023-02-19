@@ -130,7 +130,7 @@ fn dap_callback<T, F>(
 }
 
 pub fn dap_start_impl(
-    cx: &mut compositor::Context,
+    cx: &mut compositor::CompositorContext,
     name: Option<&str>,
     socket: Option<std::net::SocketAddr>,
     params: Option<Vec<std::borrow::Cow<str>>>,

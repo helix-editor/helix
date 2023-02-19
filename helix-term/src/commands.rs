@@ -172,7 +172,7 @@ impl MappableCommand {
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
-                    let mut cx = compositor::Context {
+                    let mut cx = compositor::CompositorContext {
                         editor: cx.editor,
                         jobs: cx.jobs,
                         scroll: None,
@@ -2609,7 +2609,7 @@ impl ui::menu::Item for MappableCommand {
 
 pub fn command_palette(cx: &mut Context) {
     cx.callback = Some(Box::new(
-        move |compositor: &mut Compositor, cx: &mut compositor::Context| {
+        move |compositor: &mut Compositor, cx: &mut compositor::CompositorContext| {
             let keymap = compositor.find::<ui::EditorView>().unwrap().keymaps.map()
                 [&cx.editor.mode]
                 .reverse_map();
@@ -5052,7 +5052,7 @@ async fn shell_impl_async(
     Ok((tendril, output.status.success()))
 }
 
-fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
+fn shell(cx: &mut compositor::CompositorContext, cmd: &str, behavior: &ShellBehavior) {
     let pipe = match behavior {
         ShellBehavior::Replace | ShellBehavior::Ignore => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,

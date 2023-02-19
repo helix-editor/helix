@@ -1,4 +1,4 @@
-use crate::compositor::{Component, Compositor, Context, Event, EventResult};
+use crate::compositor::{Component, Compositor, CompositorContext, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
@@ -14,10 +14,10 @@ use helix_view::{
     Editor,
 };
 
-type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
+type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &CompositorContext)>;
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
 type CompletionFn = Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>;
-type CallbackFn = Box<dyn FnMut(&mut Context, &str, PromptEvent)>;
+type CallbackFn = Box<dyn FnMut(&mut CompositorContext, &str, PromptEvent)>;
 pub type DocFn = Box<dyn Fn(&str) -> Option<Cow<str>>>;
 
 pub struct Prompt {
@@ -69,7 +69,7 @@ impl Prompt {
         prompt: Cow<'static, str>,
         history_register: Option<char>,
         completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,
-        callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
+        callback_fn: impl FnMut(&mut CompositorContext, &str, PromptEvent) + 'static,
     ) -> Self {
         Self {
             prompt,
@@ -204,7 +204,7 @@ impl Prompt {
         }
     }
 
-    pub fn insert_char(&mut self, c: char, cx: &Context) {
+    pub fn insert_char(&mut self, c: char, cx: &CompositorContext) {
         if let Some(handler) = &self.next_char_handler.take() {
             handler(self, c, cx);
 
@@ -292,7 +292,7 @@ impl Prompt {
 
     pub fn change_history(
         &mut self,
-        cx: &mut Context,
+        cx: &mut CompositorContext,
         register: char,
         direction: CompletionDirection,
     ) {
@@ -350,7 +350,7 @@ impl Prompt {
 const BASE_WIDTH: u16 = 30;
 
 impl Prompt {
-    pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut CompositorContext) {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
         let completion_color = theme.get("ui.menu");
@@ -482,7 +482,7 @@ impl Prompt {
 }
 
 impl Component for Prompt {
-    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut CompositorContext) -> EventResult {
         let event = match event {
             Event::Paste(data) => {
                 self.insert_str(data, cx.editor);
@@ -637,7 +637,7 @@ impl Component for Prompt {
         EventResult::Consumed(None)
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut CompositorContext) {
         self.render_prompt(area, surface, cx)
     }
 

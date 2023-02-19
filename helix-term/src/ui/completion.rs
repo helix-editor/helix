@@ -1,4 +1,4 @@
-use crate::compositor::{Component, Context, Event, EventResult};
+use crate::compositor::{Component, CompositorContext, Event, EventResult};
 use helix_view::{
     editor::CompleteAction,
     theme::{Modifier, Style},
@@ -375,7 +375,7 @@ impl Completion {
 }
 
 impl Component for Completion {
-    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut CompositorContext) -> EventResult {
         self.popup.handle_event(event, cx)
     }
 
@@ -383,7 +383,7 @@ impl Component for Completion {
         self.popup.required_size(viewport)
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut CompositorContext) {
         self.popup.render(area, surface, cx);
 
         // if we have a selection, render a markdown popup on top/below with info

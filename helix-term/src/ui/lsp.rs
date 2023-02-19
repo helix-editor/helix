@@ -5,7 +5,7 @@ use helix_view::graphics::{Margin, Rect, Style};
 use tui::buffer::Buffer;
 use tui::widgets::{BorderType, Paragraph, Widget, Wrap};
 
-use crate::compositor::{Component, Compositor, Context};
+use crate::compositor::{Component, Compositor, CompositorContext};
 
 use crate::ui::Markdown;
 
@@ -48,7 +48,7 @@ impl SignatureHelp {
 }
 
 impl Component for SignatureHelp {
-    fn render(&mut self, area: Rect, surface: &mut Buffer, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Buffer, cx: &mut CompositorContext) {
         let margin = Margin::horizontal(1);
 
         let active_param_span = self.active_param_range.map(|(start, end)| {

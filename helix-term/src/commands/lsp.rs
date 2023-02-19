@@ -1249,7 +1249,7 @@ pub fn rename_symbol(cx: &mut Context) {
         prefill,
         None,
         ui::completers::none,
-        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+        move |cx: &mut compositor::CompositorContext, input: &str, event: PromptEvent| {
             if event != PromptEvent::Validate {
                 return;
             }

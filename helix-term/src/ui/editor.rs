@@ -1,6 +1,6 @@
 use crate::{
     commands::{self, OnKeyCallback},
-    compositor::{Component, Context, Event, EventResult},
+    compositor::{Component, CompositorContext, Event, EventResult},
     job::{self, Callback},
     key,
     keymap::{KeymapResult, Keymaps},
@@ -1185,7 +1185,7 @@ impl Component for EditorView {
     fn handle_event(
         &mut self,
         event: &Event,
-        context: &mut crate::compositor::Context,
+        context: &mut crate::compositor::CompositorContext,
     ) -> EventResult {
         let mut cx = commands::Context {
             editor: context.editor,
@@ -1241,7 +1241,7 @@ impl Component for EditorView {
                             let mut consumed = false;
                             if let Some(completion) = &mut self.completion {
                                 // use a fake context here
-                                let mut cx = Context {
+                                let mut cx = CompositorContext {
                                     editor: cx.editor,
                                     jobs: cx.jobs,
                                     scroll: None,
@@ -1330,7 +1330,7 @@ impl Component for EditorView {
         }
     }
 
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut CompositorContext) {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
