@@ -54,7 +54,7 @@
 ] @constant.builtin
 
 ((literal) @constant.numeric
-  (#match? @constant.numeric "^-?[0-9]*\.?[0-9]*$"))
+  (#match? @constant.numeric "^-?\\d*\\.?\\d*$"))
 
 (literal) @string
 
