@@ -49,9 +49,6 @@ chrono = { version = "0.4", default-features = false, features = ["alloc", "std"
 etcetera = "0.4"
 textwrap = "0.16.0"
 
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
-
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
 tempfile = "3.3.0"
