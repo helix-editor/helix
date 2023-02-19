@@ -53,14 +53,14 @@ use std::borrow::Cow;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// A grapheme associated to a style.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StyledGrapheme<'a> {
     pub symbol: &'a str,
     pub style: Style,
 }
 
 /// A string where all graphemes have the same style.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Span<'a> {
     pub content: Cow<'a, str>,
     pub style: Style,
@@ -209,7 +209,7 @@ impl<'a> From<Cow<'a, str>> for Span<'a> {
 }
 
 /// A string composed of clusters of graphemes, each with their own style.
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Spans<'a>(pub Vec<Span<'a>>);
 
 impl<'a> Spans<'a> {
@@ -297,7 +297,7 @@ impl<'a> From<&Spans<'a>> for String {
 /// text.extend(Text::styled("Some more lines\nnow with more style!", style));
 /// assert_eq!(6, text.height());
 /// ```
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Text<'a> {
     pub lines: Vec<Spans<'a>>,
 }
@@ -433,6 +433,32 @@ impl<'a> From<Spans<'a>> for Text<'a> {
 impl<'a> From<Vec<Spans<'a>>> for Text<'a> {
     fn from(lines: Vec<Spans<'a>>) -> Text<'a> {
         Text { lines }
+    }
+}
+
+impl<'a> From<Text<'a>> for String {
+    fn from(text: Text<'a>) -> String {
+        String::from(&text)
+    }
+}
+
+impl<'a> From<&Text<'a>> for String {
+    fn from(text: &Text<'a>) -> String {
+        let size = text
+            .lines
+            .iter()
+            .flat_map(|spans| spans.0.iter().map(|span| span.content.len()))
+            .sum::<usize>()
+            + text.lines.len().saturating_sub(1); // for newline after each line
+        let mut output = String::with_capacity(size);
+
+        for spans in &text.lines {
+            for span in &spans.0 {
+                output.push_str(&span.content);
+            }
+            output.push('\n');
+        }
+        output
     }
 }
 

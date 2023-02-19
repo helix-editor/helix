@@ -46,7 +46,7 @@ on unix operating systems.
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers. | `absolute` |
 | `cursorline` | Highlight all lines with a cursor. | `false` |
 | `cursorcolumn` | Highlight all columns with a cursor. | `false` |
-| `gutters` | Gutters to display: Available are `diagnostics` and `line-numbers` and `spacer`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "line-numbers"]` |
+| `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion. | `true` |
 | `auto-format` | Enable automatic formatting on save. | `true` |
 | `auto-save` | Enable automatic saving on focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal. | `false` |
@@ -97,12 +97,15 @@ The following statusline elements can be configured:
 | `mode` | The current editor mode (`mode.normal`/`mode.insert`/`mode.select`) |
 | `spinner` | A progress spinner indicating LSP activity |
 | `file-name` | The path/name of the opened file |
+| `file-base-name` | The basename of the opened file |
 | `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
 | `file-line-ending` | The file line endings (CRLF or LF) |
 | `total-line-numbers` | The total line numbers of the opened file |
 | `file-type` | The type of the opened file |
 | `diagnostics` | The number of warnings and/or errors |
+| `workspace-diagnostics` | The number of warnings and/or errors on workspace |
 | `selections` | The number of active selections |
+| `primary-selection-length` | The number of characters currently in primary selection |
 | `position` | The cursor position |
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
 | `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
@@ -112,6 +115,7 @@ The following statusline elements can be configured:
 
 | Key                   | Description                                                 | Default |
 | ---                   | -----------                                                 | ------- |
+| `enable`              | Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.| `true` |
 | `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
@@ -147,6 +151,8 @@ All git related options are only enabled in a git repository.
 | Key | Description | Default |
 |--|--|---------|
 |`hidden` | Enables ignoring hidden files. | true
+|`follow-links` | Follow symlinks instead of ignoring them | true
+|`deduplicate-links` | Ignore symlinks that point at files already shown in the picker | true
 |`parents` | Enables reading ignore files from parent directories. | true
 |`ignore` | Enables reading `.ignore` files. | true
 |`git-ignore` | Enables reading `.gitignore` files. | true
@@ -213,7 +219,7 @@ Options for rendering whitespace with visible characters. Use `:set whitespace.r
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `render` | Whether to render whitespace. May either be `"all"` or `"none"`, or a table with sub-keys `space`, `tab`, and `newline`. | `"none"` |
+| `render` | Whether to render whitespace. May either be `"all"` or `"none"`, or a table with sub-keys `space`, `nbsp`, `tab`, and `newline`. | `"none"` |
 | `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp`, `newline` or `tabpad` | See example below |
 
 Example
@@ -252,4 +258,77 @@ Example:
 render = true
 character = "╎" # Some characters that work well: "▏", "┆", "┊", "⸽"
 skip-levels = 1
+```
+
+### `[editor.gutters]` Section
+
+For simplicity, `editor.gutters` accepts an array of gutter types, which will
+use default settings for all gutter components.
+
+```toml
+[editor]
+gutters = ["diff", "diagnostics", "line-numbers", "spacer"]
+```
+
+To customize the behavior of gutters, the `[editor.gutters]` section must
+be used. This section contains top level settings, as well as settings for
+specific gutter components as sub-sections.
+
+| Key      | Description                    | Default                                                       |
+| ---      | ---                            | ---                                                           |
+| `layout` | A vector of gutters to display | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
+
+Example:
+
+```toml
+[editor.gutters]
+layout = ["diff", "diagnostics", "line-numbers", "spacer"]
+```
+
+#### `[editor.gutters.line-numbers]` Section
+
+Options for the line number gutter
+
+| Key         | Description                             | Default |
+| ---         | ---                                     | ---     |
+| `min-width` | The minimum number of characters to use | `3`     |
+
+Example:
+
+```toml
+[editor.gutters.line-numbers]
+min-width = 1
+```
+
+#### `[editor.gutters.diagnotics]` Section
+
+Currently unused
+
+#### `[editor.gutters.diff]` Section
+
+Currently unused
+
+#### `[editor.gutters.spacer]` Section
+
+Currently unused
+
+### `[editor.soft-wrap]` Section
+
+Options for soft wrapping lines that exceed the view width
+
+| Key                 | Description                                                  | Default |
+| ---                 | ---                                                          | ---     |
+| `enable`            | Whether soft wrapping is enabled.                            | `false` |
+| `max-wrap`          | Maximum free space left at the end of the line.              | `20`    |
+| `max-indent-retain` | Maximum indentation to carry over when soft wrapping a line. | `40`    |
+| `wrap-indicator`    | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `↪ `    |
+
+Example:
+
+```toml
+[editor.soft-wrap]
+enable = true
+max-wrap = 25 # increase value to reduce forced mid-word wrapping
+max-indent-retain = 0
+wrap-indicator = ""  # set wrap-indicator to "" to hide it
 ```

@@ -283,7 +283,7 @@ fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::R
     if let Some(cmd) = server_cmd {
         let path = match which::which(&cmd) {
             Ok(path) => path.display().to_string().green(),
-            Err(_) => "Not found in $PATH".to_string().red(),
+            Err(_) => format!("'{}' not found in $PATH", cmd).red(),
         };
         writeln!(stdout, "Binary for {}: {}", protocol_name, path)?;
     }

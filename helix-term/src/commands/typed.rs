@@ -1,13 +1,15 @@
-use std::{ffi::OsStr, ops::Deref};
+use std::ffi::OsStr;
+use std::fmt::Write;
+use std::ops::Deref;
 
 use crate::job::Job;
 
 use super::*;
 
-use helix_view::{
-    apply_transaction,
-    editor::{Action, CloseError, ConfigEvent},
-};
+use helix_core::encoding;
+use helix_view::document::DEFAULT_LANGUAGE_NAME;
+use helix_view::editor::{Action, CloseError, ConfigEvent};
+use serde_json::Value;
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -65,12 +67,29 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
         let (path, pos) = args::parse_file(arg);
-        let _ = cx.editor.open(&path, Action::Replace)?;
-        let (view, doc) = current!(cx.editor);
-        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-        doc.set_selection(view.id, pos);
-        // does not affect opening a buffer without pos
-        align_view(doc, view, Align::Center);
+        let path = helix_core::path::expand_tilde(&path);
+        // If the path is a directory, open a file picker on that directory and update the status
+        // message
+        if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
+            let callback = async move {
+                let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+                    move |editor: &mut Editor, compositor: &mut Compositor| {
+                        let picker = ui::file_picker(path, &editor.config());
+                        compositor.push(Box::new(overlayed(picker)));
+                    },
+                ));
+                Ok(call)
+            };
+            cx.jobs.callback(callback);
+        } else {
+            // Otherwise, just open the file
+            let _ = cx.editor.open(&path, Action::Replace)?;
+            let (view, doc) = current!(cx.editor);
+            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+            doc.set_selection(view.id, pos);
+            // does not affect opening a buffer without pos
+            align_view(doc, view, Align::Center);
+        }
     }
     Ok(())
 }
@@ -502,8 +521,8 @@ fn set_line_ending(
             }
         }),
     );
-    apply_transaction(&transaction, doc, view);
-    doc.append_changes_to_history(view.id);
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
 
     Ok(())
 }
@@ -816,7 +835,7 @@ fn theme(
                     .editor
                     .theme_loader
                     .load(theme_name)
-                    .with_context(|| "Theme does not exist")?;
+                    .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
                 if !(true_color || theme.is_16_color()) {
                     bail!("Unsupported theme: theme requires true color support");
                 }
@@ -938,6 +957,7 @@ fn replace_selections_with_clipboard_impl(
     cx: &mut compositor::Context,
     clipboard_type: ClipboardType,
 ) -> anyhow::Result<()> {
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
 
     match cx.editor.clipboard_provider.get_contents(clipboard_type) {
@@ -947,8 +967,9 @@ fn replace_selections_with_clipboard_impl(
                 (range.from(), range.to(), Some(contents.as_str().into()))
             });
 
-            apply_transaction(&transaction, doc, view);
-            doc.append_changes_to_history(view.id);
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view);
+            view.ensure_cursor_in_view(doc, scrolloff);
             Ok(())
         }
         Err(e) => Err(e.context("Couldn't get system clipboard contents")),
@@ -1056,6 +1077,131 @@ fn set_encoding(
     }
 }
 
+/// Shows info about the character under the primary cursor.
+fn get_character_info(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current_ref!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let grapheme_start = doc.selection(view.id).primary().cursor(text);
+    let grapheme_end = graphemes::next_grapheme_boundary(text, grapheme_start);
+
+    if grapheme_start == grapheme_end {
+        return Ok(());
+    }
+
+    let grapheme = text.slice(grapheme_start..grapheme_end).to_string();
+    let encoding = doc.encoding();
+
+    let printable = grapheme.chars().fold(String::new(), |mut s, c| {
+        match c {
+            '\0' => s.push_str("\\0"),
+            '\t' => s.push_str("\\t"),
+            '\n' => s.push_str("\\n"),
+            '\r' => s.push_str("\\r"),
+            _ => s.push(c),
+        }
+
+        s
+    });
+
+    // Convert to Unicode codepoints if in UTF-8
+    let unicode = if encoding == encoding::UTF_8 {
+        let mut unicode = " (".to_owned();
+
+        for (i, char) in grapheme.chars().enumerate() {
+            if i != 0 {
+                unicode.push(' ');
+            }
+
+            unicode.push_str("U+");
+
+            let codepoint: u32 = if char.is_ascii() {
+                char.into()
+            } else {
+                // Not ascii means it will be multi-byte, so strip out the extra
+                // bits that encode the length & mark continuation bytes
+
+                let s = String::from(char);
+                let bytes = s.as_bytes();
+
+                // First byte starts with 2-4 ones then a zero, so strip those off
+                let first = bytes[0];
+                let codepoint = first & (0xFF >> (first.leading_ones() + 1));
+                let mut codepoint = u32::from(codepoint);
+
+                // Following bytes start with 10
+                for byte in bytes.iter().skip(1) {
+                    codepoint <<= 6;
+                    codepoint += u32::from(*byte) & 0x3F;
+                }
+
+                codepoint
+            };
+
+            write!(unicode, "{codepoint:0>4x}").unwrap();
+        }
+
+        unicode.push(')');
+        unicode
+    } else {
+        String::new()
+    };
+
+    // Give the decimal value for ascii characters
+    let dec = if encoding.is_ascii_compatible() && grapheme.len() == 1 {
+        format!(" Dec {}", grapheme.as_bytes()[0])
+    } else {
+        String::new()
+    };
+
+    let hex = {
+        let mut encoder = encoding.new_encoder();
+        let max_encoded_len = encoder
+            .max_buffer_length_from_utf8_without_replacement(grapheme.len())
+            .unwrap();
+        let mut bytes = Vec::with_capacity(max_encoded_len);
+        let mut current_byte = 0;
+        let mut hex = String::new();
+
+        for (i, char) in grapheme.chars().enumerate() {
+            if i != 0 {
+                hex.push_str(" +");
+            }
+
+            let (result, _input_bytes_read) = encoder.encode_from_utf8_to_vec_without_replacement(
+                &char.to_string(),
+                &mut bytes,
+                true,
+            );
+
+            if let encoding::EncoderResult::Unmappable(char) = result {
+                bail!("{char:?} cannot be mapped to {}", encoding.name());
+            }
+
+            for byte in &bytes[current_byte..] {
+                write!(hex, " {byte:0>2x}").unwrap();
+            }
+
+            current_byte = bytes.len();
+        }
+
+        hex
+    };
+
+    cx.editor
+        .set_status(format!("\"{printable}\"{unicode}{dec} Hex{hex}"));
+
+    Ok(())
+}
+
 /// Reload the [`Document`] from its source file.
 fn reload(
     cx: &mut compositor::Context,
@@ -1067,10 +1213,62 @@ fn reload(
     }
 
     let scrolloff = cx.editor.config().scrolloff;
+    let redraw_handle = cx.editor.redraw_handle.clone();
     let (view, doc) = current!(cx.editor);
-    doc.reload(view).map(|_| {
-        view.ensure_cursor_in_view(doc, scrolloff);
-    })
+    doc.reload(view, &cx.editor.diff_providers, redraw_handle)
+        .map(|_| {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        })
+}
+
+fn reload_all(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let scrolloff = cx.editor.config().scrolloff;
+    let view_id = view!(cx.editor).id;
+
+    let docs_view_ids: Vec<(DocumentId, Vec<ViewId>)> = cx
+        .editor
+        .documents_mut()
+        .map(|doc| {
+            let mut view_ids: Vec<_> = doc.selections().keys().cloned().collect();
+
+            if view_ids.is_empty() {
+                doc.ensure_view_init(view_id);
+                view_ids.push(view_id);
+            };
+
+            (doc.id(), view_ids)
+        })
+        .collect();
+
+    for (doc_id, view_ids) in docs_view_ids {
+        let doc = doc_mut!(cx.editor, &doc_id);
+
+        // Every doc is guaranteed to have at least 1 view at this point.
+        let view = view_mut!(cx.editor, view_ids[0]);
+
+        // Ensure that the view is synced with the document's history.
+        view.sync_changes(doc);
+
+        let redraw_handle = cx.editor.redraw_handle.clone();
+        doc.reload(view, &cx.editor.diff_providers, redraw_handle)?;
+
+        for view_id in view_ids {
+            let view = view_mut!(cx.editor, view_id);
+            if view.doc.eq(&doc_id) {
+                view.ensure_cursor_in_view(doc, scrolloff);
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Update the [`Document`] if it has been modified.
@@ -1089,6 +1287,77 @@ fn update(
     } else {
         Ok(())
     }
+}
+
+fn lsp_workspace_command(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_, doc) = current!(cx.editor);
+
+    let language_server = match doc.language_server() {
+        Some(language_server) => language_server,
+        None => {
+            cx.editor
+                .set_status("Language server not active for current buffer");
+            return Ok(());
+        }
+    };
+
+    let options = match &language_server.capabilities().execute_command_provider {
+        Some(options) => options,
+        None => {
+            cx.editor
+                .set_status("Workspace commands are not supported for this language server");
+            return Ok(());
+        }
+    };
+    if args.is_empty() {
+        let commands = options
+            .commands
+            .iter()
+            .map(|command| helix_lsp::lsp::Command {
+                title: command.clone(),
+                command: command.clone(),
+                arguments: None,
+            })
+            .collect::<Vec<_>>();
+        let callback = async move {
+            let call: job::Callback = Callback::EditorCompositor(Box::new(
+                move |_editor: &mut Editor, compositor: &mut Compositor| {
+                    let picker = ui::Picker::new(commands, (), |cx, command, _action| {
+                        execute_lsp_command(cx.editor, command.clone());
+                    });
+                    compositor.push(Box::new(overlayed(picker)))
+                },
+            ));
+            Ok(call)
+        };
+        cx.jobs.callback(callback);
+    } else {
+        let command = args.join(" ");
+        if options.commands.iter().any(|c| c == &command) {
+            execute_lsp_command(
+                cx.editor,
+                helix_lsp::lsp::Command {
+                    title: command.clone(),
+                    arguments: None,
+                    command,
+                },
+            );
+        } else {
+            cx.editor.set_status(format!(
+                "`{command}` is not supported for this language server"
+            ));
+            return Ok(());
+        }
+    }
+    Ok(())
 }
 
 fn lsp_restart(
@@ -1419,6 +1688,46 @@ fn set_option(
     Ok(())
 }
 
+/// Toggle boolean config option at runtime. Access nested values by dot
+/// syntax, for example to toggle smart case search, use `:toggle search.smart-
+/// case`.
+fn toggle_option(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:toggle key`");
+    }
+    let key = &args[0].to_lowercase();
+
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+
+    let mut config = serde_json::json!(&cx.editor.config().deref());
+    let pointer = format!("/{}", key.replace('.', "/"));
+    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+
+    if let Value::Bool(b) = *value {
+        *value = Value::Bool(!b);
+    } else {
+        anyhow::bail!("Key `{}` is not toggle-able", key)
+    }
+
+    // This unwrap should never fail because we only replace one boolean value
+    // with another, maintaining a valid json config
+    let config = serde_json::from_value(config).unwrap();
+
+    cx.editor
+        .config_events
+        .0
+        .send(ConfigEvent::Update(config))?;
+    Ok(())
+}
+
 /// Change the language of the current buffer at runtime.
 fn language(
     cx: &mut compositor::Context,
@@ -1429,13 +1738,20 @@ fn language(
         return Ok(());
     }
 
+    if args.is_empty() {
+        let doc = doc!(cx.editor);
+        let language = &doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+        cx.editor.set_status(language.to_string());
+        return Ok(());
+    }
+
     if args.len() != 1 {
         anyhow::bail!("Bad arguments. Usage: `:set-language language`");
     }
 
     let doc = doc_mut!(cx.editor);
 
-    if args[0] == "text" {
+    if args[0] == DEFAULT_LANGUAGE_NAME {
         doc.set_language(None, None)
     } else {
         doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone())?;
@@ -1472,6 +1788,7 @@ fn sort_impl(
     _args: &[Cow<str>],
     reverse: bool,
 ) -> anyhow::Result<()> {
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -1495,8 +1812,9 @@ fn sort_impl(
             .map(|(s, fragment)| (s.from(), s.to(), Some(fragment))),
     );
 
-    apply_transaction(&transaction, doc, view);
-    doc.append_changes_to_history(view.id);
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
 }
@@ -1539,8 +1857,8 @@ fn reflow(
         (range.from(), range.to(), Some(reflowed_text))
     });
 
-    apply_transaction(&transaction, doc, view);
-    doc.append_changes_to_history(view.id);
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
@@ -1657,13 +1975,30 @@ fn insert_output(
     Ok(())
 }
 
+fn pipe_to(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::Ignore)
+}
+
 fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::Replace)
+}
+
+fn pipe_impl(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+    behavior: &ShellBehavior,
+) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
     ensure!(!args.is_empty(), "Shell command required");
-    shell(cx, &args.join(" "), &ShellBehavior::Replace);
+    shell(cx, &args.join(" "), behavior);
     Ok(())
 }
 
@@ -1679,7 +2014,7 @@ fn run_shell_command(
     let shell = &cx.editor.config().shell;
     let (output, success) = shell_impl(shell, &args.join(" "), None)?;
     if success {
-        cx.editor.set_status("Command succeed");
+        cx.editor.set_status("Command succeeded");
     } else {
         cx.editor.set_error("Command failed");
     }
@@ -2020,10 +2355,24 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
+            name: "character-info",
+            aliases: &["char"],
+            doc: "Get info about the character under the primary cursor.",
+            fun: get_character_info,
+            completer: None,
+        },
+        TypableCommand {
             name: "reload",
             aliases: &[],
             doc: "Discard changes and reload from the source file.",
             fun: reload,
+            completer: None,
+        },
+        TypableCommand {
+            name: "reload-all",
+            aliases: &[],
+            doc: "Discard changes and reload all documents from the source files.",
+            fun: reload_all,
             completer: None,
         },
         TypableCommand {
@@ -2032,6 +2381,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Write changes only if the file has been modified.",
             fun: update,
             completer: None,
+        },
+        TypableCommand {
+            name: "lsp-workspace-command",
+            aliases: &[],
+            doc: "Open workspace command picker",
+            fun: lsp_workspace_command,
+            completer: Some(completers::lsp_workspace_command),
         },
         TypableCommand {
             name: "lsp-restart",
@@ -2113,7 +2469,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "set-language",
             aliases: &["lang"],
-            doc: "Set the language of current buffer.",
+            doc: "Set the language of current buffer (show current language if no value specified).",
             fun: language,
             completer: Some(completers::language),
         },
@@ -2122,6 +2478,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["set"],
             doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
             fun: set_option,
+            completer: Some(completers::setting),
+        },
+        TypableCommand {
+            name: "toggle-option",
+            aliases: &["toggle"],
+            doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
+            fun: toggle_option,
             completer: Some(completers::setting),
         },
         TypableCommand {
@@ -2202,11 +2565,18 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
+            name: "pipe-to",
+            aliases: &[],
+            doc: "Pipe each selection to the shell command, ignoring output.",
+            fun: pipe_to,
+            completer: None,
+        },
+        TypableCommand {
             name: "run-shell-command",
             aliases: &["sh"],
             doc: "Run a shell command",
             fun: run_shell_command,
-            completer: Some(completers::directory),
+            completer: Some(completers::filename),
         },
     ];
 
@@ -2221,7 +2591,10 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
             .collect()
     });
 
+#[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
+    use shellwords::Shellwords;
+
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
@@ -2229,12 +2602,11 @@ pub(super) fn command_mode(cx: &mut Context) {
             static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
                 Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
 
-            // we use .this over split_whitespace() because we care about empty segments
-            let parts = input.split(' ').collect::<Vec<&str>>();
+            let shellwords = Shellwords::from(input);
+            let words = shellwords.words();
 
-            // simple heuristic: if there's no just one part, complete command name.
-            // if there's a space, per command completion kicks in.
-            if parts.len() <= 1 {
+            if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
+                // If the command has not been finished yet, complete commands.
                 let mut matches: Vec<_> = typed::TYPABLE_COMMAND_LIST
                     .iter()
                     .filter_map(|command| {
@@ -2250,18 +2622,29 @@ pub(super) fn command_mode(cx: &mut Context) {
                     .map(|(name, _)| (0.., name.into()))
                     .collect()
             } else {
-                let part = parts.last().unwrap();
+                // Otherwise, use the command's completer and the last shellword
+                // as completion input.
+                let (part, part_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {
+                    (&Cow::Borrowed(""), 0)
+                } else {
+                    (
+                        words.last().unwrap(),
+                        shellwords.parts().last().unwrap().len(),
+                    )
+                };
 
                 if let Some(typed::TypableCommand {
                     completer: Some(completer),
                     ..
-                }) = typed::TYPABLE_COMMAND_MAP.get(parts[0])
+                }) = typed::TYPABLE_COMMAND_MAP.get(&words[0] as &str)
                 {
                     completer(editor, part)
                         .into_iter()
                         .map(|(range, file)| {
+                            let file = shellwords::escape(file);
+
                             // offset ranges to input
-                            let offset = input.len() - part.len();
+                            let offset = input.len() - part_len;
                             let range = (range.start + offset)..;
                             (range, file)
                         })
@@ -2287,7 +2670,8 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let args = shellwords::shellwords(input);
+                let shellwords = Shellwords::from(input);
+                let args = shellwords.words();
 
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));

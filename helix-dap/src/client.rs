@@ -70,7 +70,7 @@ impl Client {
         process: Option<Child>,
     ) -> Result<(Self, UnboundedReceiver<Payload>)> {
         let (server_rx, server_tx) = Transport::start(rx, tx, err, id);
-        let (client_rx, client_tx) = unbounded_channel();
+        let (client_tx, client_rx) = unbounded_channel();
 
         let client = Self {
             id,
@@ -86,9 +86,9 @@ impl Client {
             quirks: DebuggerQuirks::default(),
         };
 
-        tokio::spawn(Self::recv(server_rx, client_rx));
+        tokio::spawn(Self::recv(server_rx, client_tx));
 
-        Ok((client, client_tx))
+        Ok((client, client_rx))
     }
 
     pub async fn tcp(
@@ -254,7 +254,7 @@ impl Client {
             // TODO: specifiable timeout, delay other calls until initialize success
             timeout(Duration::from_secs(20), callback_rx.recv())
                 .await
-                .map_err(|_| Error::Timeout)? // return Timeout
+                .map_err(|_| Error::Timeout(id))? // return Timeout
                 .ok_or(Error::StreamClosed)?
                 .map(|response| response.body.unwrap_or_default())
             // TODO: check response.success

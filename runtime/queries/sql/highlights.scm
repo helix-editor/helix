@@ -1,3 +1,34 @@
+(keyword_btree) @function.builtin
+(keyword_hash) @function.builtin
+(keyword_gist) @function.builtin
+(keyword_spgist) @function.builtin
+(keyword_gin) @function.builtin
+(keyword_brin) @function.builtin
+
+(cast
+  name: (identifier) @function.builtin)
+  
+(count
+  name: (identifier) @function.builtin)
+
+(keyword_group_concat) @function.builtin  
+
+(invocation
+  name: (identifier) @function.builtin)
+  
+(table_reference
+  name: (identifier) @namespace)
+
+(relation
+  table_alias: (identifier) @variable.parameter)
+  
+(field
+  name: (identifier) @variable.other.member)
+  
+(field
+  table_alias: (identifier) @variable.parameter
+  name: (identifier) @variable.other.member)
+
 (comment) @comment
 
 [
@@ -6,20 +37,18 @@
 ] @punctuation.bracket
 
 [
-  "*"
-  "+"
-  "-"
-  "/"
-  "%"
-  "^"
-  "||"  
-  "="
-  "<"
-  "<="
-  "!="
-  ">="
-  ">"
-] @operator
+  ";"
+  ","
+  "."
+] @punctuation.delimiter
+
+(binary_expression
+  operator: _ @operator)
+
+(unary_expression
+  operator: _ @operator)
+
+(all_fields) @special
 
 [
   (keyword_null)
@@ -27,13 +56,10 @@
   (keyword_false)
 ] @constant.builtin
 
-(literal) @string
+((literal) @constant.numeric
+  (#match? @constant.numeric "^(-?\d*\.?\d*)$"))
 
-(set_schema schema: (identifier) @namespace)
-(table_reference schema: (identifier) @namespace)
-(table_expression schema: (identifier) @namespace)
-(all_fields schema: (identifier) @namespace)
-(field schema: (identifier) @namespace)
+(literal) @string
 
 [
   (keyword_select)
@@ -54,8 +80,10 @@
   (keyword_lateral)
   (keyword_on)
   (keyword_not)
-  (keyword_order_by)
-  (keyword_group_by)
+  (keyword_order)
+  (keyword_group)
+  (keyword_partition)
+  (keyword_by)
   (keyword_having)
   (keyword_desc)
   (keyword_asc)
@@ -74,12 +102,16 @@
   (keyword_as)
   (keyword_distinct)
   (keyword_constraint)
+  ; (keyword_cast)
   ; (keyword_count)
+  ; (keyword_group_concat)
+  (keyword_separator)
   (keyword_max)
   (keyword_min)
   (keyword_avg)
   (keyword_end)
   (keyword_force)
+  (keyword_ignore)
   (keyword_using)
   (keyword_use)
   (keyword_index)
@@ -99,6 +131,7 @@
   (keyword_owner)
   (keyword_temp)
   (keyword_temporary)
+  (keyword_unlogged)
   (keyword_union)
   (keyword_all)
   (keyword_except)
@@ -108,6 +141,35 @@
   (keyword_commit)
   (keyword_rollback)
   (keyword_transaction)
+  (keyword_over)
+  (keyword_nulls)
+  (keyword_first)
+  (keyword_last)
+  (keyword_window)
+  (keyword_range)
+  (keyword_rows)
+  (keyword_groups)
+  (keyword_between)
+  (keyword_unbounded)
+  (keyword_preceding)
+  (keyword_following)
+  (keyword_exclude)
+  (keyword_current)
+  (keyword_row)
+  (keyword_ties)
+  (keyword_others)
+  (keyword_only)
+  (keyword_unique)
+  (keyword_concurrently)
+  ; (keyword_btree)
+  ; (keyword_hash)
+  ; (keyword_gist)
+  ; (keyword_spgist)
+  ; (keyword_gin)
+  ; (keyword_brin)
+  (keyword_like)
+  (keyword_similar)
+  (keyword_preserve)
 ] @keyword
 
 [
@@ -127,6 +189,7 @@
 
 [
   (keyword_boolean)
+
   (keyword_smallserial)
   (keyword_serial)
   (keyword_bigserial)
@@ -138,6 +201,7 @@
   (numeric)
   (keyword_real)
   (double)
+  (float)
 
   (keyword_money)
 
@@ -162,4 +226,15 @@
   (keyword_geography)
   (keyword_box2d)
   (keyword_box3d)
+
+  (char)
+  (varchar)
+  (numeric)
+
+  (keyword_oid)
+  (keyword_name)
+  (keyword_regclass)
+  (keyword_regnamespace)
+  (keyword_regproc)
+  (keyword_regtype)
 ] @type.builtin

@@ -184,7 +184,7 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
         S: serde::de::SeqAccess<'de>,
     {
         let mut commands = Vec::new();
-        while let Some(command) = seq.next_element::<&str>()? {
+        while let Some(command) = seq.next_element::<String>()? {
             commands.push(
                 command
                     .parse::<MappableCommand>()
@@ -390,18 +390,18 @@ impl Keymaps {
 
         self.state.push(key);
         match trie.search(&self.state[1..]) {
-            Some(&KeyTrie::Node(ref map)) => {
+            Some(KeyTrie::Node(map)) => {
                 if map.is_sticky {
                     self.state.clear();
                     self.sticky = Some(map.clone());
                 }
                 KeymapResult::Pending(map.clone())
             }
-            Some(&KeyTrie::Leaf(ref cmd)) => {
+            Some(KeyTrie::Leaf(cmd)) => {
                 self.state.clear();
                 KeymapResult::Matched(cmd.clone())
             }
-            Some(&KeyTrie::Sequence(ref cmds)) => {
+            Some(KeyTrie::Sequence(cmds)) => {
                 self.state.clear();
                 KeymapResult::MatchedSequence(cmds.clone())
             }
@@ -599,5 +599,44 @@ mod tests {
             ]),
             "Mismatch"
         )
+    }
+
+    #[test]
+    fn escaped_keymap() {
+        use crate::commands::MappableCommand;
+        use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
+
+        let keys = r#"
+"+" = [
+    "select_all",
+    ":pipe sed -E 's/\\s+$//g'",
+]
+        "#;
+
+        let key = KeyEvent {
+            code: KeyCode::Char('+'),
+            modifiers: KeyModifiers::NONE,
+        };
+
+        let expectation = Keymap::new(KeyTrie::Node(KeyTrieNode::new(
+            "",
+            hashmap! {
+                key => KeyTrie::Sequence(vec!{
+                    MappableCommand::select_all,
+                    MappableCommand::Typable {
+                        name: "pipe".to_string(),
+                        args: vec!{
+                            "sed".to_string(),
+                            "-E".to_string(),
+                            "'s/\\s+$//g'".to_string()
+                        },
+                        doc: "".to_string(),
+                    },
+                })
+            },
+            vec![key],
+        )));
+
+        assert_eq!(toml::from_str(keys), Ok(expectation));
     }
 }

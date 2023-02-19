@@ -1,14 +1,13 @@
-// Each component declares it's own size constraints and gets fitted based on it's parent.
+// Each component declares its own size constraints and gets fitted based on its parent.
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
 use helix_core::Position;
 use helix_view::graphics::{CursorKind, Rect};
 
-#[cfg(feature = "integration")]
-use tui::backend::TestBackend;
 use tui::buffer::Buffer as Surface;
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
+pub type SyncCallback = Box<dyn FnOnce(&mut Compositor, &mut Context) + Sync>;
 
 // Cursive-inspired
 pub enum EventResult {
@@ -75,69 +74,31 @@ pub trait Component: Any + AnyComponent {
     }
 }
 
-use anyhow::Context as AnyhowContext;
-use tui::backend::Backend;
-
-#[cfg(not(feature = "integration"))]
-use tui::backend::CrosstermBackend;
-
-#[cfg(not(feature = "integration"))]
-use std::io::stdout;
-
-#[cfg(not(feature = "integration"))]
-type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
-
-#[cfg(feature = "integration")]
-type Terminal = tui::terminal::Terminal<TestBackend>;
-
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
-    terminal: Terminal,
+    area: Rect,
 
     pub(crate) last_picker: Option<Box<dyn Component>>,
 }
 
 impl Compositor {
-    pub fn new() -> anyhow::Result<Self> {
-        #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout());
-
-        #[cfg(feature = "integration")]
-        let backend = TestBackend::new(120, 150);
-
-        let terminal = Terminal::new(backend).context("build terminal")?;
-        Ok(Self {
+    pub fn new(area: Rect) -> Self {
+        Self {
             layers: Vec::new(),
-            terminal,
+            area,
             last_picker: None,
-        })
+        }
     }
 
     pub fn size(&self) -> Rect {
-        self.terminal.size().expect("couldn't get terminal size")
+        self.area
     }
 
-    pub fn resize(&mut self, width: u16, height: u16) {
-        self.terminal
-            .resize(Rect::new(0, 0, width, height))
-            .expect("Unable to resize terminal")
+    pub fn resize(&mut self, area: Rect) {
+        self.area = area;
     }
 
-    pub fn save_cursor(&mut self) {
-        if self.terminal.cursor_kind() == CursorKind::Hidden {
-            self.terminal
-                .backend_mut()
-                .show_cursor(CursorKind::Block)
-                .ok();
-        }
-    }
-
-    pub fn load_cursor(&mut self) {
-        if self.terminal.cursor_kind() == CursorKind::Hidden {
-            self.terminal.backend_mut().hide_cursor().ok();
-        }
-    }
-
+    /// Add a layer to be rendered in front of all existing layers.
     pub fn push(&mut self, mut layer: Box<dyn Component>) {
         let size = self.size();
         // trigger required_size on init
@@ -177,7 +138,8 @@ impl Compositor {
         let mut consumed = false;
 
         // propagate events through the layers until we either find a layer that consumes it or we
-        // run out of layers (event bubbling)
+        // run out of layers (event bubbling), starting at the front layer and then moving to the
+        // background.
         for layer in self.layers.iter_mut().rev() {
             match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
@@ -203,25 +165,10 @@ impl Compositor {
         consumed
     }
 
-    pub fn render(&mut self, cx: &mut Context) {
-        self.terminal
-            .autoresize()
-            .expect("Unable to determine terminal size");
-
-        // TODO: need to recalculate view tree if necessary
-
-        let surface = self.terminal.current_buffer_mut();
-
-        let area = *surface.area();
-
+    pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         for layer in &mut self.layers {
             layer.render(area, surface, cx);
         }
-
-        let (pos, kind) = self.cursor(area, cx.editor);
-        let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
-
-        self.terminal.draw(pos, kind).unwrap();
     }
 
     pub fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {

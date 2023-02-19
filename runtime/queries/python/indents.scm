@@ -9,6 +9,8 @@
   (while_statement)
   (with_statement)
   (try_statement)
+  (match_statement)
+  (case_clause)
   (import_from_statement)
 
   (parenthesized_expression)
@@ -27,12 +29,27 @@
   (class_definition)
 ] @indent
 
+; Workaround for the tree-sitter grammar creating large errors when a
+; try_statement is missing the except/finally clause
+(ERROR
+  "try"
+  .
+  ":" @indent @extend)
+(ERROR
+  .
+  "def") @indent @extend
+(ERROR
+  (block) @indent @extend
+  (#set! "scope" "all"))
+
 [
   (if_statement)
   (for_statement)
   (while_statement)
   (with_statement)
   (try_statement)
+  (match_statement)
+  (case_clause)
 
   (function_definition)
   (class_definition)

@@ -56,6 +56,14 @@ impl IndentStyle {
             }
         }
     }
+
+    #[inline]
+    pub fn indent_width(&self, tab_width: usize) -> usize {
+        match *self {
+            IndentStyle::Tabs => tab_width,
+            IndentStyle::Spaces(width) => width as usize,
+        }
+    }
 }
 
 /// Attempts to detect the indentation style used in a document.
@@ -177,7 +185,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
 
 /// To determine indentation of a newly inserted line, figure out the indentation at the last col
 /// of the previous line.
-pub fn indent_level_for_line(line: RopeSlice, tab_width: usize) -> usize {
+pub fn indent_level_for_line(line: RopeSlice, tab_width: usize, indent_width: usize) -> usize {
     let mut len = 0;
     for ch in line.chars() {
         match ch {
@@ -187,7 +195,7 @@ pub fn indent_level_for_line(line: RopeSlice, tab_width: usize) -> usize {
         }
     }
 
-    len / tab_width
+    len / indent_width
 }
 
 /// Computes for node and all ancestors whether they are the first node on their line.
@@ -461,59 +469,64 @@ fn query_indents(
 /// so that the indent computation starts with the correct syntax node.
 fn extend_nodes<'a>(
     node: &mut Node<'a>,
-    deepest_preceding: Option<Node<'a>>,
+    mut deepest_preceding: Node<'a>,
     extend_captures: &HashMap<usize, Vec<ExtendCapture>>,
     text: RopeSlice,
     line: usize,
     tab_width: usize,
+    indent_width: usize,
 ) {
-    if let Some(mut deepest_preceding) = deepest_preceding {
-        let mut stop_extend = false;
-        while deepest_preceding != *node {
-            let mut extend_node = false;
-            // This will be set to true if this node is captured, regardless of whether
-            // it actually will be extended (e.g. because the cursor isn't indented
-            // more than the node).
-            let mut node_captured = false;
-            if let Some(captures) = extend_captures.get(&deepest_preceding.id()) {
-                for capture in captures {
-                    match capture {
-                        ExtendCapture::PreventOnce => {
-                            stop_extend = true;
-                        }
-                        ExtendCapture::Extend => {
-                            node_captured = true;
-                            // We extend the node if
-                            // - the cursor is on the same line as the end of the node OR
-                            // - the line that the cursor is on is more indented than the
-                            //   first line of the node
-                            if deepest_preceding.end_position().row == line {
+    let mut stop_extend = false;
+
+    while deepest_preceding != *node {
+        let mut extend_node = false;
+        // This will be set to true if this node is captured, regardless of whether
+        // it actually will be extended (e.g. because the cursor isn't indented
+        // more than the node).
+        let mut node_captured = false;
+        if let Some(captures) = extend_captures.get(&deepest_preceding.id()) {
+            for capture in captures {
+                match capture {
+                    ExtendCapture::PreventOnce => {
+                        stop_extend = true;
+                    }
+                    ExtendCapture::Extend => {
+                        node_captured = true;
+                        // We extend the node if
+                        // - the cursor is on the same line as the end of the node OR
+                        // - the line that the cursor is on is more indented than the
+                        //   first line of the node
+                        if deepest_preceding.end_position().row == line {
+                            extend_node = true;
+                        } else {
+                            let cursor_indent =
+                                indent_level_for_line(text.line(line), tab_width, indent_width);
+                            let node_indent = indent_level_for_line(
+                                text.line(deepest_preceding.start_position().row),
+                                tab_width,
+                                indent_width,
+                            );
+                            if cursor_indent > node_indent {
                                 extend_node = true;
-                            } else {
-                                let cursor_indent =
-                                    indent_level_for_line(text.line(line), tab_width);
-                                let node_indent = indent_level_for_line(
-                                    text.line(deepest_preceding.start_position().row),
-                                    tab_width,
-                                );
-                                if cursor_indent > node_indent {
-                                    extend_node = true;
-                                }
                             }
                         }
                     }
                 }
             }
-            // If we encountered some `StopExtend` capture before, we don't
-            // extend the node even if we otherwise would
-            if node_captured && stop_extend {
-                stop_extend = false;
-            } else if extend_node && !stop_extend {
-                *node = deepest_preceding;
-                break;
-            }
-            // This parent always exists since node is an ancestor of deepest_preceding
-            deepest_preceding = deepest_preceding.parent().unwrap();
+        }
+        // If we encountered some `StopExtend` capture before, we don't
+        // extend the node even if we otherwise would
+        if node_captured && stop_extend {
+            stop_extend = false;
+        } else if extend_node && !stop_extend {
+            *node = deepest_preceding;
+            break;
+        }
+        // If the tree contains a syntax error, `deepest_preceding` may not
+        // have a parent despite being a descendant of `node`.
+        deepest_preceding = match deepest_preceding.parent() {
+            Some(parent) => parent,
+            None => return,
         }
     }
 }
@@ -560,6 +573,7 @@ pub fn treesitter_indent_for_pos(
     syntax: &Syntax,
     indent_style: &IndentStyle,
     tab_width: usize,
+    indent_width: usize,
     text: RopeSlice,
     line: usize,
     pos: usize,
@@ -602,7 +616,7 @@ pub fn treesitter_indent_for_pos(
                 &mut cursor,
                 text,
                 query_range,
-                new_line.then(|| (line, byte_pos)),
+                new_line.then_some((line, byte_pos)),
             );
             ts_parser.cursors.push(cursor);
             (query_result, deepest_preceding)
@@ -612,15 +626,18 @@ pub fn treesitter_indent_for_pos(
     let extend_captures = query_result.extend_captures;
 
     // Check for extend captures, potentially changing the node that the indent calculation starts with
-    extend_nodes(
-        &mut node,
-        deepest_preceding,
-        &extend_captures,
-        text,
-        line,
-        tab_width,
-    );
-    let mut first_in_line = get_first_in_line(node, new_line.then(|| byte_pos));
+    if let Some(deepest_preceding) = deepest_preceding {
+        extend_nodes(
+            &mut node,
+            deepest_preceding,
+            &extend_captures,
+            text,
+            line,
+            tab_width,
+            indent_width,
+        );
+    }
+    let mut first_in_line = get_first_in_line(node, new_line.then_some(byte_pos));
 
     let mut result = Indentation::default();
     // We always keep track of all the indent changes on one line, in order to only indent once
@@ -705,6 +722,7 @@ pub fn indent_for_newline(
     line_before_end_pos: usize,
     current_line: usize,
 ) -> String {
+    let indent_width = indent_style.indent_width(tab_width);
     if let (Some(query), Some(syntax)) = (
         language_config.and_then(|config| config.indent_query()),
         syntax,
@@ -714,6 +732,7 @@ pub fn indent_for_newline(
             syntax,
             indent_style,
             tab_width,
+            indent_width,
             text,
             line_before,
             line_before_end_pos,
@@ -722,7 +741,7 @@ pub fn indent_for_newline(
             return indent;
         };
     }
-    let indent_level = indent_level_for_line(text.line(current_line), tab_width);
+    let indent_level = indent_level_for_line(text.line(current_line), tab_width, indent_width);
     indent_style.as_str().repeat(indent_level)
 }
 
@@ -759,12 +778,22 @@ mod test {
     #[test]
     fn test_indent_level() {
         let tab_width = 4;
+        let indent_width = 4;
         let line = Rope::from("        fn new"); // 8 spaces
-        assert_eq!(indent_level_for_line(line.slice(..), tab_width), 2);
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            2
+        );
         let line = Rope::from("\t\t\tfn new"); // 3 tabs
-        assert_eq!(indent_level_for_line(line.slice(..), tab_width), 3);
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            3
+        );
         // mixed indentation
         let line = Rope::from("\t    \tfn new"); // 1 tab, 4 spaces, tab
-        assert_eq!(indent_level_for_line(line.slice(..), tab_width), 3);
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            3
+        );
     }
 }

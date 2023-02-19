@@ -17,7 +17,7 @@ integration = []
 [dependencies]
 helix-loader = { version = "0.6", path = "../helix-loader" }
 
-ropey = { version = "1.5", default-features = false, features = ["simd"] }
+ropey = { version = "1.6.0", default-features = false, features = ["simd"] }
 smallvec = "1.10"
 smartstring = "1.0.1"
 unicode-segmentation = "1.10"
@@ -26,17 +26,19 @@ unicode-general-category = "0.6"
 # slab = "0.4.2"
 slotmap = "1.0"
 tree-sitter = "0.20"
-once_cell = "1.15"
+once_cell = "1.17"
 arc-swap = "1"
 regex = "1"
 bitflags = "1.3"
+ahash = "0.8.3"
+hashbrown = { version = "0.13.2", features = ["raw"] }
 
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.5"
+toml = "0.7"
 
-similar = "2.2"
+imara-diff = "0.1.0"
 
 encoding_rs = "0.8"
 

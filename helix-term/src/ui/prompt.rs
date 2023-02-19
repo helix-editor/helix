@@ -14,8 +14,11 @@ use helix_view::{
     Editor,
 };
 
-pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
 type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
+pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
+type CompletionFn = Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>;
+type CallbackFn = Box<dyn FnMut(&mut Context, &str, PromptEvent)>;
+pub type DocFn = Box<dyn Fn(&str) -> Option<Cow<str>>>;
 
 pub struct Prompt {
     prompt: Cow<'static, str>,
@@ -25,13 +28,13 @@ pub struct Prompt {
     selection: Option<usize>,
     history_register: Option<char>,
     history_pos: Option<usize>,
-    completion_fn: Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>,
-    callback_fn: Box<dyn FnMut(&mut Context, &str, PromptEvent)>,
-    pub doc_fn: Box<dyn Fn(&str) -> Option<Cow<str>>>,
+    completion_fn: CompletionFn,
+    callback_fn: CallbackFn,
+    pub doc_fn: DocFn,
     next_char_handler: Option<PromptCharHandler>,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PromptEvent {
     /// The prompt input has been updated.
     Update,
@@ -294,23 +297,22 @@ impl Prompt {
         direction: CompletionDirection,
     ) {
         (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
-        let register = cx.editor.registers.get_mut(register).read();
+        let values = match cx.editor.registers.read(register) {
+            Some(values) if !values.is_empty() => values,
+            _ => return,
+        };
 
-        if register.is_empty() {
-            return;
-        }
-
-        let end = register.len().saturating_sub(1);
+        let end = values.len().saturating_sub(1);
 
         let index = match direction {
             CompletionDirection::Forward => self.history_pos.map_or(0, |i| i + 1),
             CompletionDirection::Backward => {
-                self.history_pos.unwrap_or(register.len()).saturating_sub(1)
+                self.history_pos.unwrap_or(values.len()).saturating_sub(1)
             }
         }
         .min(end);
 
-        self.line = register[index].clone();
+        self.line = values[index].clone();
 
         self.history_pos = Some(index);
 
@@ -353,6 +355,7 @@ impl Prompt {
         let prompt_color = theme.get("ui.text");
         let completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
+        let suggestion_color = theme.get("ui.text.inactive");
         // completion
 
         let max_len = self
@@ -404,7 +407,7 @@ impl Prompt {
                 surface.set_stringn(
                     area.x + col * (1 + col_width),
                     area.y + row,
-                    &completion,
+                    completion,
                     col_width.saturating_sub(1) as usize,
                     color,
                 );
@@ -451,21 +454,29 @@ impl Prompt {
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
 
-        let input: Cow<str> = if self.line.is_empty() {
+        let (input, is_suggestion): (Cow<str>, bool) = if self.line.is_empty() {
             // latest value in the register list
-            self.history_register
+            match self
+                .history_register
                 .and_then(|reg| cx.editor.registers.last(reg))
                 .map(|entry| entry.into())
-                .unwrap_or_else(|| Cow::from(""))
+            {
+                Some(value) => (value, true),
+                None => (Cow::from(""), false),
+            }
         } else {
-            self.line.as_str().into()
+            (self.line.as_str().into(), false)
         };
 
         surface.set_string(
             area.x + self.prompt.len() as u16,
             area.y + line,
             &input,
-            prompt_color,
+            if is_suggestion {
+                suggestion_color
+            } else {
+                prompt_color
+            },
         );
     }
 }
@@ -548,10 +559,7 @@ impl Component for Prompt {
                         if last_item != self.line {
                             // store in history
                             if let Some(register) = self.history_register {
-                                cx.editor
-                                    .registers
-                                    .get_mut(register)
-                                    .push(self.line.clone());
+                                cx.editor.registers.push(register, self.line.clone());
                             };
                         }
 

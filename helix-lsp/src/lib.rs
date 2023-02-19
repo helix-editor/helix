@@ -20,7 +20,6 @@ use std::{
     },
 };
 
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -35,8 +34,8 @@ pub enum Error {
     Parse(#[from] serde_json::Error),
     #[error("IO Error: {0}")]
     IO(#[from] std::io::Error),
-    #[error("request timed out")]
-    Timeout,
+    #[error("request {0} timed out")]
+    Timeout(jsonrpc::Id),
     #[error("server closed the stream")]
     StreamClosed,
     #[error("Unhandled")]
@@ -45,19 +44,21 @@ pub enum Error {
     Other(#[from] anyhow::Error),
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum OffsetEncoding {
     /// UTF-8 code units aka bytes
-    #[serde(rename = "utf-8")]
     Utf8,
+    /// UTF-32 code units aka chars
+    Utf32,
     /// UTF-16 code units
-    #[serde(rename = "utf-16")]
+    #[default]
     Utf16,
 }
 
 pub mod util {
     use super::*;
-    use helix_core::{diagnostic::NumberOrString, Range, Rope, Transaction};
+    use helix_core::line_ending::{line_end_byte_index, line_end_char_index};
+    use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
     ///
@@ -102,21 +103,22 @@ pub mod util {
             None
         };
 
-        // TODO: add support for Diagnostic.data
-        lsp::Diagnostic::new(
-            range_to_lsp_range(doc, range, offset_encoding),
+        lsp::Diagnostic {
+            range: range_to_lsp_range(doc, range, offset_encoding),
             severity,
             code,
-            diag.source.clone(),
-            diag.message.to_owned(),
-            None,
+            source: diag.source.clone(),
+            message: diag.message.to_owned(),
+            related_information: None,
             tags,
-        )
+            data: diag.data.to_owned(),
+            ..Default::default()
+        }
     }
 
     /// Converts [`lsp::Position`] to a position in the document.
     ///
-    /// Returns `None` if position exceeds document length or an operation overflows.
+    /// Returns `None` if position.line is out of bounds or an overflow occurs
     pub fn lsp_pos_to_pos(
         doc: &Rope,
         pos: lsp::Position,
@@ -127,22 +129,63 @@ pub mod util {
             return None;
         }
 
-        match offset_encoding {
+        // We need to be careful here to fully comply ith the LSP spec.
+        // Two relevant quotes from the spec:
+        //
+        // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#position
+        // > If the character value is greater than the line length it defaults back
+        // >  to the line length.
+        //
+        // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocuments
+        // > To ensure that both client and server split the string into the same
+        // > line representation the protocol specifies the following end-of-line sequences:
+        // > ‘\n’, ‘\r\n’ and ‘\r’. Positions are line end character agnostic.
+        // > So you can not specify a position that denotes \r|\n or \n| where | represents the character offset.
+        //
+        // This means that while the line must be in bounds the `charater`
+        // must be capped to the end of the line.
+        // Note that the end of the line here is **before** the line terminator
+        // so we must use `line_end_char_index` istead of `doc.line_to_char(pos_line + 1)`
+        //
+        // FIXME: Helix does not fully comply with the LSP spec for line terminators.
+        // The LSP standard requires that line terminators are ['\n', '\r\n', '\r'].
+        // Without the unicode-linebreak feature disabled, the `\r` terminator is not handled by helix.
+        // With the unicode-linebreak feature, helix recognizes multiple extra line break chars
+        // which means that positions will be decoded/encoded incorrectly in their presence
+
+        let line = match offset_encoding {
             OffsetEncoding::Utf8 => {
-                let line = doc.line_to_char(pos_line);
-                let pos = line.checked_add(pos.character as usize)?;
-                if pos <= doc.len_chars() {
-                    Some(pos)
-                } else {
-                    None
-                }
+                let line_start = doc.line_to_byte(pos_line);
+                let line_end = line_end_byte_index(&doc.slice(..), pos_line);
+                line_start..line_end
             }
             OffsetEncoding::Utf16 => {
-                let line = doc.line_to_char(pos_line);
-                let line_start = doc.char_to_utf16_cu(line);
-                let pos = line_start.checked_add(pos.character as usize)?;
-                doc.try_utf16_cu_to_char(pos).ok()
+                // TODO directly translate line index to char-idx
+                // ropey can do this just as easily as utf-8 byte translation
+                // but the functions are just missing.
+                // Translate to char first and then utf-16 as a workaround
+                let line_start = doc.line_to_char(pos_line);
+                let line_end = line_end_char_index(&doc.slice(..), pos_line);
+                doc.char_to_utf16_cu(line_start)..doc.char_to_utf16_cu(line_end)
             }
+            OffsetEncoding::Utf32 => {
+                let line_start = doc.line_to_char(pos_line);
+                let line_end = line_end_char_index(&doc.slice(..), pos_line);
+                line_start..line_end
+            }
+        };
+
+        // The LSP spec demands that the offset is capped to the end of the line
+        let pos = line
+            .start
+            .checked_add(pos.character as usize)
+            .unwrap_or(line.end)
+            .min(line.end);
+
+        match offset_encoding {
+            OffsetEncoding::Utf8 => doc.try_byte_to_char(pos).ok(),
+            OffsetEncoding::Utf16 => doc.try_utf16_cu_to_char(pos).ok(),
+            OffsetEncoding::Utf32 => Some(pos),
         }
     }
 
@@ -157,8 +200,8 @@ pub mod util {
         match offset_encoding {
             OffsetEncoding::Utf8 => {
                 let line = doc.char_to_line(pos);
-                let line_start = doc.line_to_char(line);
-                let col = pos - line_start;
+                let line_start = doc.line_to_byte(line);
+                let col = doc.char_to_byte(pos) - line_start;
 
                 lsp::Position::new(line as u32, col as u32)
             }
@@ -166,6 +209,13 @@ pub mod util {
                 let line = doc.char_to_line(pos);
                 let line_start = doc.char_to_utf16_cu(doc.line_to_char(line));
                 let col = doc.char_to_utf16_cu(pos) - line_start;
+
+                lsp::Position::new(line as u32, col as u32)
+            }
+            OffsetEncoding::Utf32 => {
+                let line = doc.char_to_line(pos);
+                let line_start = doc.line_to_char(line);
+                let col = pos - line_start;
 
                 lsp::Position::new(line as u32, col as u32)
             }
@@ -193,6 +243,42 @@ pub mod util {
         let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
 
         Some(Range::new(start, end))
+    }
+
+    /// Creates a [Transaction] from the [lsp::TextEdit] in a completion response.
+    /// The transaction applies the edit to all cursors.
+    pub fn generate_transaction_from_completion_edit(
+        doc: &Rope,
+        selection: &Selection,
+        edit: lsp::TextEdit,
+        offset_encoding: OffsetEncoding,
+    ) -> Transaction {
+        let replacement: Option<Tendril> = if edit.new_text.is_empty() {
+            None
+        } else {
+            Some(edit.new_text.into())
+        };
+
+        let text = doc.slice(..);
+        let primary_cursor = selection.primary().cursor(text);
+
+        let start_offset = match lsp_pos_to_pos(doc, edit.range.start, offset_encoding) {
+            Some(start) => start as i128 - primary_cursor as i128,
+            None => return Transaction::new(doc),
+        };
+        let end_offset = match lsp_pos_to_pos(doc, edit.range.end, offset_encoding) {
+            Some(end) => end as i128 - primary_cursor as i128,
+            None => return Transaction::new(doc),
+        };
+
+        Transaction::change_by_selection(doc, selection, |range| {
+            let cursor = range.cursor(text);
+            (
+                (cursor as i128 + start_offset) as usize,
+                (cursor as i128 + end_offset) as usize,
+                replacement.clone(),
+            )
+        })
     }
 
     pub fn generate_transaction_from_edits(
@@ -282,6 +368,8 @@ impl MethodCall {
 pub enum Notification {
     // we inject this notification to signal the LSP is ready
     Initialized,
+    // and this notification to signal that the LSP exited
+    Exit,
     PublishDiagnostics(lsp::PublishDiagnosticsParams),
     ShowMessage(lsp::ShowMessageParams),
     LogMessage(lsp::LogMessageParams),
@@ -294,6 +382,7 @@ impl Notification {
 
         let notification = match method {
             lsp::notification::Initialized::METHOD => Self::Initialized,
+            lsp::notification::Exit::METHOD => Self::Exit,
             lsp::notification::PublishDiagnostics::METHOD => {
                 let params: lsp::PublishDiagnosticsParams = params.parse()?;
                 Self::PublishDiagnostics(params)
@@ -348,6 +437,10 @@ impl Registry {
             .values()
             .find(|(client_id, _)| client_id == &id)
             .map(|(_, client)| client.as_ref())
+    }
+
+    pub fn remove_by_id(&mut self, id: usize) {
+        self.inner.retain(|_, (client_id, _)| client_id != &id)
     }
 
     pub fn restart(
@@ -506,6 +599,7 @@ fn start_client(
         &ls_config.command,
         &ls_config.args,
         config.config.clone(),
+        ls_config.environment.clone(),
         &config.roots,
         id,
         ls_config.timeout,
@@ -561,16 +655,55 @@ mod tests {
         }
 
         test_case!("", (0, 0) => Some(0));
-        test_case!("", (0, 1) => None);
+        test_case!("", (0, 1) => Some(0));
         test_case!("", (1, 0) => None);
         test_case!("\n\n", (0, 0) => Some(0));
         test_case!("\n\n", (1, 0) => Some(1));
-        test_case!("\n\n", (1, 1) => Some(2));
+        test_case!("\n\n", (1, 1) => Some(1));
         test_case!("\n\n", (2, 0) => Some(2));
         test_case!("\n\n", (3, 0) => None);
         test_case!("test\n\n\n\ncase", (4, 3) => Some(11));
         test_case!("test\n\n\n\ncase", (4, 4) => Some(12));
-        test_case!("test\n\n\n\ncase", (4, 5) => None);
+        test_case!("test\n\n\n\ncase", (4, 5) => Some(12));
         test_case!("", (u32::MAX, u32::MAX) => None);
+    }
+
+    #[test]
+    fn emoji_format_gh_4791() {
+        use lsp_types::{Position, Range, TextEdit};
+
+        let edits = vec![
+            TextEdit {
+                range: Range {
+                    start: Position {
+                        line: 0,
+                        character: 1,
+                    },
+                    end: Position {
+                        line: 1,
+                        character: 0,
+                    },
+                },
+                new_text: "\n  ".to_string(),
+            },
+            TextEdit {
+                range: Range {
+                    start: Position {
+                        line: 1,
+                        character: 7,
+                    },
+                    end: Position {
+                        line: 2,
+                        character: 0,
+                    },
+                },
+                new_text: "\n  ".to_string(),
+            },
+        ];
+
+        let mut source = Rope::from_str("[\n\"🇺🇸\",\n\"🎄\",\n]");
+
+        let transaction = generate_transaction_from_edits(&source, edits, OffsetEncoding::Utf8);
+        assert!(transaction.apply(&mut source));
     }
 }

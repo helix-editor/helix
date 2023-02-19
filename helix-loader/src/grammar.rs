@@ -67,7 +67,7 @@ pub fn get_language(name: &str) -> Result<Language> {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn get_language(name: &str) -> Result<Language> {
     use libloading::{Library, Symbol};
-    let mut library_path = crate::runtime_dir().join("grammars").join(&name);
+    let mut library_path = crate::runtime_dir().join("grammars").join(name);
     library_path.set_extension(DYLIB_EXTENSION);
 
     let library = unsafe { Library::new(&library_path) }
@@ -263,7 +263,7 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
         ))?;
 
         // create the grammar dir contains a git directory
-        if !grammar_dir.join(".git").is_dir() {
+        if !grammar_dir.join(".git").exists() {
             git(&grammar_dir, ["init"])?;
         }
 
@@ -429,7 +429,7 @@ fn build_tree_sitter_library(
 
     if cfg!(all(windows, target_env = "msvc")) {
         command
-            .args(&["/nologo", "/LD", "/I"])
+            .args(["/nologo", "/LD", "/I"])
             .arg(header_path)
             .arg("/Od")
             .arg("/utf-8");
@@ -515,5 +515,5 @@ pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::
         .join("queries")
         .join(language)
         .join(filename);
-    std::fs::read_to_string(&path)
+    std::fs::read_to_string(path)
 }
