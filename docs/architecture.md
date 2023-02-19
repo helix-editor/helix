@@ -12,6 +12,9 @@
 
 This document contains a high-level overview of Helix internals.
 
+> NOTE: Use `cargo doc --open` for API documentation as well as dependency
+> documentation.
+
 ## Core
 
 The core contains basic building blocks used to construct the editor. It is
@@ -20,13 +23,21 @@ are functional: most operations won't modify data in place but instead return
 a new copy.
 
 The main data structure used for representing buffers is a `Rope`. We re-export
-asaddthe excellent [ropey](https://github.com/cessen/ropey) library. Ropes are cheap
+the excellent [ropey](https://github.com/cessen/ropey) library. Ropes are cheap
 to clone, and allow us to easily make snapshots of a text state.
 
 Multiple selections are a core editing primitive. Document selections are
 represented by a `Selection`. Each `Range` in the selection consists of a moving
 `head` and an immovable `anchor`. A single cursor in the editor is simply
-a selction with a single range, with the head and the anchor in the same
+a selection with a single range, with the head and the anchor in the same
+position.
+
+Ropes are modified by constructing an OT-like `Transaction`. It represents
+a single coherent change to the document and can be applied to the rope.
+A transaction can be inverted to produce an undo. Selections and marks can be
+mapped over a transaction to translate to a position in the new text state after
+applying the transaction.
+
 > NOTE: `Transaction::change`/`Transaction::change_by_selection` is the main
 > interface used to generate text edits.
 
@@ -97,3 +108,4 @@ The `main` function sets up a new `Application` that runs the event loop.
 
 ## TUI / Term
 
+TODO: document Component and rendering related stuff
