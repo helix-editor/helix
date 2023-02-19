@@ -287,17 +287,22 @@ impl<T> Tree<T> {
 
 pub struct TreeView<T: TreeViewItem> {
     tree: Tree<T>,
+
     /// Selected item idex
     selected: usize,
 
     /// (selected, row)
     save_view: (usize, usize),
 
-    /// View row
+    /// For implementing vertical scroll
     winline: usize,
 
     previous_area: Rect,
+
+    /// For implementing horizontal scoll
     column: usize,
+
+    /// For implementing horizontal scoll
     max_len: usize,
     count: usize,
     tree_symbol_style: String,
@@ -424,14 +429,14 @@ impl<T: TreeViewItem> TreeView<T> {
         self.tree.regenerate_index();
     }
 
-    fn go_to_parent(&mut self) {
+    fn move_to_parent(&mut self) {
         if let Some(parent) = self.current_parent() {
             let index = parent.index;
             self.set_selected(index)
         }
     }
 
-    fn go_to_children(&mut self, filter: &String) -> Result<()> {
+    fn move_to_children(&mut self, filter: &String) -> Result<()> {
         let current = self.current_mut();
         if current.is_opened {
             self.set_selected(self.selected + 1);
@@ -450,38 +455,45 @@ impl<T: TreeViewItem> TreeView<T> {
         self.tree.refresh(filter)
     }
 
-    fn go_to_first(&mut self) {
+    fn move_to_first(&mut self) {
         self.move_up(usize::MAX / 2)
     }
 
-    fn go_to_last(&mut self) {
+    fn move_to_last(&mut self) {
         self.move_down(usize::MAX / 2)
     }
 
     fn set_previous_area(&mut self, area: Rect) {
         self.previous_area = area
     }
+
+    fn move_leftmost(&mut self) {
+        self.move_left(usize::MAX / 2);
+    }
+
+    fn move_rightmost(&mut self) {
+        self.move_right(usize::MAX / 2)
+    }
 }
 
-pub fn tree_view_help() -> Vec<String> {
+pub fn tree_view_help() -> Vec<(&'static str, &'static str)> {
     vec![
-        "j/↓ Down",
-        "k/↑ Up",
-        "h/← Go to parent",
-        "l/→ Expand",
-        "L   Scroll right",
-        "H   Scroll left",
-        "zz  Align view center",
-        "zt  Align view top",
-        "zb  Align view bottom",
-        "gg  Go to first",
-        "ge  Go to last",
-        "^d  Page down",
-        "^u  Page up",
+        ("j, down", "Down"),
+        ("k, up", "Up"),
+        ("h, left", "Go to parent"),
+        ("l, right", "Expand"),
+        ("L", "Scroll right"),
+        ("H", "Scroll left"),
+        ("zz", "Align view center"),
+        ("zt", "Align view top"),
+        ("zb", "Align view bottom"),
+        ("gg", "Go to first line"),
+        ("ge", "Go to last line"),
+        ("gh", "Go to line start"),
+        ("gl", "Go to line end"),
+        ("C-d", "Page down"),
+        ("C-u", "Page up"),
     ]
-    .into_iter()
-    .map(|s| s.to_string())
-    .collect()
 }
 
 impl<T: TreeViewItem> TreeView<T> {
@@ -577,7 +589,8 @@ impl<T: TreeViewItem> TreeView<T> {
     pub fn move_right(&mut self, cols: usize) {
         let max_scroll = self
             .max_len
-            .saturating_sub(self.previous_area.width as usize);
+            .saturating_sub(self.previous_area.width as usize)
+            .saturating_add(1);
         self.column = max_scroll.min(self.column + cols);
     }
 
@@ -691,8 +704,6 @@ struct RenderTreeParams<'a, T> {
     level: usize,
     selected: usize,
     filter: &'a str,
-    column_start: usize,
-    max_width: usize,
 }
 
 fn render_tree<T: TreeViewItem>(
@@ -702,8 +713,6 @@ fn render_tree<T: TreeViewItem>(
         level,
         selected,
         filter,
-        column_start,
-        max_width,
     }: RenderTreeParams<T>,
 ) -> Vec<RenderedLine> {
     let indent = if level > 0 {
@@ -720,15 +729,12 @@ fn render_tree<T: TreeViewItem>(
     } else {
         "".to_string()
     };
-    let indent = indent[column_start..].to_string();
-    let indent_len = indent.len();
     let name = tree.item.name();
-    println!("{max_width}");
     let head = RenderedLine {
         indent,
         selected: selected == tree.index,
         descendant_selected: selected != tree.index && tree.get(selected).is_some(),
-        name: name[..(max_width - indent_len).clamp(0, name.len())].to_string(),
+        name,
     };
     let prefix = format!("{}{}", prefix, if level == 0 { "" } else { "  " });
     vec![head]
@@ -740,8 +746,6 @@ fn render_tree<T: TreeViewItem>(
                 level: level + 1,
                 selected,
                 filter,
-                column_start,
-                max_width,
             })
         }))
         .collect()
@@ -749,7 +753,6 @@ fn render_tree<T: TreeViewItem>(
 
 impl<T: TreeViewItem + Clone> TreeView<T> {
     pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context, filter: &String) {
-        self.max_len = 0;
         let style = cx.editor.theme.get(&self.tree_symbol_style);
         let ancestor_style = cx.editor.theme.get("ui.text.focus");
 
@@ -820,14 +823,49 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             level: 0,
             selected: self.selected,
             filter,
-            column_start: self.column,
-            max_width: self.previous_area.width as usize,
         };
 
         let lines = render_tree(params);
 
+        self.max_len = lines
+            .iter()
+            .map(|line| {
+                line.indent
+                    .chars()
+                    .count()
+                    .saturating_add(line.name.chars().count())
+            })
+            .max()
+            .unwrap_or(0);
+
+        let max_width = self.previous_area.width as usize;
+
         lines
             .into_iter()
+            // Horizontal scroll
+            .map(|line| {
+                let skip = self.column;
+                let indent_len = line.indent.chars().count();
+                RenderedLine {
+                    indent: if line.indent.is_empty() {
+                        "".to_string()
+                    } else {
+                        line.indent
+                            .chars()
+                            .skip(skip)
+                            .take(max_width)
+                            .collect::<String>()
+                    },
+                    name: line
+                        .name
+                        .chars()
+                        .skip(skip.saturating_sub(indent_len))
+                        .take((max_width.saturating_sub(indent_len)).clamp(0, line.name.len()))
+                        .collect::<String>(),
+                    ..line
+                }
+            })
+            // Vertical scroll
             .skip(skip)
             .take(area.height as usize)
             .collect()
@@ -862,8 +900,8 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                     _ => {}
                 }));
             }
-            key!('h') | key!(Left) => self.go_to_parent(),
-            key!('l') | key!(Right) => match self.go_to_children(filter) {
+            key!('h') | key!(Left) => self.move_to_parent(),
+            key!('l') | key!(Right) => match self.move_to_children(filter) {
                 Ok(_) => {}
                 Err(err) => cx.editor.set_error(err.to_string()),
             },
@@ -874,8 +912,10 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             ctrl!('u') => self.move_up_half_page(),
             key!('g') => {
                 self.on_next_key = Some(Box::new(|_, tree, event| match event {
-                    key!('g') => tree.go_to_first(),
-                    key!('e') => tree.go_to_last(),
+                    key!('g') => tree.move_to_first(),
+                    key!('e') => tree.move_to_last(),
+                    key!('h') => tree.move_leftmost(),
+                    key!('l') => tree.move_rightmost(),
                     _ => {}
                 }));
             }
@@ -1141,10 +1181,10 @@ mod test_tree_view {
     }
 
     #[test]
-    fn test_go_to_first_last() {
+    fn test_move_to_first_last() {
         let mut view = dummy_tree_view();
 
-        view.go_to_last();
+        view.move_to_last();
         assert_eq!(
             render(&mut view),
             "
@@ -1157,7 +1197,7 @@ mod test_tree_view {
             .trim()
         );
 
-        view.go_to_first();
+        view.move_to_first();
         assert_eq!(
             render(&mut view),
             "
@@ -1255,11 +1295,11 @@ mod test_tree_view {
     }
 
     #[test]
-    fn go_to_children_parent() {
+    fn move_to_children_parent() {
         let filter = "".to_string();
         let mut view = dummy_tree_view();
         view.move_down(1);
-        view.go_to_children(&filter).unwrap();
+        view.move_to_children(&filter).unwrap();
         assert_eq!(
             render(&mut view),
             "
@@ -1285,7 +1325,7 @@ mod test_tree_view {
             .trim()
         );
 
-        view.go_to_parent();
+        view.move_to_parent();
         assert_eq!(
             render(&mut view),
             "
@@ -1298,8 +1338,8 @@ mod test_tree_view {
             .trim()
         );
 
-        view.go_to_last();
-        view.go_to_parent();
+        view.move_to_last();
+        view.move_to_parent();
         assert_eq!(
             render(&mut view),
             "
@@ -1334,6 +1374,163 @@ mod test_tree_view {
         assert_eq!(
             render(&mut view),
             "
+(ho_lives_in_a_pineap)
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+
+        view.move_right(1);
+        assert_eq!(
+            render(&mut view),
+            "
+(o_lives_in_a_pineapp)
+gary_the_snail
+karen
+king_neptune
+krabby_patty
+"
+            .trim()
+        );
+
+        view.move_right(1);
+        assert_eq!(
+            render(&mut view),
+            "
+(_lives_in_a_pineappl)
+ary_the_snail
+aren
+ing_neptune
+rabby_patty
+"
+            .trim()
+        );
+
+        view.move_left(1);
+        assert_eq!(
+            render(&mut view),
+            "
+(o_lives_in_a_pineapp)
+gary_the_snail
+karen
+king_neptune
+krabby_patty
+"
+            .trim()
+        );
+
+        view.move_leftmost();
+        assert_eq!(
+            render(&mut view),
+            "
+(who_lives_in_a_pinea)
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+
+        view.move_left(1);
+        assert_eq!(
+            render(&mut view),
+            "
+(who_lives_in_a_pinea)
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+
+        view.move_rightmost();
+        assert_eq!(render(&mut view), "(apple_under_the_sea)\n\n\n\n");
+    }
+
+    #[test]
+    fn test_move_to_parent_child() {
+        let mut view = dummy_tree_view();
+        let filter = "".to_string();
+
+        view.move_to_children(&filter).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ (gary_the_snail)
+ karen
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+
+        view.move_to_children(&filter).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ [gary_the_snail]
+   (e_snail)
+   gary_th
+ karen
+"
+            .trim()
+        );
+
+        view.move_down(1);
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ [gary_the_snail]
+   e_snail
+   (gary_th)
+ karen
+"
+            .trim()
+        );
+
+        view.move_to_parent();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ (gary_the_snail)
+   e_snail
+   gary_th
+ karen
+"
+            .trim()
+        );
+
+        view.move_to_parent();
+        assert_eq!(
+            render(&mut view),
+            "
+(who_lives_in_a_pineapple_under_the_sea)
+ gary_the_snail
+   e_snail
+   gary_th
+ karen
+"
+            .trim()
+        );
+
+        view.move_to_parent();
+        assert_eq!(
+            render(&mut view),
+            "
+(who_lives_in_a_pineapple_under_the_sea)
+ gary_the_snail
+   e_snail
+   gary_th
+ karen
 "
             .trim()
         )

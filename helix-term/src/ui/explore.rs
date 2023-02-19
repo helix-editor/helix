@@ -281,26 +281,36 @@ impl Explorer {
         let body_area = area.clip_top(2);
         let style = editor.theme.get("ui.text");
         let content = if self.show_help {
-            vec![
-                "?    Toggle help",
-                "a    Add file",
-                "A    Add folder",
-                "r    Rename file/folder",
-                "d    Delete file",
-                "/    Search",
-                "f    Filter",
-                "[    Change root to parent folder",
-                "]    Change root to current folder",
-                "^o   Go to previous root",
-                "R    Refresh",
-                "+    Increase size",
-                "-    Decrease size",
-                "q    Close",
+            let instructions = vec![
+                ("?", "Toggle help"),
+                ("a", "Add file"),
+                ("A", "Add folder"),
+                ("r", "Rename file/folder"),
+                ("d", "Delete file"),
+                ("/", "Search"),
+                ("f", "Filter"),
+                ("[", "Change root to parent folder"),
+                ("]", "Change root to current folder"),
+                ("^o", "Go to previous root"),
+                ("R", "Refresh"),
+                ("+", "Increase size"),
+                ("-", "Decrease size"),
+                ("q", "Close"),
             ]
             .into_iter()
-            .map(|s| s.to_string())
-            .chain(ui::tree::tree_view_help())
-            .collect()
+            .chain(ui::tree::tree_view_help().into_iter())
+            .collect::<Vec<_>>();
+            let max_left_length = instructions
+                .iter()
+                .map(|(key, _)| key.chars().count())
+                .max()
+                .unwrap_or(0);
+            instructions
+                .into_iter()
+                .map(|(key, description)| {
+                    format!("{:width$}{}", key, description, width = max_left_length + 1)
+                })
+                .collect::<Vec<_>>()
         } else {
             get_preview(&item.path, body_area.height as usize)
                 .unwrap_or_else(|err| vec![err.to_string()])
