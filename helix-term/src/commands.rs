@@ -1187,7 +1187,7 @@ fn extend_next_long_word_end(cx: &mut CommandContext) {
     extend_word_impl(cx, movement::move_next_long_word_end)
 }
 
-fn will_find_char<F>(cx: &mut CommandContext, search_fn: F, inclusive: bool, extend: bool)
+fn find_char<F>(cx: &mut CommandContext, search_fn: F, inclusive: bool, extend: bool)
 where
     F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize> + 'static,
 {
@@ -1306,35 +1306,35 @@ fn find_prev_char_impl(
 }
 
 fn find_till_char(cx: &mut CommandContext) {
-    will_find_char(cx, find_next_char_impl, false, false)
+    find_char(cx, find_next_char_impl, false, false)
 }
 
 fn find_next_char(cx: &mut CommandContext) {
-    will_find_char(cx, find_next_char_impl, true, false)
+    find_char(cx, find_next_char_impl, true, false)
 }
 
 fn extend_till_char(cx: &mut CommandContext) {
-    will_find_char(cx, find_next_char_impl, false, true)
+    find_char(cx, find_next_char_impl, false, true)
 }
 
 fn extend_next_char(cx: &mut CommandContext) {
-    will_find_char(cx, find_next_char_impl, true, true)
+    find_char(cx, find_next_char_impl, true, true)
 }
 
 fn till_prev_char(cx: &mut CommandContext) {
-    will_find_char(cx, find_prev_char_impl, false, false)
+    find_char(cx, find_prev_char_impl, false, false)
 }
 
 fn find_prev_char(cx: &mut CommandContext) {
-    will_find_char(cx, find_prev_char_impl, true, false)
+    find_char(cx, find_prev_char_impl, true, false)
 }
 
 fn extend_till_prev_char(cx: &mut CommandContext) {
-    will_find_char(cx, find_prev_char_impl, false, true)
+    find_char(cx, find_prev_char_impl, false, true)
 }
 
 fn extend_prev_char(cx: &mut CommandContext) {
-    will_find_char(cx, find_prev_char_impl, true, true)
+    find_char(cx, find_prev_char_impl, true, true)
 }
 
 fn repeat_last_motion(cx: &mut CommandContext) {
