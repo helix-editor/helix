@@ -948,14 +948,16 @@ impl EditorView {
         start_offset: usize,
         trigger_offset: usize,
         size: Rect,
-    ) {
+    ) -> Option<Rect> {
         let mut completion =
             Completion::new(editor, items, offset_encoding, start_offset, trigger_offset);
 
         if completion.is_empty() {
             // skip if we got no completion results
-            return;
+            return None;
         }
+
+        let area = completion.area(size, editor);
 
         // Immediately initialize a savepoint
         doc_mut!(editor).savepoint();
@@ -966,6 +968,7 @@ impl EditorView {
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
+        Some(area)
     }
 
     pub fn clear_completion(&mut self, editor: &mut Editor) {
@@ -1240,13 +1243,15 @@ impl Component for EditorView {
                             // let completion swallow the event if necessary
                             let mut consumed = false;
                             if let Some(completion) = &mut self.completion {
-                                // use a fake context here
-                                let mut cx = Context {
-                                    editor: cx.editor,
-                                    jobs: cx.jobs,
-                                    scroll: None,
+                                let res = {
+                                    // use a fake context here
+                                    let mut cx = Context {
+                                        editor: cx.editor,
+                                        jobs: cx.jobs,
+                                        scroll: None,
+                                    };
+                                    completion.handle_event(event, &mut cx)
                                 };
-                                let res = completion.handle_event(event, &mut cx);
 
                                 if let EventResult::Consumed(callback) = res {
                                     consumed = true;
@@ -1254,6 +1259,12 @@ impl Component for EditorView {
                                     if callback.is_some() {
                                         // assume close_fn
                                         self.clear_completion(cx.editor);
+
+                                        // In case the popup was deleted because of an intersection w/ the auto-complete menu.
+                                        commands::signature_help_impl(
+                                            &mut cx,
+                                            commands::SignatureHelpInvoked::Automatic,
+                                        );
                                     }
                                 }
                             }
