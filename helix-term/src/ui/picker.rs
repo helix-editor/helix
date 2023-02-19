@@ -650,16 +650,16 @@ impl<T: Item + 'static> Component for Picker<T> {
         cx.editor.reset_idle_timer();
 
         match key_event {
-            shift!(Tab) | key!(Up) | ctrl!('p') => {
+            shift!(Tab) | key!(Up) | ctrl!('k') => {
                 self.move_by(1, Direction::Backward);
             }
-            key!(Tab) | key!(Down) | ctrl!('n') => {
+            key!(Tab) | key!(Down) | ctrl!('j') => {
                 self.move_by(1, Direction::Forward);
             }
-            key!(PageDown) | ctrl!('d') => {
+            key!(PageDown) | ctrl!('f') => {
                 self.page_down();
             }
-            key!(PageUp) | ctrl!('u') => {
+            key!(PageUp) | ctrl!('b') => {
                 self.page_up();
             }
             key!(Home) => {
@@ -676,7 +676,7 @@ impl<T: Item + 'static> Component for Picker<T> {
                     (self.callback_fn)(cx, option, Action::Load);
                 }
             }
-            key!(Enter) => {
+            key!(Enter) | ctrl!('l') => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(cx, option, Action::Replace);
                 }

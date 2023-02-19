@@ -506,15 +506,15 @@ impl Component for Prompt {
             }
             alt!('b') | ctrl!(Left) => self.move_cursor(Movement::BackwardWord(1)),
             alt!('f') | ctrl!(Right) => self.move_cursor(Movement::ForwardWord(1)),
-            ctrl!('b') | key!(Left) => self.move_cursor(Movement::BackwardChar(1)),
-            ctrl!('f') | key!(Right) => self.move_cursor(Movement::ForwardChar(1)),
+            key!(Left) => self.move_cursor(Movement::BackwardChar(1)),
+            key!(Right) => self.move_cursor(Movement::ForwardChar(1)),
             ctrl!('e') | key!(End) => self.move_end(),
             ctrl!('a') | key!(Home) => self.move_start(),
             ctrl!('w') | alt!(Backspace) | ctrl!(Backspace) => {
                 self.delete_word_backwards(cx.editor)
             }
             alt!('d') | alt!(Delete) | ctrl!(Delete) => self.delete_word_forwards(cx.editor),
-            ctrl!('k') => self.kill_to_end_of_line(cx.editor),
+            // ctrl!('k') => self.kill_to_end_of_line(cx.editor),
             ctrl!('u') => self.kill_to_start_of_line(cx.editor),
             ctrl!('h') | key!(Backspace) => {
                 self.delete_char_backwards(cx.editor);
