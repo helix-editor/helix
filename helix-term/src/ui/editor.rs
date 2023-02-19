@@ -1,5 +1,5 @@
 use crate::{
-    commands::{self, OnKeyCallback},
+    commands::{self, OnKeyCallback, CommandContext},
     compositor::{Component, CompositorContext, Event, EventResult},
     job::{self, Callback},
     key,
@@ -794,7 +794,7 @@ impl EditorView {
     fn handle_keymap_event(
         &mut self,
         mode: Mode,
-        cxt: &mut commands::CommandContext,
+        cxt: &mut CommandContext,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
@@ -850,7 +850,7 @@ impl EditorView {
         None
     }
 
-    fn insert_mode(&mut self, cx: &mut commands::CommandContext, event: KeyEvent) {
+    fn insert_mode(&mut self, cx: &mut CommandContext, event: KeyEvent) {
         if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
             match keyresult {
                 KeymapResult::NotFound => {
@@ -877,7 +877,7 @@ impl EditorView {
         }
     }
 
-    fn command_mode(&mut self, mode: Mode, cxt: &mut commands::CommandContext, event: KeyEvent) {
+    fn command_mode(&mut self, mode: Mode, cxt: &mut CommandContext, event: KeyEvent) {
         match (event, cxt.editor.count) {
             // count handling
             (key!(i @ '0'), Some(_)) | (key!(i @ '1'..='9'), _) => {
@@ -977,7 +977,7 @@ impl EditorView {
         editor.clear_idle_timer(); // don't retrigger
     }
 
-    pub fn handle_idle_timeout(&mut self, cx: &mut commands::CommandContext) -> EventResult {
+    pub fn handle_idle_timeout(&mut self, cx: &mut CommandContext) -> EventResult {
         if let Some(completion) = &mut self.completion {
             return if completion.ensure_item_resolved(cx) {
                 EventResult::Consumed(None)
@@ -1000,7 +1000,7 @@ impl EditorView {
     fn handle_mouse_event(
         &mut self,
         event: &MouseEvent,
-        cxt: &mut commands::CommandContext,
+        cxt: &mut CommandContext,
     ) -> EventResult {
         let config = cxt.editor.config();
         let MouseEvent {
@@ -1187,7 +1187,7 @@ impl Component for EditorView {
         event: &Event,
         context: &mut crate::compositor::CompositorContext,
     ) -> EventResult {
-        let mut cx = commands::CommandContext {
+        let mut cx = CommandContext {
             editor: context.editor,
             count: None,
             register: None,

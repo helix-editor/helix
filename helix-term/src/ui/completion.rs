@@ -1,4 +1,4 @@
-use crate::compositor::{Component, CompositorContext, Event, EventResult};
+use crate::{compositor::{Component, CompositorContext, Event, EventResult}, commands::CommandContext};
 use helix_view::{
     editor::CompleteAction,
     theme::{Modifier, Style},
@@ -11,7 +11,6 @@ use std::borrow::Cow;
 use helix_core::{Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
 
-use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 
 use helix_lsp::{lsp, util};
@@ -313,7 +312,7 @@ impl Completion {
         }
     }
 
-    pub fn update(&mut self, cx: &mut commands::CommandContext) {
+    pub fn update(&mut self, cx: &mut CommandContext) {
         self.recompute_filter(cx.editor)
     }
 
@@ -327,7 +326,7 @@ impl Completion {
 
     /// Asynchronously requests that the currently selection completion item is
     /// resolved through LSP `completionItem/resolve`.
-    pub fn ensure_item_resolved(&mut self, cx: &mut commands::CommandContext) -> bool {
+    pub fn ensure_item_resolved(&mut self, cx: &mut CommandContext) -> bool {
         // > If computing full completion items is expensive, servers can additionally provide a
         // > handler for the completion item resolve request. ...
         // > A typical use case is for example: the `textDocument/completion` request doesn't fill

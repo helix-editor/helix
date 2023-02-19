@@ -14,6 +14,7 @@ mod spinner;
 mod statusline;
 mod text;
 
+use crate::commands::CommandContext;
 use crate::compositor::{Component, Compositor};
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
@@ -34,7 +35,7 @@ use helix_view::Editor;
 use std::path::PathBuf;
 
 pub fn prompt(
-    cx: &mut crate::commands::CommandContext,
+    cx: &mut CommandContext,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
@@ -47,7 +48,7 @@ pub fn prompt(
 }
 
 pub fn prompt_with_input(
-    cx: &mut crate::commands::CommandContext,
+    cx: &mut CommandContext,
     prompt: std::borrow::Cow<'static, str>,
     input: String,
     history_register: Option<char>,
@@ -60,7 +61,7 @@ pub fn prompt_with_input(
 }
 
 pub fn regex_prompt(
-    cx: &mut crate::commands::CommandContext,
+    cx: &mut CommandContext,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
