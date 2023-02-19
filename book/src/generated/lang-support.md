@@ -147,4 +147,5 @@
 | xit | ✓ |  |  |  |
 | xml | ✓ |  | ✓ |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
+| yuck | ✓ |  |  |  |
 | zig | ✓ | ✓ | ✓ | `zls` |
