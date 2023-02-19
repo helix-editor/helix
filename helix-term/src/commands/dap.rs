@@ -1,6 +1,6 @@
 use super::{CommandContext, Editor};
 use crate::{
-    compositor::{self, Compositor},
+    compositor::{Compositor, CompositorContext},
     job::{Callback, Jobs},
     ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
 };
@@ -130,7 +130,7 @@ fn dap_callback<T, F>(
 }
 
 pub fn dap_start_impl(
-    cx: &mut compositor::CompositorContext,
+    cx: &mut CompositorContext,
     name: Option<&str>,
     socket: Option<std::net::SocketAddr>,
     params: Option<Vec<std::borrow::Cow<str>>>,

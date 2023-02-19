@@ -21,7 +21,7 @@ use tui::backend::Backend;
 use crate::{
     args::Args,
     commands::apply_workspace_edit,
-    compositor::{Compositor, Event},
+    compositor::{Compositor, Event, CompositorContext},
     config::Config,
     job::Jobs,
     keymap::Keymaps,
@@ -278,7 +278,7 @@ impl Application {
     }
 
     async fn render(&mut self) {
-        let mut cx = crate::compositor::CompositorContext {
+        let mut cx = CompositorContext {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
@@ -495,7 +495,7 @@ impl Application {
     }
 
     pub async fn handle_idle_timeout(&mut self) {
-        let mut cx = crate::compositor::CompositorContext {
+        let mut cx = CompositorContext {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
@@ -615,7 +615,7 @@ impl Application {
         &mut self,
         event: Result<CrosstermEvent, crossterm::ErrorKind>,
     ) {
-        let mut cx = crate::compositor::CompositorContext {
+        let mut cx = CompositorContext {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,

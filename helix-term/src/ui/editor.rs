@@ -1185,7 +1185,7 @@ impl Component for EditorView {
     fn handle_event(
         &mut self,
         event: &Event,
-        context: &mut crate::compositor::CompositorContext,
+        context: &mut CompositorContext,
     ) -> EventResult {
         let mut cx = CommandContext {
             editor: context.editor,

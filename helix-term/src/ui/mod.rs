@@ -15,7 +15,7 @@ mod statusline;
 mod text;
 
 use crate::commands::CommandContext;
-use crate::compositor::{Component, Compositor};
+use crate::compositor::{Component, Compositor, CompositorContext};
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
 pub use completion::Completion;
@@ -39,7 +39,7 @@ pub fn prompt(
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
-    callback_fn: impl FnMut(&mut crate::compositor::CompositorContext, &str, PromptEvent) + 'static,
+    callback_fn: impl FnMut(&mut CompositorContext, &str, PromptEvent) + 'static,
 ) {
     let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
     // Calculate the initial completion
@@ -53,7 +53,7 @@ pub fn prompt_with_input(
     input: String,
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
-    callback_fn: impl FnMut(&mut crate::compositor::CompositorContext, &str, PromptEvent) + 'static,
+    callback_fn: impl FnMut(&mut CompositorContext, &str, PromptEvent) + 'static,
 ) {
     let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
         .with_line(input, cx.editor);
@@ -77,7 +77,7 @@ pub fn regex_prompt(
         prompt,
         history_register,
         completion_fn,
-        move |cx: &mut crate::compositor::CompositorContext, input: &str, event: PromptEvent| {
+        move |cx: &mut CompositorContext, input: &str, event: PromptEvent| {
             match event {
                 PromptEvent::Abort => {
                     let (view, doc) = current!(cx.editor);

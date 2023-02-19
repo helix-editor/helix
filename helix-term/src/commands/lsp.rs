@@ -19,7 +19,7 @@ use helix_core::{path, Selection};
 use helix_view::{document::Mode, editor::Action, theme::Style};
 
 use crate::{
-    compositor::{self, Compositor},
+    compositor::{Compositor, CompositorContext},
     ui::{
         self, lsp::SignatureHelp, overlay::overlayed, DynamicPicker, FileLocation, FilePicker,
         Popup, PromptEvent,
@@ -1249,7 +1249,7 @@ pub fn rename_symbol(cx: &mut CommandContext) {
         prefill,
         None,
         ui::completers::none,
-        move |cx: &mut compositor::CompositorContext, input: &str, event: PromptEvent| {
+        move |cx: &mut CompositorContext, input: &str, event: PromptEvent| {
             if event != PromptEvent::Validate {
                 return;
             }
