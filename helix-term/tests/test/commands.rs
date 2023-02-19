@@ -259,6 +259,56 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_search_selection() -> anyhow::Result<()> {
+    // Single selection with a length of 1: search for the whole word
+    test_key_sequence(
+        &mut helpers::AppBuilder::new().build()?,
+        Some("ifoobar::baz<esc>3bl*"), // 3b places the cursor on the first letter of 'foobar', then move one to the right for good measure
+        Some(&|app| {
+            assert!(
+                r#"register '/' set to 'foobar'"# == app.editor.get_status().unwrap().0
+                    && Some(&"foobar".to_string()) == app.editor.registers.first('/')
+            );
+        }),
+        false,
+    )
+    .await?;
+
+    // Single selection with a length greather than 1: only search for the selection
+    test_key_sequence(
+        &mut helpers::AppBuilder::new().build()?,
+        Some("ifoobar::baz<esc>3blvll*"), // 3b places the cursor on the first letter of 'foobar', then move one to the right for good measure, then select two more chars for a total of three
+        Some(&|app| {
+            assert!(
+                r#"register '/' set to 'oob'"# == app.editor.get_status().unwrap().0
+                    && Some(&"oob".to_string()) == app.editor.registers.first('/')
+            );
+        }),
+        false,
+    )
+    .await?;
+
+    // Multiple selection of length 1 each : should still only search for the selection
+    test_key_sequence(
+        &mut helpers::AppBuilder::new().build()?,
+        Some("ifoobar::baz<ret>bar::crux<esc>k3blC*"), // k3b places the cursor on the first letter of 'foobar', then move one to the right for good measure, then adds a cursor on the line below
+        Some(&|app| {
+            assert!(
+                // The selections don't seem to be ordered, so we have to test for the two possible orders.
+                (r#"register '/' set to 'o|a'"# == app.editor.get_status().unwrap().0
+                    || r#"register '/' set to 'a|o'"# == app.editor.get_status().unwrap().0)
+                    && (Some(&"o|a".to_string()) == app.editor.registers.first('/')
+                        || Some(&"a|o".to_string()) == app.editor.registers.first('/'))
+            );
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_multi_selection_paste() -> anyhow::Result<()> {
     test((
         platform_line(indoc! {"\
