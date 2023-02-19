@@ -1,4 +1,5 @@
-((operation
-   operator: ["x" "exec"]
-   (command) @injection.content)
- (#set! injection.language "bash"))
+(((command) @attribute
+  (message)? @injection.content)
+ (#match? @attribute "^(x|exec)$")
+ (#set! injection.language "bash")
+)
