@@ -1,20 +1,17 @@
-(keyword_btree) @function.builtin
-(keyword_hash) @function.builtin
-(keyword_gist) @function.builtin
-(keyword_spgist) @function.builtin
-(keyword_gin) @function.builtin
-(keyword_brin) @function.builtin
 
-(cast
-  name: (identifier) @function.builtin)
-  
-(count
-  name: (identifier) @function.builtin)
+[
+  (keyword_btree)
+  (keyword_hash)
+  (keyword_gist)
+  (keyword_spgist)
+  (keyword_gin)
+  (keyword_brin)
 
-(keyword_group_concat) @function.builtin  
-
-(invocation
-  name: (identifier) @function.builtin)
+  (cast)
+  (count)
+  (group_concat)
+  (invocation)
+] @function.builtin
   
 (table_reference
   name: (identifier) @namespace)
