@@ -1239,10 +1239,11 @@ fn extend_next_long_word_end(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_long_word_end)
 }
 
-fn find_char<F>(cx: &mut Context, search_fn: F, inclusive: bool, extend: bool)
-where
-    F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize> + 'static,
-{
+enum SearchDirection {
+    Next,
+    Prev,
+}
+fn find_char(cx: &mut Command, search_direction: SearchDirection, inclusive: bool, extend: bool) {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
     let count = cx.count();
@@ -1274,12 +1275,18 @@ where
             } => ch,
             _ => return,
         };
+        let motion = move |editor: &mut Editor| {
+            match search_direction {
+                SearchDirection::Next => {
+                    find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count)
+                }
+                SearchDirection::Prev => {
+                    find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count)
+                }
+            };
+        };
 
-        // NOTE: not using _apply_motion as the repitition isn't identical
-        find_char_impl(cx.editor, &search_fn, inclusive, extend, ch, count);
-        cx.editor.last_motion = Some(Motion(Box::new(move |editor: &mut Editor| {
-            find_char_impl(editor, &search_fn, inclusive, extend, ch, 1);
-        })));
+        _apply_motion(cx, motion);
     })
 }
 
@@ -1358,35 +1365,35 @@ fn find_prev_char_impl(
 }
 
 fn find_till_char(cx: &mut Context) {
-    find_char(cx, find_next_char_impl, false, false)
+    find_char(cx, SearchDirection::Next, false, false);
 }
 
 fn find_next_char(cx: &mut Context) {
-    find_char(cx, find_next_char_impl, true, false)
+    find_char(cx, SearchDirection::Next, true, false)
 }
 
 fn extend_till_char(cx: &mut Context) {
-    find_char(cx, find_next_char_impl, false, true)
+    find_char(cx, SearchDirection::Next, false, true)
 }
 
 fn extend_next_char(cx: &mut Context) {
-    find_char(cx, find_next_char_impl, true, true)
+    find_char(cx, SearchDirection::Next, true, true)
 }
 
 fn till_prev_char(cx: &mut Context) {
-    find_char(cx, find_prev_char_impl, false, false)
+    find_char(cx, SearchDirection::Prev, false, false)
 }
 
 fn find_prev_char(cx: &mut Context) {
-    find_char(cx, find_prev_char_impl, true, false)
+    find_char(cx, SearchDirection::Prev, true, false)
 }
 
 fn extend_till_prev_char(cx: &mut Context) {
-    find_char(cx, find_prev_char_impl, false, true)
+    find_char(cx, SearchDirection::Prev, false, true)
 }
 
 fn extend_prev_char(cx: &mut Context) {
-    find_char(cx, find_prev_char_impl, true, true)
+    find_char(cx, SearchDirection::Prev, true, true)
 }
 
 fn repeat_last_motion(cx: &mut Context) {
