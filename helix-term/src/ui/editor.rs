@@ -1,5 +1,5 @@
 use crate::{
-    commands::{self, OnKeyCallback, CommandContext},
+    commands::{self, CommandContext, OnKeyCallback},
     compositor::{Component, CompositorContext, Event, EventResult},
     job::{self, Callback},
     key,
@@ -997,11 +997,7 @@ impl EditorView {
 }
 
 impl EditorView {
-    fn handle_mouse_event(
-        &mut self,
-        event: &MouseEvent,
-        cxt: &mut CommandContext,
-    ) -> EventResult {
+    fn handle_mouse_event(&mut self, event: &MouseEvent, cxt: &mut CommandContext) -> EventResult {
         let config = cxt.editor.config();
         let MouseEvent {
             kind,
@@ -1182,11 +1178,7 @@ impl EditorView {
 }
 
 impl Component for EditorView {
-    fn handle_event(
-        &mut self,
-        event: &Event,
-        context: &mut CompositorContext,
-    ) -> EventResult {
+    fn handle_event(&mut self, event: &Event, context: &mut CompositorContext) -> EventResult {
         let mut cx = CommandContext {
             editor: context.editor,
             count: None,

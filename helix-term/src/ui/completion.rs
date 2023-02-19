@@ -1,4 +1,7 @@
-use crate::{compositor::{Component, CompositorContext, Event, EventResult}, commands::CommandContext};
+use crate::{
+    commands::CommandContext,
+    compositor::{Component, CompositorContext, Event, EventResult},
+};
 use helix_view::{
     editor::CompleteAction,
     theme::{Modifier, Style},

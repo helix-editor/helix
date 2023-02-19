@@ -21,7 +21,7 @@ use tui::backend::Backend;
 use crate::{
     args::Args,
     commands::apply_workspace_edit,
-    compositor::{Compositor, Event, CompositorContext},
+    compositor::{Compositor, CompositorContext, Event},
     config::Config,
     job::Jobs,
     keymap::Keymaps,
