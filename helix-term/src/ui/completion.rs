@@ -313,7 +313,7 @@ impl Completion {
         }
     }
 
-    pub fn update(&mut self, cx: &mut commands::Context) {
+    pub fn update(&mut self, cx: &mut commands::CommandContext) {
         self.recompute_filter(cx.editor)
     }
 
@@ -327,7 +327,7 @@ impl Completion {
 
     /// Asynchronously requests that the currently selection completion item is
     /// resolved through LSP `completionItem/resolve`.
-    pub fn ensure_item_resolved(&mut self, cx: &mut commands::Context) -> bool {
+    pub fn ensure_item_resolved(&mut self, cx: &mut commands::CommandContext) -> bool {
         // > If computing full completion items is expensive, servers can additionally provide a
         // > handler for the completion item resolve request. ...
         // > A typical use case is for example: the `textDocument/completion` request doesn't fill

@@ -34,7 +34,7 @@ use helix_view::Editor;
 use std::path::PathBuf;
 
 pub fn prompt(
-    cx: &mut crate::commands::Context,
+    cx: &mut crate::commands::CommandContext,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
@@ -47,7 +47,7 @@ pub fn prompt(
 }
 
 pub fn prompt_with_input(
-    cx: &mut crate::commands::Context,
+    cx: &mut crate::commands::CommandContext,
     prompt: std::borrow::Cow<'static, str>,
     input: String,
     history_register: Option<char>,
@@ -60,7 +60,7 @@ pub fn prompt_with_input(
 }
 
 pub fn regex_prompt(
-    cx: &mut crate::commands::Context,
+    cx: &mut crate::commands::CommandContext,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,

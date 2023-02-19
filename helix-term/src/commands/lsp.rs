@@ -13,7 +13,7 @@ use tui::{
     widgets::Row,
 };
 
-use super::{align_view, push_jump, Align, Context, Editor, Open};
+use super::{align_view, push_jump, Align, CommandContext, Editor, Open};
 
 use helix_core::{path, Selection};
 use helix_view::{document::Mode, editor::Action, theme::Style};
@@ -262,7 +262,7 @@ enum DiagnosticsFormat {
 }
 
 fn diag_picker(
-    cx: &Context,
+    cx: &CommandContext,
     diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
     current_path: Option<lsp::Url>,
     format: DiagnosticsFormat,
@@ -318,7 +318,7 @@ fn diag_picker(
     .truncate_start(false)
 }
 
-pub fn symbol_picker(cx: &mut Context) {
+pub fn symbol_picker(cx: &mut CommandContext) {
     fn nested_to_flat(
         list: &mut Vec<lsp::SymbolInformation>,
         file: &lsp::TextDocumentIdentifier,
@@ -377,7 +377,7 @@ pub fn symbol_picker(cx: &mut Context) {
     )
 }
 
-pub fn workspace_symbol_picker(cx: &mut Context) {
+pub fn workspace_symbol_picker(cx: &mut CommandContext) {
     let doc = doc!(cx.editor);
     let current_url = doc.url();
     let language_server = language_server!(cx.editor, doc);
@@ -435,7 +435,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     )
 }
 
-pub fn diagnostics_picker(cx: &mut Context) {
+pub fn diagnostics_picker(cx: &mut CommandContext) {
     let doc = doc!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     if let Some(current_url) = doc.url() {
@@ -457,7 +457,7 @@ pub fn diagnostics_picker(cx: &mut Context) {
     }
 }
 
-pub fn workspace_diagnostics_picker(cx: &mut Context) {
+pub fn workspace_diagnostics_picker(cx: &mut CommandContext) {
     let doc = doc!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let current_url = doc.url();
@@ -540,7 +540,7 @@ fn action_fixes_diagnostics(action: &CodeActionOrCommand) -> bool {
     )
 }
 
-pub fn code_action(cx: &mut Context) {
+pub fn code_action(cx: &mut CommandContext) {
     let (view, doc) = current!(cx.editor);
 
     let language_server = language_server!(cx.editor, doc);
@@ -919,7 +919,7 @@ fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Lo
     }
 }
 
-pub fn goto_declaration(cx: &mut Context) {
+pub fn goto_declaration(cx: &mut CommandContext) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
@@ -944,7 +944,7 @@ pub fn goto_declaration(cx: &mut Context) {
     );
 }
 
-pub fn goto_definition(cx: &mut Context) {
+pub fn goto_definition(cx: &mut CommandContext) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
@@ -969,7 +969,7 @@ pub fn goto_definition(cx: &mut Context) {
     );
 }
 
-pub fn goto_type_definition(cx: &mut Context) {
+pub fn goto_type_definition(cx: &mut CommandContext) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
@@ -994,7 +994,7 @@ pub fn goto_type_definition(cx: &mut Context) {
     );
 }
 
-pub fn goto_implementation(cx: &mut Context) {
+pub fn goto_implementation(cx: &mut CommandContext) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
@@ -1019,7 +1019,7 @@ pub fn goto_implementation(cx: &mut Context) {
     );
 }
 
-pub fn goto_reference(cx: &mut Context) {
+pub fn goto_reference(cx: &mut CommandContext) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
@@ -1050,11 +1050,11 @@ pub enum SignatureHelpInvoked {
     Automatic,
 }
 
-pub fn signature_help(cx: &mut Context) {
+pub fn signature_help(cx: &mut CommandContext) {
     signature_help_impl(cx, SignatureHelpInvoked::Manual)
 }
 
-pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
+pub fn signature_help_impl(cx: &mut CommandContext, invoked: SignatureHelpInvoked) {
     let (view, doc) = current!(cx.editor);
     let was_manually_invoked = invoked == SignatureHelpInvoked::Manual;
 
@@ -1174,7 +1174,7 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
     );
 }
 
-pub fn hover(cx: &mut Context) {
+pub fn hover(cx: &mut CommandContext) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
@@ -1231,7 +1231,7 @@ pub fn hover(cx: &mut Context) {
     );
 }
 
-pub fn rename_symbol(cx: &mut Context) {
+pub fn rename_symbol(cx: &mut CommandContext) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text().slice(..);
     let primary_selection = doc.selection(view.id).primary();
@@ -1277,7 +1277,7 @@ pub fn rename_symbol(cx: &mut Context) {
     );
 }
 
-pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
+pub fn select_references_to_symbol_under_cursor(cx: &mut CommandContext) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();

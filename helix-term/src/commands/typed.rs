@@ -2545,7 +2545,7 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
     });
 
 #[allow(clippy::unnecessary_unwrap)]
-pub(super) fn command_mode(cx: &mut Context) {
+pub(super) fn command_mode(cx: &mut CommandContext) {
     use shellwords::Shellwords;
 
     let mut prompt = Prompt::new(

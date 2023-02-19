@@ -1,4 +1,4 @@
-use super::{Context, Editor};
+use super::{CommandContext, Editor};
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, Jobs},
@@ -55,7 +55,7 @@ impl ui::menu::Item for Thread {
 }
 
 fn thread_picker(
-    cx: &mut Context,
+    cx: &mut CommandContext,
     callback_fn: impl Fn(&mut Editor, &dap::Thread) + Send + 'static,
 ) {
     let debugger = debugger!(cx.editor);
@@ -248,7 +248,7 @@ pub fn dap_start_impl(
     Ok(())
 }
 
-pub fn dap_launch(cx: &mut Context) {
+pub fn dap_launch(cx: &mut CommandContext) {
     if cx.editor.debugger.is_some() {
         cx.editor.set_error("Debugger is already running");
         return;
@@ -356,7 +356,7 @@ fn debug_parameter_prompt(
     )
 }
 
-pub fn dap_toggle_breakpoint(cx: &mut Context) {
+pub fn dap_toggle_breakpoint(cx: &mut CommandContext) {
     let (view, doc) = current!(cx.editor);
     let path = match doc.path() {
         Some(path) => path.clone(),
@@ -371,7 +371,7 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     dap_toggle_breakpoint_impl(cx, path, line);
 }
 
-pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: PathBuf, line: usize) {
+pub fn dap_toggle_breakpoint_impl(cx: &mut CommandContext, path: PathBuf, line: usize) {
     // TODO: need to map breakpoints over edits and update them?
     // we shouldn't really allow editing while debug is running though
 
@@ -397,7 +397,7 @@ pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: PathBuf, line: usize) 
     }
 }
 
-pub fn dap_continue(cx: &mut Context) {
+pub fn dap_continue(cx: &mut CommandContext) {
     let debugger = debugger!(cx.editor);
 
     if let Some(thread_id) = debugger.thread_id {
@@ -416,7 +416,7 @@ pub fn dap_continue(cx: &mut Context) {
     }
 }
 
-pub fn dap_pause(cx: &mut Context) {
+pub fn dap_pause(cx: &mut CommandContext) {
     thread_picker(cx, |editor, thread| {
         let debugger = debugger!(editor);
         let request = debugger.pause(thread.id);
@@ -427,7 +427,7 @@ pub fn dap_pause(cx: &mut Context) {
     })
 }
 
-pub fn dap_step_in(cx: &mut Context) {
+pub fn dap_step_in(cx: &mut CommandContext) {
     let debugger = debugger!(cx.editor);
 
     if let Some(thread_id) = debugger.thread_id {
@@ -442,7 +442,7 @@ pub fn dap_step_in(cx: &mut Context) {
     }
 }
 
-pub fn dap_step_out(cx: &mut Context) {
+pub fn dap_step_out(cx: &mut CommandContext) {
     let debugger = debugger!(cx.editor);
 
     if let Some(thread_id) = debugger.thread_id {
@@ -456,7 +456,7 @@ pub fn dap_step_out(cx: &mut Context) {
     }
 }
 
-pub fn dap_next(cx: &mut Context) {
+pub fn dap_next(cx: &mut CommandContext) {
     let debugger = debugger!(cx.editor);
 
     if let Some(thread_id) = debugger.thread_id {
@@ -470,7 +470,7 @@ pub fn dap_next(cx: &mut Context) {
     }
 }
 
-pub fn dap_variables(cx: &mut Context) {
+pub fn dap_variables(cx: &mut CommandContext) {
     let debugger = debugger!(cx.editor);
 
     if debugger.thread_id.is_none() {
@@ -536,7 +536,7 @@ pub fn dap_variables(cx: &mut Context) {
     cx.push_layer(Box::new(popup));
 }
 
-pub fn dap_terminate(cx: &mut Context) {
+pub fn dap_terminate(cx: &mut CommandContext) {
     let debugger = debugger!(cx.editor);
 
     let request = debugger.disconnect();
@@ -546,7 +546,7 @@ pub fn dap_terminate(cx: &mut Context) {
     });
 }
 
-pub fn dap_enable_exceptions(cx: &mut Context) {
+pub fn dap_enable_exceptions(cx: &mut CommandContext) {
     let debugger = debugger!(cx.editor);
 
     let filters = match &debugger.capabilities().exception_breakpoint_filters {
@@ -565,7 +565,7 @@ pub fn dap_enable_exceptions(cx: &mut Context) {
     )
 }
 
-pub fn dap_disable_exceptions(cx: &mut Context) {
+pub fn dap_disable_exceptions(cx: &mut CommandContext) {
     let debugger = debugger!(cx.editor);
 
     let request = debugger.set_exception_breakpoints(Vec::new());
@@ -580,7 +580,7 @@ pub fn dap_disable_exceptions(cx: &mut Context) {
 }
 
 // TODO: both edit condition and edit log need to be stable: we might get new breakpoints from the debugger which can change offsets
-pub fn dap_edit_condition(cx: &mut Context) {
+pub fn dap_edit_condition(cx: &mut CommandContext) {
     if let Some((pos, breakpoint)) = get_breakpoint_at_current_line(cx.editor) {
         let path = match doc!(cx.editor).path() {
             Some(path) => path.clone(),
@@ -622,7 +622,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
     }
 }
 
-pub fn dap_edit_log(cx: &mut Context) {
+pub fn dap_edit_log(cx: &mut CommandContext) {
     if let Some((pos, breakpoint)) = get_breakpoint_at_current_line(cx.editor) {
         let path = match doc!(cx.editor).path() {
             Some(path) => path.clone(),
@@ -663,12 +663,12 @@ pub fn dap_edit_log(cx: &mut Context) {
     }
 }
 
-pub fn dap_switch_thread(cx: &mut Context) {
+pub fn dap_switch_thread(cx: &mut CommandContext) {
     thread_picker(cx, |editor, thread| {
         block_on(select_thread_id(editor, thread.id, true));
     })
 }
-pub fn dap_switch_stack_frame(cx: &mut Context) {
+pub fn dap_switch_stack_frame(cx: &mut CommandContext) {
     let debugger = debugger!(cx.editor);
 
     let thread_id = match debugger.thread_id {
