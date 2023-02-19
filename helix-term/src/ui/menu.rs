@@ -11,7 +11,8 @@ pub use tui::widgets::{Cell, Row};
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 
-use helix_view::{graphics::Rect, Editor};
+use helix_vcs::FileChange;
+use helix_view::{graphics::Rect, theme::Style, Editor};
 use tui::layout::Constraint;
 
 pub trait Item {
@@ -44,6 +45,37 @@ impl Item for PathBuf {
 }
 
 pub type MenuCallback<T> = Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>;
+
+pub struct FileChangeData {
+    pub cwd: PathBuf,
+    pub style_untracked: Style,
+    pub style_modified: Style,
+    pub style_deleted: Style,
+    pub style_renamed: Style,
+}
+
+impl Item for FileChange {
+    type Data = FileChangeData;
+
+    fn format(&self, data: &Self::Data) -> Row {
+        let (sign, style) = match self {
+            Self::Untracked { .. } => ("[+]", data.style_untracked),
+            Self::Modified { .. } => ("[~]", data.style_modified),
+            Self::Deleted { .. } => ("[-]", data.style_deleted),
+            Self::Renamed { .. } => ("[>]", data.style_modified),
+        };
+        let path = self.path();
+
+        Row::new(vec![
+            sign.to_owned(),
+            path.strip_prefix(&data.cwd)
+                .unwrap_or(path)
+                .to_string_lossy()
+                .to_string(),
+        ])
+        .style(style)
+    }
+}
 
 pub struct Menu<T: Item> {
     options: Vec<T>,

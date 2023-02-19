@@ -287,6 +287,7 @@ impl MappableCommand {
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
+        changed_file_picker, "Open changed file picker",
         select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
         diagnostics_picker, "Open diagnostic picker",
@@ -2577,6 +2578,46 @@ fn jumplist_picker(cx: &mut Context) {
             let line = meta.selection.primary().cursor_line(doc.text().slice(..));
             Some((meta.path.clone()?.into(), Some((line, line))))
         },
+    );
+    cx.push_layer(Box::new(overlayed(picker)));
+}
+
+fn changed_file_picker(cx: &mut Context) {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
+
+    let entries = match cx.editor.diff_providers.get_changed_files(&cwd) {
+        Ok(entries) => entries,
+        Err(err) => {
+            cx.editor.set_error(format!("{err}"));
+            return;
+        }
+    };
+
+    let added = cx.editor.theme.get("diff.plus");
+    let deleted = cx.editor.theme.get("diff.minus");
+    let modified = cx.editor.theme.get("diff.delta");
+
+    let picker = FilePicker::new(
+        entries,
+        ui::menu::FileChangeData {
+            cwd,
+            style_untracked: added,
+            style_modified: modified,
+            style_deleted: deleted,
+            style_renamed: modified,
+        },
+        |cx, meta, action| {
+            let path_to_open = meta.path();
+            if let Err(e) = cx.editor.open(path_to_open, action) {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path_to_open.display())
+                };
+                cx.editor.set_error(err);
+            }
+        },
+        |_editor, meta| Some((meta.path().to_path_buf().into(), None)),
     );
     cx.push_layer(Box::new(overlayed(picker)));
 }

@@ -1,4 +1,5 @@
 use std::ops::Range;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use helix_core::Rope;
@@ -274,6 +275,33 @@ impl FileHunks<'_> {
                     None
                 }
             }
+        }
+    }
+}
+
+pub enum FileChange {
+    Untracked {
+        path: PathBuf,
+    },
+    Modified {
+        path: PathBuf,
+    },
+    Deleted {
+        path: PathBuf,
+    },
+    Renamed {
+        from_path: PathBuf,
+        to_path: PathBuf,
+    },
+}
+
+impl FileChange {
+    pub fn path(&self) -> &Path {
+        match self {
+            Self::Untracked { path } => path,
+            Self::Modified { path } => path,
+            Self::Deleted { path } => path,
+            Self::Renamed { to_path, .. } => to_path,
         }
     }
 }

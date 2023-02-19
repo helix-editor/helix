@@ -13,11 +13,15 @@ homepage = "https://helix-editor.com"
 [dependencies]
 helix-core = { version = "0.6", path = "../helix-core" }
 
+anyhow = "1.0"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot", "macros"] }
 parking_lot = "0.12"
 
+content_inspector = "0.2.4"
 git-repository = { version = "0.32", default-features = false , optional = true }
+ignore = "0.4"
 imara-diff = "0.1.5"
+sha1 = "0.10.0"
 
 log = "0.4"
 

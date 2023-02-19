@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use anyhow::Result;
+
 #[cfg(feature = "git")]
 pub use git::Git;
 #[cfg(not(feature = "git"))]
@@ -10,7 +12,7 @@ mod git;
 
 mod diff;
 
-pub use diff::{DiffHandle, Hunk};
+pub use diff::{DiffHandle, FileChange, Hunk};
 
 pub trait DiffProvider {
     /// Returns the data that a diff should be computed against
@@ -18,6 +20,8 @@ pub trait DiffProvider {
     /// The data is returned as raw byte without any decoding or encoding performed
     /// to ensure all file encodings are handled correctly.
     fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>>;
+
+    fn get_changed_files(&self, cwd: &Path) -> Result<Vec<FileChange>>;
 }
 
 #[doc(hidden)]
@@ -25,6 +29,10 @@ pub struct Dummy;
 impl DiffProvider for Dummy {
     fn get_diff_base(&self, _file: &Path) -> Option<Vec<u8>> {
         None
+    }
+
+    fn get_changed_files(&self, _cwd: &Path) -> Result<Vec<FileChange>> {
+        anyhow::bail!("dummy diff provider")
     }
 }
 
@@ -37,6 +45,13 @@ impl DiffProviderRegistry {
         self.providers
             .iter()
             .find_map(|provider| provider.get_diff_base(file))
+    }
+
+    pub fn get_changed_files(&self, cwd: &Path) -> Result<Vec<FileChange>> {
+        self.providers
+            .iter()
+            .find_map(|provider| provider.get_changed_files(cwd).ok())
+            .ok_or_else(|| anyhow::anyhow!("no diff provider returns success"))
     }
 }
 
