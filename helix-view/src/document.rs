@@ -37,6 +37,8 @@ use helix_core::{
 use crate::editor::{Config, RedrawHandle};
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
+pub mod annotations;
+
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
 
