@@ -2182,6 +2182,19 @@ name = "uxntal"
 source = { git = "https://github.com/Jummit/tree-sitter-uxntal", rev = "9297e95ef74380b0ad84c4fd98f91e9f6e4319e6" }
 
 [[language]]
+name = "yuck"
+scope = "source.yuck"
+injection-regex = "yuck"
+file-types = ["yuck"]
+roots = []
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "yuck"
+source = { git = "https://github.com/Philipp-M/tree-sitter-yuck", rev = "9e97da5773f82123a8c8cccf8f7e795d140ed7d1" }
+
+[[language]]
 name = "po"
 scope = "source.po"
 file-types = ["po", "pot"]
