@@ -9,11 +9,7 @@ use tui::{buffer::Buffer as Surface, text::Span};
 use std::borrow::Cow;
 
 use helix_core::{Change, Transaction};
-use helix_view::{
-    graphics::Rect,
-    input::{KeyCode, KeyEvent},
-    Document, Editor,
-};
+use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
@@ -254,7 +250,9 @@ impl Completion {
                 }
             };
         });
-        let popup = Popup::new(Self::ID, menu).with_scrollbar(false);
+        let popup = Popup::new(Self::ID, menu)
+            .with_scrollbar(false)
+            .ignore_escape_key(true);
         let mut completion = Self {
             popup,
             start_offset,
@@ -378,13 +376,6 @@ impl Completion {
 
 impl Component for Completion {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
-        // let the Editor handle Esc instead
-        if let Event::Key(KeyEvent {
-            code: KeyCode::Esc, ..
-        }) = event
-        {
-            return EventResult::Ignored(None);
-        }
         self.popup.handle_event(event, cx)
     }
 

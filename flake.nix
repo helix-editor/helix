@@ -104,7 +104,7 @@
         };
       };
       pkgConfig = common: {
-        helix-term = {
+        helix-term = let
           # Wrap helix with runtime
           wrapper = _: old: let
             inherit (common) pkgs;
@@ -130,9 +130,14 @@
                 '';
             in
               helix-wrapped
-              // {override = makeOverridableHelix old;};
+              // {
+                override = makeOverridableHelix old;
+                passthru = helix-wrapped.passthru // {wrapper = wrapper {};};
+              };
           in
             makeOverridableHelix old {};
+        in {
+          inherit wrapper;
           overrides.fix-build.overrideAttrs = prev: {
             src = filteredSource;
 
