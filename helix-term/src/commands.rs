@@ -34,7 +34,7 @@ use helix_core::{
 use helix_view::{
     clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, CompleteAction, Motion},
+    editor::{Action, CompleteAction},
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -1099,7 +1099,7 @@ where
             .transform(|range| move_fn(text, range, count, behavior));
         doc.set_selection(view.id, selection);
     };
-    _apply_motion(cx, motion)
+    cx.editor.apply_motion(motion)
 }
 
 fn goto_prev_paragraph(cx: &mut Context) {
@@ -1243,7 +1243,8 @@ enum SearchDirection {
     Next,
     Prev,
 }
-fn find_char(cx: &mut Command, search_direction: SearchDirection, inclusive: bool, extend: bool) {
+
+fn find_char(cx: &mut Context, search_direction: SearchDirection, inclusive: bool, extend: bool) {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
     let count = cx.count();
@@ -1286,7 +1287,7 @@ fn find_char(cx: &mut Command, search_direction: SearchDirection, inclusive: boo
             };
         };
 
-        _apply_motion(cx, motion);
+        cx.editor.apply_motion(motion);
     })
 }
 
@@ -1397,14 +1398,7 @@ fn extend_prev_char(cx: &mut Context) {
 }
 
 fn repeat_last_motion(cx: &mut Context) {
-    let count = cx.count();
-    let last_motion = cx.editor.last_motion.take();
-    if let Some(m) = &last_motion {
-        for _ in 0..count {
-            m.run(cx.editor);
-        }
-        cx.editor.last_motion = last_motion;
-    }
+    cx.editor.repeat_last_motion(cx.count())
 }
 
 fn replace(cx: &mut Context) {
@@ -3255,7 +3249,7 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
 
         doc.set_selection(view.id, selection)
     };
-    _apply_motion(cx, motion);
+    cx.editor.apply_motion(motion);
 }
 
 /// Returns the [Range] for a [Hunk] in the given text.
@@ -4590,7 +4584,7 @@ fn expand_selection(cx: &mut Context) {
             }
         }
     };
-    _apply_motion(cx, motion);
+    cx.editor.apply_motion(motion);
 }
 
 fn shrink_selection(cx: &mut Context) {
@@ -4614,7 +4608,7 @@ fn shrink_selection(cx: &mut Context) {
             doc.set_selection(view.id, selection);
         }
     };
-    _apply_motion(cx, motion);
+    cx.editor.apply_motion(motion);
 }
 
 fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: &'static F)
@@ -4632,7 +4626,7 @@ where
             doc.set_selection(view.id, selection);
         }
     };
-    _apply_motion(cx, motion);
+    cx.editor.apply_motion(motion);
 }
 
 fn select_next_sibling(cx: &mut Context) {
@@ -4915,7 +4909,7 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
             editor.set_status("Syntax-tree is not available in current buffer");
         }
     };
-    _apply_motion(cx, motion);
+    cx.editor.apply_motion(motion);
 }
 
 fn goto_next_function(cx: &mut Context) {
@@ -4964,12 +4958,6 @@ fn select_textobject_around(cx: &mut Context) {
 
 fn select_textobject_inner(cx: &mut Context) {
     select_textobject(cx, textobject::TextObject::Inside);
-}
-
-//TODO: move
-fn _apply_motion<F: Fn(&mut Editor) + 'static>(cx: &mut Context, motion: F) {
-    motion(cx.editor);
-    cx.editor.last_motion = Some(Motion(Box::new(motion)));
 }
 
 fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
@@ -5042,7 +5030,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 });
                 doc.set_selection(view.id, selection);
             };
-            _apply_motion(cx, textobject);
+            cx.editor.apply_motion(textobject);
         }
     });
 

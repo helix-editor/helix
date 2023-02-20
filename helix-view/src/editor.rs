@@ -832,18 +832,6 @@ impl Default for SearchConfig {
     }
 }
 
-pub struct Motion(pub Box<dyn Fn(&mut Editor)>);
-impl Motion {
-    pub fn run(&self, e: &mut Editor) {
-        (self.0)(e)
-    }
-}
-impl std::fmt::Debug for Motion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("motion")
-    }
-}
-
 #[derive(Debug, Clone, Default)]
 pub struct Breakpoint {
     pub id: Option<usize>,
@@ -908,8 +896,8 @@ pub struct Editor {
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
-    pub last_motion: Option<Motion>,
-
+    #[allow(clippy::complexity)]
+    last_motion: Option<Arc<Box<dyn Fn(&mut Editor)>>>,
     pub last_completion: Option<CompleteAction>,
 
     pub exit_code: i32,
@@ -1049,6 +1037,19 @@ impl Editor {
         }
     }
 
+    pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {
+        motion(self);
+        self.last_motion = Some(Arc::new(Box::new(motion)));
+    }
+
+    pub fn repeat_last_motion(&mut self, count: usize) {
+        if let Some(motion) = &self.last_motion {
+            let motion = motion.clone();
+            for _ in 0..count {
+                motion(self);
+            }
+        }
+    }
     /// Current editing mode for the [`Editor`].
     pub fn mode(&self) -> Mode {
         self.mode
