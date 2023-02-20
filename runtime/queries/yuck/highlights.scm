@@ -15,7 +15,7 @@
 ; strings
 (string_interpolation
   (string_interpolation_start) @punctuation.special
-  (string_interpolation_end) @punctuation.special) @embedded
+  (string_interpolation_end) @punctuation.special)
 
 (escape_sequence) @constant.character.escape
 
