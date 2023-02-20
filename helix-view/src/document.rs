@@ -731,7 +731,7 @@ impl Document {
         let mut file = std::fs::File::open(&path)?;
         let (rope, ..) = from_reader(&mut file, Some(encoding))?;
 
-        if let Err(e) = self.load_history() {
+        let e = self.load_history().map_err(|e| {
             log::error!("{}", e);
             // Calculate the difference between the buffer and source text, and apply it.
             // This is not considered a modification of the contents of the file regardless
@@ -740,7 +740,8 @@ impl Document {
             self.apply(&transaction, view.id);
             self.append_changes_to_history(view);
             self.reset_modified();
-        }
+            e
+        });
         self.last_saved_time = SystemTime::now();
 
         self.detect_indent_and_line_ending();
@@ -750,7 +751,7 @@ impl Document {
             None => self.diff_handle = None,
         }
 
-        Ok(())
+        e
     }
 
     pub fn undo_file(&self, path: Option<&PathBuf>) -> anyhow::Result<Option<PathBuf>> {
