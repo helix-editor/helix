@@ -1383,6 +1383,12 @@ impl Component for EditorView {
         if let Some(explorer) = self.explorer.as_mut() {
             if !explorer.content.is_focus() {
                 if let Some(position) = config.explorer.is_embed() {
+                    let area = if use_bufferline {
+                        area.clip_top(1)
+                    }
+                    else {
+                        area
+                    };
                     explorer.content.render_embed(area, surface, cx, &position);
                 }
             }
@@ -1470,6 +1476,12 @@ impl Component for EditorView {
         if let Some(explore) = self.explorer.as_mut() {
             if explore.content.is_focus() {
                 if let Some(position) = config.explorer.is_embed() {
+                    let area = if use_bufferline {
+                        area.clip_top(1)
+                    }
+                    else {
+                        area
+                    };
                     explore.content.render_embed(area, surface, cx, &position);
                 } else {
                     explore.render(area, surface, cx);

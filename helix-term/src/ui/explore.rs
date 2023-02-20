@@ -9,6 +9,7 @@ use helix_view::{
     editor::{Action, ExplorerPositionEmbed},
     graphics::{CursorKind, Rect},
     input::{Event, KeyEvent},
+    theme::Modifier,
     DocumentId, Editor,
 };
 use std::borrow::Cow;
@@ -287,11 +288,10 @@ impl Explorer {
                 ("A", "Add folder"),
                 ("r", "Rename file/folder"),
                 ("d", "Delete file"),
-                ("/", "Search"),
                 ("f", "Filter"),
                 ("[", "Change root to parent folder"),
                 ("]", "Change root to current folder"),
-                ("^o", "Go to previous root"),
+                ("C-o", "Go to previous root"),
                 ("R", "Refresh"),
                 ("+", "Increase size"),
                 ("-", "Decrease size"),
@@ -327,7 +327,7 @@ impl Explorer {
     }
 
     fn new_search_prompt(&mut self, search_next: bool) {
-        self.tree.save_view();
+        // self.tree.save_view();
         self.prompt = Some((
             PromptAction::Search { search_next },
             Prompt::new(" Search: ".into(), None, ui::completers::none, |_, _, _| {}),
@@ -335,7 +335,7 @@ impl Explorer {
     }
 
     fn new_filter_prompt(&mut self, cx: &mut Context) {
-        self.tree.save_view();
+        // self.tree.save_view();
         self.prompt = Some((
             PromptAction::Filter,
             Prompt::new(" Filter: ".into(), None, ui::completers::none, |_, _, _| {})
@@ -603,7 +603,7 @@ impl Explorer {
             if preview_area.width < 30 || preview_area.height < 3 {
                 return;
             }
-            let y = self.tree.row().saturating_sub(1) as u16;
+            let y = self.tree.winline().saturating_sub(1) as u16;
             let y = if (preview_area_height + y) > preview_area.height {
                 preview_area.height - preview_area_height
             } else {
@@ -667,11 +667,11 @@ impl Explorer {
                             search_next: is_next,
                         } = action
                         {
-                            explorer.tree.save_view();
+                            // explorer.tree.save_view();
                             if is_next == search_next {
-                                explorer.tree.search_next(&search_str);
+                                // explorer.tree.search_next(&search_str);
                             } else {
-                                explorer.tree.search_previous(&search_str);
+                                // explorer.tree.search_previous(&search_str);
                             }
                         }
                     }))
@@ -679,13 +679,13 @@ impl Explorer {
                     self.repeat_motion = None;
                 }
             }
-            key!(Esc) | ctrl!('c') => self.tree.restore_view(),
+            // key!(Esc) | ctrl!('c') => self.tree.restore_view(),
             _ => {
                 if let EventResult::Consumed(_) = prompt.handle_event(&Event::Key(*event), cx) {
                     if search_next {
-                        self.tree.search_next(prompt.line());
+                        // self.tree.search_next(prompt.line());
                     } else {
-                        self.tree.search_previous(prompt.line());
+                        // self.tree.search_previous(prompt.line());
                     }
                 }
                 self.prompt = Some((action, prompt));
@@ -828,6 +828,10 @@ impl Explorer {
 impl Component for Explorer {
     /// Process input events, return true if handled.
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+        let filter = self.state.filter.clone();
+        if self.tree.prompting() {
+            return self.tree.handle_event(event, cx, &mut self.state, &filter);
+        }
         let key_event = match event {
             Event::Key(event) => event,
             Event::Resize(..) => return EventResult::Consumed(None),
@@ -847,20 +851,7 @@ impl Component for Explorer {
         match key_event {
             key!(Esc) => self.unfocus(),
             key!('q') => self.close(),
-            key!('n') => {
-                if let Some(mut repeat_motion) = self.repeat_motion.take() {
-                    repeat_motion(self, PromptAction::Search { search_next: true }, cx);
-                    self.repeat_motion = Some(repeat_motion);
-                }
-            }
-            shift!('N') => {
-                if let Some(mut repeat_motion) = self.repeat_motion.take() {
-                    repeat_motion(self, PromptAction::Search { search_next: false }, cx);
-                    self.repeat_motion = Some(repeat_motion);
-                }
-            }
             key!('f') => self.new_filter_prompt(cx),
-            key!('/') => self.new_search_prompt(true),
             key!('?') => self.toggle_help(),
             key!('a') => {
                 if let Err(error) = self.new_create_file_prompt() {
@@ -890,7 +881,6 @@ impl Component for Explorer {
             key!('-') => self.decrease_size(),
             key!('+') => self.increase_size(),
             _ => {
-                let filter = self.state.filter.clone();
                 self.tree
                     .handle_event(&Event::Key(*key_event), cx, &mut self.state, &filter);
             }

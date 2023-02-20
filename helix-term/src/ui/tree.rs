@@ -4,8 +4,8 @@ use anyhow::Result;
 use helix_view::theme::Modifier;
 
 use crate::{
-    compositor::{Context, EventResult},
-    ctrl, key, shift,
+    compositor::{Component, Context, EventResult},
+    ctrl, key, shift, ui,
 };
 use helix_core::movement::Direction;
 use helix_view::{
@@ -13,6 +13,8 @@ use helix_view::{
     input::{Event, KeyEvent},
 };
 use tui::buffer::Buffer as Surface;
+
+use super::Prompt;
 
 pub trait TreeViewItem: Sized {
     type Params;
@@ -33,7 +35,7 @@ fn tree_item_cmp<T: TreeViewItem>(item1: &T, item2: &T) -> Ordering {
     T::cmp(item1, item2)
 }
 
-pub fn vec_to_tree<T: TreeViewItem>(mut items: Vec<T>) -> Vec<Tree<T>> {
+fn vec_to_tree<T: TreeViewItem>(mut items: Vec<T>) -> Vec<Tree<T>> {
     items.sort_by(tree_item_cmp);
     index_elems(
         0,
@@ -212,17 +214,26 @@ impl<T> Tree<T> {
     /// Find an element in the tree with given `predicate`.
     /// `start_index` is inclusive if direction is `Forward`.
     /// `start_index` is exclusive if direction is `Backward`.
-    pub fn find<F>(&self, start_index: usize, direction: Direction, predicate: F) -> Option<usize>
+    fn find<F>(&self, start_index: usize, direction: Direction, predicate: F) -> Option<usize>
     where
-        F: FnMut(&Tree<T>) -> bool,
+        F: Clone + FnMut(&Tree<T>) -> bool,
     {
-        let iter = self.iter();
         match direction {
-            Direction::Forward => iter
+            Direction::Forward => match self
+                .iter()
                 .skip(start_index)
-                .position(predicate)
-                .map(|index| index + start_index),
-            Direction::Backward => iter.take(start_index).rposition(predicate),
+                .position(predicate.clone())
+                .map(|index| index + start_index)
+            {
+                Some(index) => Some(index),
+                None => self.iter().position(predicate),
+            },
+
+            Direction::Backward => match self.iter().take(start_index).rposition(predicate.clone())
+            {
+                Some(index) => Some(index),
+                None => self.iter().rposition(predicate),
+            },
         }
     }
 
@@ -285,14 +296,29 @@ impl<T> Tree<T> {
     }
 }
 
+#[derive(Clone, Debug)]
+enum PromptAction {
+    Search { search_next: bool },
+    Filter,
+}
+
+#[derive(Clone, Debug)]
+struct SavedView {
+    selected: usize,
+    winline: usize,
+}
+
 pub struct TreeView<T: TreeViewItem> {
     tree: Tree<T>,
+
+    prompt: Option<(PromptAction, Prompt)>,
+
+    search_str: String,
 
     /// Selected item idex
     selected: usize,
 
-    /// (selected, row)
-    save_view: (usize, usize),
+    saved_view: Option<SavedView>,
 
     /// For implementing vertical scroll
     winline: usize,
@@ -319,7 +345,7 @@ impl<T: TreeViewItem> TreeView<T> {
         Self {
             tree: Tree::new(root, items),
             selected: 0,
-            save_view: (0, 0),
+            saved_view: None,
             winline: 0,
             column: 0,
             max_len: 0,
@@ -329,6 +355,8 @@ impl<T: TreeViewItem> TreeView<T> {
             on_opened_fn: None,
             on_folded_fn: None,
             on_next_key: None,
+            prompt: None,
+            search_str: "".to_owned(),
         }
     }
 
@@ -493,6 +521,9 @@ pub fn tree_view_help() -> Vec<(&'static str, &'static str)> {
         ("gl", "Go to line end"),
         ("C-d", "Page down"),
         ("C-u", "Page up"),
+        ("/", "Search"),
+        ("n", "Go to next search match"),
+        ("N", "Go to previous search match"),
     ]
 }
 
@@ -529,29 +560,47 @@ impl<T: TreeViewItem> TreeView<T> {
         }
     }
 
-    pub fn search_next(&mut self, s: &str) {
-        let skip = std::cmp::max(2, self.save_view.0 + 1);
+    fn set_search_str(&mut self, s: String) {
+        self.search_str = s;
+        self.saved_view = None;
+    }
+
+    fn saved_view(&self) -> SavedView {
+        self.saved_view.clone().unwrap_or_else(|| SavedView {
+            selected: self.selected,
+            winline: self.winline,
+        })
+    }
+
+    fn search_next(&mut self, s: &str) {
+        let saved_view = self.saved_view();
+        let skip = std::cmp::max(2, saved_view.selected + 1);
         self.set_selected(
             self.tree
                 .find(skip, Direction::Forward, |e| e.item.filter(s))
-                .unwrap_or(self.save_view.0),
+                .unwrap_or(saved_view.selected),
         );
-
-        self.winline = (self.save_view.1 + self.selected).saturating_sub(self.save_view.0);
     }
 
-    pub fn search_previous(&mut self, s: &str) {
-        let take = self.save_view.0;
+    fn search_previous(&mut self, s: &str) {
+        let saved_view = self.saved_view();
+        let take = saved_view.selected;
         self.set_selected(
             self.tree
                 .find(take, Direction::Backward, |e| e.item.filter(s))
-                .unwrap_or(self.save_view.0),
+                .unwrap_or(saved_view.selected),
         );
-
-        self.winline = (self.save_view.1 + self.selected).saturating_sub(self.save_view.0);
     }
 
-    pub fn move_down(&mut self, rows: usize) {
+    fn move_to_next_search_match(&mut self) {
+        self.search_next(&self.search_str.clone())
+    }
+
+    fn move_to_previous_next_match(&mut self) {
+        self.search_previous(&self.search_str.clone())
+    }
+
+    fn move_down(&mut self, rows: usize) {
         let len = self.tree.len();
         if len > 0 {
             self.set_selected(std::cmp::min(self.selected + rows, len.saturating_sub(1)))
@@ -575,18 +624,18 @@ impl<T: TreeViewItem> TreeView<T> {
         self.selected = selected;
     }
 
-    pub fn move_up(&mut self, rows: usize) {
+    fn move_up(&mut self, rows: usize) {
         let len = self.tree.len();
         if len > 0 {
             self.set_selected(self.selected.saturating_sub(rows).max(0))
         }
     }
 
-    pub fn move_left(&mut self, cols: usize) {
+    fn move_left(&mut self, cols: usize) {
         self.column = self.column.saturating_sub(cols);
     }
 
-    pub fn move_right(&mut self, cols: usize) {
+    fn move_right(&mut self, cols: usize) {
         let max_scroll = self
             .max_len
             .saturating_sub(self.previous_area.width as usize)
@@ -594,28 +643,34 @@ impl<T: TreeViewItem> TreeView<T> {
         self.column = max_scroll.min(self.column + cols);
     }
 
-    pub fn move_down_half_page(&mut self) {
+    fn move_down_half_page(&mut self) {
         self.move_down(self.previous_area.height as usize / 2)
     }
 
-    pub fn move_up_half_page(&mut self) {
+    fn move_up_half_page(&mut self) {
         self.move_up(self.previous_area.height as usize / 2);
     }
 
-    pub fn move_down_page(&mut self) {
+    fn move_down_page(&mut self) {
         self.move_down(self.previous_area.height as usize);
     }
 
-    pub fn move_up_page(&mut self) {
+    fn move_up_page(&mut self) {
         self.move_up(self.previous_area.height as usize);
     }
 
-    pub fn save_view(&mut self) {
-        self.save_view = (self.selected, self.winline);
+    fn save_view(&mut self) {
+        self.saved_view = Some(SavedView {
+            selected: self.selected,
+            winline: self.winline,
+        })
     }
 
-    pub fn restore_view(&mut self) {
-        (self.selected, self.winline) = self.save_view;
+    fn restore_view(&mut self) {
+        SavedView {
+            selected: self.selected,
+            winline: self.winline,
+        } = self.saved_view();
     }
 
     fn get(&self, index: usize) -> &Tree<T> {
@@ -646,7 +701,7 @@ impl<T: TreeViewItem> TreeView<T> {
         &self.current().item
     }
 
-    pub fn row(&self) -> usize {
+    pub fn winline(&self) -> usize {
         self.winline
     }
 
@@ -754,12 +809,27 @@ fn render_tree<T: TreeViewItem>(
 impl<T: TreeViewItem + Clone> TreeView<T> {
     pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context, filter: &String) {
         let style = cx.editor.theme.get(&self.tree_symbol_style);
+        let prompt_area = area.with_height(1);
+        if let Some((_, prompt)) = self.prompt.as_mut() {
+            surface.set_style(prompt_area, style.add_modifier(Modifier::REVERSED));
+            prompt.render_prompt(prompt_area, surface, cx)
+        } else {
+            surface.set_stringn(
+                prompt_area.x,
+                prompt_area.y,
+                format!("[SEARCH]: {}", self.search_str.clone()),
+                prompt_area.width as usize,
+                style,
+            );
+        }
+
         let ancestor_style = cx.editor.theme.get("ui.text.focus");
 
+        let area = area.clip_top(1);
         let iter = self.render_lines(area, filter).into_iter().enumerate();
 
         for (index, line) in iter {
-            let area = Rect::new(area.x, area.y + index as u16, area.width, 1);
+            let area = Rect::new(area.x, area.y.saturating_add(index as u16), area.width, 1);
             let indent_len = line.indent.chars().count() as u16;
             surface.set_stringn(
                 area.x,
@@ -887,6 +957,10 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             on_next_key(cx, self, key_event);
             return EventResult::Consumed(None);
         }
+
+        if let EventResult::Consumed(c) = self.handle_prompt_event(key_event, cx) {
+            return EventResult::Consumed(c);
+        }
         let count = std::mem::replace(&mut self.count, 0);
         match key_event {
             key!(i @ '0'..='9') => self.count = i.to_digit(10).unwrap() as usize + count * 10,
@@ -919,10 +993,64 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                     _ => {}
                 }));
             }
+            key!('/') => self.new_search_prompt(true),
+            key!('n') => self.move_to_next_search_match(),
+            shift!('N') => self.move_to_previous_next_match(),
             _ => return EventResult::Ignored(None),
         }
 
         EventResult::Consumed(None)
+    }
+
+    fn handle_prompt_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
+        match &self.prompt {
+            Some((PromptAction::Search { .. }, _)) => return self.handle_search_event(event, cx),
+            // Some((PromptAction::Filter, _)) => return self.handle_filter_event(event, cx),
+            _ => EventResult::Ignored(None),
+        }
+    }
+
+    fn handle_search_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
+        let (action, mut prompt) = self.prompt.take().unwrap();
+        let search_next = match action {
+            PromptAction::Search { search_next } => search_next,
+            _ => return EventResult::Ignored(None),
+        };
+        match event {
+            key!(Enter) => {
+                self.set_search_str(prompt.line().clone());
+                EventResult::Consumed(None)
+            }
+            key!(Esc) => EventResult::Consumed(None),
+            _ => {
+                let event = prompt.handle_event(&Event::Key(*event), cx);
+                let line = prompt.line();
+                if search_next {
+                    self.search_next(line)
+                } else {
+                    self.search_previous(line)
+                }
+                self.prompt = Some((action, prompt));
+                event
+            }
+        }
+    }
+
+    fn new_search_prompt(&mut self, search_next: bool) {
+        self.save_view();
+        self.prompt = Some((
+            PromptAction::Search { search_next },
+            Prompt::new(
+                "[SEARCH]: ".into(),
+                None,
+                ui::completers::theme,
+                |_, _, _| {},
+            ),
+        ))
+    }
+
+    pub fn prompting(&self) -> bool {
+        self.prompt.is_some()
     }
 }
 
@@ -1535,6 +1663,173 @@ krabby_patty
             .trim()
         )
     }
+
+    #[test]
+    fn test_search_next() {
+        let mut view = dummy_tree_view();
+
+        view.search_next("pat");
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ gary_the_snail
+ karen
+ king_neptune
+ (krabby_patty)
+"
+            .trim()
+        );
+
+        view.search_next("larr");
+        assert_eq!(
+            render(&mut view),
+            "
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+ (larry_the_lobster)
+"
+            .trim()
+        );
+
+        view.move_to_last();
+        view.search_next("who_lives");
+        assert_eq!(
+            render(&mut view),
+            "
+(who_lives_in_a_pineapple_under_the_sea)
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_search_previous() {
+        let mut view = dummy_tree_view();
+
+        view.search_previous("larry");
+        assert_eq!(
+            render(&mut view),
+            "
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+ (larry_the_lobster)
+"
+            .trim()
+        );
+
+        view.move_to_last();
+        view.search_previous("krab");
+        assert_eq!(
+            render(&mut view),
+            "
+ gary_the_snail
+ karen
+ king_neptune
+ (krabby_patty)
+ larry_the_lobster
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_move_to_next_search_match() {
+        let mut view = dummy_tree_view();
+        view.set_search_str("pat".to_string());
+        view.move_to_next_search_match();
+
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ gary_the_snail
+ karen
+ king_neptune
+ (krabby_patty)
+ "
+            .trim()
+        );
+
+        view.move_to_next_search_match();
+        assert_eq!(
+            render(&mut view),
+            "
+ king_neptune
+ krabby_patty
+ larry_the_lobster
+ mrs_puff
+ (patrick_star)
+ "
+            .trim()
+        );
+
+        view.move_to_next_search_match();
+        assert_eq!(
+            render(&mut view),
+            "
+ king_neptune
+ (krabby_patty)
+ larry_the_lobster
+ mrs_puff
+ patrick_star
+ "
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_move_to_previous_search_match() {
+        let mut view = dummy_tree_view();
+        view.set_search_str("pat".to_string());
+        view.move_to_previous_next_match();
+
+        assert_eq!(
+            render(&mut view),
+            "
+ king_neptune
+ krabby_patty
+ larry_the_lobster
+ mrs_puff
+ (patrick_star)
+ "
+            .trim()
+        );
+
+        view.move_to_previous_next_match();
+        assert_eq!(
+            render(&mut view),
+            "
+ king_neptune
+ (krabby_patty)
+ larry_the_lobster
+ mrs_puff
+ patrick_star
+ "
+            .trim()
+        );
+
+        view.move_to_previous_next_match();
+        assert_eq!(
+            render(&mut view),
+            "
+ king_neptune
+ krabby_patty
+ larry_the_lobster
+ mrs_puff
+ (patrick_star)
+ "
+            .trim()
+        );
+    }
 }
 
 #[cfg(test)]
@@ -1579,6 +1874,9 @@ mod test_tree {
         assert_eq!(iter.next().map(|tree| tree.item), Some("yo"));
         assert_eq!(iter.next().map(|tree| tree.item), Some("foo"));
         assert_eq!(iter.next().map(|tree| tree.item), Some("bar"));
+
+        // Expect the iterator to be cyclic, so next() should jump to first item
+        assert_eq!(iter.next().map(|tree| tree.item), Some("spam"))
     }
 
     #[test]
