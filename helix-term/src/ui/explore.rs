@@ -509,12 +509,18 @@ impl Explorer {
     }
 
     fn render_tree(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        let title_style = cx.editor.theme.get("ui.text");
+        let title_style = if self.is_focus() {
+            title_style.add_modifier(Modifier::BOLD)
+        } else {
+            title_style
+        };
         surface.set_stringn(
             area.x,
             area.y,
             "Explorer: press ? for help",
             area.width.into(),
-            cx.editor.theme.get("ui.text"),
+            title_style,
         );
         surface.set_stringn(
             area.x,
