@@ -7,7 +7,7 @@ use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::syntax::Highlight;
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
-use helix_core::Range;
+use helix_core::{Assoc, Range};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
 use ::parking_lot::Mutex;

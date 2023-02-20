@@ -11,6 +11,7 @@ use crate::{
 };
 
 use helix_core::{
+    diagnostic::Severity,
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
@@ -346,7 +347,6 @@ impl EditorView {
         doc: &Document,
         theme: &Theme,
     ) -> [Vec<(usize, std::ops::Range<usize>)>; 5] {
-        use helix_core::diagnostic::Severity;
         let get_scope_of = |scope| {
             theme
             .find_scope_index_exact(scope)
@@ -650,7 +650,6 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
     ) {
-        use helix_core::diagnostic::Severity;
         use tui::{
             layout::Alignment,
             text::Text,
@@ -1392,7 +1391,6 @@ impl Component for EditorView {
         // render status msg
         if let Some((status_msg, severity)) = &cx.editor.status_msg {
             status_msg_width = status_msg.width();
-            use helix_view::editor::Severity;
             let style = if *severity == Severity::Error {
                 cx.editor.theme.get("error")
             } else {
