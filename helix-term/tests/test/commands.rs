@@ -429,3 +429,26 @@ async fn test_delete_word_forward() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn test_delete_char_forward() -> anyhow::Result<()> {
+    test((
+        platform_line(indoc! {"\
+                #[abc|]#def
+                #(abc|)#ef
+                #(abc|)#f
+                #(abc|)#
+            "})
+        .as_str(),
+        "a<del><esc>",
+        platform_line(indoc! {"\
+                #[abc|]#ef
+                #(abc|)#f
+                #(abc|)#
+                #(abc|)#
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    Ok(())
+}
