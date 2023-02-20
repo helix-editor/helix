@@ -96,6 +96,7 @@ impl Default for History {
 
 impl Revision {
     fn serialize<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        // `timestamp` is ignored since `Instant`s can't be serialized.
         write_usize(writer, self.parent)?;
         self.transaction.serialize(writer)?;
         self.inversion.serialize(writer)?;
@@ -117,8 +118,7 @@ impl Revision {
     }
 }
 
-// Temporarily 3 for review.
-const HEADER_TAG: &str = "Helix Undofile 4\n";
+const HEADER_TAG: &str = "Helix Undofile 1\n";
 
 fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
     const BUF_SIZE: usize = 8192;
@@ -144,6 +144,7 @@ impl History {
         revision: usize,
         last_saved_revision: usize,
     ) -> std::io::Result<()> {
+        // Header
         let mtime = std::fs::metadata(path)?
             .modified()?
             .duration_since(std::time::UNIX_EPOCH)
@@ -164,9 +165,14 @@ impl History {
         Ok(())
     }
 
+    /// Returns the deserialized [`History`] and the last_saved_revision.
     pub fn deserialize<R: Read>(reader: &mut R, path: &Path) -> std::io::Result<(usize, Self)> {
         let (current, last_saved_revision) = Self::read_header(reader, path)?;
+
+        // Since `timestamp` can't be serialized, a new timestamp is created.
         let timestamp = Instant::now();
+
+        // Read the revisions and construct the tree.
         let len = read_usize(reader)?;
         let mut revisions: Vec<Revision> = Vec::with_capacity(len);
         for _ in 0..len {
@@ -184,6 +190,16 @@ impl History {
         Ok((last_saved_revision, history))
     }
 
+    /// If two histories originate from: `A -> B (B is head)` but have deviated since then such that
+    /// the first history is: `A -> B -> C -> D (D is head)` and the second one is:
+    /// `A -> B -> E -> F (F is head)`.
+    /// Then they are merged into
+    /// ```
+    /// A -> B -> C -> D
+    ///         \  
+    ///          \ -> E -> F
+    /// ```
+    /// and retain their revision heads.
     pub fn merge(&mut self, mut other: History, offset: usize) -> std::io::Result<()> {
         let revisions = self.revisions.split_off(offset);
         let len = other.revisions.len();
@@ -823,6 +839,7 @@ mod test {
 
     quickcheck!(
         fn serde_history(original: String, changes_a: Vec<String>, changes_b: Vec<String>) -> bool {
+            // Constructs a set of transactions and applies them to the history.
             fn create_changes(history: &mut History, doc: &mut Rope, changes: Vec<String>) {
                 for c in changes.into_iter().map(Rope::from) {
                     let transaction = crate::diff::compare_ropes(doc, &c);
@@ -843,6 +860,8 @@ mod test {
             let file = tempfile::NamedTempFile::new().unwrap();
             history.serialize(&mut cursor, file.path(), 0, 0).unwrap();
             cursor.set_position(0);
+
+            // Check if the original and deserialized history match.
             let (_, res) = History::deserialize(&mut cursor, file.path()).unwrap();
             assert_eq!(history, res);
 
@@ -854,6 +873,8 @@ mod test {
                 .serialize(&mut cursor, file.path(), 0, last_saved_revision)
                 .unwrap();
             cursor.set_position(0);
+
+            // Check if they are the same after appending new changes.
             let (_, res) = History::deserialize(&mut cursor, file.path()).unwrap();
             history == res
         }

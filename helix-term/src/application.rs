@@ -385,6 +385,21 @@ impl Application {
             // the Application can apply it.
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
+                if self.config.load().editor.persistent_undo == false
+                    && editor_config.persistent_undo == true
+                {
+                    for doc in self.editor.documents_mut() {
+                        // HAXX: Do this so all revisions in this doc are treated as new.
+                        doc.set_last_saved_revision(0);
+                        if let Err(e) = doc.load_history() {
+                            log::error!(
+                                "failed to reload history for {}: {e}",
+                                doc.path().unwrap().to_string_lossy()
+                            );
+                            return;
+                        }
+                    }
+                }
                 app_config.editor = *editor_config;
                 self.config.store(Arc::new(app_config));
             }
@@ -439,6 +454,17 @@ impl Application {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
+
+            // Merge histories of existing docs if persistent undo was enabled.
+            if self.config.load().editor.persistent_undo == false
+                && default_config.editor.persistent_undo == true
+            {
+                for doc in self.editor.documents_mut() {
+                    // HAXX: Do this so all revisions in this doc are treated as new.
+                    doc.set_last_saved_revision(0);
+                    doc.load_history()?;
+                }
+            }
             self.refresh_language_config()?;
             self.refresh_theme(&default_config)?;
             // Store new config

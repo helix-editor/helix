@@ -1387,10 +1387,8 @@ impl Display for FormatterError {
 
 #[cfg(test)]
 mod test {
-    use arc_swap::{access::Map, ArcSwap};
-    use quickcheck::Gen;
-
     use super::*;
+    use arc_swap::ArcSwap;
 
     #[test]
     fn changeset_to_changes_ignore_line_endings() {
@@ -1561,6 +1559,7 @@ mod test {
     #[tokio::test(flavor = "multi_thread")]
     async fn reload_history() {
         let test_fn: fn(Vec<String>) -> bool = |changes| -> bool {
+            // Divide the vec into 3 sets of changes.
             let len = changes.len() / 3;
             let mut original = Rope::new();
             let mut iter = changes.into_iter();
@@ -1623,7 +1622,6 @@ mod test {
             for c in changes_b {
                 doc_1.apply(&c, view_id);
             }
-
             for c in changes_c {
                 doc_2.apply(&c, view_id);
             }
@@ -1632,6 +1630,7 @@ mod test {
             doc_1.load_history().unwrap();
             doc_3.load_history().unwrap();
 
+            // doc_3 had no diverging edits, so they should be the same.
             assert_eq!(doc_2.history.get_mut(), doc_3.history.get_mut());
 
             helix_lsp::block_on(doc_1.save::<PathBuf>(None, true).unwrap()).unwrap();
