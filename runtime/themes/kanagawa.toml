@@ -24,8 +24,9 @@
 "ui.statusline.insert" = { fg = "sumiInk0", bg = "autumnGreen", modifiers = ["bold"] }
 "ui.statusline.select" = { fg = "sumiInk0", bg = "oniViolet", modifiers = ["bold"] }
 
-"ui.bufferline" = { fg = "oldWhite", bg = "sumiInk0" }
-"ui.bufferline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }
+"ui.bufferline" = { fg = "fujiGray", bg = "sumiInk0" }
+"ui.bufferline.active" = { fg = "oldWhite", bg = "sumiInk0" }
+"ui.bufferline.background" = { bg = "sumiInk0" }
 
 "ui.popup" = { fg = "fujiWhite", bg = "sumiInk0" }
 "ui.window" = { fg = "sumiInk0" }
