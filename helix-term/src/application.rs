@@ -385,13 +385,13 @@ impl Application {
             // the Application can apply it.
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
-                if self.config.load().editor.persistent_undo == false
-                    && editor_config.persistent_undo == true
-                {
+                if !self.config.load().editor.persistent_undo && editor_config.persistent_undo {
                     for doc in self.editor.documents_mut() {
                         // HAXX: Do this so all revisions in this doc are treated as new.
+                        let lsr = doc.get_last_saved_revision();
                         doc.set_last_saved_revision(0);
                         if let Err(e) = doc.load_history() {
+                            doc.set_last_saved_revision(lsr);
                             log::error!(
                                 "failed to reload history for {}: {e}",
                                 doc.path().unwrap().to_string_lossy()
@@ -456,13 +456,15 @@ impl Application {
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
 
             // Merge histories of existing docs if persistent undo was enabled.
-            if self.config.load().editor.persistent_undo == false
-                && default_config.editor.persistent_undo == true
-            {
+            if !self.config.load().editor.persistent_undo && default_config.editor.persistent_undo {
                 for doc in self.editor.documents_mut() {
                     // HAXX: Do this so all revisions in this doc are treated as new.
+                    let lsr = doc.get_last_saved_revision();
                     doc.set_last_saved_revision(0);
-                    doc.load_history()?;
+                    if let Err(e) = doc.load_history() {
+                        doc.set_last_saved_revision(lsr);
+                        return Err(e);
+                    }
                 }
             }
             self.refresh_language_config()?;

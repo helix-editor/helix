@@ -194,7 +194,7 @@ impl History {
     /// the first history is: `A -> B -> C -> D (D is head)` and the second one is:
     /// `A -> B -> E -> F (F is head)`.
     /// Then they are merged into
-    /// ```
+    /// ```md
     /// A -> B -> C -> D
     ///         \  
     ///          \ -> E -> F
