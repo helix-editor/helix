@@ -14,8 +14,9 @@
 "ui.linenr" = { fg = "sumiInk4" }
 "ui.linenr.selected" = { fg = "roninYellow" }
 
+"ui.virtual" = "sumiInk4"
 "ui.virtual.ruler" = { bg = "sumiInk2" }
-"ui.virtual.whitespace" = "waveBlue1"
+"ui.virtual.whitespace" = "sumiInk4"
 "ui.virtual.indent-guide" = "sumiInk4"
 
 "ui.statusline" = { fg = "oldWhite", bg = "sumiInk0" }
