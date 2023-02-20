@@ -110,7 +110,7 @@ pub mod util {
             severity,
             code,
             source: diag.source.clone(),
-            message: diag.message.to_owned(),
+            message: diag.message.as_str().into(),
             related_information: None,
             tags,
             data: diag.data.to_owned(),

@@ -1,4 +1,6 @@
 //! LSP diagnostic utility types.
+use std::rc::Rc;
+
 use serde::{Deserialize, Serialize};
 
 /// Describes the severity level of a [`Diagnostic`].
@@ -40,7 +42,8 @@ pub enum DiagnosticTag {
 pub struct Diagnostic {
     pub range: Range,
     pub line: usize,
-    pub message: String,
+    // Messages will also be copied in the inline diagnostics, let's avoid allocating twice
+    pub message: Rc<String>,
     pub severity: Option<Severity>,
     pub code: Option<NumberOrString>,
     pub tags: Vec<DiagnosticTag>,

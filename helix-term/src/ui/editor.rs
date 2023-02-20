@@ -682,7 +682,7 @@ impl EditorView {
                     Some(Severity::Info) => info,
                     Some(Severity::Hint) => hint,
                 });
-            let text = Text::styled(&diagnostic.message, style);
+            let text = Text::styled(&*diagnostic.message, style);
             lines.extend(text.lines);
         }
 

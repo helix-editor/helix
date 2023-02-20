@@ -32,6 +32,7 @@ use log::{debug, error, warn};
 use std::{
     io::{stdin, stdout},
     path::Path,
+    rc::Rc,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -779,7 +780,7 @@ impl Application {
                                     Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
-                                        message: diagnostic.message.clone(),
+                                        message: Rc::new(diagnostic.message.clone()),
                                         severity,
                                         code,
                                         tags,
