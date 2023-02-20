@@ -978,8 +978,6 @@ impl Document {
                 syntax.update(&old_doc, &self.text, changes).unwrap();
             }
 
-            let changes = transaction.changes();
-
             // map state.diagnostics over changes::map_pos too
             for diagnostic in &mut self.diagnostics {
                 diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
@@ -1015,6 +1013,8 @@ impl Document {
                 apply_inlay_hint_changes(other_inlay_hints);
                 apply_inlay_hint_changes(padding_after_inlay_hints);
             }
+
+            annotations::apply_changes_to_diagnostic_annotations(self, changes);
 
             // emit lsp notification
             if let Some(language_server) = self.language_server() {
