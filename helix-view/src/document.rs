@@ -167,6 +167,7 @@ pub struct Document {
     pub(crate) modified_since_accessed: bool,
 
     diagnostics: Vec<Diagnostic>,
+    diagnostic_annotations: annotations::DiagnosticAnnotations,
     language_server: Option<Arc<helix_lsp::Client>>,
 
     diff_handle: Option<DiffHandle>,
@@ -262,6 +263,7 @@ impl fmt::Debug for Document {
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
+            // .field("diagnostics_annotations", &self.diagnostics_annotations)
             // .field("language_server", &self.language_server)
             .finish()
     }
@@ -488,6 +490,7 @@ impl Document {
             changes,
             old_state,
             diagnostics: Vec::new(),
+            diagnostic_annotations: Default::default(),
             version: 0,
             history: Cell::new(History::default()),
             savepoints: Vec::new(),
@@ -1393,6 +1396,21 @@ impl Document {
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
     }
 
+    #[inline]
+    pub fn diagnostic_annotations_messages(
+        &self,
+    ) -> Rc<[annotations::DiagnosticAnnotationMessage]> {
+        Rc::clone(&self.diagnostic_annotations.messages)
+    }
+
+    #[inline]
+    pub fn set_diagnostics_annotations(
+        &mut self,
+        diagnostic_annotations: annotations::DiagnosticAnnotations,
+    ) {
+        self.diagnostic_annotations = diagnostic_annotations;
+    }
+
     /// Get the document's auto pairs. If the document has a recognized
     /// language config with auto pairs configured, returns that;
     /// otherwise, falls back to the global auto pairs config. If the global
@@ -1480,7 +1498,18 @@ impl Document {
     /// Get the text annotations that apply to the whole document, those that do not apply to any
     /// specific view.
     pub fn text_annotations(&self, _theme: Option<&Theme>) -> TextAnnotations {
-        TextAnnotations::default()
+        let mut text_annotations = TextAnnotations::default();
+
+        if !self.diagnostic_annotations.annotations.is_empty() {
+            text_annotations
+                .add_line_annotation(Rc::clone(&self.diagnostic_annotations.annotations));
+        }
+
+        text_annotations
+    }
+
+    pub fn reset_diagnostics_annotations(&mut self) {
+        self.diagnostic_annotations = Default::default();
     }
 
     /// Set the inlay hints for this document and `view_id`.

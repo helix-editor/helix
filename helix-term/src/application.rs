@@ -3,11 +3,14 @@ use futures_util::Stream;
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
-    pos_at_coords, syntax, Selection,
+    pos_at_coords, syntax,
+    text_annotations::LineAnnotation,
+    Selection,
 };
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{
     align_view,
+    document::annotations::{diagnostic_inline_messages_from_diagnostics, DiagnosticAnnotations},
     document::DocumentSavedEventResult,
     editor::{ConfigEvent, EditorEvent},
     graphics::Rect,
@@ -30,6 +33,7 @@ use crate::{
 
 use log::{debug, error, warn};
 use std::{
+    collections::BTreeMap,
     io::{stdin, stdout},
     path::Path,
     rc::Rc,
@@ -688,11 +692,17 @@ impl Application {
                                 return;
                             }
                         };
+
+                        let enabled_inline_diagnostics =
+                            self.editor.config().lsp.display_inline_diagnostics;
                         let doc = self.editor.document_by_path_mut(&path);
 
                         if let Some(doc) = doc {
                             let lang_conf = doc.language_config();
                             let text = doc.text();
+                            let text_slice = text.slice(..);
+
+                            let mut diagnostic_annotations = BTreeMap::new();
 
                             let diagnostics = params
                                 .diagnostics
@@ -777,6 +787,12 @@ impl Application {
                                         Vec::new()
                                     };
 
+                                    if enabled_inline_diagnostics {
+                                        let char_idx = text_slice.line_to_char(diagnostic.range.start.line as usize);
+
+                                        *diagnostic_annotations.entry(char_idx).or_default() += diagnostic.message.trim().lines().count();
+                                    }
+
                                     Some(Diagnostic {
                                         range: Range { start, end },
                                         line: diagnostic.range.start.line as usize,
@@ -788,7 +804,24 @@ impl Application {
                                         data: diagnostic.data.clone(),
                                     })
                                 })
-                                .collect();
+                                .collect::<Vec<_>>();
+
+                            if enabled_inline_diagnostics {
+                                let diagnostic_annotations = diagnostic_annotations
+                                    .into_iter()
+                                    .map(|(anchor_char_idx, height)| LineAnnotation {
+                                        anchor_char_idx,
+                                        height,
+                                    })
+                                    .collect::<Vec<_>>();
+
+                                doc.set_diagnostics_annotations(DiagnosticAnnotations {
+                                    annotations: diagnostic_annotations.into(),
+                                    messages: diagnostic_inline_messages_from_diagnostics(
+                                        &diagnostics,
+                                    ),
+                                })
+                            }
 
                             doc.set_diagnostics(diagnostics);
                         }
@@ -910,6 +943,7 @@ impl Application {
                                     == Some(server_id)
                                 {
                                     doc.set_diagnostics(Vec::new());
+                                    doc.set_diagnostics_annotations(Default::default());
                                     doc.url()
                                 } else {
                                     None
