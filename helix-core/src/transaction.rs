@@ -570,6 +570,11 @@ impl Transaction {
         Self::from(changeset)
     }
 
+    pub fn insert_at_eof(mut self, text: Tendril) -> Transaction {
+        self.changes.insert(text);
+        self
+    }
+
     /// Generate a transaction with a change per selection range.
     pub fn change_by_selection<F>(doc: &Rope, selection: &Selection, f: F) -> Self
     where

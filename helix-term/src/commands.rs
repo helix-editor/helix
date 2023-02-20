@@ -795,42 +795,50 @@ fn extend_to_line_start(cx: &mut Context) {
 }
 
 fn kill_to_line_start(cx: &mut Context) {
-    delete_by_selection_insert_mode(cx, move |text, range| {
-        let line = range.cursor_line(text);
-        let first_char = text.line_to_char(line);
-        let anchor = range.cursor(text);
-        let head = if anchor == first_char && line != 0 {
-            // select until previous line
-            line_end_char_index(&text, line - 1)
-        } else if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
-            if first_char + pos < anchor {
-                // select until first non-blank in line if cursor is after it
-                first_char + pos
+    delete_by_selection_insert_mode(
+        cx,
+        move |text, range| {
+            let line = range.cursor_line(text);
+            let first_char = text.line_to_char(line);
+            let anchor = range.cursor(text);
+            let head = if anchor == first_char && line != 0 {
+                // select until previous line
+                line_end_char_index(&text, line - 1)
+            } else if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
+                if first_char + pos < anchor {
+                    // select until first non-blank in line if cursor is after it
+                    first_char + pos
+                } else {
+                    // select until start of line
+                    first_char
+                }
             } else {
                 // select until start of line
                 first_char
-            }
-        } else {
-            // select until start of line
-            first_char
-        };
-        (head, anchor)
-    });
+            };
+            (head, anchor)
+        },
+        Direction::Backward,
+    );
 }
 
 fn kill_to_line_end(cx: &mut Context) {
-    delete_by_selection_insert_mode(cx, |text, range| {
-        let line = range.cursor_line(text);
-        let line_end_pos = line_end_char_index(&text, line);
-        let pos = range.cursor(text);
+    delete_by_selection_insert_mode(
+        cx,
+        |text, range| {
+            let line = range.cursor_line(text);
+            let line_end_pos = line_end_char_index(&text, line);
+            let pos = range.cursor(text);
 
-        // if the cursor is on the newline char delete that
-        if pos == line_end_pos {
-            (pos, text.line_to_char(line + 1))
-        } else {
-            (pos, line_end_pos)
-        }
-    });
+            // if the cursor is on the newline char delete that
+            if pos == line_end_pos {
+                (pos, text.line_to_char(line + 1))
+            } else {
+                (pos, line_end_pos)
+            }
+        },
+        Direction::Forward,
+    );
 }
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
@@ -2322,13 +2330,44 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
 fn delete_by_selection_insert_mode(
     cx: &mut Context,
     mut f: impl FnMut(RopeSlice, &Range) -> Deletion,
+    direction: Direction,
 ) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
-    let transaction =
+    let mut selection = SmallVec::new();
+    let mut insert_newline = false;
+    let text_len = text.len_chars();
+    let mut transaction =
         Transaction::delete_by_selection(doc.text(), doc.selection(view.id), |range| {
-            f(text, range)
+            let (start, end) = f(text, range);
+            if direction == Direction::Forward {
+                let mut range = *range;
+                if range.head > range.anchor {
+                    insert_newline |= end == text_len;
+                    // move the cursor to the right so that the selection
+                    // doesn't shrink when deleting forward (so the text appears to
+                    // move to  left)
+                    // += 1 is enough here as the range is normalized to grapheme boundaries
+                    // later anyway
+                    range.head += 1;
+                }
+                selection.push(range);
+            }
+            (start, end)
         });
+
+    // in case we delete the last character and the cursor would be moved to the EOF char
+    // insert a newline, just like when entering append mode
+    if insert_newline {
+        transaction = transaction.insert_at_eof(doc.line_ending.as_str().into());
+    }
+
+    if direction == Direction::Forward {
+        doc.set_selection(
+            view.id,
+            Selection::new(selection, doc.selection(view.id).primary_index()),
+        );
+    }
     doc.apply(&transaction, view.id);
     lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
 }
@@ -3490,28 +3529,40 @@ pub mod insert {
 
     pub fn delete_char_forward(cx: &mut Context) {
         let count = cx.count();
-        delete_by_selection_insert_mode(cx, |text, range| {
-            let pos = range.cursor(text);
-            (pos, graphemes::nth_next_grapheme_boundary(text, pos, count))
-        })
+        delete_by_selection_insert_mode(
+            cx,
+            |text, range| {
+                let pos = range.cursor(text);
+                (pos, graphemes::nth_next_grapheme_boundary(text, pos, count))
+            },
+            Direction::Forward,
+        )
     }
 
     pub fn delete_word_backward(cx: &mut Context) {
         let count = cx.count();
-        delete_by_selection_insert_mode(cx, |text, range| {
-            let anchor = movement::move_prev_word_start(text, *range, count).from();
-            let next = Range::new(anchor, range.cursor(text));
-            let range = exclude_cursor(text, next, *range);
-            (range.from(), range.to())
-        });
+        delete_by_selection_insert_mode(
+            cx,
+            |text, range| {
+                let anchor = movement::move_prev_word_start(text, *range, count).from();
+                let next = Range::new(anchor, range.cursor(text));
+                let range = exclude_cursor(text, next, *range);
+                (range.from(), range.to())
+            },
+            Direction::Backward,
+        );
     }
 
     pub fn delete_word_forward(cx: &mut Context) {
         let count = cx.count();
-        delete_by_selection_insert_mode(cx, |text, range| {
-            let head = movement::move_next_word_end(text, *range, count).to();
-            (range.cursor(text), head)
-        });
+        delete_by_selection_insert_mode(
+            cx,
+            |text, range| {
+                let head = movement::move_next_word_end(text, *range, count).to();
+                (range.cursor(text), head)
+            },
+            Direction::Forward,
+        );
     }
 }
 
