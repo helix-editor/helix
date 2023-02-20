@@ -85,6 +85,7 @@
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
 | msbuild | ✓ |  | ✓ |  |
+| nasm | ✓ | ✓ |  |  |
 | nickel | ✓ |  | ✓ | `nls` |
 | nix | ✓ |  |  | `nil` |
 | nu | ✓ |  |  |  |
