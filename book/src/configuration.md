@@ -122,6 +122,7 @@ The following statusline elements can be configured:
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
 | `display-inlay-hints` | Display inlay hints[^2]                                     | `false` |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
+| `display-inline-diagnostics`  | Display diagnostics under their starting line       | `true`  |
 
 [^1]: By default, a progress spinner is shown in the statusline beside the file path.
 [^2]: You may also have to activate them in the LSP config for them to appear, not just in Helix.
