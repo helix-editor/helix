@@ -107,7 +107,7 @@ pub struct View {
     pub id: ViewId,
     pub offset: ViewPosition,
     pub area: Rect,
-    pub doc: DocumentId,
+    pub doc_id: DocumentId,
     pub jumps: JumpList,
     // documents accessed from this view from the oldest one to last viewed one
     pub docs_access_history: Vec<DocumentId>,
@@ -132,7 +132,7 @@ impl fmt::Debug for View {
         f.debug_struct("View")
             .field("id", &self.id)
             .field("area", &self.area)
-            .field("doc", &self.doc)
+            .field("doc", &self.doc_id)
             .finish()
     }
 }
@@ -141,7 +141,7 @@ impl View {
     pub fn new(doc: DocumentId, gutters: GutterConfig) -> Self {
         Self {
             id: ViewId::default(),
-            doc,
+            doc_id: doc,
             offset: ViewPosition {
                 anchor: 0,
                 horizontal_offset: 0,

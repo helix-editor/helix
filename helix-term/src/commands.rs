@@ -742,7 +742,7 @@ fn goto_previous_buffer(cx: &mut Context) {
 }
 
 fn goto_buffer(editor: &mut Editor, direction: Direction) {
-    let current = view!(editor).doc;
+    let current = view!(editor).doc_id;
 
     let id = match direction {
         Direction::Forward => {
@@ -2432,7 +2432,7 @@ fn file_picker_in_current_directory(cx: &mut Context) {
 }
 
 fn buffer_picker(cx: &mut Context) {
-    let current = view!(cx.editor).doc;
+    let current = view!(cx.editor).doc_id;
 
     struct BufferMeta {
         id: DocumentId,
@@ -2547,7 +2547,7 @@ fn jumplist_picker(cx: &mut Context) {
             path: doc.and_then(|d| d.path().cloned()),
             selection,
             text,
-            is_current: view.doc == doc_id,
+            is_current: view.doc_id == doc_id,
         }
     };
 
@@ -2640,7 +2640,7 @@ pub fn command_palette(cx: &mut Context) {
                     let config = ctx.editor.config();
                     let mode = ctx.editor.mode();
                     let view = view_mut!(ctx.editor, focus);
-                    let doc = doc_mut!(ctx.editor, &view.doc);
+                    let doc = doc_mut!(ctx.editor, &view.doc_id);
 
                     view.ensure_cursor_in_view(doc, config.scrolloff);
 
@@ -2899,7 +2899,7 @@ fn goto_last_modified_file(cx: &mut Context) {
         .last_modified_docs
         .into_iter()
         .flatten()
-        .find(|&id| id != view.doc);
+        .find(|&id| id != view.doc_id);
     if let Some(alt) = alternate_file {
         cx.editor.switch(alt, Action::Replace);
     } else {
@@ -4397,10 +4397,10 @@ fn jump_forward(cx: &mut Context) {
     let count = cx.count();
     let config = cx.editor.config();
     let view = view_mut!(cx.editor);
-    let doc_id = view.doc;
+    let doc_id = view.doc_id;
 
     if let Some((id, selection)) = view.jumps.forward(count) {
-        view.doc = *id;
+        view.doc_id = *id;
         let selection = selection.clone();
         let (view, doc) = current!(cx.editor); // refetch doc
 
@@ -4420,7 +4420,7 @@ fn jump_backward(cx: &mut Context) {
     let doc_id = doc.id();
 
     if let Some((id, selection)) = view.jumps.backward(view.id, doc, count) {
-        view.doc = *id;
+        view.doc_id = *id;
         let selection = selection.clone();
         let (view, doc) = current!(cx.editor); // refetch doc
 

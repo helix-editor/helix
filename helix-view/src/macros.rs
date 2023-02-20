@@ -13,8 +13,7 @@
 macro_rules! current {
     ($editor:expr) => {{
         let view = $crate::view_mut!($editor);
-        let id = view.doc;
-        let doc = $crate::doc_mut!($editor, &id);
+        let doc = $crate::doc_mut!($editor, &view.doc_id);
         (view, doc)
     }};
 }
@@ -23,7 +22,7 @@ macro_rules! current {
 macro_rules! current_ref {
     ($editor:expr) => {{
         let view = $editor.tree.get($editor.tree.focus);
-        let doc = &$editor.documents[&view.doc];
+        let doc = &$editor.documents[&view.doc_id];
         (view, doc)
     }};
 }
@@ -32,11 +31,21 @@ macro_rules! current_ref {
 /// Returns `&mut Document`
 #[macro_export]
 macro_rules! doc_mut {
-    ($editor:expr, $id:expr) => {{
-        $editor.documents.get_mut($id).unwrap()
+    ($editor:expr, $doc_id:expr) => {{
+        $editor.documents.get_mut($doc_id).unwrap()
     }};
     ($editor:expr) => {{
         $crate::current!($editor).1
+    }};
+}
+
+#[macro_export]
+macro_rules! doc {
+    ($editor:expr, $doc_id:expr) => {{
+        &$editor.documents[$doc_id]
+    }};
+    ($editor:expr) => {{
+        $crate::current_ref!($editor).1
     }};
 }
 
@@ -61,15 +70,5 @@ macro_rules! view {
     }};
     ($editor:expr) => {{
         $editor.tree.get($editor.tree.focus)
-    }};
-}
-
-#[macro_export]
-macro_rules! doc {
-    ($editor:expr, $id:expr) => {{
-        &$editor.documents[$id]
-    }};
-    ($editor:expr) => {{
-        $crate::current_ref!($editor).1
     }};
 }

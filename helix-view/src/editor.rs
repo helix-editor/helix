@@ -1147,7 +1147,7 @@ impl Editor {
     fn _refresh(&mut self) {
         let config = self.config();
         for (view, _) in self.tree.views_mut() {
-            let doc = doc_mut!(self, &view.doc);
+            let doc = doc_mut!(self, &view.doc_id);
             view.sync_changes(doc);
             view.gutters = config.gutters.clone();
             view.ensure_cursor_in_view(doc, config.scrolloff)
@@ -1156,7 +1156,7 @@ impl Editor {
 
     fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
         let view = self.tree.get_mut(current_view);
-        view.doc = doc_id;
+        view.doc_id = doc_id;
         view.offset = ViewPosition::default();
 
         let doc = doc_mut!(self, &doc_id);
@@ -1191,7 +1191,7 @@ impl Editor {
                     && !self
                         .tree
                         .traverse()
-                        .any(|(_, v)| v.doc == doc.id && v.id != view.id);
+                        .any(|(_, v)| v.doc_id == doc.id && v.id != view.id);
 
                 let (view, doc) = current!(self);
                 let view_id = view.id;
@@ -1210,16 +1210,17 @@ impl Editor {
                         view.remove_document(&id);
                     }
                 } else {
-                    let jump = (view.doc, doc.selection(view.id).clone());
+                    let jump = (view.doc_id, doc.selection(view.id).clone());
                     view.jumps.push(jump);
                     // Set last accessed doc if it is a different document
                     if doc.id != id {
-                        view.add_to_history(view.doc);
+                        view.add_to_history(view.doc_id);
                         // Set last modified doc if modified and last modified doc is different
                         if std::mem::take(&mut doc.modified_since_accessed)
-                            && view.last_modified_docs[0] != Some(view.doc)
+                            && view.last_modified_docs[0] != Some(view.doc_id)
                         {
-                            view.last_modified_docs = [Some(view.doc), view.last_modified_docs[0]];
+                            view.last_modified_docs =
+                                [Some(view.doc_id), view.last_modified_docs[0]];
                         }
                     }
                 }
@@ -1239,7 +1240,7 @@ impl Editor {
                 let view = self
                     .tree
                     .try_get(self.tree.focus)
-                    .filter(|v| id == v.doc) // Different Document
+                    .filter(|v| id == v.doc_id) // Different Document
                     .cloned()
                     .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
                 let view_id = self.tree.split(
@@ -1361,7 +1362,7 @@ impl Editor {
             .filter_map(|(view, _focus)| {
                 view.remove_document(&doc_id);
 
-                if view.doc == doc_id {
+                if view.doc_id == doc_id {
                     // something was previously open in the view, switch to previous doc
                     if let Some(prev_doc) = view.docs_access_history.pop() {
                         Some(Action::ReplaceDoc(view.id, prev_doc))
@@ -1452,7 +1453,7 @@ impl Editor {
 
             // Update jumplist selections with new document changes.
             for (view, _focused) in self.tree.views_mut() {
-                let doc = doc_mut!(self, &view.doc);
+                let doc = doc_mut!(self, &view.doc_id);
                 view.sync_changes(doc);
             }
         }
@@ -1488,7 +1489,7 @@ impl Editor {
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let config = self.config();
         let view = self.tree.get_mut(id);
-        let doc = &self.documents[&view.doc];
+        let doc = &self.documents[&view.doc_id];
         view.ensure_cursor_in_view(doc, config.scrolloff)
     }
 

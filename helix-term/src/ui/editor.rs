@@ -544,7 +544,7 @@ impl EditorView {
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
         let mut x = viewport.x;
-        let current_doc = view!(editor).doc;
+        let current_doc = view!(editor).doc_id;
 
         for doc in editor.documents() {
             let fname = doc
@@ -1013,7 +1013,7 @@ impl EditorView {
 
         let pos_and_view = |editor: &Editor, row, column| {
             editor.tree.views().find_map(|(view, _focus)| {
-                view.pos_at_screen_coords(&editor.documents[&view.doc], row, column, true)
+                view.pos_at_screen_coords(&editor.documents[&view.doc_id], row, column, true)
                     .map(|pos| (pos, view.id))
             })
         };
@@ -1030,7 +1030,7 @@ impl EditorView {
                 let editor = &mut cxt.editor;
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
-                    let doc = doc_mut!(editor, &view!(editor, view_id).doc);
+                    let doc = doc_mut!(editor, &view!(editor, view_id).doc_id);
 
                     if modifiers == KeyModifiers::ALT {
                         let selection = doc.selection(view_id).clone();
@@ -1165,7 +1165,7 @@ impl EditorView {
                 }
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
-                    let doc = doc_mut!(editor, &view!(editor, view_id).doc);
+                    let doc = doc_mut!(editor, &view!(editor, view_id).doc_id);
                     doc.set_selection(view_id, Selection::point(pos));
                     cxt.editor.focus(view_id);
                     commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
@@ -1302,7 +1302,7 @@ impl Component for EditorView {
                     let config = cx.editor.config();
                     let mode = cx.editor.mode();
                     let view = view_mut!(cx.editor, focus);
-                    let doc = doc_mut!(cx.editor, &view.doc);
+                    let doc = doc_mut!(cx.editor, &view.doc_id);
 
                     view.ensure_cursor_in_view(doc, config.scrolloff);
 
@@ -1357,7 +1357,7 @@ impl Component for EditorView {
         }
 
         for (view, is_focused) in cx.editor.tree.views() {
-            let doc = cx.editor.document(view.doc).unwrap();
+            let doc = cx.editor.document(view.doc_id).unwrap();
             self.render_view(cx.editor, doc, view, area, surface, is_focused);
         }
 
