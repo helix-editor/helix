@@ -1598,8 +1598,10 @@ mod test {
                 .collect();
 
             let file = tempfile::NamedTempFile::new().unwrap();
-            let mut config = Config::default();
-            config.persistent_undo = true;
+            let config = Config {
+                persistent_undo: true,
+                ..Default::default()
+            };
 
             let view_id = ViewId::default();
             let config = Arc::new(ArcSwap::new(Arc::new(config)));
@@ -1613,7 +1615,7 @@ mod test {
             helix_lsp::block_on(doc_1.save::<PathBuf>(None, true).unwrap()).unwrap();
 
             let mut doc_2 = Document::open(file.path(), None, None, config.clone()).unwrap();
-            let mut doc_3 = Document::open(file.path(), None, None, config.clone()).unwrap();
+            let mut doc_3 = Document::open(file.path(), None, None, config).unwrap();
             doc_2.ensure_view_init(view_id);
             doc_3.ensure_view_init(view_id);
 

@@ -547,6 +547,8 @@ impl std::str::FromStr for UndoKind {
 
 #[cfg(test)]
 mod test {
+    use std::io::Cursor;
+
     use quickcheck::quickcheck;
 
     use super::*;
@@ -794,6 +796,31 @@ mod test {
         );
     }
 
+    #[test]
+    fn merge_history() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        let mut undo = Cursor::new(Vec::new());
+        let mut history_1 = History::default();
+        let mut history_2 = History::default();
+
+        let state = State {
+            doc: Rope::new(),
+            selection: Selection::point(0),
+        };
+        let tx = Transaction::change(
+            &Rope::new(),
+            [(0, 0, Some("Hello, world!".into()))].into_iter(),
+        );
+        history_1.commit_revision(&tx, &state);
+        history_1.serialize(&mut undo, file.path(), 0, 0).unwrap();
+        undo.seek(SeekFrom::Start(0)).unwrap();
+
+        let saved_history = History::deserialize(&mut undo, file.path()).unwrap().1;
+        history_2.merge(saved_history, 1).unwrap();
+
+        assert_eq!(history_1.revisions, history_2.revisions);
+    }
+
     quickcheck!(
         fn serde_history(original: String, changes_a: Vec<String>, changes_b: Vec<String>) -> bool {
             fn create_changes(history: &mut History, doc: &mut Rope, changes: Vec<String>) {
@@ -812,7 +839,7 @@ mod test {
             let mut original = Rope::from(original);
 
             create_changes(&mut history, &mut original, changes_a);
-            let mut cursor = std::io::Cursor::new(Vec::new());
+            let mut cursor = Cursor::new(Vec::new());
             let file = tempfile::NamedTempFile::new().unwrap();
             history.serialize(&mut cursor, file.path(), 0, 0).unwrap();
             cursor.set_position(0);
