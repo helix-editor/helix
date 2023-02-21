@@ -3,7 +3,7 @@ use crate::{
     compositor::{Component, Context, EventResult},
     ctrl, key, shift, ui,
 };
-use anyhow::{bail, ensure, Result};
+use anyhow::{ensure, Result};
 use helix_core::Position;
 use helix_view::{
     editor::{Action, ExplorerPositionEmbed},
@@ -122,21 +122,11 @@ impl TreeViewItem for FileInfo {
 
 #[derive(Clone, Debug)]
 enum PromptAction {
-    Search {
-        search_next: bool,
-    }, // search next/search pre
-    CreateFolder {
-        folder_path: PathBuf,
-        parent_index: usize,
-    },
-    CreateFile {
-        folder_path: PathBuf,
-        parent_index: usize,
-    },
+    CreateFolder { folder_path: PathBuf },
+    CreateFile { folder_path: PathBuf },
     RemoveDir,
     RemoveFile(Option<DocumentId>),
     RenameFile(Option<DocumentId>),
-    Filter,
 }
 
 #[derive(Clone, Debug)]
@@ -288,11 +278,9 @@ impl Explorer {
                 ("A", "Add folder"),
                 ("r", "Rename file/folder"),
                 ("d", "Delete file"),
-                ("f", "Filter"),
-                ("[", "Change root to parent folder"),
+                ("b", "Change root to parent folder"),
                 ("]", "Change root to current folder"),
-                ("C-o", "Go to previous root"),
-                ("R", "Refresh"),
+                ("[", "Go to previous root"),
                 ("+", "Increase size"),
                 ("-", "Decrease size"),
                 ("q", "Close"),
@@ -326,28 +314,10 @@ impl Explorer {
         })
     }
 
-    fn new_search_prompt(&mut self, search_next: bool) {
-        // self.tree.save_view();
-        self.prompt = Some((
-            PromptAction::Search { search_next },
-            Prompt::new(" Search: ".into(), None, ui::completers::none, |_, _, _| {}),
-        ))
-    }
-
-    fn new_filter_prompt(&mut self, cx: &mut Context) {
-        // self.tree.save_view();
-        self.prompt = Some((
-            PromptAction::Filter,
-            Prompt::new(" Filter: ".into(), None, ui::completers::none, |_, _, _| {})
-                .with_line(self.state.filter.clone(), cx.editor),
-        ))
-    }
-
     fn new_create_folder_prompt(&mut self) -> Result<()> {
-        let (parent_index, folder_path) = self.nearest_folder()?;
+        let folder_path = self.nearest_folder()?;
         self.prompt = Some((
             PromptAction::CreateFolder {
-                parent_index,
                 folder_path: folder_path.clone(),
             },
             Prompt::new(
@@ -361,10 +331,9 @@ impl Explorer {
     }
 
     fn new_create_file_prompt(&mut self) -> Result<()> {
-        let (parent_index, folder_path) = self.nearest_folder()?;
+        let folder_path = self.nearest_folder()?;
         self.prompt = Some((
             PromptAction::CreateFile {
-                parent_index,
                 folder_path: folder_path.clone(),
             },
             Prompt::new(
@@ -377,24 +346,18 @@ impl Explorer {
         Ok(())
     }
 
-    fn nearest_folder(&self) -> Result<(usize, PathBuf)> {
+    fn nearest_folder(&self) -> Result<PathBuf> {
         let current = self.tree.current();
         if current.item().is_parent() {
-            Ok((current.index(), current.item().path.to_path_buf()))
+            Ok(current.item().path.to_path_buf())
         } else {
-            let parent_index = current.parent_index().ok_or_else(|| {
-                anyhow::anyhow!(format!(
-                    "Unable to get parent index of '{}'",
-                    current.item().path.to_string_lossy()
-                ))
-            })?;
             let parent_path = current.item().path.parent().ok_or_else(|| {
                 anyhow::anyhow!(format!(
                     "Unable to get parent path of '{}'",
                     current.item().path.to_string_lossy()
                 ))
             })?;
-            Ok((parent_index, parent_path.to_path_buf()))
+            Ok(parent_path.to_path_buf())
         }
     }
 
@@ -522,15 +485,8 @@ impl Explorer {
             area.width.into(),
             title_style,
         );
-        surface.set_stringn(
-            area.x,
-            area.y.saturating_add(1),
-            format!("[FILTER]: {}", self.state.filter),
-            area.width.into(),
-            cx.editor.theme.get("ui.text"),
-        );
         self.tree
-            .render(area.clip_top(2), surface, cx, &self.state.filter);
+            .render(area.clip_top(1), surface, cx, &self.state.filter);
     }
 
     pub fn render_embed(
@@ -646,60 +602,7 @@ impl Explorer {
         EventResult::Consumed(None)
     }
 
-    fn handle_search_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
-        let (action, mut prompt) = self.prompt.take().unwrap();
-        let search_next = match action {
-            PromptAction::Search { search_next } => search_next,
-            _ => return EventResult::Ignored(None),
-        };
-        match event {
-            key!(Tab) | key!(Down) | ctrl!('j') => {
-                let filter = self.state.filter.clone();
-                return self
-                    .tree
-                    .handle_event(&Event::Key(*event), cx, &mut self.state, &filter);
-            }
-            key!(Enter) => {
-                let search_str = prompt.line().clone();
-                if !search_str.is_empty() {
-                    self.repeat_motion = Some(Box::new(move |explorer, action, _| {
-                        if let PromptAction::Search {
-                            search_next: is_next,
-                        } = action
-                        {
-                            // explorer.tree.save_view();
-                            if is_next == search_next {
-                                // explorer.tree.search_next(&search_str);
-                            } else {
-                                // explorer.tree.search_previous(&search_str);
-                            }
-                        }
-                    }))
-                } else {
-                    self.repeat_motion = None;
-                }
-            }
-            // key!(Esc) | ctrl!('c') => self.tree.restore_view(),
-            _ => {
-                if let EventResult::Consumed(_) = prompt.handle_event(&Event::Key(*event), cx) {
-                    if search_next {
-                        // self.tree.search_next(prompt.line());
-                    } else {
-                        // self.tree.search_previous(prompt.line());
-                    }
-                }
-                self.prompt = Some((action, prompt));
-            }
-        };
-        EventResult::Consumed(None)
-    }
-
     fn handle_prompt_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
-        match &self.prompt {
-            Some((PromptAction::Search { .. }, _)) => return self.handle_search_event(event, cx),
-            Some((PromptAction::Filter, _)) => return self.handle_filter_event(event, cx),
-            _ => {}
-        };
         fn handle_prompt_event(
             explorer: &mut Explorer,
             event: &KeyEvent,
@@ -711,20 +614,12 @@ impl Explorer {
             };
             let line = prompt.line();
             match (&action, event) {
-                (
-                    PromptAction::CreateFolder {
-                        folder_path,
-                        parent_index,
-                    },
-                    key!(Enter),
-                ) => explorer.new_path(folder_path.clone(), line, true, *parent_index)?,
-                (
-                    PromptAction::CreateFile {
-                        folder_path,
-                        parent_index,
-                    },
-                    key!(Enter),
-                ) => explorer.new_path(folder_path.clone(), line, false, *parent_index)?,
+                (PromptAction::CreateFolder { folder_path }, key!(Enter)) => {
+                    explorer.new_path(folder_path.clone(), line, true)?
+                }
+                (PromptAction::CreateFile { folder_path }, key!(Enter)) => {
+                    explorer.new_path(folder_path.clone(), line, false)?
+                }
                 (PromptAction::RemoveDir, key!(Enter)) => {
                     if line == "y" {
                         let item = explorer.tree.current_item();
@@ -768,30 +663,19 @@ impl Explorer {
         }
     }
 
-    fn new_path(
-        &mut self,
-        current_parent: PathBuf,
-        file_name: &str,
-        is_dir: bool,
-        parent_index: usize,
-    ) -> Result<()> {
+    fn new_path(&mut self, current_parent: PathBuf, file_name: &str, is_dir: bool) -> Result<()> {
         let path = helix_core::path::get_normalized_path(&current_parent.join(file_name));
-        match path.parent() {
-            Some(p) if p == current_parent => {}
-            _ => bail!("The file name is not illegal"),
-        };
 
-        let file = if is_dir {
-            std::fs::create_dir(&path)?;
-            FileInfo::new(path, FileType::Folder)
+        if is_dir {
+            std::fs::create_dir_all(&path)?;
         } else {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
             let mut fd = std::fs::OpenOptions::new();
             fd.create_new(true).write(true).open(&path)?;
-            FileInfo::new(path, FileType::File)
         };
-        self.tree
-            .add_child(parent_index, file, &self.state.filter)?;
-        Ok(())
+        self.reveal_file(path)
     }
 
     fn toggle_help(&mut self) {
@@ -851,7 +735,6 @@ impl Component for Explorer {
         match key_event {
             key!(Esc) => self.unfocus(),
             key!('q') => self.close(),
-            key!('f') => self.new_filter_prompt(cx),
             key!('?') => self.toggle_help(),
             key!('a') => {
                 if let Err(error) = self.new_create_file_prompt() {
@@ -863,21 +746,16 @@ impl Component for Explorer {
                     cx.editor.set_error(error.to_string())
                 }
             }
-            key!('[') => {
+            key!('b') => {
                 if let Some(parent) = self.state.current_root.parent().clone() {
                     let path = parent.to_path_buf();
                     self.change_root(cx, path)
                 }
             }
             key!(']') => self.change_root(cx, self.tree.current_item().path.clone()),
-            ctrl!('o') => self.go_to_previous_root(),
+            key!('[') => self.go_to_previous_root(),
             key!('d') => self.new_remove_prompt(cx),
             key!('r') => self.new_rename_prompt(cx),
-            shift!('R') => {
-                if let Err(error) = self.tree.refresh(&self.state.filter) {
-                    cx.editor.set_error(error.to_string())
-                }
-            }
             key!('-') => self.decrease_size(),
             key!('+') => self.increase_size(),
             _ => {

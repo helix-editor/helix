@@ -27,6 +27,9 @@ TODO
 - [x] Remove comments
 - [x] fix warnings
 - [x] refactor, add tree.expand_children() method
+- [] Change '[' to "go to previous root"
+- [] Change 'b' to "go to parent"
+- [] Use C-o for jumping to previous position
 - [] add integration testing (test explorer rendering)
 - [] search highlight matching word
 - [] Error didn't clear
@@ -37,4 +40,5 @@ TODO
 - [] Fix panic bugs (see github comments)
 - [] Sticky ancestors
 - [] Ctrl-o should work for 'h', 'gg', 'ge', etc
+- [] explorer(previow): overflow where bufferline is there
 - [] explorer(preview): content not sorted
