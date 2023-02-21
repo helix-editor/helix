@@ -1,5 +1,4 @@
 (comment) @comment
-(ERROR) @error
 
 (label) @label
 
