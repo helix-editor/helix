@@ -64,7 +64,7 @@ comment-token = "//"
 
 [[grammar]]
 name = "sway"
-source = { git = "https://github.com/FuelLabs/tree-sitter-sway", rev = "e1beaf0e9ff692b7b03ba1959aae3b9dad4a9e88" }
+source = { git = "https://github.com/FuelLabs/tree-sitter-sway", rev = "e491a005ee1d310f4c138bf215afd44cfebf959c" }
 
 [[language]]
 name = "toml"
