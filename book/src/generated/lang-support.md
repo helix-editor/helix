@@ -124,7 +124,7 @@
 | sshclientconfig | ✓ |  |  |  |
 | starlark | ✓ | ✓ |  |  |
 | svelte | ✓ |  |  | `svelteserver` |
-| sway | ✓ | ✓ | ✓ | `sway-lsp` |
+| sway | ✓ | ✓ | ✓ | `forc lsp` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |
