@@ -161,7 +161,7 @@ pub fn visual_offset_from_anchor(
             anchor_line = Some(last_pos.row);
         }
         if char_pos > pos {
-            last_pos.row -= anchor_line.unwrap();
+            last_pos.row -= anchor_line?;
             return Some((last_pos, block_start));
         }
 
