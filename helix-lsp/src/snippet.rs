@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use anyhow::{anyhow, Result};
-use helix_core::{SmallVec, smallvec};
+use helix_core::{smallvec, SmallVec};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum CaseChange {
@@ -210,8 +210,8 @@ mod parser {
         }
     }
 
-    fn text<'a>() -> impl Parser<'a, Output = &'a str> {
-        take_while(|c| c != '$')
+    fn text<'a, const SIZE: usize>(cs: [char; SIZE]) -> impl Parser<'a, Output = &'a str> {
+        take_while(move |c| cs.into_iter().all(|c1| c != c1))
     }
 
     fn digit<'a>() -> impl Parser<'a, Output = usize> {
@@ -270,13 +270,15 @@ mod parser {
                 ),
                 |seq| { Conditional(seq.1, None, Some(seq.4)) }
             ),
-            // Any text
-            map(text(), Text),
         )
     }
 
     fn regex<'a>() -> impl Parser<'a, Output = Regex<'a>> {
-        let replacement = reparse_as(take_until(|c| c == '/'), one_or_more(format()));
+        let text = map(text(['$', '/']), FormatItem::Text);
+        let replacement = reparse_as(
+            take_until(|c| c == '/'),
+            one_or_more(choice!(format(), text)),
+        );
 
         map(
             seq!(
@@ -306,19 +308,20 @@ mod parser {
     }
 
     fn placeholder<'a>() -> impl Parser<'a, Output = SnippetElement<'a>> {
-        // TODO: why doesn't parse_as work?
-        // let value = reparse_as(take_until(|c| c == '}'), anything());
-        // TODO: fix this to parse nested placeholders (take until terminates too early)
-        let value = filter_map(take_until(|c| c == '}'), |s| {
-            snippet().parse(s).map(|parse_result| parse_result.1).ok()
-        });
-
-        map(seq!("${", digit(), ":", value, "}"), |seq| {
-            SnippetElement::Placeholder {
+        let text = map(text(['$', '}']), SnippetElement::Text);
+        map(
+            seq!(
+                "${",
+                digit(),
+                ":",
+                one_or_more(choice!(anything(), text)),
+                "}"
+            ),
+            |seq| SnippetElement::Placeholder {
                 tabstop: seq.1,
-                value: seq.3.elements,
-            }
-        })
+                value: seq.3,
+            },
+        )
     }
 
     fn choice<'a>() -> impl Parser<'a, Output = SnippetElement<'a>> {
@@ -366,12 +369,18 @@ mod parser {
     }
 
     fn anything<'a>() -> impl Parser<'a, Output = SnippetElement<'a>> {
-        let text = map(text(), SnippetElement::Text);
-        choice!(tabstop(), placeholder(), choice(), variable(), text)
+        // The parser has to be constructed lazily to avoid infinite opaque type recursion
+        |input: &'a str| {
+            let parser = choice!(tabstop(), placeholder(), choice(), variable());
+            parser.parse(input)
+        }
     }
 
     fn snippet<'a>() -> impl Parser<'a, Output = Snippet<'a>> {
-        map(one_or_more(anything()), |parts| Snippet { elements: parts })
+        let text = map(text(['$']), SnippetElement::Text);
+        map(one_or_more(choice!(anything(), text)), |parts| Snippet {
+            elements: parts,
+        })
     }
 
     pub fn parse(s: &str) -> Result<Snippet, &str> {
@@ -436,6 +445,25 @@ mod parser {
                     },]
                 }),
                 parse("${1:var, $2}")
+            )
+        }
+
+        #[test]
+        fn parse_placeholder_nested_in_placeholder() {
+            assert_eq!(
+                Ok(Snippet {
+                    elements: vec![Placeholder {
+                        tabstop: 1,
+                        value: vec!(
+                            Text("foo "),
+                            Placeholder {
+                                tabstop: 2,
+                                value: vec!(Text("bar")),
+                            },
+                        ),
+                    },]
+                }),
+                parse("${1:foo ${2:bar}}")
             )
         }
 
