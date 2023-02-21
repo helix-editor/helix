@@ -36,6 +36,8 @@ use tui::buffer::Buffer as Surface;
 use super::statusline;
 use super::{document::LineDecoration, lsp::SignatureHelp};
 
+mod diagnostics_annotations;
+
 pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<OnKeyCallback>,
@@ -125,6 +127,16 @@ impl EditorView {
 
                 line_decorations.push(Box::new(line_decoration));
             }
+        }
+
+        if config.lsp.display_inline_diagnostics {
+            line_decorations.push(diagnostics_annotations::inline_diagnostics_decorator(
+                doc,
+                view,
+                inner,
+                theme,
+                &text_annotations,
+            ));
         }
 
         if is_focused && config.cursorline {
@@ -224,7 +236,11 @@ impl EditorView {
             }
         }
 
-        Self::render_diagnostics(doc, view, inner, surface, theme);
+        // If inline diagnostics are already displayed, we don't need to add the diagnostics in the
+        // top right corner, they would be redundant
+        if !config.lsp.display_inline_diagnostics {
+            Self::render_diagnostics(doc, view, inner, surface, theme);
+        }
 
         let statusline_area = view
             .area
