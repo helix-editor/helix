@@ -1006,7 +1006,7 @@ pub fn goto_definition(cx: &mut Context) {
     goto_definition_impl(cx, false)
 }
 
-pub fn goto_definition_other_window(cx: &mut Context) {
+pub fn goto_definition_next_view(cx: &mut Context) {
     goto_definition_impl(cx, true)
 }
 

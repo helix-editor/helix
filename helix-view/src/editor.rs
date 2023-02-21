@@ -917,7 +917,7 @@ pub enum Action {
     Replace,
     HorizontalSplit,
     VerticalSplit,
-    Other,
+    ReplaceInNext,
 }
 
 /// Error thrown on failed document closed
@@ -1272,7 +1272,7 @@ impl Editor {
                 doc.ensure_view_init(view_id);
                 doc.mark_as_focused();
             }
-            Action::Other => {
+            Action::ReplaceInNext => {
                 self.focus_next();
                 self.switch(id, Action::Replace);
             }

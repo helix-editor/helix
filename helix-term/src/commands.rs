@@ -313,7 +313,7 @@ impl MappableCommand {
         exit_select_mode, "Exit selection mode",
         goto_definition, "Goto definition",
         goto_declaration, "Goto declaration",
-        goto_definition_other_window, "Goto definition in the next pane",
+        goto_definition_next_view, "Goto definition in the next pane",
         add_newline_above, "Add newline above",
         add_newline_below, "Add newline below",
         goto_type_definition, "Goto type definition",

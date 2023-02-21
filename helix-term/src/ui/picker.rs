@@ -702,7 +702,7 @@ impl<T: Item + 'static> Component for Picker<T> {
             }
             ctrl!('o') => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::Other);
+                    (self.callback_fn)(cx, option, Action::ReplaceInNext);
                 }
                 return close_fn;
             }
