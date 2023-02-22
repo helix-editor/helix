@@ -141,13 +141,8 @@ pub(super) fn apply_changes_to_diagnostic_annotations(
         // See `None` case above
         None | Some([]) => doc.diagnostic_annotations = Default::default(),
         Some(line_annotations) => {
-            let doc_text = doc.text.slice(..);
-
-            let get_new_anchor_char_idx = |annot: &LineAnnotation| {
-                let new_char_idx = changes.map_pos(annot.anchor_char_idx, Assoc::After);
-                let line = doc_text.char_to_line(new_char_idx);
-                doc_text.line_to_char(line)
-            };
+            let map_pos =
+                |annot: &LineAnnotation| changes.map_pos(annot.anchor_char_idx, Assoc::After);
 
             // The algorithm here does its best to modify in place to avoid reallocations as much as possible
             //
@@ -163,7 +158,7 @@ pub(super) fn apply_changes_to_diagnostic_annotations(
             // 4) If the last write position was not the last member of the current lines annotations, it means we
             //    merged some of them together so we update the saved line annotations.
 
-            let new_anchor_char_idx = get_new_anchor_char_idx(&line_annotations[0]);
+            let new_anchor_char_idx = map_pos(&line_annotations[0]);
             line_annotations[0].anchor_char_idx = new_anchor_char_idx;
 
             let mut previous_anchor_char_idx = new_anchor_char_idx;
@@ -172,7 +167,7 @@ pub(super) fn apply_changes_to_diagnostic_annotations(
 
             for reading_index in 1..line_annotations.len() {
                 let annot = &mut line_annotations[reading_index];
-                let new_anchor_char_idx = get_new_anchor_char_idx(annot);
+                let new_anchor_char_idx = map_pos(annot);
 
                 if new_anchor_char_idx == previous_anchor_char_idx {
                     line_annotations[writing_index].height += annot.height;

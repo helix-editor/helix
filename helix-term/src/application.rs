@@ -700,7 +700,6 @@ impl Application {
                         if let Some(doc) = doc {
                             let lang_conf = doc.language_config();
                             let text = doc.text();
-                            let text_slice = text.slice(..);
 
                             let mut diagnostic_annotations = BTreeMap::new();
 
@@ -788,9 +787,7 @@ impl Application {
                                     };
 
                                     if enabled_inline_diagnostics {
-                                        let char_idx = text_slice.line_to_char(diagnostic.range.start.line as usize);
-
-                                        *diagnostic_annotations.entry(char_idx).or_default() += diagnostic.message.trim().lines().count();
+                                        *diagnostic_annotations.entry(start).or_default() += diagnostic.message.trim().lines().count();
                                     }
 
                                     Some(Diagnostic {
