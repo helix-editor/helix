@@ -897,7 +897,7 @@ pub struct Editor {
 
     pub idle_timer: Pin<Box<Sleep>>,
     #[allow(clippy::complexity)]
-    last_motion: Option<Arc<Box<dyn Fn(&mut Editor)>>>,
+    last_motion: Option<Arc<dyn Fn(&mut Editor)>>,
     pub last_completion: Option<CompleteAction>,
 
     pub exit_code: i32,
@@ -1039,7 +1039,7 @@ impl Editor {
 
     pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {
         motion(self);
-        self.last_motion = Some(Arc::new(Box::new(motion)));
+        self.last_motion = Some(Arc::new(motion));
     }
 
     pub fn repeat_last_motion(&mut self, count: usize) {
