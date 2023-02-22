@@ -26,8 +26,8 @@ use std::borrow::Cow;
 /// represents the position between the first and second `char`.
 ///
 /// Below are some examples of `Range` configurations.
-/// The anchor and head indices are shown as "(anchor, head)" 
-/// tuples, followed by example text with "[" and "]" symbols 
+/// The anchor and head indices are shown as "(anchor, head)"
+/// tuples, followed by example text with "[" and "]" symbols
 /// representing the anchor and head positions:
 ///
 /// - (0, 3): `[Som]e text`.
