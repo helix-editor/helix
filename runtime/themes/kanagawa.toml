@@ -43,6 +43,7 @@
 "ui.menu.selected" = { fg = "fujiWhite", bg = "waveBlue2", modifiers = ["bold"] }
 
 "ui.cursorline.primary" = { bg = "sumiInk3"}
+"ui.cursorcolumn.primary" = { bg = "sumiInk3" }
 
 "diagnostic.error" = { underline = { color = "samuraiRed", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "roninYellow", style = "curl" } }
