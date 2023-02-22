@@ -27,7 +27,7 @@ pub fn themecheck() -> Result<(), Box<dyn Error>> {
 }
 
 fn themecheck_theme(theme: &str, loader: &Loader) -> Result<Vec<String>, Box<dyn Error>> {
-    let (_, mut warnings) = loader.load_with_warnings(&theme)?;
+    let (_, mut warnings) = loader.load_with_warnings(theme)?;
 
     warnings.retain(|m| !is_known_issue(theme, m));
 
