@@ -90,21 +90,23 @@ hint = "dragonBlue"
 "special" = "peachRed"
 
 ## Markup modifiers
-"markup.heading.marker" = "fujiGray"
+"markup.heading.marker" = "springViolet2"
 "markup.heading.1" = { fg = "surimiOrange", modifiers = ["bold"] }
 "markup.heading.2" = { fg = "carpYellow", modifiers = ["bold"] }
 "markup.heading.3" = { fg = "waveAqua2", modifiers = ["bold"] }
-"markup.heading.4" = { fg = "springGreen", modifiers = ["bold"] }
-"markup.heading.5" = { fg = "waveRed", modifiers = ["bold"] }
-"markup.heading.6" = { fg = "autumnRed", modifiers = ["bold"] }
-"markup.list" = "oniViolet"
+"markup.heading.4" = { fg = "lightBlue", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "oniViolet", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "springViolet1", modifiers = ["bold"] }
+"markup.list.numbered" = "sakuraPink"
+"markup.list.unnumbered" = "waveRed"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.link.url" = { fg = "springBlue", modifiers = ["underlined"] }
 "markup.link.text" = "crystalBlue"
-"markup.quote" = "seaFoam"
-"markup.raw" = "seaFoam"
+"markup.link.url" = { fg = "springBlue", underline.style = "line" }
+"markup.link.label" = "surimiOrange"
+"markup.quote" = "springViolet1"
+"markup.raw" = "springGreen"
 
 [palette]
 seaFoam       = "#C7CCD1" # custom lighter foreground
