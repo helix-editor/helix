@@ -831,3 +831,6 @@ fn render_block(area: Rect, surface: &mut Surface, borders: Borders) -> Rect {
     block.render(area, surface);
     inner
 }
+
+#[cfg(test)]
+mod test_explore {}

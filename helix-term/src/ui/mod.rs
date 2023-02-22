@@ -1,7 +1,7 @@
 mod completion;
 mod document;
 pub(crate) mod editor;
-mod explore;
+mod explorer;
 mod fuzzy_match;
 mod info;
 pub mod lsp;
@@ -21,7 +21,7 @@ use crate::filter_picker_entry;
 use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
-pub use explore::Explorer;
+pub use explorer::Explorer;
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{DynamicPicker, FileLocation, FilePicker, Picker};
