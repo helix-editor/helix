@@ -16,13 +16,13 @@ use tui::buffer::Buffer as Surface;
 
 use super::Prompt;
 
-pub trait TreeViewItem: Sized {
+pub trait TreeViewItem: Sized + Ord {
     type Params;
 
     // fn text(&self, cx: &mut Context, selected: bool, params: &mut Self::Params) -> Spans;
     fn name(&self) -> String;
     fn is_parent(&self) -> bool;
-    fn cmp(&self, other: &Self) -> Ordering;
+    // fn cmp(&self, other: &Self) -> Ordering;
 
     fn filter(&self, s: &str) -> bool {
         self.name().to_lowercase().contains(&s.to_lowercase())
@@ -36,7 +36,8 @@ fn tree_item_cmp<T: TreeViewItem>(item1: &T, item2: &T) -> Ordering {
 }
 
 fn vec_to_tree<T: TreeViewItem>(mut items: Vec<T>) -> Vec<Tree<T>> {
-    items.sort_by(tree_item_cmp);
+    items.sort();
+    // items.sort_by(tree_item_cmp);
     index_elems(
         0,
         items
@@ -1149,7 +1150,7 @@ mod test_tree_view {
     use super::{vec_to_tree, TreeView, TreeViewItem};
     use pretty_assertions::assert_eq;
 
-    #[derive(Clone)]
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
     struct Item<'a> {
         name: &'a str,
     }
@@ -1169,10 +1170,6 @@ mod test_tree_view {
             self.name.len() > 2
         }
 
-        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-            self.name.cmp(other.name)
-        }
-
         fn get_children(&self) -> anyhow::Result<Vec<Self>> {
             if self.is_parent() {
                 let (left, right) = self.name.split_at(self.name.len() / 2);
@@ -1180,6 +1177,10 @@ mod test_tree_view {
             } else {
                 Ok(vec![])
             }
+        }
+
+        fn filter(&self, s: &str) -> bool {
+            self.name().to_lowercase().contains(&s.to_lowercase())
         }
     }
 

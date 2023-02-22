@@ -37,6 +37,10 @@ New:
 - [x] Ctrl-o should work for 'h', 'gg', 'ge', etc
 - [x] add unit test for TreeView
 - [x] explorer(help): overflow
+- [x] n/N wrap around
+- [x] fix(filter): crash
+- [x] fix(explorer/preview): panic if not tall enough
+- [x] explorer(preview): content not sorted
 - [] add integration test for Explorer
 - [] search highlight matching word
 - [] Error didn't clear
@@ -45,5 +49,4 @@ New:
 - [] Fix panic bugs (see github comments)
 - [] Sticky ancestors
 - [] explorer(preview): overflow where bufferline is there
-- [] explorer(preview): content not sorted
 - [] explorer(preview): implement scrolling C-j/C-k

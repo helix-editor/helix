@@ -13,9 +13,9 @@ use helix_view::{
     theme::Modifier,
     DocumentId, Editor,
 };
-use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
+use std::{borrow::Cow, fs::DirEntry};
 use tui::{
     buffer::Buffer as Surface,
     widgets::{Block, Borders, Widget},
@@ -27,24 +27,20 @@ macro_rules! get_theme {
     };
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 enum FileType {
     File,
     Folder,
     Root,
 }
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 struct FileInfo {
     file_type: FileType,
     path: PathBuf,
 }
 
 impl FileInfo {
-    fn new(path: PathBuf, file_type: FileType) -> Self {
-        Self { path, file_type }
-    }
-
     fn root(path: PathBuf) -> Self {
         Self {
             file_type: FileType::Root,
@@ -63,9 +59,13 @@ impl FileInfo {
     }
 }
 
-impl TreeViewItem for FileInfo {
-    type Params = State;
+impl PartialOrd for FileInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
+impl Ord for FileInfo {
     fn cmp(&self, other: &Self) -> Ordering {
         use FileType::*;
         match (self.file_type, other.file_type) {
@@ -85,6 +85,10 @@ impl TreeViewItem for FileInfo {
         }
         self.path.cmp(&other.path)
     }
+}
+
+impl TreeViewItem for FileInfo {
+    type Params = State;
 
     fn get_children(&self) -> Result<Vec<Self>> {
         match self.file_type {
@@ -93,18 +97,7 @@ impl TreeViewItem for FileInfo {
         };
         let ret: Vec<_> = std::fs::read_dir(&self.path)?
             .filter_map(|entry| entry.ok())
-            .filter_map(|entry| {
-                entry.metadata().ok().map(|meta| {
-                    let file_type = match meta.is_dir() {
-                        true => FileType::Folder,
-                        false => FileType::File,
-                    };
-                    Self {
-                        file_type,
-                        path: self.path.join(entry.file_name()),
-                    }
-                })
-            })
+            .filter_map(|entry| dir_entry_to_file_info(entry, &self.path))
             .collect();
         Ok(ret)
     }
@@ -119,6 +112,19 @@ impl TreeViewItem for FileInfo {
             _ => false,
         }
     }
+}
+
+fn dir_entry_to_file_info(entry: DirEntry, path: &PathBuf) -> Option<FileInfo> {
+    entry.metadata().ok().map(|meta| {
+        let file_type = match meta.is_dir() {
+            true => FileType::Folder,
+            false => FileType::File,
+        };
+        FileInfo {
+            file_type,
+            path: path.join(entry.file_name()),
+        }
+    })
 }
 
 #[derive(Clone, Debug)]
@@ -250,7 +256,11 @@ impl Explorer {
 
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, editor: &Editor) {
         let item = self.tree.current().item();
-        let head_area = render_block(area.clip_bottom(area.height - 2), surface, Borders::BOTTOM);
+        let head_area = render_block(
+            area.clip_bottom(area.height.saturating_sub(2)),
+            surface,
+            Borders::BOTTOM,
+        );
         let path_str = format!("{}", item.path.display());
         surface.set_stringn(
             head_area.x,
@@ -518,13 +528,17 @@ impl Explorer {
             } else {
                 const PREVIEW_AREA_MAX_WIDTH: u16 = 90;
                 const PREVIEW_AREA_MAX_HEIGHT: u16 = 30;
-                let preview_area_width = (area.width - side_area.width).min(PREVIEW_AREA_MAX_WIDTH);
+                let preview_area_width =
+                    (area.width.saturating_sub(side_area.width)).min(PREVIEW_AREA_MAX_WIDTH);
                 let preview_area_height = area.height.min(PREVIEW_AREA_MAX_HEIGHT);
 
                 let preview_area = match position {
                     ExplorerPositionEmbed::Left => area.clip_left(side_area.width),
                     ExplorerPositionEmbed::Right => (Rect {
-                        x: area.width - side_area.width - preview_area_width,
+                        x: area
+                            .width
+                            .saturating_sub(side_area.width)
+                            .saturating_sub(preview_area_width),
                         ..area
                     })
                     .clip_right(side_area.width),
@@ -535,7 +549,7 @@ impl Explorer {
                 }
                 let y = self.tree.winline().saturating_sub(1) as u16;
                 let y = if (preview_area_height + y) > preview_area.height {
-                    preview_area.height - preview_area_height
+                    preview_area.height.saturating_sub(preview_area_height)
                 } else {
                     y
                 };
@@ -761,12 +775,12 @@ impl Component for Explorer {
         let (x, y) = if config.is_overlay() {
             let colw = self.column_width as u16;
             if area.width > colw {
-                (area.x + colw + 2, area.y + area.height - 2)
+                (area.x + colw + 2, area.y + area.height.saturating_sub(2))
             } else {
                 return (None, CursorKind::Hidden);
             }
         } else {
-            (area.x, area.y + area.height - 1)
+            (area.x, area.y + area.height.saturating_sub(1))
         };
         prompt.cursor(Rect::new(x, y, area.width, 1), editor)
     }
@@ -775,16 +789,24 @@ impl Component for Explorer {
 fn get_preview(p: impl AsRef<Path>, max_line: usize) -> Result<Vec<String>> {
     let p = p.as_ref();
     if p.is_dir() {
-        return Ok(p
+        let mut entries = p
             .read_dir()?
-            .filter_map(|entry| entry.ok())
+            .filter_map(|entry| {
+                entry
+                    .ok()
+                    .map(|entry| dir_entry_to_file_info(entry, &p.to_path_buf()))
+                    .flatten()
+            })
             .take(max_line)
-            .map(|entry| {
-                if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
-                    format!("{}/", entry.file_name().to_string_lossy())
-                } else {
-                    format!("{}", entry.file_name().to_string_lossy())
-                }
+            .collect::<Vec<_>>();
+
+        entries.sort();
+
+        return Ok(entries
+            .into_iter()
+            .map(|entry| match entry.file_type {
+                FileType::Folder => format!("{}/", entry.name()),
+                _ => entry.name(),
             })
             .collect());
     }
