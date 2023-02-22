@@ -393,7 +393,7 @@ mod test {
             panic!("specification must match text length -- are newlines aligned?");
         }
 
-        let rope = Rope::from(text.clone());
+        let rope = Rope::from(text);
 
         let selections: SmallVec<[Range; 1]> = spec
             .match_indices('^')
