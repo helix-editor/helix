@@ -2,6 +2,7 @@ mod docgen;
 mod helpers;
 mod path;
 mod querycheck;
+mod themecheck;
 mod themelint;
 
 use std::{env, error::Error};
@@ -12,6 +13,7 @@ pub mod tasks {
     use crate::docgen::{lang_features, typable_commands, write};
     use crate::docgen::{LANG_SUPPORT_MD_OUTPUT, TYPABLE_COMMANDS_MD_OUTPUT};
     use crate::querycheck::query_check;
+    use crate::themecheck;
     use crate::themelint::{lint, lint_all};
     use crate::DynError;
 
@@ -19,6 +21,10 @@ pub mod tasks {
         write(TYPABLE_COMMANDS_MD_OUTPUT, &typable_commands()?);
         write(LANG_SUPPORT_MD_OUTPUT, &lang_features()?);
         Ok(())
+    }
+
+    pub fn themecheck() -> Result<(), DynError> {
+        themecheck::themecheck()
     }
 
     pub fn themelint(file: Option<String>) -> Result<(), DynError> {
@@ -53,6 +59,7 @@ fn main() -> Result<(), DynError> {
         Some(t) => match t.as_str() {
             "docgen" => tasks::docgen()?,
             "themelint" => tasks::themelint(env::args().nth(2))?,
+            "themecheck" => tasks::themecheck()?,
             "query-check" => tasks::querycheck()?,
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },

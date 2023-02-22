@@ -288,7 +288,7 @@ fn build_theme_values(mut values: Map<String, Value>) -> ThemeValues {
     for (name, style_value) in values {
         let mut style = Style::default();
         if let Err(err) = palette.parse_style(&mut style, style_value) {
-            result.warnings.push(format!("{}", err))
+            result.warnings.push(err)
         }
 
         // these are used both as UI and as highlights

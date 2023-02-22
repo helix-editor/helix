@@ -83,6 +83,9 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
 
+      - name: Run themecheck
+        run: cargo xtask themecheck
+
   docs:
     name: Docs
     runs-on: ubuntu-latest
