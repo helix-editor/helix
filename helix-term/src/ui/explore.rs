@@ -8,6 +8,7 @@ use helix_core::Position;
 use helix_view::{
     editor::{Action, ExplorerPositionEmbed},
     graphics::{CursorKind, Rect},
+    info::Info,
     input::{Event, KeyEvent},
     theme::Modifier,
     DocumentId, Editor,
@@ -158,8 +159,6 @@ pub struct Explorer {
     prompt: Option<(PromptAction, Prompt)>,
     #[allow(clippy::type_complexity)]
     on_next_key: Option<Box<dyn FnMut(&mut Context, &mut Self, &KeyEvent) -> EventResult>>,
-    #[allow(clippy::type_complexity)]
-    repeat_motion: Option<Box<dyn FnMut(&mut Self, PromptAction, &mut Context) + 'static>>,
     column_width: u16,
 }
 
@@ -169,9 +168,8 @@ impl Explorer {
         Ok(Self {
             tree: Self::new_tree_view(current_root.clone())?,
             history: vec![],
-            show_help: false,
+            show_help: true,
             state: State::new(true, current_root),
-            repeat_motion: None,
             prompt: None,
             on_next_key: None,
             column_width: cx.editor.config().explorer.column_width as u16,
@@ -251,58 +249,21 @@ impl Explorer {
     }
 
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, editor: &Editor) {
-        // if area.height <= 2 || area.width < 60 {
-        //     return;
-        // }
         let item = self.tree.current().item();
         let head_area = render_block(area.clip_bottom(area.height - 2), surface, Borders::BOTTOM);
         let path_str = format!("{}", item.path.display());
         surface.set_stringn(
             head_area.x,
             head_area.y,
-            if self.show_help {
-                "[HELP]".to_string()
-            } else {
-                path_str
-            },
+            path_str,
             head_area.width as usize,
             get_theme!(editor.theme, "ui.explorer.dir", "ui.text"),
         );
 
         let body_area = area.clip_top(2);
         let style = editor.theme.get("ui.text");
-        let content = if self.show_help {
-            let instructions = vec![
-                ("?", "Toggle help"),
-                ("a", "Add file"),
-                ("A", "Add folder"),
-                ("r", "Rename file/folder"),
-                ("d", "Delete file"),
-                ("b", "Change root to parent folder"),
-                ("]", "Change root to current folder"),
-                ("[", "Go to previous root"),
-                ("+", "Increase size"),
-                ("-", "Decrease size"),
-                ("q", "Close"),
-            ]
-            .into_iter()
-            .chain(ui::tree::tree_view_help().into_iter())
-            .collect::<Vec<_>>();
-            let max_left_length = instructions
-                .iter()
-                .map(|(key, _)| key.chars().count())
-                .max()
-                .unwrap_or(0);
-            instructions
-                .into_iter()
-                .map(|(key, description)| {
-                    format!("{:width$}{}", key, description, width = max_left_length + 1)
-                })
-                .collect::<Vec<_>>()
-        } else {
-            get_preview(&item.path, body_area.height as usize)
-                .unwrap_or_else(|err| vec![err.to_string()])
-        };
+        let content = get_preview(&item.path, body_area.height as usize)
+            .unwrap_or_else(|err| vec![err.to_string()]);
         content.into_iter().enumerate().for_each(|(row, line)| {
             surface.set_stringn(
                 body_area.x,
@@ -465,7 +426,11 @@ impl Explorer {
             prompt.render(promp_area, surface, cx);
             preview_area = area;
         }
-        self.render_preview(preview_area, surface, cx.editor);
+        if self.show_help {
+            self.render_help(preview_area, surface, cx);
+        } else {
+            self.render_preview(preview_area, surface, cx.editor);
+        }
 
         let list_area = render_block(area.clip_right(preview_area.width), surface, Borders::RIGHT);
         self.render_tree(list_area, surface, cx)
@@ -542,33 +507,43 @@ impl Explorer {
         }
 
         if self.is_focus() {
-            const PREVIEW_AREA_MAX_WIDTH: u16 = 90;
-            const PREVIEW_AREA_MAX_HEIGHT: u16 = 30;
-            let preview_area_width = (area.width - side_area.width).min(PREVIEW_AREA_MAX_WIDTH);
-            let preview_area_height = area.height.min(PREVIEW_AREA_MAX_HEIGHT);
-
-            let preview_area = match position {
-                ExplorerPositionEmbed::Left => area.clip_left(side_area.width),
-                ExplorerPositionEmbed::Right => (Rect {
-                    x: area.width - side_area.width - preview_area_width,
-                    ..area
-                })
-                .clip_right(side_area.width),
-            }
-            .clip_bottom(2);
-            if preview_area.width < 30 || preview_area.height < 3 {
-                return;
-            }
-            let y = self.tree.winline().saturating_sub(1) as u16;
-            let y = if (preview_area_height + y) > preview_area.height {
-                preview_area.height - preview_area_height
+            if self.show_help {
+                let help_area = match position {
+                    ExplorerPositionEmbed::Left => area,
+                    ExplorerPositionEmbed::Right => {
+                        area.clip_right(list_area.width.saturating_add(2))
+                    }
+                };
+                self.render_help(help_area, surface, cx);
             } else {
-                y
-            };
-            let area = Rect::new(preview_area.x, y, preview_area_width, preview_area_height);
-            surface.clear_with(area, background);
-            let area = render_block(area, surface, Borders::all());
-            self.render_preview(area, surface, cx.editor);
+                const PREVIEW_AREA_MAX_WIDTH: u16 = 90;
+                const PREVIEW_AREA_MAX_HEIGHT: u16 = 30;
+                let preview_area_width = (area.width - side_area.width).min(PREVIEW_AREA_MAX_WIDTH);
+                let preview_area_height = area.height.min(PREVIEW_AREA_MAX_HEIGHT);
+
+                let preview_area = match position {
+                    ExplorerPositionEmbed::Left => area.clip_left(side_area.width),
+                    ExplorerPositionEmbed::Right => (Rect {
+                        x: area.width - side_area.width - preview_area_width,
+                        ..area
+                    })
+                    .clip_right(side_area.width),
+                }
+                .clip_bottom(2);
+                if preview_area.width < 30 || preview_area.height < 3 {
+                    return;
+                }
+                let y = self.tree.winline().saturating_sub(1) as u16;
+                let y = if (preview_area_height + y) > preview_area.height {
+                    preview_area.height - preview_area_height
+                } else {
+                    y
+                };
+                let area = Rect::new(preview_area.x, y, preview_area_width, preview_area_height);
+                surface.clear_with(area, background);
+                let area = render_block(area, surface, Borders::all());
+                self.render_preview(area, surface, cx.editor);
+            }
         }
 
         if let Some((_, prompt)) = self.prompt.as_mut() {
@@ -576,30 +551,27 @@ impl Explorer {
         }
     }
 
-    fn handle_filter_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
-        let (action, mut prompt) = self.prompt.take().unwrap();
-        (|| -> Result<()> {
-            match event {
-                key!(Enter) => {
-                    if let EventResult::Consumed(_) = prompt.handle_event(&Event::Key(*event), cx) {
-                        self.tree.refresh(prompt.line())?;
-                    }
-                }
-                key!(Esc) | ctrl!('c') => {
-                    self.state.filter.clear();
-                }
-                _ => {
-                    if let EventResult::Consumed(_) = prompt.handle_event(&Event::Key(*event), cx) {
-                        self.tree.refresh(prompt.line())?;
-                    }
-                    self.state.filter = prompt.line().clone();
-                    self.prompt = Some((action, prompt));
-                }
-            };
-            Ok(())
-        })()
-        .unwrap_or_else(|err| cx.editor.set_error(format!("{err}")));
-        EventResult::Consumed(None)
+    fn render_help(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        Info::new(
+            "Explorer",
+            &[
+                ("?", "Toggle help"),
+                ("a", "Add file"),
+                ("A", "Add folder"),
+                ("r", "Rename file/folder"),
+                ("d", "Delete file"),
+                ("b", "Change root to parent folder"),
+                ("]", "Change root to current folder"),
+                ("[", "Go to previous root"),
+                ("+", "Increase size"),
+                ("-", "Decrease size"),
+                ("q", "Close"),
+            ]
+            .into_iter()
+            .chain(ui::tree::tree_view_help().into_iter())
+            .collect::<Vec<_>>(),
+        )
+        .render(area, surface, cx)
     }
 
     fn handle_prompt_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
@@ -624,14 +596,14 @@ impl Explorer {
                     if line == "y" {
                         let item = explorer.tree.current_item();
                         std::fs::remove_dir_all(&item.path)?;
-                        explorer.tree.remove_current();
+                        explorer.tree.refresh()?;
                     }
                 }
                 (PromptAction::RemoveFile(document_id), key!(Enter)) => {
                     if line == "y" {
                         let item = explorer.tree.current_item();
                         std::fs::remove_file(&item.path).map_err(anyhow::Error::from)?;
-                        explorer.tree.remove_current();
+                        explorer.tree.refresh()?;
                         if let Some(id) = document_id {
                             cx.editor.close_document(*id, true)?
                         }
@@ -640,7 +612,7 @@ impl Explorer {
                 (PromptAction::RenameFile(document_id), key!(Enter)) => {
                     let item = explorer.tree.current_item();
                     std::fs::rename(&item.path, line)?;
-                    explorer.tree.remove_current();
+                    explorer.tree.refresh()?;
                     explorer.reveal_file(PathBuf::from(line))?;
                     if let Some(id) = document_id {
                         cx.editor.close_document(*id, true)?

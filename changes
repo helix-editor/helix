@@ -27,18 +27,23 @@ TODO
 - [x] Remove comments
 - [x] fix warnings
 - [x] refactor, add tree.expand_children() method
-- [] Change '[' to "go to previous root"
-- [] Change 'b' to "go to parent"
-- [] Use C-o for jumping to previous position
-- [] add integration testing (test explorer rendering)
+
+New:
+- [x] Change '[' to "go to previous root"
+- [x] Change 'b' to "go to parent"
+- [x] Use C-o for jumping to previous position
+- [x] on focus indication
+- [x] support creating files and folder and the same time (`mkdir -p`)
+- [x] Ctrl-o should work for 'h', 'gg', 'ge', etc
+- [x] add unit test for TreeView
+- [x] explorer(help): overflow
+- [] add integration test for Explorer
 - [] search highlight matching word
 - [] Error didn't clear
 - [] bind "o" to open/close file/folder
-- [] on focus indication
 - [] should preview be there by default?
-- [] support creating files and folder and the same time (`mkdir -p`)
 - [] Fix panic bugs (see github comments)
 - [] Sticky ancestors
-- [] Ctrl-o should work for 'h', 'gg', 'ge', etc
-- [] explorer(previow): overflow where bufferline is there
+- [] explorer(preview): overflow where bufferline is there
 - [] explorer(preview): content not sorted
+- [] explorer(preview): implement scrolling C-j/C-k

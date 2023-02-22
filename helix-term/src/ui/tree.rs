@@ -268,7 +268,7 @@ impl<T> Tree<T> {
         self.children = index_elems(0, items);
     }
 
-    fn remove(&mut self, index: usize) {
+    pub fn remove(&mut self, index: usize) {
         let children = std::mem::replace(&mut self.children, vec![]);
         self.children = children
             .into_iter()
@@ -286,20 +286,11 @@ impl<T> Tree<T> {
             .collect();
         self.regenerate_index()
     }
-
-    pub fn parent_index(&self) -> Option<usize> {
-        self.parent_index
-    }
-
-    pub fn index(&self) -> usize {
-        self.index
-    }
 }
 
 #[derive(Clone, Debug)]
 struct SavedView {
     selected: usize,
-    winline: usize,
 }
 
 pub struct TreeView<T: TreeViewItem> {
@@ -397,7 +388,7 @@ impl<T: TreeViewItem> TreeView<T> {
     /// vec!["helix-term", "src", "ui", "tree.rs"]
     /// ```
     pub fn reveal_item(&mut self, segments: Vec<&str>, filter: &String) -> Result<()> {
-        self.refresh(filter)?;
+        self.refresh_with_filter(filter)?;
 
         // Expand the tree
         segments.iter().fold(
@@ -482,7 +473,11 @@ impl<T: TreeViewItem> TreeView<T> {
         }
     }
 
-    pub fn refresh(&mut self, filter: &String) -> Result<()> {
+    pub fn refresh(&mut self) -> Result<()> {
+        self.refresh_with_filter(&self.filter.clone())
+    }
+
+    fn refresh_with_filter(&mut self, filter: &String) -> Result<()> {
         self.tree.refresh(filter)?;
         self.set_selected(self.selected);
         Ok(())
@@ -496,6 +491,7 @@ impl<T: TreeViewItem> TreeView<T> {
         self.move_down(usize::MAX / 2)
     }
 
+    #[cfg(test)]
     fn set_previous_area(&mut self, area: Rect) {
         self.previous_area = area
     }
@@ -580,7 +576,6 @@ impl<T: TreeViewItem> TreeView<T> {
     fn saved_view(&self) -> SavedView {
         self.saved_view.clone().unwrap_or_else(|| SavedView {
             selected: self.selected,
-            winline: self.winline,
         })
     }
 
@@ -689,15 +684,7 @@ impl<T: TreeViewItem> TreeView<T> {
     fn save_view(&mut self) {
         self.saved_view = Some(SavedView {
             selected: self.selected,
-            winline: self.winline,
         })
-    }
-
-    fn restore_view(&mut self) {
-        SavedView {
-            selected: self.selected,
-            winline: self.winline,
-        } = self.saved_view();
     }
 
     fn get(&self, index: usize) -> &Tree<T> {
@@ -734,47 +721,6 @@ impl<T: TreeViewItem> TreeView<T> {
 
     pub fn winline(&self) -> usize {
         self.winline
-    }
-
-    pub fn remove_current(&mut self) {
-        self.tree.remove(self.selected);
-        self.set_selected(self.selected.min(self.tree.len().saturating_sub(1)));
-    }
-
-    pub fn replace_current(&mut self, item: T) {
-        self.current_mut().item = item
-    }
-
-    pub fn add_child(&mut self, index: usize, item: T, filter: &String) -> Result<()> {
-        match self.tree.get_mut(index) {
-            None => Err(anyhow::anyhow!(format!(
-                "No item found at index = {}",
-                index
-            ))),
-            Some(tree) => {
-                let item_name = item.name();
-                if !tree.is_opened {
-                    tree.open(filter)?;
-                } else {
-                    tree.refresh(filter)?;
-                }
-
-                self.regenerate_index();
-
-                let tree = self.get(index);
-
-                // Focus the added sibling
-                if let Some(tree) = tree
-                    .children
-                    .iter()
-                    .find(|tree| tree.item.name().eq(&item_name))
-                {
-                    let index = tree.index;
-                    self.set_selected(index)
-                };
-                Ok(())
-            }
-        }
     }
 }
 
@@ -908,6 +854,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
         }
     }
 
+    #[cfg(test)]
     fn render_to_string(&mut self, filter: &String) -> String {
         let area = self.previous_area;
         let lines = self.render_lines(area, filter);
@@ -1052,7 +999,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             key!(PageUp) => self.move_up_page(),
             shift!('R') => {
                 let filter = self.filter.clone();
-                if let Err(error) = self.refresh(&filter) {
+                if let Err(error) = self.refresh_with_filter(&filter) {
                     cx.editor.set_error(error.to_string())
                 }
             }
@@ -1073,18 +1020,18 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                         if let EventResult::Consumed(_) =
                             prompt.handle_event(&Event::Key(*event), cx)
                         {
-                            self.refresh(prompt.line())?;
+                            self.refresh_with_filter(prompt.line())?;
                         }
                     }
                     key!(Esc) | ctrl!('c') => {
                         self.filter.clear();
-                        self.refresh(&"".to_string())?;
+                        self.refresh_with_filter(&"".to_string())?;
                     }
                     _ => {
                         if let EventResult::Consumed(_) =
                             prompt.handle_event(&Event::Key(*event), cx)
                         {
-                            self.refresh(prompt.line())?;
+                            self.refresh_with_filter(prompt.line())?;
                         }
                         self.filter = prompt.line().clone();
                         self.filter_prompt = Some(prompt);
@@ -1960,7 +1907,7 @@ krabby_patty
         );
 
         // 2. Refreshes the tree with a filter that will remove the last child
-        view.refresh(&"ar".to_string()).unwrap();
+        view.refresh_with_filter(&"ar".to_string()).unwrap();
 
         // 3. Get the current item
         let item = view.current_item();
