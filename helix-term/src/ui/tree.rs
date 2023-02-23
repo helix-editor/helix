@@ -510,8 +510,8 @@ impl<T: TreeViewItem> TreeView<T> {
 pub fn tree_view_help() -> Vec<(&'static str, &'static str)> {
     vec![
         ("o, Enter", "Open/Close"),
-        ("j, down", "Down"),
-        ("k, up", "Up"),
+        ("j, down, C-n", "Down"),
+        ("k, up, C-p", "Up"),
         ("h, left", "Go to parent"),
         ("l, right", "Expand"),
         ("f", "Filter"),
@@ -972,8 +972,8 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
         let count = std::mem::replace(&mut self.count, 0);
         match key_event {
             key!(i @ '0'..='9') => self.count = i.to_digit(10).unwrap() as usize + count * 10,
-            key!('k') | key!(Up) => self.move_up(1.max(count)),
-            key!('j') | key!(Down) => self.move_down(1.max(count)),
+            key!('k') | key!(Up) | ctrl!('p') => self.move_up(1.max(count)),
+            key!('j') | key!(Down) | ctrl!('n') => self.move_down(1.max(count)),
             key!('z') => {
                 self.on_next_key = Some(Box::new(|_, tree, event| match event {
                     key!('z') => tree.align_view_center(),

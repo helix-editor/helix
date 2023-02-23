@@ -43,6 +43,7 @@ New:
 - [x] explorer(preview): content not sorted
 - [x] add integration test for Explorer
 - [x] bind "o" to open/close file/folder
+- [x] bind "C-n/C-p" to up/down
 - [] search highlight matching word
 - [] Error didn't clear
 - [] should preview be there by default?
