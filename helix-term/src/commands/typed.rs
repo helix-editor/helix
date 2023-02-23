@@ -1246,10 +1246,12 @@ fn lsp_stop(
         .context("LSP not defined for the current document")?;
     cx.editor.language_servers.stop(&config);
 
-    cx.editor
-        .documents_mut()
-        .filter(|doc| doc.language_server().map_or(false, |ls| ls.id() == ls_id))
-        .for_each(|doc| doc.set_language_server(None));
+    for doc in cx.editor.documents_mut() {
+        if doc.language_server().map_or(false, |ls| ls.id() == ls_id) {
+            doc.set_language_server(None);       
+            doc.set_diagnostics(Default::default());
+        }
+    }
 
     Ok(())
 }
