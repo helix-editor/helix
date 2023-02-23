@@ -268,25 +268,6 @@ impl<T> Tree<T> {
         let items = std::mem::take(&mut self.children);
         self.children = index_elems(0, items);
     }
-
-    pub fn remove(&mut self, index: usize) {
-        let children = std::mem::replace(&mut self.children, vec![]);
-        self.children = children
-            .into_iter()
-            .filter_map(|tree| {
-                if tree.index == index {
-                    None
-                } else {
-                    Some(tree)
-                }
-            })
-            .map(|mut tree| {
-                tree.remove(index);
-                tree
-            })
-            .collect();
-        self.regenerate_index()
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -389,9 +370,9 @@ impl<T: TreeViewItem> TreeView<T> {
     /// The name of the root should be excluded.
     ///
     /// Example `segments`:
-    /// ```
-    /// vec!["helix-term", "src", "ui", "tree.rs"]
-    /// ```
+    ///
+    ///    vec!["helix-term", "src", "ui", "tree.rs"]
+    ///
     pub fn reveal_item(&mut self, segments: Vec<String>, filter: &String) -> Result<()> {
         self.refresh_with_filter(filter)?;
 
@@ -611,10 +592,7 @@ impl<T: TreeViewItem> TreeView<T> {
     }
 
     pub fn move_down(&mut self, rows: usize) {
-        let len = self.tree.len();
-        if len > 0 {
-            self.set_selected(std::cmp::min(self.selected + rows, len.saturating_sub(1)))
-        }
+        self.set_selected(self.selected.saturating_add(rows))
     }
 
     fn set_selected(&mut self, selected: usize) {
@@ -650,10 +628,7 @@ impl<T: TreeViewItem> TreeView<T> {
     }
 
     pub fn move_up(&mut self, rows: usize) {
-        let len = self.tree.len();
-        if len > 0 {
-            self.set_selected(self.selected.saturating_sub(rows).max(0))
-        }
+        self.set_selected(self.selected.saturating_sub(rows))
     }
 
     fn move_left(&mut self, cols: usize) {
@@ -1120,7 +1095,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
 ///
 /// For example:
 ///
-/// ```
+/// ```txt
 /// foo (0)
 ///   bar (1)
 /// spam (2)
@@ -1317,6 +1292,34 @@ mod test_tree_view {
  karen
  king_neptune
  krabby_patty
+"
+            .trim()
+        );
+
+        view.move_to_first();
+        view.move_up(1);
+        assert_eq!(
+            render(&mut view),
+            "
+(who_lives_in_a_pineapple_under_the_sea)
+ gary_the_snail
+ karen
+ king_neptune
+ krabby_patty
+"
+            .trim()
+        );
+
+        view.move_to_last();
+        view.move_down(1);
+        assert_eq!(
+            render(&mut view),
+            "
+ mrs_puff
+ patrick_star
+ plankton
+ sandy_cheeks
+ (spongebob_squarepants)
 "
             .trim()
         );
@@ -1636,7 +1639,7 @@ krabby_patty
         );
 
         view.move_rightmost();
-        assert_eq!(render(&mut view), "(eapple_under_the_sea)\n\n\n\n");
+        assert_eq!(render(&mut view), "(apple_under_the_sea)\n\n\n\n");
     }
 
     #[test]
@@ -2016,8 +2019,7 @@ mod test_tree {
         assert_eq!(iter.next().map(|tree| tree.item), Some("foo"));
         assert_eq!(iter.next().map(|tree| tree.item), Some("bar"));
 
-        // Expect the iterator to be cyclic, so next() should jump to first item
-        assert_eq!(iter.next().map(|tree| tree.item), Some("spam"))
+        assert_eq!(iter.next().map(|tree| tree.item), None)
     }
 
     #[test]
@@ -2036,6 +2038,7 @@ mod test_tree {
         assert_eq!(iter.next_back().map(|tree| tree.item), Some("yo"));
         assert_eq!(iter.next_back().map(|tree| tree.item), Some("jar"));
         assert_eq!(iter.next_back().map(|tree| tree.item), Some("spam"));
+        assert_eq!(iter.next_back().map(|tree| tree.item), None)
     }
 
     #[test]
@@ -2088,7 +2091,7 @@ mod test_tree {
             tree.item.to_lowercase().contains(&"cargo".to_lowercase())
         });
 
-        assert_eq!(result, None);
+        assert_eq!(result, Some(0));
     }
 
     #[test]
@@ -2104,7 +2107,7 @@ mod test_tree {
             tree.item.to_lowercase().contains(&"cargo".to_lowercase())
         });
 
-        assert_eq!(result, None);
+        assert_eq!(result, Some(3));
 
         let result = tree.find(1, Direction::Backward, |tree| {
             tree.item.to_lowercase().contains(&"cargo".to_lowercase())
@@ -2129,41 +2132,5 @@ mod test_tree {
         });
 
         assert_eq!(result, Some(3));
-    }
-
-    #[test]
-    fn test_remove() {
-        let mut tree = Tree::new(
-            ".cargo",
-            vec![
-                Tree::new("spam", vec![Tree::new("Cargo.toml", vec![])]),
-                Tree::new("Cargo.toml", vec![Tree::new("pam", vec![])]),
-                Tree::new("hello", vec![]),
-            ],
-        );
-
-        tree.remove(2);
-
-        assert_eq!(
-            tree,
-            Tree::new(
-                ".cargo",
-                vec![
-                    Tree::new("spam", vec![]),
-                    Tree::new("Cargo.toml", vec![Tree::new("pam", vec![])]),
-                    Tree::new("hello", vec![]),
-                ],
-            )
-        );
-
-        tree.remove(2);
-
-        assert_eq!(
-            tree,
-            Tree::new(
-                ".cargo",
-                vec![Tree::new("spam", vec![]), Tree::new("hello", vec![]),],
-            )
-        )
     }
 }
