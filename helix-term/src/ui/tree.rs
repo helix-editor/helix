@@ -509,6 +509,7 @@ impl<T: TreeViewItem> TreeView<T> {
 
 pub fn tree_view_help() -> Vec<(&'static str, &'static str)> {
     vec![
+        ("o, Enter", "Open/Close"),
         ("j, down", "Down"),
         ("k, up", "Up"),
         ("h, left", "Go to parent"),
@@ -988,7 +989,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             },
             shift!('H') => self.move_left(1),
             shift!('L') => self.move_right(1),
-            key!(Enter) => self.on_enter(cx, params, self.selected, filter),
+            key!(Enter) | key!('o') => self.on_enter(cx, params, self.selected, filter),
             ctrl!('d') => self.move_down_half_page(),
             ctrl!('u') => self.move_up_half_page(),
             key!('g') => {

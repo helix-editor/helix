@@ -42,9 +42,9 @@ New:
 - [x] fix(explorer/preview): panic if not tall enough
 - [x] explorer(preview): content not sorted
 - [x] add integration test for Explorer
+- [x] bind "o" to open/close file/folder
 - [] search highlight matching word
 - [] Error didn't clear
-- [] bind "o" to open/close file/folder
 - [] should preview be there by default?
 - [] Fix panic bugs (see github comments)
 - [] Sticky ancestors
