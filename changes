@@ -29,6 +29,7 @@ TODO
 - [x] refactor, add tree.expand_children() method
 
 New:
+- [x] increase indentation
 - [x] Change '[' to "go to previous root"
 - [x] Change 'b' to "go to parent"
 - [x] Use C-o for jumping to previous position
@@ -44,6 +45,7 @@ New:
 - [x] add integration test for Explorer
 - [x] bind "o" to open/close file/folder
 - [x] bind "C-n/C-p" to up/down
+- [x] bind "="/"_" to zoom-in/zoom-out
 - [] search highlight matching word
 - [] Error didn't clear
 - [] should preview be there by default?

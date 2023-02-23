@@ -662,7 +662,10 @@ impl<T: TreeViewItem> TreeView<T> {
 
     fn move_right(&mut self, cols: usize) {
         self.pre_render = Some(Box::new(move |tree, area| {
-            let max_scroll = tree.max_len.saturating_sub(area.width as usize);
+            let max_scroll = tree
+                .max_len
+                .saturating_sub(area.width as usize)
+                .saturating_add(1);
             tree.column = max_scroll.min(tree.column + cols);
         }));
     }

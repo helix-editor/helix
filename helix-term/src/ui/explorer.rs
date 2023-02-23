@@ -797,8 +797,8 @@ impl Component for Explorer {
                 key!('[') => self.go_to_previous_root(),
                 key!('d') => self.new_remove_prompt()?,
                 key!('r') => self.new_rename_prompt(cx),
-                key!('-') => self.decrease_size(),
-                key!('+') => self.increase_size(),
+                key!('-') | key!('_') => self.decrease_size(),
+                key!('+') | key!('=') => self.increase_size(),
                 _ => {
                     self.tree
                         .handle_event(&Event::Key(*key_event), cx, &mut self.state, &filter);
