@@ -117,7 +117,7 @@ pub struct View {
     // two last modified docs which we need to manually keep track of
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objects
-    pub object_selections: Vec<Selection>,
+    pub object_selections: HashMap<DocumentId, Vec<Selection>>,
     /// all gutter-related configuration settings, used primarily for gutter rendering
     pub gutters: GutterConfig,
     /// A mapping between documents and the last history revision the view was updated at.
@@ -151,7 +151,7 @@ impl View {
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
-            object_selections: Vec::new(),
+            object_selections: HashMap::new(),
             gutters,
             doc_revisions: HashMap::new(),
         }

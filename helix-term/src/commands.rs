@@ -4310,7 +4310,12 @@ fn expand_selection(cx: &mut Context) {
             // check if selection is different from the last one
             if *current_selection != selection {
                 // save current selection so it can be restored using shrink_selection
-                view.object_selections.push(current_selection.clone());
+                if let Some(object_selections) = view.object_selections.get_mut(&doc.id()) {
+                    object_selections.push(current_selection.clone());
+                } else {
+                    view.object_selections
+                        .insert(doc.id(), vec![current_selection.clone()]);
+                }
 
                 doc.set_selection(view.id, selection);
             }
@@ -4325,7 +4330,11 @@ fn shrink_selection(cx: &mut Context) {
         let (view, doc) = current!(editor);
         let current_selection = doc.selection(view.id);
         // try to restore previous selection
-        if let Some(prev_selection) = view.object_selections.pop() {
+        if let Some(prev_selection) = view
+            .object_selections
+            .get_mut(&doc.id())
+            .and_then(|e| e.pop())
+        {
             if current_selection.contains(&prev_selection) {
                 // allow shrinking the selection only if current selection contains the previous object selection
                 doc.set_selection(view.id, prev_selection);
