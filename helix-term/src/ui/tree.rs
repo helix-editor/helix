@@ -315,8 +315,6 @@ pub struct TreeView<T: TreeViewItem> {
     /// For implementing vertical scroll
     winline: usize,
 
-    previous_area: Rect,
-
     /// For implementing horizontal scoll
     column: usize,
 
@@ -324,10 +322,16 @@ pub struct TreeView<T: TreeViewItem> {
     max_len: usize,
     count: usize,
     tree_symbol_style: String,
+
+    #[allow(clippy::type_complexity)]
+    pre_render: Option<Box<dyn Fn(&mut Self, Rect) + 'static>>,
+
     #[allow(clippy::type_complexity)]
     on_opened_fn: Option<Box<dyn FnMut(&mut T, &mut Context, &mut T::Params) -> TreeOp + 'static>>,
+
     #[allow(clippy::type_complexity)]
     on_folded_fn: Option<Box<dyn FnMut(&mut T, &mut Context, &mut T::Params) + 'static>>,
+
     #[allow(clippy::type_complexity)]
     on_next_key: Option<Box<dyn FnMut(&mut Context, &mut Self, &KeyEvent)>>,
 }
@@ -343,8 +347,8 @@ impl<T: TreeViewItem> TreeView<T> {
             column: 0,
             max_len: 0,
             count: 0,
-            previous_area: Rect::new(0, 0, 0, 0),
             tree_symbol_style: "ui.text".into(),
+            pre_render: None,
             on_opened_fn: None,
             on_folded_fn: None,
             on_next_key: None,
@@ -388,10 +392,11 @@ impl<T: TreeViewItem> TreeView<T> {
     /// ```
     /// vec!["helix-term", "src", "ui", "tree.rs"]
     /// ```
-    pub fn reveal_item(&mut self, segments: Vec<&str>, filter: &String) -> Result<()> {
+    pub fn reveal_item(&mut self, segments: Vec<String>, filter: &String) -> Result<()> {
         self.refresh_with_filter(filter)?;
 
         // Expand the tree
+        let root = self.tree.item.name();
         segments.iter().fold(
             Ok(&mut self.tree),
             |current_tree, segment| match current_tree {
@@ -409,9 +414,8 @@ impl<T: TreeViewItem> TreeView<T> {
                             Ok(tree)
                         }
                         None => Err(anyhow::anyhow!(format!(
-                            "Unable to find path: '{}'. current_segment = {}",
+                            "Unable to find path: '{}'. current_segment = '{segment}'. current_root = '{root}'",
                             segments.join("/"),
-                            segment
                         ))),
                     }
                 }
@@ -437,7 +441,9 @@ impl<T: TreeViewItem> TreeView<T> {
     }
 
     fn align_view_center(&mut self) {
-        self.winline = self.previous_area.height as usize / 2
+        self.pre_render = Some(Box::new(|tree, area| {
+            tree.winline = area.height as usize / 2
+        }))
     }
 
     fn align_view_top(&mut self) {
@@ -445,7 +451,7 @@ impl<T: TreeViewItem> TreeView<T> {
     }
 
     fn align_view_bottom(&mut self) {
-        self.winline = self.previous_area.height as usize
+        self.pre_render = Some(Box::new(|tree, area| tree.winline = area.height as usize))
     }
 
     fn regenerate_index(&mut self) {
@@ -490,11 +496,6 @@ impl<T: TreeViewItem> TreeView<T> {
 
     fn move_to_last(&mut self) {
         self.move_down(usize::MAX / 2)
-    }
-
-    #[cfg(test)]
-    fn set_previous_area(&mut self, area: Rect) {
-        self.previous_area = area
     }
 
     fn move_leftmost(&mut self) {
@@ -608,7 +609,7 @@ impl<T: TreeViewItem> TreeView<T> {
         self.search_previous(&self.search_str.clone())
     }
 
-    fn move_down(&mut self, rows: usize) {
+    pub fn move_down(&mut self, rows: usize) {
         let len = self.tree.len();
         if len > 0 {
             self.set_selected(std::cmp::min(self.selected + rows, len.saturating_sub(1)))
@@ -647,7 +648,7 @@ impl<T: TreeViewItem> TreeView<T> {
         }
     }
 
-    fn move_up(&mut self, rows: usize) {
+    pub fn move_up(&mut self, rows: usize) {
         let len = self.tree.len();
         if len > 0 {
             self.set_selected(self.selected.saturating_sub(rows).max(0))
@@ -659,27 +660,34 @@ impl<T: TreeViewItem> TreeView<T> {
     }
 
     fn move_right(&mut self, cols: usize) {
-        let max_scroll = self
-            .max_len
-            .saturating_sub(self.previous_area.width as usize)
-            .saturating_add(1);
-        self.column = max_scroll.min(self.column + cols);
+        self.pre_render = Some(Box::new(move |tree, area| {
+            let max_scroll = tree.max_len.saturating_sub(area.width as usize);
+            tree.column = max_scroll.min(tree.column + cols);
+        }));
     }
 
     fn move_down_half_page(&mut self) {
-        self.move_down(self.previous_area.height as usize / 2)
+        self.pre_render = Some(Box::new(|tree, area| {
+            tree.move_down((area.height / 2) as usize);
+        }));
     }
 
     fn move_up_half_page(&mut self) {
-        self.move_up(self.previous_area.height as usize / 2);
+        self.pre_render = Some(Box::new(|tree, area| {
+            tree.move_up((area.height / 2) as usize);
+        }));
     }
 
     fn move_down_page(&mut self) {
-        self.move_down(self.previous_area.height as usize);
+        self.pre_render = Some(Box::new(|tree, area| {
+            tree.move_down((area.height) as usize);
+        }));
     }
 
     fn move_up_page(&mut self) {
-        self.move_up(self.previous_area.height as usize);
+        self.pre_render = Some(Box::new(|tree, area| {
+            tree.move_up((area.height) as usize);
+        }));
     }
 
     fn save_view(&mut self) {
@@ -856,8 +864,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
     }
 
     #[cfg(test)]
-    fn render_to_string(&mut self, filter: &String) -> String {
-        let area = self.previous_area;
+    pub fn render_to_string(&mut self, area: Rect, filter: &String) -> String {
         let lines = self.render_lines(area, filter);
         lines
             .into_iter()
@@ -876,10 +883,11 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
     }
 
     fn render_lines(&mut self, area: Rect, filter: &String) -> Vec<RenderedLine> {
-        self.previous_area = area;
-        self.winline = self
-            .winline
-            .min(self.previous_area.height.saturating_sub(1) as usize);
+        if let Some(pre_render) = self.pre_render.take() {
+            pre_render(self, area);
+        }
+
+        self.winline = self.winline.min(area.height.saturating_sub(1) as usize);
         let skip = self.selected.saturating_sub(self.winline);
         let params = RenderTreeParams {
             tree: &self.tree,
@@ -902,7 +910,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             .max()
             .unwrap_or(0);
 
-        let max_width = self.previous_area.width as usize;
+        let max_width = area.width as usize;
 
         lines
             .into_iter()
@@ -1185,9 +1193,8 @@ mod test_tree_view {
     }
 
     fn dummy_tree_view<'a>() -> TreeView<Item<'a>> {
-        let root = item("who_lives_in_a_pineapple_under_the_sea");
-        let mut view = TreeView::new(
-            root,
+        TreeView::new(
+            item("who_lives_in_a_pineapple_under_the_sea"),
             vec_to_tree(vec![
                 item("gary_the_snail"),
                 item("krabby_patty"),
@@ -1200,11 +1207,7 @@ mod test_tree_view {
                 item("karen"),
                 item("plankton"),
             ]),
-        );
-
-        view.set_previous_area(dummy_area());
-
-        view
+        )
     }
 
     fn dummy_area() -> Rect {
@@ -1212,7 +1215,7 @@ mod test_tree_view {
     }
 
     fn render<'a>(view: &mut TreeView<Item<'a>>) -> String {
-        view.render_to_string(&"".to_string())
+        view.render_to_string(dummy_area(), &"".to_string())
     }
 
     #[test]
@@ -1393,7 +1396,6 @@ mod test_tree_view {
     fn test_move_half() {
         let mut view = dummy_tree_view();
         view.move_down_half_page();
-        assert_eq!(view.selected, 2);
         assert_eq!(
             render(&mut view),
             "
@@ -1534,7 +1536,10 @@ mod test_tree_view {
     #[test]
     fn test_move_left_right() {
         let mut view = dummy_tree_view();
-        view.set_previous_area(dummy_area().with_width(20));
+
+        fn render<'a>(view: &mut TreeView<Item<'a>>) -> String {
+            view.render_to_string(dummy_area().with_width(20), &"".to_string())
+        }
 
         assert_eq!(
             render(&mut view),
@@ -1627,7 +1632,7 @@ krabby_patty
         );
 
         view.move_rightmost();
-        assert_eq!(render(&mut view), "(apple_under_the_sea)\n\n\n\n");
+        assert_eq!(render(&mut view), "(eapple_under_the_sea)\n\n\n\n");
     }
 
     #[test]
@@ -1921,6 +1926,8 @@ krabby_patty
     fn test_jump_backward() {
         let mut view = dummy_tree_view();
         view.move_down_half_page();
+        render(&mut view);
+
         view.move_down_half_page();
         assert_eq!(
             render(&mut view),

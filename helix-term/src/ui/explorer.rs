@@ -3,7 +3,7 @@ use crate::{
     compositor::{Component, Context, EventResult},
     ctrl, key, shift, ui,
 };
-use anyhow::{ensure, Result};
+use anyhow::{bail, ensure, Result};
 use helix_core::Position;
 use helix_view::{
     editor::{Action, ExplorerPositionEmbed},
@@ -11,7 +11,7 @@ use helix_view::{
     info::Info,
     input::{Event, KeyEvent},
     theme::Modifier,
-    DocumentId, Editor,
+    Editor,
 };
 use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
@@ -129,11 +129,11 @@ fn dir_entry_to_file_info(entry: DirEntry, path: &PathBuf) -> Option<FileInfo> {
 
 #[derive(Clone, Debug)]
 enum PromptAction {
-    CreateFolder { folder_path: PathBuf },
-    CreateFile { folder_path: PathBuf },
-    RemoveDir,
-    RemoveFile(Option<DocumentId>),
-    RenameFile(Option<DocumentId>),
+    CreateFolder,
+    CreateFile,
+    RemoveFolder,
+    RemoveFile,
+    RenameFile,
 }
 
 #[derive(Clone, Debug)]
@@ -174,11 +174,24 @@ impl Explorer {
         Ok(Self {
             tree: Self::new_tree_view(current_root.clone())?,
             history: vec![],
-            show_help: true,
+            show_help: false,
             state: State::new(true, current_root),
             prompt: None,
             on_next_key: None,
             column_width: cx.editor.config().explorer.column_width as u16,
+        })
+    }
+
+    #[cfg(test)]
+    fn from_path(root: PathBuf, column_width: u16) -> Result<Self> {
+        Ok(Self {
+            tree: Self::new_tree_view(root.clone())?,
+            history: vec![],
+            show_help: true,
+            state: State::new(true, root),
+            prompt: None,
+            on_next_key: None,
+            column_width,
         })
     }
 
@@ -194,35 +207,46 @@ impl Explorer {
         Vec::truncate(&mut self.history, MAX_HISTORY_SIZE)
     }
 
-    fn change_root(&mut self, cx: &mut Context, root: PathBuf) {
+    fn change_root(&mut self, root: PathBuf) -> Result<()> {
         if self.state.current_root.eq(&root) {
-            return;
+            return Ok(());
         }
-        match Self::new_tree_view(root.clone()) {
-            Ok(tree) => {
-                let old_tree = std::mem::replace(&mut self.tree, tree);
-                self.push_history(old_tree);
-                self.state.current_root = root;
-            }
-            Err(e) => cx.editor.set_error(format!("{e}")),
-        }
+        let tree = Self::new_tree_view(root.clone())?;
+        let old_tree = std::mem::replace(&mut self.tree, tree);
+        self.push_history(old_tree);
+        self.state.current_root = root;
+        Ok(())
     }
 
     fn reveal_file(&mut self, path: PathBuf) -> Result<()> {
         let current_root = &self.state.current_root;
         let current_path = path.as_path().to_string_lossy().to_string();
         let current_root = current_root.as_path().to_string_lossy().to_string() + "/";
-        let segments = current_path
-            .strip_prefix(current_root.as_str())
-            .expect(
-                format!(
-                    "Failed to strip prefix '{}' from '{}'",
-                    current_root, current_path
-                )
-                .as_str(),
-            )
-            .split(std::path::MAIN_SEPARATOR)
-            .collect::<Vec<_>>();
+        let segments = {
+            let stripped = match current_path.strip_prefix(current_root.as_str()) {
+                Some(stripped) => Ok(stripped),
+                None => {
+                    let parent = path
+                        .parent()
+                        .ok_or_else(|| anyhow::anyhow!("Failed get parent of '{current_path}'"))?;
+                    self.change_root(parent.into())?;
+                    current_path
+                        .strip_prefix((parent.to_string_lossy().to_string() + "/").as_str())
+                        .ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "Failed to strip prefix (parent) '{}' from '{}'",
+                                parent.to_string_lossy(),
+                                current_path
+                            )
+                        })
+                }
+            }?;
+
+            stripped
+                .split(std::path::MAIN_SEPARATOR)
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+        };
         self.tree.reveal_item(segments, &self.state.filter)?;
         Ok(())
     }
@@ -241,11 +265,11 @@ impl Explorer {
         self.state.open = true;
     }
 
-    pub fn unfocus(&mut self) {
+    fn unfocus(&mut self) {
         self.state.focus = false;
     }
 
-    pub fn close(&mut self) {
+    fn close(&mut self) {
         self.state.focus = false;
         self.state.open = false;
     }
@@ -288,9 +312,7 @@ impl Explorer {
     fn new_create_folder_prompt(&mut self) -> Result<()> {
         let folder_path = self.nearest_folder()?;
         self.prompt = Some((
-            PromptAction::CreateFolder {
-                folder_path: folder_path.clone(),
-            },
+            PromptAction::CreateFolder,
             Prompt::new(
                 format!(" New folder: {}/", folder_path.to_string_lossy()).into(),
                 None,
@@ -304,9 +326,7 @@ impl Explorer {
     fn new_create_file_prompt(&mut self) -> Result<()> {
         let folder_path = self.nearest_folder()?;
         self.prompt = Some((
-            PromptAction::CreateFile {
-                folder_path: folder_path.clone(),
-            },
+            PromptAction::CreateFile,
             Prompt::new(
                 format!(" New file: {}/", folder_path.to_string_lossy()).into(),
                 None,
@@ -332,19 +352,19 @@ impl Explorer {
         }
     }
 
-    fn new_remove_prompt(&mut self, cx: &mut Context) {
+    fn new_remove_prompt(&mut self) -> Result<()> {
         let item = self.tree.current().item();
         match item.file_type {
-            FileType::Folder => self.new_remove_dir_prompt(cx),
-            FileType::File => self.new_remove_file_prompt(cx),
-            FileType::Root => cx.editor.set_error("Root is not removable"),
+            FileType::Folder => self.new_remove_folder_prompt(),
+            FileType::File => self.new_remove_file_prompt(),
+            FileType::Root => bail!("Root is not removable"),
         }
     }
 
     fn new_rename_prompt(&mut self, cx: &mut Context) {
         let path = self.tree.current_item().path.clone();
         self.prompt = Some((
-            PromptAction::RenameFile(cx.editor.document_by_path(&path).map(|doc| doc.id())),
+            PromptAction::RenameFile,
             Prompt::new(
                 format!(" Rename to ").into(),
                 None,
@@ -355,72 +375,67 @@ impl Explorer {
         ));
     }
 
-    fn new_remove_file_prompt(&mut self, cx: &mut Context) {
+    fn new_remove_file_prompt(&mut self) -> Result<()> {
         let item = self.tree.current_item();
-        let check = || {
-            ensure!(item.path.is_file(), "The path is not a file");
-            let doc = cx.editor.document_by_path(&item.path);
-            Ok(doc.map(|doc| doc.id()))
-        };
-        match check() {
-            Err(err) => cx.editor.set_error(format!("{err}")),
-            Ok(document_id) => {
-                let p = format!(" Delete file: '{}'? y/n: ", item.path.display());
-                self.prompt = Some((
-                    PromptAction::RemoveFile(document_id),
-                    Prompt::new(p.into(), None, ui::completers::none, |_, _, _| {}),
-                ));
-            }
-        }
+        ensure!(
+            item.path.is_file(),
+            "The path '{}' is not a file",
+            item.path.to_string_lossy()
+        );
+        self.prompt = Some((
+            PromptAction::RemoveFile,
+            Prompt::new(
+                format!(" Delete file: '{}'? y/n: ", item.path.display()).into(),
+                None,
+                ui::completers::none,
+                |_, _, _| {},
+            ),
+        ));
+        Ok(())
     }
 
-    fn new_remove_dir_prompt(&mut self, cx: &mut Context) {
+    fn new_remove_folder_prompt(&mut self) -> Result<()> {
         let item = self.tree.current_item();
-        let check = || {
-            ensure!(item.path.is_dir(), "The path is not a dir");
-            let doc = cx.editor.documents().find(|doc| {
-                doc.path()
-                    .map(|p| p.starts_with(&item.path))
-                    .unwrap_or(false)
-            });
-            ensure!(doc.is_none(), "There are files opened under the dir");
-            Ok(())
-        };
-        if let Err(e) = check() {
-            cx.editor.set_error(format!("{e}"));
-            return;
-        }
-        let p = format!(" Delete folder: '{}'? y/n: ", item.path.display());
+        ensure!(
+            item.path.is_dir(),
+            "The path '{}' is not a folder",
+            item.path.to_string_lossy()
+        );
+
         self.prompt = Some((
-            PromptAction::RemoveDir,
-            Prompt::new(p.into(), None, ui::completers::none, |_, _, _| {}),
+            PromptAction::RemoveFolder,
+            Prompt::new(
+                format!(" Delete folder: '{}'? y/n: ", item.path.display()).into(),
+                None,
+                ui::completers::none,
+                |_, _, _| {},
+            ),
         ));
+        Ok(())
     }
 
     fn toggle_current(item: &mut FileInfo, cx: &mut Context, state: &mut State) -> TreeOp {
-        if item.path == Path::new("") {
-            return TreeOp::Noop;
-        }
-        let meta = match std::fs::metadata(&item.path) {
-            Ok(meta) => meta,
-            Err(e) => {
-                cx.editor.set_error(format!("{e}"));
-                return TreeOp::Noop;
+        (|| -> Result<TreeOp> {
+            if item.path == Path::new("") {
+                return Ok(TreeOp::Noop);
             }
-        };
-        if meta.is_file() {
-            if let Err(e) = cx.editor.open(&item.path, Action::Replace) {
-                cx.editor.set_error(format!("{e}"));
+            let meta = std::fs::metadata(&item.path)?;
+            if meta.is_file() {
+                cx.editor.open(&item.path, Action::Replace)?;
+                state.focus = false;
+                return Ok(TreeOp::Noop);
             }
-            state.focus = false;
-            return TreeOp::Noop;
-        }
 
-        if item.path.is_dir() {
-            return TreeOp::GetChildsAndInsert;
-        }
-        cx.editor.set_error("unkonw file type");
-        TreeOp::Noop
+            if item.path.is_dir() {
+                return Ok(TreeOp::GetChildsAndInsert);
+            }
+
+            Err(anyhow::anyhow!("Unknown file type: {:?}", meta.file_type()))
+        })()
+        .unwrap_or_else(|err| {
+            cx.editor.set_error(format!("{err}"));
+            TreeOp::Noop
+        })
     }
 
     fn render_float(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
@@ -547,12 +562,13 @@ impl Explorer {
                 if preview_area.width < 30 || preview_area.height < 3 {
                     return;
                 }
-                let y = self.tree.winline().saturating_sub(1) as u16;
+                let y = self.tree.winline() as u16;
                 let y = if (preview_area_height + y) > preview_area.height {
                     preview_area.height.saturating_sub(preview_area_height)
                 } else {
                     y
-                };
+                }
+                .saturating_add(1);
                 let area = Rect::new(preview_area.x, y, preview_area_width, preview_area_height);
                 surface.clear_with(area, background);
                 let area = render_block(area, surface, Borders::all());
@@ -599,38 +615,26 @@ impl Explorer {
                 _ => return Ok(EventResult::Ignored(None)),
             };
             let line = prompt.line();
+
+            let current_item_path = explorer.tree.current_item().path.clone();
             match (&action, event) {
-                (PromptAction::CreateFolder { folder_path }, key!(Enter)) => {
-                    explorer.new_path(folder_path.clone(), line, true)?
-                }
-                (PromptAction::CreateFile { folder_path }, key!(Enter)) => {
-                    explorer.new_path(folder_path.clone(), line, false)?
-                }
-                (PromptAction::RemoveDir, key!(Enter)) => {
+                (PromptAction::CreateFolder, key!(Enter)) => explorer.new_folder(line)?,
+                (PromptAction::CreateFile, key!(Enter)) => explorer.new_file(line)?,
+                (PromptAction::RemoveFolder, key!(Enter)) => {
                     if line == "y" {
-                        let item = explorer.tree.current_item();
-                        std::fs::remove_dir_all(&item.path)?;
-                        explorer.tree.refresh()?;
+                        close_documents(current_item_path, cx)?;
+                        explorer.remove_folder()?;
                     }
                 }
-                (PromptAction::RemoveFile(document_id), key!(Enter)) => {
+                (PromptAction::RemoveFile, key!(Enter)) => {
                     if line == "y" {
-                        let item = explorer.tree.current_item();
-                        std::fs::remove_file(&item.path).map_err(anyhow::Error::from)?;
-                        explorer.tree.refresh()?;
-                        if let Some(id) = document_id {
-                            cx.editor.close_document(*id, true)?
-                        }
+                        close_documents(current_item_path, cx)?;
+                        explorer.remove_file()?;
                     }
                 }
-                (PromptAction::RenameFile(document_id), key!(Enter)) => {
-                    let item = explorer.tree.current_item();
-                    std::fs::rename(&item.path, line)?;
-                    explorer.tree.refresh()?;
-                    explorer.reveal_file(PathBuf::from(line))?;
-                    if let Some(id) = document_id {
-                        cx.editor.close_document(*id, true)?
-                    }
+                (PromptAction::RenameFile, key!(Enter)) => {
+                    close_documents(current_item_path, cx)?;
+                    explorer.rename_current(line)?;
                 }
                 (_, key!(Esc) | ctrl!('c')) => {}
                 _ => {
@@ -649,18 +653,21 @@ impl Explorer {
         }
     }
 
-    fn new_path(&mut self, current_parent: PathBuf, file_name: &str, is_dir: bool) -> Result<()> {
+    fn new_file(&mut self, file_name: &str) -> Result<()> {
+        let current_parent = self.nearest_folder()?;
         let path = helix_core::path::get_normalized_path(&current_parent.join(file_name));
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let mut fd = std::fs::OpenOptions::new();
+        fd.create_new(true).write(true).open(&path)?;
+        self.reveal_file(path)
+    }
 
-        if is_dir {
-            std::fs::create_dir_all(&path)?;
-        } else {
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-            let mut fd = std::fs::OpenOptions::new();
-            fd.create_new(true).write(true).open(&path)?;
-        };
+    fn new_folder(&mut self, file_name: &str) -> Result<()> {
+        let current_parent = self.nearest_folder()?;
+        let path = helix_core::path::get_normalized_path(&current_parent.join(file_name));
+        std::fs::create_dir_all(&path)?;
         self.reveal_file(path)
     }
 
@@ -671,6 +678,19 @@ impl Explorer {
     fn go_to_previous_root(&mut self) {
         if let Some(tree) = self.history.pop() {
             self.tree = tree
+        }
+    }
+
+    fn change_root_to_current_folder(&mut self) -> Result<()> {
+        self.change_root(self.tree.current_item().path.clone())
+    }
+
+    fn change_root_parent_folder(&mut self) -> Result<()> {
+        if let Some(parent) = self.state.current_root.parent().clone() {
+            let path = parent.to_path_buf();
+            self.change_root(path)
+        } else {
+            Ok(())
         }
     }
 
@@ -693,6 +713,53 @@ impl Explorer {
     fn decrease_size(&mut self) {
         self.column_width = self.column_width.saturating_sub(1)
     }
+
+    fn rename_current(&mut self, line: &String) -> Result<()> {
+        let item = self.tree.current_item();
+        let path = PathBuf::from(line);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::rename(&item.path, &path)?;
+        self.tree.refresh()?;
+        self.reveal_file(path.into())
+    }
+
+    fn remove_folder(&mut self) -> Result<()> {
+        let item = self.tree.current_item();
+        std::fs::remove_dir_all(&item.path)?;
+        self.tree.refresh()
+    }
+
+    fn remove_file(&mut self) -> Result<()> {
+        let item = self.tree.current_item();
+        std::fs::remove_file(&item.path)?;
+        self.tree.refresh()
+    }
+}
+
+fn close_documents(current_item_path: PathBuf, cx: &mut Context) -> Result<()> {
+    let ids = cx
+        .editor
+        .documents
+        .iter()
+        .filter_map(|(id, doc)| {
+            if doc
+                .path()
+                .map(|p| p.starts_with(&current_item_path))
+                .unwrap_or(false)
+            {
+                Some(id.clone())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    for id in ids {
+        cx.editor.close_document(id, true)?;
+    }
+    Ok(())
 }
 
 impl Component for Explorer {
@@ -718,37 +785,28 @@ impl Component for Explorer {
             return EventResult::Consumed(c);
         }
 
-        match key_event {
-            key!(Esc) => self.unfocus(),
-            key!('q') => self.close(),
-            key!('?') => self.toggle_help(),
-            key!('a') => {
-                if let Err(error) = self.new_create_file_prompt() {
-                    cx.editor.set_error(error.to_string())
+        (|| -> Result<()> {
+            match key_event {
+                key!(Esc) => self.unfocus(),
+                key!('q') => self.close(),
+                key!('?') => self.toggle_help(),
+                key!('a') => self.new_create_file_prompt()?,
+                shift!('A') => self.new_create_folder_prompt()?,
+                key!('b') => self.change_root_parent_folder()?,
+                key!(']') => self.change_root_to_current_folder()?,
+                key!('[') => self.go_to_previous_root(),
+                key!('d') => self.new_remove_prompt()?,
+                key!('r') => self.new_rename_prompt(cx),
+                key!('-') => self.decrease_size(),
+                key!('+') => self.increase_size(),
+                _ => {
+                    self.tree
+                        .handle_event(&Event::Key(*key_event), cx, &mut self.state, &filter);
                 }
-            }
-            shift!('A') => {
-                if let Err(error) = self.new_create_folder_prompt() {
-                    cx.editor.set_error(error.to_string())
-                }
-            }
-            key!('b') => {
-                if let Some(parent) = self.state.current_root.parent().clone() {
-                    let path = parent.to_path_buf();
-                    self.change_root(cx, path)
-                }
-            }
-            key!(']') => self.change_root(cx, self.tree.current_item().path.clone()),
-            key!('[') => self.go_to_previous_root(),
-            key!('d') => self.new_remove_prompt(cx),
-            key!('r') => self.new_rename_prompt(cx),
-            key!('-') => self.decrease_size(),
-            key!('+') => self.increase_size(),
-            _ => {
-                self.tree
-                    .handle_event(&Event::Key(*key_event), cx, &mut self.state, &filter);
-            }
-        }
+            };
+            Ok(())
+        })()
+        .unwrap_or_else(|err| cx.editor.set_error(format!("{err}")));
 
         EventResult::Consumed(None)
     }
@@ -833,4 +891,599 @@ fn render_block(area: Rect, surface: &mut Surface, borders: Borders) -> Rect {
 }
 
 #[cfg(test)]
-mod test_explore {}
+mod test_explorer {
+    use super::Explorer;
+    use helix_view::graphics::Rect;
+    use pretty_assertions::assert_eq;
+    use std::{fs, path::PathBuf};
+
+    fn dummy_file_tree<'a>(name: &'a str) -> PathBuf {
+        use build_fs_tree::{dir, file, Build, MergeableFileSystemTree};
+        let tree = MergeableFileSystemTree::<&str, &str>::from(dir! {
+            "index.html" => file!("")
+            "scripts" => dir! {
+                "main.js" => file!("")
+            }
+            "styles" => dir! {
+                "style.css" => file!("")
+                "public" => dir! {
+                    "file" => file!("")
+                }
+            }
+            ".gitignore" => file!("")
+        });
+        let path: PathBuf = format!("test-explorer/{}", name).into();
+        if path.exists() {
+            fs::remove_dir_all(path.clone()).unwrap();
+        }
+        tree.build(&path).unwrap();
+        path
+    }
+
+    fn render<'a>(explorer: &mut Explorer) -> String {
+        explorer
+            .tree
+            .render_to_string(Rect::new(0, 0, 50, 10), &"".to_string())
+    }
+
+    fn new_explorer<'a>(name: &'a str) -> (PathBuf, Explorer) {
+        let path = dummy_file_tree(name);
+        (path.clone(), Explorer::from_path(path, 30).unwrap())
+    }
+
+    #[test]
+    fn test_reveal_file() {
+        let (path, mut explorer) = new_explorer("reveal_file");
+
+        // 0a. Expect the "scripts" folder is not opened
+        assert_eq!(
+            render(&mut explorer),
+            "
+(test-explorer/reveal_file)
+ scripts
+ styles
+  .gitignore
+  index.html
+"
+            .trim()
+        );
+
+        // 1. Reveal "scripts/main.js"
+        explorer.reveal_file(path.join("scripts/main.js")).unwrap();
+
+        // 1a. Expect the "scripts" folder is opened, and "main.js" is focused
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/reveal_file]
+ [scripts]
+    (main.js)
+ styles
+  .gitignore
+  index.html
+"
+            .trim()
+        );
+
+        // 2. Change root to "scripts"
+        explorer.tree.move_up(1);
+        explorer.change_root_to_current_folder().unwrap();
+
+        // 2a. Expect the current root is "scripts"
+        assert_eq!(
+            render(&mut explorer),
+            "
+(test-explorer/reveal_file/scripts)
+  main.js
+"
+            .trim()
+        );
+
+        // 3. Reveal "styles/public/file", which is outside of the current root
+        explorer
+            .reveal_file(path.join("styles/public/file"))
+            .unwrap();
+
+        // 3a. Expect the current root is "public", and "file" is focused
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/reveal_file/styles/public]
+  (file)
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_rename() {
+        let (path, mut explorer) = new_explorer("rename");
+
+        explorer.tree.move_down(3);
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/rename]
+ scripts
+ styles
+  (.gitignore)
+  index.html
+"
+            .trim()
+        );
+
+        // 1. Rename the current file to a name that is lexicographically greater than "index.html"
+        explorer
+            .rename_current(&path.join("who.is").to_string_lossy().into())
+            .unwrap();
+
+        // 1a. Expect the file is renamed, and is focused
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/rename]
+ scripts
+ styles
+  index.html
+  (who.is)
+"
+            .trim()
+        );
+
+        assert!(path.join("who.is").exists());
+
+        // 2. Rename the current file into an existing folder
+        explorer
+            .rename_current(&path.join("styles/lol").to_string_lossy().into())
+            .unwrap();
+
+        // 2a. Expect the file is moved to the folder, and is focused
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/rename]
+ scripts
+ [styles]
+   public
+    (lol)
+    style.css
+  index.html
+"
+            .trim()
+        );
+
+        assert!(path.join("styles/lol").exists());
+
+        // 3. Rename the current file into a non-existent folder
+        explorer
+            .rename_current(&path.join("new_folder/sponge/bob").to_string_lossy().into())
+            .unwrap();
+
+        // 3a. Expect the non-existent folder to be created,
+        //     and the file is moved into it,
+        //     and the renamed file is focused
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/rename]
+ [new_folder]
+   [sponge]
+      (bob)
+ scripts
+ styles
+   public
+    style.css
+  index.html
+"
+            .trim()
+        );
+
+        assert!(path.join("new_folder/sponge/bob").exists());
+
+        // 4. Change current root to "new_folder/sponge"
+        explorer.tree.move_up(1);
+        explorer.change_root_to_current_folder().unwrap();
+
+        // 4a. Expect the current root to be "sponge"
+        assert_eq!(
+            render(&mut explorer),
+            "
+(test-explorer/rename/new_folder/sponge)
+  bob
+"
+            .trim()
+        );
+
+        // 5. Move cursor to "bob", and move it outside of the current root
+        explorer.tree.move_down(1);
+        explorer
+            .rename_current(&path.join("scripts/bob").to_string_lossy().into())
+            .unwrap();
+
+        // 5a. Expect the current root to be "scripts"
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/rename/scripts]
+  (bob)
+  main.js
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_new_folder() {
+        let (path, mut explorer) = new_explorer("new_folder");
+
+        // 1. Add a new folder at the root
+        explorer.new_folder("yoyo").unwrap();
+
+        // 1a. Expect the new folder is added, and is focused
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/new_folder]
+ scripts
+ styles
+ (yoyo)
+  .gitignore
+  index.html
+"
+            .trim()
+        );
+
+        assert!(fs::read_dir(path.join("yoyo")).is_ok());
+
+        // 2. Move up to "styles"
+        explorer.tree.move_up(1);
+
+        // 3. Add a new folder
+        explorer.new_folder("sus.sass").unwrap();
+
+        // 3a. Expect the new folder is added under "styles", although "styles" is not opened
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/new_folder]
+ scripts
+ [styles]
+   public
+   (sus.sass)
+    style.css
+ yoyo
+  .gitignore
+  index.html
+"
+            .trim()
+        );
+
+        assert!(fs::read_dir(path.join("styles/sus.sass")).is_ok());
+
+        // 4. Add a new folder with non-existent parents
+        explorer.new_folder("a/b/c").unwrap();
+
+        // 4a. Expect the non-existent parents are created,
+        //     and the new folder is created,
+        //     and is focused
+        assert_eq!(
+            render(&mut explorer),
+            "
+ [styles]
+   public
+   [sus.sass]
+     [a]
+       [b]
+         (c)
+    style.css
+ yoyo
+  .gitignore
+  index.html
+"
+            .trim()
+        );
+
+        assert!(fs::read_dir(path.join("styles/sus.sass/a/b/c")).is_ok());
+
+        // 5. Move to "style.css"
+        explorer.tree.move_down(1);
+
+        // 6. Add a new folder here
+        explorer.new_folder("foobar").unwrap();
+
+        // 6a. Expect the folder is added under "styles",
+        //     because the folder of the current item, "style.css" is "styles/"
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/new_folder]
+ scripts
+ [styles]
+   (foobar)
+   public
+   sus.sass
+     a
+       b
+         c
+    style.css
+"
+            .trim()
+        );
+
+        assert!(fs::read_dir(path.join("styles/foobar")).is_ok());
+    }
+
+    #[test]
+    fn test_new_file() {
+        let (path, mut explorer) = new_explorer("new_file");
+        // 1. Add a new file at the root
+        explorer.new_file("yoyo").unwrap();
+
+        // 1a. Expect the new file is added, and is focused
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/new_file]
+ scripts
+ styles
+  .gitignore
+  index.html
+  (yoyo)
+"
+            .trim()
+        );
+
+        assert!(fs::read_to_string(path.join("yoyo")).is_ok());
+
+        // 2. Move up to "styles"
+        explorer.tree.move_up(3);
+
+        // 3. Add a new file
+        explorer.new_file("sus.sass").unwrap();
+
+        // 3a. Expect the new file is added under "styles", although "styles" is not opened
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/new_file]
+ scripts
+ [styles]
+   public
+    style.css
+    (sus.sass)
+  .gitignore
+  index.html
+  yoyo
+"
+            .trim()
+        );
+
+        assert!(fs::read_to_string(path.join("styles/sus.sass")).is_ok());
+
+        // 4. Add a new file with non-existent parents
+        explorer.new_file("a/b/c").unwrap();
+
+        // 4a. Expect the non-existent parents are created,
+        //     and the new file is created,
+        //     and is focused
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/new_file]
+ scripts
+ [styles]
+   [a]
+     [b]
+        (c)
+   public
+    style.css
+    sus.sass
+  .gitignore
+"
+            .trim()
+        );
+
+        assert!(fs::read_to_string(path.join("styles/a/b/c")).is_ok());
+
+        // 5. Move to "style.css"
+        explorer.tree.move_down(2);
+
+        // 6. Add a new file here
+        explorer.new_file("foobar").unwrap();
+
+        // 6a. Expect the file is added under "styles",
+        //     because the folder of the current item, "style.css" is "styles/"
+        assert_eq!(
+            render(&mut explorer),
+            "
+ [styles]
+   a
+     b
+        c
+   public
+    (foobar)
+    style.css
+    sus.sass
+  .gitignore
+  index.html
+"
+            .trim()
+        );
+
+        assert!(fs::read_to_string(path.join("styles/foobar")).is_ok());
+    }
+
+    #[test]
+    fn test_remove_file() {
+        let (path, mut explorer) = new_explorer("remove_file");
+
+        // 1. Move to ".gitignore"
+        explorer.reveal_file(path.join(".gitignore")).unwrap();
+
+        // 1a. Expect the cursor is at ".gitignore"
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/remove_file]
+ scripts
+ styles
+  (.gitignore)
+  index.html
+"
+            .trim()
+        );
+
+        assert!(fs::read_to_string(path.join(".gitignore")).is_ok());
+
+        // 2. Remove the current file
+        explorer.remove_file().unwrap();
+
+        // 3. Expect ".gitignore" is deleted, and the cursor moved down
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/remove_file]
+ scripts
+ styles
+  (index.html)
+"
+            .trim()
+        );
+
+        assert!(fs::read_to_string(path.join(".gitignore")).is_err());
+
+        // 3a. Expect "index.html" exists
+        assert!(fs::read_to_string(path.join("index.html")).is_ok());
+
+        // 4. Remove the current file
+        explorer.remove_file().unwrap();
+
+        // 4a. Expect "index.html" is deleted, at the cursor moved up
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/remove_file]
+ scripts
+ (styles)
+"
+            .trim()
+        );
+
+        assert!(fs::read_to_string(path.join("index.html")).is_err());
+    }
+
+    #[test]
+    fn test_remove_folder() {
+        let (path, mut explorer) = new_explorer("remove_folder");
+
+        // 1. Move to "styles/"
+        explorer.reveal_file(path.join("styles")).unwrap();
+
+        // 1a. Expect the cursor is at "styles"
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/remove_folder]
+ scripts
+ (styles)
+   public
+    style.css
+  .gitignore
+  index.html
+"
+            .trim()
+        );
+
+        assert!(fs::read_dir(path.join("styles")).is_ok());
+
+        // 2. Remove the current folder
+        explorer.remove_folder().unwrap();
+
+        // 3. Expect "styles" is deleted, and the cursor moved down
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/remove_folder]
+ scripts
+  (.gitignore)
+  index.html
+"
+            .trim()
+        );
+
+        assert!(fs::read_dir(path.join("styles")).is_err());
+    }
+
+    #[test]
+    fn test_change_root() {
+        let (path, mut explorer) = new_explorer("change_root");
+
+        // 1. Move cursor to "styles"
+        explorer.reveal_file(path.join("styles")).unwrap();
+
+        // 2. Change root to current folder, and move cursor down
+        explorer.change_root_to_current_folder().unwrap();
+        explorer.tree.move_down(1);
+
+        // 2a. Expect the current root to be "styles", and the cursor is at "public"
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/change_root/styles]
+ (public)
+  style.css
+"
+            .trim()
+        );
+
+        // 3. Change root to the parent of current folder
+        explorer.change_root_parent_folder().unwrap();
+
+        // 3a. Expect the current root to be "change_root"
+        assert_eq!(
+            render(&mut explorer),
+            "
+(test-explorer/change_root)
+ scripts
+ styles
+  .gitignore
+  index.html
+"
+            .trim()
+        );
+
+        // 4. Go back to previous root
+        explorer.go_to_previous_root();
+
+        // 4a. Expect the root te become "styles", and the cursor position is not forgotten
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/change_root/styles]
+ (public)
+  style.css
+"
+            .trim()
+        );
+
+        // 5. Go back to previous root again
+        explorer.go_to_previous_root();
+
+        // 5a. Expect the current root to be "change_root" again,
+        //     but this time the "styles" folder is opened,
+        //     because it was opened before any change of root
+        assert_eq!(
+            render(&mut explorer),
+            "
+[test-explorer/change_root]
+ scripts
+ (styles)
+   public
+    style.css
+  .gitignore
+  index.html
+"
+            .trim()
+        );
+    }
+}
