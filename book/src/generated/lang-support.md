@@ -30,7 +30,7 @@
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
 | elixir | ✓ | ✓ | ✓ | `elixir-ls` |
-| elm | ✓ |  |  | `elm-language-server` |
+| elm | ✓ | ✓ |  | `elm-language-server` |
 | elvish | ✓ |  |  | `elvish` |
 | env | ✓ |  |  |  |
 | erb | ✓ |  |  |  |
