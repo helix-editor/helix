@@ -2,15 +2,12 @@
 
 (label) @label
 
+(preproc_expression) @keyword.directive
+
 [
-  (preproc_expression)
   (line_here_token)
   (section_here_token)
 ] @variable.builtin
-(preproc_expression
-  "]" @variable.builtin)
-(preproc_expression
-  "}" @variable.builtin)
 
 (unary_expression
   operator: _ @operator)
@@ -65,7 +62,7 @@
   (#match? @constant.builtin "^__\\?[A-Z_a-z0-9]+\\?__$"))
 (word) @variable
 
-(preproc_arg) @keyword
+(preproc_arg) @keyword.directive
 
 [
   (preproc_def)
@@ -91,7 +88,7 @@
   (preproc_pragma)
   (preproc_line)
   (preproc_clear)
-] @keyword
+] @keyword.directive
 [
   (pseudo_instruction_dx)
   (pseudo_instruction_resx)
@@ -99,7 +96,7 @@
   (pseudo_instruction_equ_command)
   (pseudo_instruction_times_prefix)
   (pseudo_instruction_alignx_macro)
-] @keyword
+] @function.special
 [
   (assembl_directive_target)
   (assembl_directive_defaults)
