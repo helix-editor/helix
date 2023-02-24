@@ -13,9 +13,9 @@
   "}" @variable.builtin)
 
 (unary_expression
-  operator: _ @operator.unary)
+  operator: _ @operator)
 (binary_expression
-  operator: _ @operator.binary)
+  operator: _ @operator)
 (conditional_expression
   "?" @operator
   ":" @operator)
@@ -54,10 +54,10 @@
 
 (register) @constant.builtin
 
-(number_literal) @number.integer
+(number_literal) @constant.numeric.integer
 (string_literal) @string
-(float_literal) @number.float
-(packed_bcd_literal) @number.integer
+(float_literal) @constant.numeric.float
+(packed_bcd_literal) @constant.numeric.integer
 
 ((word) @constant
   (#match? @constant "^[A-Z_][?A-Z_0-9]+$"))
