@@ -16,7 +16,7 @@
 "function.builtin" = { fg = "cyan-light" }
 "function.macro" = { fg = "green" }
 "include" = { fg = "red-light" }
-"keyword" = { fg = "magenta" }
+"keyword" = { fg = "blue" }
 "keyword.function" = { fg = "blue" }
 "keyword.operator" = { fg = "blue-light" }
 "keyword.return" = { fg = "blue" }
@@ -84,8 +84,8 @@
 "ui.statusline.select" = { fg = "cyan", bg = "magenta" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "blue" }
-"ui.virtual.ruler" = { bg = "white" }
-"ui.virtual.whitespace" = { fg = "white" }
+"ui.virtual.ruler" = { bg = "comment" }
+"ui.virtual.whitespace" = { fg = "comment" }
 "ui.window" = { fg = "black" }
 
 "error" = { fg = "red" }
