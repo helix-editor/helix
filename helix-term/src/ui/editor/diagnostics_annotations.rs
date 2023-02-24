@@ -18,6 +18,9 @@ pub fn inline_diagnostics_decorator(
     theme: &Theme,
     text_annotations: &TextAnnotations,
 ) -> Box<dyn LineDecoration> {
+    let whole_view_aera = view.area;
+    let background = theme.get("ui.virtual.diagnostics");
+
     let hint = theme.get("hint");
     let info = theme.get("info");
     let warning = theme.get("warning");
@@ -226,8 +229,18 @@ pub fn inline_diagnostics_decorator(
             // c. Is just one line.
             // d. Is not an overlap.
 
-            let lines_offset = text.lines().count();
-            pos_y -= lines_offset as u16;
+            let lines_offset = text.lines().count() as u16;
+            pos_y -= lines_offset;
+
+            // Use `view` since it's the whole outer view instead of just the inner area so that the background
+            // is also applied to the gutters and other elements that are not in the editable part of the document
+            let diag_area = Rect::new(
+                whole_view_aera.x,
+                pos_y + 1,
+                whole_view_aera.width,
+                lines_offset,
+            );
+            renderer.surface.set_style(diag_area, background);
 
             for (offset, line) in text.lines().enumerate() {
                 let mut pos_x = viewport.x;
