@@ -630,20 +630,7 @@ impl Selection {
                     };
                 }
                 (None, Some(_)) => {
-                    // Other might still contain all of its ranges in a single range of self,
-                    let mut still_subset: bool;
-                    for self_range in self {
-                        still_subset = true;
-                        for other_range in other {
-                            if !self_range.contains_range(other_range) {
-                                still_subset = false;
-                                break;
-                            }
-                        }
-                        if still_subset {
-                            return true;
-                        }
-                    }
+                    // exhausted `self`, we can't match the reminder of `other`
                     return false;
                 }
                 (_, None) => {
@@ -1239,7 +1226,10 @@ mod test {
         ));
         assert!(!contains(vec!((1, 1), (5, 6)), vec!((1, 6))));
 
-        // multiple ranges of other are all contained in one range of self,
-        assert!(contains(vec!((7, 13)), vec!((7, 9), (11, 12))));
+        // multiple ranges of other are all contained in some ranges of self,
+        assert!(contains(
+            vec!((1, 4), (7, 10)),
+            vec!((1, 2), (3, 4), (7, 9))
+        ));
     }
 }
