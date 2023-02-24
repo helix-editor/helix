@@ -56,7 +56,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "0431a
 name = "sway"
 scope = "source.sway"
 injection-regex = "sway"
-file-types = ["sw", ".sw"]
+file-types = ["sw"]
 language-server = { command = "forc", args = ["lsp"] }
 roots = ["Forc.toml", "Forc.lock"]
 indent = { tab-width = 4, unit = "    " }
