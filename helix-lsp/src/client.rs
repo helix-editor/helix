@@ -10,13 +10,13 @@ use lsp::PositionEncodingKind;
 use lsp_types as lsp;
 use serde::Deserialize;
 use serde_json::Value;
-use std::collections::HashMap;
 use std::future::Future;
 use std::process::Stdio;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
-    Arc,
+    Arc, RwLock,
 };
+use std::{collections::HashMap, sync::RwLockReadGuard};
 use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},
@@ -38,6 +38,9 @@ pub struct Client {
     root_uri: Option<lsp::Url>,
     workspace_folders: Vec<lsp::WorkspaceFolder>,
     req_timeout: u64,
+
+    pub(crate) semantic_token_types_legend: RwLock<Vec<Arc<String>>>,
+    pub(crate) semantic_token_modifiers_legend: RwLock<Vec<Arc<String>>>,
 }
 
 impl Client {
@@ -110,6 +113,9 @@ impl Client {
             root_path,
             root_uri,
             workspace_folders,
+
+            semantic_token_types_legend: Default::default(),
+            semantic_token_modifiers_legend: Default::default(),
         };
 
         Ok((client, server_rx, initialize_notify))
@@ -159,6 +165,14 @@ impl Client {
                 },
             })
             .unwrap_or_default()
+    }
+
+    pub fn types_legend(&self) -> RwLockReadGuard<'_, Vec<Arc<String>>> {
+        self.semantic_token_types_legend.read().unwrap()
+    }
+
+    pub fn modifiers_legend(&self) -> RwLockReadGuard<'_, Vec<Arc<String>>> {
+        self.semantic_token_modifiers_legend.read().unwrap()
     }
 
     pub fn config(&self) -> Option<&Value> {
@@ -315,6 +329,9 @@ impl Client {
                     execute_command: Some(lsp::DynamicRegistrationClientCapabilities {
                         dynamic_registration: Some(false),
                     }),
+                    semantic_tokens: Some(lsp::SemanticTokensWorkspaceClientCapabilities {
+                        refresh_support: Some(false),
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -384,6 +401,22 @@ impl Client {
                         ..Default::default()
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
+                        ..Default::default()
+                    }),
+                    semantic_tokens: Some(lsp::SemanticTokensClientCapabilities {
+                        dynamic_registration: Some(true),
+                        requests: lsp::SemanticTokensClientCapabilitiesRequests {
+                            range: Some(true),
+                            full: Some(lsp::SemanticTokensFullOptions::Bool(false)),
+                        },
+                        // Don't specify defaults for this, Helix will receive the server response and tell it it
+                        // support the same tokens.
+                        token_types: Vec::new(),
+                        token_modifiers: Vec::new(),
+                        overlapping_token_support: Some(true),
+                        multiline_token_support: Some(true),
+                        server_cancel_support: Some(true),
+                        augments_syntax_tokens: Some(true),
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -700,6 +733,37 @@ impl Client {
         }
 
         Some(self.call::<lsp::request::ResolveCompletionItem>(completion_item))
+    }
+
+    pub fn text_document_semantic_tokens(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        range: lsp::Range,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilites = self.capabilities.get().unwrap();
+
+        let support_range = match capabilites.semantic_tokens_provider.as_ref()? {
+            lsp::SemanticTokensServerCapabilities::SemanticTokensOptions(opt) => opt.range?,
+            lsp::SemanticTokensServerCapabilities::SemanticTokensRegistrationOptions(opt) => {
+                opt.semantic_tokens_options.range?
+            }
+        };
+
+        if !support_range {
+            return None;
+        }
+
+        Some(self.call::<lsp::request::SemanticTokensRangeRequest>(
+            lsp::SemanticTokensRangeParams {
+                work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+                partial_result_params: lsp::PartialResultParams {
+                    partial_result_token: None,
+                },
+                text_document,
+                range,
+            },
+        ))
     }
 
     pub fn text_document_signature_help(

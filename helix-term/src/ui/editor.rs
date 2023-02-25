@@ -135,6 +135,18 @@ impl EditorView {
 
         let mut highlights =
             Self::doc_syntax_highlights(doc, view.offset.anchor, inner.height, theme);
+        if editor.config().lsp.enable_semantic_tokens_highlighting {
+            let semantic_highlights = Self::doc_semantic_highlights(
+                doc,
+                view.id,
+                view.offset.anchor,
+                inner.height,
+                theme,
+            );
+            if !semantic_highlights.is_empty() {
+                highlights = Box::new(syntax::merge(highlights, semantic_highlights))
+            }
+        }
         let overlay_highlights = Self::overlay_syntax_highlights(
             doc,
             view.offset.anchor,
@@ -338,6 +350,57 @@ impl EditorView {
                 .into_iter(),
             ),
         }
+    }
+
+    pub fn doc_semantic_highlights(
+        doc: &Document,
+        view_id: helix_view::ViewId,
+        anchor: usize,
+        height: u16,
+        theme: &Theme,
+    ) -> Vec<(usize, std::ops::Range<usize>)> {
+        // If there is no scope that uses semantic highlighting, no need to do more work
+        if !theme.scopes().iter().any(|s| s.starts_with("semantic")) {
+            return Vec::new();
+        }
+        // Same if the semantic tokens for the view are empty/absent
+        let semantic_ranges = match doc.semantic_tokens(view_id) {
+            Some(sr) if !sr.tokens.is_empty() => &sr.tokens,
+            _ => return Vec::new(),
+        };
+
+        let text = doc.text().slice(..);
+        let row = text.char_to_line(anchor.min(text.len_chars()));
+
+        let range = {
+            // Calculate viewport byte ranges:
+            // Saturating subs to make it inclusive zero indexing.
+            let last_line = text.len_lines().saturating_sub(1);
+            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+            let start = text.line_to_byte(row.min(last_line));
+            let end = text.line_to_byte(last_visible_line + 1);
+
+            start..end
+        };
+
+        let mut result = Vec::new();
+
+        for (sem_range, semantic_styles) in semantic_ranges {
+            // Don't send highlights for tokens that are outside the visible range
+            if range.start > sem_range.anchor || range.end < sem_range.head {
+                continue;
+            }
+
+            let sem_range = sem_range.anchor..sem_range.head;
+
+            for sem_style in semantic_styles {
+                if let Some(idx) = theme.find_scope_index(sem_style.as_str()) {
+                    result.push((idx, sem_range.clone()));
+                }
+            }
+        }
+
+        result
     }
 
     /// Get highlight spans for document diagnostics
@@ -978,6 +1041,8 @@ impl EditorView {
     }
 
     pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
+        commands::compute_semantic_tokens_for_all_views(cx.editor, cx.jobs);
+
         if let Some(completion) = &mut self.completion {
             return if completion.ensure_item_resolved(cx) {
                 EventResult::Consumed(None)

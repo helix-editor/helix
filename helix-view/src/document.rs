@@ -150,6 +150,17 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 
     diff_handle: Option<DiffHandle>,
+
+    pub(crate) semantic_tokens: HashMap<ViewId, DocumentSemanticTokens>,
+    pub semantic_tokens_outdated: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct DocumentSemanticTokens {
+    pub first_line: usize,
+    pub last_line: usize,
+
+    pub tokens: Vec<(Range, Vec<Arc<String>>)>,
 }
 
 use std::{fmt, mem};
@@ -172,6 +183,8 @@ impl fmt::Debug for Document {
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
+            .field("semantic_tokens_outdated", &self.semantic_tokens_outdated)
+            .field("semantic_tokens", &self.semantic_tokens)
             // .field("language_server", &self.language_server)
             .finish()
     }
@@ -395,6 +408,8 @@ impl Document {
             modified_since_accessed: false,
             language_server: None,
             diff_handle: None,
+            semantic_tokens: HashMap::default(),
+            semantic_tokens_outdated: true,
             config,
         }
     }
@@ -809,6 +824,7 @@ impl Document {
     /// Remove a view's selection from this document.
     pub fn remove_view(&mut self, view_id: ViewId) {
         self.selections.remove(&view_id);
+        self.semantic_tokens.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
@@ -871,6 +887,15 @@ impl Document {
             }
             self.diagnostics
                 .sort_unstable_by_key(|diagnostic| diagnostic.range);
+
+            self.semantic_tokens_outdated = true;
+            for sem_ranges in &mut self.semantic_tokens.values_mut() {
+                let changes = transaction.changes();
+                for (range, _) in &mut sem_ranges.tokens {
+                    range.anchor = changes.map_pos(range.anchor, helix_core::Assoc::After);
+                    range.head = changes.map_pos(range.head, helix_core::Assoc::After);
+                }
+            }
 
             // emit lsp notification
             if let Some(language_server) = self.language_server() {
@@ -1202,6 +1227,21 @@ impl Document {
             self.selection(view_id).primary().cursor(text.slice(..)),
             offset_encoding,
         )
+    }
+
+    #[inline]
+    pub fn semantic_tokens(&self, view_id: ViewId) -> Option<&DocumentSemanticTokens> {
+        self.semantic_tokens.get(&view_id)
+    }
+
+    #[inline]
+    pub fn set_semantic_tokens(&mut self, view_id: ViewId, dst: DocumentSemanticTokens) {
+        self.semantic_tokens.insert(view_id, dst);
+    }
+
+    #[inline]
+    pub fn reset_all_semantic_tokens(&mut self) {
+        self.semantic_tokens = Default::default();
     }
 
     #[inline]

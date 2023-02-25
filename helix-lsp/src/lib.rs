@@ -621,9 +621,46 @@ fn start_client(
             })
             .await;
 
-        if let Err(e) = value {
-            log::error!("failed to initialize language server: {}", e);
-            return;
+        let capabilities = match value {
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("failed to initialize language server: {}", e);
+                return;
+            }
+        };
+
+        // Compute the legends for semantic tokens and put them in `Arc<String>`s, that way when
+        // documents use them, the cost is negligible: reasonable servers will send at most a few
+        // dozen strings but documents can reference each string hundreds of times.
+        let legends = match capabilities.semantic_tokens_provider.as_ref() {
+            Some(lsp::SemanticTokensServerCapabilities::SemanticTokensOptions(opt)) => {
+                Some(&opt.legend)
+            }
+            Some(lsp::SemanticTokensServerCapabilities::SemanticTokensRegistrationOptions(opt)) => {
+                Some(&opt.semantic_tokens_options.legend)
+            }
+            _ => None,
+        };
+
+        // We assume the names won't have spaces or invalid TOML in them else themes won't be able
+        // to name them. This has not been a problem yet, if it becomes one we will need to
+        // implement fixes here.
+        if let Some(legends) = legends {
+            let make_style_name = |v| Arc::new(format!("semantic.{v}"));
+
+            let mut types = _client.semantic_token_types_legend.write().unwrap();
+            types.clear();
+
+            for ty in &legends.token_types {
+                types.push(make_style_name(ty.as_str()));
+            }
+
+            let mut modifiers = _client.semantic_token_modifiers_legend.write().unwrap();
+            modifiers.clear();
+
+            for mo in &legends.token_modifiers {
+                modifiers.push(make_style_name(mo.as_str()));
+            }
         }
 
         // next up, notify<initialized>

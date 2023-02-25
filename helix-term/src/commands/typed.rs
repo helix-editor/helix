@@ -1387,6 +1387,66 @@ fn tree_sitter_scopes(
     Ok(())
 }
 
+fn semantic_tokens(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if !cx.editor.config().lsp.enable_semantic_tokens_highlighting {
+        cx.editor
+            .set_error("Semantic tokens are disabled in the configuration");
+        return Ok(());
+    }
+
+    let (view, doc) = current!(cx.editor);
+
+    let tokens = match doc.semantic_tokens(view.id) {
+        Some(dst) => &dst.tokens,
+        None => {
+            cx.editor
+                .set_status("No semantic tokens for this view or document");
+            return Ok(());
+        }
+    };
+
+    let text = doc.text().slice(..);
+    let pos = doc.selection(view.id).primary().cursor(text);
+
+    let tokens = tokens
+        .iter()
+        .filter_map(|(r, s)| (r.anchor <= pos && r.head > pos).then_some(s))
+        .collect::<Vec<_>>();
+
+    let contents = if tokens.is_empty() {
+        cx.editor
+            .set_status("No semantic tokens for element under cursor");
+        return Ok(());
+    } else if tokens.len() == 1 {
+        format!("```json\n{:?}\n```", tokens[0])
+    } else {
+        format!("```json\n{:?}\n```", tokens)
+    };
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let popup = Popup::new("hover", contents).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 fn vsplit(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2355,7 +2415,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
             completer: None,
-       },
+        },
+        TypableCommand {
+            name: "semantic-tokens",
+            aliases: &[],
+            doc: "Display the semantic tokens, primarily for theming and development.",
+            fun: semantic_tokens,
+            completer: None,
+        },
         TypableCommand {
             name: "debug-start",
             aliases: &["dbg"],

@@ -26,6 +26,9 @@ use crate::{
     },
 };
 
+mod semantic_tokens;
+pub use semantic_tokens::*;
+
 use std::{
     borrow::Cow, cmp::Ordering, collections::BTreeMap, fmt::Write, path::PathBuf, sync::Arc,
 };

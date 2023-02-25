@@ -377,6 +377,8 @@ pub struct LspConfig {
     pub auto_signature_help: bool,
     /// Display docs under signature help popup
     pub display_signature_help_docs: bool,
+    /// Enable semantic tokens highlighting
+    pub enable_semantic_tokens_highlighting: bool,
 }
 
 impl Default for LspConfig {
@@ -386,6 +388,7 @@ impl Default for LspConfig {
             display_messages: false,
             auto_signature_help: true,
             display_signature_help_docs: true,
+            enable_semantic_tokens_highlighting: false,
         }
     }
 }
@@ -1146,6 +1149,13 @@ impl Editor {
 
     fn _refresh(&mut self) {
         let config = self.config();
+
+        if !config.lsp.enable_semantic_tokens_highlighting {
+            for doc in self.documents_mut() {
+                doc.reset_all_semantic_tokens();
+            }
+        }
+
         for (view, _) in self.tree.views_mut() {
             let doc = doc_mut!(self, &view.doc);
             view.sync_changes(doc);
