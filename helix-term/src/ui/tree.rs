@@ -439,15 +439,16 @@ impl<T: TreeViewItem> TreeView<T> {
         self.tree.regenerate_index();
     }
 
-    fn move_to_parent(&mut self) {
-        if let Some(parent) = self.current_parent() {
+    fn move_to_parent(&mut self) -> Result<()> {
+        if let Some(parent) = self.current_parent()? {
             let index = parent.index;
             self.set_selected(index)
         }
+        Ok(())
     }
 
     fn move_to_children(&mut self, filter: &String) -> Result<()> {
-        let current = self.current_mut();
+        let current = self.current_mut()?;
         if current.is_opened {
             self.set_selected(self.selected + 1);
             Ok(())
@@ -526,17 +527,17 @@ impl<T: TreeViewItem> TreeView<T> {
         params: &mut T::Params,
         selected_index: usize,
         filter: &String,
-    ) {
-        let selected_item = self.get_mut(selected_index);
+    ) -> Result<()> {
+        let selected_item = self.get_mut(selected_index)?;
         if selected_item.is_opened {
             selected_item.close();
             self.regenerate_index();
-            return;
+            return Ok(());
         }
 
         if let Some(mut on_open_fn) = self.on_opened_fn.take() {
-            let mut f = || {
-                let current = self.current_mut();
+            let mut f = || -> Result<()> {
+                let current = self.current_mut()?;
                 match on_open_fn(&mut current.item, cx, params) {
                     TreeOp::GetChildsAndInsert => {
                         if let Err(err) = current.open(filter) {
@@ -545,11 +546,13 @@ impl<T: TreeViewItem> TreeView<T> {
                     }
                     TreeOp::Noop => {}
                 };
+                Ok(())
             };
-            f();
+            f()?;
             self.regenerate_index();
-            self.on_opened_fn = Some(on_open_fn)
-        }
+            self.on_opened_fn = Some(on_open_fn);
+        };
+        Ok(())
     }
 
     fn set_search_str(&mut self, s: String) {
@@ -675,36 +678,36 @@ impl<T: TreeViewItem> TreeView<T> {
         })
     }
 
-    fn get(&self, index: usize) -> &Tree<T> {
-        self.tree
-            .get(index)
-            .expect(format!("Tree: index {index} is out of bound").as_str())
+    fn get(&self, index: usize) -> Result<&Tree<T>> {
+        self.tree.get(index).ok_or_else(|| {
+            anyhow::anyhow!("Programming error: TreeView.get: index {index} is out of bound")
+        })
     }
 
-    fn get_mut(&mut self, index: usize) -> &mut Tree<T> {
-        self.tree
-            .get_mut(index)
-            .expect(format!("Tree: index {index} is out of bound").as_str())
+    fn get_mut(&mut self, index: usize) -> Result<&mut Tree<T>> {
+        self.tree.get_mut(index).ok_or_else(|| {
+            anyhow::anyhow!("Programming error: TreeView.get_mut: index {index} is out of bound")
+        })
     }
 
-    pub fn current(&self) -> &Tree<T> {
+    pub fn current(&self) -> Result<&Tree<T>> {
         self.get(self.selected)
     }
 
-    pub fn current_mut(&mut self) -> &mut Tree<T> {
+    pub fn current_mut(&mut self) -> Result<&mut Tree<T>> {
         self.get_mut(self.selected)
     }
 
-    fn current_parent(&self) -> Option<&Tree<T>> {
-        if let Some(parent_index) = self.current().parent_index {
-            Some(self.get(parent_index))
+    fn current_parent(&self) -> Result<Option<&Tree<T>>> {
+        if let Some(parent_index) = self.current()?.parent_index {
+            Ok(Some(self.get(parent_index)?))
         } else {
-            None
+            Ok(None)
         }
     }
 
-    pub fn current_item(&self) -> &T {
-        &self.current().item
+    pub fn current_item(&self) -> Result<&T> {
+        Ok(&self.current()?.item)
     }
 
     pub fn winline(&self) -> usize {
@@ -1013,56 +1016,60 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
         }
 
         let count = std::mem::replace(&mut self.count, 0);
-        match key_event {
-            key!(i @ '0'..='9') => self.count = i.to_digit(10).unwrap() as usize + count * 10,
-            key!('k') | key!(Up) | ctrl!('p') => self.move_up(1.max(count)),
-            key!('j') | key!(Down) | ctrl!('n') => self.move_down(1.max(count)),
-            key!('z') => {
-                self.on_next_key = Some(Box::new(|_, tree, event| match event {
-                    key!('z') => tree.align_view_center(),
-                    key!('t') => tree.align_view_top(),
-                    key!('b') => tree.align_view_bottom(),
-                    _ => {}
-                }));
-            }
-            key!('h') | key!(Left) => self.move_to_parent(),
-            key!('l') | key!(Right) => match self.move_to_children(filter) {
-                Ok(_) => {}
-                Err(err) => cx.editor.set_error(err.to_string()),
-            },
-            shift!('H') => self.move_left(1),
-            shift!('L') => self.move_right(1),
-            key!(Enter) | key!('o') => self.on_enter(cx, params, self.selected, filter),
-            ctrl!('d') => self.move_down_half_page(),
-            ctrl!('u') => self.move_up_half_page(),
-            key!('g') => {
-                self.on_next_key = Some(Box::new(|_, tree, event| match event {
-                    key!('g') => tree.move_to_first_line(),
-                    key!('e') => tree.move_to_last_line(),
-                    key!('h') => tree.move_leftmost(),
-                    key!('l') => tree.move_rightmost(),
-                    _ => {}
-                }));
-            }
-            key!('/') => self.new_search_prompt(Direction::Forward),
-            key!('n') => self.move_to_next_search_match(),
-            shift!('N') => self.move_to_previous_next_match(),
-            key!('f') => self.new_filter_prompt(cx),
-            key!(PageDown) => self.move_down_page(),
-            key!(PageUp) => self.move_up_page(),
-            shift!('R') => {
-                let filter = self.filter.clone();
-                if let Err(error) = self.refresh_with_filter(&filter) {
-                    cx.editor.set_error(error.to_string())
+        (|| -> Result<EventResult> {
+            match key_event {
+                key!(i @ '0'..='9') => {
+                    self.count = i.to_digit(10).unwrap_or(0) as usize + count * 10
                 }
-            }
-            key!(Home) => self.move_leftmost(),
-            key!(End) => self.move_rightmost(),
-            ctrl!('o') => self.jump_backward(),
-            _ => return EventResult::Ignored(None),
-        }
-
-        EventResult::Consumed(None)
+                key!('k') | key!(Up) | ctrl!('p') => self.move_up(1.max(count)),
+                key!('j') | key!(Down) | ctrl!('n') => self.move_down(1.max(count)),
+                key!('z') => {
+                    self.on_next_key = Some(Box::new(|_, tree, event| match event {
+                        key!('z') => tree.align_view_center(),
+                        key!('t') => tree.align_view_top(),
+                        key!('b') => tree.align_view_bottom(),
+                        _ => {}
+                    }));
+                }
+                key!('h') | key!(Left) => self.move_to_parent()?,
+                key!('l') | key!(Right) => self.move_to_children(filter)?,
+                shift!('H') => self.move_left(1),
+                shift!('L') => self.move_right(1),
+                key!(Enter) | key!('o') => self.on_enter(cx, params, self.selected, filter)?,
+                ctrl!('d') => self.move_down_half_page(),
+                ctrl!('u') => self.move_up_half_page(),
+                key!('g') => {
+                    self.on_next_key = Some(Box::new(|_, tree, event| match event {
+                        key!('g') => tree.move_to_first_line(),
+                        key!('e') => tree.move_to_last_line(),
+                        key!('h') => tree.move_leftmost(),
+                        key!('l') => tree.move_rightmost(),
+                        _ => {}
+                    }));
+                }
+                key!('/') => self.new_search_prompt(Direction::Forward),
+                key!('n') => self.move_to_next_search_match(),
+                shift!('N') => self.move_to_previous_next_match(),
+                key!('f') => self.new_filter_prompt(cx),
+                key!(PageDown) => self.move_down_page(),
+                key!(PageUp) => self.move_up_page(),
+                shift!('R') => {
+                    let filter = self.filter.clone();
+                    if let Err(error) = self.refresh_with_filter(&filter) {
+                        cx.editor.set_error(error.to_string())
+                    }
+                }
+                key!(Home) => self.move_leftmost(),
+                key!(End) => self.move_rightmost(),
+                ctrl!('o') => self.jump_backward(),
+                _ => return Ok(EventResult::Ignored(None)),
+            };
+            Ok(EventResult::Consumed(None))
+        })()
+        .unwrap_or_else(|err| {
+            cx.editor.set_error(format!("{err}"));
+            EventResult::Consumed(None)
+        })
     }
 
     fn handle_filter_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
@@ -1577,7 +1584,7 @@ mod test_tree_view {
             .trim()
         );
 
-        view.move_to_parent();
+        view.move_to_parent().unwrap();
         assert_eq!(
             render(&mut view),
             "
@@ -1591,7 +1598,7 @@ mod test_tree_view {
         );
 
         view.move_to_last_line();
-        view.move_to_parent();
+        view.move_to_parent().unwrap();
         assert_eq!(
             render(&mut view),
             "
@@ -1751,7 +1758,7 @@ krabby_patty
             .trim()
         );
 
-        view.move_to_parent();
+        view.move_to_parent().unwrap();
         assert_eq!(
             render(&mut view),
             "
@@ -1764,7 +1771,7 @@ krabby_patty
             .trim()
         );
 
-        view.move_to_parent();
+        view.move_to_parent().unwrap();
         assert_eq!(
             render(&mut view),
             "
@@ -1777,7 +1784,7 @@ krabby_patty
             .trim()
         );
 
-        view.move_to_parent();
+        view.move_to_parent().unwrap();
         assert_eq!(
             render(&mut view),
             "
@@ -1988,7 +1995,7 @@ krabby_patty
         view.refresh_with_filter(&"ar".to_string()).unwrap();
 
         // 3. Get the current item
-        let item = view.current_item();
+        let item = view.current_item().unwrap();
 
         // 3a. Expects no failure
         assert_eq!(item.name, "who_lives_in_a_pine")
@@ -2214,7 +2221,7 @@ krabby_patty
 
         // 5.3 Move up
         view.move_up(1);
-        assert_eq!(view.current_item().name, "baaa");
+        assert_eq!(view.current_item().unwrap().name, "baaa");
         assert_eq!(
             render(&mut view),
             "

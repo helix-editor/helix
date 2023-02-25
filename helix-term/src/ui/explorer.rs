@@ -279,34 +279,36 @@ impl Explorer {
     }
 
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, editor: &Editor) {
-        let item = self.tree.current().item();
-        let head_area = render_block(
-            area.clip_bottom(area.height.saturating_sub(2)),
-            surface,
-            Borders::BOTTOM,
-        );
-        let path_str = format!("{}", item.path.display());
-        surface.set_stringn(
-            head_area.x,
-            head_area.y,
-            path_str,
-            head_area.width as usize,
-            get_theme!(editor.theme, "ui.explorer.dir", "ui.text"),
-        );
-
-        let body_area = area.clip_top(2);
-        let style = editor.theme.get("ui.text");
-        let content = get_preview(&item.path, body_area.height as usize)
-            .unwrap_or_else(|err| vec![err.to_string()]);
-        content.into_iter().enumerate().for_each(|(row, line)| {
-            surface.set_stringn(
-                body_area.x,
-                body_area.y + row as u16,
-                line,
-                body_area.width as usize,
-                style,
+        if let Ok(current) = self.tree.current() {
+            let item = current.item();
+            let head_area = render_block(
+                area.clip_bottom(area.height.saturating_sub(2)),
+                surface,
+                Borders::BOTTOM,
             );
-        })
+            let path_str = format!("{}", item.path.display());
+            surface.set_stringn(
+                head_area.x,
+                head_area.y,
+                path_str,
+                head_area.width as usize,
+                get_theme!(editor.theme, "ui.explorer.dir", "ui.text"),
+            );
+
+            let body_area = area.clip_top(2);
+            let style = editor.theme.get("ui.text");
+            let content = get_preview(&item.path, body_area.height as usize)
+                .unwrap_or_else(|err| vec![err.to_string()]);
+            content.into_iter().enumerate().for_each(|(row, line)| {
+                surface.set_stringn(
+                    body_area.x,
+                    body_area.y + row as u16,
+                    line,
+                    body_area.width as usize,
+                    style,
+                );
+            })
+        }
     }
 
     fn new_create_folder_prompt(&mut self) -> Result<()> {
@@ -338,14 +340,14 @@ impl Explorer {
     }
 
     fn nearest_folder(&self) -> Result<PathBuf> {
-        let current = self.tree.current();
-        if current.item().is_parent() {
-            Ok(current.item().path.to_path_buf())
+        let current = self.tree.current()?.item();
+        if current.is_parent() {
+            Ok(current.path.to_path_buf())
         } else {
-            let parent_path = current.item().path.parent().ok_or_else(|| {
+            let parent_path = current.path.parent().ok_or_else(|| {
                 anyhow::anyhow!(format!(
                     "Unable to get parent path of '{}'",
-                    current.item().path.to_string_lossy()
+                    current.path.to_string_lossy()
                 ))
             })?;
             Ok(parent_path.to_path_buf())
@@ -353,7 +355,7 @@ impl Explorer {
     }
 
     fn new_remove_prompt(&mut self) -> Result<()> {
-        let item = self.tree.current().item();
+        let item = self.tree.current()?.item();
         match item.file_type {
             FileType::Folder => self.new_remove_folder_prompt(),
             FileType::File => self.new_remove_file_prompt(),
@@ -361,8 +363,8 @@ impl Explorer {
         }
     }
 
-    fn new_rename_prompt(&mut self, cx: &mut Context) {
-        let path = self.tree.current_item().path.clone();
+    fn new_rename_prompt(&mut self, cx: &mut Context) -> Result<()> {
+        let path = self.tree.current_item()?.path.clone();
         self.prompt = Some((
             PromptAction::RenameFile,
             Prompt::new(
@@ -373,10 +375,11 @@ impl Explorer {
             )
             .with_line(path.to_string_lossy().to_string(), cx.editor),
         ));
+        Ok(())
     }
 
     fn new_remove_file_prompt(&mut self) -> Result<()> {
-        let item = self.tree.current_item();
+        let item = self.tree.current_item()?;
         ensure!(
             item.path.is_file(),
             "The path '{}' is not a file",
@@ -395,7 +398,7 @@ impl Explorer {
     }
 
     fn new_remove_folder_prompt(&mut self) -> Result<()> {
-        let item = self.tree.current_item();
+        let item = self.tree.current_item()?;
         ensure!(
             item.path.is_dir(),
             "The path '{}' is not a folder",
@@ -616,7 +619,7 @@ impl Explorer {
             };
             let line = prompt.line();
 
-            let current_item_path = explorer.tree.current_item().path.clone();
+            let current_item_path = explorer.tree.current_item()?.path.clone();
             match (&action, event) {
                 (PromptAction::CreateFolder, key!(Enter)) => explorer.new_folder(line)?,
                 (PromptAction::CreateFile, key!(Enter)) => explorer.new_file(line)?,
@@ -682,7 +685,7 @@ impl Explorer {
     }
 
     fn change_root_to_current_folder(&mut self) -> Result<()> {
-        self.change_root(self.tree.current_item().path.clone())
+        self.change_root(self.tree.current_item()?.path.clone())
     }
 
     fn change_root_parent_folder(&mut self) -> Result<()> {
@@ -715,7 +718,7 @@ impl Explorer {
     }
 
     fn rename_current(&mut self, line: &String) -> Result<()> {
-        let item = self.tree.current_item();
+        let item = self.tree.current_item()?;
         let path = PathBuf::from(line);
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -726,13 +729,13 @@ impl Explorer {
     }
 
     fn remove_folder(&mut self) -> Result<()> {
-        let item = self.tree.current_item();
+        let item = self.tree.current_item()?;
         std::fs::remove_dir_all(&item.path)?;
         self.tree.refresh()
     }
 
     fn remove_file(&mut self) -> Result<()> {
-        let item = self.tree.current_item();
+        let item = self.tree.current_item()?;
         std::fs::remove_file(&item.path)?;
         self.tree.refresh()
     }
@@ -796,7 +799,7 @@ impl Component for Explorer {
                 key!(']') => self.change_root_to_current_folder()?,
                 key!('[') => self.go_to_previous_root(),
                 key!('d') => self.new_remove_prompt()?,
-                key!('r') => self.new_rename_prompt(cx),
+                key!('r') => self.new_rename_prompt(cx)?,
                 key!('-') | key!('_') => self.decrease_size(),
                 key!('+') | key!('=') => self.increase_size(),
                 _ => {
