@@ -31,8 +31,8 @@ TODO
 New:
 - [x] increase indentation
 - [x] Change '[' to "go to previous root"
-- [x] Change 'b' to "go to parent"
-- [x] Use C-o for jumping to previous position
+- [x] Change 'B' to "go to parent"
+- [x] Use C-o/C-i for jump backward/forward
 - [x] on focus indication
 - [x] support creating files and folder and the same time (`mkdir -p`)
 - [x] Ctrl-o should work for 'h', 'gg', 'ge', etc

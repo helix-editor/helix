@@ -289,7 +289,8 @@ pub struct TreeView<T: TreeViewItem> {
     /// Selected item idex
     selected: usize,
 
-    history: Vec<usize>,
+    backward_jumps: Vec<usize>,
+    forward_jumps: Vec<usize>,
 
     saved_view: Option<SavedView>,
 
@@ -322,7 +323,8 @@ impl<T: TreeViewItem> TreeView<T> {
         Self {
             tree: Tree::new(root, items),
             selected: 0,
-            history: vec![],
+            backward_jumps: vec![],
+            forward_jumps: vec![],
             saved_view: None,
             winline: 0,
             column: 0,
@@ -506,6 +508,7 @@ pub fn tree_view_help() -> Vec<(&'static str, &'static str)> {
         ("Home", "Scroll to the leftmost"),
         ("End", "Scroll to the rightmost"),
         ("C-o", "Jump backward"),
+        ("C-i, Tab", "Jump forward"),
         ("C-d", "Half page down"),
         ("C-u", "Half page up"),
         ("PageUp", "Full page up"),
@@ -602,7 +605,7 @@ impl<T: TreeViewItem> TreeView<T> {
         let previous_selected = self.selected;
         self.set_selected_without_history(selected);
         if previous_selected.abs_diff(selected) > 1 {
-            self.history.push(previous_selected)
+            self.backward_jumps.push(previous_selected)
         }
     }
 
@@ -625,8 +628,15 @@ impl<T: TreeViewItem> TreeView<T> {
     }
 
     fn jump_backward(&mut self) {
-        if let Some(index) = self.history.pop() {
+        if let Some(index) = self.backward_jumps.pop() {
+            self.forward_jumps.push(self.selected);
             self.set_selected_without_history(index);
+        }
+    }
+
+    fn jump_forward(&mut self) {
+        if let Some(index) = self.forward_jumps.pop() {
+            self.set_selected(index)
         }
     }
 
@@ -1062,6 +1072,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                 key!(Home) => self.move_leftmost(),
                 key!(End) => self.move_rightmost(),
                 ctrl!('o') => self.jump_backward(),
+                ctrl!('i') | key!(Tab) => self.jump_forward(),
                 _ => return Ok(EventResult::Ignored(None)),
             };
             Ok(EventResult::Consumed(None))
@@ -2002,7 +2013,7 @@ krabby_patty
     }
 
     #[test]
-    fn test_jump_backward() {
+    fn test_jump_backward_forward() {
         let mut view = dummy_tree_view();
         view.move_down_half_page();
         render(&mut view);
@@ -2040,6 +2051,45 @@ krabby_patty
 (who_lives_in_a_pineapple_under_the_sea)
  gary_the_snail
  karen
+ king_neptune
+ krabby_patty
+          "
+            .trim()
+        );
+
+        view.jump_forward();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ gary_the_snail
+ (karen)
+ king_neptune
+ krabby_patty
+          "
+            .trim()
+        );
+
+        view.jump_forward();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ gary_the_snail
+ karen
+ king_neptune
+ (krabby_patty)
+          "
+            .trim()
+        );
+
+        view.jump_backward();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+ gary_the_snail
+ (karen)
  king_neptune
  krabby_patty
           "
