@@ -50,7 +50,7 @@ impl FileInfo {
 
     fn get_text(&self) -> Cow<'static, str> {
         match self.file_type {
-            FileType::Root => return format!("{}", self.path.display()).into(),
+            FileType::Root => format!("{}", self.path.display()).into(),
             FileType::File | FileType::Folder => self
                 .path
                 .file_name()
@@ -107,14 +107,11 @@ impl TreeViewItem for FileInfo {
     }
 
     fn is_parent(&self) -> bool {
-        match self.file_type {
-            FileType::Folder | FileType::Root => true,
-            _ => false,
-        }
+        matches!(self.file_type, FileType::Folder | FileType::Root)
     }
 }
 
-fn dir_entry_to_file_info(entry: DirEntry, path: &PathBuf) -> Option<FileInfo> {
+fn dir_entry_to_file_info(entry: DirEntry, path: &Path) -> Option<FileInfo> {
     entry.metadata().ok().map(|meta| {
         let file_type = match meta.is_dir() {
             true => FileType::Folder,
@@ -196,7 +193,7 @@ impl Explorer {
     }
 
     fn new_tree_view(root: PathBuf) -> Result<TreeView<FileInfo>> {
-        let root = FileInfo::root(root.clone());
+        let root = FileInfo::root(root);
         let children = root.get_children()?;
         Ok(TreeView::build_tree(root, children).with_enter_fn(Self::toggle_current))
     }
@@ -368,7 +365,7 @@ impl Explorer {
         self.prompt = Some((
             PromptAction::RenameFile,
             Prompt::new(
-                format!(" Rename to ").into(),
+                " Rename to ".into(),
                 None,
                 ui::completers::none,
                 |_, _, _| {},
@@ -689,7 +686,7 @@ impl Explorer {
     }
 
     fn change_root_parent_folder(&mut self) -> Result<()> {
-        if let Some(parent) = self.state.current_root.parent().clone() {
+        if let Some(parent) = self.state.current_root.parent() {
             let path = parent.to_path_buf();
             self.change_root(path)
         } else {
@@ -725,7 +722,7 @@ impl Explorer {
         }
         std::fs::rename(&item.path, &path)?;
         self.tree.refresh()?;
-        self.reveal_file(path.into())
+        self.reveal_file(path)
     }
 
     fn remove_folder(&mut self) -> Result<()> {
@@ -752,7 +749,7 @@ fn close_documents(current_item_path: PathBuf, cx: &mut Context) -> Result<()> {
                 .map(|p| p.starts_with(&current_item_path))
                 .unwrap_or(false)
             {
-                Some(id.clone())
+                Some(*id)
             } else {
                 None
             }
@@ -855,8 +852,7 @@ fn get_preview(p: impl AsRef<Path>, max_line: usize) -> Result<Vec<String>> {
             .filter_map(|entry| {
                 entry
                     .ok()
-                    .map(|entry| dir_entry_to_file_info(entry, &p.to_path_buf()))
-                    .flatten()
+                    .and_then(|entry| dir_entry_to_file_info(entry, p))
             })
             .take(max_line)
             .collect::<Vec<_>>();

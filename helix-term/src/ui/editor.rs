@@ -1385,8 +1385,7 @@ impl Component for EditorView {
                 if let Some(position) = config.explorer.is_embed() {
                     let area = if use_bufferline {
                         area.clip_top(1)
-                    }
-                    else {
+                    } else {
                         area
                     };
                     explorer.content.render_embed(area, surface, cx, &position);
@@ -1478,8 +1477,7 @@ impl Component for EditorView {
                 if let Some(position) = config.explorer.is_embed() {
                     let area = if use_bufferline {
                         area.clip_top(1)
-                    }
-                    else {
+                    } else {
                         area
                     };
                     explore.content.render_embed(area, surface, cx, &position);

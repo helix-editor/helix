@@ -241,10 +241,7 @@ impl ExplorerConfig {
     }
 
     pub fn is_overlay(&self) -> bool {
-        match self.position {
-            ExplorerPosition::Overlay => true,
-            _ => false,
-        }
+        matches!(self.position, ExplorerPosition::Overlay)
     }
 }
 
@@ -257,7 +254,7 @@ impl Default for ExplorerConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.

@@ -123,7 +123,7 @@ impl<'a, T> DoubleEndedIterator for TreeIter<'a, T> {
 impl<'a, T> ExactSizeIterator for TreeIter<'a, T> {}
 
 impl<T: TreeViewItem> Tree<T> {
-    fn open(&mut self, filter: &String) -> Result<()> {
+    fn open(&mut self, filter: &str) -> Result<()> {
         if self.item.is_parent() {
             self.children = self.get_filtered_children(filter)?;
             self.is_opened = true;
@@ -136,12 +136,12 @@ impl<T: TreeViewItem> Tree<T> {
         self.children = vec![];
     }
 
-    fn refresh(&mut self, filter: &String) -> Result<()> {
+    fn refresh(&mut self, filter: &str) -> Result<()> {
         if !self.is_opened {
             return Ok(());
         }
         let latest_children = self.get_filtered_children(filter)?;
-        let filtered = std::mem::replace(&mut self.children, vec![])
+        let filtered = std::mem::take(&mut self.children)
             .into_iter()
             // Remove children that does not exists in latest_children
             .filter(|tree| {
@@ -174,7 +174,7 @@ impl<T: TreeViewItem> Tree<T> {
         Ok(())
     }
 
-    fn get_filtered_children(&self, filter: &String) -> Result<Vec<Tree<T>>> {
+    fn get_filtered_children(&self, filter: &str) -> Result<Vec<Tree<T>>> {
         Ok(vec_to_tree(
             self.item
                 .get_children()?
@@ -242,7 +242,7 @@ impl<T> Tree<T> {
         &self.item
     }
 
-    fn get<'a>(&'a self, index: usize) -> Option<&'a Tree<T>> {
+    fn get(&self, index: usize) -> Option<&Tree<T>> {
         if self.index == index {
             Some(self)
         } else {
@@ -261,7 +261,7 @@ impl<T> Tree<T> {
     }
 
     fn len(&self) -> usize {
-        (1 as usize).saturating_add(self.children.iter().map(|elem| elem.len()).sum())
+        (1_usize).saturating_add(self.children.iter().map(|elem| elem.len()).sum())
     }
 
     fn regenerate_index(&mut self) {
@@ -373,7 +373,7 @@ impl<T: TreeViewItem> TreeView<T> {
     ///
     ///    vec!["helix-term", "src", "ui", "tree.rs"]
     ///
-    pub fn reveal_item(&mut self, segments: Vec<String>, filter: &String) -> Result<()> {
+    pub fn reveal_item(&mut self, segments: Vec<String>, filter: &str) -> Result<()> {
         self.refresh_with_filter(filter)?;
 
         // Expand the tree
@@ -447,7 +447,7 @@ impl<T: TreeViewItem> TreeView<T> {
         Ok(())
     }
 
-    fn move_to_children(&mut self, filter: &String) -> Result<()> {
+    fn move_to_children(&mut self, filter: &str) -> Result<()> {
         let current = self.current_mut()?;
         if current.is_opened {
             self.set_selected(self.selected + 1);
@@ -466,7 +466,7 @@ impl<T: TreeViewItem> TreeView<T> {
         self.refresh_with_filter(&self.filter.clone())
     }
 
-    fn refresh_with_filter(&mut self, filter: &String) -> Result<()> {
+    fn refresh_with_filter(&mut self, filter: &str) -> Result<()> {
         self.tree.refresh(filter)?;
         self.set_selected(self.selected);
         Ok(())
@@ -526,7 +526,7 @@ impl<T: TreeViewItem> TreeView<T> {
         cx: &mut Context,
         params: &mut T::Params,
         selected_index: usize,
-        filter: &String,
+        filter: &str,
     ) -> Result<()> {
         let selected_item = self.get_mut(selected_index)?;
         if selected_item.is_opened {
@@ -561,7 +561,7 @@ impl<T: TreeViewItem> TreeView<T> {
     }
 
     fn saved_view(&self) -> SavedView {
-        self.saved_view.clone().unwrap_or_else(|| SavedView {
+        self.saved_view.clone().unwrap_or(SavedView {
             selected: self.selected,
         })
     }
@@ -776,7 +776,7 @@ fn render_tree<T: TreeViewItem>(
 }
 
 impl<T: TreeViewItem + Clone> TreeView<T> {
-    pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context, filter: &String) {
+    pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context, filter: &str) {
         let style = cx.editor.theme.get(&self.tree_symbol_style);
 
         let filter_prompt_area = area.with_height(1);
@@ -847,7 +847,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
     }
 
     #[cfg(test)]
-    pub fn render_to_string(&mut self, area: Rect, filter: &String) -> String {
+    pub fn render_to_string(&mut self, area: Rect, filter: &str) -> String {
         let lines = self.render_lines(area, filter);
         lines
             .into_iter()
@@ -865,7 +865,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             .join("\n")
     }
 
-    fn render_lines(&mut self, area: Rect, filter: &String) -> Vec<RenderedLine> {
+    fn render_lines(&mut self, area: Rect, filter: &str) -> Vec<RenderedLine> {
         if let Some(pre_render) = self.pre_render.take() {
             pre_render(self, area);
         }
@@ -995,7 +995,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
         event: &Event,
         cx: &mut Context,
         params: &mut T::Params,
-        filter: &String,
+        filter: &str,
     ) -> EventResult {
         let key_event = match event {
             Event::Key(event) => event,
@@ -1085,7 +1085,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                     }
                     key!(Esc) | ctrl!('c') => {
                         self.filter.clear();
-                        self.refresh_with_filter(&"".to_string())?;
+                        self.refresh_with_filter("")?;
                     }
                     _ => {
                         if let EventResult::Consumed(_) =

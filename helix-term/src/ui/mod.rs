@@ -29,7 +29,7 @@ pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
-pub use tree::{TreeViewItem, TreeOp, TreeView};
+pub use tree::{TreeOp, TreeView, TreeViewItem};
 
 use helix_core::regex::Regex;
 use helix_core::regex::RegexBuilder;
