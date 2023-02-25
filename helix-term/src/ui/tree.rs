@@ -752,9 +752,9 @@ fn render_tree<T: TreeViewItem>(
     let indent = if level > 0 {
         let indicator = if tree.item().is_parent() {
             if tree.is_opened {
-                ""
+                "⏷"
             } else {
-                ""
+                "⏵"
             }
         } else {
             " "
@@ -1289,10 +1289,10 @@ mod test_tree_view {
             render(&mut view),
             "
 (who_lives_in_a_pineapple_under_the_sea)
- gary_the_snail
- karen
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1306,10 +1306,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- (gary_the_snail)
- karen
- king_neptune
- krabby_patty
+⏵ (gary_the_snail)
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1319,10 +1319,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- gary_the_snail
- karen
- king_neptune
- (krabby_patty)
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ (krabby_patty)
 "
             .trim()
         );
@@ -1332,10 +1332,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- karen
- king_neptune
- krabby_patty
- (larry_the_lobster)
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
+⏵ (larry_the_lobster)
 "
             .trim()
         );
@@ -1345,10 +1345,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- karen
- king_neptune
- (krabby_patty)
- larry_the_lobster
+⏵ karen
+⏵ king_neptune
+⏵ (krabby_patty)
+⏵ larry_the_lobster
 "
             .trim()
         );
@@ -1358,10 +1358,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- (gary_the_snail)
- karen
- king_neptune
- krabby_patty
+⏵ (gary_the_snail)
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1371,10 +1371,10 @@ mod test_tree_view {
             render(&mut view),
             "
 (who_lives_in_a_pineapple_under_the_sea)
- gary_the_snail
- karen
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1385,10 +1385,10 @@ mod test_tree_view {
             render(&mut view),
             "
 (who_lives_in_a_pineapple_under_the_sea)
- gary_the_snail
- karen
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1399,10 +1399,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- patrick_star
- plankton
- sandy_cheeks
- (spongebob_squarepants)
+⏵ patrick_star
+⏵ plankton
+⏵ sandy_cheeks
+⏵ (spongebob_squarepants)
 "
             .trim()
         );
@@ -1416,10 +1416,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- karen
- king_neptune
- krabby_patty
- (larry_the_lobster)
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
+⏵ (larry_the_lobster)
 "
             .trim()
         );
@@ -1429,10 +1429,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- krabby_patty
- (larry_the_lobster)
- mrs_puff
- patrick_star
+⏵ krabby_patty
+⏵ (larry_the_lobster)
+⏵ mrs_puff
+⏵ patrick_star
 "
             .trim()
         );
@@ -1442,10 +1442,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- karen
- king_neptune
- krabby_patty
- (larry_the_lobster)
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
+⏵ (larry_the_lobster)
 "
             .trim()
         );
@@ -1460,10 +1460,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- patrick_star
- plankton
- sandy_cheeks
- (spongebob_squarepants)
+⏵ patrick_star
+⏵ plankton
+⏵ sandy_cheeks
+⏵ (spongebob_squarepants)
 "
             .trim()
         );
@@ -1473,10 +1473,10 @@ mod test_tree_view {
             render(&mut view),
             "
 (who_lives_in_a_pineapple_under_the_sea)
- gary_the_snail
- karen
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1490,10 +1490,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- gary_the_snail
- (karen)
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ (karen)
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1503,10 +1503,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- gary_the_snail
- karen
- king_neptune
- (krabby_patty)
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ (krabby_patty)
 "
             .trim()
         );
@@ -1516,10 +1516,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- king_neptune
- krabby_patty
- larry_the_lobster
- (mrs_puff)
+⏵ king_neptune
+⏵ krabby_patty
+⏵ larry_the_lobster
+⏵ (mrs_puff)
 "
             .trim()
         );
@@ -1529,10 +1529,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- king_neptune
- (krabby_patty)
- larry_the_lobster
- mrs_puff
+⏵ king_neptune
+⏵ (krabby_patty)
+⏵ larry_the_lobster
+⏵ mrs_puff
 "
             .trim()
         );
@@ -1542,10 +1542,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- (karen)
- king_neptune
- krabby_patty
- larry_the_lobster
+⏵ (karen)
+⏵ king_neptune
+⏵ krabby_patty
+⏵ larry_the_lobster
 "
             .trim()
         );
@@ -1555,10 +1555,10 @@ mod test_tree_view {
             render(&mut view),
             "
 (who_lives_in_a_pineapple_under_the_sea)
- gary_the_snail
- karen
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1574,10 +1574,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- [gary_the_snail]
-   (e_snail)
-   gary_th
- karen
+⏷ [gary_the_snail]
+  ⏵ (e_snail)
+  ⏵ gary_th
+⏵ karen
  "
             .trim()
         );
@@ -1587,10 +1587,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- [gary_the_snail]
-   e_snail
-   (gary_th)
- karen
+⏷ [gary_the_snail]
+  ⏵ e_snail
+  ⏵ (gary_th)
+⏵ karen
  "
             .trim()
         );
@@ -1600,10 +1600,10 @@ mod test_tree_view {
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- (gary_the_snail)
-   e_snail
-   gary_th
- karen
+⏷ (gary_the_snail)
+  ⏵ e_snail
+  ⏵ gary_th
+⏵ karen
  "
             .trim()
         );
@@ -1614,10 +1614,10 @@ mod test_tree_view {
             render(&mut view),
             "
 (who_lives_in_a_pineapple_under_the_sea)
- gary_the_snail
-   e_snail
-   gary_th
- karen
+⏷ gary_the_snail
+  ⏵ e_snail
+  ⏵ gary_th
+⏵ karen
  "
             .trim()
         );
@@ -1635,10 +1635,10 @@ mod test_tree_view {
             render(&mut view),
             "
 (who_lives_in_a_pinea)
- gary_the_snail
- karen
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1700,10 +1700,10 @@ krabby_patty
             render(&mut view),
             "
 (who_lives_in_a_pinea)
- gary_the_snail
- karen
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1713,10 +1713,10 @@ krabby_patty
             render(&mut view),
             "
 (who_lives_in_a_pinea)
- gary_the_snail
- karen
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1735,10 +1735,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- (gary_the_snail)
- karen
- king_neptune
- krabby_patty
+⏵ (gary_the_snail)
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1748,10 +1748,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- [gary_the_snail]
-   (e_snail)
-   gary_th
- karen
+⏷ [gary_the_snail]
+  ⏵ (e_snail)
+  ⏵ gary_th
+⏵ karen
 "
             .trim()
         );
@@ -1761,10 +1761,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- [gary_the_snail]
-   e_snail
-   (gary_th)
- karen
+⏷ [gary_the_snail]
+  ⏵ e_snail
+  ⏵ (gary_th)
+⏵ karen
 "
             .trim()
         );
@@ -1774,10 +1774,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- (gary_the_snail)
-   e_snail
-   gary_th
- karen
+⏷ (gary_the_snail)
+  ⏵ e_snail
+  ⏵ gary_th
+⏵ karen
 "
             .trim()
         );
@@ -1787,10 +1787,10 @@ krabby_patty
             render(&mut view),
             "
 (who_lives_in_a_pineapple_under_the_sea)
- gary_the_snail
-   e_snail
-   gary_th
- karen
+⏷ gary_the_snail
+  ⏵ e_snail
+  ⏵ gary_th
+⏵ karen
 "
             .trim()
         );
@@ -1800,10 +1800,10 @@ krabby_patty
             render(&mut view),
             "
 (who_lives_in_a_pineapple_under_the_sea)
- gary_the_snail
-   e_snail
-   gary_th
- karen
+⏷ gary_the_snail
+  ⏵ e_snail
+  ⏵ gary_th
+⏵ karen
 "
             .trim()
         )
@@ -1818,10 +1818,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- gary_the_snail
- karen
- king_neptune
- (krabby_patty)
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ (krabby_patty)
 "
             .trim()
         );
@@ -1831,10 +1831,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- karen
- king_neptune
- krabby_patty
- (larry_the_lobster)
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
+⏵ (larry_the_lobster)
 "
             .trim()
         );
@@ -1845,10 +1845,10 @@ krabby_patty
             render(&mut view),
             "
 (who_lives_in_a_pineapple_under_the_sea)
- gary_the_snail
- karen
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
 "
             .trim()
         );
@@ -1863,10 +1863,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- karen
- king_neptune
- krabby_patty
- (larry_the_lobster)
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
+⏵ (larry_the_lobster)
 "
             .trim()
         );
@@ -1877,10 +1877,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- karen
- king_neptune
- (krabby_patty)
- larry_the_lobster
+⏵ karen
+⏵ king_neptune
+⏵ (krabby_patty)
+⏵ larry_the_lobster
 "
             .trim()
         );
@@ -1896,10 +1896,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- gary_the_snail
- karen
- king_neptune
- (krabby_patty)
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ (krabby_patty)
  "
             .trim()
         );
@@ -1909,10 +1909,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- krabby_patty
- larry_the_lobster
- mrs_puff
- (patrick_star)
+⏵ krabby_patty
+⏵ larry_the_lobster
+⏵ mrs_puff
+⏵ (patrick_star)
  "
             .trim()
         );
@@ -1922,10 +1922,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- (krabby_patty)
- larry_the_lobster
- mrs_puff
- patrick_star
+⏵ (krabby_patty)
+⏵ larry_the_lobster
+⏵ mrs_puff
+⏵ patrick_star
  "
             .trim()
         );
@@ -1941,10 +1941,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- krabby_patty
- larry_the_lobster
- mrs_puff
- (patrick_star)
+⏵ krabby_patty
+⏵ larry_the_lobster
+⏵ mrs_puff
+⏵ (patrick_star)
  "
             .trim()
         );
@@ -1954,10 +1954,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- (krabby_patty)
- larry_the_lobster
- mrs_puff
- patrick_star
+⏵ (krabby_patty)
+⏵ larry_the_lobster
+⏵ mrs_puff
+⏵ patrick_star
  "
             .trim()
         );
@@ -1967,10 +1967,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- krabby_patty
- larry_the_lobster
- mrs_puff
- (patrick_star)
+⏵ krabby_patty
+⏵ larry_the_lobster
+⏵ mrs_puff
+⏵ (patrick_star)
  "
             .trim()
         );
@@ -1994,10 +1994,10 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
- [spongebob_squarepants]
-   [squarepants]
-     [squar]
-       [uar]
+⏷ [spongebob_squarepants]
+  ⏷ [squarepants]
+    ⏷ [squar]
+      ⏷ [uar]
           (ar)"
                 .trim_start_matches(|c| c == '\n')
         );
@@ -2023,10 +2023,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- gary_the_snail
- karen
- king_neptune
- (krabby_patty)
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ (krabby_patty)
           "
             .trim()
         );
@@ -2036,10 +2036,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- gary_the_snail
- (karen)
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ (karen)
+⏵ king_neptune
+⏵ krabby_patty
           "
             .trim()
         );
@@ -2049,10 +2049,10 @@ krabby_patty
             render(&mut view),
             "
 (who_lives_in_a_pineapple_under_the_sea)
- gary_the_snail
- karen
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
           "
             .trim()
         );
@@ -2062,10 +2062,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- gary_the_snail
- (karen)
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ (karen)
+⏵ king_neptune
+⏵ krabby_patty
           "
             .trim()
         );
@@ -2075,10 +2075,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- gary_the_snail
- karen
- king_neptune
- (krabby_patty)
+⏵ gary_the_snail
+⏵ karen
+⏵ king_neptune
+⏵ (krabby_patty)
           "
             .trim()
         );
@@ -2088,10 +2088,10 @@ krabby_patty
             render(&mut view),
             "
 [who_lives_in_a_pineapple_under_the_sea]
- gary_the_snail
- (karen)
- king_neptune
- krabby_patty
+⏵ gary_the_snail
+⏵ (karen)
+⏵ king_neptune
+⏵ krabby_patty
           "
             .trim()
         );
@@ -2168,8 +2168,8 @@ krabby_patty
             render(&mut view),
             "
 (root)
- a
- b
+⏵ a
+⏵ b
           "
             .trim()
         );
@@ -2183,7 +2183,7 @@ krabby_patty
             render(&mut view),
             "
 [root]
- [a]
+⏷ [a]
     (aa)
           "
             .trim()
@@ -2198,7 +2198,7 @@ krabby_patty
             render(&mut view),
             "
 [root]
- [a]
+⏷ [a]
     (ab)
           "
             .trim()
@@ -2213,7 +2213,7 @@ krabby_patty
             "
 [root]
     ab
- (b)
+⏵ (b)
           "
             .trim()
         );
@@ -2224,8 +2224,8 @@ krabby_patty
             render(&mut view),
             "
 [root]
- [b]
-   (ba)
+⏷ [b]
+  ⏵ (ba)
           "
             .trim()
         );
@@ -2238,9 +2238,9 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
- [b]
-   [ba]
-     (baa)
+⏷ [b]
+  ⏷ [ba]
+    ⏵ (baa)
           "
             .trim()
         );
@@ -2250,8 +2250,8 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
-   [ba]
-     [baa]
+  ⏷ [ba]
+    ⏷ [baa]
         (baaa)
 "
             .trim_matches('\n')
@@ -2262,8 +2262,8 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
-   [ba]
-     [baa]
+  ⏷ [ba]
+    ⏷ [baa]
         (baab)
 "
             .trim_matches('\n')
@@ -2275,8 +2275,8 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
-   [ba]
-     [baa]
+  ⏷ [ba]
+    ⏷ [baa]
         (baaa)
 "
             .trim_matches('\n')
@@ -2287,9 +2287,9 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
- [b]
-   [ba]
-     (baa)
+⏷ [b]
+  ⏷ [ba]
+    ⏷ (baa)
           "
             .trim()
         );
@@ -2303,8 +2303,8 @@ krabby_patty
             render(&mut view),
             "
 [root]
- [b]
-   (ba)
+⏷ [b]
+  ⏷ (ba)
           "
             .trim()
         );
@@ -2315,8 +2315,8 @@ krabby_patty
             render(&mut view),
             "
 [root]
- (b)
-   ba
+⏷ (b)
+  ⏷ ba
           "
             .trim()
         );
@@ -2327,7 +2327,7 @@ krabby_patty
             render(&mut view),
             "
 [root]
- [a]
+⏷ [a]
     (ab)
           "
             .trim()
@@ -2339,7 +2339,7 @@ krabby_patty
             render(&mut view),
             "
 [root]
- [a]
+⏷ [a]
     (aa)
           "
             .trim()

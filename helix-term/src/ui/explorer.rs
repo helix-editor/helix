@@ -950,8 +950,8 @@ mod test_explorer {
             render(&mut explorer),
             "
 (test-explorer/reveal_file)
- scripts
- styles
+⏵ scripts
+⏵ styles
   .gitignore
   index.html
 "
@@ -966,9 +966,9 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/reveal_file]
- [scripts]
+⏷ [scripts]
     (main.js)
- styles
+⏵ styles
   .gitignore
   index.html
 "
@@ -1014,8 +1014,8 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/rename]
- scripts
- styles
+⏵ scripts
+⏵ styles
   (.gitignore)
   index.html
 "
@@ -1032,8 +1032,8 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/rename]
- scripts
- styles
+⏵ scripts
+⏵ styles
   index.html
   (who.is)
 "
@@ -1052,9 +1052,9 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/rename]
- scripts
- [styles]
-   public
+⏵ scripts
+⏷ [styles]
+  ⏵ public
     (lol)
     style.css
   index.html
@@ -1076,12 +1076,12 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/rename]
- [new_folder]
-   [sponge]
+⏷ [new_folder]
+  ⏷ [sponge]
       (bob)
- scripts
- styles
-   public
+⏵ scripts
+⏷ styles
+  ⏵ public
     style.css
   index.html
 "
@@ -1134,9 +1134,9 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/new_folder]
- scripts
- styles
- (yoyo)
+⏵ scripts
+⏵ styles
+⏷ (yoyo)
   .gitignore
   index.html
 "
@@ -1156,12 +1156,12 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/new_folder]
- scripts
- [styles]
-   public
-   (sus.sass)
+⏵ scripts
+⏷ [styles]
+  ⏵ public
+  ⏷ (sus.sass)
     style.css
- yoyo
+⏷ yoyo
   .gitignore
   index.html
 "
@@ -1180,13 +1180,13 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/new_folder]
- [styles]
-   [sus.sass]
-     [a]
-       [b]
-         (c)
+⏷ [styles]
+  ⏷ [sus.sass]
+    ⏷ [a]
+      ⏷ [b]
+        ⏷ (c)
     style.css
- yoyo
+⏷ yoyo
   .gitignore
   index.html
 "
@@ -1207,14 +1207,14 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/new_folder]
- scripts
- [styles]
-   (foobar)
-   public
-   sus.sass
-     a
-       b
-         c
+⏵ scripts
+⏷ [styles]
+  ⏷ (foobar)
+  ⏵ public
+  ⏷ sus.sass
+    ⏷ a
+      ⏷ b
+        ⏷ c
     style.css
 "
             .trim()
@@ -1234,8 +1234,8 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/new_file]
- scripts
- styles
+⏵ scripts
+⏵ styles
   .gitignore
   index.html
   (yoyo)
@@ -1256,9 +1256,9 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/new_file]
- scripts
- [styles]
-   public
+⏵ scripts
+⏷ [styles]
+  ⏵ public
     style.css
     (sus.sass)
   .gitignore
@@ -1280,12 +1280,12 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/new_file]
- scripts
- [styles]
-   [a]
-     [b]
+⏵ scripts
+⏷ [styles]
+  ⏷ [a]
+    ⏷ [b]
         (c)
-   public
+  ⏵ public
     style.css
     sus.sass
   .gitignore
@@ -1307,10 +1307,10 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/new_file]
- [styles]
-     b
+⏷ [styles]
+    ⏷ b
         c
-   public
+  ⏵ public
     (foobar)
     style.css
     sus.sass
@@ -1335,8 +1335,8 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/remove_file]
- scripts
- styles
+⏵ scripts
+⏵ styles
   (.gitignore)
   index.html
 "
@@ -1353,8 +1353,8 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/remove_file]
- scripts
- styles
+⏵ scripts
+⏵ styles
   (index.html)
 "
             .trim()
@@ -1373,8 +1373,8 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/remove_file]
- scripts
- (styles)
+⏵ scripts
+⏵ (styles)
 "
             .trim()
         );
@@ -1394,9 +1394,9 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/remove_folder]
- scripts
- (styles)
-   public
+⏵ scripts
+⏷ (styles)
+  ⏵ public
     style.css
   .gitignore
   index.html
@@ -1414,7 +1414,7 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/remove_folder]
- scripts
+⏵ scripts
   (.gitignore)
   index.html
 "
@@ -1440,7 +1440,7 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/change_root/styles]
- (public)
+⏵ (public)
   style.css
 "
             .trim()
@@ -1454,8 +1454,8 @@ mod test_explorer {
             render(&mut explorer),
             "
 (test-explorer/change_root)
- scripts
- styles
+⏵ scripts
+⏵ styles
   .gitignore
   index.html
 "
@@ -1470,7 +1470,7 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/change_root/styles]
- (public)
+⏵ (public)
   style.css
 "
             .trim()
@@ -1486,9 +1486,9 @@ mod test_explorer {
             render(&mut explorer),
             "
 [test-explorer/change_root]
- scripts
- (styles)
-   public
+⏵ scripts
+⏷ (styles)
+  ⏵ public
     style.css
   .gitignore
   index.html
