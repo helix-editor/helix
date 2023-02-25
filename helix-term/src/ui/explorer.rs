@@ -158,6 +158,7 @@ pub struct Explorer {
     tree: TreeView<FileInfo>,
     history: Vec<TreeView<FileInfo>>,
     show_help: bool,
+    show_preview: bool,
     state: State,
     prompt: Option<(PromptAction, Prompt)>,
     #[allow(clippy::type_complexity)]
@@ -172,6 +173,7 @@ impl Explorer {
             tree: Self::new_tree_view(current_root.clone())?,
             history: vec![],
             show_help: false,
+            show_preview: false,
             state: State::new(true, current_root),
             prompt: None,
             on_next_key: None,
@@ -184,7 +186,8 @@ impl Explorer {
         Ok(Self {
             tree: Self::new_tree_view(root.clone())?,
             history: vec![],
-            show_help: true,
+            show_help: false,
+            show_preview: false,
             state: State::new(true, root),
             prompt: None,
             on_next_key: None,
@@ -540,7 +543,8 @@ impl Explorer {
                     }
                 };
                 self.render_help(help_area, surface, cx);
-            } else {
+            }
+            if self.show_preview {
                 const PREVIEW_AREA_MAX_WIDTH: u16 = 90;
                 const PREVIEW_AREA_MAX_HEIGHT: u16 = 30;
                 let preview_area_width =
@@ -572,6 +576,7 @@ impl Explorer {
                 let area = Rect::new(preview_area.x, y, preview_area_width, preview_area_height);
                 surface.clear_with(area, background);
                 let area = render_block(area, surface, Borders::all());
+
                 self.render_preview(area, surface, cx.editor);
             }
         }
@@ -595,6 +600,7 @@ impl Explorer {
                 ("[", "Go to previous root"),
                 ("+, =", "Increase size"),
                 ("-, _", "Decrease size"),
+                ("C-t", "Toggle preview (left/right only)"),
                 ("q", "Close"),
             ]
             .into_iter()
@@ -736,6 +742,10 @@ impl Explorer {
         std::fs::remove_file(&item.path)?;
         self.tree.refresh()
     }
+
+    fn toggle_preview(&mut self) {
+        self.show_preview = !self.show_preview
+    }
 }
 
 fn close_documents(current_item_path: PathBuf, cx: &mut Context) -> Result<()> {
@@ -799,6 +809,7 @@ impl Component for Explorer {
                 key!('r') => self.new_rename_prompt(cx)?,
                 key!('-') | key!('_') => self.decrease_size(),
                 key!('+') | key!('=') => self.increase_size(),
+                ctrl!('t') => self.toggle_preview(),
                 _ => {
                     self.tree
                         .handle_event(&Event::Key(*key_event), cx, &mut self.state, &filter);

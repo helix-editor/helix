@@ -49,7 +49,7 @@ New:
 - [x] Sticky ancestors
 - [x] remove unwrap and expect
 - [x] bug(tree): zb does not work, because clash with explorer 'b'
-- [] Toggle preview
+- [x] Toggle preview
 - [] search highlight matching word
 - [] Error didn't clear
 - [] should preview be there by default?
