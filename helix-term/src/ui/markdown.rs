@@ -342,9 +342,6 @@ impl Component for Markdown {
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let padding = 2;
-        if padding >= viewport.1 || padding >= viewport.0 {
-            return None;
-        }
         let contents = self.parse(None);
 
         // TODO: account for tab width

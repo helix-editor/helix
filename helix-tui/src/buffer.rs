@@ -510,9 +510,13 @@ impl Buffer {
     pub fn clear_with(&mut self, area: Rect, style: Style) {
         for x in area.left()..area.right() {
             for y in area.top()..area.bottom() {
-                let cell = &mut self[(x, y)];
-                cell.reset();
-                cell.set_style(style);
+                if let Some(cell) = &mut self.get_mut(x, y) {
+                    cell.reset();
+                    cell.set_style(style);
+                } else {
+                    // Skip this render if the window size has changed
+                    return;
+                }
             }
         }
     }
