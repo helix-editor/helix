@@ -1,2 +1,4 @@
 /target
+
+# This folder is used by `test_explorer` to create temporary folders needed for testing
 test-explorer
