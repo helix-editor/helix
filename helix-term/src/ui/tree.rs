@@ -471,11 +471,11 @@ impl<T: TreeViewItem> TreeView<T> {
         Ok(())
     }
 
-    fn move_to_first(&mut self) {
+    fn move_to_first_line(&mut self) {
         self.move_up(usize::MAX / 2)
     }
 
-    fn move_to_last(&mut self) {
+    fn move_to_last_line(&mut self) {
         self.move_down(usize::MAX / 2)
     }
 
@@ -712,11 +712,12 @@ impl<T: TreeViewItem> TreeView<T> {
     }
 }
 
+#[derive(Clone)]
 struct RenderedLine {
     indent: String,
-    name: String,
+    content: String,
     selected: bool,
-    descendant_selected: bool,
+    is_ancestor_of_current_item: bool,
 }
 struct RenderTreeParams<'a, T> {
     tree: &'a Tree<T>,
@@ -753,8 +754,8 @@ fn render_tree<T: TreeViewItem>(
     let head = RenderedLine {
         indent,
         selected: selected == tree.index,
-        descendant_selected: selected != tree.index && tree.get(selected).is_some(),
-        name,
+        is_ancestor_of_current_item: selected != tree.index && tree.get(selected).is_some(),
+        content: name,
     };
     let prefix = format!("{}{}", prefix, if level == 0 { "" } else { "  " });
     vec![head]
@@ -828,12 +829,12 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             surface.set_stringn(
                 x,
                 area.y,
-                line.name.clone(),
+                line.content.clone(),
                 area.width
                     .saturating_sub(indent_len)
                     .saturating_sub(1)
                     .into(),
-                if line.descendant_selected {
+                if line.is_ancestor_of_current_item {
                     ancestor_style
                 } else {
                     style
@@ -849,11 +850,11 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             .into_iter()
             .map(|line| {
                 let name = if line.selected {
-                    format!("({})", line.name)
-                } else if line.descendant_selected {
-                    format!("[{}]", line.name)
+                    format!("({})", line.content)
+                } else if line.is_ancestor_of_current_item {
+                    format!("[{}]", line.content)
                 } else {
-                    line.name
+                    line.content
                 };
                 format!("{}{}", line.indent, name)
             })
@@ -884,15 +885,82 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                 line.indent
                     .chars()
                     .count()
-                    .saturating_add(line.name.chars().count())
+                    .saturating_add(line.content.chars().count())
             })
             .max()
             .unwrap_or(0);
 
         let max_width = area.width as usize;
 
-        lines
+        let take = area.height as usize;
+
+        struct RetainAncestorResult {
+            skipped_ancestors: Vec<RenderedLine>,
+            remaining_lines: Vec<RenderedLine>,
+        }
+        fn retain_ancestors(lines: Vec<RenderedLine>, skip: usize) -> RetainAncestorResult {
+            if skip == 0 {
+                return RetainAncestorResult {
+                    skipped_ancestors: vec![],
+                    remaining_lines: lines,
+                };
+            }
+            if let Some(line) = lines.get(0) {
+                if line.selected {
+                    return RetainAncestorResult {
+                        skipped_ancestors: vec![],
+                        remaining_lines: lines,
+                    };
+                }
+            }
+
+            let selected_index = lines.iter().position(|line| line.selected);
+            let skip = match selected_index {
+                None => skip,
+                Some(selected_index) => skip.min(selected_index),
+            };
+            let (skipped, remaining) = lines.split_at(skip.min(lines.len().saturating_sub(1)));
+
+            let skipped_ancestors = skipped
+                .iter()
+                .cloned()
+                .filter(|line| line.is_ancestor_of_current_item)
+                .collect::<Vec<_>>();
+
+            let result = retain_ancestors(remaining.to_vec(), skipped_ancestors.len());
+            RetainAncestorResult {
+                skipped_ancestors: skipped_ancestors
+                    .into_iter()
+                    .chain(result.skipped_ancestors.into_iter())
+                    .collect(),
+                remaining_lines: result.remaining_lines,
+            }
+        }
+
+        let RetainAncestorResult {
+            skipped_ancestors,
+            remaining_lines,
+        } = retain_ancestors(lines, skip);
+
+        let max_ancestors_len = take.saturating_sub(1);
+
+        // Skip furthest ancestors
+        let skipped_ancestors = skipped_ancestors
             .into_iter()
+            .rev()
+            .take(max_ancestors_len)
+            .rev()
+            .collect::<Vec<_>>();
+
+        let skipped_ancestors_len = skipped_ancestors.len();
+
+        skipped_ancestors
+            .into_iter()
+            .chain(
+                remaining_lines
+                    .into_iter()
+                    .take(take.saturating_sub(skipped_ancestors_len)),
+            )
             // Horizontal scroll
             .map(|line| {
                 let skip = self.column;
@@ -907,18 +975,15 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                             .take(max_width)
                             .collect::<String>()
                     },
-                    name: line
-                        .name
+                    content: line
+                        .content
                         .chars()
                         .skip(skip.saturating_sub(indent_len))
-                        .take((max_width.saturating_sub(indent_len)).clamp(0, line.name.len()))
+                        .take((max_width.saturating_sub(indent_len)).clamp(0, line.content.len()))
                         .collect::<String>(),
                     ..line
                 }
             })
-            // Vertical scroll
-            .skip(skip)
-            .take(area.height as usize)
             .collect()
     }
 
@@ -972,8 +1037,8 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             ctrl!('u') => self.move_up_half_page(),
             key!('g') => {
                 self.on_next_key = Some(Box::new(|_, tree, event| match event {
-                    key!('g') => tree.move_to_first(),
-                    key!('e') => tree.move_to_last(),
+                    key!('g') => tree.move_to_first_line(),
+                    key!('e') => tree.move_to_last_line(),
                     key!('h') => tree.move_leftmost(),
                     key!('l') => tree.move_rightmost(),
                     _ => {}
@@ -1103,7 +1168,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
 ///     yo (4)
 /// ```
 fn index_elems<T>(parent_index: usize, elems: Vec<Tree<T>>) -> Vec<Tree<T>> {
-    fn index_elems<'a, T>(
+    fn index_elems<T>(
         current_index: usize,
         elems: Vec<Tree<T>>,
         parent_index: usize,
@@ -1248,7 +1313,7 @@ mod test_tree_view {
         assert_eq!(
             render(&mut view),
             "
- gary_the_snail
+[who_lives_in_a_pineapple_under_the_sea]
  karen
  king_neptune
  krabby_patty
@@ -1261,7 +1326,7 @@ mod test_tree_view {
         assert_eq!(
             render(&mut view),
             "
- gary_the_snail
+[who_lives_in_a_pineapple_under_the_sea]
  karen
  king_neptune
  (krabby_patty)
@@ -1274,11 +1339,11 @@ mod test_tree_view {
         assert_eq!(
             render(&mut view),
             "
+[who_lives_in_a_pineapple_under_the_sea]
  (gary_the_snail)
  karen
  king_neptune
  krabby_patty
- larry_the_lobster
 "
             .trim()
         );
@@ -1296,7 +1361,7 @@ mod test_tree_view {
             .trim()
         );
 
-        view.move_to_first();
+        view.move_to_first_line();
         view.move_up(1);
         assert_eq!(
             render(&mut view),
@@ -1310,12 +1375,12 @@ mod test_tree_view {
             .trim()
         );
 
-        view.move_to_last();
+        view.move_to_last_line();
         view.move_down(1);
         assert_eq!(
             render(&mut view),
             "
- mrs_puff
+[who_lives_in_a_pineapple_under_the_sea]
  patrick_star
  plankton
  sandy_cheeks
@@ -1332,7 +1397,7 @@ mod test_tree_view {
         assert_eq!(
             render(&mut view),
             "
- gary_the_snail
+[who_lives_in_a_pineapple_under_the_sea]
  karen
  king_neptune
  krabby_patty
@@ -1345,7 +1410,7 @@ mod test_tree_view {
         assert_eq!(
             render(&mut view),
             "
- king_neptune
+[who_lives_in_a_pineapple_under_the_sea]
  krabby_patty
  (larry_the_lobster)
  mrs_puff
@@ -1358,7 +1423,7 @@ mod test_tree_view {
         assert_eq!(
             render(&mut view),
             "
- gary_the_snail
+[who_lives_in_a_pineapple_under_the_sea]
  karen
  king_neptune
  krabby_patty
@@ -1372,11 +1437,11 @@ mod test_tree_view {
     fn test_move_to_first_last() {
         let mut view = dummy_tree_view();
 
-        view.move_to_last();
+        view.move_to_last_line();
         assert_eq!(
             render(&mut view),
             "
- mrs_puff
+[who_lives_in_a_pineapple_under_the_sea]
  patrick_star
  plankton
  sandy_cheeks
@@ -1385,7 +1450,7 @@ mod test_tree_view {
             .trim()
         );
 
-        view.move_to_first();
+        view.move_to_first_line();
         assert_eq!(
             render(&mut view),
             "
@@ -1432,7 +1497,7 @@ mod test_tree_view {
         assert_eq!(
             render(&mut view),
             "
- karen
+[who_lives_in_a_pineapple_under_the_sea]
  king_neptune
  krabby_patty
  larry_the_lobster
@@ -1445,7 +1510,7 @@ mod test_tree_view {
         assert_eq!(
             render(&mut view),
             "
- karen
+[who_lives_in_a_pineapple_under_the_sea]
  king_neptune
  (krabby_patty)
  larry_the_lobster
@@ -1458,11 +1523,11 @@ mod test_tree_view {
         assert_eq!(
             render(&mut view),
             "
+[who_lives_in_a_pineapple_under_the_sea]
  (karen)
  king_neptune
  krabby_patty
  larry_the_lobster
- mrs_puff
 "
             .trim()
         );
@@ -1525,7 +1590,7 @@ mod test_tree_view {
             .trim()
         );
 
-        view.move_to_last();
+        view.move_to_last_line();
         view.move_to_parent();
         assert_eq!(
             render(&mut view),
@@ -1747,7 +1812,7 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
- gary_the_snail
+[who_lives_in_a_pineapple_under_the_sea]
  karen
  king_neptune
  krabby_patty
@@ -1756,7 +1821,7 @@ krabby_patty
             .trim()
         );
 
-        view.move_to_last();
+        view.move_to_last_line();
         view.search_next("who_lives");
         assert_eq!(
             render(&mut view),
@@ -1779,7 +1844,7 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
- gary_the_snail
+[who_lives_in_a_pineapple_under_the_sea]
  karen
  king_neptune
  krabby_patty
@@ -1788,12 +1853,12 @@ krabby_patty
             .trim()
         );
 
-        view.move_to_last();
+        view.move_to_last_line();
         view.search_previous("krab");
         assert_eq!(
             render(&mut view),
             "
- gary_the_snail
+[who_lives_in_a_pineapple_under_the_sea]
  karen
  king_neptune
  (krabby_patty)
@@ -1825,7 +1890,7 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
- king_neptune
+[who_lives_in_a_pineapple_under_the_sea]
  krabby_patty
  larry_the_lobster
  mrs_puff
@@ -1838,7 +1903,7 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
- king_neptune
+[who_lives_in_a_pineapple_under_the_sea]
  (krabby_patty)
  larry_the_lobster
  mrs_puff
@@ -1857,7 +1922,7 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
- king_neptune
+[who_lives_in_a_pineapple_under_the_sea]
  krabby_patty
  larry_the_lobster
  mrs_puff
@@ -1870,7 +1935,7 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
- king_neptune
+[who_lives_in_a_pineapple_under_the_sea]
  (krabby_patty)
  larry_the_lobster
  mrs_puff
@@ -1883,7 +1948,7 @@ krabby_patty
         assert_eq!(
             render(&mut view),
             "
- king_neptune
+[who_lives_in_a_pineapple_under_the_sea]
  krabby_patty
  larry_the_lobster
  mrs_puff
@@ -1898,22 +1963,22 @@ krabby_patty
         let mut view = dummy_tree_view();
 
         // 1. Move to the last child item on the tree
-        view.move_to_last();
+        view.move_to_last_line();
         view.move_to_children(&"".to_string()).unwrap();
-        view.move_to_last();
+        view.move_to_last_line();
         view.move_to_children(&"".to_string()).unwrap();
-        view.move_to_last();
+        view.move_to_last_line();
         view.move_to_children(&"".to_string()).unwrap();
-        view.move_to_last();
+        view.move_to_last_line();
         view.move_to_children(&"".to_string()).unwrap();
 
         // 1a. Expect the current selected item is the last child on the tree
         assert_eq!(
             render(&mut view),
             "
-     epants
+ [spongebob_squarepants]
+   [squarepants]
      [squar]
-        sq
        [uar]
           (ar)"
                 .trim_start_matches(|c| c == '\n')
@@ -1970,6 +2035,255 @@ krabby_patty
  karen
  king_neptune
  krabby_patty
+          "
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_sticky_ancestors() {
+        // The ancestors of the current item should always be visible
+        // However, if there's not enough space, the current item will take precedence,
+        // and the nearest ancestor has higher precedence than further ancestors
+
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
+        struct Item<'a> {
+            name: &'a str,
+            children: Option<Vec<Item<'a>>>,
+        }
+
+        fn parent<'a>(name: &'a str, children: Vec<Item<'a>>) -> Item<'a> {
+            Item {
+                name,
+                children: Some(children),
+            }
+        }
+
+        fn child<'a>(name: &'a str) -> Item<'a> {
+            Item {
+                name,
+                children: None,
+            }
+        }
+
+        impl<'a> TreeViewItem for Item<'a> {
+            type Params = ();
+
+            fn name(&self) -> String {
+                self.name.to_string()
+            }
+
+            fn is_parent(&self) -> bool {
+                self.children.is_some()
+            }
+
+            fn get_children(&self) -> anyhow::Result<Vec<Self>> {
+                match &self.children {
+                    Some(children) => Ok(children.clone()),
+                    None => Ok(vec![]),
+                }
+            }
+
+            fn filter(&self, s: &str) -> bool {
+                self.name().to_lowercase().contains(&s.to_lowercase())
+            }
+        }
+
+        fn render<'a>(view: &mut TreeView<Item<'a>>) -> String {
+            view.render_to_string(dummy_area().with_height(3), &"".to_string())
+        }
+
+        let mut view = TreeView::new(
+            parent("root", vec![]),
+            vec_to_tree(vec![
+                parent("a", vec![child("aa"), child("ab")]),
+                parent(
+                    "b",
+                    vec![parent(
+                        "ba",
+                        vec![parent("baa", vec![child("baaa"), child("baab")])],
+                    )],
+                ),
+            ]),
+        );
+
+        assert_eq!(
+            render(&mut view),
+            "
+(root)
+ a
+ b
+          "
+            .trim()
+        );
+
+        // 1. Move down to "a", and expand it
+        let filter = "".to_string();
+        view.move_down(1);
+        view.move_to_children(&filter).unwrap();
+
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+ [a]
+    (aa)
+          "
+            .trim()
+        );
+
+        // 2. Move down by 1
+        view.move_down(1);
+
+        // 2a. Expect all ancestors (i.e. "root" and "a") are visible,
+        //     and the cursor is at "ab"
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+ [a]
+    (ab)
+          "
+            .trim()
+        );
+
+        // 3. Move down by 1
+        view.move_down(1);
+
+        // 3a. Expect "a" is out of view, because it is no longer the ancestor of the current item
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+    ab
+ (b)
+          "
+            .trim()
+        );
+
+        // 4. Move to the children of "b", which is "ba"
+        view.move_to_children(&filter).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+ [b]
+   (ba)
+          "
+            .trim()
+        );
+
+        // 5. Move to the children of "ba", which is "baa"
+        view.move_to_children(&filter).unwrap();
+
+        // 5a. Expect the furthest ancestor "root" is out of view,
+        //     because when there's no enough space, the nearest ancestor takes precedence
+        assert_eq!(
+            render(&mut view),
+            "
+ [b]
+   [ba]
+     (baa)
+          "
+            .trim()
+        );
+
+        // 5.1 Move to child
+        view.move_to_children(&filter).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+   [ba]
+     [baa]
+        (baaa)
+"
+            .trim_matches('\n')
+        );
+
+        // 5.2 Move down
+        view.move_down(1);
+        assert_eq!(
+            render(&mut view),
+            "
+   [ba]
+     [baa]
+        (baab)
+"
+            .trim_matches('\n')
+        );
+
+        // 5.3 Move up
+        view.move_up(1);
+        assert_eq!(view.current_item().name, "baaa");
+        assert_eq!(
+            render(&mut view),
+            "
+   [ba]
+     [baa]
+        (baaa)
+"
+            .trim_matches('\n')
+        );
+
+        // 5.4 Move up
+        view.move_up(1);
+        assert_eq!(
+            render(&mut view),
+            "
+ [b]
+   [ba]
+     (baa)
+          "
+            .trim()
+        );
+
+        // 6. Move up by one
+        view.move_up(1);
+
+        // 6a. Expect "root" is visible again, because now there's enough space to render all
+        //     ancestors
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+ [b]
+   (ba)
+          "
+            .trim()
+        );
+
+        // 7. Move up by one
+        view.move_up(1);
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+ (b)
+   ba
+          "
+            .trim()
+        );
+
+        // 8. Move up by one
+        view.move_up(1);
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+ [a]
+    (ab)
+          "
+            .trim()
+        );
+
+        // 9. Move up by one
+        view.move_up(1);
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+ [a]
+    (aa)
           "
             .trim()
         );

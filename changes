@@ -46,12 +46,15 @@ New:
 - [x] bind "o" to open/close file/folder
 - [x] bind "C-n/C-p" to up/down
 - [x] bind "="/"_" to zoom-in/zoom-out
+- [x] Sticky ancestors
+- [] Toggle preview
 - [] search highlight matching word
 - [] Error didn't clear
 - [] should preview be there by default?
 - [] Fix panic bugs (see github comments)
-- [] Sticky ancestors
+- [] explorer(preview): use popup instead of custom components
 - [] explorer(preview): overflow where bufferline is there
 - [] explorer(preview): implement scrolling C-j/C-k
 - [] symlink not showing
 - [] remove unwrap and expect
+- [] bug(tree): zb does not work, because clash with explorer 'b'

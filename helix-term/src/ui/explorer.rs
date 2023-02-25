@@ -593,8 +593,8 @@ impl Explorer {
                 ("b", "Change root to parent folder"),
                 ("]", "Change root to current folder"),
                 ("[", "Go to previous root"),
-                ("+", "Increase size"),
-                ("-", "Decrease size"),
+                ("+, =", "Increase size"),
+                ("-, _", "Decrease size"),
                 ("q", "Close"),
             ]
             .into_iter()
@@ -1169,8 +1169,8 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
+[test-explorer/new_folder]
  [styles]
-   public
    [sus.sass]
      [a]
        [b]
@@ -1296,8 +1296,8 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
+[test-explorer/new_file]
  [styles]
-   a
      b
         c
    public
