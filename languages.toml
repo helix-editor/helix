@@ -2218,3 +2218,16 @@ comment-token = "#"
 [[grammar]]
 name = "po"
 source = { git = "https://github.com/erasin/tree-sitter-po", rev = "417cee9abb2053ed26b19e7de972398f2da9b29e" }
+
+[[language]]
+name = "nasm"
+scope = "source.nasm"
+file-types = ["asm", "s", "S", "nasm"]
+injection-regex = "n?asm"
+roots = []
+comment-token = ";"
+indent = { tab-width = 8, unit = "        " }
+
+[[grammar]]
+name = "nasm"
+source = { git = "https://github.com/naclsn/tree-sitter-nasm", rev = "a0db15db6fcfb1bf2cc8702500e55e558825c48b" }
