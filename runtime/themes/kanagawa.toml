@@ -16,8 +16,6 @@
 
 "ui.virtual" = "sumiInk4"
 "ui.virtual.ruler" = { bg = "sumiInk2" }
-"ui.virtual.whitespace" = "sumiInk4"
-"ui.virtual.indent-guide" = "sumiInk4"
 
 "ui.statusline" = { fg = "oldWhite", bg = "sumiInk0" }
 "ui.statusline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }
@@ -41,6 +39,7 @@
 "ui.highlight" = { fg = "fujiWhite", bg = "waveBlue2" }
 "ui.menu" = { fg = "fujiWhite", bg = "waveBlue1" }
 "ui.menu.selected" = { fg = "fujiWhite", bg = "waveBlue2", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "oldWhite", bg = "waveBlue1" }
 
 "ui.cursorline.primary" = { bg = "sumiInk3"}
 "ui.cursorcolumn.primary" = { bg = "sumiInk3" }
