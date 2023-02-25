@@ -48,6 +48,7 @@ New:
 - [x] bind "="/"_" to zoom-in/zoom-out
 - [x] Sticky ancestors
 - [x] remove unwrap and expect
+- [x] bug(tree): zb does not work, because clash with explorer 'b'
 - [] Toggle preview
 - [] search highlight matching word
 - [] Error didn't clear
@@ -55,4 +56,3 @@ New:
 - [] Fix panic bugs (see github comments)
 - [] explorer(preview): overflow where bufferline is there
 - [] symlink not showing
-- [] bug(tree): zb does not work, because clash with explorer 'b'
