@@ -21,14 +21,14 @@ use std::borrow::Cow;
 /// can be in any order, or even share the same position.
 ///
 /// The anchor and head positions use gap indexing, meaning
-/// that their indices represent the the gaps *between* `char`s
+/// that their indices represent the gaps *between* `char`s
 /// rather than the `char`s themselves. For example, 1
 /// represents the position between the first and second `char`.
 ///
-/// Below are some example `Range` configurations to better
-/// illustrate.  The anchor and head indices are show as
-/// "(anchor, head)", followed by example text with "[" and "]"
-/// inserted to represent the anchor and head positions:
+/// Below are some examples of `Range` configurations.
+/// The anchor and head indices are shown as "(anchor, head)"
+/// tuples, followed by example text with "[" and "]" symbols
+/// representing the anchor and head positions:
 ///
 /// - (0, 3): `[Som]e text`.
 /// - (3, 0): `]Som[e text`.
