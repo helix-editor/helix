@@ -19,10 +19,8 @@ use super::Prompt;
 pub trait TreeViewItem: Sized + Ord {
     type Params;
 
-    // fn text(&self, cx: &mut Context, selected: bool, params: &mut Self::Params) -> Spans;
     fn name(&self) -> String;
     fn is_parent(&self) -> bool;
-    // fn cmp(&self, other: &Self) -> Ordering;
 
     fn filter(&self, s: &str) -> bool {
         self.name().to_lowercase().contains(&s.to_lowercase())
@@ -37,7 +35,6 @@ fn tree_item_cmp<T: TreeViewItem>(item1: &T, item2: &T) -> Ordering {
 
 fn vec_to_tree<T: TreeViewItem>(mut items: Vec<T>) -> Vec<Tree<T>> {
     items.sort();
-    // items.sort_by(tree_item_cmp);
     index_elems(
         0,
         items
