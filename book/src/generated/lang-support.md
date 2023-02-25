@@ -98,6 +98,7 @@
 | pem | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ | `intelephense` |
+| po | ✓ | ✓ |  |  |
 | ponylang | ✓ | ✓ | ✓ |  |
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
@@ -134,6 +135,7 @@
 | twig | ✓ |  |  |  |
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | ungrammar | ✓ |  |  |  |
+| uxntal | ✓ |  |  |  |
 | v | ✓ |  |  | `v` |
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
@@ -146,4 +148,5 @@
 | xit | ✓ |  |  |  |
 | xml | ✓ |  | ✓ |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
+| yuck | ✓ |  |  |  |
 | zig | ✓ | ✓ | ✓ | `zls` |

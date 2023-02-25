@@ -475,19 +475,36 @@ pub fn dap_variables(cx: &mut Context) {
 
     if debugger.thread_id.is_none() {
         cx.editor
-            .set_status("Cannot access variables while target is running");
+            .set_status("Cannot access variables while target is running.");
         return;
     }
     let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
         (Some(frame), Some(thread_id)) => (frame, thread_id),
         _ => {
             cx.editor
-                .set_status("Cannot find current stack frame to access variables");
+                .set_status("Cannot find current stack frame to access variables.");
             return;
         }
     };
 
-    let frame_id = debugger.stack_frames[&thread_id][frame].id;
+    let thread_frame = match debugger.stack_frames.get(&thread_id) {
+        Some(thread_frame) => thread_frame,
+        None => {
+            cx.editor
+                .set_error("Failed to get stack frame for thread: {thread_id}");
+            return;
+        }
+    };
+    let stack_frame = match thread_frame.get(frame) {
+        Some(stack_frame) => stack_frame,
+        None => {
+            cx.editor
+                .set_error("Failed to get stack frame for thread {thread_id} and frame {frame}.");
+            return;
+        }
+    };
+
+    let frame_id = stack_frame.id;
     let scopes = match block_on(debugger.scopes(frame_id)) {
         Ok(s) => s,
         Err(e) => {
@@ -539,7 +556,7 @@ pub fn dap_variables(cx: &mut Context) {
 pub fn dap_terminate(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    let request = debugger.disconnect();
+    let request = debugger.disconnect(None);
     dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
         // editor.set_error(format!("Failed to disconnect: {}", e));
         editor.debugger = None;
