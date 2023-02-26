@@ -237,8 +237,8 @@ impl Rect {
         Rect {
             x: x1,
             y: y1,
-            width: x2.wrapping_sub(x1),
-            height: y2.wrapping_sub(y1),
+            width: x2.saturating_sub(x1),
+            height: y2.saturating_sub(y1),
         }
     }
 

@@ -515,7 +515,7 @@ impl Buffer {
                     cell.set_style(style);
                 } else {
                     // Skip this render if the window size has changed
-                    return;
+                    continue;
                 }
             }
         }
