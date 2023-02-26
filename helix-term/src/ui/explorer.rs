@@ -907,7 +907,7 @@ mod test_explorer {
     use pretty_assertions::assert_eq;
     use std::{fs, path::PathBuf};
 
-    fn dummy_file_tree<'a>(name: &'a str) -> PathBuf {
+    fn dummy_file_tree(name: &str) -> PathBuf {
         use build_fs_tree::{dir, file, Build, MergeableFileSystemTree};
         let tree = MergeableFileSystemTree::<&str, &str>::from(dir! {
             "index.html" => file!("")
@@ -930,13 +930,11 @@ mod test_explorer {
         path
     }
 
-    fn render<'a>(explorer: &mut Explorer) -> String {
-        explorer
-            .tree
-            .render_to_string(Rect::new(0, 0, 50, 10), &"".to_string())
+    fn render(explorer: &mut Explorer) -> String {
+        explorer.tree.render_to_string(Rect::new(0, 0, 50, 10), "")
     }
 
-    fn new_explorer<'a>(name: &'a str) -> (PathBuf, Explorer) {
+    fn new_explorer(name: &str) -> (PathBuf, Explorer) {
         let path = dummy_file_tree(name);
         (path.clone(), Explorer::from_path(path, 30).unwrap())
     }

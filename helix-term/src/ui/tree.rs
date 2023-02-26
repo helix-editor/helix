@@ -1222,7 +1222,7 @@ mod test_tree_view {
         name: &'a str,
     }
 
-    fn item<'a>(name: &'a str) -> Item<'a> {
+    fn item(name: &str) -> Item {
         Item { name }
     }
 
@@ -1273,8 +1273,8 @@ mod test_tree_view {
         Rect::new(0, 0, 50, 5)
     }
 
-    fn render<'a>(view: &mut TreeView<Item<'a>>) -> String {
-        view.render_to_string(dummy_area(), &"".to_string())
+    fn render(view: &mut TreeView<Item>) -> String {
+        view.render_to_string(dummy_area(), "")
     }
 
     #[test]
@@ -1624,8 +1624,8 @@ mod test_tree_view {
     fn test_move_left_right() {
         let mut view = dummy_tree_view();
 
-        fn render<'a>(view: &mut TreeView<Item<'a>>) -> String {
-            view.render_to_string(dummy_area().with_width(20), &"".to_string())
+        fn render(view: &mut TreeView<Item>) -> String {
+            view.render_to_string(dummy_area().with_width(20), "")
         }
 
         assert_eq!(
@@ -1979,13 +1979,13 @@ krabby_patty
 
         // 1. Move to the last child item on the tree
         view.move_to_last_line();
-        view.move_to_children(&"".to_string()).unwrap();
+        view.move_to_children("").unwrap();
         view.move_to_last_line();
-        view.move_to_children(&"".to_string()).unwrap();
+        view.move_to_children("").unwrap();
         view.move_to_last_line();
-        view.move_to_children(&"".to_string()).unwrap();
+        view.move_to_children("").unwrap();
         view.move_to_last_line();
-        view.move_to_children(&"".to_string()).unwrap();
+        view.move_to_children("").unwrap();
 
         // 1a. Expect the current selected item is the last child on the tree
         assert_eq!(
@@ -2000,7 +2000,7 @@ krabby_patty
         );
 
         // 2. Refreshes the tree with a filter that will remove the last child
-        view.refresh_with_filter(&"ar".to_string()).unwrap();
+        view.refresh_with_filter("ar").unwrap();
 
         // 3. Get the current item
         let item = view.current_item().unwrap();
@@ -2113,7 +2113,7 @@ krabby_patty
             }
         }
 
-        fn child<'a>(name: &'a str) -> Item<'a> {
+        fn child(name: &str) -> Item {
             Item {
                 name,
                 children: None,
@@ -2143,8 +2143,8 @@ krabby_patty
             }
         }
 
-        fn render<'a>(view: &mut TreeView<Item<'a>>) -> String {
-            view.render_to_string(dummy_area().with_height(3), &"".to_string())
+        fn render(view: &mut TreeView<Item<'_>>) -> String {
+            view.render_to_string(dummy_area().with_height(3), "")
         }
 
         let mut view = TreeView::new(
