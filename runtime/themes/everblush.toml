@@ -66,8 +66,6 @@
 
 "ui.background" = { fg = "foreground", bg = "background" }
 "ui.cursor" = { modifiers = ["reversed"] }
-#"ui.cursor.match" = { fg = "orange", modifiers = ["bold"] }
-# "ui.cursor.primary" = { modifiers = ["reversed"] }
 "ui.cursorline.primary" = { bg = "cursorline" }
 "ui.help" = { fg = "foreground", bg = "contrast" }
 "ui.linenr" = { fg = "comment" }
@@ -84,8 +82,10 @@
 "ui.statusline.select" = { fg = "cyan", bg = "magenta" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "blue" }
-"ui.virtual.ruler" = { bg = "comment" }
+"ui.virtual.ruler" = { bg = "cursorline" }
 "ui.virtual.whitespace" = { fg = "comment" }
+"ui.virtual.wrap" = { fg = "comment" }
+"ui.virtual.indent-guide" = { fg = "comment" }
 "ui.window" = { fg = "black" }
 
 "error" = { fg = "red" }
