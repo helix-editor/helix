@@ -49,13 +49,18 @@ impl FileInfo {
     }
 
     fn get_text(&self) -> Cow<'static, str> {
-        match self.file_type {
-            FileType::Root => format!("{}", self.path.display()).into(),
+        let text = match self.file_type {
+            FileType::Root => format!("{}", self.path.display()),
             FileType::File | FileType::Folder => self
                 .path
                 .file_name()
-                .map_or("/".into(), |p| p.to_string_lossy().into_owned().into()),
-        }
+                .map_or("/".into(), |p| p.to_string_lossy().into_owned()),
+        };
+
+        #[cfg(test)]
+        let text = text.replace(std::path::MAIN_SEPARATOR, "/");
+
+        text.into()
     }
 }
 
@@ -197,8 +202,7 @@ impl Explorer {
 
     fn new_tree_view(root: PathBuf) -> Result<TreeView<FileInfo>> {
         let root = FileInfo::root(root);
-        let children = root.get_children()?;
-        Ok(TreeView::build_tree(root, children).with_enter_fn(Self::toggle_current))
+        Ok(TreeView::build_tree(root)?.with_enter_fn(Self::toggle_current))
     }
 
     fn push_history(&mut self, tree_view: TreeView<FileInfo>) {
@@ -220,31 +224,38 @@ impl Explorer {
 
     fn reveal_file(&mut self, path: PathBuf) -> Result<()> {
         let current_root = &self.state.current_root;
-        let current_path = path.as_path().to_string_lossy().to_string();
-        let current_root = current_root.as_path().to_string_lossy().to_string() + "/";
+        let current_path = &path;
+        let current_root = format!(
+            "{}{}",
+            current_root.as_path().to_string_lossy(),
+            std::path::MAIN_SEPARATOR
+        );
         let segments = {
             let stripped = match current_path.strip_prefix(current_root.as_str()) {
-                Some(stripped) => Ok(stripped),
-                None => {
-                    let parent = path
-                        .parent()
-                        .ok_or_else(|| anyhow::anyhow!("Failed get parent of '{current_path}'"))?;
+                Ok(stripped) => Ok(stripped),
+                Err(_) => {
+                    let parent = path.parent().ok_or_else(|| {
+                        anyhow::anyhow!("Failed get parent of '{}'", current_path.to_string_lossy())
+                    })?;
                     self.change_root(parent.into())?;
                     current_path
-                        .strip_prefix((parent.to_string_lossy().to_string() + "/").as_str())
-                        .ok_or_else(|| {
+                        .strip_prefix(
+                            format!("{}{}", parent.to_string_lossy(), std::path::MAIN_SEPARATOR)
+                                .as_str(),
+                        )
+                        .map_err(|_| {
                             anyhow::anyhow!(
                                 "Failed to strip prefix (parent) '{}' from '{}'",
                                 parent.to_string_lossy(),
-                                current_path
+                                current_path.to_string_lossy()
                             )
                         })
                 }
             }?;
 
             stripped
-                .split(std::path::MAIN_SEPARATOR)
-                .map(|s| s.to_string())
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy().to_string())
                 .collect::<Vec<_>>()
         };
         self.tree.reveal_item(segments, &self.state.filter)?;
@@ -907,7 +918,7 @@ mod test_explorer {
     use pretty_assertions::assert_eq;
     use std::{fs, path::PathBuf};
 
-    fn dummy_file_tree<'a>(name: &'a str) -> PathBuf {
+    fn dummy_file_tree(name: &str) -> PathBuf {
         use build_fs_tree::{dir, file, Build, MergeableFileSystemTree};
         let tree = MergeableFileSystemTree::<&str, &str>::from(dir! {
             "index.html" => file!("")
@@ -922,7 +933,7 @@ mod test_explorer {
             }
             ".gitignore" => file!("")
         });
-        let path: PathBuf = format!("test-explorer/{}", name).into();
+        let path: PathBuf = format!("test-explorer{}{}", std::path::MAIN_SEPARATOR, name).into();
         if path.exists() {
             fs::remove_dir_all(path.clone()).unwrap();
         }
@@ -930,13 +941,11 @@ mod test_explorer {
         path
     }
 
-    fn render<'a>(explorer: &mut Explorer) -> String {
-        explorer
-            .tree
-            .render_to_string(Rect::new(0, 0, 50, 10), &"".to_string())
+    fn render(explorer: &mut Explorer) -> String {
+        explorer.tree.render_to_string(Rect::new(0, 0, 50, 10), "")
     }
 
-    fn new_explorer<'a>(name: &'a str) -> (PathBuf, Explorer) {
+    fn new_explorer(name: &str) -> (PathBuf, Explorer) {
         let path = dummy_file_tree(name);
         (path.clone(), Explorer::from_path(path, 30).unwrap())
     }
@@ -1024,7 +1033,7 @@ mod test_explorer {
 
         // 1. Rename the current file to a name that is lexicographically greater than "index.html"
         explorer
-            .rename_current(&path.join("who.is").to_string_lossy().into())
+            .rename_current(&path.join("who.is").display().to_string())
             .unwrap();
 
         // 1a. Expect the file is renamed, and is focused
@@ -1044,7 +1053,7 @@ mod test_explorer {
 
         // 2. Rename the current file into an existing folder
         explorer
-            .rename_current(&path.join("styles/lol").to_string_lossy().into())
+            .rename_current(&path.join("styles/lol").display().to_string())
             .unwrap();
 
         // 2a. Expect the file is moved to the folder, and is focused
@@ -1066,7 +1075,7 @@ mod test_explorer {
 
         // 3. Rename the current file into a non-existent folder
         explorer
-            .rename_current(&path.join("new_folder/sponge/bob").to_string_lossy().into())
+            .rename_current(&path.join("new_folder/sponge/bob").display().to_string())
             .unwrap();
 
         // 3a. Expect the non-existent folder to be created,
@@ -1107,7 +1116,7 @@ mod test_explorer {
         // 5. Move cursor to "bob", and move it outside of the current root
         explorer.tree.move_down(1);
         explorer
-            .rename_current(&path.join("scripts/bob").to_string_lossy().into())
+            .rename_current(&path.join("scripts/bob").display().to_string())
             .unwrap();
 
         // 5a. Expect the current root to be "scripts"
