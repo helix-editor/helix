@@ -387,8 +387,11 @@ impl Range {
 
     /// Converts this char range into an in order byte range, discarding
     /// direction.
-    pub fn into_byte_range(&self, text: RopeSlice) -> (usize, usize) {
-        (text.char_to_byte(self.from()), text.char_to_byte(self.to()))
+    pub fn into_byte_range(&self, text: RopeSlice) -> (u32, u32) {
+        (
+            text.char_to_byte(self.from()) as u32,
+            text.char_to_byte(self.to()) as u32,
+        )
     }
 }
 
