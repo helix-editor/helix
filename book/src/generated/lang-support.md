@@ -30,7 +30,7 @@
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
 | elixir | ✓ | ✓ | ✓ | `elixir-ls` |
-| elm | ✓ |  |  | `elm-language-server` |
+| elm | ✓ | ✓ |  | `elm-language-server` |
 | elvish | ✓ |  |  | `elvish` |
 | env | ✓ |  |  |  |
 | erb | ✓ |  |  |  |
@@ -38,7 +38,7 @@
 | esdl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |
 | fortran | ✓ |  | ✓ | `fortls` |
-| gdscript | ✓ | ✓ |  |  |
+| gdscript | ✓ | ✓ | ✓ |  |
 | git-attributes | ✓ |  |  |  |
 | git-commit | ✓ |  |  |  |
 | git-config | ✓ |  |  |  |
@@ -56,6 +56,7 @@
 | haskell | ✓ | ✓ |  | `haskell-language-server-wrapper` |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  | `elixir-ls` |
+| hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
@@ -84,6 +85,7 @@
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
 | msbuild | ✓ |  | ✓ |  |
+| nasm | ✓ | ✓ |  |  |
 | nickel | ✓ |  | ✓ | `nls` |
 | nix | ✓ |  |  | `nil` |
 | nu | ✓ |  |  |  |
@@ -93,8 +95,11 @@
 | openscad | ✓ |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |
 | pascal | ✓ | ✓ |  | `pasls` |
+| passwd | ✓ |  |  |  |
+| pem | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ |  |
 | php | ✓ | ✓ | ✓ | `intelephense` |
+| po | ✓ | ✓ |  |  |
 | ponylang | ✓ | ✓ | ✓ |  |
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
@@ -121,6 +126,7 @@
 | sshclientconfig | ✓ |  |  |  |
 | starlark | ✓ | ✓ |  |  |
 | svelte | ✓ |  |  | `svelteserver` |
+| sway | ✓ | ✓ | ✓ | `forc` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |
@@ -131,6 +137,7 @@
 | twig | ✓ |  |  |  |
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | ungrammar | ✓ |  |  |  |
+| uxntal | ✓ |  |  |  |
 | v | ✓ |  |  | `v` |
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
@@ -143,4 +150,5 @@
 | xit | ✓ |  |  |  |
 | xml | ✓ |  | ✓ |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |
+| yuck | ✓ |  |  |  |
 | zig | ✓ | ✓ | ✓ | `zls` |

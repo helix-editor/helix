@@ -391,11 +391,22 @@ pub mod requests {
         const COMMAND: &'static str = "attach";
     }
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct DisconnectArguments {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub restart: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub terminate_debuggee: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub suspend_debuggee: Option<bool>,
+    }
+
     #[derive(Debug)]
     pub enum Disconnect {}
 
     impl Request for Disconnect {
-        type Arguments = ();
+        type Arguments = Option<DisconnectArguments>;
         type Result = ();
         const COMMAND: &'static str = "disconnect";
     }

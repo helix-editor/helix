@@ -12,10 +12,6 @@ include = ["src/**/*", "README.md"]
 default-run = "hx"
 rust-version = "1.57"
 
-[package.metadata.nix]
-build = true
-app = true
-
 [features]
 default = ["git"]
 unicode-lines = ["helix-core/unicode-lines"]

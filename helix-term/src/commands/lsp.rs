@@ -1,7 +1,10 @@
 use futures_util::FutureExt;
 use helix_lsp::{
     block_on,
-    lsp::{self, CodeAction, CodeActionOrCommand, DiagnosticSeverity, NumberOrString},
+    lsp::{
+        self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
+        NumberOrString,
+    },
     util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
@@ -142,7 +145,8 @@ impl ui::menu::Item for PickerDiagnostic {
         let path = match format {
             DiagnosticsFormat::HideSourcePath => String::new(),
             DiagnosticsFormat::ShowSourcePath => {
-                let path = path::get_truncated_path(self.url.path());
+                let file_path = self.url.to_file_path().unwrap();
+                let path = path::get_truncated_path(file_path);
                 format!("{}: ", path.to_string_lossy())
             }
         };
@@ -563,6 +567,7 @@ pub fn code_action(cx: &mut Context) {
                 .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, offset_encoding))
                 .collect(),
             only: None,
+            trigger_kind: Some(CodeActionTriggerKind::INVOKED),
         },
     ) {
         Some(future) => future,

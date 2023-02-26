@@ -43,6 +43,8 @@ impl Item for PathBuf {
     }
 }
 
+pub type MenuCallback<T> = Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>;
+
 pub struct Menu<T: Item> {
     options: Vec<T>,
     editor_data: T::Data,
@@ -55,7 +57,7 @@ pub struct Menu<T: Item> {
 
     widths: Vec<Constraint>,
 
-    callback_fn: Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>,
+    callback_fn: MenuCallback<T>,
 
     scroll: usize,
     size: (u16, u16),
@@ -77,7 +79,7 @@ impl<T: Item> Menu<T> {
         Self {
             options,
             editor_data,
-            matcher: Box::default(),
+            matcher: Box::new(Matcher::default().ignore_case()),
             matches,
             cursor: None,
             widths: Vec::new(),

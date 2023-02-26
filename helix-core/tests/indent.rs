@@ -46,11 +46,13 @@ fn test_treesitter_indent(file_name: &str, lang_scope: &str) {
     for i in 0..doc.len_lines() {
         let line = text.line(i);
         if let Some(pos) = helix_core::find_first_non_whitespace_char(line) {
+            let tab_and_indent_width: usize = 4;
             let suggested_indent = treesitter_indent_for_pos(
                 indent_query,
                 &syntax,
-                &IndentStyle::Spaces(4),
-                4,
+                &IndentStyle::Spaces(tab_and_indent_width as u8),
+                tab_and_indent_width,
+                tab_and_indent_width,
                 text,
                 i,
                 text.line_to_char(i) + pos,

@@ -258,7 +258,7 @@ pub mod provider {
                 .args(args)
                 .output()
                 .ok()
-                .and_then(|out| out.status.success().then(|| ())) // TODO: use then_some when stabilized
+                .and_then(|out| out.status.success().then_some(()))
                 .is_some()
         }
 
