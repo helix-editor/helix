@@ -18,7 +18,7 @@ pub fn inline_diagnostics_decorator(
     theme: &Theme,
     text_annotations: &TextAnnotations,
 ) -> Box<dyn LineDecoration> {
-    let whole_view_aera = view.area;
+    let whole_view_area = view.area;
     let background = theme.get("ui.virtual.diagnostics");
 
     let hint = theme.get("hint");
@@ -235,9 +235,9 @@ pub fn inline_diagnostics_decorator(
             // Use `view` since it's the whole outer view instead of just the inner area so that the background
             // is also applied to the gutters and other elements that are not in the editable part of the document
             let diag_area = Rect::new(
-                whole_view_aera.x,
+                whole_view_area.x,
                 pos_y + 1,
-                whole_view_aera.width,
+                whole_view_area.width,
                 lines_offset,
             );
             renderer.surface.set_style(diag_area, background);
