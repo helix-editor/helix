@@ -1264,7 +1264,7 @@ pub fn rename_symbol(cx: &mut Context) {
                 Ok(placeholder)
             }
             Some(lsp::PrepareRenameResponse::DefaultBehavior { .. }) => {
-                Ok(get_prefill_from_word_boundary(&editor))
+                Ok(get_prefill_from_word_boundary(editor))
             }
             None => Err("lsp did not response to prepare rename request".to_string()),
         }
@@ -1318,7 +1318,7 @@ pub fn rename_symbol(cx: &mut Context) {
             future,
             move |editor, compositor, response: Option<lsp::PrepareRenameResponse>| {
                 let prefill =
-                    match get_prefill_from_lsp_response(&editor, offset_encoding, response) {
+                    match get_prefill_from_lsp_response(editor, offset_encoding, response) {
                         Ok(p) => p,
                         Err(e) => {
                             editor.set_error(e);
@@ -1326,7 +1326,7 @@ pub fn rename_symbol(cx: &mut Context) {
                         }
                     };
 
-                let prompt = create_rename_prompt(&editor, prefill);
+                let prompt = create_rename_prompt(editor, prefill);
 
                 compositor.push(prompt);
             },
@@ -1334,12 +1334,11 @@ pub fn rename_symbol(cx: &mut Context) {
         // Language server does not support textDocument/prepareRename, fall back
         // to word boundary selection.
         None => {
-            let prefill = get_prefill_from_word_boundary(&cx.editor);
+            let prefill = get_prefill_from_word_boundary(cx.editor);
 
-            let prompt = create_rename_prompt(&cx.editor, prefill);
+            let prompt = create_rename_prompt(cx.editor, prefill);
 
             cx.push_layer(prompt);
-            return;
         }
     };
 }
