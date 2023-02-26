@@ -339,8 +339,9 @@ impl<T: TreeViewItem> TreeView<T> {
         }
     }
 
-    pub fn build_tree(root: T, items: Vec<T>) -> Self {
-        Self::new(root, vec_to_tree(items))
+    pub fn build_tree(root: T) -> Result<Self> {
+        let children = root.get_children()?;
+        Ok(Self::new(root, vec_to_tree(children)))
     }
 
     pub fn with_enter_fn<F>(mut self, f: F) -> Self
