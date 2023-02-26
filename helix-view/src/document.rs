@@ -1390,6 +1390,8 @@ impl Display for FormatterError {
 mod test {
     use super::*;
     use arc_swap::ArcSwap;
+    use rand::{rngs::SmallRng, Rng, SeedableRng};
+    use tempfile::NamedTempFile;
 
     #[test]
     fn changeset_to_changes_ignore_line_endings() {
@@ -1651,6 +1653,75 @@ mod test {
             .collect();
         futures_util::future::try_join_all(handles).await.unwrap();
     }
+
+    // struct DocumentFuzz {
+    //     rng: SmallRng,
+    //     file: NamedTempFile,
+    //     documents: Vec<Document>,
+    // }
+
+    // impl DocumentFuzz {
+    //     fn new() -> Self {
+    //         let mut rng = SmallRng::from_entropy();
+    //         let file = NamedTempFile::new().unwrap();
+    //         let range = 0..rng.gen_range(0..100);
+    //         let config = {
+    //             let config = Config {
+    //                 persistent_undo: true,
+    //                 ..Default::default()
+    //             };
+    //             Arc::new(ArcSwap::new(Arc::new(config)))
+    //         };
+    //         let documents = range
+    //             .map(|_| Document::open(file.path(), None, None, config.clone()).unwrap())
+    //             .collect();
+    //         Self {
+    //             rng,
+    //             file,
+    //             documents,
+    //         }
+    //     }
+
+    //     async fn arbitrary(&mut self) {
+    //         let view = ViewId::default();
+    //         for doc in &mut self.documents {
+    //             if self.rng.gen() {
+    //                 doc.load_history().unwrap();
+    //             }
+
+    //             if self.rng.gen() {
+    //                 doc.save::<PathBuf>(None, false).unwrap().await.unwrap();
+    //             }
+
+    //             if self.rng.gen() {
+    //                 Document::open(self.file.path(), None, None, doc.config.clone()).unwrap();
+    //             }
+
+    //             let tx = Transaction::change(
+    //                 doc.text(),
+    //                 (0..self.rng.gen_range(0..100))
+    //                     .map(|_| (0, 0, Option::<helix_core::Tendril>::None)),
+    //             );
+    //         }
+    //     }
+    // }
+
+    struct DocumentFuzz {
+        rng: SmallRng,
+        documents: Vec<Document>,
+    }
+
+    impl DocumentFuzz {
+        fn new() -> Self {
+            Self {
+                rng: SmallRng::from_entropy(),
+                documents: Vec::new(),
+            }
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn fuzz_reload() {}
 
     macro_rules! decode {
         ($name:ident, $label:expr, $label_override:expr) => {

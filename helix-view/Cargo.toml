@@ -54,4 +54,5 @@ libc = "0.2"
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
 tempfile = "3"
+rand = "0.8"
 helix-tui = { path = "../helix-tui" }

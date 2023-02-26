@@ -177,7 +177,16 @@ impl History {
         let mut revisions: Vec<Revision> = Vec::with_capacity(len);
         for _ in 0..len {
             let res = Revision::deserialize(reader, timestamp)?;
-            debug_assert!(res.parent <= revisions.len());
+            if !revisions.is_empty() && res.parent >= revisions.len() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!(
+                        "non-contiguous history: {} >= {}",
+                        res.parent,
+                        revisions.len()
+                    ),
+                ));
+            }
 
             if !revisions.is_empty() {
                 revisions.get_mut(res.parent).unwrap().last_child =
@@ -196,19 +205,39 @@ impl History {
     /// Then they are merged into
     /// ```md
     /// A -> B -> C -> D
-    ///         \  
-    ///          \ -> E -> F
+    ///       \  
+    ///        E -> F
     /// ```
     /// and retain their revision heads.
     pub fn merge(&mut self, mut other: History, offset: usize) -> std::io::Result<()> {
+        if !self
+            .revisions
+            .iter()
+            .zip(other.revisions.iter())
+            .take(offset)
+            .all(|(a, b)| {
+                a.parent == b.parent && a.transaction == b.transaction && a.inversion == b.inversion
+            })
+        {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "unequal histories",
+            ));
+        }
+
         let revisions = self.revisions.split_off(offset);
         let len = other.revisions.len();
+        other.revisions.reserve_exact(revisions.len());
+
         for r in revisions {
+            // parent is 0-indexed, while offset is +1.
             let parent = if r.parent < offset {
                 r.parent
             } else {
                 len + (r.parent - offset)
             };
+            debug_assert!(parent < other.revisions.len());
+
             other.revisions.get_mut(parent).unwrap().last_child =
                 NonZeroUsize::new(other.revisions.len());
             other.revisions.push(r);
@@ -832,7 +861,11 @@ mod test {
         undo.seek(SeekFrom::Start(0)).unwrap();
 
         let saved_history = History::deserialize(&mut undo, file.path()).unwrap().1;
-        history_2.merge(saved_history, 1).unwrap();
+        let err = format!(
+            "{:#?} vs. {:#?}",
+            history_2.revisions, saved_history.revisions
+        );
+        history_2.merge(saved_history, 1).expect(&err);
 
         assert_eq!(history_1.revisions, history_2.revisions);
     }
