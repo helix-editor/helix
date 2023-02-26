@@ -166,6 +166,29 @@ impl<'n> TreeCursor<'n> {
         }
     }
 
+    /// Finds the first child node that is contained "inside" the given input
+    /// range, i.e. either start_new > start_old and end_new <= end old OR
+    /// start_new >= start_old and end_new < end_old
+    pub fn goto_first_contained_child(&'n mut self, range: &crate::Range, text: RopeSlice) -> bool {
+        self.first_contained_child(range, text).is_some()
+    }
+
+    /// Finds the first child node that is contained "inside" the given input
+    /// range, i.e. either start_new > start_old and end_new <= end old OR
+    /// start_new >= start_old and end_new < end_old
+    pub fn first_contained_child(
+        &'n mut self,
+        range: &crate::Range,
+        text: RopeSlice,
+    ) -> Option<Node<'n>> {
+        let (from, to) = range.into_byte_range(text);
+
+        self.into_iter().find(|&node| {
+            (node.start_byte() > from && node.end_byte() <= to)
+                || (node.start_byte() >= from && node.end_byte() < to)
+        })
+    }
+
     pub fn goto_next_sibling(&mut self) -> bool {
         self.goto_next_sibling_impl(false)
     }
@@ -218,7 +241,7 @@ impl<'n> TreeCursor<'n> {
 
     /// Returns an iterator over the children of the node the TreeCursor is on
     /// at the time this is called.
-    pub fn children(&'a mut self) -> ChildIter<'a> {
+    pub fn children(&'n mut self) -> ChildIter<'n> {
         let parent = self.node();
 
         ChildIter {
@@ -230,7 +253,7 @@ impl<'n> TreeCursor<'n> {
 
     /// Returns an iterator over the named children of the node the TreeCursor is on
     /// at the time this is called.
-    pub fn named_children(&'a mut self) -> ChildIter<'a> {
+    pub fn named_children(&'n mut self) -> ChildIter<'n> {
         let parent = self.node();
 
         ChildIter {
