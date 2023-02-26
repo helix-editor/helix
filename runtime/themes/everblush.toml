@@ -1,64 +1,46 @@
 # Author: Isotoxal <isotoxal@proton.me>
 
 "attribute" = { fg = "blue" }
-"boolean" = { fg = "cyan" }
-"character" = { fg = "blue" }
 "comment" = { fg = "comment", italic = true }
-"conditional" = { fg = "red" }
 "constant" = { fg = "cyan" }
+"constant.builtin.boolean" = { fg = "cyan" }
+"constant.character" = { fg = "blue" }
+"constant.numeric.float" = { fg = "black-light" }
 "constant.builtin" = { fg = "blue" }
-"constant.macro" = { fg = "yellow" }
+"constant.numeric" = { fg = "yellow" }
 "constructor" = { fg = "blue" }
-"exception" = { fg = "black-light" }
-"field" = { fg = "red" }
-"float" = { fg = "black-light" }
 "function" = { fg = "red" }
 "function.builtin" = { fg = "cyan-light" }
 "function.macro" = { fg = "green" }
-"include" = { fg = "red-light" }
+"function.method" = { fg = "blue-light" }
 "keyword" = { fg = "blue" }
 "keyword.function" = { fg = "blue" }
 "keyword.operator" = { fg = "blue-light" }
-"keyword.return" = { fg = "blue" }
+"keyword.control.conditional" = { fg = "red" }
+"keyword.control.import" = { fg = "red-light" }
+"keyword.control.return" = { fg = "blue" }
+"keyword.control.repeat" = { fg = "yellow-light" }
+"keyword.control.exception" = { fg = "black-light" }
 "label" = { fg = "blue" }
-"method" = { fg = "blue-light" }
 "namespace" = { fg = "red-light" }
-"number" = { fg = "yellow" }
 "operator" = { fg = "white" }
-"parameter" = { fg = "red" }
-"parameter.reference" = { fg = "red-light" }
-"property" = { fg = "red" }
+#"parameter.reference" = { fg = "red-light" }
+#"property" = { fg = "red" }
 "punctuation.bracket" = { fg = "white" }
 "punctuation.delimiter" = { fg = "white" }
 "punctuation.special" = { fg = "white" }
-"repeat" = { fg = "yellow-light" }
 "string" = { fg = "green" }
 "string.escape" = { fg = "blue" }
 "string.regex" = { fg = "green" }
 "string.special" = { fg = "blue" }
-"symbol" = { fg = "red" }
+"string.special.symbol" = { fg = "red" }
 "tag" = { fg = "blue" }
-"tag.attribute" = { fg = "red" }
-"tag.delimiter" = { fg = "white" }
-"text" = { fg = "white" }
-"text.danger" = { fg = "black-light" }
-"text.emphasis" = { fg = "white", italic = true }
-"text.environment.name" = { fg = "yellow" }
-"text.environtment" = { fg = "magenta" }
-"text.literal" = { fg = "green", italic = true }
-"text.math" = { fg = "cyan" }
-"text.note" = { fg = "black-light" }
-"text.reference" = { fg = "cyan" }
-"text.strike" = { fg = "white", strikethrough = true }
-"text.strong" = { fg = "white", bold = true }
-"text.title" = { fg = "yellow", bold = true }
-"text.underline" = { fg = "magenta", underline = true }
-"text.uri" = { fg = "yellow", underline = true }
-"text.warning" = { fg = "black", bg = "red" }
 "type" = { fg = "yellow" }
 "type.builtin" = { fg = "yellow" }
 "variable" = { fg = "white" }
 "variable.builtin" = { fg = "blue" }
+"variable.parameter" = { fg = "red" }
+"variable.other.member" = { fg = "red" }
 
 "diff.plus" = { fg = "blue" }
 "diff.delta" = { fg = "magenta" }
