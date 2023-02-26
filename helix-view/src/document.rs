@@ -1617,7 +1617,7 @@ mod test {
             helix_lsp::block_on(doc_1.save::<PathBuf>(None, true).unwrap()).unwrap();
 
             let mut doc_2 = Document::open(file.path(), None, None, config.clone()).unwrap();
-            let mut doc_3 = Document::open(file.path(), None, None, config).unwrap();
+            let mut doc_3 = Document::open(file.path(), None, None, config.clone()).unwrap();
             doc_2.ensure_view_init(view_id);
             doc_3.ensure_view_init(view_id);
 
@@ -1639,6 +1639,8 @@ mod test {
             helix_lsp::block_on(doc_1.save::<PathBuf>(None, true).unwrap()).unwrap();
             doc_2.load_history().unwrap();
             doc_3.load_history().unwrap();
+
+            let _ = Document::open(file.path(), None, None, config).unwrap();
             doc_1.history.get_mut() == doc_2.history.get_mut()
                 && doc_1.history.get_mut() == doc_3.history.get_mut()
         };
