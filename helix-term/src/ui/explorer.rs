@@ -144,7 +144,6 @@ struct State {
     open: bool,
     current_root: PathBuf,
     area_width: u16,
-    filter: String,
 }
 
 impl State {
@@ -154,7 +153,6 @@ impl State {
             current_root,
             open: true,
             area_width: 0,
-            filter: "".to_string(),
         }
     }
 }
@@ -258,7 +256,7 @@ impl Explorer {
                 .map(|c| c.as_os_str().to_string_lossy().to_string())
                 .collect::<Vec<_>>()
         };
-        self.tree.reveal_item(segments, &self.state.filter)?;
+        self.tree.reveal_item(segments)?;
         Ok(())
     }
 
@@ -489,8 +487,7 @@ impl Explorer {
             area.width.into(),
             title_style,
         );
-        self.tree
-            .render(area.clip_top(1), surface, cx, &self.state.filter);
+        self.tree.render(area.clip_top(1), surface, cx);
     }
 
     pub fn render_embed(
@@ -786,9 +783,8 @@ fn close_documents(current_item_path: PathBuf, cx: &mut Context) -> Result<()> {
 impl Component for Explorer {
     /// Process input events, return true if handled.
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
-        let filter = self.state.filter.clone();
         if self.tree.prompting() {
-            return self.tree.handle_event(event, cx, &mut self.state, &filter);
+            return self.tree.handle_event(event, cx, &mut self.state);
         }
         let key_event = match event {
             Event::Key(event) => event,
@@ -823,7 +819,7 @@ impl Component for Explorer {
                 ctrl!('t') => self.toggle_preview(),
                 _ => {
                     self.tree
-                        .handle_event(&Event::Key(*key_event), cx, &mut self.state, &filter);
+                        .handle_event(&Event::Key(*key_event), cx, &mut self.state);
                 }
             };
             Ok(())
@@ -942,7 +938,7 @@ mod test_explorer {
     }
 
     fn render(explorer: &mut Explorer) -> String {
-        explorer.tree.render_to_string(Rect::new(0, 0, 50, 10), "")
+        explorer.tree.render_to_string(Rect::new(0, 0, 50, 10))
     }
 
     fn new_explorer(name: &str) -> (PathBuf, Explorer) {

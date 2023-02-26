@@ -373,8 +373,8 @@ impl<T: TreeViewItem> TreeView<T> {
     ///
     ///    vec!["helix-term", "src", "ui", "tree.rs"]
     ///
-    pub fn reveal_item(&mut self, segments: Vec<String>, filter: &str) -> Result<()> {
-        self.refresh_with_filter(filter)?;
+    pub fn reveal_item(&mut self, segments: Vec<String>) -> Result<()> {
+        self.refresh()?;
 
         // Expand the tree
         let root = self.tree.item.name();
@@ -390,7 +390,7 @@ impl<T: TreeViewItem> TreeView<T> {
                     {
                         Some(tree) => {
                             if !tree.is_opened {
-                                tree.open(filter)?;
+                                tree.open(&self.filter)?;
                             }
                             Ok(tree)
                         }
@@ -784,7 +784,7 @@ fn render_tree<T: TreeViewItem>(
 }
 
 impl<T: TreeViewItem + Clone> TreeView<T> {
-    pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context, filter: &str) {
+    pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let style = cx.editor.theme.get(&self.tree_symbol_style);
 
         let filter_prompt_area = area.with_height(1);
@@ -818,7 +818,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
         let ancestor_style = cx.editor.theme.get("ui.text.focus");
 
         let area = area.clip_top(2);
-        let iter = self.render_lines(area, filter).into_iter().enumerate();
+        let iter = self.render_lines(area).into_iter().enumerate();
 
         for (index, line) in iter {
             let area = Rect::new(area.x, area.y.saturating_add(index as u16), area.width, 1);
@@ -855,8 +855,8 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
     }
 
     #[cfg(test)]
-    pub fn render_to_string(&mut self, area: Rect, filter: &str) -> String {
-        let lines = self.render_lines(area, filter);
+    pub fn render_to_string(&mut self, area: Rect) -> String {
+        let lines = self.render_lines(area);
         lines
             .into_iter()
             .map(|line| {
@@ -873,7 +873,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             .join("\n")
     }
 
-    fn render_lines(&mut self, area: Rect, filter: &str) -> Vec<RenderedLine> {
+    fn render_lines(&mut self, area: Rect) -> Vec<RenderedLine> {
         if let Some(pre_render) = self.pre_render.take() {
             pre_render(self, area);
         }
@@ -885,7 +885,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             prefix: &"".to_string(),
             level: 0,
             selected: self.selected,
-            filter,
+            filter: &self.filter,
         };
 
         let lines = render_tree(params);
@@ -1003,7 +1003,6 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
         event: &Event,
         cx: &mut Context,
         params: &mut T::Params,
-        filter: &str,
     ) -> EventResult {
         let key_event = match event {
             Event::Key(event) => event,
@@ -1024,6 +1023,8 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
         }
 
         let count = std::mem::replace(&mut self.count, 0);
+
+        let filter = self.filter.clone();
         (|| -> Result<EventResult> {
             match key_event {
                 key!(i @ '0'..='9') => {
@@ -1040,10 +1041,10 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                     }));
                 }
                 key!('h') | key!(Left) => self.move_to_parent()?,
-                key!('l') | key!(Right) => self.move_to_children(filter)?,
+                key!('l') | key!(Right) => self.move_to_children(&filter)?,
                 shift!('H') => self.move_left(1),
                 shift!('L') => self.move_right(1),
-                key!(Enter) | key!('o') => self.on_enter(cx, params, self.selected, filter)?,
+                key!(Enter) | key!('o') => self.on_enter(cx, params, self.selected, &filter)?,
                 ctrl!('d') => self.move_down_half_page(),
                 ctrl!('u') => self.move_up_half_page(),
                 key!('g') => {
@@ -1275,7 +1276,7 @@ mod test_tree_view {
     }
 
     fn render(view: &mut TreeView<Item>) -> String {
-        view.render_to_string(dummy_area(), "")
+        view.render_to_string(dummy_area())
     }
 
     #[test]
@@ -1626,7 +1627,7 @@ mod test_tree_view {
         let mut view = dummy_tree_view();
 
         fn render(view: &mut TreeView<Item>) -> String {
-            view.render_to_string(dummy_area().with_width(20), "")
+            view.render_to_string(dummy_area().with_width(20))
         }
 
         assert_eq!(
@@ -2145,7 +2146,7 @@ krabby_patty
         }
 
         fn render(view: &mut TreeView<Item<'_>>) -> String {
-            view.render_to_string(dummy_area().with_height(3), "")
+            view.render_to_string(dummy_area().with_height(3))
         }
 
         let mut view = TreeView::new(
