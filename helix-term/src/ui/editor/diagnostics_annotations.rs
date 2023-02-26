@@ -21,6 +21,11 @@ pub fn inline_diagnostics_decorator(
     let whole_view_area = view.area;
     let background = theme.get("ui.virtual.diagnostics");
 
+    // The maximum Y that diagnostics can be printed on. Necessary because we may want to print
+    // 5 lines of diagnostics while the view only has 3 left at the bottom and two more just out
+    // of bounds.
+    let max_y = viewport.height.saturating_sub(1).saturating_add(viewport.y);
+
     let hint = theme.get("hint");
     let info = theme.get("info");
     let warning = theme.get("warning");
@@ -167,7 +172,7 @@ pub fn inline_diagnostics_decorator(
 
         // When several diagnostics are present in the same virtual block, we will start by
         // displaying the last one and go up one at a time
-        let mut pos_y = viewport
+        let mut code_pos_y = viewport
             .y
             .saturating_add(pos.visual_line)
             .saturating_add(line_count);
@@ -178,6 +183,16 @@ pub fn inline_diagnostics_decorator(
                 StackItem::Diagnostic(text, style) => (text.trim(), *style),
                 _ => continue,
             };
+
+            // Do the line count and check of pos_y now, it avoids having to build the display items
+            // for nothing
+            let lines_offset = text.lines().count() as u16;
+            code_pos_y -= lines_offset;
+
+            // If the first line to be printed is out of bound, don't display anything more of the current diagnostic
+            if code_pos_y + 1 > max_y {
+                continue;
+            }
 
             left.clear();
             let mut overlap = false;
@@ -229,14 +244,12 @@ pub fn inline_diagnostics_decorator(
             // c. Is just one line.
             // d. Is not an overlap.
 
-            let lines_offset = text.lines().count() as u16;
-            pos_y -= lines_offset;
-
             // Use `view` since it's the whole outer view instead of just the inner area so that the background
             // is also applied to the gutters and other elements that are not in the editable part of the document
             let diag_area = Rect::new(
                 whole_view_area.x,
-                pos_y + 1,
+                // We checked at the start of the loop that this is valid
+                code_pos_y + 1,
                 whole_view_area.width,
                 lines_offset,
             );
@@ -244,7 +257,12 @@ pub fn inline_diagnostics_decorator(
 
             for (offset, line) in text.lines().enumerate() {
                 let mut pos_x = viewport.x;
-                let pos_y = pos_y + 1 + offset as u16;
+                let diag_pos_y = code_pos_y + 1 + offset as u16;
+                // If we're out of bounds, don't display this diagnostic line, nor the following
+                // ones since they'll be out of bounds too.
+                if diag_pos_y > max_y {
+                    break;
+                }
 
                 for item in left.iter().chain(center.iter()) {
                     let (text, style, width): (Cow<str>, _, _) = match *item {
@@ -258,13 +276,13 @@ pub fn inline_diagnostics_decorator(
                         DisplayItem::String(ref s, style, n) => (s.into(), style, n),
                     };
 
-                    renderer.surface.set_string(pos_x, pos_y, text, style);
+                    renderer.surface.set_string(pos_x, diag_pos_y, text, style);
                     pos_x = pos_x.saturating_add(width);
                 }
 
                 renderer
                     .surface
-                    .set_string(pos_x, pos_y, line.trim(), style);
+                    .set_string(pos_x, diag_pos_y, line.trim(), style);
 
                 center.clear();
                 // Special-case for continuation lines
