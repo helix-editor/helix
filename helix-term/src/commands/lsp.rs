@@ -1317,14 +1317,14 @@ pub fn rename_symbol(cx: &mut Context) {
         Some(future) => cx.callback(
             future,
             move |editor, compositor, response: Option<lsp::PrepareRenameResponse>| {
-                let prefill =
-                    match get_prefill_from_lsp_response(editor, offset_encoding, response) {
-                        Ok(p) => p,
-                        Err(e) => {
-                            editor.set_error(e);
-                            return;
-                        }
-                    };
+                let prefill = match get_prefill_from_lsp_response(editor, offset_encoding, response)
+                {
+                    Ok(p) => p,
+                    Err(e) => {
+                        editor.set_error(e);
+                        return;
+                    }
+                };
 
                 let prompt = create_rename_prompt(editor, prefill);
 
