@@ -2546,6 +2546,7 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
 
 #[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
+    use helix_view::editor::CommandCompletion;
     use shellwords::Shellwords;
 
     let mut prompt = Prompt::new(
@@ -2559,6 +2560,10 @@ pub(super) fn command_mode(cx: &mut Context) {
             let words = shellwords.words();
 
             if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
+                if editor.config().command_completion != CommandCompletion::Always {
+                    return Vec::new();
+                }
+
                 // If the command has not been finished yet, complete commands.
                 let mut matches: Vec<_> = typed::TYPABLE_COMMAND_LIST
                     .iter()
@@ -2575,6 +2580,10 @@ pub(super) fn command_mode(cx: &mut Context) {
                     .map(|(name, _)| (0.., name.into()))
                     .collect()
             } else {
+                if editor.config().command_completion == CommandCompletion::Never {
+                    return Vec::new();
+                }
+
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.
                 let (part, part_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {

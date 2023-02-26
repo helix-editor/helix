@@ -274,6 +274,7 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
+    pub command_completion: CommandCompletion,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -573,6 +574,23 @@ impl Default for BufferLine {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CommandCompletion {
+    /// Do not display any completion when typing commands
+    Never,
+    /// Display completion immediately when typing commands, including the command itself
+    Always,
+    /// Only display completion for arguments to commands
+    Arguments,
+}
+
+impl Default for CommandCompletion {
+    fn default() -> Self {
+        CommandCompletion::Always
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
@@ -772,6 +790,7 @@ impl Default for Config {
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap::default(),
+            command_completion: CommandCompletion::default(),
         }
     }
 }

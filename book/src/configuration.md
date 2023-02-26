@@ -57,6 +57,7 @@ on unix operating systems.
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file. | `[]` |
 | `bufferline` | Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use) | `never` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
+| `command-completion` | Whether to show completion for typed (`:`) commands. Can be `always`, `never` or `arguments` (only show contextual completion for arguments passed to commands). | `always` |
 
 ### `[editor.statusline]` Section
 
