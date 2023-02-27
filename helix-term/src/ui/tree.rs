@@ -270,6 +270,7 @@ impl<T> Tree<T> {
 #[derive(Clone, Debug)]
 struct SavedView {
     selected: usize,
+    winline: usize,
 }
 
 pub struct TreeView<T: TreeViewItem> {
@@ -487,6 +488,16 @@ impl<T: TreeViewItem> TreeView<T> {
     fn move_rightmost(&mut self) {
         self.move_right(usize::MAX / 2)
     }
+
+    fn restore_saved_view(&mut self) -> Result<()> {
+        if let Some(saved_view) = self.saved_view.take() {
+            self.selected = saved_view.selected;
+            self.winline = saved_view.winline;
+            self.refresh()
+        } else {
+            Ok(())
+        }
+    }
 }
 
 pub fn tree_view_help() -> Vec<(&'static str, &'static str)> {
@@ -564,6 +575,7 @@ impl<T: TreeViewItem> TreeView<T> {
     fn saved_view(&self) -> SavedView {
         self.saved_view.clone().unwrap_or(SavedView {
             selected: self.selected,
+            winline: self.winline,
         })
     }
 
@@ -683,6 +695,7 @@ impl<T: TreeViewItem> TreeView<T> {
     fn save_view(&mut self) {
         self.saved_view = Some(SavedView {
             selected: self.selected,
+            winline: self.winline,
         })
     }
 
@@ -1090,10 +1103,13 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                         if let EventResult::Consumed(_) =
                             prompt.handle_event(&Event::Key(*event), cx)
                         {
+                            self.saved_view = None;
+                            self.filter = prompt.line().clone();
                             self.refresh_with_filter(prompt.line())?;
                         }
                     }
-                    key!(Esc) | ctrl!('c') => {
+                    key!(Esc) => self.restore_saved_view()?,
+                    ctrl!('c') => {
                         self.filter.clear();
                         self.refresh_with_filter("")?;
                     }
@@ -1103,7 +1119,6 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                         {
                             self.refresh_with_filter(prompt.line())?;
                         }
-                        self.filter = prompt.line().clone();
                         self.filter_prompt = Some(prompt);
                     }
                 };
@@ -1123,7 +1138,12 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                     self.set_search_str(prompt.line().clone());
                     EventResult::Consumed(None)
                 }
-                key!(Esc) => EventResult::Consumed(None),
+                key!(Esc) => {
+                    if let Err(err) = self.restore_saved_view() {
+                        cx.editor.set_error(format!("{err}"))
+                    }
+                    EventResult::Consumed(None)
+                }
                 _ => {
                     let event = prompt.handle_event(&Event::Key(*event), cx);
                     let line = prompt.line();
