@@ -1313,7 +1313,7 @@ pub fn rename_symbol(cx: &mut Context) {
     let pos = doc.position(view.id, offset_encoding);
 
     match language_server.prepare_rename(doc.identifier(), pos) {
-        // Language server support textDocument/prepareRename, use it.
+        // Language server supports textDocument/prepareRename, use it.
         Some(future) => cx.callback(
             future,
             move |editor, compositor, response: Option<lsp::PrepareRenameResponse>| {
