@@ -1,7 +1,7 @@
 # Author: Isotoxal <isotoxal@proton.me>
 
 "attribute" = { fg = "blue" }
-"comment" = { fg = "comment", italic = true }
+"comment" = { fg = "comment", modifiers = ["italic"] }
 "constant" = { fg = "cyan" }
 "constant.builtin.boolean" = { fg = "cyan" }
 "constant.character" = { fg = "blue" }
@@ -57,8 +57,8 @@
 "ui.popup" = { fg = "foreground", bg = "contrast" }
 "ui.selection" = { bg = "black" }
 "ui.selection.primary" = { bg = "black" }
-"ui.statusline" = { fg = "foreground", bg = "backound" }
-"ui.statusline.inactive" = { fg = "foreground", bg = "backgoround" }
+"ui.statusline" = { fg = "foreground", bg = "background" }
+"ui.statusline.inactive" = { fg = "foreground", bg = "background" }
 "ui.statusline.normal" = { fg = "white", bg = "background" }
 "ui.statusline.insert" = { fg = "blue", bg = "background" }
 "ui.statusline.select" = { fg = "cyan", bg = "magenta" }
@@ -78,7 +78,7 @@
 "diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
 "diagnostic.info" = { underline = { style = "curl", color = "blue" } }
 "diagnostic.hint" = { underline = { style = "curl", color = "green" } }
-"special" = { fg = "orange" }
+"special" = { fg = "red-light" }
 
 "markup.heading" = { fg = "blue", modifiers = ["bold"] }
 "markup.list" = { fg = "cyan" }
