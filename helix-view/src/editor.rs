@@ -165,7 +165,7 @@ impl Default for GutterLineNumbersConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
     /// IgnoreOptions
