@@ -1250,13 +1250,13 @@ pub fn rename_symbol(cx: &mut Context) {
         editor: &Editor,
         offset_encoding: OffsetEncoding,
         response: Option<lsp::PrepareRenameResponse>,
-    ) -> Result<String, String> {
+    ) -> Result<String, &'static str> {
         match response {
             Some(lsp::PrepareRenameResponse::Range(range)) => {
                 let text = doc!(editor).text();
 
                 Ok(lsp_range_to_range(text, range, offset_encoding)
-                    .ok_or_else(|| "lsp sent invalid selection range for rename".to_string())?
+                    .ok_or_else(|| "lsp sent invalid selection range for rename")?
                     .fragment(text.slice(..))
                     .into())
             }
@@ -1266,7 +1266,7 @@ pub fn rename_symbol(cx: &mut Context) {
             Some(lsp::PrepareRenameResponse::DefaultBehavior { .. }) => {
                 Ok(get_prefill_from_word_boundary(editor))
             }
-            None => Err("lsp did not response to prepare rename request".to_string()),
+            None => Err("lsp did not response to prepare rename request"),
         }
     }
 
