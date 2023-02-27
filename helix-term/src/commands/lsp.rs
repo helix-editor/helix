@@ -1256,7 +1256,7 @@ pub fn rename_symbol(cx: &mut Context) {
                 let text = doc!(editor).text();
 
                 Ok(lsp_range_to_range(text, range, offset_encoding)
-                    .ok_or_else(|| "lsp sent invalid selection range for rename")?
+                    .ok_or("lsp sent invalid selection range for rename")?
                     .fragment(text.slice(..))
                     .into())
             }
