@@ -96,27 +96,29 @@ pub fn find_matching_bracket_current_line_plaintext(
 
     // Determine the direction of the matching.
     let is_fwd = is_forward_bracket(bracket);
-    let line = doc.byte_to_line(cursor_pos);
-    let end = doc.line_to_byte(if is_fwd { line + 1 } else { line });
-    let range = if is_fwd {
-        Range::Forward((cursor_pos + 1)..end)
+    let chars_iter = if is_fwd {
+        doc.chars_at(cursor_pos + 1)
     } else {
-        Range::Backward((end..cursor_pos).rev())
+        doc.chars_at(cursor_pos).reversed()
     };
 
     let mut open_cnt = 1;
 
-    for pos in range {
-        if doc.char(pos) == bracket {
+    for (i, candidate) in chars_iter.enumerate() {
+        if candidate == bracket {
             open_cnt += 1;
         } else if is_valid_pair(
             doc,
-            if is_fwd { cursor_pos } else { pos },
-            if is_fwd { pos } else { cursor_pos },
+            if is_fwd { cursor_pos } else { cursor_pos - i - 1 },
+            if is_fwd { cursor_pos + i + 1 } else { cursor_pos },
         ) {
             // Return when all pending brackets have been closed.
             if open_cnt == 1 {
-                return Some(pos);
+                return Some(if is_fwd {
+                    cursor_pos + i + 1
+                } else {
+                    cursor_pos - i - 1
+                });
             }
             open_cnt -= 1;
         }
@@ -148,21 +150,6 @@ fn surrounding_bytes(doc: &Rope, node: &Node) -> Option<(usize, usize)> {
     }
 
     Some((start_byte, end_byte))
-}
-
-enum Range {
-    Forward(std::ops::Range<usize>),
-    Backward(std::iter::Rev<std::ops::Range<usize>>),
-}
-
-impl Iterator for Range {
-    type Item = usize;
-    fn next(&mut self) -> Option<usize> {
-        match self {
-            Range::Forward(range) => range.next(),
-            Range::Backward(range) => range.next(),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -198,11 +185,8 @@ mod tests {
         assert("(paren (paren {bracket}))", 7, 23);
         assert("(paren (paren {bracket}))", 14, 22);
 
-        // Verify that this feature only works on the current line.
-        assert_no_match("(prev line\n ) (middle) ( \n next line)", 0);
-        assert_no_match("(prev line\n ) (middle) ( \n next line)", 12);
+        assert("(prev line\n ) (middle) ( \n next line)", 0, 12);
         assert("(prev line\n ) (middle) ( \n next line)", 14, 21);
-        assert_no_match("(prev line\n ) (middle) ( \n next line)", 23);
-        assert_no_match("(prev line\n ) (middle) ( \n next line)", 36);
+        assert("(prev line\n ) (middle) ( \n next line)", 23, 36);
     }
 }
