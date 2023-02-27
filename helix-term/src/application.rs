@@ -959,6 +959,14 @@ impl Application {
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
                 method, params, id, ..
             }) => {
+                let offset_encoding = match self.editor.language_servers.get_by_id(server_id) {
+                    Some(language_server) => language_server.offset_encoding(),
+                    None => {
+                        warn!("can't find language server with id `{}`", server_id);
+                        return;
+                    }
+                };
+
                 let reply = match MethodCall::parse(&method, params) {
                     Err(helix_lsp::Error::Unhandled) => {
                         error!(
@@ -999,11 +1007,7 @@ impl Application {
                         Ok(serde_json::Value::Null)
                     }
                     Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
-                        let res = apply_workspace_edit(
-                            &mut self.editor,
-                            helix_lsp::OffsetEncoding::Utf8,
-                            &params.edit,
-                        );
+                        apply_workspace_edit(&mut self.editor, offset_encoding, &params.edit);
 
                         Ok(json!(lsp::ApplyWorkspaceEditResponse {
                             applied: res.is_ok(),
