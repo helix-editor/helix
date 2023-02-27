@@ -2231,3 +2231,16 @@ indent = { tab-width = 8, unit = "        " }
 [[grammar]]
 name = "nasm"
 source = { git = "https://github.com/naclsn/tree-sitter-nasm", rev = "a0db15db6fcfb1bf2cc8702500e55e558825c48b" }
+
+[[language]]
+name = "objc"
+scope = "source.objc"
+file-types = ["m", "mm", "M"]
+injection-regex = "objc"
+roots = ["xcodeproj"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "objc"
+source = { git = "https://github.com/jiyee/tree-sitter-objc", rev = "afec0de5a32d5894070b67932d6ff09e4f7c5879" }
