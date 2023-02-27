@@ -66,6 +66,7 @@ macro_rules! language_server_with_feature {
 impl ui::menu::Item for lsp::Location {
     /// Current working directory.
     type Data = PathBuf;
+    type Config = ();
 
     fn format(&self, cwdir: &Self::Data) -> Row {
         // The preallocation here will overallocate a few characters since it will account for the
@@ -105,6 +106,7 @@ struct SymbolInformationItem {
 impl ui::menu::Item for SymbolInformationItem {
     /// Path to currently focussed document
     type Data = Option<lsp::Url>;
+    type Config = ();
 
     fn format(&self, current_doc_path: &Self::Data) -> Row {
         if current_doc_path.as_ref() == Some(&self.symbol.location.uri) {
@@ -141,6 +143,7 @@ struct PickerDiagnostic {
 
 impl ui::menu::Item for PickerDiagnostic {
     type Data = (DiagnosticStyles, DiagnosticsFormat);
+    type Config = ();
 
     fn format(&self, (styles, format): &Self::Data) -> Row {
         let mut style = self
@@ -246,7 +249,7 @@ type SymbolPicker = Picker<SymbolInformationItem>;
 
 fn sym_picker(symbols: Vec<SymbolInformationItem>, current_path: Option<lsp::Url>) -> SymbolPicker {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
-    Picker::new(symbols, current_path, move |cx, item, action| {
+    Picker::new((), symbols, current_path, move |cx, item, action| {
         jump_to_location(
             cx.editor,
             &item.symbol.location,
@@ -295,6 +298,7 @@ fn diag_picker(
     };
 
     Picker::new(
+        (),
         flat_diag,
         (styles, format),
         move |cx,
@@ -502,6 +506,7 @@ struct CodeActionOrCommandItem {
 
 impl ui::menu::Item for CodeActionOrCommandItem {
     type Data = ();
+    type Config = ();
     fn format(&self, _data: &Self::Data) -> Row {
         match &self.lsp_item {
             lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
@@ -752,6 +757,7 @@ pub fn code_action(cx: &mut Context) {
 
 impl ui::menu::Item for lsp::Command {
     type Data = ();
+    type Config = ();
     fn format(&self, _data: &Self::Data) -> Row {
         self.title.as_str().into()
     }
@@ -822,7 +828,7 @@ fn goto_impl(
         }
         [] => unreachable!("`locations` should be non-empty for `goto_impl`"),
         _locations => {
-            let picker = Picker::new(locations, cwdir, move |cx, location, action| {
+            let picker = Picker::new((), locations, cwdir, move |cx, location, action| {
                 jump_to_location(cx.editor, location, offset_encoding, action)
             })
             .with_preview(move |_editor, location| Some(location_to_file_location(location)));

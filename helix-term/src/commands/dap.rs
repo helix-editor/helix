@@ -24,6 +24,7 @@ use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select
 
 impl ui::menu::Item for StackFrame {
     type Data = ();
+    type Config = ();
 
     fn format(&self, _data: &Self::Data) -> Row {
         self.name.as_str().into() // TODO: include thread_states in the label
@@ -32,6 +33,7 @@ impl ui::menu::Item for StackFrame {
 
 impl ui::menu::Item for DebugTemplate {
     type Data = ();
+    type Config = ();
 
     fn format(&self, _data: &Self::Data) -> Row {
         self.name.as_str().into()
@@ -40,6 +42,7 @@ impl ui::menu::Item for DebugTemplate {
 
 impl ui::menu::Item for Thread {
     type Data = ThreadStates;
+    type Config = ();
 
     fn format(&self, thread_states: &Self::Data) -> Row {
         format!(
@@ -73,7 +76,7 @@ fn thread_picker(
             let debugger = debugger!(editor);
 
             let thread_states = debugger.thread_states.clone();
-            let picker = Picker::new(threads, thread_states, move |cx, thread, _action| {
+            let picker = Picker::new((), threads, thread_states, move |cx, thread, _action| {
                 callback_fn(cx.editor, thread)
             })
             .with_preview(move |editor, thread| {
@@ -269,6 +272,7 @@ pub fn dap_launch(cx: &mut Context) {
     let templates = config.templates.clone();
 
     cx.push_layer(Box::new(overlaid(Picker::new(
+        (),
         templates,
         (),
         |cx, template, _action| {
@@ -735,7 +739,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
 
     let frames = debugger.stack_frames[&thread_id].clone();
 
-    let picker = Picker::new(frames, (), move |cx, frame, _action| {
+    let picker = Picker::new((), frames, (), move |cx, frame, _action| {
         let debugger = debugger!(cx.editor);
         // TODO: this should be simpler to find
         let pos = debugger.stack_frames[&thread_id]

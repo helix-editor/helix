@@ -117,7 +117,8 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             let callback = async move {
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(path.into_owned(), &editor.config());
+                        let picker =
+                            ui::file_picker(path.into_owned(), editor.config().file_picker);
                         compositor.push(Box::new(overlaid(picker)));
                     },
                 ));
@@ -1395,7 +1396,7 @@ fn lsp_workspace_command(
         let callback = async move {
             let call: job::Callback = Callback::EditorCompositor(Box::new(
                 move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let picker = ui::Picker::new(commands, (), move |cx, command, _action| {
+                    let picker = ui::Picker::new((), commands, (), move |cx, command, _action| {
                         execute_lsp_command(cx.editor, language_server_id, command.clone());
                     });
                     compositor.push(Box::new(overlaid(picker)))

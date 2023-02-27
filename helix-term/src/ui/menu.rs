@@ -15,15 +15,16 @@ use tui::{
 pub use tui::widgets::{Cell, Row};
 
 use helix_view::{
-    editor::SmartTabConfig,
+    editor::{FilePickerConfig, SmartTabConfig},
     graphics::{Margin, Rect},
     Editor,
 };
 use tui::layout::Constraint;
 
-pub trait Item: Sync + Send + 'static {
+pub trait Item: Sync + Send + Sized + 'static {
     /// Additional editor state that is used for label calculation.
     type Data: Sync + Send + 'static;
+    type Config;
 
     fn format(&self, data: &Self::Data) -> Row;
 
@@ -36,17 +37,29 @@ pub trait Item: Sync + Send + 'static {
         let label: String = self.format(data).cell_text().collect();
         label.into()
     }
+
+    fn goto_parent(_picker: &mut Picker<Self>, _cx: &mut Context) {}
+    fn goto_child(_picker: &mut Picker<Self>, _cx: &mut Context) {}
 }
 
 impl Item for PathBuf {
     /// Root prefix to strip.
     type Data = PathBuf;
+    type Config = FilePickerConfig;
 
     fn format(&self, root_path: &Self::Data) -> Row {
         self.strip_prefix(root_path)
             .unwrap_or(self)
             .to_string_lossy()
             .into()
+    }
+
+    fn goto_parent(picker: &mut Picker<PathBuf>, cx: &mut Context) {
+        picker.goto_parent(cx);
+    }
+
+    fn goto_child(picker: &mut Picker<PathBuf>, cx: &mut Context) {
+        picker.goto_child(cx);
     }
 }
 
@@ -251,7 +264,7 @@ impl<T: Item + PartialEq> Menu<T> {
     }
 }
 
-use super::PromptEvent as MenuEvent;
+use super::{Picker, PromptEvent as MenuEvent};
 
 impl<T: Item + 'static> Component for Menu<T> {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {

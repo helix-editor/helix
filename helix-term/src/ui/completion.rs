@@ -26,6 +26,7 @@ use helix_lsp::{lsp, util, OffsetEncoding};
 
 impl menu::Item for CompletionItem {
     type Data = ();
+    type Config = ();
     fn sort_text(&self, data: &Self::Data) -> Cow<str> {
         self.filter_text(data)
     }
