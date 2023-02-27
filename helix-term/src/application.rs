@@ -5,7 +5,11 @@ use helix_core::{
     path::get_relative_path,
     pos_at_coords, syntax, Selection,
 };
-use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+use helix_lsp::{
+    lsp,
+    util::{lsp_pos_to_pos, lsp_range_to_range},
+    LspProgressMap,
+};
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
@@ -1007,7 +1011,8 @@ impl Application {
                         Ok(serde_json::Value::Null)
                     }
                     Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
-                        apply_workspace_edit(&mut self.editor, offset_encoding, &params.edit);
+                        let res =
+                            apply_workspace_edit(&mut self.editor, offset_encoding, &params.edit);
 
                         Ok(json!(lsp::ApplyWorkspaceEditResponse {
                             applied: res.is_ok(),
@@ -1063,15 +1068,67 @@ impl Application {
 
                         Ok(serde_json::Value::Null)
                     }
-                };
+                    Ok(MethodCall::ShowDocument(params)) => {
+                        use helix_view::editor::Action;
 
-                let language_server = match self.editor.language_servers.get_by_id(server_id) {
-                    Some(language_server) => language_server,
-                    None => {
-                        warn!("can't find language server with id `{}`", server_id);
-                        return;
+                        if params.external.unwrap_or(false) {
+                            // TODO: Implement this
+                            Ok(json!(lsp::ShowDocumentResult { success: false }))
+                        } else {
+                            match params.uri.to_file_path() {
+                                Err(_) => {
+                                    let err = format!(
+                                        "unable to convert URI to filepath: {}",
+                                        params.uri
+                                    );
+                                    self.editor.set_error(err);
+                                    Ok(json!(lsp::ShowDocumentResult { success: false }))
+                                }
+                                Ok(path) => {
+                                    match self.editor.open(&path, Action::Replace) {
+                                        Err(err) => {
+                                            let err = format!(
+                                                "failed to open path: {:?}: {:?}",
+                                                params.uri, err
+                                            );
+                                            self.editor.set_error(err);
+                                            Ok(json!(lsp::ShowDocumentResult { success: false }))
+                                        }
+                                        Ok(_) => {
+                                            if let Some(range) = params.selection {
+                                                let (view, doc) = current!(self.editor);
+                                                // TODO: convert inside server
+                                                if let Some(new_range) = lsp_range_to_range(
+                                                    doc.text(),
+                                                    range,
+                                                    offset_encoding,
+                                                ) {
+                                                    let jump =
+                                                        (doc.id(), doc.selection(view.id).clone());
+                                                    view.jumps.push(jump);
+                                                    doc.set_selection(
+                                                        view.id,
+                                                        Selection::single(
+                                                            new_range.anchor,
+                                                            new_range.head,
+                                                        ),
+                                                    );
+                                                    align_view(doc, view, Align::Center);
+                                                }
+                                            }
+
+                                            Ok(json!(lsp::ShowDocumentResult { success: true }))
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 };
+
+                // We can `unwrap` here, because we would have already returned erlier if the
+                // resusult was `None`.
+                let language_server = self.editor.language_servers.get_by_id(server_id).unwrap();
 
                 tokio::spawn(language_server.reply(id, reply));
             }
