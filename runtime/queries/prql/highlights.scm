@@ -10,19 +10,15 @@
   (keyword_join)
   (keyword_select)
   (keyword_switch)
-  (keyword_inner)
-  (keyword_right)
-  (keyword_full)
-  (keyword_in)
+  (keyword_append)
+  (keyword_remove)
+  (keyword_intersect)
   (keyword_rolling)
   (keyword_rows)
   (keyword_expanding)
   (keyword_let)
   (keyword_prql)
-  (keyword_switch)
-  (keyword_append)
-  (keyword_remove)
-  (keyword_intersect)
+  (keyword_from_text)
 ] @keyword
 
 (literal) @string
@@ -116,12 +112,12 @@ alias: (identifier) @variable.other.member
   (keyword_full)
   (keyword_csv)
   (keyword_json)
-] @method
+] @function.method
 
 [
   (keyword_true)
   (keyword_false)
-] @boolean
+] @constant.builtin.boolean
 
 [
  (keyword_and)
@@ -133,7 +129,7 @@ alias: (identifier) @variable.other.member
   name: (identifier) @function)
 
 (parameter
-  (identifier) @parameter)
+  (identifier) @variable.parameter)
 
 (variable
   (keyword_let)
