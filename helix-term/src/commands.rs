@@ -73,13 +73,15 @@ use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+pub type OnKeyCallback = Box<dyn FnOnce(&mut Context, KeyEvent)>;
+
 pub struct Context<'a> {
     pub register: Option<char>,
     pub count: Option<NonZeroUsize>,
     pub editor: &'a mut Editor,
 
     pub callback: Option<crate::compositor::Callback>,
-    pub on_next_key_callback: Option<Box<dyn FnOnce(&mut Context, KeyEvent)>>,
+    pub on_next_key_callback: Option<OnKeyCallback>,
     pub jobs: &'a mut Jobs,
 }
 
@@ -276,6 +278,7 @@ impl MappableCommand {
         append_mode, "Append after selection",
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
+        file_picker_in_current_buffer_directory, "Open file picker at current buffers's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
@@ -956,9 +959,10 @@ fn goto_window(cx: &mut Context, align: Align) {
         Align::Bottom => {
             view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff + count)
         }
-    }
-    .max(view.offset.vertical_offset + scrolloff)
-    .min(view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff));
+    };
+    let visual_line = visual_line
+        .max(view.offset.vertical_offset + scrolloff)
+        .min(view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff));
 
     let pos = view
         .pos_at_visual_coords(doc, visual_line as u16, 0, false)
@@ -1612,6 +1616,10 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
                 // This is Range::new(anchor, head), but it will place the cursor on the correct column
                 ranges.push(Range::point(anchor).put_cursor(text, head, true));
                 sels += 1;
+            }
+
+            if anchor_row == 0 && head_row == 0 {
+                break;
             }
 
             i += 1;
@@ -2401,6 +2409,22 @@ fn file_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
+fn file_picker_in_current_buffer_directory(cx: &mut Context) {
+    let doc_dir = doc!(cx.editor)
+        .path()
+        .and_then(|path| path.parent().map(|path| path.to_path_buf()));
+
+    let path = match doc_dir {
+        Some(path) => path,
+        None => {
+            cx.editor.set_error("current buffer has no path or parent");
+            return;
+        }
+    };
+
+    let picker = ui::file_picker(path, &cx.editor.config());
+    cx.push_layer(Box::new(overlayed(picker)));
+}
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
     let picker = ui::file_picker(cwd, &cx.editor.config());
@@ -2430,20 +2454,15 @@ fn buffer_picker(cx: &mut Context) {
                 None => SCRATCH_BUFFER_NAME,
             };
 
-            let mut flags = Vec::new();
+            let mut flags = String::new();
             if self.is_modified {
-                flags.push("+");
+                flags.push('+');
             }
             if self.is_current {
-                flags.push("*");
+                flags.push('*');
             }
 
-            let flag = if flags.is_empty() {
-                "".into()
-            } else {
-                format!(" ({})", flags.join(""))
-            };
-            format!("{} {}{}", self.id, path, flag).into()
+            Row::new([self.id.to_string(), flags, path.to_string()])
         }
     }
 
@@ -2915,14 +2934,6 @@ fn exit_select_mode(cx: &mut Context) {
     }
 }
 
-fn goto_pos(editor: &mut Editor, pos: usize) {
-    let (view, doc) = current!(editor);
-
-    push_jump(view, doc);
-    doc.set_selection(view.id, Selection::point(pos));
-    align_view(doc, view, Align::Center);
-}
-
 fn goto_first_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let selection = match doc.diagnostics().first() {
@@ -3000,7 +3011,7 @@ fn goto_last_change(cx: &mut Context) {
 
 fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
     let editor = &mut cx.editor;
-    let (_, doc) = current!(editor);
+    let (view, doc) = current!(editor);
     if let Some(handle) = doc.diff_handle() {
         let hunk = {
             let hunks = handle.hunks();
@@ -3012,8 +3023,8 @@ fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
             hunks.nth_hunk(idx)
         };
         if hunk != Hunk::NONE {
-            let pos = doc.text().line_to_char(hunk.after.start as usize);
-            goto_pos(editor, pos)
+            let range = hunk_range(hunk, doc.text().slice(..));
+            doc.set_selection(view.id, Selection::single(range.anchor, range.head));
         }
     }
 }
@@ -3057,14 +3068,7 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
                 return range;
             };
             let hunk = hunks.nth_hunk(hunk_idx);
-
-            let hunk_start = doc_text.line_to_char(hunk.after.start as usize);
-            let hunk_end = if hunk.after.is_empty() {
-                hunk_start + 1
-            } else {
-                doc_text.line_to_char(hunk.after.end as usize)
-            };
-            let new_range = Range::new(hunk_start, hunk_end);
+            let new_range = hunk_range(hunk, doc_text);
             if editor.mode == Mode::Select {
                 let head = if new_range.head < range.anchor {
                     new_range.anchor
@@ -3082,6 +3086,20 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
     };
     motion(cx.editor);
     cx.editor.last_motion = Some(Motion(Box::new(motion)));
+}
+
+/// Returns the [Range] for a [Hunk] in the given text.
+/// Additions and modifications cover the added and modified ranges.
+/// Deletions are represented as the point at the start of the deletion hunk.
+fn hunk_range(hunk: Hunk, text: RopeSlice) -> Range {
+    let anchor = text.line_to_char(hunk.after.start as usize);
+    let head = if hunk.after.is_empty() {
+        anchor + 1
+    } else {
+        text.line_to_char(hunk.after.end as usize)
+    };
+
+    Range::new(anchor, head)
 }
 
 pub mod insert {
@@ -3346,8 +3364,8 @@ pub mod insert {
         let count = cx.count();
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
-        let indent_unit = doc.indent_style.as_str();
-        let tab_size = doc.tab_width();
+        let tab_width = doc.tab_width();
+        let indent_width = doc.indent_width();
         let auto_pairs = doc.auto_pairs(cx.editor);
 
         let transaction =
@@ -3368,18 +3386,11 @@ pub mod insert {
                             None,
                         )
                     } else {
-                        let unit_len = indent_unit.chars().count();
-                        // NOTE: indent_unit always contains 'only spaces' or 'only tab' according to `IndentStyle` definition.
-                        let unit_size = if indent_unit.starts_with('\t') {
-                            tab_size * unit_len
-                        } else {
-                            unit_len
-                        };
                         let width: usize = fragment
                             .chars()
                             .map(|ch| {
                                 if ch == '\t' {
-                                    tab_size
+                                    tab_width
                                 } else {
                                     // it can be none if it still meet control characters other than '\t'
                                     // here just set the width to 1 (or some value better?).
@@ -3387,9 +3398,9 @@ pub mod insert {
                                 }
                             })
                             .sum();
-                        let mut drop = width % unit_size; // round down to nearest unit
+                        let mut drop = width % indent_width; // round down to nearest unit
                         if drop == 0 {
-                            drop = unit_size
+                            drop = indent_width
                         }; // if it's already at a unit, consume a whole unit
                         let mut chars = fragment.chars().rev();
                         let mut start = pos;
@@ -3734,6 +3745,7 @@ fn paste_impl(
     }
 
     doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
 }
 
 pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
@@ -3930,7 +3942,7 @@ fn unindent(cx: &mut Context) {
     let lines = get_lines(doc, view.id);
     let mut changes = Vec::with_capacity(lines.len());
     let tab_width = doc.tab_width();
-    let indent_width = count * tab_width;
+    let indent_width = count * doc.indent_width();
 
     for line_idx in lines {
         let line = doc.text().line(line_idx);
@@ -4771,7 +4783,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("a", "Argument/parameter (tree-sitter)"),
         ("c", "Comment (tree-sitter)"),
         ("T", "Test (tree-sitter)"),
-        ("m", "Closest surrounding pair to cursor"),
+        ("m", "Closest surrounding pair"),
         (" ", "... or any character acting as a pair"),
     ];
 
@@ -5023,7 +5035,10 @@ async fn shell_impl_async(
             log::error!("Shell error: {}", err);
             bail!("Shell error: {}", err);
         }
-        bail!("Shell command failed");
+        match output.status.code() {
+            Some(exit_code) => bail!("Shell command failed: status {}", exit_code),
+            None => bail!("Shell command failed"),
+        }
     } else if !output.stderr.is_empty() {
         log::debug!(
             "Command printed to stderr: {}",

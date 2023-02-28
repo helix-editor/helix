@@ -1,5 +1,5 @@
 use crate::{
-    commands,
+    commands::{self, OnKeyCallback},
     compositor::{Component, Context, Event, EventResult},
     job::{self, Callback},
     key,
@@ -37,7 +37,7 @@ use super::{document::LineDecoration, lsp::SignatureHelp};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
-    on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
+    on_next_key: Option<OnKeyCallback>,
     pseudo_pending: Vec<KeyEvent>,
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
@@ -206,7 +206,7 @@ impl EditorView {
             highlights,
             theme,
             &mut line_decorations,
-            &mut *translated_positions,
+            &mut translated_positions,
         );
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
@@ -723,12 +723,7 @@ impl EditorView {
         let viewport = view.area;
 
         let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
-            let area = Rect::new(
-                viewport.x,
-                viewport.y + pos.visual_line as u16,
-                viewport.width,
-                1,
-            );
+            let area = Rect::new(viewport.x, viewport.y + pos.visual_line, viewport.width, 1);
             if primary_line == pos.doc_line {
                 renderer.surface.set_style(area, primary_style);
             } else if secondary_lines.binary_search(&pos.doc_line).is_ok() {

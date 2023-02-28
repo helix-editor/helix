@@ -231,8 +231,20 @@ fn textobject_pair_surround_impl(
     };
     pair_pos
         .map(|(anchor, head)| match textobject {
-            TextObject::Inside => Range::new(next_grapheme_boundary(slice, anchor), head),
-            TextObject::Around => Range::new(anchor, next_grapheme_boundary(slice, head)),
+            TextObject::Inside => {
+                if anchor < head {
+                    Range::new(next_grapheme_boundary(slice, anchor), head)
+                } else {
+                    Range::new(anchor, next_grapheme_boundary(slice, head))
+                }
+            }
+            TextObject::Around => {
+                if anchor < head {
+                    Range::new(anchor, next_grapheme_boundary(slice, head))
+                } else {
+                    Range::new(next_grapheme_boundary(slice, anchor), head)
+                }
+            }
             TextObject::Movement => unreachable!(),
         })
         .unwrap_or(range)

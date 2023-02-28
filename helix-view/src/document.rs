@@ -19,6 +19,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use helix_core::{
     encoding,
@@ -37,6 +38,8 @@ use crate::{DocumentId, Editor, Theme, View, ViewId};
 const BUF_SIZE: usize = 8192;
 
 const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
+
+pub const DEFAULT_LANGUAGE_NAME: &str = "text";
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
@@ -135,6 +138,10 @@ pub struct Document {
 
     pub savepoint: Option<Transaction>,
 
+    // Last time we wrote to the file. This will carry the time the file was last opened if there
+    // were no saves.
+    last_saved_time: SystemTime,
+
     last_saved_revision: usize,
     version: i32, // should be usize?
     pub(crate) modified_since_accessed: bool,
@@ -160,6 +167,7 @@ impl fmt::Debug for Document {
             .field("changes", &self.changes)
             .field("old_state", &self.old_state)
             // .field("history", &self.history)
+            .field("last_saved_time", &self.last_saved_time)
             .field("last_saved_revision", &self.last_saved_revision)
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
@@ -382,6 +390,7 @@ impl Document {
             version: 0,
             history: Cell::new(History::default()),
             savepoint: None,
+            last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
@@ -577,9 +586,11 @@ impl Document {
 
         let encoding = self.encoding;
 
+        let last_saved_time = self.last_saved_time;
+
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
-            use tokio::fs::File;
+            use tokio::{fs, fs::File};
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -587,6 +598,17 @@ impl Document {
                         std::fs::DirBuilder::new().recursive(true).create(parent)?;
                     } else {
                         bail!("can't save file, parent directory does not exist");
+                    }
+                }
+            }
+
+            // Protect against overwriting changes made externally
+            if !force {
+                if let Ok(metadata) = fs::metadata(&path).await {
+                    if let Ok(mtime) = metadata.modified() {
+                        if last_saved_time < mtime {
+                            bail!("file modified by an external process, use :w! to overwrite");
+                        }
                     }
                 }
             }
@@ -667,6 +689,8 @@ impl Document {
         self.apply(&transaction, view.id);
         self.append_changes_to_history(view);
         self.reset_modified();
+
+        self.last_saved_time = SystemTime::now();
 
         self.detect_indent_and_line_ending();
 
@@ -1016,6 +1040,7 @@ impl Document {
             rev
         );
         self.last_saved_revision = rev;
+        self.last_saved_time = SystemTime::now();
     }
 
     /// Get the document's latest saved revision.
@@ -1073,7 +1098,7 @@ impl Document {
     /// Language server if it has been initialized.
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
         let server = self.language_server.as_deref()?;
-        server.is_initialized().then(|| server)
+        server.is_initialized().then_some(server)
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
@@ -1099,11 +1124,16 @@ impl Document {
         self.syntax.as_ref()
     }
 
-    /// Tab size in columns.
+    /// The width that the tab character is rendered at
     pub fn tab_width(&self) -> usize {
         self.language_config()
             .and_then(|config| config.indent.as_ref())
             .map_or(4, |config| config.tab_width) // fallback to 4 columns
+    }
+
+    // The width (in spaces) of a level of indentation.
+    pub fn indent_width(&self) -> usize {
+        self.indent_style.indent_width(self.tab_width())
     }
 
     pub fn changes(&self) -> &ChangeSet {

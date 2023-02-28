@@ -1,10 +1,14 @@
+use std::fmt::Write;
 use std::ops::Deref;
 
 use crate::job::Job;
 
 use super::*;
 
+use helix_core::encoding;
+use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
+use serde_json::Value;
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -913,6 +917,7 @@ fn replace_selections_with_clipboard_impl(
     cx: &mut compositor::Context,
     clipboard_type: ClipboardType,
 ) -> anyhow::Result<()> {
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
 
     match cx.editor.clipboard_provider.get_contents(clipboard_type) {
@@ -924,6 +929,7 @@ fn replace_selections_with_clipboard_impl(
 
             doc.apply(&transaction, view.id);
             doc.append_changes_to_history(view);
+            view.ensure_cursor_in_view(doc, scrolloff);
             Ok(())
         }
         Err(e) => Err(e.context("Couldn't get system clipboard contents")),
@@ -1029,6 +1035,131 @@ fn set_encoding(
         cx.editor.set_status(encoding);
         Ok(())
     }
+}
+
+/// Shows info about the character under the primary cursor.
+fn get_character_info(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current_ref!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let grapheme_start = doc.selection(view.id).primary().cursor(text);
+    let grapheme_end = graphemes::next_grapheme_boundary(text, grapheme_start);
+
+    if grapheme_start == grapheme_end {
+        return Ok(());
+    }
+
+    let grapheme = text.slice(grapheme_start..grapheme_end).to_string();
+    let encoding = doc.encoding();
+
+    let printable = grapheme.chars().fold(String::new(), |mut s, c| {
+        match c {
+            '\0' => s.push_str("\\0"),
+            '\t' => s.push_str("\\t"),
+            '\n' => s.push_str("\\n"),
+            '\r' => s.push_str("\\r"),
+            _ => s.push(c),
+        }
+
+        s
+    });
+
+    // Convert to Unicode codepoints if in UTF-8
+    let unicode = if encoding == encoding::UTF_8 {
+        let mut unicode = " (".to_owned();
+
+        for (i, char) in grapheme.chars().enumerate() {
+            if i != 0 {
+                unicode.push(' ');
+            }
+
+            unicode.push_str("U+");
+
+            let codepoint: u32 = if char.is_ascii() {
+                char.into()
+            } else {
+                // Not ascii means it will be multi-byte, so strip out the extra
+                // bits that encode the length & mark continuation bytes
+
+                let s = String::from(char);
+                let bytes = s.as_bytes();
+
+                // First byte starts with 2-4 ones then a zero, so strip those off
+                let first = bytes[0];
+                let codepoint = first & (0xFF >> (first.leading_ones() + 1));
+                let mut codepoint = u32::from(codepoint);
+
+                // Following bytes start with 10
+                for byte in bytes.iter().skip(1) {
+                    codepoint <<= 6;
+                    codepoint += u32::from(*byte) & 0x3F;
+                }
+
+                codepoint
+            };
+
+            write!(unicode, "{codepoint:0>4x}").unwrap();
+        }
+
+        unicode.push(')');
+        unicode
+    } else {
+        String::new()
+    };
+
+    // Give the decimal value for ascii characters
+    let dec = if encoding.is_ascii_compatible() && grapheme.len() == 1 {
+        format!(" Dec {}", grapheme.as_bytes()[0])
+    } else {
+        String::new()
+    };
+
+    let hex = {
+        let mut encoder = encoding.new_encoder();
+        let max_encoded_len = encoder
+            .max_buffer_length_from_utf8_without_replacement(grapheme.len())
+            .unwrap();
+        let mut bytes = Vec::with_capacity(max_encoded_len);
+        let mut current_byte = 0;
+        let mut hex = String::new();
+
+        for (i, char) in grapheme.chars().enumerate() {
+            if i != 0 {
+                hex.push_str(" +");
+            }
+
+            let (result, _input_bytes_read) = encoder.encode_from_utf8_to_vec_without_replacement(
+                &char.to_string(),
+                &mut bytes,
+                true,
+            );
+
+            if let encoding::EncoderResult::Unmappable(char) = result {
+                bail!("{char:?} cannot be mapped to {}", encoding.name());
+            }
+
+            for byte in &bytes[current_byte..] {
+                write!(hex, " {byte:0>2x}").unwrap();
+            }
+
+            current_byte = bytes.len();
+        }
+
+        hex
+    };
+
+    cx.editor
+        .set_status(format!("\"{printable}\"{unicode}{dec} Hex{hex}"));
+
+    Ok(())
 }
 
 /// Reload the [`Document`] from its source file.
@@ -1517,6 +1648,46 @@ fn set_option(
     Ok(())
 }
 
+/// Toggle boolean config option at runtime. Access nested values by dot
+/// syntax, for example to toggle smart case search, use `:toggle search.smart-
+/// case`.
+fn toggle_option(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:toggle key`");
+    }
+    let key = &args[0].to_lowercase();
+
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+
+    let mut config = serde_json::json!(&cx.editor.config().deref());
+    let pointer = format!("/{}", key.replace('.', "/"));
+    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+
+    if let Value::Bool(b) = *value {
+        *value = Value::Bool(!b);
+    } else {
+        anyhow::bail!("Key `{}` is not toggle-able", key)
+    }
+
+    // This unwrap should never fail because we only replace one boolean value
+    // with another, maintaining a valid json config
+    let config = serde_json::from_value(config).unwrap();
+
+    cx.editor
+        .config_events
+        .0
+        .send(ConfigEvent::Update(config))?;
+    Ok(())
+}
+
 /// Change the language of the current buffer at runtime.
 fn language(
     cx: &mut compositor::Context,
@@ -1527,13 +1698,20 @@ fn language(
         return Ok(());
     }
 
+    if args.is_empty() {
+        let doc = doc!(cx.editor);
+        let language = &doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+        cx.editor.set_status(language.to_string());
+        return Ok(());
+    }
+
     if args.len() != 1 {
         anyhow::bail!("Bad arguments. Usage: `:set-language language`");
     }
 
     let doc = doc_mut!(cx.editor);
 
-    if args[0] == "text" {
+    if args[0] == DEFAULT_LANGUAGE_NAME {
         doc.set_language(None, None)
     } else {
         doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone())?;
@@ -1570,6 +1748,7 @@ fn sort_impl(
     _args: &[Cow<str>],
     reverse: bool,
 ) -> anyhow::Result<()> {
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -1595,6 +1774,7 @@ fn sort_impl(
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
 }
@@ -2128,6 +2308,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
+            name: "character-info",
+            aliases: &["char"],
+            doc: "Get info about the character under the primary cursor.",
+            fun: get_character_info,
+            completer: None,
+        },
+        TypableCommand {
             name: "reload",
             aliases: &[],
             doc: "Discard changes and reload from the source file.",
@@ -2235,7 +2422,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "set-language",
             aliases: &["lang"],
-            doc: "Set the language of current buffer.",
+            doc: "Set the language of current buffer (show current language if no value specified).",
             fun: language,
             completer: Some(completers::language),
         },
@@ -2244,6 +2431,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["set"],
             doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
             fun: set_option,
+            completer: Some(completers::setting),
+        },
+        TypableCommand {
+            name: "toggle-option",
+            aliases: &["toggle"],
+            doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
+            fun: toggle_option,
             completer: Some(completers::setting),
         },
         TypableCommand {

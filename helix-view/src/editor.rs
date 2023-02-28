@@ -369,6 +369,8 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
+    /// Enables LSP
+    pub enable: bool,
     /// Display LSP progress messages below statusline
     pub display_messages: bool,
     /// Enable automatic pop up of signature help (parameter hints)
@@ -380,6 +382,7 @@ pub struct LspConfig {
 impl Default for LspConfig {
     fn default() -> Self {
         Self {
+            enable: true,
             display_messages: false,
             auto_signature_help: true,
             display_signature_help_docs: true,
@@ -411,7 +414,12 @@ impl Default for StatusLineConfig {
         use StatusLineElement as E;
 
         Self {
-            left: vec![E::Mode, E::Spinner, E::FileName],
+            left: vec![
+                E::Mode,
+                E::Spinner,
+                E::FileName,
+                E::FileModificationIndicator,
+            ],
             center: vec![],
             right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
             separator: String::from("│"),
@@ -452,6 +460,9 @@ pub enum StatusLineElement {
 
     /// The relative file path, including a dirty flag if it's unsaved
     FileName,
+
+    // The file modification indicator
+    FileModificationIndicator,
 
     /// The file encoding
     FileEncoding,
@@ -1077,18 +1088,25 @@ impl Editor {
 
     /// Refreshes the language server for a given document
     pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
-        let doc = self.documents.get_mut(&doc_id)?;
-        Self::launch_language_server(&mut self.language_servers, doc)
+        self.launch_language_server(doc_id)
     }
 
     /// Launch a language server for a given document
-    fn launch_language_server(ls: &mut helix_lsp::Registry, doc: &mut Document) -> Option<()> {
+    fn launch_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
+        if !self.config().lsp.enable {
+            return None;
+        }
+
         // if doc doesn't have a URL it's a scratch buffer, ignore it
-        let doc_url = doc.url()?;
+        let (lang, path) = {
+            let doc = self.document(doc_id)?;
+            (doc.language.clone(), doc.path().cloned())
+        };
 
         // try to find a language server based on the language name
-        let language_server = doc.language.as_ref().and_then(|language| {
-            ls.get(language, doc.path())
+        let language_server = lang.as_ref().and_then(|language| {
+            self.language_servers
+                .get(language, path.as_ref())
                 .map_err(|e| {
                     log::error!(
                         "Failed to initialize the LSP for `{}` {{ {} }}",
@@ -1099,6 +1117,10 @@ impl Editor {
                 .ok()
                 .flatten()
         });
+
+        let doc = self.document_mut(doc_id)?;
+        let doc_url = doc.url()?;
+
         if let Some(language_server) = language_server {
             // only spawn a new lang server if the servers aren't the same
             if Some(language_server.id()) != doc.language_server().map(|server| server.id()) {
@@ -1288,11 +1310,14 @@ impl Editor {
                 self.config.clone(),
             )?;
 
-            let _ = Self::launch_language_server(&mut self.language_servers, &mut doc);
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
                 doc.set_diff_base(diff_base, self.redraw_handle.clone());
             }
-            self.new_document(doc)
+
+            let id = self.new_document(doc);
+            let _ = self.launch_language_server(id);
+
+            id
         };
 
         self.switch(id, action);

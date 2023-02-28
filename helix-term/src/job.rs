@@ -5,9 +5,12 @@ use crate::compositor::Compositor;
 use futures_util::future::{BoxFuture, Future, FutureExt};
 use futures_util::stream::{FuturesUnordered, StreamExt};
 
+pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
+pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
+
 pub enum Callback {
-    EditorCompositor(Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>),
-    Editor(Box<dyn FnOnce(&mut Editor) + Send>),
+    EditorCompositor(EditorCompositorCallback),
+    Editor(EditorCallback),
 }
 
 pub type JobFuture = BoxFuture<'static, anyhow::Result<Option<Callback>>>;

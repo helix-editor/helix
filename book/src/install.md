@@ -185,7 +185,7 @@ Or, create a symlink in `%appdata%\helix\` that links to the source code directo
 
    | Method     | Command                                                                                |
    | ---------- | -------------------------------------------------------------------------------------- |
-   | PowerShell | `New-Item -ItemType SymbolicLink -Target "runtime" -Path "$Env:AppData\helix\runtime"` |
+   | PowerShell | `New-Item -ItemType Junction -Target "runtime" -Path "$Env:AppData\helix\runtime"`     |
    | Cmd        | `cd %appdata%\helix` <br/> `mklink /D runtime "%userprofile%\src\helix\runtime"`       |
 
    > 💡 On Windows, creating a symbolic link may require running PowerShell or

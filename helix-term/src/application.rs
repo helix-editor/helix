@@ -277,10 +277,6 @@ impl Application {
         Ok(app)
     }
 
-    #[cfg(feature = "integration")]
-    async fn render(&mut self) {}
-
-    #[cfg(not(feature = "integration"))]
     async fn render(&mut self) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
@@ -707,7 +703,13 @@ impl Application {
                         }
                     }
                     Notification::PublishDiagnostics(mut params) => {
-                        let path = params.uri.to_file_path().unwrap();
+                        let path = match params.uri.to_file_path() {
+                            Ok(path) => path,
+                            Err(_) => {
+                                log::error!("Unsupported file URI: {}", params.uri);
+                                return;
+                            }
+                        };
                         let doc = self.editor.document_by_path_mut(&path);
 
                         if let Some(doc) = doc {

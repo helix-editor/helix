@@ -70,6 +70,8 @@ impl From<DocumentId> for PathOrId {
     }
 }
 
+type FileCallback<T> = Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>;
+
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation = (PathOrId, Option<(usize, usize)>);
 
@@ -80,7 +82,7 @@ pub struct FilePicker<T: Item> {
     preview_cache: HashMap<PathBuf, CachedPreview>,
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
-    file_fn: Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>,
+    file_fn: FileCallback<T>,
 }
 
 pub enum CachedPreview {
@@ -394,6 +396,8 @@ impl Ord for PickerMatch {
     }
 }
 
+type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
+
 pub struct Picker<T: Item> {
     options: Vec<T>,
     editor_data: T::Data,
@@ -407,7 +411,7 @@ pub struct Picker<T: Item> {
     cursor: usize,
     // pattern: String,
     prompt: Prompt,
-    previous_pattern: String,
+    previous_pattern: (String, FuzzyQuery),
     /// Whether to truncate the start (default true)
     pub truncate_start: bool,
     /// Whether to show the preview panel (default true)
@@ -415,7 +419,7 @@ pub struct Picker<T: Item> {
     /// Constraints for tabular formatting
     widths: Vec<Constraint>,
 
-    callback_fn: Box<dyn Fn(&mut Context, &T, Action)>,
+    callback_fn: PickerCallback<T>,
 }
 
 impl<T: Item> Picker<T> {
@@ -458,7 +462,7 @@ impl<T: Item> Picker<T> {
             matches: Vec::new(),
             cursor: 0,
             prompt,
-            previous_pattern: String::new(),
+            previous_pattern: (String::new(), FuzzyQuery::default()),
             truncate_start: true,
             show_preview: true,
             callback_fn: Box::new(callback_fn),
@@ -485,9 +489,14 @@ impl<T: Item> Picker<T> {
     pub fn score(&mut self) {
         let pattern = self.prompt.line();
 
-        if pattern == &self.previous_pattern {
+        if pattern == &self.previous_pattern.0 {
             return;
         }
+
+        let (query, is_refined) = self
+            .previous_pattern
+            .1
+            .refine(pattern, &self.previous_pattern.0);
 
         if pattern.is_empty() {
             // Fast path for no pattern.
@@ -501,8 +510,7 @@ impl<T: Item> Picker<T> {
                         len: text.chars().count(),
                     }
                 }));
-        } else if pattern.starts_with(&self.previous_pattern) {
-            let query = FuzzyQuery::new(pattern);
+        } else if is_refined {
             // optimization: if the pattern is a more specific version of the previous one
             // then we can score the filtered set.
             self.matches.retain_mut(|pmatch| {
@@ -527,7 +535,8 @@ impl<T: Item> Picker<T> {
         // reset cursor position
         self.cursor = 0;
         let pattern = self.prompt.line();
-        self.previous_pattern.clone_from(pattern);
+        self.previous_pattern.0.clone_from(pattern);
+        self.previous_pattern.1 = query;
     }
 
     pub fn force_score(&mut self) {

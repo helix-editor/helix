@@ -295,6 +295,7 @@ These scopes are used for theming the editor interface:
 | `ui.virtual.ruler`          | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
 | `ui.virtual.whitespace`     | Visible whitespace characters                                                                  |
 | `ui.virtual.indent-guide`   | Vertical indent width guides                                                                   |
+| `ui.virtual.wrap`           | Soft-wrap indicator (see the [`editor.soft-wrap` config][editor-section])                      |
 | `ui.menu`                   | Code and command completion menus                                                              |
 | `ui.menu.selected`          | Selected autocomplete item                                                                     |
 | `ui.menu.scroll`            | `fg` sets thumb color, `bg` sets track color of scrollbar                                      |
