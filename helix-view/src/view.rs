@@ -242,7 +242,7 @@ impl View {
                 at_top = true;
                 true
             }
-            Some((visual_pos, _)) if visual_pos.row >= vertical_viewport_end - scrolloff => {
+            Some((visual_pos, _)) if visual_pos.row + scrolloff + 1 >= vertical_viewport_end => {
                 if CENTERING && visual_pos.row >= vertical_viewport_end {
                     // cursor out of view
                     return None;
@@ -257,7 +257,7 @@ impl View {
             let v_off = if at_top {
                 scrolloff as isize
             } else {
-                viewport.height as isize - scrolloff as isize
+                viewport.height as isize - scrolloff as isize - 1
             };
             (offset.anchor, offset.vertical_offset) =
                 char_idx_at_visual_offset(doc_text, cursor, -v_off, 0, &text_fmt, &annotations);
