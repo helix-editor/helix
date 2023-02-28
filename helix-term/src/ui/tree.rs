@@ -317,8 +317,10 @@ pub struct TreeView<T: TreeViewItem> {
 }
 
 impl<T: TreeViewItem> TreeView<T> {
-    pub fn new(root: T, items: Vec<Tree<T>>) -> Self {
-        Self {
+    pub fn build_tree(root: T) -> Result<Self> {
+        let children = root.get_children()?;
+        let items = vec_to_tree(children);
+        Ok(Self {
             tree: Tree::new(root, items),
             selected: 0,
             backward_jumps: vec![],
@@ -337,12 +339,7 @@ impl<T: TreeViewItem> TreeView<T> {
             filter_prompt: None,
             search_str: "".into(),
             filter: "".into(),
-        }
-    }
-
-    pub fn build_tree(root: T) -> Result<Self> {
-        let children = root.get_children()?;
-        Ok(Self::new(root, vec_to_tree(children)))
+        })
     }
 
     pub fn with_enter_fn<F>(mut self, f: F) -> Self
@@ -1011,6 +1008,21 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             .collect()
     }
 
+    #[cfg(test)]
+    pub fn handle_events(
+        &mut self,
+        events: &str,
+        cx: &mut Context,
+        params: &mut T::Params,
+    ) -> Result<()> {
+        use helix_view::input::parse_macro;
+
+        for event in parse_macro(events)? {
+            self.handle_event(&Event::Key(event), cx, params);
+        }
+        Ok(())
+    }
+
     pub fn handle_event(
         &mut self,
         event: &Event,
@@ -1234,21 +1246,26 @@ fn index_elems<T>(parent_index: usize, elems: Vec<Tree<T>>) -> Vec<Tree<T>> {
 
 #[cfg(test)]
 mod test_tree_view {
+
     use helix_view::graphics::Rect;
 
-    use super::{vec_to_tree, TreeView, TreeViewItem};
+    use crate::compositor::Context;
+
+    use super::{TreeView, TreeViewItem};
     use pretty_assertions::assert_eq;
 
     #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
-    struct Item<'a> {
+    /// The children of DivisibleItem is the division of itself.
+    /// This is used to ease the creation of a dummy tree without having to specify so many things.
+    struct DivisibleItem<'a> {
         name: &'a str,
     }
 
-    fn item(name: &str) -> Item {
-        Item { name }
+    fn item(name: &str) -> DivisibleItem {
+        DivisibleItem { name }
     }
 
-    impl<'a> TreeViewItem for Item<'a> {
+    impl<'a> TreeViewItem for DivisibleItem<'a> {
         type Params = ();
 
         fn name(&self) -> String {
@@ -1260,7 +1277,20 @@ mod test_tree_view {
         }
 
         fn get_children(&self) -> anyhow::Result<Vec<Self>> {
-            if self.is_parent() {
+            if self.name.eq("who_lives_in_a_pineapple_under_the_sea") {
+                Ok(vec![
+                    item("gary_the_snail"),
+                    item("krabby_patty"),
+                    item("larry_the_lobster"),
+                    item("patrick_star"),
+                    item("sandy_cheeks"),
+                    item("spongebob_squarepants"),
+                    item("mrs_puff"),
+                    item("king_neptune"),
+                    item("karen"),
+                    item("plankton"),
+                ])
+            } else if self.is_parent() {
                 let (left, right) = self.name.split_at(self.name.len() / 2);
                 Ok(vec![item(left), item(right)])
             } else {
@@ -1273,29 +1303,15 @@ mod test_tree_view {
         }
     }
 
-    fn dummy_tree_view<'a>() -> TreeView<Item<'a>> {
-        TreeView::new(
-            item("who_lives_in_a_pineapple_under_the_sea"),
-            vec_to_tree(vec![
-                item("gary_the_snail"),
-                item("krabby_patty"),
-                item("larry_the_lobster"),
-                item("patrick_star"),
-                item("sandy_cheeks"),
-                item("spongebob_squarepants"),
-                item("mrs_puff"),
-                item("king_neptune"),
-                item("karen"),
-                item("plankton"),
-            ]),
-        )
+    fn dummy_tree_view<'a>() -> TreeView<DivisibleItem<'a>> {
+        TreeView::build_tree(item("who_lives_in_a_pineapple_under_the_sea")).unwrap()
     }
 
     fn dummy_area() -> Rect {
         Rect::new(0, 0, 50, 5)
     }
 
-    fn render(view: &mut TreeView<Item>) -> String {
+    fn render(view: &mut TreeView<DivisibleItem>) -> String {
         view.render_to_string(dummy_area())
     }
 
@@ -1646,7 +1662,7 @@ mod test_tree_view {
     fn test_move_left_right() {
         let mut view = dummy_tree_view();
 
-        fn render(view: &mut TreeView<Item>) -> String {
+        fn render(view: &mut TreeView<DivisibleItem>) -> String {
             view.render_to_string(dummy_area().with_width(20))
         }
 
@@ -2028,7 +2044,7 @@ krabby_patty
         let item = view.current_item().unwrap();
 
         // 3a. Expects no failure
-        assert_eq!(item.name, "who_lives_in_a_pine")
+        assert_eq!(item.name, "ar")
     }
 
     #[test]
@@ -2116,33 +2132,33 @@ krabby_patty
         );
     }
 
-    #[test]
-    fn test_sticky_ancestors() {
-        // The ancestors of the current item should always be visible
-        // However, if there's not enough space, the current item will take precedence,
-        // and the nearest ancestor has higher precedence than further ancestors
+    mod static_tree {
+        use crate::ui::{TreeView, TreeViewItem};
+
+        use super::dummy_area;
 
         #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
-        struct Item<'a> {
-            name: &'a str,
-            children: Option<Vec<Item<'a>>>,
+        /// This is used for test cases where the structure of the tree has to be known upfront
+        pub struct StaticItem<'a> {
+            pub name: &'a str,
+            pub children: Option<Vec<StaticItem<'a>>>,
         }
 
-        fn parent<'a>(name: &'a str, children: Vec<Item<'a>>) -> Item<'a> {
-            Item {
+        pub fn parent<'a>(name: &'a str, children: Vec<StaticItem<'a>>) -> StaticItem<'a> {
+            StaticItem {
                 name,
                 children: Some(children),
             }
         }
 
-        fn child(name: &str) -> Item {
-            Item {
+        pub fn child(name: &str) -> StaticItem {
+            StaticItem {
                 name,
                 children: None,
             }
         }
 
-        impl<'a> TreeViewItem for Item<'a> {
+        impl<'a> TreeViewItem for StaticItem<'a> {
             type Params = ();
 
             fn name(&self) -> String {
@@ -2165,13 +2181,21 @@ krabby_patty
             }
         }
 
-        fn render(view: &mut TreeView<Item<'_>>) -> String {
+        pub fn render(view: &mut TreeView<StaticItem<'_>>) -> String {
             view.render_to_string(dummy_area().with_height(3))
         }
+    }
 
-        let mut view = TreeView::new(
-            parent("root", vec![]),
-            vec_to_tree(vec![
+    #[test]
+    fn test_sticky_ancestors() {
+        // The ancestors of the current item should always be visible
+        // However, if there's not enough space, the current item will take precedence,
+        // and the nearest ancestor has higher precedence than further ancestors
+        use static_tree::*;
+
+        let mut view = TreeView::build_tree(parent(
+            "root",
+            vec![
                 parent("a", vec![child("aa"), child("ab")]),
                 parent(
                     "b",
@@ -2180,8 +2204,9 @@ krabby_patty
                         vec![parent("baa", vec![child("baaa"), child("baab")])],
                     )],
                 ),
-            ]),
-        );
+            ],
+        ))
+        .unwrap();
 
         assert_eq!(
             render(&mut view),
@@ -2361,6 +2386,152 @@ krabby_patty
 ⏷ [a]
     (aa)
           "
+            .trim()
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_search_prompt() {
+        let mut editor = Context::dummy_editor();
+        let mut jobs = Context::dummy_jobs();
+        let mut cx = Context::dummy(&mut jobs, &mut editor);
+        let mut view = dummy_tree_view();
+
+        view.handle_events("/an", &mut cx, &mut ()).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏵ larry_the_lobster
+⏵ mrs_puff
+⏵ patrick_star
+⏵ (plankton)
+            "
+            .trim()
+        );
+
+        view.handle_events("t<ret>", &mut cx, &mut ()).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏵ patrick_star
+⏵ plankton
+⏵ sandy_cheeks
+⏵ (spongebob_squarepants)
+            "
+            .trim()
+        );
+
+        view.handle_events("/larry", &mut cx, &mut ()).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏵ karen
+⏵ king_neptune
+⏵ krabby_patty
+⏵ (larry_the_lobster)
+           "
+            .trim()
+        );
+
+        view.handle_events("<esc>", &mut cx, &mut ()).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏵ patrick_star
+⏵ plankton
+⏵ sandy_cheeks
+⏵ (spongebob_squarepants)
+           "
+            .trim()
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_filter_prompt() {
+        use static_tree::*;
+        let mut editor = Context::dummy_editor();
+        let mut jobs = Context::dummy_jobs();
+        let mut cx = Context::dummy(&mut jobs, &mut editor);
+
+        let mut view = TreeView::build_tree(parent(
+            "root",
+            vec![
+                parent("src", vec![child("bar.rs"), child("foo.toml")]),
+                parent("tests", vec![child("hello.toml"), child("spam.rs")]),
+            ],
+        ))
+        .unwrap();
+
+        fn render(view: &mut TreeView<StaticItem<'_>>) -> String {
+            view.render_to_string(dummy_area().with_height(5))
+        }
+
+        // Open all the children
+        view.handle_events("lljjl", &mut cx, &mut ()).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+    bar.rs
+    foo.toml
+⏷ [tests]
+    (hello.toml)
+           "
+            .trim()
+        );
+
+        view.handle_events("frs<ret>", &mut cx, &mut ()).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+    bar.rs
+⏷ [tests]
+    (spam.rs)
+           "
+            .trim()
+        );
+
+        view.handle_events("f<C-w>toml", &mut cx, &mut ()).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+    foo.toml
+⏷ [tests]
+    (hello.toml)
+           "
+            .trim()
+        );
+
+        // Escape should causes the filter to be reverted
+        view.handle_events("<esc>", &mut cx, &mut ()).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+    bar.rs
+⏷ [tests]
+    (spam.rs)
+           "
+            .trim()
+        );
+
+        // C-c should clear the filter
+        view.handle_events("f<C-c>", &mut cx, &mut ()).unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[root]
+    bar.rs
+    foo.toml
+⏷ (tests)
+    hello.toml
+           "
             .trim()
         );
     }

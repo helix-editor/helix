@@ -34,6 +34,47 @@ impl<'a> Context<'a> {
         tokio::task::block_in_place(|| helix_lsp::block_on(self.editor.flush_writes()))?;
         Ok(())
     }
+
+    /// Purpose: to test `handle_event` without escalating the test case to integration test
+    /// Usage:
+    /// ```
+    /// let mut editor = Context::dummy_editor();
+    /// let mut jobs = Context::dummy_jobs();
+    /// let mut cx = Context::dummy(&mut jobs, &mut editor);
+    /// ```
+    #[cfg(test)]
+    pub fn dummy(jobs: &'a mut Jobs, editor: &'a mut helix_view::Editor) -> Context<'a> {
+        Context {
+            jobs,
+            scroll: None,
+            editor,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn dummy_jobs() -> Jobs {
+        Jobs::new()
+    }
+
+    #[cfg(test)]
+    pub fn dummy_editor() -> Editor {
+        use crate::config::Config;
+        use arc_swap::{access::Map, ArcSwap};
+        use helix_core::syntax::{self, Configuration};
+        use helix_view::theme;
+        use std::sync::Arc;
+
+        let config = Arc::new(ArcSwap::from_pointee(Config::default()));
+        Editor::new(
+            Rect::new(0, 0, 60, 120),
+            Arc::new(theme::Loader::new("", "")),
+            Arc::new(syntax::Loader::new(Configuration { language: vec![] })),
+            Arc::new(Arc::new(Map::new(
+                Arc::clone(&config),
+                |config: &Config| &config.editor,
+            ))),
+        )
+    }
 }
 
 pub trait Component: Any + AnyComponent {
