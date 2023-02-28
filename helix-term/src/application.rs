@@ -638,6 +638,11 @@ impl Application {
                 self.compositor
                     .handle_event(&Event::Resize(width, height), &mut cx)
             }
+            // Ignore keyboard release events.
+            CrosstermEvent::Key(crossterm::event::KeyEvent {
+                kind: crossterm::event::KeyEventKind::Release,
+                ..
+            }) => false,
             event => self.compositor.handle_event(&event.into(), &mut cx),
         };
 
