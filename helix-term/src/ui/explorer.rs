@@ -157,9 +157,14 @@ impl State {
     }
 }
 
+struct ExplorerHistory {
+    tree: TreeView<FileInfo>,
+    current_root: PathBuf,
+}
+
 pub struct Explorer {
     tree: TreeView<FileInfo>,
-    history: Vec<TreeView<FileInfo>>,
+    history: Vec<ExplorerHistory>,
     show_help: bool,
     show_preview: bool,
     state: State,
@@ -171,7 +176,9 @@ pub struct Explorer {
 
 impl Explorer {
     pub fn new(cx: &mut Context) -> Result<Self> {
-        let current_root = std::env::current_dir().unwrap_or_else(|_| "./".into());
+        let current_root = std::env::current_dir()
+            .unwrap_or_else(|_| "./".into())
+            .canonicalize()?;
         Ok(Self {
             tree: Self::new_tree_view(current_root.clone())?,
             history: vec![],
@@ -203,8 +210,11 @@ impl Explorer {
         Ok(TreeView::build_tree(root)?.with_enter_fn(Self::toggle_current))
     }
 
-    fn push_history(&mut self, tree_view: TreeView<FileInfo>) {
-        self.history.push(tree_view);
+    fn push_history(&mut self, tree_view: TreeView<FileInfo>, current_root: PathBuf) {
+        self.history.push(ExplorerHistory {
+            tree: tree_view,
+            current_root,
+        });
         const MAX_HISTORY_SIZE: usize = 20;
         Vec::truncate(&mut self.history, MAX_HISTORY_SIZE)
     }
@@ -215,21 +225,16 @@ impl Explorer {
         }
         let tree = Self::new_tree_view(root.clone())?;
         let old_tree = std::mem::replace(&mut self.tree, tree);
-        self.push_history(old_tree);
+        self.push_history(old_tree, self.state.current_root.clone());
         self.state.current_root = root;
         Ok(())
     }
 
     fn reveal_file(&mut self, path: PathBuf) -> Result<()> {
-        let current_root = &self.state.current_root;
-        let current_path = &path;
-        let current_root = format!(
-            "{}{}",
-            current_root.as_path().to_string_lossy(),
-            std::path::MAIN_SEPARATOR
-        );
+        let current_root = &self.state.current_root.canonicalize()?;
+        let current_path = &path.canonicalize()?;
         let segments = {
-            let stripped = match current_path.strip_prefix(current_root.as_str()) {
+            let stripped = match current_path.strip_prefix(current_root) {
                 Ok(stripped) => Ok(stripped),
                 Err(_) => {
                     let parent = path.parent().ok_or_else(|| {
@@ -237,10 +242,7 @@ impl Explorer {
                     })?;
                     self.change_root(parent.into())?;
                     current_path
-                        .strip_prefix(
-                            format!("{}{}", parent.to_string_lossy(), std::path::MAIN_SEPARATOR)
-                                .as_str(),
-                        )
+                        .strip_prefix(parent.canonicalize()?)
                         .map_err(|_| {
                             anyhow::anyhow!(
                                 "Failed to strip prefix (parent) '{}' from '{}'",
@@ -690,8 +692,9 @@ impl Explorer {
     }
 
     fn go_to_previous_root(&mut self) {
-        if let Some(tree) = self.history.pop() {
-            self.tree = tree
+        if let Some(history) = self.history.pop() {
+            self.tree = history.tree;
+            self.state.current_root = history.current_root
         }
     }
 
@@ -1451,6 +1454,8 @@ mod test_explorer {
             .trim()
         );
 
+        let current_root = explorer.state.current_root.clone();
+
         // 3. Change root to the parent of current folder
         explorer.change_root_parent_folder().unwrap();
 
@@ -1480,6 +1485,7 @@ mod test_explorer {
 "
             .trim()
         );
+        assert_eq!(explorer.state.current_root, current_root);
 
         // 5. Go back to previous root again
         explorer.go_to_previous_root();
