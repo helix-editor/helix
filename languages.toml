@@ -2210,7 +2210,7 @@ source = { git = "https://github.com/Philipp-M/tree-sitter-yuck", rev = "9e97da5
 
 [[language]]
 name = "prql"
-scope = "source.yprql"
+scope = "source.prql"
 injection-regex = "prql"
 file-types = ["prql"]
 roots = []

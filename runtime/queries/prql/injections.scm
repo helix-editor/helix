@@ -1,11 +1,8 @@
-(
- (s_string) @sql
- (#offset! @sql 0 2 0 -1)
-)
+((s_string) @injection.content
+ (#set! injection.language "sql"))
 
 (from_text
   (keyword_from_text)
   (keyword_json)
-  (literal) @json
-  (#offset! @json 0 3 0 -3)
-)
+  (literal) @injection.content
+  (#set! injection.language "json"))

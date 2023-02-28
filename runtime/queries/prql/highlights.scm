@@ -28,9 +28,9 @@
 (literal) @string
 
 (assignment
-  alias: (field) @field)
+  alias: (field) @variable.other.member)
 
-alias: (identifier) @field
+alias: (identifier) @variable.other.member
 
 (f_string) @string.special
 (s_string) @string.special
@@ -72,14 +72,14 @@ alias: (identifier) @field
 ] @punctuation.delimiter
 
 (literal
-  (integer) @number)
+  (integer) @constant.numeric.integer)
 
-(integer) @number
+(integer) @constant.numeric.integer
 
 (literal
-  (decimal_number) @float)
+  (decimal_number) @constant.numeric.float)
 
-(decimal_number) @float
+(decimal_number) @constant.numeric.float
 
 [
   (keyword_min)
