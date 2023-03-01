@@ -142,7 +142,7 @@ grammars either in the `runtime` folder, or in the folder specified in `HELIX_RU
 (as described below). To build the tree-sitter grammars requires a c++ compiler to be installed, for example `gcc-c++`.
 
 > 💡 If you are using the musl-libc instead of glibc the following environment variable must be set during the build
-> to ensure tree sitter grammars can be loaded correctly:
+> to ensure tree-sitter grammars can be loaded correctly:
 >
 > ```sh
 > RUSTFLAGS="-C target-feature=-crt-static"
