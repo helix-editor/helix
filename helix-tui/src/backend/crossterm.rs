@@ -1,6 +1,6 @@
 use crate::{backend::Backend, buffer::Cell};
 use crossterm::{
-    cursor::{CursorShape, Hide, MoveTo, SetCursorShape, Show},
+    cursor::{Hide, MoveTo, SetCursorStyle, Show},
     execute, queue,
     style::{
         Attribute as CAttribute, Color as CColor, Print, SetAttribute, SetBackgroundColor,
@@ -156,12 +156,12 @@ where
 
     fn show_cursor(&mut self, kind: CursorKind) -> io::Result<()> {
         let shape = match kind {
-            CursorKind::Block => CursorShape::Block,
-            CursorKind::Bar => CursorShape::Line,
-            CursorKind::Underline => CursorShape::UnderScore,
+            CursorKind::Block => SetCursorStyle::SteadyBlock,
+            CursorKind::Bar => SetCursorStyle::SteadyBar,
+            CursorKind::Underline => SetCursorStyle::SteadyUnderScore,
             CursorKind::Hidden => unreachable!(),
         };
-        map_error(execute!(self.buffer, Show, SetCursorShape(shape)))
+        map_error(execute!(self.buffer, Show, shape))
     }
 
     fn get_cursor(&mut self) -> io::Result<(u16, u16)> {

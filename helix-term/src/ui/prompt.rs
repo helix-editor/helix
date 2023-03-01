@@ -516,7 +516,7 @@ impl Component for Prompt {
             alt!('d') | alt!(Delete) | ctrl!(Delete) => self.delete_word_forwards(cx.editor),
             ctrl!('k') => self.kill_to_end_of_line(cx.editor),
             ctrl!('u') => self.kill_to_start_of_line(cx.editor),
-            ctrl!('h') | key!(Backspace) => {
+            ctrl!('h') | key!(Backspace) | shift!(Backspace) => {
                 self.delete_char_backwards(cx.editor);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
