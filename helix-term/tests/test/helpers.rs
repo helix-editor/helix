@@ -232,15 +232,19 @@ pub fn temp_file_with_contents<S: AsRef<str>>(
 /// Generates a config with defaults more suitable for integration tests
 pub fn test_config() -> Config {
     merge_keys(Config {
-        editor: helix_view::editor::Config {
-            lsp: LspConfig {
-                enable: false,
-                ..Default::default()
-            },
+        editor: test_editor_config(),
+        ..Default::default()
+    })
+}
+
+pub fn test_editor_config() -> helix_view::editor::Config {
+    helix_view::editor::Config {
+        lsp: LspConfig {
+            enable: false,
             ..Default::default()
         },
         ..Default::default()
-    })
+    }
 }
 
 /// Replaces all LF chars with the system's appropriate line feed
@@ -282,7 +286,7 @@ impl Default for AppBuilder {
     fn default() -> Self {
         Self {
             args: Args::default(),
-            config: Config::default(),
+            config: test_config(),
             syn_conf: test_syntax_conf(None),
             input: None,
         }
