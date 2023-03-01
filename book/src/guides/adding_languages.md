@@ -49,4 +49,4 @@ below.
   to fetch the grammars and `hx --grammar build` to build any out-of-date
   grammars.
 - If a parser is causing a segfault, or you want to remove it, make sure to
-  remove the compiled parser located at `runtime/grammar/<name>.so`.
+  remove the compiled parser located at `runtime/grammars/<name>.so`.
