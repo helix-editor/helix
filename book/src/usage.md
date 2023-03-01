@@ -1,14 +1,13 @@
 # Using Helix
 
 <!--toc:start-->
-- [Using Helix](#using-helix)
-  - [Registers](#registers)
-    - [User-defined registers](#user-defined-registers)
-    - [Special registers](#special-registers)
-  - [Surround](#surround)
-  - [Selecting and manipulating text with textobjects](#selecting-and-manipulating-text-with-textobjects)
-  - [Navigating using tree-sitter textobjects](#navigating-using-tree-sitter-textobjects)
-  - [Moving the selection with syntax-aware motions](#moving-the-selection-with-syntax-aware-motions)
+- [Registers](#registers)
+  - [User-defined registers](#user-defined-registers)
+  - [Special registers](#special-registers)
+- [Surround](#surround)
+- [Selecting and manipulating text with textobjects](#selecting-and-manipulating-text-with-textobjects)
+- [Navigating using tree-sitter textobjects](#navigating-using-tree-sitter-textobjects)
+- [Moving the selection with syntax-aware motions](#moving-the-selection-with-syntax-aware-motions)
 <!--toc:end-->
 
 For a full interactive introduction to Helix, refer to the
