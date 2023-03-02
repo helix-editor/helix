@@ -235,7 +235,7 @@ impl Completion {
                     );
 
                     // initialize a savepoint
-                    doc.savepoint();
+                    doc.savepoint(&view);
                     doc.apply(&transaction, view.id);
 
                     editor.last_completion = Some(CompleteAction {

@@ -4181,7 +4181,7 @@ pub fn completion(cx: &mut Context) {
     iter.reverse();
     let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
     let start_offset = cursor.saturating_sub(offset);
-    doc.savepoint();
+    doc.savepoint(&view);
 
     cx.callback(
         future,

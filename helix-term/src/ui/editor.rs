@@ -914,8 +914,8 @@ impl EditorView {
                                 doc.apply(&tx, view.id);
                             }
                             InsertEvent::TriggerCompletion => {
-                                let (_, doc) = current!(cxt.editor);
-                                doc.savepoint();
+                                let (view, doc) = current!(cxt.editor);
+                                doc.savepoint(view);
                             }
                         }
                     }
