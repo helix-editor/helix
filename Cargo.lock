@@ -1254,6 +1254,7 @@ dependencies = [
  "libc",
  "log",
  "once_cell",
+ "parking_lot",
  "serde",
  "serde_json",
  "slotmap",
