@@ -31,7 +31,7 @@ use std::{
 use tokio::{
     sync::{
         mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-        Notify, RwLock,
+        oneshot, Notify, RwLock,
     },
     time::{sleep, Duration, Instant, Sleep},
 };
@@ -852,6 +852,14 @@ pub struct Editor {
     /// avoid calculating the cursor position multiple
     /// times during rendering and should not be set by other functions.
     pub cursor_cache: Cell<Option<Option<Position>>>,
+    /// When a new completion request is sent to the server old
+    /// unifinished request must be dropped. Each completion
+    /// request is associated with a channel that cancels
+    /// when the channel is dropped. That channel is stored
+    /// here. When a new completion request is sent this
+    /// field is set and any old requests are automatically
+    /// canceled as a result
+    pub completion_request_handle: Option<oneshot::Sender<()>>,
 }
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
@@ -950,6 +958,7 @@ impl Editor {
             redraw_handle: Default::default(),
             needs_redraw: false,
             cursor_cache: Cell::new(None),
+            completion_request_handle: None,
         }
     }
 

@@ -820,6 +820,7 @@ impl EditorView {
                 (Mode::Insert, Mode::Normal) => {
                     // if exiting insert mode, remove completion
                     self.completion = None;
+                    cxt.editor.completion_request_handle = None;
 
                     // TODO: Use an on_mode_change hook to remove signature help
                     cxt.jobs.callback(async {

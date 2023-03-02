@@ -5,6 +5,7 @@ pub(crate) mod typed;
 pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
+use tokio::sync::oneshot;
 use tui::widgets::Row;
 pub use typed::*;
 
@@ -4171,6 +4172,24 @@ pub fn completion(cx: &mut Context) {
         None => return,
     };
 
+    // setup a chanel that allows the request to be canceled
+    let (tx, rx) = oneshot::channel();
+    // set completion_request so that this request can be canceled
+    // by setting completion_request, the old channel stored there is dropped
+    // and the associated request is automatically dropped
+    cx.editor.completion_request_handle = Some(tx);
+    let future = async move {
+        tokio::select! {
+            biased;
+            _ = rx => {
+                Ok(serde_json::Value::Null)
+            }
+            res = future => {
+                res
+            }
+        }
+    };
+
     let trigger_offset = cursor;
 
     // TODO: trigger_offset should be the cursor offset but we also need a starting offset from where we want to apply
@@ -4183,11 +4202,19 @@ pub fn completion(cx: &mut Context) {
     let start_offset = cursor.saturating_sub(offset);
     let savepoint = doc.savepoint(view);
 
+    let trigger_doc = doc.id();
+    let trigger_view = view.id;
+
     cx.callback(
         future,
         move |editor, compositor, response: Option<lsp::CompletionResponse>| {
-            if editor.mode != Mode::Insert {
-                // we're not in insert mode anymore
+            let (view, doc) = current_ref!(editor);
+            // check if the completion request is stale.
+            //
+            // Completions are completed asynchrounsly and therefore the user could
+            //switch document/view or leave insert mode. In all of thoise cases the
+            // completion should be discarded
+            if editor.mode != Mode::Insert || view.id != trigger_view || doc.id() != trigger_doc {
                 return;
             }
 
