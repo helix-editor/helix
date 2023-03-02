@@ -473,9 +473,7 @@ impl Buffer {
     pub fn set_style(&mut self, area: Rect, style: Style) {
         for y in area.top()..area.bottom() {
             for x in area.left()..area.right() {
-                if let Some(cell) = self.get_mut(x, y) {
-                    cell.set_style(style);
-                }
+                self[(x, y)].set_style(style);
             }
         }
     }
