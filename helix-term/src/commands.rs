@@ -53,7 +53,10 @@ use crate::{
     filter_picker_entry,
     job::Callback,
     keymap::ReverseKeymap,
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
+    ui::{
+        self, editor::InsertEvent, overlay::overlayed, FilePicker, Picker, Popup, Prompt,
+        PromptEvent,
+    },
 };
 
 use crate::job::{self, Jobs};
@@ -4199,6 +4202,20 @@ pub fn completion(cx: &mut Context) {
 
     let trigger_doc = doc.id();
     let trigger_view = view.id;
+
+    // FIXME: The commands Context can only have a single callback
+    // which means it gets overwritten when executing keybindings
+    // with multiple commands or macros. This would mean that completion
+    // might be incorrectly applied when repeating the insertmode action
+    //
+    // TODO: to solve this either make cx.callback a Vec of callbacks or
+    // alternatively move `last_insert` to `helix_view::Editor`
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, _cx: &mut compositor::Context| {
+            let ui = compositor.find::<ui::EditorView>().unwrap();
+            ui.last_insert.1.push(InsertEvent::RequestCompletion);
+        },
+    ));
 
     cx.callback(
         future,
