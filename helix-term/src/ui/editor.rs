@@ -957,9 +957,6 @@ impl EditorView {
             return;
         }
 
-        // Immediately initialize a savepoint
-        doc_mut!(editor).savepoint();
-
         editor.last_completion = None;
         self.last_insert.1.push(InsertEvent::TriggerCompletion);
 
