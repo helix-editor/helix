@@ -109,8 +109,16 @@ pub fn find_matching_bracket_current_line_plaintext(
             open_cnt += 1;
         } else if is_valid_pair(
             doc,
-            if is_fwd { cursor_pos } else { cursor_pos - i - 1 },
-            if is_fwd { cursor_pos + i + 1 } else { cursor_pos },
+            if is_fwd {
+                cursor_pos
+            } else {
+                cursor_pos - i - 1
+            },
+            if is_fwd {
+                cursor_pos + i + 1
+            } else {
+                cursor_pos
+            },
         ) {
             // Return when all pending brackets have been closed.
             if open_cnt == 1 {
