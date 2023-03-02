@@ -116,6 +116,7 @@ pub trait Component: Any + AnyComponent {
 
     #[cfg(test)]
     /// Utility method for testing `handle_event` without using integration test.
+    /// Especially useful for testing helper components such as `Prompt`, `TreeView` etc
     fn handle_events(&mut self, events: &str) -> anyhow::Result<()> {
         use helix_view::input::parse_macro;
 

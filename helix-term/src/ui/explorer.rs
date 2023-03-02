@@ -630,14 +630,14 @@ impl Explorer {
                         explorer.new_file(line)?
                     }
                 }
-                (PromptAction::RemoveFolder, key!(Enter)) => {
-                    if line == "y" {
+                (PromptAction::RemoveFolder, key) => {
+                    if let key!('y') = key {
                         close_documents(current_item_path, cx)?;
                         explorer.remove_folder()?;
                     }
                 }
-                (PromptAction::RemoveFile, key!(Enter)) => {
-                    if line == "y" {
+                (PromptAction::RemoveFile, key) => {
+                    if let key!('y') = key {
                         close_documents(current_item_path, cx)?;
                         explorer.remove_file()?;
                     }
@@ -1345,12 +1345,12 @@ mod test_explorer {
         assert!(fs::read_to_string(path.join("styles/foobar")).is_ok());
     }
 
-    #[test]
-    fn test_remove_file() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_remove_file() {
         let (path, mut explorer) = new_explorer("remove_file");
 
         // 1. Move to ".gitignore"
-        explorer.reveal_file(path.join(".gitignore")).unwrap();
+        explorer.handle_events("/.gitignore<ret>").unwrap();
 
         // 1a. Expect the cursor is at ".gitignore"
         assert_eq!(
@@ -1368,7 +1368,7 @@ mod test_explorer {
         assert!(fs::read_to_string(path.join(".gitignore")).is_ok());
 
         // 2. Remove the current file
-        explorer.remove_file().unwrap();
+        explorer.handle_events("dy").unwrap();
 
         // 3. Expect ".gitignore" is deleted, and the cursor moved down
         assert_eq!(
@@ -1388,7 +1388,7 @@ mod test_explorer {
         assert!(fs::read_to_string(path.join("index.html")).is_ok());
 
         // 4. Remove the current file
-        explorer.remove_file().unwrap();
+        explorer.handle_events("dy").unwrap();
 
         // 4a. Expect "index.html" is deleted, at the cursor moved up
         assert_eq!(
@@ -1404,12 +1404,12 @@ mod test_explorer {
         assert!(fs::read_to_string(path.join("index.html")).is_err());
     }
 
-    #[test]
-    fn test_remove_folder() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_remove_folder() {
         let (path, mut explorer) = new_explorer("remove_folder");
 
         // 1. Move to "styles/"
-        explorer.reveal_file(path.join("styles")).unwrap();
+        explorer.handle_events("/styles<ret>o").unwrap();
 
         // 1a. Expect the cursor is at "styles"
         assert_eq!(
@@ -1429,7 +1429,7 @@ mod test_explorer {
         assert!(fs::read_dir(path.join("styles")).is_ok());
 
         // 2. Remove the current folder
-        explorer.remove_folder().unwrap();
+        explorer.handle_events("dy").unwrap();
 
         // 3. Expect "styles" is deleted, and the cursor moved down
         assert_eq!(
