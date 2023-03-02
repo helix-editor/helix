@@ -222,4 +222,10 @@ where
     pub fn size(&self) -> io::Result<Rect> {
         self.backend.size()
     }
+
+    /// Checks whether the host terminal emulator supports the keyboard
+    /// enhancement protocol for disambiguating keycodes.
+    pub fn supports_keyboard_enhancement_protocol(&self) -> io::Result<bool> {
+        self.backend.supports_keyboard_enhancement_protocol()
+    }
 }

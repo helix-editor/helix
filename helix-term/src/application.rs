@@ -112,12 +112,10 @@ fn restore_term() -> Result<(), Error> {
     let mut stdout = stdout();
     // reset cursor shape
     write!(stdout, "\x1B[0 q")?;
-    if matches!(terminal::supports_keyboard_enhancement(), Ok(true)) {
-        execute!(stdout, PopKeyboardEnhancementFlags)?;
-    }
     // Ignore errors on disabling, this might trigger on windows if we call
     // disable without calling enable previously
     let _ = execute!(stdout, DisableMouseCapture);
+    let _ = execute!(stdout, PopKeyboardEnhancementFlags);
     execute!(
         stdout,
         DisableBracketedPaste,
@@ -1071,7 +1069,10 @@ impl Application {
         if self.config.load().editor.mouse {
             execute!(stdout, EnableMouseCapture)?;
         }
-        if matches!(terminal::supports_keyboard_enhancement(), Ok(true)) {
+        if matches!(
+            self.terminal.supports_keyboard_enhancement_protocol(),
+            Ok(true)
+        ) {
             log::debug!("The enhanced keyboard protocol is supported on this terminal");
             execute!(
                 stdout,

@@ -23,4 +23,5 @@ pub trait Backend {
     fn clear(&mut self) -> Result<(), io::Error>;
     fn size(&self) -> Result<Rect, io::Error>;
     fn flush(&mut self) -> Result<(), io::Error>;
+    fn supports_keyboard_enhancement_protocol(&self) -> Result<bool, io::Error>;
 }

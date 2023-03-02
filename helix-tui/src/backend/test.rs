@@ -147,4 +147,8 @@ impl Backend for TestBackend {
     fn flush(&mut self) -> Result<(), io::Error> {
         Ok(())
     }
+
+    fn supports_keyboard_enhancement_protocol(&self) -> Result<bool, io::Error> {
+        Ok(false)
+    }
 }

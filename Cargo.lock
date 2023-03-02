@@ -1260,6 +1260,7 @@ dependencies = [
  "crossterm",
  "helix-core",
  "helix-view",
+ "once_cell",
  "serde",
  "termini",
  "unicode-segmentation",
