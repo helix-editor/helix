@@ -124,7 +124,6 @@ pub trait Component: Any + AnyComponent {
         let mut jobs = Context::dummy_jobs();
         let mut cx = Context::dummy(&mut jobs, &mut editor);
         for event in parse_macro(events)? {
-            println!("Event = {}", event);
             self.handle_event(&Event::Key(event), &mut cx);
         }
         Ok(())

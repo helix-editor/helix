@@ -443,17 +443,14 @@ impl Explorer {
     }
 
     fn render_float(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        let float_area_box = area.overlayed();
         let background = cx.editor.theme.get("ui.background");
-        surface.clear_with(area, background);
-        let area = render_block(area, surface, Borders::ALL);
+        surface.clear_with(float_area_box, background);
+        let float_area = render_block(float_area_box, surface, Borders::ALL);
 
-        let mut preview_area = area.clip_left(self.column_width + 1);
+        let preview_area = float_area.clip_left(self.column_width + 1);
         if let Some((_, prompt)) = self.prompt.as_mut() {
-            let area = preview_area.clip_bottom(2);
-            let promp_area =
-                render_block(preview_area.clip_top(area.height), surface, Borders::TOP);
-            prompt.render(promp_area, surface, cx);
-            preview_area = area;
+            prompt.render(area, surface, cx);
         }
         if self.show_help {
             self.render_help(preview_area, surface, cx);
@@ -461,7 +458,12 @@ impl Explorer {
             self.render_preview(preview_area, surface, cx.editor);
         }
 
-        let list_area = render_block(area.clip_right(preview_area.width), surface, Borders::RIGHT);
+        let list_area = render_block(
+            float_area.clip_right(preview_area.width),
+            surface,
+            Borders::RIGHT,
+        );
+
         self.render_tree(list_area, surface, cx)
     }
 
@@ -841,17 +843,7 @@ impl Component for Explorer {
             Some((_, prompt)) => prompt,
             None => return (None, CursorKind::Hidden),
         };
-        let config = &editor.config().explorer;
-        let (x, y) = if config.is_overlay() {
-            let colw = self.column_width as u16;
-            if area.width > colw {
-                (area.x + colw + 2, area.y + area.height.saturating_sub(2))
-            } else {
-                return (None, CursorKind::Hidden);
-            }
-        } else {
-            (area.x, area.y + area.height.saturating_sub(1))
-        };
+        let (x, y) = (area.x, area.y + area.height.saturating_sub(1));
         prompt.cursor(Rect::new(x, y, area.width, 1), editor)
     }
 }

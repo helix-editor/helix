@@ -6,7 +6,6 @@ use crate::{
     keymap::{KeymapResult, Keymaps},
     ui::{
         document::{render_document, LinePos, TextRenderer, TranslatedPosition},
-        overlay::Overlay,
         Completion, Explorer, ProgressSpinners,
     },
 };
@@ -43,7 +42,7 @@ pub struct EditorView {
     last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
-    pub(crate) explorer: Option<Overlay<Explorer>>,
+    pub(crate) explorer: Option<Explorer>,
 }
 
 #[derive(Debug, Clone)]
@@ -1360,8 +1359,8 @@ impl Component for EditorView {
         };
 
         let editor_area = if let Some(explorer) = &self.explorer {
-            let explorer_column_width = if explorer.content.is_opened() {
-                explorer.content.column_width().saturating_add(2)
+            let explorer_column_width = if explorer.is_opened() {
+                explorer.column_width().saturating_add(2)
             } else {
                 0
             };
@@ -1381,14 +1380,14 @@ impl Component for EditorView {
         cx.editor.resize(editor_area);
 
         if let Some(explorer) = self.explorer.as_mut() {
-            if !explorer.content.is_focus() {
+            if !explorer.is_focus() {
                 if let Some(position) = config.explorer.is_embed() {
                     let area = if use_bufferline {
                         area.clip_top(1)
                     } else {
                         area
                     };
-                    explorer.content.render_embed(area, surface, cx, &position);
+                    explorer.render_embed(area, surface, cx, &position);
                 }
             }
         }
@@ -1473,14 +1472,14 @@ impl Component for EditorView {
         }
 
         if let Some(explore) = self.explorer.as_mut() {
-            if explore.content.is_focus() {
+            if explore.is_focus() {
                 if let Some(position) = config.explorer.is_embed() {
                     let area = if use_bufferline {
                         area.clip_top(1)
                     } else {
                         area
                     };
-                    explore.content.render_embed(area, surface, cx, &position);
+                    explore.render_embed(area, surface, cx, &position);
                 } else {
                     explore.render(area, surface, cx);
                 }
@@ -1490,11 +1489,11 @@ impl Component for EditorView {
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         if let Some(explore) = &self.explorer {
-            if explore.content.is_focus() {
+            if explore.is_focus() {
                 if editor.config().explorer.is_overlay() {
                     return explore.cursor(_area, editor);
                 }
-                let cursor = explore.content.cursor(_area, editor);
+                let cursor = explore.cursor(_area, editor);
                 if cursor.0.is_some() {
                     return cursor;
                 }

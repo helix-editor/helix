@@ -249,7 +249,7 @@ impl Default for ExplorerConfig {
     fn default() -> Self {
         Self {
             position: ExplorerPosition::Left,
-            column_width: 30,
+            column_width: 36,
         }
     }
 }
