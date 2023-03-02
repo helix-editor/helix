@@ -4181,7 +4181,7 @@ pub fn completion(cx: &mut Context) {
     iter.reverse();
     let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
     let start_offset = cursor.saturating_sub(offset);
-    doc.savepoint(&view);
+    let savepoint = doc.savepoint(view);
 
     cx.callback(
         future,
@@ -4209,6 +4209,7 @@ pub fn completion(cx: &mut Context) {
             let ui = compositor.find::<ui::EditorView>().unwrap();
             ui.set_completion(
                 editor,
+                savepoint,
                 items,
                 offset_encoding,
                 start_offset,
