@@ -175,12 +175,6 @@ mod tests {
             assert_eq!(pos, actual.unwrap(), "expected symmetrical behaviour");
         };
 
-        let assert_no_match = |input: &str, pos| {
-            let input = &Rope::from(input);
-            let actual = find_matching_bracket_current_line_plaintext(input, pos);
-            assert!(actual.is_none(), "expected no match");
-        };
-
         assert("(hello)", 0, 6);
         assert("((hello))", 0, 8);
         assert("((hello))", 1, 7);
