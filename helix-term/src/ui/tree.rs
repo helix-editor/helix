@@ -17,7 +17,7 @@ use tui::buffer::Buffer as Surface;
 use super::Prompt;
 
 pub trait TreeViewItem: Sized + Ord {
-    type Params;
+    type Params: Default;
 
     fn name(&self) -> String;
     fn is_parent(&self) -> bool;

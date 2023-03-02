@@ -94,6 +94,10 @@ impl Prompt {
         self
     }
 
+    pub fn prompt(&self) -> Cow<str> {
+        self.prompt.clone()
+    }
+
     pub fn line(&self) -> &String {
         &self.line
     }

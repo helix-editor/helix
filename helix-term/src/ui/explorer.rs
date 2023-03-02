@@ -131,14 +131,13 @@ fn dir_entry_to_file_info(entry: DirEntry, path: &Path) -> Option<FileInfo> {
 
 #[derive(Clone, Debug)]
 enum PromptAction {
-    CreateFolder,
-    CreateFile,
+    CreateFileOrFolder,
     RemoveFolder,
     RemoveFile,
     RenameFile,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 struct State {
     focus: bool,
     open: bool,
@@ -322,30 +321,21 @@ impl Explorer {
         }
     }
 
-    fn new_create_folder_prompt(&mut self) -> Result<()> {
+    fn new_create_file_or_folder_prompt(&mut self, cx: &mut Context) -> Result<()> {
         let folder_path = self.nearest_folder()?;
         self.prompt = Some((
-            PromptAction::CreateFolder,
+            PromptAction::CreateFileOrFolder,
             Prompt::new(
-                format!(" New folder: {}/", folder_path.to_string_lossy()).into(),
+                format!(
+                    " New file or folder (ends with '{}'): ",
+                    std::path::MAIN_SEPARATOR
+                )
+                .into(),
                 None,
                 ui::completers::none,
                 |_, _, _| {},
-            ),
-        ));
-        Ok(())
-    }
-
-    fn new_create_file_prompt(&mut self) -> Result<()> {
-        let folder_path = self.nearest_folder()?;
-        self.prompt = Some((
-            PromptAction::CreateFile,
-            Prompt::new(
-                format!(" New file: {}/", folder_path.to_string_lossy()).into(),
-                None,
-                ui::completers::none,
-                |_, _, _| {},
-            ),
+            )
+            .with_line(format!("{}/", folder_path.to_string_lossy()), cx.editor),
         ));
         Ok(())
     }
@@ -601,8 +591,7 @@ impl Explorer {
             "Explorer",
             &[
                 ("?", "Toggle help"),
-                ("a", "Add file"),
-                ("A", "Add folder"),
+                ("a", "Add file/folder"),
                 ("r", "Rename file/folder"),
                 ("d", "Delete file"),
                 ("B", "Change root to parent folder"),
@@ -634,8 +623,13 @@ impl Explorer {
 
             let current_item_path = explorer.tree.current_item()?.path.clone();
             match (&action, event) {
-                (PromptAction::CreateFolder, key!(Enter)) => explorer.new_folder(line)?,
-                (PromptAction::CreateFile, key!(Enter)) => explorer.new_file(line)?,
+                (PromptAction::CreateFileOrFolder, key!(Enter)) => {
+                    if line.ends_with(std::path::MAIN_SEPARATOR) {
+                        explorer.new_folder(line)?
+                    } else {
+                        explorer.new_file(line)?
+                    }
+                }
                 (PromptAction::RemoveFolder, key!(Enter)) => {
                     if line == "y" {
                         close_documents(current_item_path, cx)?;
@@ -669,9 +663,8 @@ impl Explorer {
         }
     }
 
-    fn new_file(&mut self, file_name: &str) -> Result<()> {
-        let current_parent = self.nearest_folder()?;
-        let path = helix_core::path::get_normalized_path(&current_parent.join(file_name));
+    fn new_file(&mut self, path: &str) -> Result<()> {
+        let path = helix_core::path::get_normalized_path(&PathBuf::from(path));
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -680,9 +673,8 @@ impl Explorer {
         self.reveal_file(path)
     }
 
-    fn new_folder(&mut self, file_name: &str) -> Result<()> {
-        let current_parent = self.nearest_folder()?;
-        let path = helix_core::path::get_normalized_path(&current_parent.join(file_name));
+    fn new_folder(&mut self, path: &str) -> Result<()> {
+        let path = helix_core::path::get_normalized_path(&PathBuf::from(path));
         std::fs::create_dir_all(&path)?;
         self.reveal_file(path)
     }
@@ -810,8 +802,7 @@ impl Component for Explorer {
                 key!(Esc) => self.unfocus(),
                 key!('q') => self.close(),
                 key!('?') => self.toggle_help(),
-                key!('a') => self.new_create_file_prompt()?,
-                shift!('A') => self.new_create_folder_prompt()?,
+                key!('a') => self.new_create_file_or_folder_prompt(cx)?,
                 shift!('B') => self.change_root_parent_folder()?,
                 key!(']') => self.change_root_to_current_folder()?,
                 key!('[') => self.go_to_previous_root(),
@@ -912,6 +903,8 @@ fn render_block(area: Rect, surface: &mut Surface, borders: Borders) -> Rect {
 
 #[cfg(test)]
 mod test_explorer {
+    use crate::compositor::Component;
+
     use super::Explorer;
     use helix_view::graphics::Rect;
     use pretty_assertions::assert_eq;
@@ -932,7 +925,7 @@ mod test_explorer {
             }
             ".gitignore" => file!("")
         });
-        let path: PathBuf = format!("test-explorer{}{}", std::path::MAIN_SEPARATOR, name).into();
+        let path: PathBuf = format!("test_explorer{}{}", std::path::MAIN_SEPARATOR, name).into();
         if path.exists() {
             fs::remove_dir_all(path.clone()).unwrap();
         }
@@ -957,7 +950,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-(test-explorer/reveal_file)
+(test_explorer/reveal_file)
 ⏵ scripts
 ⏵ styles
   .gitignore
@@ -973,7 +966,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/reveal_file]
+[test_explorer/reveal_file]
 ⏷ [scripts]
     (main.js)
 ⏵ styles
@@ -991,7 +984,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-(test-explorer/reveal_file/scripts)
+(test_explorer/reveal_file/scripts)
   main.js
 "
             .trim()
@@ -1006,22 +999,22 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/reveal_file/styles/public]
+[test_explorer/reveal_file/styles/public]
   (file)
 "
             .trim()
         );
     }
 
-    #[test]
-    fn test_rename() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_rename() {
         let (path, mut explorer) = new_explorer("rename");
 
-        explorer.tree.move_down(3);
+        explorer.handle_events("jjj").unwrap();
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/rename]
+[test_explorer/rename]
 ⏵ scripts
 ⏵ styles
   (.gitignore)
@@ -1030,16 +1023,22 @@ mod test_explorer {
             .trim()
         );
 
+        // 0. Open the rename file prompt
+        explorer.handle_events("r").unwrap();
+
+        // 0.1 Expect the current prompt to be related to file renaming
+        let prompt = &explorer.prompt.as_ref().unwrap().1;
+        assert_eq!(prompt.prompt(), " Rename to ");
+        assert_eq!(prompt.line(), "test_explorer/rename/.gitignore");
+
         // 1. Rename the current file to a name that is lexicographically greater than "index.html"
-        explorer
-            .rename_current(&path.join("who.is").display().to_string())
-            .unwrap();
+        explorer.handle_events("<C-w>who.is<ret>").unwrap();
 
         // 1a. Expect the file is renamed, and is focused
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/rename]
+[test_explorer/rename]
 ⏵ scripts
 ⏵ styles
   index.html
@@ -1052,14 +1051,17 @@ mod test_explorer {
 
         // 2. Rename the current file into an existing folder
         explorer
-            .rename_current(&path.join("styles/lol").display().to_string())
+            .handle_events(&format!(
+                "r<C-w>styles{}lol<ret>",
+                std::path::MAIN_SEPARATOR
+            ))
             .unwrap();
 
         // 2a. Expect the file is moved to the folder, and is focused
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/rename]
+[test_explorer/rename]
 ⏵ scripts
 ⏷ [styles]
   ⏵ public
@@ -1074,7 +1076,10 @@ mod test_explorer {
 
         // 3. Rename the current file into a non-existent folder
         explorer
-            .rename_current(&path.join("new_folder/sponge/bob").display().to_string())
+            .handle_events(&format!(
+                "r<C-u>{}<ret>",
+                path.join("new_folder/sponge/bob").display().to_string()
+            ))
             .unwrap();
 
         // 3a. Expect the non-existent folder to be created,
@@ -1083,7 +1088,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/rename]
+[test_explorer/rename]
 ⏷ [new_folder]
   ⏷ [sponge]
       (bob)
@@ -1099,30 +1104,32 @@ mod test_explorer {
         assert!(path.join("new_folder/sponge/bob").exists());
 
         // 4. Change current root to "new_folder/sponge"
-        explorer.tree.move_up(1);
-        explorer.change_root_to_current_folder().unwrap();
+        explorer.handle_events("k]").unwrap();
 
         // 4a. Expect the current root to be "sponge"
         assert_eq!(
             render(&mut explorer),
             "
-(test-explorer/rename/new_folder/sponge)
+(test_explorer/rename/new_folder/sponge)
   bob
 "
             .trim()
         );
 
-        // 5. Move cursor to "bob", and move it outside of the current root
-        explorer.tree.move_down(1);
+        // 5. Move cursor to "bob", and rename it outside of the current root
+        explorer.handle_events("j").unwrap();
         explorer
-            .rename_current(&path.join("scripts/bob").display().to_string())
+            .handle_events(&format!(
+                "r<C-u>{}<ret>",
+                path.join("scripts/bob").display().to_string()
+            ))
             .unwrap();
 
         // 5a. Expect the current root to be "scripts"
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/rename/scripts]
+[test_explorer/rename/scripts]
   (bob)
   main.js
 "
@@ -1130,18 +1137,24 @@ mod test_explorer {
         );
     }
 
-    #[test]
-    fn test_new_folder() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_new_folder() {
         let (path, mut explorer) = new_explorer("new_folder");
 
+        // 0. Open the add file/folder prompt
+        explorer.handle_events("a").unwrap();
+        let prompt = &explorer.prompt.as_ref().unwrap().1;
+        assert_eq!(prompt.prompt(), " New file or folder (ends with '/'): ");
+        assert_eq!(prompt.line(), "test_explorer/new_folder/");
+
         // 1. Add a new folder at the root
-        explorer.new_folder("yoyo").unwrap();
+        explorer.handle_events("yoyo/<ret>").unwrap();
 
         // 1a. Expect the new folder is added, and is focused
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/new_folder]
+[test_explorer/new_folder]
 ⏵ scripts
 ⏵ styles
 ⏷ (yoyo)
@@ -1154,16 +1167,16 @@ mod test_explorer {
         assert!(fs::read_dir(path.join("yoyo")).is_ok());
 
         // 2. Move up to "styles"
-        explorer.tree.move_up(1);
+        explorer.handle_events("k").unwrap();
 
         // 3. Add a new folder
-        explorer.new_folder("sus.sass").unwrap();
+        explorer.handle_events("asus.sass/<ret>").unwrap();
 
         // 3a. Expect the new folder is added under "styles", although "styles" is not opened
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/new_folder]
+[test_explorer/new_folder]
 ⏵ scripts
 ⏷ [styles]
   ⏵ public
@@ -1179,7 +1192,7 @@ mod test_explorer {
         assert!(fs::read_dir(path.join("styles/sus.sass")).is_ok());
 
         // 4. Add a new folder with non-existent parents
-        explorer.new_folder("a/b/c").unwrap();
+        explorer.handle_events("aa/b/c/<ret>").unwrap();
 
         // 4a. Expect the non-existent parents are created,
         //     and the new folder is created,
@@ -1187,7 +1200,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/new_folder]
+[test_explorer/new_folder]
 ⏷ [styles]
   ⏷ [sus.sass]
     ⏷ [a]
@@ -1204,17 +1217,17 @@ mod test_explorer {
         assert!(fs::read_dir(path.join("styles/sus.sass/a/b/c")).is_ok());
 
         // 5. Move to "style.css"
-        explorer.tree.move_down(1);
+        explorer.handle_events("j").unwrap();
 
         // 6. Add a new folder here
-        explorer.new_folder("foobar").unwrap();
+        explorer.handle_events("afoobar/<ret>").unwrap();
 
         // 6a. Expect the folder is added under "styles",
         //     because the folder of the current item, "style.css" is "styles/"
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/new_folder]
+[test_explorer/new_folder]
 ⏵ scripts
 ⏷ [styles]
   ⏷ (foobar)
@@ -1231,17 +1244,18 @@ mod test_explorer {
         assert!(fs::read_dir(path.join("styles/foobar")).is_ok());
     }
 
-    #[test]
-    fn test_new_file() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_new_file() {
         let (path, mut explorer) = new_explorer("new_file");
+
         // 1. Add a new file at the root
-        explorer.new_file("yoyo").unwrap();
+        explorer.handle_events("ayoyo<ret>").unwrap();
 
         // 1a. Expect the new file is added, and is focused
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/new_file]
+[test_explorer/new_file]
 ⏵ scripts
 ⏵ styles
   .gitignore
@@ -1257,13 +1271,13 @@ mod test_explorer {
         explorer.tree.move_up(3);
 
         // 3. Add a new file
-        explorer.new_file("sus.sass").unwrap();
+        explorer.handle_events("asus.sass<ret>").unwrap();
 
         // 3a. Expect the new file is added under "styles", although "styles" is not opened
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/new_file]
+[test_explorer/new_file]
 ⏵ scripts
 ⏷ [styles]
   ⏵ public
@@ -1279,7 +1293,7 @@ mod test_explorer {
         assert!(fs::read_to_string(path.join("styles/sus.sass")).is_ok());
 
         // 4. Add a new file with non-existent parents
-        explorer.new_file("a/b/c").unwrap();
+        explorer.handle_events("aa/b/c<ret>").unwrap();
 
         // 4a. Expect the non-existent parents are created,
         //     and the new file is created,
@@ -1287,7 +1301,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/new_file]
+[test_explorer/new_file]
 ⏵ scripts
 ⏷ [styles]
   ⏷ [a]
@@ -1304,17 +1318,17 @@ mod test_explorer {
         assert!(fs::read_to_string(path.join("styles/a/b/c")).is_ok());
 
         // 5. Move to "style.css"
-        explorer.tree.move_down(2);
+        explorer.handle_events("jj").unwrap();
 
         // 6. Add a new file here
-        explorer.new_file("foobar").unwrap();
+        explorer.handle_events("afoobar<ret>").unwrap();
 
         // 6a. Expect the file is added under "styles",
         //     because the folder of the current item, "style.css" is "styles/"
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/new_file]
+[test_explorer/new_file]
 ⏷ [styles]
     ⏷ b
         c
@@ -1342,7 +1356,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/remove_file]
+[test_explorer/remove_file]
 ⏵ scripts
 ⏵ styles
   (.gitignore)
@@ -1360,7 +1374,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/remove_file]
+[test_explorer/remove_file]
 ⏵ scripts
 ⏵ styles
   (index.html)
@@ -1380,7 +1394,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/remove_file]
+[test_explorer/remove_file]
 ⏵ scripts
 ⏵ (styles)
 "
@@ -1401,7 +1415,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/remove_folder]
+[test_explorer/remove_folder]
 ⏵ scripts
 ⏷ (styles)
   ⏵ public
@@ -1421,7 +1435,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/remove_folder]
+[test_explorer/remove_folder]
 ⏵ scripts
   (.gitignore)
   index.html
@@ -1447,7 +1461,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/change_root/styles]
+[test_explorer/change_root/styles]
 ⏵ (public)
   style.css
 "
@@ -1463,7 +1477,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-(test-explorer/change_root)
+(test_explorer/change_root)
 ⏵ scripts
 ⏵ styles
   .gitignore
@@ -1479,7 +1493,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/change_root/styles]
+[test_explorer/change_root/styles]
 ⏵ (public)
   style.css
 "
@@ -1496,7 +1510,7 @@ mod test_explorer {
         assert_eq!(
             render(&mut explorer),
             "
-[test-explorer/change_root]
+[test_explorer/change_root]
 ⏵ scripts
 ⏷ (styles)
   ⏵ public

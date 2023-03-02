@@ -113,6 +113,21 @@ pub trait Component: Any + AnyComponent {
     fn id(&self) -> Option<&'static str> {
         None
     }
+
+    #[cfg(test)]
+    /// Utility method for testing `handle_event` without using integration test.
+    fn handle_events(&mut self, events: &str) -> anyhow::Result<()> {
+        use helix_view::input::parse_macro;
+
+        let mut editor = Context::dummy_editor();
+        let mut jobs = Context::dummy_jobs();
+        let mut cx = Context::dummy(&mut jobs, &mut editor);
+        for event in parse_macro(events)? {
+            println!("Event = {}", event);
+            self.handle_event(&Event::Key(event), &mut cx);
+        }
+        Ok(())
+    }
 }
 
 pub struct Compositor {
