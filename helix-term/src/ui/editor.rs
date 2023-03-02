@@ -21,14 +21,14 @@ use helix_core::{
     visual_offset_from_block, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{num::NonZeroUsize, path::PathBuf, rc::Rc};
+use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
 use tui::buffer::Buffer as Surface;
 
@@ -39,7 +39,7 @@ pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<OnKeyCallback>,
     pseudo_pending: Vec<KeyEvent>,
-    last_insert: (commands::MappableCommand, Vec<InsertEvent>),
+    pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
 }
@@ -49,6 +49,7 @@ pub enum InsertEvent {
     Key(KeyEvent),
     CompletionApply(CompleteAction),
     TriggerCompletion,
+    RequestCompletion,
 }
 
 impl Default for EditorView {
@@ -891,6 +892,8 @@ impl EditorView {
                 for _ in 0..cxt.editor.count.map_or(1, NonZeroUsize::into) {
                     // first execute whatever put us into insert mode
                     self.last_insert.0.execute(cxt);
+                    let mut last_savepoint = None;
+                    let mut last_request_savepoint = None;
                     // then replay the inputs
                     for key in self.last_insert.1.clone() {
                         match key {
@@ -898,7 +901,9 @@ impl EditorView {
                             InsertEvent::CompletionApply(compl) => {
                                 let (view, doc) = current!(cxt.editor);
 
-                                doc.restore(view);
+                                if let Some(last_savepoint) = last_savepoint.as_deref() {
+                                    doc.restore(view, last_savepoint);
+                                }
 
                                 let text = doc.text().slice(..);
                                 let cursor = doc.selection(view.id).primary().cursor(text);
@@ -915,8 +920,11 @@ impl EditorView {
                                 doc.apply(&tx, view.id);
                             }
                             InsertEvent::TriggerCompletion => {
+                                last_savepoint = take(&mut last_request_savepoint);
+                            }
+                            InsertEvent::RequestCompletion => {
                                 let (view, doc) = current!(cxt.editor);
-                                doc.savepoint(view);
+                                last_request_savepoint = Some(doc.savepoint(view));
                             }
                         }
                     }
