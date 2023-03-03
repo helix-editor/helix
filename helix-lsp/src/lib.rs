@@ -252,26 +252,17 @@ pub mod util {
     pub fn generate_transaction_from_completion_edit(
         doc: &Rope,
         selection: &Selection,
-        edit: lsp::TextEdit,
-        offset_encoding: OffsetEncoding,
+        start_offset: i128,
+        end_offset: i128,
+        new_text: String,
     ) -> Transaction {
-        let replacement: Option<Tendril> = if edit.new_text.is_empty() {
+        let replacement: Option<Tendril> = if new_text.is_empty() {
             None
         } else {
-            Some(edit.new_text.into())
+            Some(new_text.into())
         };
 
         let text = doc.slice(..);
-        let primary_cursor = selection.primary().cursor(text);
-
-        let start_offset = match lsp_pos_to_pos(doc, edit.range.start, offset_encoding) {
-            Some(start) => start as i128 - primary_cursor as i128,
-            None => return Transaction::new(doc),
-        };
-        let end_offset = match lsp_pos_to_pos(doc, edit.range.end, offset_encoding) {
-            Some(end) => end as i128 - primary_cursor as i128,
-            None => return Transaction::new(doc),
-        };
 
         Transaction::change_by_selection(doc, selection, |range| {
             let cursor = range.cursor(text);
@@ -288,23 +279,13 @@ pub mod util {
     pub fn generate_transaction_from_snippet(
         doc: &Rope,
         selection: &Selection,
-        edit_range: &lsp::Range,
+        start_offset: i128,
+        end_offset: i128,
         snippet: snippet::Snippet,
         line_ending: &str,
         include_placeholder: bool,
-        offset_encoding: OffsetEncoding,
     ) -> Transaction {
         let text = doc.slice(..);
-        let primary_cursor = selection.primary().cursor(text);
-
-        let start_offset = match lsp_pos_to_pos(doc, edit_range.start, offset_encoding) {
-            Some(start) => start as i128 - primary_cursor as i128,
-            None => return Transaction::new(doc),
-        };
-        let end_offset = match lsp_pos_to_pos(doc, edit_range.end, offset_encoding) {
-            Some(end) => end as i128 - primary_cursor as i128,
-            None => return Transaction::new(doc),
-        };
 
         // For each cursor store offsets for the first tabstop
         let mut cursor_tabstop_offsets = Vec::<SmallVec<[(i128, i128); 1]>>::new();
