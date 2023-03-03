@@ -2209,6 +2209,19 @@ name = "yuck"
 source = { git = "https://github.com/Philipp-M/tree-sitter-yuck", rev = "9e97da5773f82123a8c8cccf8f7e795d140ed7d1" }
 
 [[language]]
+name = "prql"
+scope = "source.prql"
+injection-regex = "prql"
+file-types = ["prql"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "prql"
+source = { git = "https://github.com/PRQL/tree-sitter-prql", rev = "3f27cac466f030ee7d985d91eba5470e01dd21ea" }
+
+[[language]]
 name = "po"
 scope = "source.po"
 file-types = ["po", "pot"]
