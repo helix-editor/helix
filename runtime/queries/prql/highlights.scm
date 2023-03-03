@@ -36,7 +36,7 @@ alias: (identifier) @variable.other.member
 (keyword_func) @keyword.function
 
 (function_call
-  (identifier) @function.call)
+  (identifier) @function)
 
 [
   "+"
@@ -87,7 +87,7 @@ alias: (identifier) @variable.other.member
   (keyword_sum)
   (keyword_stddev)
   (keyword_count)
-] @function.call
+] @function
 
 [
  (keyword_side)
