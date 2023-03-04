@@ -104,6 +104,7 @@
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
+| prql | ✓ |  |  |  |
 | purescript | ✓ |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |

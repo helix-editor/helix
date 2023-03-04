@@ -322,7 +322,7 @@ pub struct TextRenderer<'a> {
     pub nbsp: String,
     pub space: String,
     pub tab: String,
-    pub tab_width: u16,
+    pub indent_width: u16,
     pub starting_indent: usize,
     pub draw_indent_guides: bool,
     pub col_offset: usize,
@@ -370,16 +370,19 @@ impl<'a> TextRenderer<'a> {
 
         let text_style = theme.get("ui.text");
 
+        let indent_width = doc.indent_style.indent_width(tab_width) as u16;
+
         TextRenderer {
             surface,
             indent_guide_char: editor_config.indent_guides.character.into(),
             newline,
             nbsp,
             space,
-            tab_width: tab_width as u16,
             tab,
             whitespace_style: theme.get("ui.virtual.whitespace"),
-            starting_indent: (col_offset / tab_width)
+            indent_width,
+            starting_indent: col_offset / indent_width as usize
+                + (col_offset % indent_width as usize != 0) as usize
                 + editor_config.indent_guides.skip_levels as usize,
             indent_guide_style: text_style.patch(
                 theme
@@ -461,14 +464,14 @@ impl<'a> TextRenderer<'a> {
         // Don't draw indent guides outside of view
         let end_indent = min(
             indent_level,
-            // Add tab_width - 1 to round up, since the first visible
+            // Add indent_width - 1 to round up, since the first visible
             // indent might be a bit after offset.col
-            self.col_offset + self.viewport.width as usize + (self.tab_width - 1) as usize,
-        ) / self.tab_width as usize;
+            self.col_offset + self.viewport.width as usize + (self.indent_width as usize - 1),
+        ) / self.indent_width as usize;
 
         for i in self.starting_indent..end_indent {
-            let x =
-                (self.viewport.x as usize + (i * self.tab_width as usize) - self.col_offset) as u16;
+            let x = (self.viewport.x as usize + (i * self.indent_width as usize) - self.col_offset)
+                as u16;
             let y = self.viewport.y + row;
             debug_assert!(self.surface.in_bounds(x, y));
             self.surface

@@ -25,4 +25,4 @@ log = "0.4"
 git = ["git-repository"]
 
 [dev-dependencies]
-tempfile = "3.3"
+tempfile = "3.4"
