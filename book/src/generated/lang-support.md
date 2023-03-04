@@ -30,7 +30,7 @@
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
 | elixir | ✓ | ✓ | ✓ | `elixir-ls` |
-| elm | ✓ |  |  | `elm-language-server` |
+| elm | ✓ | ✓ |  | `elm-language-server` |
 | elvish | ✓ |  |  | `elvish` |
 | env | ✓ |  |  |  |
 | erb | ✓ |  |  |  |
@@ -85,6 +85,7 @@
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
 | msbuild | ✓ |  | ✓ |  |
+| nasm | ✓ | ✓ |  |  |
 | nickel | ✓ |  | ✓ | `nls` |
 | nix | ✓ |  |  | `nil` |
 | nu | ✓ |  |  |  |
@@ -103,6 +104,7 @@
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
+| prql | ✓ |  |  |  |
 | purescript | ✓ |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
@@ -125,6 +127,7 @@
 | sshclientconfig | ✓ |  |  |  |
 | starlark | ✓ | ✓ |  |  |
 | svelte | ✓ |  |  | `svelteserver` |
+| sway | ✓ | ✓ | ✓ | `forc` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | tablegen | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |

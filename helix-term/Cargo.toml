@@ -12,10 +12,6 @@ include = ["src/**/*", "README.md"]
 default-run = "hx"
 rust-version = "1.57"
 
-[package.metadata.nix]
-build = true
-app = true
-
 [features]
 default = ["git"]
 unicode-lines = ["helix-core/unicode-lines"]
@@ -41,7 +37,7 @@ which = "4.4"
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
-crossterm = { version = "0.25", features = ["event-stream"] }
+crossterm = { version = "0.26", features = ["event-stream"] }
 signal-hook = "0.3"
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
@@ -79,4 +75,4 @@ helix-loader = { version = "0.6", path = "../helix-loader" }
 [dev-dependencies]
 smallvec = "1.10"
 indoc = "2.0.0"
-tempfile = "3.3.0"
+tempfile = "3.4.0"
