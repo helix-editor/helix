@@ -2244,3 +2244,14 @@ indent = { tab-width = 8, unit = "        " }
 [[grammar]]
 name = "nasm"
 source = { git = "https://github.com/naclsn/tree-sitter-nasm", rev = "a0db15db6fcfb1bf2cc8702500e55e558825c48b" }
+
+[[language]]
+name = "rst"
+scope = "source.rst"
+comment-token = ".."
+file-types = ["rst"]
+roots = []
+
+[[grammar]]
+name = "rst"
+source = { git = "https://github.com/stsewd/tree-sitter-rst", rev = "25e6328872ac3a764ba8b926aea12719741103f1" }
