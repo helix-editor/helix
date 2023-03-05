@@ -15,6 +15,7 @@ use crossterm::{
     Command,
 };
 use helix_view::graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
+use once_cell::sync::OnceCell;
 use std::{
     fmt,
     io::{self, Write},
@@ -57,6 +58,7 @@ impl Capabilities {
 pub struct CrosstermBackend<W: Write> {
     buffer: W,
     capabilities: Capabilities,
+    supports_keyboard_enhancement_protocol: OnceCell<bool>,
 }
 
 impl<W> CrosstermBackend<W>
@@ -67,7 +69,15 @@ where
         CrosstermBackend {
             buffer,
             capabilities: Capabilities::from_env_or_default(),
+            supports_keyboard_enhancement_protocol: OnceCell::new(),
         }
+    }
+
+    #[inline]
+    fn supports_keyboard_enhancement_protocol(&self) -> io::Result<bool> {
+        self.supports_keyboard_enhancement_protocol
+            .get_or_try_init(terminal::supports_keyboard_enhancement)
+            .copied()
     }
 }
 
@@ -100,7 +110,7 @@ where
         if config.enable_mouse_capture {
             execute!(self.buffer, EnableMouseCapture)?;
         }
-        if matches!(terminal::supports_keyboard_enhancement(), Ok(true)) {
+        if self.supports_keyboard_enhancement_protocol()? {
             log::debug!("The enhanced keyboard protocol is supported on this terminal");
             execute!(
                 self.buffer,
@@ -121,7 +131,7 @@ where
         if config.enable_mouse_capture {
             execute!(self.buffer, DisableMouseCapture)?;
         }
-        if matches!(terminal::supports_keyboard_enhancement(), Ok(true)) {
+        if self.supports_keyboard_enhancement_protocol()? {
             execute!(self.buffer, PopKeyboardEnhancementFlags)?;
         }
         execute!(
