@@ -128,7 +128,7 @@ FLAGS:
 
     let config = match std::fs::read_to_string(helix_loader::config_file()) {
         Ok(config) => toml::from_str(&config)
-            .map(helix_term::keymap::merge_keys)
+            .map(|config: Config| config.merge_in_default_keymap())
             .unwrap_or_else(|err| {
                 eprintln!("Bad config: {}", err);
                 eprintln!("Press <ENTER> to continue with default config");

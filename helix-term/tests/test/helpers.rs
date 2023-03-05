@@ -8,8 +8,8 @@ use std::{
 use anyhow::bail;
 use crossterm::event::{Event, KeyEvent};
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
-use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
-use helix_view::{doc, editor::LspConfig, input::parse_macro, Editor};
+use helix_term::{application::Application, args::Args, config::Config};
+use helix_view::{doc, input::parse_macro, Editor};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -159,12 +159,11 @@ pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Config
 /// want to verify the resulting document and selection.
 pub async fn test_with_config<T: Into<TestCase>>(
     args: Args,
-    mut config: Config,
+    config: Config,
     syn_conf: helix_core::syntax::Configuration,
     test_case: T,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
-    config = helix_term::keymap::merge_keys(config);
     let app = Application::new(args, config, syn_conf)?;
 
     test_key_sequence_with_input_text(
@@ -211,16 +210,9 @@ pub fn temp_file_with_contents<S: AsRef<str>>(
 
 /// Generates a config with defaults more suitable for integration tests
 pub fn test_config() -> Config {
-    merge_keys(Config {
-        editor: helix_view::editor::Config {
-            lsp: LspConfig {
-                enable: false,
-                ..Default::default()
-            },
-            ..Default::default()
-        },
-        ..Default::default()
-    })
+    let mut config = Config::default();
+    config.editor.lsp.enable = false;
+    config
 }
 
 /// Replaces all LF chars with the system's appropriate line feed

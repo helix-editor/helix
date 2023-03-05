@@ -1,11 +1,10 @@
+use super::{keytrie::KeyTrie, macros::keytrie};
+use helix_core::hashmap;
+use helix_view::document::Mode;
 use std::collections::HashMap;
 
-use super::macros::keymap;
-use super::{Keymap, Mode};
-use helix_core::hashmap;
-
-pub fn default() -> HashMap<Mode, Keymap> {
-    let normal = keymap!({ "Normal mode"
+pub fn default() -> HashMap<Mode, KeyTrie> {
+    let normal = keytrie!({ "Normal mode"
         "h" | "left" => move_char_left,
         "j" | "down" => move_visual_line_down,
         "k" | "up" => move_visual_line_up,
@@ -191,10 +190,10 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "C-j" | "j" | "down" => jump_view_down,
             "C-k" | "k" | "up" => jump_view_up,
             "C-l" | "l" | "right" => jump_view_right,
-            "L" => swap_view_right,
-            "K" => swap_view_up,
             "H" => swap_view_left,
             "J" => swap_view_down,
+            "K" => swap_view_up,
+            "L" => swap_view_right,
             "n" => { "New split scratch buffer"
                 "C-s" | "s" => hsplit_new,
                 "C-v" | "v" => vsplit_new,
@@ -321,7 +320,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-x" => decrement,
     });
     let mut select = normal.clone();
-    select.merge_nodes(keymap!({ "Select mode"
+    select.merge_keytrie(keytrie!({ "Select mode"
         "h" | "left" => extend_char_left,
         "j" | "down" => extend_visual_line_down,
         "k" | "up" => extend_visual_line_up,
@@ -352,7 +351,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" => extend_line_down,
         },
     }));
-    let insert = keymap!({ "Insert mode"
+    let insert = keytrie!({ "Insert mode"
         "esc" => normal_mode,
 
         "C-s" => commit_undo_checkpoint,
@@ -378,8 +377,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "end" => goto_line_end_newline,
     });
     hashmap!(
-        Mode::Normal => Keymap::new(normal),
-        Mode::Select => Keymap::new(select),
-        Mode::Insert => Keymap::new(insert),
+        Mode::Normal => normal,
+        Mode::Select => select,
+        Mode::Insert => insert,
     )
 }

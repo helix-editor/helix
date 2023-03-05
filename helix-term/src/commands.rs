@@ -5,7 +5,6 @@ pub(crate) mod typed;
 pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
-use tui::widgets::Row;
 pub use typed::*;
 
 use helix_core::{
@@ -51,8 +50,13 @@ use crate::{
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
-    keymap::ReverseKeymap,
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
+    keymap::CommandList,
+    ui::{
+        self,
+        menu::{Cell, Row},
+        overlay::overlayed,
+        FilePicker, Picker, Popup, Prompt, PromptEvent,
+    },
 };
 
 use crate::job::{self, Jobs};
@@ -140,23 +144,23 @@ pub enum MappableCommand {
     Typable {
         name: String,
         args: Vec<String>,
-        doc: String,
+        description: String,
     },
     Static {
         name: &'static str,
         fun: fn(cx: &mut Context),
-        doc: &'static str,
+        description: &'static str,
     },
 }
 
 macro_rules! static_commands {
-    ( $($name:ident, $doc:literal,)* ) => {
+    ( $($name:ident, $description:literal,)* ) => {
         $(
             #[allow(non_upper_case_globals)]
             pub const $name: Self = Self::Static {
                 name: stringify!($name),
                 fun: $name,
-                doc: $doc
+                description: $description
             };
         )*
 
@@ -169,7 +173,11 @@ macro_rules! static_commands {
 impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
-            Self::Typable { name, args, doc: _ } => {
+            Self::Typable {
+                name,
+                args,
+                description: _,
+            } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
@@ -193,10 +201,10 @@ impl MappableCommand {
         }
     }
 
-    pub fn doc(&self) -> &str {
+    pub fn get_description(&self) -> &str {
         match &self {
-            Self::Typable { doc, .. } => doc,
-            Self::Static { doc, .. } => doc,
+            Self::Typable { description, .. } => description,
+            Self::Static { description, .. } => description,
         }
     }
 
@@ -492,11 +500,18 @@ impl std::str::FromStr for MappableCommand {
             let args = typable_command
                 .map(|s| s.to_owned())
                 .collect::<Vec<String>>();
+
             typed::TYPABLE_COMMAND_MAP
                 .get(name)
                 .map(|cmd| MappableCommand::Typable {
-                    name: cmd.name.to_owned(),
-                    doc: format!(":{} {:?}", cmd.name, args),
+                    name: cmd.name.to_string(),
+                    description: {
+                        if args.is_empty() {
+                            cmd.doc.to_string()
+                        } else {
+                            format!(":{} {}", cmd.name, args.join(" "))
+                        }
+                    },
                     args,
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
@@ -2578,31 +2593,36 @@ fn jumplist_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlayed(picker)));
 }
 
+// NOTE: does not present aliases
 impl ui::menu::Item for MappableCommand {
-    type Data = ReverseKeymap;
+    type Data = CommandList;
 
-    fn format(&self, keymap: &Self::Data) -> Row {
-        let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
-            bindings.iter().fold(String::new(), |mut acc, bind| {
-                if !acc.is_empty() {
-                    acc.push(' ');
-                }
-                for key in bind {
-                    acc.push_str(&key.key_sequence_format());
-                }
-                acc
-            })
-        };
-
+    fn format(&self, command_list: &Self::Data) -> Row {
         match self {
-            MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
-                Some(bindings) => format!("{} ({}) [:{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [:{}]", doc, name).into(),
-            },
-            MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
-                Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [{}]", doc, name).into(),
-            },
+            MappableCommand::Typable {
+                description, name, ..
+            } => {
+                let mut row: Vec<Cell> = vec![
+                    Cell::from(name.as_str()),
+                    Cell::from(""),
+                    Cell::from(description.as_str()),
+                ];
+                if let Some(key_events) = command_list.get(name as &String) {
+                    row[1] = Cell::from(key_events.join(", "));
+                }
+                Row::new(row)
+            }
+            MappableCommand::Static {
+                description: doc,
+                name,
+                ..
+            } => {
+                let mut row: Vec<Cell> = vec![Cell::from(*name), Cell::from(""), Cell::from(*doc)];
+                if let Some(key_events) = command_list.get(*name) {
+                    row[1] = Cell::from(key_events.join(", "));
+                }
+                Row::new(row)
+            }
         }
     }
 }
@@ -2610,45 +2630,51 @@ impl ui::menu::Item for MappableCommand {
 pub fn command_palette(cx: &mut Context) {
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
-            let keymap = compositor.find::<ui::EditorView>().unwrap().keymaps.map()
-                [&cx.editor.mode]
-                .reverse_map();
+            let keymap_command_lists = compositor
+                .find::<ui::EditorView>()
+                .unwrap()
+                .keymap
+                .command_list(&cx.editor.mode);
 
             let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
             commands.extend(typed::TYPABLE_COMMAND_LIST.iter().map(|cmd| {
                 MappableCommand::Typable {
                     name: cmd.name.to_owned(),
-                    doc: cmd.doc.to_owned(),
+                    description: cmd.doc.to_owned(),
                     args: Vec::new(),
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
-                let mut ctx = Context {
-                    register: None,
-                    count: std::num::NonZeroUsize::new(1),
-                    editor: cx.editor,
-                    callback: None,
-                    on_next_key_callback: None,
-                    jobs: cx.jobs,
-                };
-                let focus = view!(ctx.editor).id;
+            let picker = Picker::new(
+                commands,
+                keymap_command_lists,
+                move |cx, command, _action| {
+                    let mut ctx = Context {
+                        register: None,
+                        count: std::num::NonZeroUsize::new(1),
+                        editor: cx.editor,
+                        callback: None,
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+                    let focus = view!(ctx.editor).id;
 
-                command.execute(&mut ctx);
+                    command.execute(&mut ctx);
 
-                if ctx.editor.tree.contains(focus) {
-                    let config = ctx.editor.config();
-                    let mode = ctx.editor.mode();
-                    let view = view_mut!(ctx.editor, focus);
-                    let doc = doc_mut!(ctx.editor, &view.doc);
+                    if ctx.editor.tree.contains(focus) {
+                        let config = ctx.editor.config();
+                        let mode = ctx.editor.mode();
+                        let view = view_mut!(ctx.editor, focus);
+                        let doc = doc_mut!(ctx.editor, &view.doc);
 
-                    view.ensure_cursor_in_view(doc, config.scrolloff);
+                        view.ensure_cursor_in_view(doc, config.scrolloff);
 
-                    if mode != Mode::Insert {
-                        doc.append_changes_to_history(view);
+                        if mode != Mode::Insert {
+                            doc.append_changes_to_history(view);
+                        }
                     }
-                }
-            });
+                },
+            );
             compositor.push(Box::new(overlayed(picker)));
         },
     ));

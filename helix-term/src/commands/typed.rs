@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::ops::Deref;
 
-use crate::job::Job;
+use crate::job::*;
 
 use super::*;
 

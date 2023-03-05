@@ -5,6 +5,19 @@ use helix_core::{
     path::get_relative_path,
     pos_at_coords, syntax, Selection,
 };
+use serde_json::json;
+use tui::backend::Backend;
+
+use crate::{
+    args::Args,
+    commands::apply_workspace_edit,
+    compositor::{Compositor, Event},
+    config::Config,
+    job::Jobs,
+    keymap::Keymap,
+    ui::{self, overlay::overlayed},
+};
+
 use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{
     align_view,
@@ -15,19 +28,6 @@ use helix_view::{
     tree::Layout,
     Align, Editor,
 };
-use serde_json::json;
-use tui::backend::Backend;
-
-use crate::{
-    args::Args,
-    commands::apply_workspace_edit,
-    compositor::{Compositor, Event},
-    config::Config,
-    job::Jobs,
-    keymap::Keymaps,
-    ui::{self, overlay::overlayed},
-};
-
 use log::{debug, error, warn};
 use std::{
     io::{stdin, stdout, Write},
@@ -184,7 +184,7 @@ impl Application {
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
         }));
-        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
+        let editor_view = Box::new(ui::EditorView::new(Keymap::new(keys)));
         compositor.push(editor_view);
 
         if args.load_tutor {
