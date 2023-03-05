@@ -1266,7 +1266,7 @@ pub fn rename_symbol(cx: &mut Context) {
             Some(lsp::PrepareRenameResponse::DefaultBehavior { .. }) => {
                 Ok(get_prefill_from_word_boundary(editor))
             }
-            None => Err("lsp did not response to prepare rename request"),
+            None => Err("lsp did not respond to prepare rename request"),
         }
     }
 
