@@ -1244,7 +1244,7 @@ fn lsp_stop(
     let config = doc
         .language_config()
         .context("LSP not defined for the current document")?;
-    cx.editor.language_servers.stop(&config);
+    cx.editor.language_servers.stop(config);
 
     for doc in cx.editor.documents_mut() {
         if doc.language_server().map_or(false, |ls| ls.id() == ls_id) {
