@@ -242,12 +242,14 @@ pub struct Config {
     /// Automatic save on focus lost. Defaults to false.
     pub auto_save: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
-    /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
+    /// Used for autocompletion and idle-save, set to 0 for instant. Defaults to 400ms.
     #[serde(
         serialize_with = "serialize_duration_millis",
         deserialize_with = "deserialize_duration_millis"
     )]
     pub idle_timeout: Duration,
+    /// Automatic save on idle timeout trigger. Defaults to false.
+    pub idle_save: bool,
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
@@ -757,6 +759,7 @@ impl Default for Config {
             auto_format: true,
             auto_save: false,
             idle_timeout: Duration::from_millis(400),
+            idle_save: false,
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),

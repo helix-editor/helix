@@ -1317,7 +1317,15 @@ impl Component for EditorView {
             }
 
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
-            Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
+            Event::IdleTimeout => {
+                let event_result = self.handle_idle_timeout(&mut cx);
+                if context.editor.config().idle_save {
+                    if let Err(e) = commands::typed::write_all_impl(context, false, false) {
+                        context.editor.set_error(format!("{}", e));
+                    }
+                }
+                event_result
+            }
             Event::FocusGained => EventResult::Ignored(None),
             Event::FocusLost => {
                 if context.editor.config().auto_save {
