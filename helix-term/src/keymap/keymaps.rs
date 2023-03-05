@@ -1,21 +1,11 @@
-pub mod default;
-pub mod macros;
-// NOTE: Only pub becuase of their use in macros
-pub mod keytrie;
-pub mod keytrienode;
-#[cfg(test)]
-mod tests;
-
-use self::{keytrie::KeyTrie, keytrienode::KeyTrieNode, macros::key};
-
+use super::*;
+use crate::keymap::macros::*;
 use crate::commands::MappableCommand;
-use arc_swap::{
-    access::{DynAccess, DynGuard},
-    ArcSwap,
-};
-
 use helix_view::{document::Mode, input::KeyEvent};
-use std::{collections::HashMap, sync::Arc};
+use std::{sync::Arc, collections::HashMap};
+use arc_swap::{access::{DynAccess, DynGuard}, ArcSwap};
+
+use std::ops::Deref;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeymapResult {
@@ -27,25 +17,25 @@ pub enum KeymapResult {
     Cancelled(Vec<KeyEvent>),
 }
 
-pub struct Keymap {
-    pub keytries: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>,
+pub struct Keymaps {
+    pub keymaps: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>,
     /// Relative to a sticky node if Some.
     pending_keys: Vec<KeyEvent>,
     pub sticky_keytrie: Option<KeyTrie>,
 }
 
 pub type CommandList = HashMap<String, Vec<String>>;
-impl Keymap {
+impl Keymaps {
     pub fn new(keymaps: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>) -> Self {
         Self {
-            keytries: keymaps,
+            keymaps,
             pending_keys: Vec::new(),
             sticky_keytrie: None,
         }
     }
 
     pub fn load_keymaps(&self) -> DynGuard<HashMap<Mode, KeyTrie>> {
-        self.keytries.load()
+        self.keymaps.load()
     }
 
     /// Returns list of keys waiting to be disambiguated in current mode.
@@ -58,7 +48,7 @@ impl Keymap {
     }
 
     /// Lookup `key` in the keymap to try and find a command to execute.
-    /// Escape key represents cancellation.
+    /// Escape key represents cancellation. 
     /// This means clearing pending keystrokes, or the sticky_keytrie if none were present.
     pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
         // TODO: remove the sticky part and look up manually
@@ -76,7 +66,7 @@ impl Keymap {
 
         // Check if sticky keytrie is to be used.
         let starting_keytrie = match self.sticky_keytrie {
-            None => active_keymap,
+            None => &active_keymap,
             Some(ref active_sticky_keytrie) => active_sticky_keytrie,
         };
 
@@ -86,12 +76,10 @@ impl Keymap {
         let pending_keytrie: KeyTrie = match starting_keytrie.traverse(&[*first_key]) {
             Some(KeyTrieNode::KeyTrie(sub_keytrie)) => sub_keytrie,
             Some(KeyTrieNode::MappableCommand(cmd)) => {
-                return KeymapResult::Matched(cmd);
+                return KeymapResult::Matched(cmd.clone());
             }
-            Some(KeyTrieNode::CommandSequence(command_sequence)) => {
-                return KeymapResult::MatchedCommandSequence(
-                    command_sequence.get_commands().clone(),
-                );
+            Some(KeyTrieNode::CommandSequence(cmds)) => {
+                return KeymapResult::MatchedCommandSequence(cmds.clone());
             }
             None => return KeymapResult::NotFound,
         };
@@ -103,15 +91,15 @@ impl Keymap {
                     self.pending_keys.clear();
                     self.sticky_keytrie = Some(map.clone());
                 }
-                KeymapResult::Pending(map)
+                KeymapResult::Pending(map.clone())
             }
             Some(KeyTrieNode::MappableCommand(cmd)) => {
                 self.pending_keys.clear();
-                KeymapResult::Matched(cmd)
+                KeymapResult::Matched(cmd.clone())
             }
-            Some(KeyTrieNode::CommandSequence(command_sequence)) => {
+            Some(KeyTrieNode::CommandSequence(cmds)) => {
                 self.pending_keys.clear();
-                KeymapResult::MatchedCommandSequence(command_sequence.get_commands().clone())
+                KeymapResult::MatchedCommandSequence(cmds.clone())
             }
             None => KeymapResult::Cancelled(self.pending_keys.drain(..).collect()),
         }
@@ -119,51 +107,43 @@ impl Keymap {
 
     fn get_keytrie(&self, mode: &Mode) -> KeyTrie {
         // HELP: Unsure how I should handle this Option
-        self.keytries.load().get(mode).unwrap().clone()
+        self.keymaps.load().get(mode).unwrap().clone()
     }
 
     /// Returns a key-value list of all commands associated to a given Keymap.
     /// Keys are the node names (see KeyTrieNode documentation)
     /// Values are lists of stringified KeyEvents that triger the command.
-    /// Each element in the KeyEvent list is prefixed with prefixed the ancestor KeyEvents.
+    /// Each element in the KeyEvent list is prefixed with prefixed the ancestor KeyEvents. 
     /// For example: Stringified KeyEvent element for the 'goto_next_window' command could be "space>w>w".
     /// Ancestor KeyEvents are in this case "space" and "w".
     pub fn command_list(&self, mode: &Mode) -> CommandList {
         let mut list = HashMap::new();
-        _command_list(
-            &mut list,
-            &KeyTrieNode::KeyTrie(self.get_keytrie(mode)),
-            &mut String::new(),
-        );
+        _command_list(&mut list, &KeyTrieNode::KeyTrie(self.get_keytrie(mode)), &mut String::new());
         return list;
 
         fn _command_list(list: &mut CommandList, node: &KeyTrieNode, prefix: &mut String) {
             match node {
                 KeyTrieNode::KeyTrie(trie_node) => {
-                    for (key_event, index) in trie_node.get_child_order() {
+                    for (key_event, subtrie_node) in trie_node.deref() {
                         let mut temp_prefix: String = prefix.to_string();
-                        if !&temp_prefix.is_empty() {
-                            temp_prefix.push('→');
+                        if &temp_prefix != "" { 
+                            temp_prefix.push_str(">");
                         }
                         temp_prefix.push_str(&key_event.to_string());
-                        _command_list(list, &trie_node.get_children()[*index], &mut temp_prefix);
+                        _command_list(list, subtrie_node, &mut temp_prefix);
                     }
-                }
+                },
                 KeyTrieNode::MappableCommand(mappable_command) => {
-                    if mappable_command.name() == "no_op" {
-                        return;
-                    }
-                    list.entry(mappable_command.name().to_string())
-                        .or_default()
-                        .push(prefix.to_string());
-                }
+                        if mappable_command.name() == "no_op" { return }
+                        list.entry(mappable_command.name().to_string()).or_default().push(prefix.to_string());
+                },
                 KeyTrieNode::CommandSequence(_) => {}
             };
         }
     }
 }
 
-impl Default for Keymap {
+impl Default for Keymaps {
     fn default() -> Self {
         Self::new(Box::new(ArcSwap::new(Arc::new(default::default()))))
     }

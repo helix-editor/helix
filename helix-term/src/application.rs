@@ -3,17 +3,8 @@ use futures_util::Stream;
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
-    pos_at_coords, syntax, Selection,
-};
-use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
-use helix_view::{
-    align_view,
-    document::DocumentSavedEventResult,
-    editor::{ConfigEvent, EditorEvent},
-    graphics::Rect,
-    theme,
-    tree::Layout,
-    Align, Editor,
+    syntax,
+    syntax::LanguageConfigurations,
 };
 use serde_json::json;
 use tui::backend::Backend;
@@ -24,13 +15,23 @@ use crate::{
     compositor::{Compositor, Event},
     config::Config,
     job::Jobs,
-    keymap::Keymaps,
+    keymap::Keymap,
     ui::{self, overlay::overlayed},
 };
 
+use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+use helix_view::{
+    align_view,
+    document::DocumentSavedEventResult,
+    editor::{Action, ConfigEvent, EditorEvent},
+    graphics::Rect,
+    tree::Layout,
+    Align, Editor, Theme,
+};
 use log::{debug, error, warn};
 use std::{
     io::{stdin, stdout, Write},
+    path::Path,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -72,40 +73,11 @@ pub struct Application {
     compositor: Compositor,
     terminal: Terminal,
     pub editor: Editor,
-
     config: Arc<ArcSwap<Config>>,
-
-    #[allow(dead_code)]
-    theme_loader: Arc<theme::Loader>,
-    #[allow(dead_code)]
-    syn_loader: Arc<syntax::Loader>,
-
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
     last_render: Instant,
-}
-
-#[cfg(feature = "integration")]
-fn setup_integration_logging() {
-    let level = std::env::var("HELIX_LOG_LEVEL")
-        .map(|lvl| lvl.parse().unwrap())
-        .unwrap_or(log::LevelFilter::Info);
-
-    // Separate file config so we can include year, month and day in file logs
-    let _ = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .level(level)
-        .chain(std::io::stdout())
-        .apply();
 }
 
 fn restore_term() -> Result<(), Error> {
@@ -131,64 +103,38 @@ fn restore_term() -> Result<(), Error> {
 impl Application {
     pub fn new(
         args: Args,
+        theme: Theme,
+        langauge_configurations: LanguageConfigurations,
         config: Config,
-        syn_loader_conf: syntax::Configuration,
     ) -> Result<Self, Error> {
-        #[cfg(feature = "integration")]
-        setup_integration_logging();
-
-        use helix_view::editor::Action;
-
-        let theme_loader = std::sync::Arc::new(theme::Loader::new(
-            &helix_loader::config_dir(),
-            &helix_loader::runtime_dir(),
-        ));
-
-        let true_color = config.editor.true_color || crate::true_color();
-        let theme = config
-            .theme
-            .as_ref()
-            .and_then(|theme| {
-                theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
-            })
-            .unwrap_or_else(|| theme_loader.default_theme(true_color));
-
-        let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
-
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout());
-
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
 
         let terminal = Terminal::new(backend)?;
-        let area = terminal.size().expect("couldn't get terminal size");
-        let mut compositor = Compositor::new(area);
+        let area = terminal.size();
+
         let config = Arc::new(ArcSwap::from_pointee(config));
+
         let mut editor = Editor::new(
             area,
-            theme_loader.clone(),
-            syn_loader.clone(),
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
+            theme,
+            Arc::new(syntax::Loader::new(langauge_configurations)),
         );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
         }));
-        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
-        compositor.push(editor_view);
+
+        let mut compositor = Compositor::new(area);
+        compositor.push(Box::new(ui::EditorView::new(Keymap::new(keys))));
 
         if args.load_tutor {
-            let path = helix_loader::runtime_dir().join("tutor");
+            let path = helix_loader::get_runtime_file(Path::new("tutor"));
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
@@ -201,7 +147,7 @@ impl Application {
                 compositor.push(Box::new(overlayed(picker)));
             } else {
                 let nr_of_files = args.files.len();
-                for (i, (file, pos)) in args.files.into_iter().enumerate() {
+                for (i, (file, position_request)) in args.files.into_iter().enumerate() {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
@@ -227,8 +173,8 @@ impl Application {
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = doc_mut!(editor, &doc_id);
-                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-                        doc.set_selection(view_id, pos);
+                        let selection = position_request.selection_for_doc(doc);
+                        doc.set_selection(view_id, selection);
                     }
                 }
                 editor.set_status(format!(
@@ -254,8 +200,6 @@ impl Application {
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
-        editor.set_theme(theme);
-
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
@@ -266,12 +210,7 @@ impl Application {
             compositor,
             terminal,
             editor,
-
             config,
-
-            theme_loader,
-            syn_loader,
-
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
@@ -406,47 +345,23 @@ impl Application {
         }
     }
 
-    /// refresh language config after config change
-    fn refresh_language_config(&mut self) -> Result<(), Error> {
-        let syntax_config = helix_core::config::user_syntax_loader()
-            .map_err(|err| anyhow::anyhow!("Failed to load language config: {}", err))?;
-
-        self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
-        self.editor.syn_loader = self.syn_loader.clone();
-        for document in self.editor.documents.values_mut() {
-            document.detect_language(self.syn_loader.clone());
-        }
-
-        Ok(())
-    }
-
-    /// Refresh theme after config change
-    fn refresh_theme(&mut self, config: &Config) -> Result<(), Error> {
-        if let Some(theme) = config.theme.clone() {
-            let true_color = self.true_color();
-            let theme = self
-                .theme_loader
-                .load(&theme)
-                .map_err(|err| anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err))?;
-
-            if true_color || theme.is_16_color() {
-                self.editor.set_theme(theme);
-            } else {
-                anyhow::bail!("theme requires truecolor support, which is not available")
-            }
-        }
-
-        Ok(())
-    }
-
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
-            let default_config = Config::load_default()
+            let merged_user_config = Config::merged()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
-            self.refresh_language_config()?;
-            self.refresh_theme(&default_config)?;
-            // Store new config
-            self.config.store(Arc::new(default_config));
+            self.config.store(Arc::new(merged_user_config));
+
+            let language_configs = LanguageConfigurations::merged()
+                .map_err(|err| anyhow::anyhow!("Failed to load merged language config: {}", err))?;
+
+            self.editor.lang_configs_loader = Arc::new(syntax::Loader::new(language_configs));
+            for document in self.editor.documents.values_mut() {
+                document.detect_language(self.editor.lang_configs_loader.clone());
+            }
+
+            self.editor
+                .set_theme(Theme::new(&self.config.load().theme)?);
+
             Ok(())
         };
 
@@ -458,10 +373,6 @@ impl Application {
                 self.editor.set_error(err.to_string());
             }
         }
-    }
-
-    fn true_color(&self) -> bool {
-        self.config.load().editor.true_color || crate::true_color()
     }
 
     #[cfg(windows)]
@@ -484,7 +395,7 @@ impl Application {
             signal::SIGCONT => {
                 self.claim_term().await.unwrap();
                 // redraw the terminal
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
                 self.compositor.resize(area);
                 self.terminal.clear().expect("couldn't clear terminal");
 
@@ -554,12 +465,10 @@ impl Application {
                 return;
             }
 
-            let loader = self.editor.syn_loader.clone();
-
             // borrowing the same doc again to get around the borrow checker
             let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
             let id = doc.id();
-            doc.detect_language(loader);
+            doc.detect_language(self.editor.lang_configs_loader.clone());
             let _ = self.editor.refresh_language_server(id);
         }
 
@@ -631,7 +540,7 @@ impl Application {
                     .resize(Rect::new(0, 0, width, height))
                     .expect("Unable to resize terminal");
 
-                let area = self.terminal.size().expect("couldn't get terminal size");
+                let area = self.terminal.size();
 
                 self.compositor.resize(area);
 

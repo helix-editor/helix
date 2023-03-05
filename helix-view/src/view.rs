@@ -593,7 +593,7 @@ mod tests {
     const DEFAULT_GUTTER_OFFSET_ONLY_DIAGNOSTICS: u16 = 3;
 
     use crate::document::Document;
-    use crate::editor::{Config, GutterConfig, GutterLineNumbersConfig, GutterType};
+    use crate::editor::{EditorConfig, GutterConfig, GutterLineNumbersConfig, GutterType};
 
     #[test]
     fn test_text_pos_at_screen_coords() {
@@ -603,7 +603,7 @@ mod tests {
         let doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))),
         );
 
         assert_eq!(
@@ -777,7 +777,7 @@ mod tests {
         let doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))),
         );
         assert_eq!(
             view.text_pos_at_screen_coords(
@@ -806,7 +806,7 @@ mod tests {
         let doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))),
         );
         assert_eq!(
             view.text_pos_at_screen_coords(
@@ -829,7 +829,7 @@ mod tests {
         let doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))),
         );
 
         assert_eq!(
@@ -912,7 +912,7 @@ mod tests {
         let doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))),
         );
 
         assert_eq!(

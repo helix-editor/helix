@@ -1127,7 +1127,7 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
             let mut contents = SignatureHelp::new(
                 signature.label.clone(),
                 language.to_string(),
-                Arc::clone(&editor.syn_loader),
+                Arc::clone(&editor.lang_configs_loader),
             );
 
             let signature_doc = if config.lsp.display_signature_help_docs {
@@ -1223,7 +1223,7 @@ pub fn hover(cx: &mut Context) {
 
                 // skip if contents empty
 
-                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let contents = ui::Markdown::new(contents, editor.lang_configs_loader.clone());
                 let popup = Popup::new("hover", contents).auto_close(true);
                 compositor.replace_or_push("hover", popup);
             }

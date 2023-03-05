@@ -412,7 +412,7 @@ impl Component for Completion {
                 (None, Some(doc)) => doc.to_string(),
                 (None, None) => String::new(),
             };
-            Markdown::new(md, cx.editor.syn_loader.clone())
+            Markdown::new(md, cx.editor.lang_configs_loader.clone())
         };
 
         let mut markdown_doc = match &option.documentation {

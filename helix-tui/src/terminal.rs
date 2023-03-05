@@ -139,7 +139,7 @@ where
 
     /// Queries the backend for size and resizes if it doesn't match the previous size.
     pub fn autoresize(&mut self) -> io::Result<Rect> {
-        let size = self.size()?;
+        let size = self.size();
         if size != self.viewport.area {
             self.resize(size)?;
         };
@@ -219,7 +219,7 @@ where
     }
 
     /// Queries the real size of the backend.
-    pub fn size(&self) -> io::Result<Rect> {
-        self.backend.size()
+    pub fn size(&self) -> Rect {
+        self.backend.size().expect("couldn't get terminal size")
     }
 }

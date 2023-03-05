@@ -4,7 +4,7 @@ use super::*;
 async fn auto_indent_c() -> anyhow::Result<()> {
     test_with_config(
         Args {
-            files: vec![(PathBuf::from("foo.c"), Position::default())],
+            files: vec![(PathBuf::from("foo.c"), PositionRequest::default())],
             ..Default::default()
         },
         helpers::test_config(),

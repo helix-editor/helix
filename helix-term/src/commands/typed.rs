@@ -1,13 +1,14 @@
 use std::fmt::Write;
 use std::ops::Deref;
 
-use crate::job::Job;
+use crate::job::*;
 
 use super::*;
 
 use helix_core::encoding;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
+use helix_view::Theme;
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
@@ -65,7 +66,8 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
-        let (path, pos) = args::parse_file(arg);
+        let (path, position_request) = args::PositionRequest::parse_file(arg.clone());
+        let position_request = position_request.unwrap_or_default();
         let path = helix_core::path::expand_tilde(&path);
         // If the path is a directory, open a file picker on that directory and update the status
         // message
@@ -84,8 +86,8 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             // Otherwise, just open the file
             let _ = cx.editor.open(&path, Action::Replace)?;
             let (view, doc) = current!(cx.editor);
-            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-            doc.set_selection(view.id, pos);
+            let selection = position_request.selection_for_doc(doc);
+            doc.set_selection(view.id, selection);
             // does not affect opening a buffer without pos
             align_view(doc, view, Align::Center);
         }
@@ -771,7 +773,6 @@ fn theme(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let true_color = cx.editor.config.load().true_color || crate::true_color();
     match event {
         PromptEvent::Abort => {
             cx.editor.unset_theme_preview();
@@ -781,28 +782,16 @@ fn theme(
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
             } else if let Some(theme_name) = args.first() {
-                if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
-                    if !(true_color || theme.is_16_color()) {
-                        bail!("Unsupported theme: theme requires true color support");
-                    }
+                if let Ok(theme) = Theme::new(theme_name) {
                     cx.editor.set_theme_preview(theme);
                 };
             };
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
-                let theme = cx
-                    .editor
-                    .theme_loader
-                    .load(theme_name)
-                    .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
-                if !(true_color || theme.is_16_color()) {
-                    bail!("Unsupported theme: theme requires true color support");
-                }
-                cx.editor.set_theme(theme);
+                cx.editor.set_theme(Theme::new(theme_name)?);
             } else {
                 let name = cx.editor.theme.name().to_string();
-
                 cx.editor.set_status(name);
             }
         }
@@ -1374,7 +1363,7 @@ fn tree_sitter_scopes(
     let callback = async move {
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
-                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let contents = ui::Markdown::new(contents, editor.lang_configs_loader.clone());
                 let popup = Popup::new("hover", contents).auto_close(true);
                 compositor.replace_or_push("hover", popup);
             },
@@ -1534,7 +1523,7 @@ fn tutor(
         return Ok(());
     }
 
-    let path = helix_loader::runtime_dir().join("tutor");
+    let path = helix_loader::get_runtime_file(Path::new("tutor"));
     cx.editor.open(&path, Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
     doc_mut!(cx.editor).set_path(None)?;
@@ -1714,7 +1703,7 @@ fn language(
     if args[0] == DEFAULT_LANGUAGE_NAME {
         doc.set_language(None, None)
     } else {
-        doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone())?;
+        doc.set_language_by_language_id(&args[0], cx.editor.lang_configs_loader.clone())?;
     }
     doc.detect_indent_and_line_ending();
 
@@ -1852,7 +1841,8 @@ fn tree_sitter_subtree(
             let callback = async move {
                 let call: job::Callback = Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                        let contents =
+                            ui::Markdown::new(contents, editor.lang_configs_loader.clone());
                         let popup = Popup::new("hover", contents).auto_close(true);
                         compositor.replace_or_push("hover", popup);
                     },
@@ -1985,7 +1975,7 @@ fn run_shell_command(
                 move |editor: &mut Editor, compositor: &mut Compositor| {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output),
-                        editor.syn_loader.clone(),
+                        editor.lang_configs_loader.clone(),
                     );
                     let popup = Popup::new("shell", contents).position(Some(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),

@@ -1,8 +1,7 @@
-use crate::path;
 use crate::DynError;
-use helix_view::theme::Loader;
+use helix_loader::repo_paths;
 use helix_view::theme::Modifier;
-use helix_view::Theme;
+use helix_view::theme::Theme;
 
 struct Rule {
     fg: Option<&'static str>,
@@ -155,7 +154,7 @@ pub fn lint(file: String) -> Result<(), DynError> {
         println!("Skipping base16: {}", file);
         return Ok(());
     }
-    let path = path::themes().join(file.clone() + ".toml");
+    let path = repo_paths::themes().join(file.clone() + ".toml");
     let theme = std::fs::read_to_string(path).unwrap();
     let theme: Theme = toml::from_str(&theme).expect("Failed to parse theme");
 
@@ -178,7 +177,7 @@ pub fn lint(file: String) -> Result<(), DynError> {
 }
 
 pub fn lint_all() -> Result<(), DynError> {
-    let files = Loader::read_names(path::themes().as_path());
+    let files = Theme::read_names();
     let files_count = files.len();
     let ok_files_count = files
         .into_iter()

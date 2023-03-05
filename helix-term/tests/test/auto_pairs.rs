@@ -1,4 +1,5 @@
 use helix_core::{auto_pairs::DEFAULT_PAIRS, hashmap};
+use helix_view::editor::EditorConfig;
 
 use super::*;
 
@@ -32,7 +33,7 @@ async fn insert_configured_multi_byte_chars() -> anyhow::Result<()> {
     let pairs = hashmap!('„' => '“', '‚' => '‘', '「' => '」');
 
     let config = Config {
-        editor: helix_view::editor::Config {
+        editor: EditorConfig {
             auto_pairs: AutoPairConfig::Pairs(pairs.clone()),
             ..Default::default()
         },
@@ -172,7 +173,7 @@ async fn insert_auto_pairs_disabled() -> anyhow::Result<()> {
         test_with_config(
             Args::default(),
             Config {
-                editor: helix_view::editor::Config {
+                editor: EditorConfig {
                     auto_pairs: AutoPairConfig::Enable(false),
                     ..Default::default()
                 },

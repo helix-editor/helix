@@ -5,7 +5,7 @@ use crate::{
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
-    theme::{self, Theme},
+    theme::Theme,
     tree::{self, Tree},
     view::ViewPosition,
     Align, Document, DocumentId, View, ViewId,
@@ -212,7 +212,7 @@ impl Default for FilePickerConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct Config {
+pub struct EditorConfig {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
     /// Number of lines to scroll at once. Defaults to 3
@@ -241,6 +241,8 @@ pub struct Config {
     pub auto_format: bool,
     /// Automatic save on focus lost. Defaults to false.
     pub auto_save: bool,
+    pub load_local_config: bool,
+    //pub load_local_languages: bool, //TODO: implement
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -251,6 +253,8 @@ pub struct Config {
     pub completion_trigger_len: u8,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
+    /// Sort infoboxes alphabetically rather than by predefined categories. Defaults to `false`.
+    pub sorted_infobox: bool,
     pub file_picker: FilePickerConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
@@ -261,6 +265,7 @@ pub struct Config {
     /// Search configuration.
     #[serde(default)]
     pub search: SearchConfig,
+    /// Security settings (i.e. loading TOML files from $PWD/.helix)
     pub lsp: LspConfig,
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Default to `[]`, meaning no rulers.
@@ -451,52 +456,36 @@ impl Default for ModeConfig {
 pub enum StatusLineElement {
     /// The editor mode (Normal, Insert, Visual/Selection)
     Mode,
-
     /// The LSP activity spinner
     Spinner,
-
     /// The base file name, including a dirty flag if it's unsaved
     FileBaseName,
-
     /// The relative file path, including a dirty flag if it's unsaved
     FileName,
-
     // The file modification indicator
     FileModificationIndicator,
-
     /// The file encoding
     FileEncoding,
-
     /// The file line endings (CRLF or LF)
     FileLineEnding,
-
     /// The file type (language ID or "text")
     FileType,
-
     /// A summary of the number of errors and warnings
     Diagnostics,
-
     /// A summary of the number of errors and warnings on file and workspace
     WorkspaceDiagnostics,
-
     /// The number of selections (cursors)
     Selections,
-
     /// The number of characters currently in primary selection
     PrimarySelectionLength,
-
     /// The cursor position
     Position,
-
     /// The separator string
     Separator,
-
     /// The cursor position as a percent of the total file
     PositionPercentage,
-
     /// The total line numbers of the current file
     TotalLineNumbers,
-
     /// A single space
     Spacer,
 }
@@ -736,7 +725,7 @@ impl Default for IndentGuidesConfig {
     }
 }
 
-impl Default for Config {
+impl Default for EditorConfig {
     fn default() -> Self {
         Self {
             scrolloff: 5,
@@ -756,6 +745,7 @@ impl Default for Config {
             auto_completion: true,
             auto_format: true,
             auto_save: false,
+            load_local_config: false,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
@@ -771,6 +761,7 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
+            sorted_infobox: false,
             soft_wrap: SoftWrap::default(),
         }
     }
@@ -840,8 +831,7 @@ pub struct Editor {
 
     pub clipboard_provider: Box<dyn ClipboardProvider>,
 
-    pub syn_loader: Arc<syntax::Loader>,
-    pub theme_loader: Arc<theme::Loader>,
+    pub lang_configs_loader: Arc<syntax::Loader>,
     /// last_theme is used for theme previews. We store the current theme here,
     /// and if previewing is cancelled, we can return to it.
     pub last_theme: Option<Theme>,
@@ -852,7 +842,7 @@ pub struct Editor {
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
-    pub config: Arc<dyn DynAccess<Config>>,
+    pub config: Arc<dyn DynAccess<EditorConfig>>,
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
@@ -897,7 +887,7 @@ pub enum EditorEvent {
 #[derive(Debug, Clone)]
 pub enum ConfigEvent {
     Refresh,
-    Update(Box<Config>),
+    Update(Box<EditorConfig>),
 }
 
 enum ThemeAction {
@@ -932,17 +922,17 @@ pub enum CloseError {
 impl Editor {
     pub fn new(
         mut area: Rect,
-        theme_loader: Arc<theme::Loader>,
-        syn_loader: Arc<syntax::Loader>,
-        config: Arc<dyn DynAccess<Config>>,
+        config: Arc<dyn DynAccess<EditorConfig>>,
+        theme: Theme,
+        lang_configs_loader: Arc<syntax::Loader>,
     ) -> Self {
         let conf = config.load();
-        let auto_pairs = (&conf.auto_pairs).into();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
 
-        Self {
+        // TEMP: until its decided on what to do with set_theme
+        let mut editor_temp = Self {
             mode: Mode::Normal,
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
@@ -954,15 +944,14 @@ impl Editor {
             selected_register: None,
             macro_recording: None,
             macro_replaying: Vec::new(),
-            theme: theme_loader.default(),
+            theme: theme.clone(),
             language_servers: helix_lsp::Registry::new(),
             diagnostics: BTreeMap::new(),
             diff_providers: DiffProviderRegistry::default(),
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
-            syn_loader,
-            theme_loader,
+            lang_configs_loader,
             last_theme: None,
             last_line_number: None,
             registers: Registers::default(),
@@ -973,13 +962,15 @@ impl Editor {
             last_motion: None,
             last_completion: None,
             config,
-            auto_pairs,
+            auto_pairs: (&conf.auto_pairs).into(),
             exit_code: 0,
             config_events: unbounded_channel(),
             redraw_handle: Default::default(),
             needs_redraw: false,
             cursor_cache: Cell::new(None),
-        }
+        };
+        editor_temp.set_theme(theme);
+        editor_temp
     }
 
     /// Current editing mode for the [`Editor`].
@@ -987,7 +978,7 @@ impl Editor {
         self.mode
     }
 
-    pub fn config(&self) -> DynGuard<Config> {
+    pub fn config(&self) -> DynGuard<EditorConfig> {
         self.config.load()
     }
 
@@ -1068,9 +1059,7 @@ impl Editor {
             return;
         }
 
-        let scopes = theme.scopes();
-        self.syn_loader.set_scopes(scopes.to_vec());
-
+        self.lang_configs_loader.set_scopes(theme.scopes().to_vec());
         match preview {
             ThemeAction::Preview => {
                 let last_theme = std::mem::replace(&mut self.theme, theme);
@@ -1306,7 +1295,7 @@ impl Editor {
             let mut doc = Document::open(
                 &path,
                 None,
-                Some(self.syn_loader.clone()),
+                Some(self.lang_configs_loader.clone()),
                 self.config.clone(),
             )?;
 

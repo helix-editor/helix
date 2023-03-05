@@ -15,17 +15,6 @@ use std::path::Path;
 use ignore::DirEntry;
 pub use keymap::macros::*;
 
-#[cfg(not(windows))]
-fn true_color() -> bool {
-    std::env::var("COLORTERM")
-        .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
-        .unwrap_or(false)
-}
-#[cfg(windows)]
-fn true_color() -> bool {
-    true
-}
-
 /// Function used for filtering dir entries in the various file pickers.
 fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> bool {
     // We always want to ignore the .git directory, otherwise if

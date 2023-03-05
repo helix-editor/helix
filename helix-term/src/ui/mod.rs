@@ -158,7 +158,10 @@ pub fn regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
+pub fn file_picker(
+    root: PathBuf,
+    config: &helix_view::editor::EditorConfig,
+) -> FilePicker<PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
 
@@ -239,8 +242,8 @@ pub mod completers {
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
     use helix_view::document::SCRATCH_BUFFER_NAME;
-    use helix_view::theme;
-    use helix_view::{editor::Config, Editor};
+    use helix_view::Theme;
+    use helix_view::{editor::EditorConfig, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::cmp::Reverse;
@@ -280,16 +283,7 @@ pub mod completers {
     }
 
     pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
-        let mut names = theme::Loader::read_names(&helix_loader::runtime_dir().join("themes"));
-        names.extend(theme::Loader::read_names(
-            &helix_loader::config_dir().join("themes"),
-        ));
-        names.push("default".into());
-        names.push("base16_default".into());
-        names.sort();
-        names.dedup();
-
-        let mut names: Vec<_> = names
+        let mut names: Vec<_> = Theme::read_names()
             .into_iter()
             .map(|name| ((0..), Cow::from(name)))
             .collect();
@@ -330,7 +324,7 @@ pub mod completers {
     pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             let mut keys = Vec::new();
-            let json = serde_json::json!(Config::default());
+            let json = serde_json::json!(EditorConfig::default());
             get_keys(&json, &mut keys, None);
             keys
         });
@@ -367,7 +361,7 @@ pub mod completers {
         let text: String = "text".into();
 
         let language_ids = editor
-            .syn_loader
+            .lang_configs_loader
             .language_configs()
             .map(|config| &config.language_id)
             .chain(std::iter::once(&text));

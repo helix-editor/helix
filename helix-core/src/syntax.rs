@@ -8,6 +8,7 @@ use crate::{
 };
 
 use ahash::RandomState;
+use anyhow;
 use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
 use hashbrown::raw::RawTable;
@@ -60,13 +61,26 @@ fn default_timeout() -> u64 {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Configuration {
+pub struct LanguageConfigurations {
     pub language: Vec<LanguageConfiguration>,
 }
 
-impl Default for Configuration {
+impl LanguageConfigurations {
+    // Local, user config, and system language configs
+    pub fn merged() -> Result<Self, anyhow::Error> {
+        let merged_lang_configs = helix_loader::merged_lang_config()?;
+        merged_lang_configs
+            .try_into()
+            .map_err(|error| anyhow::anyhow!("{}", error))
+    }
+}
+
+impl Default for LanguageConfigurations {
     fn default() -> Self {
-        crate::config::default_syntax_loader()
+        toml::from_str(
+            &std::fs::read_to_string(helix_loader::repo_paths::default_lang_configs()).unwrap(),
+        )
+        .expect("Failed to deserialize built-in languages.toml")
     }
 }
 
@@ -561,7 +575,7 @@ pub struct Loader {
 }
 
 impl Loader {
-    pub fn new(config: Configuration) -> Self {
+    pub fn new(config: LanguageConfigurations) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
             language_config_ids_by_extension: HashMap::new(),
@@ -2272,7 +2286,7 @@ mod test {
         "#,
         );
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(LanguageConfigurations { language: vec![] });
         let language = get_language("rust").unwrap();
 
         let query = Query::new(language, query_str).unwrap();
@@ -2331,7 +2345,7 @@ mod test {
         .map(String::from)
         .collect();
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(LanguageConfigurations { language: vec![] });
 
         let language = get_language("rust").unwrap();
         let config = HighlightConfiguration::new(
@@ -2434,7 +2448,7 @@ mod test {
     ) {
         let source = Rope::from_str(source);
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(LanguageConfigurations { language: vec![] });
         let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();

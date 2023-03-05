@@ -7,9 +7,11 @@ use std::{
 
 use anyhow::bail;
 use crossterm::event::{Event, KeyEvent};
-use helix_core::{diagnostic::Severity, test, Selection, Transaction};
-use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
-use helix_view::{doc, editor::LspConfig, input::parse_macro, Editor};
+use helix_core::{
+    diagnostic::Severity, syntax::LanguageConfigurations, test, Selection, Transaction,
+};
+use helix_term::{application::Application, args::Args, config::Config};
+use helix_view::{doc, input::parse_macro, Editor, Theme};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -118,7 +120,12 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     let test_case = test_case.into();
     let mut app = match app {
         Some(app) => app,
-        None => Application::new(Args::default(), test_config(), test_syntax_conf(None))?,
+        None => Application::new(
+            Args::default(),
+            Theme::default(),
+            test_syntax_conf(None),
+            test_config(),
+        )?,
     };
 
     let (view, doc) = helix_view::current!(app.editor);
@@ -143,8 +150,15 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 
 /// Generates language configs that merge in overrides, like a user language
 /// config. The argument string must be a raw TOML document.
-pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Configuration {
-    let mut lang = helix_loader::config::default_lang_config();
+///
+/// By default, language server configuration is dropped from the languages.toml
+/// document. If a language-server is necessary for a test, it must be explicitly
+/// added in `overrides`.
+pub fn test_syntax_conf(overrides: Option<String>) -> LanguageConfigurations {
+    let mut lang: toml::Value = toml::from_str(
+        &std::fs::read_to_string(helix_loader::repo_paths::default_lang_configs()).unwrap(),
+    )
+    .unwrap();
 
     if let Some(overrides) = overrides {
         let override_toml = toml::from_str(&overrides).unwrap();
@@ -154,18 +168,21 @@ pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Config
     lang.try_into().unwrap()
 }
 
+static SETUP: std::sync::Once = std::sync::Once::new();
 /// Use this for very simple test cases where there is one input
 /// document, selection, and sequence of key presses, and you just
 /// want to verify the resulting document and selection.
 pub async fn test_with_config<T: Into<TestCase>>(
     args: Args,
-    mut config: Config,
-    syn_conf: helix_core::syntax::Configuration,
+    config: Config,
+    syn_conf: LanguageConfigurations,
     test_case: T,
 ) -> anyhow::Result<()> {
+    SETUP.call_once(|| {
+        Theme::set_true_color_support(true);
+    });
     let test_case = test_case.into();
-    config = helix_term::keymap::merge_keys(config);
-    let app = Application::new(args, config, syn_conf)?;
+    let app = Application::new(args, Theme::default(), syn_conf, config)?;
 
     test_key_sequence_with_input_text(
         Some(app),
@@ -211,16 +228,9 @@ pub fn temp_file_with_contents<S: AsRef<str>>(
 
 /// Generates a config with defaults more suitable for integration tests
 pub fn test_config() -> Config {
-    merge_keys(Config {
-        editor: helix_view::editor::Config {
-            lsp: LspConfig {
-                enable: false,
-                ..Default::default()
-            },
-            ..Default::default()
-        },
-        ..Default::default()
-    })
+    let mut config = Config::default();
+    config.editor.lsp.enable = false;
+    config
 }
 
 /// Replaces all LF chars with the system's appropriate line feed
@@ -254,7 +264,7 @@ pub fn new_readonly_tempfile() -> anyhow::Result<NamedTempFile> {
 pub struct AppBuilder {
     args: Args,
     config: Config,
-    syn_conf: helix_core::syntax::Configuration,
+    syn_conf: LanguageConfigurations,
     input: Option<(String, Selection)>,
 }
 
@@ -279,7 +289,9 @@ impl AppBuilder {
         path: P,
         pos: Option<helix_core::Position>,
     ) -> Self {
-        self.args.files.push((path.into(), pos.unwrap_or_default()));
+        self.args
+            .files
+            .push((path.into(), pos.unwrap_or_default().into()));
         self
     }
 
@@ -295,13 +307,13 @@ impl AppBuilder {
         self
     }
 
-    pub fn with_lang_config(mut self, syn_conf: helix_core::syntax::Configuration) -> Self {
+    pub fn with_lang_config(mut self, syn_conf: LanguageConfigurations) -> Self {
         self.syn_conf = syn_conf;
         self
     }
 
     pub fn build(self) -> anyhow::Result<Application> {
-        let mut app = Application::new(self.args, self.config, self.syn_conf)?;
+        let mut app = Application::new(self.args, Theme::default(), self.syn_conf, self.config)?;
 
         if let Some((text, selection)) = self.input {
             let (view, doc) = helix_view::current!(app.editor);

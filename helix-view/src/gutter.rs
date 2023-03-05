@@ -317,7 +317,7 @@ mod tests {
 
     use super::*;
     use crate::document::Document;
-    use crate::editor::{Config, GutterConfig, GutterLineNumbersConfig};
+    use crate::editor::{EditorConfig, GutterConfig, GutterLineNumbersConfig};
     use crate::graphics::Rect;
     use crate::DocumentId;
     use arc_swap::ArcSwap;
@@ -332,7 +332,7 @@ mod tests {
         let doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))),
         );
 
         assert_eq!(view.gutters.layout.len(), 5);
@@ -357,7 +357,7 @@ mod tests {
         let doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))),
         );
 
         assert_eq!(view.gutters.layout.len(), 1);
@@ -375,7 +375,7 @@ mod tests {
         let doc = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))),
         );
 
         assert_eq!(view.gutters.layout.len(), 2);
@@ -397,14 +397,14 @@ mod tests {
         let doc_short = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))),
         );
 
         let rope = Rope::from_str("a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np");
         let doc_long = Document::from(
             rope,
             None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::new(Arc::new(EditorConfig::default()))),
         );
 
         assert_eq!(view.gutters.layout.len(), 2);

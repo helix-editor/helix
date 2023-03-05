@@ -1,111 +1,208 @@
-pub mod config;
 pub mod grammar;
+pub mod repo_paths;
+pub mod ts_probe;
 
+use anyhow::Error;
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub const VERSION_AND_GIT_HASH: &str = env!("VERSION_AND_GIT_HASH");
 
-pub static RUNTIME_DIR: once_cell::sync::Lazy<PathBuf> = once_cell::sync::Lazy::new(runtime_dir);
-
+static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+static RUNTIME_DIRS: once_cell::sync::Lazy<Vec<PathBuf>> =
+    once_cell::sync::Lazy::new(set_runtime_dirs);
 
-pub fn initialize_config_file(specified_file: Option<PathBuf>) {
-    let config_file = specified_file.unwrap_or_else(|| {
-        let config_dir = config_dir();
-
-        if !config_dir.exists() {
-            std::fs::create_dir_all(&config_dir).ok();
+pub fn log_file() -> PathBuf {
+    match LOG_FILE.get() {
+        Some(log_path) => log_path.to_path_buf(),
+        None => {
+            setup_log_file(None);
+            log_file()
         }
-
-        config_dir.join("config.toml")
-    });
-
-    // We should only initialize this value once.
-    CONFIG_FILE.set(config_file).ok();
-}
-
-pub fn runtime_dir() -> PathBuf {
-    if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
-        return dir.into();
     }
-
-    if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
-        let path = std::path::PathBuf::from(dir).parent().unwrap().join(RT_DIR);
-        log::debug!("runtime dir: {}", path.to_string_lossy());
-        return path;
-    }
-
-    const RT_DIR: &str = "runtime";
-    let conf_dir = config_dir().join(RT_DIR);
-    if conf_dir.exists() {
-        return conf_dir;
-    }
-
-    // fallback to location of the executable being run
-    // canonicalize the path in case the executable is symlinked
-    std::env::current_exe()
-        .ok()
-        .and_then(|path| std::fs::canonicalize(path).ok())
-        .and_then(|path| path.parent().map(|path| path.to_path_buf().join(RT_DIR)))
-        .unwrap()
 }
 
-pub fn config_dir() -> PathBuf {
-    // TODO: allow env var override
-    let strategy = choose_base_strategy().expect("Unable to find the config directory!");
-    let mut path = strategy.config_dir();
-    path.push("helix");
-    path
-}
-
-pub fn local_config_dirs() -> Vec<PathBuf> {
-    let directories = find_local_config_dirs()
-        .into_iter()
-        .map(|path| path.join(".helix"))
-        .collect();
-    log::debug!("Located configuration folders: {:?}", directories);
-    directories
-}
-
+// TODO: allow env var override
 pub fn cache_dir() -> PathBuf {
-    // TODO: allow env var override
-    let strategy = choose_base_strategy().expect("Unable to find the config directory!");
-    let mut path = strategy.cache_dir();
-    path.push("helix");
-    path
+    get_base_stategy().cache_dir().join("helix")
 }
 
 pub fn config_file() -> PathBuf {
-    CONFIG_FILE
-        .get()
-        .map(|path| path.to_path_buf())
-        .unwrap_or_else(|| config_dir().join("config.toml"))
-}
-
-pub fn lang_config_file() -> PathBuf {
-    config_dir().join("languages.toml")
-}
-
-pub fn log_file() -> PathBuf {
-    cache_dir().join("helix.log")
-}
-
-pub fn find_local_config_dirs() -> Vec<PathBuf> {
-    let current_dir = std::env::current_dir().expect("unable to determine current directory");
-    let mut directories = Vec::new();
-
-    for ancestor in current_dir.ancestors() {
-        if ancestor.join(".git").exists() {
-            directories.push(ancestor.to_path_buf());
-            // Don't go higher than repo if we're in one
-            break;
-        } else if ancestor.join(".helix").is_dir() {
-            directories.push(ancestor.to_path_buf());
+    match CONFIG_FILE.get() {
+        Some(config_path) => config_path.to_path_buf(),
+        None => {
+            setup_config_file(None);
+            config_file()
         }
     }
+}
+
+// TODO: allow env var override
+pub fn user_config_dir() -> PathBuf {
+    get_base_stategy().config_dir().join("helix")
+}
+
+/// Returns a non-existent path relative to the local executable if none are found.
+pub fn get_runtime_file(relative_path: &Path) -> PathBuf {
+    get_runtime_dirs()
+        .iter()
+        .find_map(|runtime_dir| {
+            let path = runtime_dir.join(relative_path);
+            match path.exists() {
+                true => Some(path),
+                false => None,
+            }
+        })
+        .unwrap_or_else(|| {
+            get_runtime_dirs()
+                .last()
+                .expect("Path to local executable.")
+                .join(relative_path)
+        })
+}
+
+pub fn get_first_runtime_dir() -> &'static PathBuf {
+    get_runtime_dirs()
+        .first()
+        .expect("should return at least one directory")
+}
+
+pub fn get_runtime_dirs() -> &'static [PathBuf] {
+    &RUNTIME_DIRS
+}
+
+pub fn theme_dirs() -> Vec<PathBuf> {
+    let mut theme_dirs = vec![user_config_dir()];
+    theme_dirs.extend_from_slice(get_runtime_dirs());
+    theme_dirs.iter().map(|p| p.join("themes")).collect()
+}
+
+pub fn user_lang_config_file() -> PathBuf {
+    user_config_dir().join("languages.toml")
+}
+
+pub fn setup_config_file(specified_file: Option<PathBuf>) {
+    let config_file = specified_file.unwrap_or_else(|| {
+        let config_dir = user_config_dir();
+        if !config_dir.exists() {
+            std::fs::create_dir_all(&config_dir).ok();
+        }
+        config_dir.join("config.toml")
+    });
+    CONFIG_FILE.set(config_file).unwrap();
+}
+
+pub fn setup_log_file(specified_file: Option<PathBuf>) {
+    let log_file = specified_file.unwrap_or_else(|| {
+        let log_dir = cache_dir();
+        if !log_dir.exists() {
+            std::fs::create_dir_all(&log_dir).ok();
+        }
+        log_dir.join("helix.log")
+    });
+    LOG_FILE.set(log_file).ok();
+}
+
+/// Runtime directory location priority:
+/// 1. Sibling directory to `$CARGO_MANIFEST_DIR`, if set. (Often done by cargo)
+/// 2. User data directory `$XDG_RUNTIME_DIR`/`%AppData%`, if it exists.
+/// 3. Under user config directory, given that it exists.
+/// 4. `$HELIX_RUNTIME`, if set.
+/// 5. Under path to helix executable, always included. However, it might not exist.
+fn set_runtime_dirs() -> Vec<PathBuf> {
+    let mut runtime_dirs = Vec::new();
+    const RUNTIME_DIR_NAME: &str = "runtime";
+    if std::env::var("CARGO_MANIFEST_DIR").is_ok() {
+        let path = repo_paths::project_root().join(RUNTIME_DIR_NAME);
+        log::debug!("runtime dir: {}", path.to_string_lossy());
+        runtime_dirs.push(path);
+    }
+
+    let data_dir = get_base_stategy().data_dir();
+    if data_dir.exists() {
+        runtime_dirs.push(data_dir.join("helix").join(RUNTIME_DIR_NAME));
+    }
+
+    let conf_dir = user_config_dir().join(RUNTIME_DIR_NAME);
+    if conf_dir.exists() {
+        runtime_dirs.push(conf_dir);
+    }
+
+    if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
+        runtime_dirs.push(dir.into());
+    }
+
+    // canonicalize the path in case the executable is symlinked
+    runtime_dirs.push(
+        std::env::current_exe()
+            .ok()
+            .and_then(|path| std::fs::canonicalize(path).ok())
+            .and_then(|path| {
+                path.parent()
+                    .map(|path| path.to_path_buf().join(RUNTIME_DIR_NAME))
+            })
+            .unwrap(),
+    );
+
+    runtime_dirs
+}
+
+fn get_base_stategy() -> impl BaseStrategy {
+    choose_base_strategy().expect("Unable to determine system base directory specification!")
+}
+
+pub fn merged_config() -> Result<toml::Value, Error> {
+    let config_paths: Vec<PathBuf> = local_config_dirs()
+        .into_iter()
+        .chain([user_config_dir()].into_iter())
+        .map(|path| path.join("config.toml"))
+        .collect();
+    merge_toml_by_config_paths(config_paths)
+}
+
+/// Searces for language.toml in config path (user config) and in 'helix' directories
+/// in opened git repository (local). Merge order:
+/// local -> user config -> default/system
+pub fn merged_lang_config() -> Result<toml::Value, Error> {
+    let config_paths: Vec<PathBuf> = local_config_dirs()
+        .into_iter()
+        .chain([user_config_dir(), repo_paths::default_config_dir()].into_iter())
+        .map(|path| path.join("languages.toml"))
+        .collect();
+    merge_toml_by_config_paths(config_paths)
+}
+
+pub fn local_config_dirs() -> Vec<PathBuf> {
+    let current_dir = std::env::current_dir().expect("Unable to determine current directory.");
+    let mut directories = Vec::new();
+    for ancestor in current_dir.ancestors() {
+        let potential_dir = ancestor.to_path_buf().join(".helix");
+        if potential_dir.is_dir() {
+            directories.push(potential_dir);
+        }
+        if ancestor.join(".git").exists() {
+            break;
+        }
+    }
+    log::debug!("Located local configuration folders: {:?}", directories);
     directories
+}
+
+fn merge_toml_by_config_paths(config_paths: Vec<PathBuf>) -> Result<toml::Value, Error> {
+    let mut configs: Vec<toml::Value> = Vec::with_capacity(config_paths.len());
+    for config_path in config_paths {
+        if config_path.exists() {
+            let config_string = std::fs::read_to_string(&config_path)?;
+            let config = toml::from_str(&config_string)?;
+            configs.push(config);
+        }
+    }
+
+    Ok(configs
+        .into_iter()
+        .reduce(|a, b| merge_toml_values(b, a, 3))
+        .expect("Supplied config paths should point to at least one valid config."))
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`
@@ -121,6 +218,22 @@ pub fn find_local_config_dirs() -> Vec<PathBuf> {
 /// documents that use a top-level array of values like the `languages.toml`,
 /// where one usually wants to override or add to the array instead of
 /// replacing it altogether.
+///
+/// For example:
+///
+/// left:
+///   [\[language\]]
+///   name = "toml"
+///   language-server = { command = "taplo", args = ["lsp", "stdio"] }
+///
+/// right:
+///   [\[language\]]
+///   language-server = { command = "/usr/bin/taplo" }
+///
+/// result:
+///   [\[language\]]
+///   name = "toml"
+///   language-server = { command = "/usr/bin/taplo" }
 pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usize) -> toml::Value {
     use toml::Value;
 
@@ -193,12 +306,14 @@ mod merge_toml_tests {
         indent = { tab-width = 4, unit = "    ", test = "aaa" }
         "#;
 
-        let base = include_bytes!("../../languages.toml");
-        let base = str::from_utf8(base).expect("Couldn't parse built-in languages config");
-        let base: Value = toml::from_str(base).expect("Couldn't parse built-in languages config");
+        // NOTE: Exact duplicate of helix_core::LanguageConfigurations::default()
+        let default: Value = toml::from_str(
+            &std::fs::read_to_string(crate::repo_paths::default_lang_configs()).unwrap(),
+        )
+        .expect("Failed to deserialize built-in languages.toml");
         let user: Value = toml::from_str(USER).unwrap();
 
-        let merged = merge_toml_values(base, user, 3);
+        let merged = merge_toml_values(default, user, 3);
         let languages = merged.get("language").unwrap().as_array().unwrap();
         let nix = languages
             .iter()
@@ -227,12 +342,14 @@ mod merge_toml_tests {
         language-server = { command = "deno", args = ["lsp"] }
         "#;
 
-        let base = include_bytes!("../../languages.toml");
-        let base = str::from_utf8(base).expect("Couldn't parse built-in languages config");
-        let base: Value = toml::from_str(base).expect("Couldn't parse built-in languages config");
+        // NOTE: Exact duplicate of helix_core::LanguageConfigurations::default()
+        let default: Value = toml::from_str(
+            &std::fs::read_to_string(crate::repo_paths::default_lang_configs()).unwrap(),
+        )
+        .expect("Failed to deserialize built-in languages.toml");
         let user: Value = toml::from_str(USER).unwrap();
 
-        let merged = merge_toml_values(base, user, 3);
+        let merged = merge_toml_values(default, user, 3);
         let languages = merged.get("language").unwrap().as_array().unwrap();
         let ts = languages
             .iter()

@@ -641,10 +641,6 @@ impl Tree {
             }
         }
     }
-
-    pub fn area(&self) -> Rect {
-        self.area
-    }
 }
 
 #[derive(Debug)]
