@@ -1,7 +1,8 @@
 ; Identifier naming conventions
 
-((identifier) @constant
- (#match? @constant "^[A-Z][A-Z_]*$"))
+(
+  (identifier) @constant 
+  (#match? @constant "^[A-Z][A-Z\\d_]+$"))
 
 ; class
 (class_name_statement (name) @type)
@@ -11,32 +12,35 @@
 ; Function calls
 
 (attribute_call (identifier) @function)
-
 (base_call (identifier) @function)
-
 (call (identifier) @function)
 
 ; Function definitions
 
 (function_definition (name) @function)
-
 (constructor_definition "_init" @function)
 
-;; Literals
-(integer) @constant.numeric.integer
-(float) @constant.numeric.float
-(comment) @comment
-(string) @string
-(escape_sequence) @constant.character.escape
-(identifier) @variable
-(type) @type
 
 ;; Literals
+(comment) @comment
+(string) @string
+
+(type) @type
+(expression_statement (array (identifier) @type))
+(binary_operator (identifier) @type)
+
+(variable_statement (identifier) @variable)
+(get_node) @label
+
+(const_statement (name) @constant)
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
+(escape_sequence) @constant.character.escape
 [
   (true)
   (false)
-  (null)
-] @constant.builtin
+] @constant.builtin.boolean
+(null) @constant.builtin
 
 [
   "+"
@@ -62,37 +66,67 @@
   "~"
   "<<"
   ">>"
-  "and"
-  "or"
-  "not"
 ] @operator
 
+(annotation (identifier) @keyword.storage.modifier)
+
 [
-  (static_keyword)
-  (remote_keyword)
-  (tool_statement)
-  "var"
-  "func"
-  "setget"
-  "in"
-  "is"
-  "as"
   "if"
   "else"
   "elif"
+] @keyword.control.conditional
+
+[
   "while"
   "for"
+] @keyword.control.repeat
+
+[
   "return"
+  "pass"
   "break"
   "continue"
-  "pass"
+] @keyword.control.return
+
+[
+  "func"
+] @keyword.control.function
+
+[
+  "export"
+] @keyword.control.import
+
+[
+  "in"
+  "is"
+  "as"
   "match"
+  "and"
+  "or"
+  "not"
+] @keyword.operator
+
+[
+  "var"
   "class"
   "class_name"
   "enum"
-  "signal"
-  "onready"
-  "export"
-  "extends"
+] @keyword.storage.type
+
+
+[
+  (remote_keyword)
+  (static_keyword)
   "const"
+  "signal"
+  "@"
+] @keyword.storage.modifier
+
+[
+  "setget"
+  "onready"
+  "extends"
+  "set"
+  "get"
 ] @keyword
+
