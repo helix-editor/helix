@@ -1202,6 +1202,7 @@ dependencies = [
  "helix-core",
  "helix-view",
  "log",
+ "once_cell",
  "serde",
  "termini",
  "unicode-segmentation",
