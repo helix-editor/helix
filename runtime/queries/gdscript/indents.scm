@@ -12,6 +12,7 @@
 
   (dictionary (_))
   (array (_))
+  (setget)
 ] @indent
 
 [
@@ -24,7 +25,6 @@
   (function_definition)
   (class_definition)
 ] @extend
-
 
 [
   (return_statement)
