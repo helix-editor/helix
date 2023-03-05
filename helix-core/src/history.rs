@@ -136,6 +136,27 @@ fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
     Ok(hash.digest().bytes())
 }
 
+#[derive(Debug)]
+pub enum StateError {
+    Outdated,
+    InvalidHeader,
+    InvalidOffset,
+    InvalidData(String),
+}
+
+impl std::fmt::Display for StateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Outdated => f.write_str("Outdated file"),
+            Self::InvalidHeader => f.write_str("Invalid undofile header"),
+            Self::InvalidOffset => f.write_str("Invalid merge offset"),
+            Self::InvalidData(msg) => f.write_str(msg),
+        }
+    }
+}
+
+impl std::error::Error for StateError {}
+
 impl History {
     pub fn serialize<W: Write + Seek>(
         &self,
@@ -166,7 +187,7 @@ impl History {
     }
 
     /// Returns the deserialized [`History`] and the last_saved_revision.
-    pub fn deserialize<R: Read>(reader: &mut R, path: &Path) -> std::io::Result<(usize, Self)> {
+    pub fn deserialize<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<(usize, Self)> {
         let (current, last_saved_revision) = Self::read_header(reader, path)?;
 
         // Since `timestamp` can't be serialized, a new timestamp is created.
@@ -177,20 +198,16 @@ impl History {
         let mut revisions: Vec<Revision> = Vec::with_capacity(len);
         for _ in 0..len {
             let res = Revision::deserialize(reader, timestamp)?;
-            if !revisions.is_empty() && res.parent >= revisions.len() {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!(
+            let len = revisions.len();
+            match revisions.get_mut(res.parent) {
+                Some(r) => r.last_child = NonZeroUsize::new(len),
+                None if len != 0 => {
+                    anyhow::bail!(StateError::InvalidData(format!(
                         "non-contiguous history: {} >= {}",
-                        res.parent,
-                        revisions.len()
-                    ),
-                ));
-            }
-
-            if !revisions.is_empty() {
-                revisions.get_mut(res.parent).unwrap().last_child =
-                    NonZeroUsize::new(revisions.len());
+                        res.parent, len
+                    )));
+                }
+                None => {}
             }
             revisions.push(res);
         }
@@ -209,7 +226,7 @@ impl History {
     ///        E -> F
     /// ```
     /// and retain their revision heads.
-    pub fn merge(&mut self, mut other: History, offset: usize) -> std::io::Result<()> {
+    pub fn merge(&mut self, mut other: History, offset: usize) -> anyhow::Result<()> {
         if !self
             .revisions
             .iter()
@@ -219,10 +236,7 @@ impl History {
                 a.parent == b.parent && a.transaction == b.transaction && a.inversion == b.inversion
             })
         {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "unequal histories",
-            ));
+            anyhow::bail!(StateError::InvalidOffset);
         }
 
         let revisions = self.revisions.split_off(offset);
@@ -246,13 +260,10 @@ impl History {
         Ok(())
     }
 
-    pub fn read_header<R: Read>(reader: &mut R, path: &Path) -> std::io::Result<(usize, usize)> {
+    pub fn read_header<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<(usize, usize)> {
         let header = read_string(reader)?;
         if HEADER_TAG != header {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "missing undofile header",
-            ))
+            Err(anyhow::anyhow!(StateError::InvalidHeader))
         } else {
             let current = read_usize(reader)?;
             let last_saved_revision = read_usize(reader)?;
@@ -266,10 +277,7 @@ impl History {
             reader.read_exact(&mut hash)?;
 
             if mtime != last_mtime && hash != get_hash(&mut std::fs::File::open(path)?)? {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "outdated undo file",
-                ));
+                anyhow::bail!(StateError::Outdated);
             }
             Ok((current, last_saved_revision))
         }

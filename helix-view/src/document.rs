@@ -637,17 +637,19 @@ impl Document {
                         .await;
                     tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
                         // Truncate the file if it's not a valid undofile.
-                        if History::deserialize(&mut std::fs::File::open(&undofile_path)?, &path)
-                            .is_ok()
-                        {
-                            undofile.set_len(0)?;
-                        }
-                        history.serialize(
-                            &mut undofile,
+                        let offset = if History::deserialize(
+                            &mut std::fs::File::open(&undofile_path)?,
                             &path,
-                            current_rev,
-                            last_saved_revision,
-                        )?;
+                        )
+                        .is_ok()
+                        {
+                            log::info!("Overwriting undofile for {}", path.to_string_lossy());
+                            undofile.set_len(0)?;
+                            0
+                        } else {
+                            last_saved_revision
+                        };
+                        history.serialize(&mut undofile, &path, current_rev, offset)?;
                         Ok(())
                     })
                     .await
@@ -1390,8 +1392,6 @@ impl Display for FormatterError {
 mod test {
     use super::*;
     use arc_swap::ArcSwap;
-    use rand::{rngs::SmallRng, Rng, SeedableRng};
-    use tempfile::NamedTempFile;
 
     #[test]
     fn changeset_to_changes_ignore_line_endings() {
@@ -1656,74 +1656,33 @@ mod test {
         futures_util::future::try_join_all(handles).await.unwrap();
     }
 
-    // struct DocumentFuzz {
-    //     rng: SmallRng,
-    //     file: NamedTempFile,
-    //     documents: Vec<Document>,
-    // }
-
-    // impl DocumentFuzz {
-    //     fn new() -> Self {
-    //         let mut rng = SmallRng::from_entropy();
-    //         let file = NamedTempFile::new().unwrap();
-    //         let range = 0..rng.gen_range(0..100);
-    //         let config = {
-    //             let config = Config {
-    //                 persistent_undo: true,
-    //                 ..Default::default()
-    //             };
-    //             Arc::new(ArcSwap::new(Arc::new(config)))
-    //         };
-    //         let documents = range
-    //             .map(|_| Document::open(file.path(), None, None, config.clone()).unwrap())
-    //             .collect();
-    //         Self {
-    //             rng,
-    //             file,
-    //             documents,
-    //         }
-    //     }
-
-    //     async fn arbitrary(&mut self) {
-    //         let view = ViewId::default();
-    //         for doc in &mut self.documents {
-    //             if self.rng.gen() {
-    //                 doc.load_history().unwrap();
-    //             }
-
-    //             if self.rng.gen() {
-    //                 doc.save::<PathBuf>(None, false).unwrap().await.unwrap();
-    //             }
-
-    //             if self.rng.gen() {
-    //                 Document::open(self.file.path(), None, None, doc.config.clone()).unwrap();
-    //             }
-
-    //             let tx = Transaction::change(
-    //                 doc.text(),
-    //                 (0..self.rng.gen_range(0..100))
-    //                     .map(|_| (0, 0, Option::<helix_core::Tendril>::None)),
-    //             );
-    //         }
-    //     }
-    // }
-
-    struct DocumentFuzz {
-        rng: SmallRng,
-        documents: Vec<Document>,
-    }
-
-    impl DocumentFuzz {
-        fn new() -> Self {
-            Self {
-                rng: SmallRng::from_entropy(),
-                documents: Vec::new(),
-            }
-        }
-    }
-
     #[tokio::test(flavor = "multi_thread")]
-    async fn fuzz_reload() {}
+    async fn save_history() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        let config = Config {
+            persistent_undo: true,
+            ..Default::default()
+        };
+
+        let view_id = ViewId::default();
+        let config = Arc::new(ArcSwap::new(Arc::new(config)));
+        let mut doc = Document::open(file.path(), None, None, config.clone()).unwrap();
+
+        let tx = Transaction::change(&Rope::new(), [(0, 0, None)].into_iter());
+        doc.apply(&tx, view_id);
+        doc.save::<PathBuf>(None, false).unwrap().await.unwrap();
+
+        // Wipe undo file
+        tokio::fs::File::create(doc.undo_file(None).unwrap().unwrap())
+            .await
+            .unwrap();
+
+        // Write it again.
+        doc.save::<PathBuf>(None, false).unwrap().await.unwrap();
+
+        // Will load history.
+        Document::open(file.path(), None, None, config.clone()).unwrap();
+    }
 
     macro_rules! decode {
         ($name:ident, $label:expr, $label_override:expr) => {
