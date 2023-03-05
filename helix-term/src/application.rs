@@ -30,22 +30,14 @@ use crate::{
 
 use log::{debug, error, warn};
 use std::{
-    io::{stdin, stdout, Write},
+    io::{stdin, stdout},
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use anyhow::{Context, Error};
 
-use crossterm::{
-    event::{
-        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent, KeyboardEnhancementFlags,
-        PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
-    },
-    execute, terminal,
-    tty::IsTty,
-};
+use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
 use {
     signal_hook::{consts::signal, low_level},
@@ -63,10 +55,12 @@ use tui::backend::CrosstermBackend;
 use tui::backend::TestBackend;
 
 #[cfg(not(feature = "integration"))]
-type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
+type TerminalBackend = CrosstermBackend<std::io::Stdout>;
 
 #[cfg(feature = "integration")]
-type Terminal = tui::terminal::Terminal<TestBackend>;
+type TerminalBackend = TestBackend;
+
+type Terminal = tui::terminal::Terminal<TerminalBackend>;
 
 pub struct Application {
     compositor: Compositor,
@@ -106,26 +100,6 @@ fn setup_integration_logging() {
         .level(level)
         .chain(std::io::stdout())
         .apply();
-}
-
-fn restore_term() -> Result<(), Error> {
-    let mut stdout = stdout();
-    // reset cursor shape
-    write!(stdout, "\x1B[0 q")?;
-    if matches!(terminal::supports_keyboard_enhancement(), Ok(true)) {
-        execute!(stdout, PopKeyboardEnhancementFlags)?;
-    }
-    // Ignore errors on disabling, this might trigger on windows if we call
-    // disable without calling enable previously
-    let _ = execute!(stdout, DisableMouseCapture);
-    execute!(
-        stdout,
-        DisableBracketedPaste,
-        DisableFocusChange,
-        terminal::LeaveAlternateScreen
-    )?;
-    terminal::disable_raw_mode()?;
-    Ok(())
 }
 
 impl Application {
@@ -472,13 +446,7 @@ impl Application {
     pub async fn handle_signals(&mut self, signal: i32) {
         match signal {
             signal::SIGTSTP => {
-                // restore cursor
-                use helix_view::graphics::CursorKind;
-                self.terminal
-                    .backend_mut()
-                    .show_cursor(CursorKind::Block)
-                    .ok();
-                restore_term().unwrap();
+                self.restore_term().unwrap();
                 low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
             }
             signal::SIGCONT => {
@@ -1054,37 +1022,19 @@ impl Application {
         }
     }
 
-    async fn claim_term(&mut self) -> Result<(), Error> {
-        use helix_view::graphics::CursorKind;
-        terminal::enable_raw_mode()?;
-        if self.terminal.cursor_kind() == CursorKind::Hidden {
-            self.terminal.backend_mut().hide_cursor().ok();
-        }
-        let mut stdout = stdout();
-        execute!(
-            stdout,
-            terminal::EnterAlternateScreen,
-            EnableBracketedPaste,
-            EnableFocusChange
-        )?;
-        execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
-        if self.config.load().editor.mouse {
-            execute!(stdout, EnableMouseCapture)?;
-        }
-        if matches!(terminal::supports_keyboard_enhancement(), Ok(true)) {
-            log::debug!("The enhanced keyboard protocol is supported on this terminal");
-            execute!(
-                stdout,
-                PushKeyboardEnhancementFlags(
-                    KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
-                        | KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
-                )
-            )?;
-        } else {
-            log::debug!("The enhanced keyboard protocol is not supported on this terminal");
-        }
+    async fn claim_term(&mut self) -> std::io::Result<()> {
+        let terminal_config = self.config.load().editor.clone().into();
+        self.terminal.claim(terminal_config)
+    }
 
-        Ok(())
+    fn restore_term(&mut self) -> std::io::Result<()> {
+        let terminal_config = self.config.load().editor.clone().into();
+        use helix_view::graphics::CursorKind;
+        self.terminal
+            .backend_mut()
+            .show_cursor(CursorKind::Block)
+            .ok();
+        self.terminal.restore(terminal_config)
     }
 
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
@@ -1099,7 +1049,7 @@ impl Application {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`.
-            let _ = restore_term();
+            let _ = TerminalBackend::force_restore();
             hook(info);
         }));
 
@@ -1107,13 +1057,7 @@ impl Application {
 
         let close_errs = self.close().await;
 
-        // restore cursor
-        use helix_view::graphics::CursorKind;
-        self.terminal
-            .backend_mut()
-            .show_cursor(CursorKind::Block)
-            .ok();
-        restore_term()?;
+        self.restore_term()?;
 
         for err in close_errs {
             self.editor.exit_code = 1;
