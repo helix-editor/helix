@@ -23,7 +23,7 @@ use helix_core::{
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
-    graphics::{Color, CursorKind, Modifier, Rect, Style},
+    graphics::{Color, CursorKind, Modifier, Rect, Style, UnderlineStyle},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -123,6 +123,15 @@ impl EditorView {
 
                 line_decorations.push(Box::new(line_decoration));
             }
+        }
+
+        let cursor_word = Self::cursor_word(doc, view);
+
+        if config.cursor_word && cursor_word.is_some() {
+            line_decorations.push(Self::cursor_word_decorator(
+                doc,
+                cursor_word.expect("cursor_word exists"),
+            ));
         }
 
         if is_focused && config.cursorline {
@@ -261,6 +270,36 @@ impl EditorView {
             .filter(|ruler| ruler < &viewport.width)
             .map(|ruler| viewport.clip_left(ruler).with_width(1))
             .for_each(|area| surface.set_style(area, ruler_theme))
+    }
+
+    pub fn cursor_word(doc: &Document, view: &View) -> Option<String> {
+        let is_word = |c: char| -> bool {
+            return c.is_ascii_alphanumeric() || c == '-' || c == '_';
+        };
+
+        let text = doc.text().slice(..);
+        let cursor = doc.selection(view.id).primary().cursor(text);
+        let cursor_char = text.byte_to_char(cursor);
+        let char_under_cursor = text.get_char(cursor_char);
+        if char_under_cursor.is_none() {
+            return None;
+        }
+
+        let char_under_cursor = char_under_cursor.expect("valid char under cursor");
+        if !is_word(char_under_cursor) {
+            return None;
+        }
+
+        let start = (0..=cursor_char)
+            .rev()
+            .find(|&i| !is_word(text.char(i)))
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        let end = (cursor_char..text.len_chars())
+            .find(|&i| !is_word(text.char(i)))
+            .unwrap_or(text.len_chars());
+
+        Some(text.slice(start..end).to_string())
     }
 
     pub fn overlay_syntax_highlights(
@@ -694,6 +733,41 @@ impl EditorView {
             Rect::new(viewport.right() - width, viewport.y + 1, width, height),
             surface,
         );
+    }
+
+    /// Apply the decoration for the word to be highlighted
+    pub fn cursor_word_decorator<'a>(
+        doc: &'a Document,
+        cursor_word: String,
+    ) -> Box<dyn LineDecoration + 'a> {
+        let text = doc.text().slice(..);
+
+        let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
+            let viewport = renderer.viewport;
+            let doc_abs_line = text.line(pos.doc_line).as_str();
+            if doc_abs_line.is_none() {
+                return;
+            }
+            let doc_abs_line = doc_abs_line.unwrap();
+            let word_index = match doc_abs_line.find(&cursor_word) {
+                Some(index) => index,
+                None => return,
+            };
+
+            for i in 0..cursor_word.len() as u16 {
+                let cell = renderer
+                    .surface
+                    .get_mut(
+                        word_index as u16 + i + viewport.x,
+                        viewport.y + pos.visual_line,
+                    )
+                    .expect("exists");
+
+                cell.underline_style = UnderlineStyle::Line;
+            }
+        };
+
+        Box::new(line_decoration)
     }
 
     /// Apply the highlighting on the lines where a cursor is active
