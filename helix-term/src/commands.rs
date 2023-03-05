@@ -2941,7 +2941,6 @@ fn goto_first_diag(cx: &mut Context) {
         None => return,
     };
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
 }
 
 fn goto_last_diag(cx: &mut Context) {
@@ -2951,7 +2950,6 @@ fn goto_last_diag(cx: &mut Context) {
         None => return,
     };
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
 }
 
 fn goto_next_diag(cx: &mut Context) {
@@ -2973,7 +2971,6 @@ fn goto_next_diag(cx: &mut Context) {
         None => return,
     };
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
 }
 
 fn goto_prev_diag(cx: &mut Context) {
@@ -2998,7 +2995,6 @@ fn goto_prev_diag(cx: &mut Context) {
         None => return,
     };
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
 }
 
 fn goto_first_change(cx: &mut Context) {
