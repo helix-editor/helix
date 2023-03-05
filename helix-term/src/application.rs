@@ -345,11 +345,11 @@ impl Application {
             tokio::select! {
                 biased;
 
-                Some(event) = input_stream.next() => {
-                    self.handle_terminal_events(event).await;
-                }
                 Some(signal) = self.signals.next() => {
                     self.handle_signals(signal).await;
+                }
+                Some(event) = input_stream.next() => {
+                    self.handle_terminal_events(event).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
