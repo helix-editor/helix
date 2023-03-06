@@ -5,17 +5,33 @@
 
 ":" @punctuation.delimiter
 
+; Hint level tags
+((tag (name) @hint)
+ (#match? @hint "^(HINT|MARK)$"))
+
+("text" @hint
+ (#match? @hint "^(HINT|MARK)$"))
+
+; Info level tags
+((tag (name) @info)
+ (#match? @info "^(INFO|NOTE|TODO)$"))
+
+("text" @info
+ (#match? @info "^(INFO|NOTE|TODO)$"))
+
+; Warning level tags
 ((tag (name) @warning)
- (#match? @warning "^(TODO|HACK|WARNING)$"))
+ (#match? @warning "^(HACK|WARN|WARNING)$"))
 
 ("text" @warning
- (#match? @warning "^(TODO|HACK|WARNING)$"))
+ (#match? @warning "^(HACK|WARN|WARNING)$"))
 
+; Error level tags
 ((tag (name) @error)
- (match? @error "^(FIXME|XXX|BUG)$"))
+ (match? @error "^(BUG|FIXME|ISSUE|XXX)$"))
 
 ("text" @error
- (match? @error "^(FIXME|XXX|BUG)$"))
+ (match? @error "^(BUG|FIXME|ISSUE|XXX)$"))
 
 (tag
  (name) @ui.text

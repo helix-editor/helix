@@ -104,6 +104,7 @@
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ |  |
+| prql | ✓ |  |  |  |
 | purescript | ✓ |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
@@ -113,6 +114,7 @@
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
 | rmarkdown | ✓ |  | ✓ | `R` |
 | ron | ✓ |  | ✓ |  |
+| rst | ✓ |  |  |  |
 | ruby | ✓ | ✓ | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | sage | ✓ | ✓ |  |  |

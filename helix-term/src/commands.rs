@@ -2988,7 +2988,6 @@ fn goto_first_diag(cx: &mut Context) {
         None => return,
     };
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
 }
 
 fn goto_last_diag(cx: &mut Context) {
@@ -2998,7 +2997,6 @@ fn goto_last_diag(cx: &mut Context) {
         None => return,
     };
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
 }
 
 fn goto_next_diag(cx: &mut Context) {
@@ -3020,7 +3018,6 @@ fn goto_next_diag(cx: &mut Context) {
         None => return,
     };
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
 }
 
 fn goto_prev_diag(cx: &mut Context) {
@@ -3045,7 +3042,6 @@ fn goto_prev_diag(cx: &mut Context) {
         None => return,
     };
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
 }
 
 fn goto_first_change(cx: &mut Context) {
@@ -3108,10 +3104,7 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
                     .prev_hunk(cursor_line)
                     .map(|idx| idx.saturating_sub(count)),
             };
-            // TODO refactor with let..else once MSRV reaches 1.65
-            let hunk_idx = if let Some(hunk_idx) = hunk_idx {
-                hunk_idx
-            } else {
+            let Some(hunk_idx) = hunk_idx else {
                 return range;
             };
             let hunk = hunks.nth_hunk(hunk_idx);
