@@ -83,7 +83,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html" class="active"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html" class="active"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key remapping</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding textobject queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding indent queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -148,23 +148,35 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="themes"><a class="header" href="#themes">Themes</a></h1>
-<p>To use a theme add <code>theme = &quot;&lt;name&gt;&quot;</code> to your <a href="./configuration.html"><code>config.toml</code></a> at the very top of the file before the first section or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
+<p>To use a theme add <code>theme = &quot;&lt;name&gt;&quot;</code> to the top of your <a href="./configuration.html"><code>config.toml</code></a> file, or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
 <h2 id="creating-a-theme"><a class="header" href="#creating-a-theme">Creating a theme</a></h2>
-<p>Create a file with the name of your theme as file name (i.e <code>mytheme.toml</code>) and place it in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code>). The directory might have to be created beforehand.</p>
-<p>The names &quot;default&quot; and &quot;base16_default&quot; are reserved for the builtin themes and cannot be overridden by user defined themes.</p>
-<p>The default theme.toml can be found <a href="https://github.com/helix-editor/helix/blob/master/theme.toml">here</a>, and user submitted themes <a href="https://github.com/helix-editor/helix/blob/master/runtime/themes">here</a>. </p>
+<p>Create a file with the name of your theme as the file name (i.e <code>mytheme.toml</code>) and place it in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code> or <code>%AppData%\helix\themes</code> on Windows). The directory might have to be created beforehand.</p>
+<blockquote>
+<p>💡 The names &quot;default&quot; and &quot;base16_default&quot; are reserved for built-in themes
+and cannot be overridden by user-defined themes.</p>
+</blockquote>
+<h3 id="overview"><a class="header" href="#overview">Overview</a></h3>
 <p>Each line in the theme file is specified as below:</p>
 <pre><code class="language-toml">key = { fg = &quot;#ffffff&quot;, bg = &quot;#000000&quot;, underline = { color = &quot;#ff0000&quot;, style = &quot;curl&quot;}, modifiers = [&quot;bold&quot;, &quot;italic&quot;] }
 </code></pre>
-<p>where <code>key</code> represents what you want to style, <code>fg</code> specifies the foreground color, <code>bg</code> the background color, <code>underline</code> the underline <code>style</code>/<code>color</code>, and <code>modifiers</code> is a list of style modifiers. <code>bg</code>, <code>underline</code> and <code>modifiers</code> can be omitted to defer to the defaults.</p>
+<p>Where <code>key</code> represents what you want to style, <code>fg</code> specifies the foreground color, <code>bg</code> the background color, <code>underline</code> the underline <code>style</code>/<code>color</code>, and <code>modifiers</code> is a list of style modifiers. <code>bg</code>, <code>underline</code> and <code>modifiers</code> can be omitted to defer to the defaults.</p>
 <p>To specify only the foreground color:</p>
 <pre><code class="language-toml">key = &quot;#ffffff&quot;
 </code></pre>
-<p>if the key contains a dot <code>'.'</code>, it must be quoted to prevent it being parsed as a <a href="https://toml.io/en/v1.0.0#keys">dotted key</a>.</p>
+<p>If the key contains a dot <code>'.'</code>, it must be quoted to prevent it being parsed as a <a href="https://toml.io/en/v1.0.0#keys">dotted key</a>.</p>
 <pre><code class="language-toml">&quot;key.key&quot; = &quot;#ffffff&quot;
 </code></pre>
+<p>For inspiration, you can find the default <code>theme.toml</code>
+<a href="https://github.com/helix-editor/helix/blob/master/theme.toml">here</a> and
+user-submitted themes
+<a href="https://github.com/helix-editor/helix/blob/master/runtime/themes">here</a>.</p>
+<h3 id="using-the-linter"><a class="header" href="#using-the-linter">Using the linter</a></h3>
+<p>Use the supplied linting tool to check for errors and missing scopes:</p>
+<pre><code class="language-sh">cargo xtask themelint onedark # replace onedark with &lt;name&gt;
+</code></pre>
+<h2 id="the-details-of-theme-creation"><a class="header" href="#the-details-of-theme-creation">The details of theme creation</a></h2>
 <h3 id="color-palettes"><a class="header" href="#color-palettes">Color palettes</a></h3>
-<p>It's recommended define a palette of named colors, and refer to them from the
+<p>It's recommended to define a palette of named colors, and refer to them in the
 configuration values in your theme. To do this, add a table called
 <code>palette</code> to your theme file:</p>
 <pre><code class="language-toml">&quot;ui.background&quot; = &quot;white&quot;
@@ -174,8 +186,8 @@ configuration values in your theme. To do this, add a table called
 white = &quot;#ffffff&quot;
 black = &quot;#000000&quot;
 </code></pre>
-<p>Remember that the <code>[palette]</code> table includes all keys after its header,
-so you should define the palette after normal theme options.</p>
+<p>Keep in mind that the <code>[palette]</code> table includes all keys after its header,
+so it should be defined after the normal theme options.</p>
 <p>The default palette uses the terminal's default 16 colors, and the colors names
 are listed below. The <code>[palette]</code> section in the config file takes precedence
 over it and is merged into the default palette.</p>
@@ -199,8 +211,8 @@ over it and is merged into the default palette.</p>
 </tbody></table>
 </div>
 <h3 id="modifiers"><a class="header" href="#modifiers">Modifiers</a></h3>
-<p>The following values may be used as modifiers. </p>
-<p>Less common modifiers might not be supported by your terminal emulator.</p>
+<p>The following values may be used as modifier, provided they are supported by
+your terminal emulator.</p>
 <div class="table-wrapper"><table><thead><tr><th>Modifier</th></tr></thead><tbody>
 <tr><td><code>bold</code></td></tr>
 <tr><td><code>dim</code></td></tr>
@@ -214,12 +226,12 @@ over it and is merged into the default palette.</p>
 </tbody></table>
 </div>
 <blockquote>
-<p>Note: The <code>underlined</code> modifier is deprecated and only available for backwards compatibility.
+<p>💡 The <code>underlined</code> modifier is deprecated and only available for backwards compatibility.
 Its behavior is equivalent to setting <code>underline.style=&quot;line&quot;</code>.</p>
 </blockquote>
-<h3 id="underline-style"><a class="header" href="#underline-style">Underline Style</a></h3>
-<p>One of the following values may be used as a value for <code>underline.style</code>. </p>
-<p>Some styles might not be supported by your terminal emulator.</p>
+<h3 id="underline-style"><a class="header" href="#underline-style">Underline style</a></h3>
+<p>One of the following values may be used as a value for <code>underline.style</code>, providing it is
+supported by your terminal emulator.</p>
 <div class="table-wrapper"><table><thead><tr><th>Modifier</th></tr></thead><tbody>
 <tr><td><code>line</code></td></tr>
 <tr><td><code>curl</code></td></tr>
@@ -229,7 +241,7 @@ Its behavior is equivalent to setting <code>underline.style=&quot;line&quot;</co
 </tbody></table>
 </div>
 <h3 id="inheritance"><a class="header" href="#inheritance">Inheritance</a></h3>
-<p>Extend upon other themes by setting the <code>inherits</code> property to an existing theme.</p>
+<p>Extend other themes by setting the <code>inherits</code> property to an existing theme.</p>
 <pre><code class="language-toml">inherits = &quot;boo_berry&quot;
 
 # Override the theming for &quot;keyword&quot;s:
@@ -240,16 +252,16 @@ Its behavior is equivalent to setting <code>underline.style=&quot;line&quot;</co
 berry = &quot;#2A2A4D&quot;
 </code></pre>
 <h3 id="scopes"><a class="header" href="#scopes">Scopes</a></h3>
-<p>The following is a list of scopes available to use for styling.</p>
+<p>The following is a list of scopes available to use for styling:</p>
 <h4 id="syntax-highlighting"><a class="header" href="#syntax-highlighting">Syntax highlighting</a></h4>
 <p>These keys match <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme">tree-sitter scopes</a>.</p>
-<p>For a given highlight produced, styling will be determined based on the longest matching theme key. For example, the highlight <code>function.builtin.static</code> would match the key <code>function.builtin</code> rather than <code>function</code>.</p>
+<p>When determining styling for a highlight, the longest matching theme key will be used. For example, if the highlight is <code>function.builtin.static</code>, the key <code>function.builtin</code> will be used instead of <code>function</code>.</p>
 <p>We use a similar set of scopes as
-<a href="https://www.sublimetext.com/docs/scope_naming.html">SublimeText</a>. See also
+<a href="https://www.sublimetext.com/docs/scope_naming.html">Sublime Text</a>. See also
 <a href="https://macromates.com/manual/en/language_grammars">TextMate</a> scopes.</p>
 <ul>
 <li>
-<p><code>attribute</code> - Class attributes, html tag attributes</p>
+<p><code>attribute</code> - Class attributes, HTML tag attributes</p>
 </li>
 <li>
 <p><code>type</code> - Types</p>
@@ -266,7 +278,7 @@ berry = &quot;#2A2A4D&quot;
 <p><code>constructor</code></p>
 </li>
 <li>
-<p><code>constant</code> (TODO: constant.other.placeholder for %v)</p>
+<p><code>constant</code> (TODO: constant.other.placeholder for <code>%v</code>)</p>
 <ul>
 <li><code>builtin</code> Special constants provided by the language (<code>true</code>, <code>false</code>, <code>nil</code> etc)
 <ul>
@@ -303,7 +315,7 @@ berry = &quot;#2A2A4D&quot;
 <p><code>comment</code> - Code comments</p>
 <ul>
 <li><code>line</code> - Single line comments (<code>//</code>)</li>
-<li><code>block</code> - Block comments (e.g. (<code>/*     */</code>)
+<li><code>block</code> - Block comments (e.g. (<code>/* */</code>)
 <ul>
 <li><code>documentation</code> - Documentation comments (e.g. <code>///</code> in Rust)</li>
 </ul>
@@ -313,7 +325,7 @@ berry = &quot;#2A2A4D&quot;
 <li>
 <p><code>variable</code> - Variables</p>
 <ul>
-<li><code>builtin</code> - Reserved language variables (<code>self</code>, <code>this</code>, <code>super</code>, etc)</li>
+<li><code>builtin</code> - Reserved language variables (<code>self</code>, <code>this</code>, <code>super</code>, etc.)</li>
 <li><code>parameter</code> - Function parameters</li>
 <li><code>other</code>
 <ul>
@@ -346,11 +358,11 @@ berry = &quot;#2A2A4D&quot;
 </ul>
 </li>
 <li><code>operator</code> - <code>or</code>, <code>in</code></li>
-<li><code>directive</code> - Preprocessor directives (<code>#if</code> in C) </li>
+<li><code>directive</code> - Preprocessor directives (<code>#if</code> in C)</li>
 <li><code>function</code> - <code>fn</code>, <code>func</code></li>
 <li><code>storage</code> - Keywords describing how things are stored
 <ul>
-<li><code>type</code> - The type of something, <code>class</code>, <code>function</code>, <code>var</code>, <code>let</code>, etc. </li>
+<li><code>type</code> - The type of something, <code>class</code>, <code>function</code>, <code>var</code>, <code>let</code>, etc.</li>
 <li><code>modifier</code> - Storage modifiers like <code>static</code>, <code>mut</code>, <code>const</code>, <code>ref</code>, etc.</li>
 </ul>
 </li>
@@ -396,9 +408,9 @@ berry = &quot;#2A2A4D&quot;
 <li><code>italic</code></li>
 <li><code>link</code>
 <ul>
-<li><code>url</code> - urls pointed to by links</li>
-<li><code>label</code> - non-url link references</li>
-<li><code>text</code> - url and image descriptions in links</li>
+<li><code>url</code> - URLs pointed to by links</li>
+<li><code>label</code> - non-URL link references</li>
+<li><code>text</code> - URL and image descriptions in links</li>
 </ul>
 </li>
 <li><code>quote</code></li>
@@ -424,28 +436,28 @@ berry = &quot;#2A2A4D&quot;
 </li>
 </ul>
 <h4 id="interface"><a class="header" href="#interface">Interface</a></h4>
-<p>These scopes are used for theming the editor interface.</p>
+<p>These scopes are used for theming the editor interface:</p>
 <ul>
 <li><code>markup</code>
 <ul>
 <li><code>normal</code>
 <ul>
-<li><code>completion</code> - for completion doc popup ui</li>
-<li><code>hover</code> - for hover popup ui</li>
+<li><code>completion</code> - for completion doc popup UI</li>
+<li><code>hover</code> - for hover popup UI</li>
 </ul>
 </li>
 <li><code>heading</code>
 <ul>
-<li><code>completion</code> - for completion doc popup ui</li>
-<li><code>hover</code> - for hover popup ui</li>
+<li><code>completion</code> - for completion doc popup UI</li>
+<li><code>hover</code> - for hover popup UI</li>
 </ul>
 </li>
 <li><code>raw</code>
 <ul>
 <li><code>inline</code>
 <ul>
-<li><code>completion</code> - for completion doc popup ui</li>
-<li><code>hover</code> - for hover popup ui</li>
+<li><code>completion</code> - for completion doc popup UI</li>
+<li><code>hover</code> - for hover popup UI</li>
 </ul>
 </li>
 </ul>
@@ -475,9 +487,9 @@ berry = &quot;#2A2A4D&quot;
 <tr><td><code>ui.statusline.insert</code></td><td>Statusline mode during insert mode (<a href="./configuration.html#editor-section">only if <code>editor.color-modes</code> is enabled</a>)</td></tr>
 <tr><td><code>ui.statusline.select</code></td><td>Statusline mode during select mode (<a href="./configuration.html#editor-section">only if <code>editor.color-modes</code> is enabled</a>)</td></tr>
 <tr><td><code>ui.statusline.separator</code></td><td>Separator character in statusline</td></tr>
-<tr><td><code>ui.popup</code></td><td>Documentation popups (e.g Space + k)</td></tr>
+<tr><td><code>ui.popup</code></td><td>Documentation popups (e.g. Space + k)</td></tr>
 <tr><td><code>ui.popup.info</code></td><td>Prompt for multiple key options</td></tr>
-<tr><td><code>ui.window</code></td><td>Border lines separating splits</td></tr>
+<tr><td><code>ui.window</code></td><td>Borderlines separating splits</td></tr>
 <tr><td><code>ui.help</code></td><td>Description box for commands</td></tr>
 <tr><td><code>ui.text</code></td><td>Command prompts, popup text, etc.</td></tr>
 <tr><td><code>ui.text.focus</code></td><td></td></tr>
@@ -507,10 +519,6 @@ berry = &quot;#2A2A4D&quot;
 <tr><td><code>diagnostic.error</code></td><td>Diagnostics error (editing area)</td></tr>
 </tbody></table>
 </div>
-<p>You can check compliance to spec with</p>
-<pre><code class="language-shell">cargo xtask themelint onedark  # replace onedark with &lt;name&gt;
-</code></pre>
-
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">

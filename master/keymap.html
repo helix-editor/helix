@@ -83,7 +83,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html" class="active"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html" class="active"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key remapping</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding textobject queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding indent queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -175,8 +175,8 @@
 </li>
 </ul>
 </li>
-<li><a href="#insert-mode">Insert Mode</a></li>
-<li><a href="#select--extend-mode">Select / extend mode</a></li>
+<li><a href="#insert-mode">Insert mode</a></li>
+<li><a href="#select-extend-mode">Select / extend mode</a></li>
 <li><a href="#picker">Picker</a></li>
 <li><a href="#prompt">Prompt</a></li>
 </ul>
@@ -184,7 +184,7 @@
 <p>💡 Mappings marked (<strong>LSP</strong>) require an active language server for the file.</p>
 </blockquote>
 <blockquote>
-<p>💡 Mappings marked (<strong>TS</strong>) require a tree-sitter grammar for the filetype.</p>
+<p>💡 Mappings marked (<strong>TS</strong>) require a tree-sitter grammar for the file type.</p>
 </blockquote>
 <h2 id="normal-mode"><a class="header" href="#normal-mode">Normal mode</a></h2>
 <h3 id="movement"><a class="header" href="#movement">Movement</a></h3>
@@ -266,7 +266,7 @@
 <h3 id="selection-manipulation"><a class="header" href="#selection-manipulation">Selection manipulation</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>s</code></td><td>Select all regex matches inside selections</td><td><code>select_regex</code></td></tr>
-<tr><td><code>S</code></td><td>Split selection into subselections on regex matches</td><td><code>split_selection</code></td></tr>
+<tr><td><code>S</code></td><td>Split selection into sub selections on regex matches</td><td><code>split_selection</code></td></tr>
 <tr><td><code>Alt-s</code></td><td>Split selection on newlines</td><td><code>split_selection_on_newline</code></td></tr>
 <tr><td><code>Alt-_ </code></td><td>Merge consecutive selections</td><td><code>merge_consecutive_selections</code></td></tr>
 <tr><td><code>&amp;</code></td><td>Align selection in columns</td><td><code>align_selections</code></td></tr>
@@ -298,7 +298,7 @@
 </tbody></table>
 </div>
 <h3 id="search"><a class="header" href="#search">Search</a></h3>
-<p>Search commands all operate on the <code>/</code> register by default. Use <code>&quot;&lt;char&gt;</code> to operate on a different one.</p>
+<p>Search commands all operate on the <code>/</code> register by default. To use a different register, use <code>&quot;&lt;char&gt;</code>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>/</code></td><td>Search for regex pattern</td><td><code>search</code></td></tr>
 <tr><td><code>?</code></td><td>Search for previous pattern</td><td><code>rsearch</code></td></tr>
@@ -326,9 +326,8 @@
 <p>Accessed by typing <code>z</code> in <a href="#normal-mode">normal mode</a>.</p>
 <p>View mode is intended for scrolling and manipulating the view without changing
 the selection. The &quot;sticky&quot; variant of this mode (accessed by typing <code>Z</code> in
-normal mode) is persistent; use the Escape key to return to normal mode after
-usage (useful when you're simply looking over text and not actively editing
-it).</p>
+normal mode) is persistent and can be exited using the escape key. This is
+useful when you're simply looking over text and not actively editing it.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>z</code>, <code>c</code></td><td>Vertically center the line</td><td><code>align_view_center</code></td></tr>
 <tr><td><code>t</code></td><td>Align the line to the top of the screen</td><td><code>align_view_top</code></td></tr>
@@ -369,7 +368,7 @@ it).</p>
 <h4 id="match-mode"><a class="header" href="#match-mode">Match mode</a></h4>
 <p>Accessed by typing <code>m</code> in <a href="#normal-mode">normal mode</a>.</p>
 <p>See the relevant section in <a href="./usage.html">Usage</a> for an explanation about
-<a href="./usage.html#surround">surround</a> and <a href="./usage.html#textobjects">textobject</a> usage.</p>
+<a href="./usage.html#surround">surround</a> and <a href="./usage.html#navigating-using-tree-sitter-textobjects">textobject</a> usage.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>m</code></td><td>Goto matching bracket (<strong>TS</strong>)</td><td><code>match_brackets</code></td></tr>
 <tr><td><code>s</code> <code>&lt;char&gt;</code></td><td>Surround current selection with <code>&lt;char&gt;</code></td><td><code>surround_add</code></td></tr>
@@ -382,7 +381,7 @@ it).</p>
 <p>TODO: Mappings for selecting syntax nodes (a superset of <code>[</code>).</p>
 <h4 id="window-mode"><a class="header" href="#window-mode">Window mode</a></h4>
 <p>Accessed by typing <code>Ctrl-w</code> in <a href="#normal-mode">normal mode</a>.</p>
-<p>This layer is similar to Vim keybindings as Kakoune does not support window.</p>
+<p>This layer is similar to Vim keybindings as Kakoune does not support windows.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>w</code>, <code>Ctrl-w</code></td><td>Switch to next window</td><td><code>rotate_view</code></td></tr>
 <tr><td><code>v</code>, <code>Ctrl-v</code></td><td>Vertical right split</td><td><code>vsplit</code></td></tr>
@@ -430,7 +429,7 @@ it).</p>
 </tbody></table>
 </div>
 <blockquote>
-<p>TIP: Global search displays results in a fuzzy picker, use <code>Space + '</code> to bring it back up after opening a file.</p>
+<p>💡 Global search displays results in a fuzzy picker, use <code>Space + '</code> to bring it back up after opening a file.</p>
 </blockquote>
 <h5 id="popup"><a class="header" href="#popup">Popup</a></h5>
 <p>Displays documentation for item under cursor.</p>
@@ -440,7 +439,7 @@ it).</p>
 </tbody></table>
 </div>
 <h4 id="unimpaired"><a class="header" href="#unimpaired">Unimpaired</a></h4>
-<p>Mappings in the style of <a href="https://github.com/tpope/vim-unimpaired">vim-unimpaired</a>.</p>
+<p>These mappings are in the style of <a href="https://github.com/tpope/vim-unimpaired">vim-unimpaired</a>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>]d</code></td><td>Go to next diagnostic (<strong>LSP</strong>)</td><td><code>goto_next_diag</code></td></tr>
 <tr><td><code>[d</code></td><td>Go to previous diagnostic (<strong>LSP</strong>)</td><td><code>goto_prev_diag</code></td></tr>
@@ -467,12 +466,14 @@ it).</p>
 </tbody></table>
 </div>
 <h2 id="insert-mode"><a class="header" href="#insert-mode">Insert mode</a></h2>
-<p>Insert mode bindings are somewhat minimal by default. Helix is designed to
+<p>Insert mode bindings are minimal by default. Helix is designed to
 be a modal editor, and this is reflected in the user experience and internal
-mechanics. For example, changes to the text are only saved for undos when
-escaping from insert mode to normal mode. For this reason, new users are
-strongly encouraged to learn the modal editing paradigm to get the smoothest
-experience.</p>
+mechanics. Changes to the text are only saved for undos when
+escaping from insert mode to normal mode.</p>
+<blockquote>
+<p>💡 New users are strongly encouraged to learn the modal editing paradigm
+to get the smoothest experience.</p>
+</blockquote>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>Escape</code></td><td>Switch to normal mode</td><td><code>normal_mode</code></td></tr>
 <tr><td><code>Ctrl-s</code></td><td>Commit undo checkpoint</td><td><code>commit_undo_checkpoint</code></td></tr>
@@ -500,8 +501,8 @@ with modal editors.</p>
 <tr><td><code>End</code></td><td>Move to line end</td><td><code>goto_line_end_newline</code></td></tr>
 </tbody></table>
 </div>
-<p>If you want to disable them in insert mode as you become more comfortable with modal editing, you can use
-the following in your <code>config.toml</code>:</p>
+<p>As you become more comfortable with modal editing, you may want to disable some
+insert mode bindings. You can do this by editing your <code>config.toml</code> file.</p>
 <pre><code class="language-toml">[keys.insert]
 up = &quot;no_op&quot;
 down = &quot;no_op&quot;
@@ -513,7 +514,7 @@ home = &quot;no_op&quot;
 end = &quot;no_op&quot;
 </code></pre>
 <h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
-<p>This mode echoes Normal mode, but changes any movements to extend
+<p>Select mode echoes Normal mode, but changes any movements to extend
 selections rather than replace them. Goto motions are also changed to
 extend, so that <code>vgl</code> for example extends the selection to the end of
 the line.</p>

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Adding Textobject Queries</title>
+        <title>Adding textobject queries</title>
 
 
         <!-- Custom HTML head -->
@@ -83,7 +83,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="../install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="../commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="../lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="../from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="../configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="../remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="../languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="../guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="../guides/textobject.html" class="active"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="../guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="../install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="../commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="../lang-support.html"><strong aria-hidden="true">2.3.</strong> Language support</a></li></ol></li><li class="chapter-item expanded "><a href="../from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="../configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="../remapping.html"><strong aria-hidden="true">4.2.</strong> Key remapping</a></li><li class="chapter-item expanded "><a href="../languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="../guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding languages</a></li><li class="chapter-item expanded "><a href="../guides/textobject.html" class="active"><strong aria-hidden="true">5.2.</strong> Adding textobject queries</a></li><li class="chapter-item expanded "><a href="../guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding indent queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -147,15 +147,15 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="adding-textobject-queries"><a class="header" href="#adding-textobject-queries">Adding Textobject Queries</a></h1>
-<p>Textobjects that are language specific (<a href="../usage.html#textobjects">like functions, classes, etc</a>)
-require an accompanying tree-sitter grammar and a <code>textobjects.scm</code> query file
+                        <h1 id="adding-textobject-queries"><a class="header" href="#adding-textobject-queries">Adding textobject queries</a></h1>
+<p>Helix supports textobjects that are language specific, such as functions, classes, etc.
+These textobjects require an accompanying tree-sitter grammar and a <code>textobjects.scm</code> query file
 to work properly. Tree-sitter allows us to query the source code syntax tree
 and capture specific parts of it. The queries are written in a lisp dialect.
 More information on how to write queries can be found in the <a href="https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax">official tree-sitter
 documentation</a>.</p>
 <p>Query files should be placed in <code>runtime/queries/{language}/textobjects.scm</code>
-when contributing. Note that to test the query files locally you should put
+when contributing to Helix. Note that to test the query files locally you should put
 them under your local runtime directory (<code>~/.config/helix/runtime</code> on Linux
 for example).</p>
 <p>The following <a href="https://tree-sitter.github.io/tree-sitter/using-parsers#capturing-nodes">captures</a> are recognized:</p>
@@ -172,8 +172,8 @@ for example).</p>
 </tbody></table>
 </div>
 <p><a href="https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+filename%3Atextobjects.scm&amp;type=Code&amp;ref=advsearch&amp;l=&amp;l=">Example query files</a> can be found in the helix GitHub repository.</p>
-<h2 id="queries-for-textobject-based-navigation"><a class="header" href="#queries-for-textobject-based-navigation">Queries for Textobject Based Navigation</a></h2>
-<p><a href="../usage.html#tree-sitter-textobject-based-navigation">Tree-sitter based navigation</a> is done using captures in the
+<h2 id="queries-for-textobject-based-navigation"><a class="header" href="#queries-for-textobject-based-navigation">Queries for textobject based navigation</a></h2>
+<p>Tree-sitter based navigation in Helix is done using captures in the
 following order:</p>
 <ul>
 <li><code>object.movement</code></li>
@@ -181,7 +181,7 @@ following order:</p>
 <li><code>object.inside</code></li>
 </ul>
 <p>For example if a <code>function.around</code> capture has been already defined for a language
-in it's <code>textobjects.scm</code> file, function navigation should also work automatically.
+in its <code>textobjects.scm</code> file, function navigation should also work automatically.
 <code>function.movement</code> should be defined only if the node captured by <code>function.around</code>
 doesn't make sense in a navigation context.</p>
 

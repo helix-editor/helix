@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Adding Languages</title>
+        <title>Adding languages</title>
 
 
         <!-- Custom HTML head -->
@@ -83,7 +83,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="../install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="../commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="../lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="../from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="../configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="../remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="../languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="../guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../guides/adding_languages.html" class="active"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="../guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="../guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="../install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="../commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="../lang-support.html"><strong aria-hidden="true">2.3.</strong> Language support</a></li></ol></li><li class="chapter-item expanded "><a href="../from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="../configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="../remapping.html"><strong aria-hidden="true">4.2.</strong> Key remapping</a></li><li class="chapter-item expanded "><a href="../languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="../guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../guides/adding_languages.html" class="active"><strong aria-hidden="true">5.1.</strong> Adding languages</a></li><li class="chapter-item expanded "><a href="../guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding textobject queries</a></li><li class="chapter-item expanded "><a href="../guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding indent queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -147,41 +147,58 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="adding-languages"><a class="header" href="#adding-languages">Adding languages</a></h1>
+                        <h1 id="adding-new-languages-to-helix"><a class="header" href="#adding-new-languages-to-helix">Adding new languages to Helix</a></h1>
+<p>In order to add a new language to Helix, you will need to follow the steps
+below.</p>
 <h2 id="language-configuration"><a class="header" href="#language-configuration">Language configuration</a></h2>
-<p>To add a new language, you need to add a <code>[[language]]</code> entry to the
-<code>languages.toml</code> (see the <a href="../languages.html">language configuration section</a>).</p>
-<p>When adding a new language or Language Server configuration for an existing
-language, run <code>cargo xtask docgen</code> to add the new configuration to the
-<a href="../lang-support.html">Language Support</a> docs before creating a pull request.
-When adding a Language Server configuration, be sure to update the
-<a href="https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers">Language Server Wiki</a> with installation notes.</p>
-<h2 id="grammar-configuration"><a class="header" href="#grammar-configuration">Grammar configuration</a></h2>
-<p>If a tree-sitter grammar is available for the language, add a new <code>[[grammar]]</code>
-entry to <code>languages.toml</code>.</p>
-<p>You may use the <code>source.path</code> key rather than <code>source.git</code> with an absolute path
-to a locally available grammar for testing, but switch to <code>source.git</code> before
-submitting a pull request.</p>
-<h2 id="queries"><a class="header" href="#queries">Queries</a></h2>
-<p>For a language to have syntax-highlighting and indentation among
-other things, you have to add queries. Add a directory for your
-language with the path <code>runtime/queries/&lt;name&gt;/</code>. The tree-sitter
-<a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#queries">website</a>
-gives more info on how to write queries.</p>
+<ol>
+<li>Add a new <code>[[language]]</code> entry in the <code>languages.toml</code> file and provide the
+necessary configuration for the new language. For more information on
+language configuration, refer to the
+<a href="../languages.html">language configuration section</a> of the documentation.</li>
+<li>If you are adding a new language or updating an existing language server
+configuration, run the command <code>cargo xtask docgen</code> to update the
+<a href="../lang-support.html">Language Support</a> documentation.</li>
+</ol>
 <blockquote>
-<p>NOTE: When evaluating queries, the first matching query takes
-precedence, which is different from other editors like Neovim where
-the last matching query supersedes the ones before it. See
-<a href="https://github.com/helix-editor/helix/pull/1170#issuecomment-997294090">this issue</a> for an example.</p>
+<p>💡 If you are adding a new Language Server configuration, make sure to update
+the
+<a href="https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers">Language Server Wiki</a>
+with the installation instructions.</p>
 </blockquote>
-<h2 id="common-issues"><a class="header" href="#common-issues">Common Issues</a></h2>
+<h2 id="grammar-configuration"><a class="header" href="#grammar-configuration">Grammar configuration</a></h2>
+<ol>
+<li>If a tree-sitter grammar is available for the new language, add a new
+<code>[[grammar]]</code> entry to the <code>languages.toml</code> file.</li>
+<li>If you are testing the grammar locally, you can use the <code>source.path</code> key
+with an absolute path to the grammar. However, before submitting a pull
+request, make sure to switch to using <code>source.git</code>.</li>
+</ol>
+<h2 id="queries"><a class="header" href="#queries">Queries</a></h2>
+<ol>
+<li>In order to provide syntax highlighting and indentation for the new language,
+you will need to add queries.</li>
+<li>Create a new directory for the language with the path
+<code>runtime/queries/&lt;name&gt;/</code>.</li>
+<li>Refer to the
+<a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#queries">tree-sitter website</a>
+for more information on writing queries.</li>
+</ol>
+<blockquote>
+<p>💡 In Helix, the first matching query takes precedence when evaluating
+queries, which is different from other editors such as Neovim where the last
+matching query supersedes the ones before it. See
+<a href="https://github.com/helix-editor/helix/pull/1170#issuecomment-997294090">this issue</a>
+for an example.</p>
+</blockquote>
+<h2 id="common-issues"><a class="header" href="#common-issues">Common issues</a></h2>
 <ul>
-<li>
-<p>If you get errors when running after switching branches, you may have to update the tree-sitter grammars. Run <code>hx --grammar fetch</code> to fetch the grammars and <code>hx --grammar build</code> to build any out-of-date grammars.</p>
-</li>
-<li>
-<p>If a parser is segfaulting or you want to remove the parser, make sure to remove the compiled parser in <code>runtime/grammar/&lt;name&gt;.so</code></p>
-</li>
+<li>If you encounter errors when running Helix after switching branches, you may
+need to update the tree-sitter grammars. Run the command <code>hx --grammar fetch</code>
+to fetch the grammars and <code>hx --grammar build</code> to build any out-of-date
+grammars.</li>
+<li>If a parser is causing a segfault, or you want to remove it, make sure to
+remove the compiled parser located at <code>runtime/grammars/&lt;name&gt;.so</code>.</li>
 </ul>
 
                     </main>

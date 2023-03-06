@@ -83,7 +83,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html" class="active"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language Support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key Remapping</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding Languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding Textobject Queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding Indent Queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="usage.html" class="active"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.3.</strong> Language support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.2.</strong> Key remapping</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding textobject queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding indent queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -147,21 +147,46 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
-<p>(Currently not fully documented, see the <a href="./keymap.html">keymappings</a> list for more.)</p>
-<p>See <a href="https://github.com/helix-editor/helix/blob/master/runtime/tutor">tutor</a> (accessible via <code>hx --tutor</code> or <code>:tutor</code>) for a vimtutor-like introduction.</p>
+                        <h1 id="using-helix"><a class="header" href="#using-helix">Using Helix</a></h1>
+<!--toc:start-->
+<ul>
+<li><a href="#registers">Registers</a>
+<ul>
+<li><a href="#user-defined-registers">User-defined registers</a></li>
+<li><a href="#special-registers">Special registers</a></li>
+</ul>
+</li>
+<li><a href="#surround">Surround</a></li>
+<li><a href="#selecting-and-manipulating-text-with-textobjects">Selecting and manipulating text with textobjects</a></li>
+<li><a href="#navigating-using-tree-sitter-textobjects">Navigating using tree-sitter textobjects</a></li>
+<li><a href="#moving-the-selection-with-syntax-aware-motions">Moving the selection with syntax-aware motions</a></li>
+</ul>
+<!--toc:end-->
+<p>For a full interactive introduction to Helix, refer to the
+<a href="https://github.com/helix-editor/helix/blob/master/runtime/tutor">tutor</a> which
+can be accessed via the command <code>hx --tutor</code> or <code>:tutor</code>.</p>
+<blockquote>
+<p>💡 Currently, not all functionality is fully documented, please refer to the
+<a href="./keymap.html">key mappings</a> list.</p>
+</blockquote>
 <h2 id="registers"><a class="header" href="#registers">Registers</a></h2>
-<p>Vim-like registers can be used to yank and store text to be pasted later. Usage is similar, with <code>&quot;</code> being used to select a register:</p>
+<p>In Helix, registers are storage locations for text and other data, such as the
+result of a search. Registers can be used to cut, copy, and paste text, similar
+to the clipboard in other text editors. Usage is similar to Vim, with <code>&quot;</code> being
+used to select a register.</p>
+<h3 id="user-defined-registers"><a class="header" href="#user-defined-registers">User-defined registers</a></h3>
+<p>Helix allows you to create your own named registers for storing text, for
+example:</p>
 <ul>
 <li><code>&quot;ay</code> - Yank the current selection to register <code>a</code>.</li>
 <li><code>&quot;op</code> - Paste the text in register <code>o</code> after the selection.</li>
 </ul>
-<p>If there is a selected register before invoking a change or delete command, the selection will be stored in the register and the action will be carried out:</p>
+<p>If a register is selected before invoking a change or delete command, the selection will be stored in the register and the action will be carried out:</p>
 <ul>
 <li><code>&quot;hc</code> - Store the selection in register <code>h</code> and then change it (delete and enter insert mode).</li>
 <li><code>&quot;md</code> - Store the selection in register <code>m</code> and delete it.</li>
 </ul>
-<h3 id="special-registers"><a class="header" href="#special-registers">Special Registers</a></h3>
+<h3 id="special-registers"><a class="header" href="#special-registers">Special registers</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Register character</th><th>Contains</th></tr></thead><tbody>
 <tr><td><code>/</code></td><td>Last search</td></tr>
 <tr><td><code>:</code></td><td>Last executed command</td></tr>
@@ -169,35 +194,76 @@
 <tr><td><code>_</code></td><td>Black hole</td></tr>
 </tbody></table>
 </div>
-<blockquote>
-<p>There is no special register for copying to system clipboard, instead special commands and keybindings are provided. See the <a href="keymap.html#space-mode">keymap</a> for the specifics.
-The black hole register works as a no-op register, meaning no data will be written to / read from it.</p>
-</blockquote>
+<p>The system clipboard is not directly supported by a special register. Instead, special commands and keybindings are provided. Refer to the
+<a href="keymap.html#space-mode">key map</a> for more details.</p>
+<p>The black hole register is a no-op register, meaning that no data will be read or written to it.</p>
 <h2 id="surround"><a class="header" href="#surround">Surround</a></h2>
-<p>Functionality similar to <a href="https://github.com/tpope/vim-surround">vim-surround</a> is built into
-helix. The keymappings have been inspired from <a href="https://github.com/machakann/vim-sandwich">vim-sandwich</a>:</p>
-<p><img src="https://user-images.githubusercontent.com/23398472/122865801-97073180-d344-11eb-8142-8f43809982c6.gif" alt="surround demo" /></p>
-<ul>
-<li><code>ms</code> - Add surround characters</li>
-<li><code>mr</code> - Replace surround characters</li>
-<li><code>md</code> - Delete surround characters</li>
-</ul>
-<p><code>ms</code> acts on a selection, so select the text first and use <code>ms&lt;char&gt;</code>. <code>mr</code> and <code>md</code> work
-on the closest pairs found and selections are not required; use counts to act in outer pairs.</p>
-<p>It can also act on multiple selections (yay!). For example, to change every occurrence of <code>(use)</code> to <code>[use]</code>:</p>
-<ul>
+<p>Helix includes built-in functionality similar to <a href="https://github.com/tpope/vim-surround">vim-surround</a>.
+The keymappings have been inspired from <a href="https://github.com/machakann/vim-sandwich">vim-sandwich</a>:</p>
+<p><img src="https://user-images.githubusercontent.com/23398472/122865801-97073180-d344-11eb-8142-8f43809982c6.gif" alt="Surround demo" /></p>
+<div class="table-wrapper"><table><thead><tr><th>Key Sequence</th><th>Action</th></tr></thead><tbody>
+<tr><td><code>ms&lt;char&gt;</code> (after selecting text)</td><td>Add surround characters to selection</td></tr>
+<tr><td><code>mr&lt;char_to_replace&gt;&lt;new_char&gt;</code></td><td>Replace the closest surround characters</td></tr>
+<tr><td><code>md&lt;char_to_delete&gt;</code></td><td>Delete the closest surround characters</td></tr>
+</tbody></table>
+</div>
+<p>You can use counts to act on outer pairs.</p>
+<p>Surround can also act on multiple selections. For example, to change every occurrence of <code>(use)</code> to <code>[use]</code>:</p>
+<ol>
 <li><code>%</code> to select the whole file</li>
 <li><code>s</code> to split the selections on a search term</li>
 <li>Input <code>use</code> and hit Enter</li>
-<li><code>mr([</code> to replace the parens with square brackets</li>
+<li><code>mr([</code> to replace the parentheses with square brackets</li>
+</ol>
+<p>Multiple characters are currently not supported, but planned for future release.</p>
+<h2 id="selecting-and-manipulating-text-with-textobjects"><a class="header" href="#selecting-and-manipulating-text-with-textobjects">Selecting and manipulating text with textobjects</a></h2>
+<p>In Helix, textobjects are a way to select, manipulate and operate on a piece of
+text in a structured way. They allow you to refer to blocks of text based on
+their structure or purpose, such as a word, sentence, paragraph, or even a
+function or block of code.</p>
+<p><img src="https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif" alt="Textobject demo" />
+<img src="https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif" alt="Textobject tree-sitter demo" /></p>
+<ul>
+<li><code>ma</code> - Select around the object (<code>va</code> in Vim, <code>&lt;alt-a&gt;</code> in Kakoune)</li>
+<li><code>mi</code> - Select inside the object (<code>vi</code> in Vim, <code>&lt;alt-i&gt;</code> in Kakoune)</li>
 </ul>
-<p>Multiple characters are currently not supported, but planned.</p>
-<h2 id="syntax-tree-motions"><a class="header" href="#syntax-tree-motions">Syntax-tree Motions</a></h2>
-<p><code>Alt-p</code>, <code>Alt-o</code>, <code>Alt-i</code>, and <code>Alt-n</code> (or <code>Alt</code> and arrow keys) move the primary
-selection according to the selection's place in the syntax tree. Let's walk
-through an example to get familiar with them. Many languages have a syntax like
-so for function calls:</p>
-<pre><code>func(arg1, arg2, arg3)
+<div class="table-wrapper"><table><thead><tr><th>Key after <code>mi</code> or <code>ma</code></th><th>Textobject selected</th></tr></thead><tbody>
+<tr><td><code>w</code></td><td>Word</td></tr>
+<tr><td><code>W</code></td><td>WORD</td></tr>
+<tr><td><code>p</code></td><td>Paragraph</td></tr>
+<tr><td><code>(</code>, <code>[</code>, <code>'</code>, etc.</td><td>Specified surround pairs</td></tr>
+<tr><td><code>m</code></td><td>The closest surround pair</td></tr>
+<tr><td><code>f</code></td><td>Function</td></tr>
+<tr><td><code>c</code></td><td>Class</td></tr>
+<tr><td><code>a</code></td><td>Argument/parameter</td></tr>
+<tr><td><code>o</code></td><td>Comment</td></tr>
+<tr><td><code>t</code></td><td>Test</td></tr>
+<tr><td><code>g</code></td><td>Change</td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p>💡 <code>f</code>, <code>c</code>, etc. need a tree-sitter grammar active for the current
+document and a special tree-sitter query file to work properly. <a href="./lang-support.html">Only
+some grammars</a> currently have the query file implemented.
+Contributions are welcome!</p>
+</blockquote>
+<h2 id="navigating-using-tree-sitter-textobjects"><a class="header" href="#navigating-using-tree-sitter-textobjects">Navigating using tree-sitter textobjects</a></h2>
+<p>Navigating between functions, classes, parameters, and other elements is
+possible using tree-sitter and textobject queries. For
+example to move to the next function use <code>]f</code>, to move to previous
+class use <code>[c</code>, and so on.</p>
+<p><img src="https://user-images.githubusercontent.com/23398472/152332550-7dfff043-36a2-4aec-b8f2-77c13eb56d6f.gif" alt="Tree-sitter-nav-demo" /></p>
+<p>For the full reference see the <a href="./keymap.html#unimpaired">unimpaired</a> section of the key bind
+documentation.</p>
+<blockquote>
+<p>💡 This feature relies on tree-sitter textobjects
+and requires the corresponding query file to work properly.</p>
+</blockquote>
+<h2 id="moving-the-selection-with-syntax-aware-motions"><a class="header" href="#moving-the-selection-with-syntax-aware-motions">Moving the selection with syntax-aware motions</a></h2>
+<p><code>Alt-p</code>, <code>Alt-o</code>, <code>Alt-i</code>, and <code>Alt-n</code> (or <code>Alt</code> and arrow keys) allow you to move the 
+selection according to its location in the syntax tree. For example, many languages have the
+following syntax for function calls:</p>
+<pre><code class="language-js">func(arg1, arg2, arg3);
 </code></pre>
 <p>A function call might be parsed by tree-sitter into a tree like the following.</p>
 <pre><code class="language-tsq">(call
@@ -224,63 +290,23 @@ a more intuitive tree format:</p>
    │  &quot;arg1&quot;  │  │  &quot;arg2&quot;  │  │  &quot;arg3&quot;  │
    └──────────┘  └──────────┘  └──────────┘
 </code></pre>
-<p>Say we have a selection that wraps <code>arg1</code>. The selection is on the <code>arg1</code> leaf
-in the tree above.</p>
-<pre><code>func([arg1], arg2, arg3)
+<p>If you have a selection that wraps <code>arg1</code> (see the tree above), and you use
+<code>Alt-n</code>, it will select the next sibling in the syntax tree: <code>arg2</code>.</p>
+<pre><code class="language-js">// before
+func([arg1], arg2, arg3)
+// after
+func(arg1, [arg2], arg3);
 </code></pre>
-<p>Using <code>Alt-n</code> would select the next sibling in the syntax tree: <code>arg2</code>.</p>
-<pre><code>func(arg1, [arg2], arg3)
-</code></pre>
-<p>While <code>Alt-o</code> would expand the selection to the parent node. In the tree above we
-can see that we would select the <code>arguments</code> node.</p>
-<pre><code>func[(arg1, arg2, arg3)]
+<p>Similarly, <code>Alt-o</code> will expand the selection to the parent node, in this case, the
+arguments node.</p>
+<pre><code class="language-js">func[(arg1, arg2, arg3)];
 </code></pre>
 <p>There is also some nuanced behavior that prevents you from getting stuck on a
-node with no sibling. If we have a selection on <code>arg1</code>, <code>Alt-p</code> would bring us
-to the previous child node. Since <code>arg1</code> doesn't have a sibling to its left,
-though, we climb the syntax tree and then take the previous selection. So
-<code>Alt-p</code> will move the selection over to the &quot;func&quot; <code>identifier</code>.</p>
-<pre><code>[func](arg1, arg2, arg3)
-</code></pre>
-<h2 id="textobjects"><a class="header" href="#textobjects">Textobjects</a></h2>
-<p><img src="https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif" alt="textobject-demo" />
-<img src="https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif" alt="textobject-treesitter-demo" /></p>
-<ul>
-<li><code>ma</code> - Select around the object (<code>va</code> in Vim, <code>&lt;alt-a&gt;</code> in Kakoune)</li>
-<li><code>mi</code> - Select inside the object (<code>vi</code> in Vim, <code>&lt;alt-i&gt;</code> in Kakoune)</li>
-</ul>
-<div class="table-wrapper"><table><thead><tr><th>Key after <code>mi</code> or <code>ma</code></th><th>Textobject selected</th></tr></thead><tbody>
-<tr><td><code>w</code></td><td>Word</td></tr>
-<tr><td><code>W</code></td><td>WORD</td></tr>
-<tr><td><code>p</code></td><td>Paragraph</td></tr>
-<tr><td><code>(</code>, <code>[</code>, <code>'</code>, etc</td><td>Specified surround pairs</td></tr>
-<tr><td><code>m</code></td><td>Closest surround pair</td></tr>
-<tr><td><code>f</code></td><td>Function</td></tr>
-<tr><td><code>c</code></td><td>Class</td></tr>
-<tr><td><code>a</code></td><td>Argument/parameter</td></tr>
-<tr><td><code>o</code></td><td>Comment</td></tr>
-<tr><td><code>t</code></td><td>Test</td></tr>
-<tr><td><code>g</code></td><td>Change</td></tr>
-</tbody></table>
-</div>
-<blockquote>
-<p>NOTE: <code>f</code>, <code>c</code>, etc need a tree-sitter grammar active for the current
-document and a special tree-sitter query file to work properly. <a href="./lang-support.html">Only
-some grammars</a> currently have the query file implemented.
-Contributions are welcome!</p>
-</blockquote>
-<h2 id="tree-sitter-textobject-based-navigation"><a class="header" href="#tree-sitter-textobject-based-navigation">Tree-sitter Textobject Based Navigation</a></h2>
-<p>Navigating between functions, classes, parameters, etc is made
-possible by leveraging tree-sitter and textobjects queries. For
-example to move to the next function use <code>]f</code>, to move to previous
-class use <code>[c</code>, and so on.</p>
-<p><img src="https://user-images.githubusercontent.com/23398472/152332550-7dfff043-36a2-4aec-b8f2-77c13eb56d6f.gif" alt="tree-sitter-nav-demo" /></p>
-<p>See the <a href="./keymap.html#unimpaired">unimpaired</a> section of the keybind
-documentation for the full reference.</p>
-<blockquote>
-<p>NOTE: This feature is dependent on tree-sitter based textobjects
-and therefore requires the corresponding query file to work properly.</p>
-</blockquote>
+node with no sibling. When using <code>Alt-p</code> with a selection on <code>arg1</code>, the previous
+child node will be selected. In the event that <code>arg1</code> does not have a previous
+sibling, the selection will move up the syntax tree and select the previous
+element. As a result, using <code>Alt-p</code> with a selection on <code>arg1</code> will move the
+selection to the &quot;func&quot; <code>identifier</code>.</p>
 
                     </main>
 
