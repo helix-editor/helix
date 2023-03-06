@@ -98,7 +98,7 @@ pub use {regex, tree_sitter};
 pub use graphemes::RopeGraphemes;
 pub use position::{
     char_idx_at_visual_offset, coords_at_pos, pos_at_coords, visual_offset_from_anchor,
-    visual_offset_from_block, Position,
+    visual_offset_from_block, Position, VisualOffsetError,
 };
 #[allow(deprecated)]
 pub use position::{pos_at_visual_coords, visual_coords_at_pos};

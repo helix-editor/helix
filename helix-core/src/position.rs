@@ -137,6 +137,12 @@ pub fn visual_offset_from_block(
     (last_pos, block_start)
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum VisualOffsetError {
+    PosBeforeAnchorRow,
+    PosAfterMaxRow,
+}
+
 /// Returns the visual offset from the start of the visual line
 /// that contains anchor.
 pub fn visual_offset_from_anchor(
@@ -146,28 +152,46 @@ pub fn visual_offset_from_anchor(
     text_fmt: &TextFormat,
     annotations: &TextAnnotations,
     max_rows: usize,
-) -> Option<(Position, usize)> {
+) -> Result<(Position, usize), VisualOffsetError> {
     let (formatter, block_start) =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, annotations, anchor);
     let mut char_pos = block_start;
     let mut anchor_line = None;
+    let mut found_pos = None;
     let mut last_pos = Position::default();
+
+    if pos < block_start {
+        return Err(VisualOffsetError::PosBeforeAnchorRow);
+    }
 
     for (grapheme, vpos) in formatter {
         last_pos = vpos;
         char_pos += grapheme.doc_chars();
 
-        if char_pos > anchor && anchor_line.is_none() {
-            anchor_line = Some(last_pos.row);
-        }
         if char_pos > pos {
-            last_pos.row -= anchor_line.unwrap();
-            return Some((last_pos, block_start));
+            if let Some(anchor_line) = anchor_line {
+                last_pos.row -= anchor_line;
+                return Ok((last_pos, block_start));
+            } else {
+                found_pos = Some(last_pos);
+            }
+        }
+        if char_pos > anchor && anchor_line.is_none() {
+            if let Some(mut found_pos) = found_pos {
+                return if found_pos.row == last_pos.row {
+                    found_pos.row = 0;
+                    Ok((found_pos, block_start))
+                } else {
+                    Err(VisualOffsetError::PosBeforeAnchorRow)
+                };
+            } else {
+                anchor_line = Some(last_pos.row);
+            }
         }
 
         if let Some(anchor_line) = anchor_line {
             if vpos.row >= anchor_line + max_rows {
-                return None;
+                return Err(VisualOffsetError::PosAfterMaxRow);
             }
         }
     }
@@ -175,7 +199,7 @@ pub fn visual_offset_from_anchor(
     let anchor_line = anchor_line.unwrap_or(last_pos.row);
     last_pos.row -= anchor_line;
 
-    Some((last_pos, block_start))
+    Ok((last_pos, block_start))
 }
 
 /// Convert (line, column) coordinates to a character index.
