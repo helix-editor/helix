@@ -1,6 +1,6 @@
 # Author : erasin<erasinoo@gmail.com>
 
-"attribute" = { fg = "light-blue" }
+"attribute" = { fg = "yellow" }
 "constructor" = { fg = "brown" }
 "label" = { fg = "cyan" }
 "operator" = { fg = "red" }
@@ -103,7 +103,7 @@
 "ui.cursor.normal" = { fg = "white", bg = "grey" }
 "ui.cursor.insert" = { fg = "white", bg = "grey" }
 "ui.cursor.select" = { fg = "white", bg = "grey" }
-"ui.cursor.match" = { bg = "light-grey" }
+"ui.cursor.match" = { bg = "light-white", modifiers = ["bold"] }
 "ui.cursor.primary" = { fg = "white", bg = "black" }
 "ui.cursor.primary.normal" = { fg = "white", bg = "black" }
 "ui.cursor.primary.insert" = { fg = "red", bg = "black" }
