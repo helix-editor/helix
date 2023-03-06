@@ -825,7 +825,14 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             );
         }
 
-        let ancestor_style = cx.editor.theme.get("ui.text.focus");
+        let ancestor_style = {
+            let style = cx.editor.theme.get("ui.selection");
+            let fg = cx.editor.theme.get("ui.text").fg;
+            match (style.fg, fg) {
+                (None, Some(fg)) => style.fg(fg),
+                _ => style,
+            }
+        };
 
         let area = area.clip_top(2);
         let iter = self.render_lines(area).into_iter().enumerate();
