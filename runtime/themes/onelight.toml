@@ -64,7 +64,7 @@
 "function" = { fg = "blue" }
 "function.builtin" = { fg = "cyan" }
 "function.method" = { fg = "light-blue" }
-"function.macro" = { fg = "pink", modifiers = ["blod"] }
+"function.macro" = { fg = "pink", modifiers = ["bold"] }
 "function.special" = { fg = "cyan" }
 
 "markup.heading" = { fg = "red" }
