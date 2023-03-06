@@ -1021,7 +1021,10 @@ mod test_explorer {
         // 0.1 Expect the current prompt to be related to file renaming
         let prompt = &explorer.prompt.as_ref().unwrap().1;
         assert_eq!(prompt.prompt(), " Rename to ");
-        assert_eq!(prompt.line(), "test_explorer/rename/.gitignore");
+        assert_eq!(
+            prompt.line().replace(std::path::MAIN_SEPARATOR, "/"),
+            "test_explorer/rename/.gitignore"
+        );
 
         // 1. Rename the current file to a name that is lexicographically greater than "index.html"
         explorer.handle_events("<C-w>who.is<ret>").unwrap();
@@ -1070,7 +1073,7 @@ mod test_explorer {
         explorer
             .handle_events(&format!(
                 "r<C-u>{}<ret>",
-                path.join("new_folder/sponge/bob").display().to_string()
+                path.join("new_folder/sponge/bob").display()
             ))
             .unwrap();
 
@@ -1113,7 +1116,7 @@ mod test_explorer {
         explorer
             .handle_events(&format!(
                 "r<C-u>{}<ret>",
-                path.join("scripts/bob").display().to_string()
+                path.join("scripts/bob").display()
             ))
             .unwrap();
 
@@ -1137,7 +1140,10 @@ mod test_explorer {
         explorer.handle_events("a").unwrap();
         let prompt = &explorer.prompt.as_ref().unwrap().1;
         assert_eq!(prompt.prompt(), " New file or folder (ends with '/'): ");
-        assert_eq!(prompt.line(), "test_explorer/new_folder/");
+        assert_eq!(
+            prompt.line().replace(std::path::MAIN_SEPARATOR, "/"),
+            "test_explorer/new_folder/"
+        );
 
         // 1. Add a new folder at the root
         explorer.handle_events("yoyo/<ret>").unwrap();
