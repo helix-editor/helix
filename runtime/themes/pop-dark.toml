@@ -28,8 +28,10 @@ error = { fg = 'brownD', bg = 'redE', modifiers = ['bold'] }
 'ui.linenr' = { bg = 'brownU', fg = 'greyL' }
 'ui.linenr.selected' = { fg = 'orangeH' }
 'ui.cursorline' = { bg = 'brownH' }
-'ui.statusline' = { fg = 'greyT', bg = 'brownD' }
 'ui.statusline.inactive' = { fg = 'greyT', bg = 'brownN' }
+'ui.statusline.normal' = { fg = 'greyT', bg = 'brownN' }
+'ui.statusline.select' = { fg = 'blueD', bg = 'brownN' }
+'ui.statusline.insert' = { fg = 'orangeD', bg = 'brownN' }
 'ui.help' = { fg = 'greyT', bg = 'brownD' }
 'ui.highlight' = { bg = 'brownH' }
 'ui.virtual' = { fg = 'brownV' }
