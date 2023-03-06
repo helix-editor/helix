@@ -29,9 +29,9 @@ error = { fg = 'brownD', bg = 'redE', modifiers = ['bold'] }
 'ui.linenr.selected' = { fg = 'orangeH' }
 'ui.cursorline' = { bg = 'brownH' }
 'ui.statusline.inactive' = { fg = 'greyT', bg = 'brownN' }
-'ui.statusline.normal' = { fg = 'greyT', bg = 'brownN' }
-'ui.statusline.select' = { fg = 'blueD', bg = 'brownN' }
-'ui.statusline.insert' = { fg = 'orangeD', bg = 'brownN' }
+'ui.statusline.normal' = { fg = 'greyT', bg = 'brownD' }
+'ui.statusline.select' = { fg = 'blueD', bg = 'brownD' }
+'ui.statusline.insert' = { fg = 'orangeN', bg = 'brownD' }
 'ui.help' = { fg = 'greyT', bg = 'brownD' }
 'ui.highlight' = { bg = 'brownH' }
 'ui.virtual' = { fg = 'brownV' }
