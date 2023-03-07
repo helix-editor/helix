@@ -342,16 +342,35 @@ impl Tree {
 
         // take the area
         // fetch the node
-        // a) node is view, give it whole area
+        // a) node is view
+        //    1) view is centered and the parent container is not a vertical layout or
+        //       with only 1 child (the current view), center the view
+        //    2) give the whole area
         // b) node is container, calculate areas for each child and push them on the stack
 
         while let Some((key, area)) = self.stack.pop() {
-            let node = &mut self.nodes[key];
+            let parent = self.nodes[key].parent;
 
-            match &mut node.content {
+            // Parent must always be a container
+            let (parent_child_count, parent_layout) = match &self.nodes[parent].content {
+                Content::Container(container) => (container.children.len(), container.layout),
+                Content::View(_) => unreachable!(),
+            };
+
+            match &mut self.nodes[key].content {
                 Content::View(view) => {
                     // debug!!("setting view area {:?}", area);
-                    view.area = area;
+                    if view.is_centered
+                        && (parent_child_count <= 1 || parent_layout != Layout::Vertical)
+                    {
+                        let width = std::cmp::min(std::cmp::max(area.width / 2, 120), area.width);
+                        let area =
+                            Rect::new(area.width / 2 - width / 2, area.y, width, area.height);
+
+                        view.area = area;
+                    } else {
+                        view.area = area;
+                    }
                 } // TODO: call f()
                 Content::Container(container) => {
                     // debug!!("setting container area {:?}", area);
@@ -712,22 +731,22 @@ mod test {
             width: 180,
             height: 80,
         });
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(DocumentId::default(), GutterConfig::default(), false);
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
 
         let l0 = tree.focus;
-        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view = View::new(DocumentId::default(), GutterConfig::default(), false);
         tree.split(view, Layout::Vertical);
         let r0 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view = View::new(DocumentId::default(), GutterConfig::default(), false);
         tree.split(view, Layout::Horizontal);
         let l1 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view = View::new(DocumentId::default(), GutterConfig::default(), false);
         tree.split(view, Layout::Vertical);
         let l2 = tree.focus;
 
@@ -769,28 +788,28 @@ mod test {
         });
 
         let doc_l0 = DocumentId::default();
-        let mut view = View::new(doc_l0, GutterConfig::default());
+        let mut view = View::new(doc_l0, GutterConfig::default(), false);
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
 
         let l0 = tree.focus;
 
         let doc_r0 = DocumentId::default();
-        let view = View::new(doc_r0, GutterConfig::default());
+        let view = View::new(doc_r0, GutterConfig::default(), false);
         tree.split(view, Layout::Vertical);
         let r0 = tree.focus;
 
         tree.focus = l0;
 
         let doc_l1 = DocumentId::default();
-        let view = View::new(doc_l1, GutterConfig::default());
+        let view = View::new(doc_l1, GutterConfig::default(), false);
         tree.split(view, Layout::Horizontal);
         let l1 = tree.focus;
 
         tree.focus = l0;
 
         let doc_l2 = DocumentId::default();
-        let view = View::new(doc_l2, GutterConfig::default());
+        let view = View::new(doc_l2, GutterConfig::default(), false);
         tree.split(view, Layout::Vertical);
         let l2 = tree.focus;
 

@@ -107,6 +107,7 @@ pub struct View {
     pub id: ViewId,
     pub offset: ViewPosition,
     pub area: Rect,
+    pub is_centered: bool,
     pub doc: DocumentId,
     pub jumps: JumpList,
     // documents accessed from this view from the oldest one to last viewed one
@@ -138,7 +139,7 @@ impl fmt::Debug for View {
 }
 
 impl View {
-    pub fn new(doc: DocumentId, gutters: GutterConfig) -> Self {
+    pub fn new(doc: DocumentId, gutters: GutterConfig, is_centered: bool) -> Self {
         Self {
             id: ViewId::default(),
             doc,
@@ -148,6 +149,7 @@ impl View {
                 vertical_offset: 0,
             },
             area: Rect::default(), // will get calculated upon inserting into tree
+            is_centered,
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
@@ -597,7 +599,7 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(DocumentId::default(), GutterConfig::default(), false);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let doc = Document::from(
@@ -771,6 +773,7 @@ mod tests {
                 layout: vec![GutterType::Diagnostics],
                 line_numbers: GutterLineNumbersConfig::default(),
             },
+            false,
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
@@ -800,6 +803,7 @@ mod tests {
                 layout: vec![],
                 line_numbers: GutterLineNumbersConfig::default(),
             },
+            false,
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
@@ -823,7 +827,7 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_cjk() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(DocumentId::default(), GutterConfig::default(), false);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
         let doc = Document::from(
@@ -906,7 +910,7 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_graphemes() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(DocumentId::default(), GutterConfig::default(), false);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
         let doc = Document::from(
