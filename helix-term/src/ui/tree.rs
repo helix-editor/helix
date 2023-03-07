@@ -313,7 +313,7 @@ pub struct TreeView<T: TreeViewItem> {
     on_folded_fn: Option<Box<dyn FnMut(&mut T, &mut Context, &mut T::Params) + 'static>>,
 
     #[allow(clippy::type_complexity)]
-    on_next_key: Option<Box<dyn FnMut(&mut Context, &mut Self, &KeyEvent)>>,
+    on_next_key: Option<Box<dyn FnMut(&mut Context, &mut Self, &KeyEvent) -> Result<()>>>,
 }
 
 impl<T: TreeViewItem> TreeView<T> {
@@ -649,6 +649,54 @@ impl<T: TreeViewItem> TreeView<T> {
 
     pub fn move_up(&mut self, rows: usize) {
         self.set_selected(self.selected.saturating_sub(rows))
+    }
+
+    fn move_to_next_sibling(&mut self) -> Result<()> {
+        if let Some(parent) = self.current_parent()? {
+            if let Some(local_index) = parent
+                .children
+                .iter()
+                .position(|child| child.index == self.selected)
+            {
+                if let Some(next_sibling) = parent.children.get(local_index.saturating_add(1)) {
+                    self.set_selected(next_sibling.index)
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn move_to_previous_sibling(&mut self) -> Result<()> {
+        if let Some(parent) = self.current_parent()? {
+            if let Some(local_index) = parent
+                .children
+                .iter()
+                .position(|child| child.index == self.selected)
+            {
+                if let Some(next_sibling) = parent.children.get(local_index.saturating_sub(1)) {
+                    self.set_selected(next_sibling.index)
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn move_to_last_sibling(&mut self) -> Result<()> {
+        if let Some(parent) = self.current_parent()? {
+            if let Some(last) = parent.children.last() {
+                self.set_selected(last.index)
+            }
+        }
+        Ok(())
+    }
+
+    fn move_to_first_sibling(&mut self) -> Result<()> {
+        if let Some(parent) = self.current_parent()? {
+            if let Some(last) = parent.children.first() {
+                self.set_selected(last.index)
+            }
+        }
+        Ok(())
     }
 
     fn move_left(&mut self, cols: usize) {
@@ -1041,35 +1089,41 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             Event::Resize(..) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
+        (|| -> Result<EventResult> {
+
         if let Some(mut on_next_key) = self.on_next_key.take() {
-            on_next_key(cx, self, key_event);
-            return EventResult::Consumed(None);
+            on_next_key(cx, self, key_event)?;
+            return Ok(EventResult::Consumed(None));
         }
 
         if let EventResult::Consumed(c) = self.handle_search_event(key_event, cx) {
-            return EventResult::Consumed(c);
+            return Ok(EventResult::Consumed(c));
         }
 
         if let EventResult::Consumed(c) = self.handle_filter_event(key_event, cx) {
-            return EventResult::Consumed(c);
+            return Ok(EventResult::Consumed(c));
         }
 
         let count = std::mem::replace(&mut self.count, 0);
 
         let filter = self.filter.clone();
-        (|| -> Result<EventResult> {
             match key_event {
                 key!(i @ '0'..='9') => {
                     self.count = i.to_digit(10).unwrap_or(0) as usize + count * 10
                 }
-                key!('k') | key!(Up) | ctrl!('p') => self.move_up(1.max(count)),
-                key!('j') | key!(Down) | ctrl!('n') => self.move_down(1.max(count)),
+                shift!('K') => self.move_up(1.max(count)),
+                shift!('J') => self.move_down(1.max(count)),
+                key!('j') | key!(Down) | ctrl!('n') => self.move_to_next_sibling()?,
+                key!('k') | key!(Up) | ctrl!('p') => self.move_to_previous_sibling()?,
                 key!('z') => {
-                    self.on_next_key = Some(Box::new(|_, tree, event| match event {
-                        key!('z') => tree.align_view_center(),
-                        key!('t') => tree.align_view_top(),
-                        key!('b') => tree.align_view_bottom(),
-                        _ => {}
+                    self.on_next_key = Some(Box::new(|_, tree, event| {
+                        match event {
+                            key!('z') => tree.align_view_center(),
+                            key!('t') => tree.align_view_top(),
+                            key!('b') => tree.align_view_bottom(),
+                            _ => {}
+                        };
+                        Ok(())
                     }));
                 }
                 key!('h') | key!(Left) => self.move_to_parent()?,
@@ -1080,12 +1134,17 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                 ctrl!('d') => self.move_down_half_page(),
                 ctrl!('u') => self.move_up_half_page(),
                 key!('g') => {
-                    self.on_next_key = Some(Box::new(|_, tree, event| match event {
-                        key!('g') => tree.move_to_first_line(),
-                        key!('e') => tree.move_to_last_line(),
-                        key!('h') => tree.move_leftmost(),
-                        key!('l') => tree.move_rightmost(),
-                        _ => {}
+                    self.on_next_key = Some(Box::new(|_, tree, event| {
+                        match event {
+                            shift!('G') => tree.move_to_first_line(),
+                            shift!('E') => tree.move_to_last_line(),
+                            key!('g') => tree.move_to_first_sibling()?,
+                            key!('e') => tree.move_to_last_sibling()?,
+                            key!('h') => tree.move_leftmost(),
+                            key!('l') => tree.move_rightmost(),
+                            _ => {}
+                        };
+                        Ok(())
                     }));
                 }
                 key!('/') => self.new_search_prompt(Direction::Forward),
@@ -1208,7 +1267,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
     }
 
     pub fn prompting(&self) -> bool {
-        self.filter_prompt.is_some() || self.search_prompt.is_some()
+        self.filter_prompt.is_some() || self.search_prompt.is_some() || self.on_next_key.is_some()
     }
 }
 
@@ -1445,6 +1504,160 @@ mod test_tree_view {
 ⏵ plankton
 ⏵ sandy_cheeks
 ⏵ (spongebob_squarepants)
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_move_to_first_last_sibling() {
+        let mut view = dummy_tree_view();
+        view.move_to_children("").unwrap();
+        view.move_to_children("").unwrap();
+        view.move_to_parent().unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏷ (gary_the_snail)
+  ⏵ e_snail
+  ⏵ gary_th
+⏵ karen
+"
+            .trim()
+        );
+
+        view.move_to_last_sibling().unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏵ patrick_star
+⏵ plankton
+⏵ sandy_cheeks
+⏵ (spongebob_squarepants)
+"
+            .trim()
+        );
+
+        view.move_to_first_sibling().unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏷ (gary_the_snail)
+  ⏵ e_snail
+  ⏵ gary_th
+⏵ karen
+"
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_move_to_previous_next_sibling() {
+        let mut view = dummy_tree_view();
+        view.move_to_children("").unwrap();
+        view.move_to_children("").unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏷ [gary_the_snail]
+  ⏵ (e_snail)
+  ⏵ gary_th
+⏵ karen
+"
+            .trim()
+        );
+
+        view.move_to_next_sibling().unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏷ [gary_the_snail]
+  ⏵ e_snail
+  ⏵ (gary_th)
+⏵ karen
+"
+            .trim()
+        );
+
+        view.move_to_next_sibling().unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏷ [gary_the_snail]
+  ⏵ e_snail
+  ⏵ (gary_th)
+⏵ karen
+"
+            .trim()
+        );
+
+        view.move_to_previous_sibling().unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏷ [gary_the_snail]
+  ⏵ (e_snail)
+  ⏵ gary_th
+⏵ karen
+"
+            .trim()
+        );
+
+        view.move_to_previous_sibling().unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏷ [gary_the_snail]
+  ⏵ (e_snail)
+  ⏵ gary_th
+⏵ karen
+"
+            .trim()
+        );
+
+        view.move_to_parent().unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏷ (gary_the_snail)
+  ⏵ e_snail
+  ⏵ gary_th
+⏵ karen
+"
+            .trim()
+        );
+
+        view.move_to_next_sibling().unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏷ gary_the_snail
+  ⏵ e_snail
+  ⏵ gary_th
+⏵ (karen)
+"
+            .trim()
+        );
+
+        view.move_to_previous_sibling().unwrap();
+        assert_eq!(
+            render(&mut view),
+            "
+[who_lives_in_a_pineapple_under_the_sea]
+⏷ (gary_the_snail)
+  ⏵ e_snail
+  ⏵ gary_th
+⏵ karen
 "
             .trim()
         );
