@@ -504,28 +504,28 @@ pub fn tree_view_help() -> Vec<(&'static str, &'static str)> {
         ("k, up, C-p", "Up"),
         ("h, left", "Go to parent"),
         ("l, right", "Expand"),
+        ("J", "Go to next sibling"),
+        ("K", "Go to previous sibling"),
+        ("H", "Go to first child"),
+        ("L", "Go to last child"),
+        ("R", "Refresh"),
         ("f", "Filter"),
         ("/", "Search"),
         ("n", "Go to next search match"),
         ("N", "Go to previous search match"),
-        ("R", "Refresh"),
-        ("H", "Scroll left"),
-        ("L", "Scroll right"),
-        ("Home", "Scroll to the leftmost"),
-        ("End", "Scroll to the rightmost"),
+        ("gh, Home", "Scroll to the leftmost"),
+        ("gl, End", "Scroll to the rightmost"),
         ("C-o", "Jump backward"),
         ("C-i, Tab", "Jump forward"),
         ("C-d", "Half page down"),
         ("C-u", "Half page up"),
-        ("PageUp", "Full page up"),
         ("PageDown", "Full page down"),
-        ("zz", "Align view center"),
+        ("PageUp", "Full page up"),
         ("zt", "Align view top"),
+        ("zz", "Align view center"),
         ("zb", "Align view bottom"),
         ("gg", "Go to first line"),
         ("ge", "Go to last line"),
-        ("gh", "Go to line start"),
-        ("gl", "Go to line end"),
     ]
 }
 
@@ -1090,31 +1090,37 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             _ => return EventResult::Ignored(None),
         };
         (|| -> Result<EventResult> {
+            if let Some(mut on_next_key) = self.on_next_key.take() {
+                on_next_key(cx, self, key_event)?;
+                return Ok(EventResult::Consumed(None));
+            }
 
-        if let Some(mut on_next_key) = self.on_next_key.take() {
-            on_next_key(cx, self, key_event)?;
-            return Ok(EventResult::Consumed(None));
-        }
+            if let EventResult::Consumed(c) = self.handle_search_event(key_event, cx) {
+                return Ok(EventResult::Consumed(c));
+            }
 
-        if let EventResult::Consumed(c) = self.handle_search_event(key_event, cx) {
-            return Ok(EventResult::Consumed(c));
-        }
+            if let EventResult::Consumed(c) = self.handle_filter_event(key_event, cx) {
+                return Ok(EventResult::Consumed(c));
+            }
 
-        if let EventResult::Consumed(c) = self.handle_filter_event(key_event, cx) {
-            return Ok(EventResult::Consumed(c));
-        }
+            let count = std::mem::replace(&mut self.count, 0);
 
-        let count = std::mem::replace(&mut self.count, 0);
-
-        let filter = self.filter.clone();
+            let filter = self.filter.clone();
             match key_event {
                 key!(i @ '0'..='9') => {
                     self.count = i.to_digit(10).unwrap_or(0) as usize + count * 10
                 }
-                shift!('K') => self.move_up(1.max(count)),
-                shift!('J') => self.move_down(1.max(count)),
-                key!('j') | key!(Down) | ctrl!('n') => self.move_to_next_sibling()?,
-                key!('k') | key!(Up) | ctrl!('p') => self.move_to_previous_sibling()?,
+                shift!('J') => self.move_to_next_sibling()?,
+                shift!('K') => self.move_to_previous_sibling()?,
+                shift!('H') => self.move_to_first_sibling()?,
+                shift!('L') => self.move_to_last_sibling()?,
+                key!('j') | key!(Down) | ctrl!('n') => self.move_down(1.max(count)),
+                key!('k') | key!(Up) | ctrl!('p') => self.move_up(1.max(count)),
+                key!('h') | key!(Left) => self.move_to_parent()?,
+                key!('l') | key!(Right) => self.move_to_children(&filter)?,
+                key!(Enter) | key!('o') => self.on_enter(cx, params, self.selected, &filter)?,
+                ctrl!('d') => self.move_down_half_page(),
+                ctrl!('u') => self.move_up_half_page(),
                 key!('z') => {
                     self.on_next_key = Some(Box::new(|_, tree, event| {
                         match event {
@@ -1126,20 +1132,11 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                         Ok(())
                     }));
                 }
-                key!('h') | key!(Left) => self.move_to_parent()?,
-                key!('l') | key!(Right) => self.move_to_children(&filter)?,
-                shift!('H') => self.move_left(1),
-                shift!('L') => self.move_right(1),
-                key!(Enter) | key!('o') => self.on_enter(cx, params, self.selected, &filter)?,
-                ctrl!('d') => self.move_down_half_page(),
-                ctrl!('u') => self.move_up_half_page(),
                 key!('g') => {
                     self.on_next_key = Some(Box::new(|_, tree, event| {
                         match event {
-                            shift!('G') => tree.move_to_first_line(),
-                            shift!('E') => tree.move_to_last_line(),
-                            key!('g') => tree.move_to_first_sibling()?,
-                            key!('e') => tree.move_to_last_sibling()?,
+                            key!('g') => tree.move_to_first_line(),
+                            key!('e') => tree.move_to_last_line(),
                             key!('h') => tree.move_leftmost(),
                             key!('l') => tree.move_rightmost(),
                             _ => {}
