@@ -59,12 +59,6 @@
 "diagnostic".underline = { color = "orange", style = "curl" }
 "diagnostic.error".underline = { color = "red", style = "curl" }
 
-"ui.explorer.file" = { fg = "foreground" }
-"ui.explorer.dir" = { fg = "cyan" }
-"ui.explorer.exe" = { fg = "foreground" }
-"ui.explorer.focus" = { modifiers = ["reversed"] }
-"ui.explorer.unfocus" = { bg = "secondary_highlight" }
-
 [palette]
 background = "#282a36"
 background_dark = "#21222c"

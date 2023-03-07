@@ -2,12 +2,6 @@
 
 inherits = "tokyonight"
 
-"ui.explorer.file" = { fg = "foreground" }
-"ui.explorer.dir" = { fg = "blue" }
-"ui.explorer.exe" = { fg = "foreground" }
-"ui.explorer.focus" = { modifiers = ["reversed"] }
-"ui.explorer.unfocus" = { bg = "background_highlight" }
-
 [palette]
 background = "#24283b"
 background_highlight = "#373d5a"

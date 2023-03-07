@@ -6,12 +6,6 @@
 
 inherits = "rose_pine"
 
-"ui.explorer.file" = { fg = "text" }
-"ui.explorer.dir" = { fg = "rose" }
-"ui.explorer.exe" = { fg = "text" }
-"ui.explorer.focus" = { modifiers = ["reversed"] }
-"ui.explorer.unfocus" = { bg = "highlight" }
-
 [palette]
 base           = "#faf4ed" 
 surface        = "#fffaf3" 

@@ -94,11 +94,6 @@
 "diagnostic.info" = { underline = { color = "aqua", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
-"ui.explorer.file" = { fg = "fg" }
-"ui.explorer.dir" = { fg = "blue" }
-"ui.explorer.exe" = { fg = "fg" }
-"ui.explorer.focus" = { modifiers = ["reversed"] }
-"ui.explorer.unfocus" = { bg = "grey1" }
 
 [palette]
 

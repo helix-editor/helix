@@ -73,9 +73,3 @@
 "diagnostic.error" = { underline = { color = "#D74E50", style = "curl" } }
 "diagnostic.info" = { underline = { color = "#839A53", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "#A6B6CE", style = "curl" } }
-
-"ui.explorer.file" = { fg = "#7B91B3" }
-"ui.explorer.dir" = { fg = "#89BEB7" }
-"ui.explorer.exe" = { fg = "#7B91B3" }
-"ui.explorer.focus" = { modifiers = ["reversed"] }
-"ui.explorer.unfocus" = { bg = "#F3EAE9" }

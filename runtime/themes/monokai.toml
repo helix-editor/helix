@@ -78,7 +78,7 @@
 "ui.statusline" = { fg = "active_text", bg = "#414339" }
 "ui.statusline.inactive" = { fg = "active_text", bg = "#75715e" }
 
-"ui.text" = { fg = "text" }
+"ui.text" = { fg = "text", bg = "background" }
 "ui.text.focus" = { fg = "active_text" }
 
 "warning" = { fg = "#cca700" }
@@ -90,12 +90,6 @@
 "diagnostic.error" = { underline = { color = "#f48771", style = "curl" } }
 "diagnostic.info" = { underline = { color = "#75beff", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "#eeeeeb3", style = "curl" } }
-
-"ui.explorer.file" = { fg = "text" }
-"ui.explorer.dir" = { fg = "fn_declaration" }
-"ui.explorer.exe" = { fg = "text" }
-"ui.explorer.focus" = { modifiers = ["reversed"] }
-"ui.explorer.unfocus" = { bg = "#75715e" }
 
 [palette]
 type = "#A6E22E"

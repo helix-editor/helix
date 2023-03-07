@@ -78,12 +78,6 @@
 "diagnostic.info" = { underline = { style = "curl", color = "theme_yellow" } }
 "diagnostic.hint" = { underline = { style = "curl", color = "bg2" } }
 
-"ui.explorer.file" = { fg = "fg1" }
-"ui.explorer.dir" = { fg = "#715ab1" }
-"ui.explorer.exe" = { fg = "fg1" }
-"ui.explorer.focus" = { modifiers = ["reversed"] }
-"ui.explorer.unfocus" = { bg = "bg3" }
-
 [palette]
 base = "#655370"
 base-dim = "#a094a2"

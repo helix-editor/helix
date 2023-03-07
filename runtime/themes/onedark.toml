@@ -59,11 +59,9 @@
 "ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
 "ui.cursor.match" = { fg = "blue", modifiers = ["underlined"]}
 
-"ui.selection" = { bg = "faint-gray" }
+"ui.selection" = { bg = "light-gray" }
 "ui.selection.primary" = { bg = "gray" }
 "ui.cursorline.primary" = { bg = "light-black" }
-
-"ui.highlight" = { bg = "gray" }
 
 "ui.linenr" = { fg = "linenr" }
 "ui.linenr.selected" = { fg = "white" }
@@ -83,12 +81,6 @@
 "ui.menu" = { fg = "white", bg = "gray" }
 "ui.menu.selected" = { fg = "black", bg = "blue" }
 "ui.menu.scroll" = { fg = "white", bg = "light-gray" }
-
-"ui.explorer.file" = { fg = "white" }
-"ui.explorer.dir" = { fg = "blue" }
-"ui.explorer.exe" = { fg = "white" }
-"ui.explorer.focus" = { modifiers = ["reversed"] }
-"ui.explorer.unfocus" = { bg = "light-gray" }
 
 [palette]
 
