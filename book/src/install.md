@@ -106,11 +106,8 @@ to ensure tree sitter grammars can be loaded correctly:
 RUSTFLAGS="-C target-feature=-crt-static"
 ```
 
-
 Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
-config directory (for example `~/.config/helix/runtime` on Linux/macOS). An alternative runtime directory can
-be used by setting the `HELIX_RUNTIME` environment variable. Both runtime directories can be used at the same
-time, with the files residing under the config runtime directory given priority.
+config directory (for example `~/.config/helix/runtime` on Linux/macOS).
 
 | OS                   | Command                                          |
 | -------------------- | ------------------------------------------------ |
@@ -135,9 +132,21 @@ cd %appdata%\helix
 mklink /D runtime "<helix-repo>\runtime"
 ```
 
-If you plan on keeping the repo locally, an alternative to copying/symlinking
-runtime files is to set `HELIX_RUNTIME=/path/to/helix/runtime`
-(`HELIX_RUNTIME=$PWD/runtime` if you're in the helix repo directory).
+An alternative runtime directory can be used by setting the `HELIX_RUNTIME` environment variable.
+If you plan on keeping the repo locally, an alternative to copying/symlinking runtime files is
+to set `HELIX_RUNTIME=/path/to/helix/runtime` (`HELIX_RUNTIME=$PWD/runtime` if you're in the
+helix repo directory).
+
+When Helix finds multiple runtime directories it will search through them for files in the
+following order:
+
+1. `runtime/` sibling directory to `$CARGO_MANIFEST_DIR` directory.
+2. `runtime/` subdirectory of OS-dependent user config directory.
+3. `$HELIX_RUNTIME`.
+4. `runtime/` subdirectory of path to Helix executable.
+
+This order also sets the priority for selecting which file will be used if multiple runtime
+directories have files with the same name.
 
 To use Helix in desktop environments that supports [XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html), including Gnome and KDE, copy the provided `.desktop` file to the correct folder:
 
@@ -169,6 +178,13 @@ For more information on the information displayed in the health check results re
 Tree-sitter grammars must be fetched and compiled if not pre-packaged.
 Fetch grammars with `hx --grammar fetch` (requires `git`) and compile them
 with `hx --grammar build` (requires a C++ compiler).
+
+These grammars will be fetched and built into the runtime directory that has the highest
+priority (as discussed above in the build from source instructions). The implication
+of this is that in most cases they will be put in the runtime directory under the user's
+OS-dependent helix config directory. However, if the grammars are instead being fetched
+and built as part of a cargo build step, then they will be put in the runtime directory
+within the helix repo.
 
 ### Installing language servers
 
