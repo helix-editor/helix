@@ -1139,7 +1139,10 @@ mod test_explorer {
         // 0. Open the add file/folder prompt
         explorer.handle_events("a").unwrap();
         let prompt = &explorer.prompt.as_ref().unwrap().1;
-        assert_eq!(prompt.prompt(), " New file or folder (ends with '/'): ");
+        assert_eq!(
+            prompt.prompt().replace(std::path::MAIN_SEPARATOR, "/"),
+            " New file or folder (ends with '/'): "
+        );
         assert_eq!(
             prompt.line().replace(std::path::MAIN_SEPARATOR, "/"),
             "test_explorer/new_folder/"
