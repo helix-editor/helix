@@ -76,7 +76,7 @@ pub fn general() -> std::io::Result<()> {
             .join(";")
     )?;
     for rt_dir in rt_dirs.iter() {
-        if let Ok(path) = std::fs::read_link(&rt_dir) {
+        if let Ok(path) = std::fs::read_link(rt_dir) {
             let msg = format!(
                 "Runtime directory {} is symlinked to: {}",
                 rt_dir.display(),
