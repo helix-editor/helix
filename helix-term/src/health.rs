@@ -77,7 +77,11 @@ pub fn general() -> std::io::Result<()> {
     )?;
     for rt_dir in rt_dirs.iter() {
         if let Ok(path) = std::fs::read_link(&rt_dir) {
-            let msg = format!("Runtime directory is symlinked to: {}", path.display());
+            let msg = format!(
+                "Runtime directory {} is symlinked to: {}",
+                rt_dir.display(),
+                path.display()
+            );
             writeln!(stdout, "{}", msg.yellow())?;
         }
         if !rt_dir.exists() {

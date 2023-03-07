@@ -79,9 +79,7 @@ impl Loader {
     /// However, it is not recommended that users do this as it will make tracing
     /// errors more difficult.
     fn load_theme(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<Value> {
-        let path = self
-            .path(name, visited_paths)
-            .ok_or_else(|| anyhow!("Theme: not found or recursively inheriting: {}", name))?;
+        let path = self.path(name, visited_paths)?;
 
         let theme_toml = self.load_toml(path)?;
 
@@ -162,27 +160,32 @@ impl Loader {
     /// Returns the path to the theme with the given name
     ///
     /// Ignores paths already visited and follows directory priority order.
-    fn path(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Option<PathBuf> {
+    fn path(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<PathBuf> {
         let filename = format!("{}.toml", name);
 
-        self.theme_dirs.iter().find_map(|dir| {
-            let path = dir.join(&filename);
-            if path.exists() && !visited_paths.contains(&path) {
-                visited_paths.insert(path.clone());
-                Some(path)
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Lists all theme names available in all directories
-    pub fn names(&self) -> Vec<String> {
-        let mut names = Vec::new();
-        for dir in &self.theme_dirs {
-            names.extend(Self::read_names(dir));
-        }
-        names
+        let mut cycle_found = false; // track if there was a path, but it was in a cycle
+        self.theme_dirs
+            .iter()
+            .find_map(|dir| {
+                let path = dir.join(&filename);
+                if !path.exists() {
+                    None
+                } else if visited_paths.contains(&path) {
+                    // Avoiding cycle, continuing to look in lower priority directories
+                    cycle_found = true;
+                    None
+                } else {
+                    visited_paths.insert(path.clone());
+                    Some(path)
+                }
+            })
+            .ok_or_else(|| {
+                if cycle_found {
+                    anyhow!("Theme: cycle found in inheriting: {}", name)
+                } else {
+                    anyhow!("Theme: file not found for: {}", name)
+                }
+            })
     }
 
     pub fn default_theme(&self, true_color: bool) -> Theme {
