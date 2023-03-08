@@ -928,24 +928,32 @@ impl Application {
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
                 method, params, id, ..
             }) => {
-                let call = match MethodCall::parse(&method, params) {
-                    Ok(call) => call,
+                let reply = match MethodCall::parse(&method, params) {
                     Err(helix_lsp::Error::Unhandled) => {
-                        error!("Language Server: Method not found {}", method);
-                        return;
+                        error!(
+                            "Language Server: Method {} not found in request {}",
+                            method, id
+                        );
+                        Err(helix_lsp::jsonrpc::Error {
+                            code: helix_lsp::jsonrpc::ErrorCode::MethodNotFound,
+                            message: format!("Method not found: {}", method),
+                            data: None,
+                        })
                     }
                     Err(err) => {
                         log::error!(
-                            "received malformed method call from Language Server: {}: {}",
+                            "Language Server: Received malformed method call {} in request {}: {}",
                             method,
+                            id,
                             err
                         );
-                        return;
+                        Err(helix_lsp::jsonrpc::Error {
+                            code: helix_lsp::jsonrpc::ErrorCode::ParseError,
+                            message: format!("Malformed method call: {}", method),
+                            data: None,
+                        })
                     }
-                };
-
-                let reply = match call {
-                    MethodCall::WorkDoneProgressCreate(params) => {
+                    Ok(MethodCall::WorkDoneProgressCreate(params)) => {
                         self.lsp_progress.create(server_id, params.token);
 
                         let editor_view = self
@@ -959,7 +967,7 @@ impl Application {
 
                         Ok(serde_json::Value::Null)
                     }
-                    MethodCall::ApplyWorkspaceEdit(params) => {
+                    Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
                         apply_workspace_edit(
                             &mut self.editor,
                             helix_lsp::OffsetEncoding::Utf8,
@@ -972,13 +980,13 @@ impl Application {
                             failed_change: None,
                         }))
                     }
-                    MethodCall::WorkspaceFolders => {
+                    Ok(MethodCall::WorkspaceFolders) => {
                         let language_server =
                             self.editor.language_servers.get_by_id(server_id).unwrap();
 
                         Ok(json!(language_server.workspace_folders()))
                     }
-                    MethodCall::WorkspaceConfiguration(params) => {
+                    Ok(MethodCall::WorkspaceConfiguration(params)) => {
                         let result: Vec<_> = params
                             .items
                             .iter()
