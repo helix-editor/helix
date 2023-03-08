@@ -289,10 +289,12 @@ pub mod util {
 
         // For each cursor store offsets for the first tabstop
         let mut cursor_tabstop_offsets = Vec::<SmallVec<[(i128, i128); 1]>>::new();
+        let mut replacement_end_selection = SmallVec::<[Range; 1]>::new();
         let transaction = Transaction::change_by_selection(doc, selection, |range| {
             let cursor = range.cursor(text);
             let replacement_start = (cursor as i128 + start_offset) as usize;
             let replacement_end = (cursor as i128 + end_offset) as usize;
+            replacement_end_selection.push(Range::point(replacement_end));
             let newline_with_offset = format!(
                 "{line_ending}{blank:width$}",
                 line_ending = line_ending,
@@ -323,8 +325,7 @@ pub mod util {
 
         // Create new selection based on the cursor tabstop from above
         let mut cursor_tabstop_offsets_iter = cursor_tabstop_offsets.iter();
-        let selection = selection
-            .clone()
+        let selection = Selection::new(replacement_end_selection, selection.primary_index())
             .map(transaction.changes())
             .transform_iter(|range| {
                 cursor_tabstop_offsets_iter
@@ -332,6 +333,8 @@ pub mod util {
                     .unwrap()
                     .iter()
                     .map(move |(from, to)| {
+                        // replacement_end_selection is created from point ranges
+                        debug_assert!(range.anchor == range.head);
                         Range::new(
                             (range.anchor as i128 + *from) as usize,
                             (range.anchor as i128 + *to) as usize,
