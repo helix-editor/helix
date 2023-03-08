@@ -150,12 +150,12 @@ a c++ compiler to be installed, for example `gcc-c++`.
 > 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
 > grammars with `hx --grammar fetch` (requires `git`) and compile them with
 > `hx --grammar build` (requires a C++ compiler). This will install them in
-> the `runtime` directory within the user's helix config directory (more details
-> below).
+> the `runtime` directory within the user's helix config directory (more
+> [details below](#multiple-runtime-directories)).
 
 ### Configuring Helix's runtime files
 
-- **Linux and macOS**
+#### Linux and macOS
 
 Either set the `HELIX_RUNTIME` environment variable to point to the runtime files and add it to your `~/.bashrc` or equivalent:
 
@@ -169,7 +169,7 @@ Or, create a symlink in `~/.config/helix` that links to the source code director
 ln -s $PWD/runtime ~/.config/helix/runtime
 ```
 
-- **Windows**
+#### Windows
 
 Either set the `HELIX_RUNTIME` environment variable to point to the runtime files using the Windows setting (search for
 `Edit environment variables for your account`) or use the `setx` command in
@@ -184,22 +184,22 @@ setx HELIX_RUNTIME "%userprofile%\source\repos\helix\runtime"
 
 Or, create a symlink in `%appdata%\helix\` that links to the source code directory:
 
-   | Method     | Command                                                                                |
-   | ---------- | -------------------------------------------------------------------------------------- |
-   | PowerShell | `New-Item -ItemType Junction -Target "runtime" -Path "$Env:AppData\helix\runtime"`     |
-   | Cmd        | `cd %appdata%\helix` <br/> `mklink /D runtime "%userprofile%\src\helix\runtime"`       |
+| Method     | Command                                                                                |
+| ---------- | -------------------------------------------------------------------------------------- |
+| PowerShell | `New-Item -ItemType Junction -Target "runtime" -Path "$Env:AppData\helix\runtime"`     |
+| Cmd        | `cd %appdata%\helix` <br/> `mklink /D runtime "%userprofile%\src\helix\runtime"`       |
 
-   > 💡 On Windows, creating a symbolic link may require running PowerShell or
-   > Cmd as an administrator.
+> 💡 On Windows, creating a symbolic link may require running PowerShell or
+> Cmd as an administrator.
 
-- **Multiple Runtime Directories**
+#### Multiple runtime directories
 
 When Helix finds multiple runtime directories it will search through them for files in the
 following order:
 
 1. `runtime/` sibling directory to `$CARGO_MANIFEST_DIR` directory (this is intended for
-  developing and testing helix).
-2. `runtime/` subdirectory of OS-dependent user config directory.
+  developing and testing helix only).
+2. `runtime/` subdirectory of OS-dependent helix user config directory.
 3. `$HELIX_RUNTIME`.
 4. `runtime/` subdirectory of path to Helix executable.
 
