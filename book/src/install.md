@@ -197,7 +197,8 @@ Or, create a symlink in `%appdata%\helix\` that links to the source code directo
 When Helix finds multiple runtime directories it will search through them for files in the
 following order:
 
-1. `runtime/` sibling directory to `$CARGO_MANIFEST_DIR` directory.
+1. `runtime/` sibling directory to `$CARGO_MANIFEST_DIR` directory (this is intended for
+  developing and testing helix).
 2. `runtime/` subdirectory of OS-dependent user config directory.
 3. `$HELIX_RUNTIME`.
 4. `runtime/` subdirectory of path to Helix executable.
