@@ -229,9 +229,11 @@ impl Explorer {
         Ok(())
     }
 
-    fn reveal_file(&mut self, path: PathBuf) -> Result<()> {
+    pub fn reveal_file(&mut self, path: PathBuf) -> Result<()> {
+        log::error!("Reveal file = {}", path.display());
         let current_root = &self.state.current_root.canonicalize()?;
         let current_path = &path.canonicalize()?;
+        log::error!("current_path = {}", current_path.display());
         let segments = {
             let stripped = match current_path.strip_prefix(current_root) {
                 Ok(stripped) => Ok(stripped),

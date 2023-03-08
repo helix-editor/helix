@@ -459,7 +459,6 @@ impl MappableCommand {
         command_palette, "Open command pallete",
         open_or_focus_explorer, "Open or focus explorer",
         reveal_current_file, "Reveal current file in explorer",
-        close_explorer, "close explorer",
     );
 }
 
@@ -1140,10 +1139,20 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     }
     for sel in paths {
         let p = sel.trim();
-        if !p.is_empty() {
-            if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
-                cx.editor.set_error(format!("Open file failed: {:?}", e));
+        if p.is_empty() {
+            continue;
+        }
+
+        let path = &PathBuf::from(p);
+        if let Err(err) = (|| -> anyhow::Result<()> {
+            if path.is_file() {
+                cx.editor.open(path, action)?;
+            } else {
+                reveal_file(cx, Some(path.clone()));
             }
+            Ok(())
+        })() {
+            cx.editor.set_error(format!("Open file failed: {:?}", err));
         }
     }
 }
@@ -2451,12 +2460,15 @@ fn open_or_focus_explorer(cx: &mut Context) {
     ));
 }
 
-fn reveal_current_file(cx: &mut Context) {
+fn reveal_file(cx: &mut Context, path: Option<PathBuf>) {
     cx.callback = Some(Box::new(
         |compositor: &mut Compositor, cx: &mut compositor::Context| {
             if let Some(editor) = compositor.find::<ui::EditorView>() {
                 (|| match editor.explorer.as_mut() {
-                    Some(explore) => explore.reveal_current_file(cx),
+                    Some(explorer) => match path {
+                        Some(path) => explorer.reveal_file(path),
+                        None => explorer.reveal_current_file(cx),
+                    },
                     None => {
                         editor.explorer = Some(ui::Explorer::new(cx)?);
                         if let Some(explorer) = editor.explorer.as_mut() {
@@ -2471,12 +2483,8 @@ fn reveal_current_file(cx: &mut Context) {
     ));
 }
 
-fn close_explorer(cx: &mut Context) {
-    cx.callback = Some(Box::new(|compositor: &mut Compositor, _| {
-        if let Some(editor) = compositor.find::<ui::EditorView>() {
-            editor.explorer.take();
-        }
-    }));
+fn reveal_current_file(cx: &mut Context) {
+    reveal_file(cx, None)
 }
 
 fn buffer_picker(cx: &mut Context) {
