@@ -2033,6 +2033,64 @@ fn run_shell_command(
     Ok(())
 }
 
+fn reset_diff_change(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    ensure!(args.is_empty(), ":reset-diff-change takes no arguments");
+
+    let editor = &mut cx.editor;
+    let scrolloff = editor.config().scrolloff;
+
+    let (view, doc) = current!(editor);
+    // TODO refactor to use let..else once MSRV is raised to 1.65
+    let handle = match doc.diff_handle() {
+        Some(handle) => handle,
+        None => bail!("Diff is not available in the current buffer"),
+    };
+
+    let diff = handle.load();
+    let doc_text = doc.text().slice(..);
+    let line = doc.selection(view.id).primary().cursor_line(doc_text);
+
+    // TODO refactor to use let..else once MSRV is raised to 1.65
+    let hunk_idx = match diff.hunk_at(line as u32, true) {
+        Some(hunk_idx) => hunk_idx,
+        None => bail!("There is no change at the cursor"),
+    };
+    let hunk = diff.nth_hunk(hunk_idx);
+    let diff_base = diff.diff_base();
+    let before_start = diff_base.line_to_char(hunk.before.start as usize);
+    let before_end = diff_base.line_to_char(hunk.before.end as usize);
+    let text: Tendril = diff
+        .diff_base()
+        .slice(before_start..before_end)
+        .chunks()
+        .collect();
+    let anchor = doc_text.line_to_char(hunk.after.start as usize);
+    let transaction = Transaction::change(
+        doc.text(),
+        [(
+            anchor,
+            doc_text.line_to_char(hunk.after.end as usize),
+            (!text.is_empty()).then_some(text),
+        )]
+        .into_iter(),
+    );
+    drop(diff); // make borrow check happy
+    doc.apply(&transaction, view.id);
+    // select inserted text
+    let text_len = before_end - before_start;
+    doc.set_selection(view.id, Selection::single(anchor, anchor + text_len));
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2568,6 +2626,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::filename),
+        },
+       TypableCommand {
+            name: "reset-diff-change",
+            aliases: &["diffget", "diffg"],
+            doc: "Reset the diff change at the cursor position.",
+            fun: reset_diff_change,
+            completer: None,
         },
     ];
 
