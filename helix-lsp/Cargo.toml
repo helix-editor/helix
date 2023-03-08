@@ -14,6 +14,7 @@ homepage = "https://helix-editor.com"
 [dependencies]
 helix-core = { version = "0.6", path = "../helix-core" }
 helix-loader = { version = "0.6", path = "../helix-loader" }
+helix-parsec = { version = "0.6", path = "../helix-parsec" }
 
 anyhow = "1.0"
 futures-executor = "0.3"

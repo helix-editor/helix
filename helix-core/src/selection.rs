@@ -578,6 +578,16 @@ impl Selection {
         self.normalize()
     }
 
+    /// Takes a closure and maps each `Range` over the closure to multiple `Range`s.
+    pub fn transform_iter<F, I>(mut self, f: F) -> Self
+    where
+        F: FnMut(Range) -> I,
+        I: Iterator<Item = Range>,
+    {
+        self.ranges = self.ranges.into_iter().flat_map(f).collect();
+        self.normalize()
+    }
+
     // Ensures the selection adheres to the following invariants:
     // 1. All ranges are grapheme aligned.
     // 2. All ranges are at least 1 character wide, unless at the

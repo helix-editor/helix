@@ -324,7 +324,7 @@ args = { mode = "local", processId = "{0}" }
 
 [[grammar]]
 name = "go"
-source = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "05900faa3cdb5d2d8c8bd5e77ee698487e0a8611" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "64457ea6b73ef5422ed1687178d4545c3e91334a" }
 
 [[language]]
 name = "gomod"
@@ -571,7 +571,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "php"
-source = { git = "https://github.com/tree-sitter/tree-sitter-php", rev = "57f855461aeeca73bd4218754fb26b5ac143f98f" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-php", rev = "f860e598194f4a71747f91789bf536b393ad4a56" }
 
 [[language]]
 name = "twig"
@@ -1104,7 +1104,7 @@ file-types = ["COMMIT_EDITMSG"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 rulers = [50, 72]
-max-line-length = 72
+text-width = 72
 
 [[grammar]]
 name = "git-commit"

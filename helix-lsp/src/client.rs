@@ -320,7 +320,7 @@ impl Client {
                 text_document: Some(lsp::TextDocumentClientCapabilities {
                     completion: Some(lsp::CompletionClientCapabilities {
                         completion_item: Some(lsp::CompletionItemCapability {
-                            snippet_support: Some(false),
+                            snippet_support: Some(true),
                             resolve_support: Some(lsp::CompletionItemCapabilityResolveSupport {
                                 properties: vec![
                                     String::from("documentation"),
@@ -359,7 +359,7 @@ impl Client {
                     }),
                     rename: Some(lsp::RenameClientCapabilities {
                         dynamic_registration: Some(false),
-                        prepare_support: Some(false),
+                        prepare_support: Some(true),
                         prepare_support_default_behavior: None,
                         honors_change_annotations: Some(false),
                     }),
@@ -1032,6 +1032,29 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::DocumentSymbolRequest>(params))
+    }
+
+    pub fn prepare_rename(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match capabilities.rename_provider {
+            Some(lsp::OneOf::Right(lsp::RenameOptions {
+                prepare_provider: Some(true),
+                ..
+            })) => (),
+            _ => return None,
+        }
+
+        let params = lsp::TextDocumentPositionParams {
+            text_document,
+            position,
+        };
+
+        Some(self.call::<lsp::request::PrepareRenameRequest>(params))
     }
 
     // empty string to get all symbols

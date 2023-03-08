@@ -55,6 +55,7 @@ signal to the Helix process on Unix operating systems, such as by using the comm
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file | `[]` |
 | `bufferline` | Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use) | `never` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
+| `text-width` | Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap_at_text_width` is set | `80` |
 
 ### `[editor.statusline]` Section
 
@@ -316,12 +317,13 @@ Currently unused
 
 Options for soft wrapping lines that exceed the view width:
 
-| Key                 | Description                                                  | Default |
-| ---                 | ---                                                          | ---     |
-| `enable`            | Whether soft wrapping is enabled                             | `false` |
-| `max-wrap`          | Maximum free space left at the end of the line               | `20`    |
-| `max-indent-retain` | Maximum indentation to carry over when soft wrapping a line  | `40`    |
-| `wrap-indicator`    | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `↪ `    |
+| Key                  | Description                                                  | Default |
+| ---                  | ---                                                          | ---     |
+| `enable`             | Whether soft wrapping is enabled.                            | `false` |
+| `max-wrap`           | Maximum free space left at the end of the line.              | `20`    |
+| `max-indent-retain`  | Maximum indentation to carry over when soft wrapping a line. | `40`    |
+| `wrap-indicator`     | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `↪ `    |
+| `wrap-at-text-width` | Soft wrap at `text-width` instead of using the full viewport size. | `false` |
 
 Example:
 
