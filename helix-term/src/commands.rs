@@ -430,6 +430,7 @@ impl MappableCommand {
         goto_next_paragraph, "Goto next paragraph",
         goto_prev_paragraph, "Goto previous paragraph",
         dap_launch, "Launch debug target",
+        dap_restart, "Restart debugging session",
         dap_toggle_breakpoint, "Toggle breakpoint",
         dap_continue, "Continue program execution",
         dap_pause, "Pause program execution",
@@ -959,9 +960,10 @@ fn goto_window(cx: &mut Context, align: Align) {
         Align::Bottom => {
             view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff + count)
         }
-    }
-    .max(view.offset.vertical_offset + scrolloff)
-    .min(view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff));
+    };
+    let visual_line = visual_line
+        .max(view.offset.vertical_offset + scrolloff)
+        .min(view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff));
 
     let pos = view
         .pos_at_visual_coords(doc, visual_line as u16, 0, false)
@@ -2940,7 +2942,6 @@ fn goto_first_diag(cx: &mut Context) {
         None => return,
     };
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
 }
 
 fn goto_last_diag(cx: &mut Context) {
@@ -2950,7 +2951,6 @@ fn goto_last_diag(cx: &mut Context) {
         None => return,
     };
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
 }
 
 fn goto_next_diag(cx: &mut Context) {
@@ -2972,7 +2972,6 @@ fn goto_next_diag(cx: &mut Context) {
         None => return,
     };
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
 }
 
 fn goto_prev_diag(cx: &mut Context) {
@@ -2997,7 +2996,6 @@ fn goto_prev_diag(cx: &mut Context) {
         None => return,
     };
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
 }
 
 fn goto_first_change(cx: &mut Context) {
@@ -3060,10 +3058,7 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
                     .prev_hunk(cursor_line)
                     .map(|idx| idx.saturating_sub(count)),
             };
-            // TODO refactor with let..else once MSRV reaches 1.65
-            let hunk_idx = if let Some(hunk_idx) = hunk_idx {
-                hunk_idx
-            } else {
+            let Some(hunk_idx) = hunk_idx else {
                 return range;
             };
             let hunk = hunks.nth_hunk(hunk_idx);
@@ -3363,8 +3358,8 @@ pub mod insert {
         let count = cx.count();
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
-        let indent_unit = doc.indent_style.as_str();
-        let tab_size = doc.tab_width();
+        let tab_width = doc.tab_width();
+        let indent_width = doc.indent_width();
         let auto_pairs = doc.auto_pairs(cx.editor);
 
         let transaction =
@@ -3385,18 +3380,11 @@ pub mod insert {
                             None,
                         )
                     } else {
-                        let unit_len = indent_unit.chars().count();
-                        // NOTE: indent_unit always contains 'only spaces' or 'only tab' according to `IndentStyle` definition.
-                        let unit_size = if indent_unit.starts_with('\t') {
-                            tab_size * unit_len
-                        } else {
-                            unit_len
-                        };
                         let width: usize = fragment
                             .chars()
                             .map(|ch| {
                                 if ch == '\t' {
-                                    tab_size
+                                    tab_width
                                 } else {
                                     // it can be none if it still meet control characters other than '\t'
                                     // here just set the width to 1 (or some value better?).
@@ -3404,9 +3392,9 @@ pub mod insert {
                                 }
                             })
                             .sum();
-                        let mut drop = width % unit_size; // round down to nearest unit
+                        let mut drop = width % indent_width; // round down to nearest unit
                         if drop == 0 {
-                            drop = unit_size
+                            drop = indent_width
                         }; // if it's already at a unit, consume a whole unit
                         let mut chars = fragment.chars().rev();
                         let mut start = pos;
@@ -3948,7 +3936,7 @@ fn unindent(cx: &mut Context) {
     let lines = get_lines(doc, view.id);
     let mut changes = Vec::with_capacity(lines.len());
     let tab_width = doc.tab_width();
-    let indent_width = count * tab_width;
+    let indent_width = count * doc.indent_width();
 
     for line_idx in lines {
         let line = doc.text().line(line_idx);
@@ -4789,7 +4777,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("a", "Argument/parameter (tree-sitter)"),
         ("c", "Comment (tree-sitter)"),
         ("T", "Test (tree-sitter)"),
-        ("m", "Closest surrounding pair to cursor"),
+        ("m", "Closest surrounding pair"),
         (" ", "... or any character acting as a pair"),
     ];
 
@@ -5041,7 +5029,10 @@ async fn shell_impl_async(
             log::error!("Shell error: {}", err);
             bail!("Shell error: {}", err);
         }
-        bail!("Shell command failed");
+        match output.status.code() {
+            Some(exit_code) => bail!("Shell command failed: status {}", exit_code),
+            None => bail!("Shell command failed"),
+        }
     } else if !output.stderr.is_empty() {
         log::debug!(
             "Command printed to stderr: {}",

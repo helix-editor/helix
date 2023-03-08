@@ -428,7 +428,7 @@ impl TextObjectQuery {
                 let nodes: Vec<_> = mat
                     .captures
                     .iter()
-                    .filter_map(|cap| (cap.index == capture_idx).then(|| cap.node))
+                    .filter_map(|cap| (cap.index == capture_idx).then_some(cap.node))
                     .collect();
 
                 if nodes.len() > 1 {

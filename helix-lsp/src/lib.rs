@@ -20,7 +20,6 @@ use std::{
     },
 };
 
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -35,8 +34,8 @@ pub enum Error {
     Parse(#[from] serde_json::Error),
     #[error("IO Error: {0}")]
     IO(#[from] std::io::Error),
-    #[error("request timed out")]
-    Timeout,
+    #[error("request {0} timed out")]
+    Timeout(jsonrpc::Id),
     #[error("server closed the stream")]
     StreamClosed,
     #[error("Unhandled")]
@@ -45,13 +44,14 @@ pub enum Error {
     Other(#[from] anyhow::Error),
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum OffsetEncoding {
     /// UTF-8 code units aka bytes
-    #[serde(rename = "utf-8")]
     Utf8,
+    /// UTF-32 code units aka chars
+    Utf32,
     /// UTF-16 code units
-    #[serde(rename = "utf-16")]
+    #[default]
     Utf16,
 }
 
@@ -168,6 +168,11 @@ pub mod util {
                 let line_end = line_end_char_index(&doc.slice(..), pos_line);
                 doc.char_to_utf16_cu(line_start)..doc.char_to_utf16_cu(line_end)
             }
+            OffsetEncoding::Utf32 => {
+                let line_start = doc.line_to_char(pos_line);
+                let line_end = line_end_char_index(&doc.slice(..), pos_line);
+                line_start..line_end
+            }
         };
 
         // The LSP spec demands that the offset is capped to the end of the line
@@ -177,10 +182,10 @@ pub mod util {
             .unwrap_or(line.end)
             .min(line.end);
 
-        // TODO prefer UTF32/char indices to avoid this step
         match offset_encoding {
             OffsetEncoding::Utf8 => doc.try_byte_to_char(pos).ok(),
             OffsetEncoding::Utf16 => doc.try_utf16_cu_to_char(pos).ok(),
+            OffsetEncoding::Utf32 => Some(pos),
         }
     }
 
@@ -204,6 +209,13 @@ pub mod util {
                 let line = doc.char_to_line(pos);
                 let line_start = doc.char_to_utf16_cu(doc.line_to_char(line));
                 let col = doc.char_to_utf16_cu(pos) - line_start;
+
+                lsp::Position::new(line as u32, col as u32)
+            }
+            OffsetEncoding::Utf32 => {
+                let line = doc.char_to_line(pos);
+                let line_start = doc.line_to_char(line);
+                let col = pos - line_start;
 
                 lsp::Position::new(line as u32, col as u32)
             }
@@ -461,6 +473,16 @@ impl Registry {
 
                 Ok(Some(client))
             }
+        }
+    }
+
+    pub fn stop(&mut self, language_config: &LanguageConfiguration) {
+        let scope = language_config.scope.clone();
+
+        if let Some((_, client)) = self.inner.remove(&scope) {
+            tokio::spawn(async move {
+                let _ = client.force_shutdown().await;
+            });
         }
     }
 

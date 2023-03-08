@@ -39,6 +39,8 @@ const BUF_SIZE: usize = 8192;
 
 const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
 
+pub const DEFAULT_LANGUAGE_NAME: &str = "text";
+
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -1096,7 +1098,7 @@ impl Document {
     /// Language server if it has been initialized.
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
         let server = self.language_server.as_deref()?;
-        server.is_initialized().then(|| server)
+        server.is_initialized().then_some(server)
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
@@ -1122,11 +1124,16 @@ impl Document {
         self.syntax.as_ref()
     }
 
-    /// Tab size in columns.
+    /// The width that the tab character is rendered at
     pub fn tab_width(&self) -> usize {
         self.language_config()
             .and_then(|config| config.indent.as_ref())
             .map_or(4, |config| config.tab_width) // fallback to 4 columns
+    }
+
+    // The width (in spaces) of a level of indentation.
+    pub fn indent_width(&self) -> usize {
+        self.indent_style.indent_width(self.tab_width())
     }
 
     pub fn changes(&self) -> &ChangeSet {

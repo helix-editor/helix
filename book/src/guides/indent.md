@@ -1,4 +1,4 @@
-# Adding Indent Queries
+# Adding indent queries
 
 Helix uses tree-sitter to correctly indent new lines. This requires
 a tree-sitter grammar and an `indent.scm` query file placed in
@@ -36,7 +36,7 @@ changed by using a `#set!` declaration anywhere in the pattern:
   (#set! "scope" "all"))
 ```
 
-## Capture Types
+## Capture types
 
 - `@indent` (default scope `tail`):
 Increase the indent level by 1. Multiple occurrences in the same line

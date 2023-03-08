@@ -6,6 +6,7 @@
 "ui.text" = "foreground"
 "ui.text.focus" = { fg = "selection_background", modifiers = ["bold"]}
 "ui.selection" = {bg="selection_background", fg="selection_foreground"}
+"ui.highlight" = {bg="cursorline_background"}
 "ui.cursorline" = {bg="cursorline_background"}
 "ui.statusline" = {bg="paper_bar_bg", fg="regular0"}
 "ui.statusline.select" = {bg="background", fg="bright7"}
