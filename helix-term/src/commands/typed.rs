@@ -1572,47 +1572,67 @@ fn tutor(
     Ok(())
 }
 
+fn abort_goto_line_number_preview(cx: &mut compositor::Context) {
+    if let Some(last_selection) = cx.editor.last_selection.take() {
+        let scrolloff = cx.editor.config().scrolloff;
+
+        let (view, doc) = current!(cx.editor);
+        doc.set_selection(view.id, last_selection);
+        view.ensure_cursor_in_view(doc, scrolloff);
+    }
+}
+
+fn update_goto_line_number_preview(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+) -> anyhow::Result<()> {
+    cx.editor.last_selection.get_or_insert_with(|| {
+        let (view, doc) = current!(cx.editor);
+        doc.selection(view.id).clone()
+    });
+
+    let scrolloff = cx.editor.config().scrolloff;
+    let line = args[0].parse::<usize>()?;
+    goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
+
+    let (view, doc) = current!(cx.editor);
+    view.ensure_cursor_in_view(doc, scrolloff);
+
+    Ok(())
+}
+
 pub(super) fn goto_line_number(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     match event {
-        PromptEvent::Abort => {
-            if let Some(line_number) = cx.editor.last_line_number {
-                goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
-                let (view, doc) = current!(cx.editor);
-                view.ensure_cursor_in_view(doc, line_number);
-                cx.editor.last_line_number = None;
-            }
-            return Ok(());
-        }
+        PromptEvent::Abort => abort_goto_line_number_preview(cx),
         PromptEvent::Validate => {
             ensure!(!args.is_empty(), "Line number required");
-            cx.editor.last_line_number = None;
-        }
-        PromptEvent::Update => {
-            if args.is_empty() {
-                if let Some(line_number) = cx.editor.last_line_number {
-                    // When a user hits backspace and there are no numbers left,
-                    // we can bring them back to their original line
-                    goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
-                    let (view, doc) = current!(cx.editor);
-                    view.ensure_cursor_in_view(doc, line_number);
-                    cx.editor.last_line_number = None;
-                }
-                return Ok(());
-            }
+
+            // If we are invoked directly via a keybinding, Validate is
+            // sent without any prior Update events. Ensure the cursor
+            // is moved to the appropriate location.
+            update_goto_line_number_preview(cx, args)?;
+
+            let last_selection = cx
+                .editor
+                .last_selection
+                .take()
+                .expect("update_goto_line_number_preview should always set last_selection");
+
             let (view, doc) = current!(cx.editor);
-            let text = doc.text().slice(..);
-            let line = doc.selection(view.id).primary().cursor_line(text);
-            cx.editor.last_line_number.get_or_insert(line + 1);
+            view.jumps.push((doc.id(), last_selection));
         }
+
+        // When a user hits backspace and there are no numbers left,
+        // we can bring them back to their original selection. If they
+        // begin typing numbers again, we'll start a new preview session.
+        PromptEvent::Update if args.is_empty() => abort_goto_line_number_preview(cx),
+        PromptEvent::Update => update_goto_line_number_preview(cx, args)?,
     }
-    let line = args[0].parse::<usize>()?;
-    goto_line_impl(cx.editor, NonZeroUsize::new(line));
-    let (view, doc) = current!(cx.editor);
-    view.ensure_cursor_in_view(doc, line);
+
     Ok(())
 }
 
