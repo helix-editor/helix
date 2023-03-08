@@ -40,12 +40,12 @@ use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::Position;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig},
     Change,
 };
+use helix_core::{Position, Selection};
 use helix_dap as dap;
 use helix_lsp::lsp;
 
@@ -848,7 +848,12 @@ pub struct Editor {
     /// The currently applied editor theme. While previewing a theme, the previewed theme
     /// is set here.
     pub theme: Theme,
-    pub last_line_number: Option<usize>,
+
+    /// The primary Selection prior to starting a goto_line_number preview. This is
+    /// restored when the preview is aborted, or added to the jumplist when it is
+    /// confirmed.
+    pub last_selection: Option<Selection>,
+
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
@@ -964,7 +969,7 @@ impl Editor {
             syn_loader,
             theme_loader,
             last_theme: None,
-            last_line_number: None,
+            last_selection: None,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,

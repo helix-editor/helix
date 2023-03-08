@@ -1139,6 +1139,7 @@ dependencies = [
  "futures-util",
  "helix-core",
  "helix-loader",
+ "helix-parsec",
  "log",
  "lsp-types",
  "serde",
@@ -1148,6 +1149,10 @@ dependencies = [
  "tokio-stream",
  "which",
 ]
+
+[[package]]
+name = "helix-parsec"
+version = "0.6.0"
 
 [[package]]
 name = "helix-term"
@@ -1196,6 +1201,8 @@ dependencies = [
  "crossterm",
  "helix-core",
  "helix-view",
+ "log",
+ "once_cell",
  "serde",
  "termini",
  "unicode-segmentation",

@@ -1,6 +1,11 @@
-use crate::{backend::Backend, buffer::Cell};
+use crate::{backend::Backend, buffer::Cell, terminal::Config};
 use crossterm::{
     cursor::{Hide, MoveTo, SetCursorStyle, Show},
+    event::{
+        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
+        EnableFocusChange, EnableMouseCapture, KeyboardEnhancementFlags,
+        PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+    },
     execute, queue,
     style::{
         Attribute as CAttribute, Color as CColor, Print, SetAttribute, SetBackgroundColor,
@@ -10,6 +15,7 @@ use crossterm::{
     Command,
 };
 use helix_view::graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
+use once_cell::sync::OnceCell;
 use std::{
     fmt,
     io::{self, Write},
@@ -52,6 +58,7 @@ impl Capabilities {
 pub struct CrosstermBackend<W: Write> {
     buffer: W,
     capabilities: Capabilities,
+    supports_keyboard_enhancement_protocol: OnceCell<bool>,
 }
 
 impl<W> CrosstermBackend<W>
@@ -62,7 +69,26 @@ where
         CrosstermBackend {
             buffer,
             capabilities: Capabilities::from_env_or_default(),
+            supports_keyboard_enhancement_protocol: OnceCell::new(),
         }
+    }
+
+    #[inline]
+    fn supports_keyboard_enhancement_protocol(&self) -> io::Result<bool> {
+        self.supports_keyboard_enhancement_protocol
+            .get_or_try_init(|| {
+                use std::time::Instant;
+
+                let now = Instant::now();
+                let support = terminal::supports_keyboard_enhancement();
+                log::debug!(
+                    "The keyboard enhancement protocol is {}supported in this terminal (checked in {:?})",
+                    if matches!(support, Ok(true)) { "" } else { "not " },
+                    Instant::now().duration_since(now)
+                );
+                support
+            })
+            .copied()
     }
 }
 
@@ -83,6 +109,66 @@ impl<W> Backend for CrosstermBackend<W>
 where
     W: Write,
 {
+    fn claim(&mut self, config: Config) -> io::Result<()> {
+        terminal::enable_raw_mode()?;
+        execute!(
+            self.buffer,
+            terminal::EnterAlternateScreen,
+            EnableBracketedPaste,
+            EnableFocusChange
+        )?;
+        execute!(self.buffer, terminal::Clear(terminal::ClearType::All))?;
+        if config.enable_mouse_capture {
+            execute!(self.buffer, EnableMouseCapture)?;
+        }
+        if self.supports_keyboard_enhancement_protocol()? {
+            execute!(
+                self.buffer,
+                PushKeyboardEnhancementFlags(
+                    KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+                        | KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
+                )
+            )?;
+        }
+        Ok(())
+    }
+
+    fn restore(&mut self, config: Config) -> io::Result<()> {
+        // reset cursor shape
+        write!(self.buffer, "\x1B[0 q")?;
+        if config.enable_mouse_capture {
+            execute!(self.buffer, DisableMouseCapture)?;
+        }
+        if self.supports_keyboard_enhancement_protocol()? {
+            execute!(self.buffer, PopKeyboardEnhancementFlags)?;
+        }
+        execute!(
+            self.buffer,
+            DisableBracketedPaste,
+            DisableFocusChange,
+            terminal::LeaveAlternateScreen
+        )?;
+        terminal::disable_raw_mode()
+    }
+
+    fn force_restore() -> io::Result<()> {
+        let mut stdout = io::stdout();
+
+        // reset cursor shape
+        write!(stdout, "\x1B[0 q")?;
+        // Ignore errors on disabling, this might trigger on windows if we call
+        // disable without calling enable previously
+        let _ = execute!(stdout, DisableMouseCapture);
+        let _ = execute!(stdout, PopKeyboardEnhancementFlags);
+        execute!(
+            stdout,
+            DisableBracketedPaste,
+            DisableFocusChange,
+            terminal::LeaveAlternateScreen
+        )?;
+        terminal::disable_raw_mode()
+    }
+
     fn draw<'a, I>(&mut self, content: I) -> io::Result<()>
     where
         I: Iterator<Item = (u16, u16, &'a Cell)>,

@@ -1354,6 +1354,37 @@ fn lsp_restart(
     Ok(())
 }
 
+fn lsp_stop(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc!(cx.editor);
+
+    let ls_id = doc
+        .language_server()
+        .map(|ls| ls.id())
+        .context("LSP not running for the current document")?;
+
+    let config = doc
+        .language_config()
+        .context("LSP not defined for the current document")?;
+    cx.editor.language_servers.stop(config);
+
+    for doc in cx.editor.documents_mut() {
+        if doc.language_server().map_or(false, |ls| ls.id() == ls_id) {
+            doc.set_language_server(None);
+            doc.set_diagnostics(Default::default());
+        }
+    }
+
+    Ok(())
+}
+
 fn tree_sitter_scopes(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1541,47 +1572,67 @@ fn tutor(
     Ok(())
 }
 
+fn abort_goto_line_number_preview(cx: &mut compositor::Context) {
+    if let Some(last_selection) = cx.editor.last_selection.take() {
+        let scrolloff = cx.editor.config().scrolloff;
+
+        let (view, doc) = current!(cx.editor);
+        doc.set_selection(view.id, last_selection);
+        view.ensure_cursor_in_view(doc, scrolloff);
+    }
+}
+
+fn update_goto_line_number_preview(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+) -> anyhow::Result<()> {
+    cx.editor.last_selection.get_or_insert_with(|| {
+        let (view, doc) = current!(cx.editor);
+        doc.selection(view.id).clone()
+    });
+
+    let scrolloff = cx.editor.config().scrolloff;
+    let line = args[0].parse::<usize>()?;
+    goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
+
+    let (view, doc) = current!(cx.editor);
+    view.ensure_cursor_in_view(doc, scrolloff);
+
+    Ok(())
+}
+
 pub(super) fn goto_line_number(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     match event {
-        PromptEvent::Abort => {
-            if let Some(line_number) = cx.editor.last_line_number {
-                goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
-                let (view, doc) = current!(cx.editor);
-                view.ensure_cursor_in_view(doc, line_number);
-                cx.editor.last_line_number = None;
-            }
-            return Ok(());
-        }
+        PromptEvent::Abort => abort_goto_line_number_preview(cx),
         PromptEvent::Validate => {
             ensure!(!args.is_empty(), "Line number required");
-            cx.editor.last_line_number = None;
-        }
-        PromptEvent::Update => {
-            if args.is_empty() {
-                if let Some(line_number) = cx.editor.last_line_number {
-                    // When a user hits backspace and there are no numbers left,
-                    // we can bring them back to their original line
-                    goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
-                    let (view, doc) = current!(cx.editor);
-                    view.ensure_cursor_in_view(doc, line_number);
-                    cx.editor.last_line_number = None;
-                }
-                return Ok(());
-            }
+
+            // If we are invoked directly via a keybinding, Validate is
+            // sent without any prior Update events. Ensure the cursor
+            // is moved to the appropriate location.
+            update_goto_line_number_preview(cx, args)?;
+
+            let last_selection = cx
+                .editor
+                .last_selection
+                .take()
+                .expect("update_goto_line_number_preview should always set last_selection");
+
             let (view, doc) = current!(cx.editor);
-            let text = doc.text().slice(..);
-            let line = doc.selection(view.id).primary().cursor_line(text);
-            cx.editor.last_line_number.get_or_insert(line + 1);
+            view.jumps.push((doc.id(), last_selection));
         }
+
+        // When a user hits backspace and there are no numbers left,
+        // we can bring them back to their original selection. If they
+        // begin typing numbers again, we'll start a new preview session.
+        PromptEvent::Update if args.is_empty() => abort_goto_line_number_preview(cx),
+        PromptEvent::Update => update_goto_line_number_preview(cx, args)?,
     }
-    let line = args[0].parse::<usize>()?;
-    goto_line_impl(cx.editor, NonZeroUsize::new(line));
-    let (view, doc) = current!(cx.editor);
-    view.ensure_cursor_in_view(doc, line);
+
     Ok(())
 }
 
@@ -2002,6 +2053,64 @@ fn run_shell_command(
     Ok(())
 }
 
+fn reset_diff_change(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    ensure!(args.is_empty(), ":reset-diff-change takes no arguments");
+
+    let editor = &mut cx.editor;
+    let scrolloff = editor.config().scrolloff;
+
+    let (view, doc) = current!(editor);
+    // TODO refactor to use let..else once MSRV is raised to 1.65
+    let handle = match doc.diff_handle() {
+        Some(handle) => handle,
+        None => bail!("Diff is not available in the current buffer"),
+    };
+
+    let diff = handle.load();
+    let doc_text = doc.text().slice(..);
+    let line = doc.selection(view.id).primary().cursor_line(doc_text);
+
+    // TODO refactor to use let..else once MSRV is raised to 1.65
+    let hunk_idx = match diff.hunk_at(line as u32, true) {
+        Some(hunk_idx) => hunk_idx,
+        None => bail!("There is no change at the cursor"),
+    };
+    let hunk = diff.nth_hunk(hunk_idx);
+    let diff_base = diff.diff_base();
+    let before_start = diff_base.line_to_char(hunk.before.start as usize);
+    let before_end = diff_base.line_to_char(hunk.before.end as usize);
+    let text: Tendril = diff
+        .diff_base()
+        .slice(before_start..before_end)
+        .chunks()
+        .collect();
+    let anchor = doc_text.line_to_char(hunk.after.start as usize);
+    let transaction = Transaction::change(
+        doc.text(),
+        [(
+            anchor,
+            doc_text.line_to_char(hunk.after.end as usize),
+            (!text.is_empty()).then_some(text),
+        )]
+        .into_iter(),
+    );
+    drop(diff); // make borrow check happy
+    doc.apply(&transaction, view.id);
+    // select inserted text
+    let text_len = before_end - before_start;
+    doc.set_selection(view.id, Selection::single(anchor, anchor + text_len));
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2350,6 +2459,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             completer: None,
         },
         TypableCommand {
+            name: "lsp-stop",
+            aliases: &[],
+            doc: "Stops the Language Server that is in use by the current doc",
+            fun: lsp_stop,
+            completer: None,
+        },
+        TypableCommand {
             name: "tree-sitter-scopes",
             aliases: &[],
             doc: "Display tree sitter scopes, primarily for theming and development.",
@@ -2530,6 +2646,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Run a shell command",
             fun: run_shell_command,
             completer: Some(completers::filename),
+        },
+       TypableCommand {
+            name: "reset-diff-change",
+            aliases: &["diffget", "diffg"],
+            doc: "Reset the diff change at the cursor position.",
+            fun: reset_diff_change,
+            completer: None,
         },
     ];
 

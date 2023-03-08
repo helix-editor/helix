@@ -2828,10 +2828,15 @@ fn push_jump(view: &mut View, doc: &Document) {
 }
 
 fn goto_line(cx: &mut Context) {
-    goto_line_impl(cx.editor, cx.count)
+    if cx.count.is_some() {
+        let (view, doc) = current!(cx.editor);
+        push_jump(view, doc);
+
+        goto_line_without_jumplist(cx.editor, cx.count);
+    }
 }
 
-fn goto_line_impl(editor: &mut Editor, count: Option<NonZeroUsize>) {
+fn goto_line_without_jumplist(editor: &mut Editor, count: Option<NonZeroUsize>) {
     if let Some(count) = count {
         let (view, doc) = current!(editor);
         let text = doc.text().slice(..);
@@ -2848,7 +2853,6 @@ fn goto_line_impl(editor: &mut Editor, count: Option<NonZeroUsize>) {
             .clone()
             .transform(|range| range.put_cursor(text, pos, editor.mode == Mode::Select));
 
-        push_jump(view, doc);
         doc.set_selection(view.id, selection);
     }
 }
@@ -3011,13 +3015,13 @@ fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
     let (view, doc) = current!(editor);
     if let Some(handle) = doc.diff_handle() {
         let hunk = {
-            let hunks = handle.hunks();
+            let diff = handle.load();
             let idx = if reverse {
-                hunks.len().saturating_sub(1)
+                diff.len().saturating_sub(1)
             } else {
                 0
             };
-            hunks.nth_hunk(idx)
+            diff.nth_hunk(idx)
         };
         if hunk != Hunk::NONE {
             let range = hunk_range(hunk, doc.text().slice(..));
@@ -3049,19 +3053,19 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
         let selection = doc.selection(view.id).clone().transform(|range| {
             let cursor_line = range.cursor_line(doc_text) as u32;
 
-            let hunks = diff_handle.hunks();
+            let diff = diff_handle.load();
             let hunk_idx = match direction {
-                Direction::Forward => hunks
+                Direction::Forward => diff
                     .next_hunk(cursor_line)
-                    .map(|idx| (idx + count).min(hunks.len() - 1)),
-                Direction::Backward => hunks
+                    .map(|idx| (idx + count).min(diff.len() - 1)),
+                Direction::Backward => diff
                     .prev_hunk(cursor_line)
                     .map(|idx| idx.saturating_sub(count)),
             };
             let Some(hunk_idx) = hunk_idx else {
                 return range;
             };
-            let hunk = hunks.nth_hunk(hunk_idx);
+            let hunk = diff.nth_hunk(hunk_idx);
             let new_range = hunk_range(hunk, doc_text);
             if editor.mode == Mode::Select {
                 let head = if new_range.head < range.anchor {
@@ -4721,14 +4725,14 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 
                 let textobject_change = |range: Range| -> Range {
                     let diff_handle = doc.diff_handle().unwrap();
-                    let hunks = diff_handle.hunks();
+                    let diff = diff_handle.load();
                     let line = range.cursor_line(text);
-                    let hunk_idx = if let Some(hunk_idx) = hunks.hunk_at(line as u32, false) {
+                    let hunk_idx = if let Some(hunk_idx) = diff.hunk_at(line as u32, false) {
                         hunk_idx
                     } else {
                         return range;
                     };
-                    let hunk = hunks.nth_hunk(hunk_idx).after;
+                    let hunk = diff.nth_hunk(hunk_idx).after;
 
                     let start = text.line_to_char(hunk.start as usize);
                     let end = text.line_to_char(hunk.end as usize);
