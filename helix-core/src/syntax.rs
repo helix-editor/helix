@@ -82,7 +82,8 @@ pub struct LanguageConfiguration {
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
-    pub max_line_length: Option<usize>,
+    pub text_width: Option<usize>,
+    pub soft_wrap: Option<SoftWrap>,
 
     #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
     pub config: Option<serde_json::Value>,
@@ -545,6 +546,33 @@ impl LanguageConfiguration {
             })
             .ok()
     }
+}
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct SoftWrap {
+    /// Soft wrap lines that exceed viewport width. Default to off
+    pub enable: Option<bool>,
+    /// Maximum space left free at the end of the line.
+    /// This space is used to wrap text at word boundaries. If that is not possible within this limit
+    /// the word is simply split at the end of the line.
+    ///
+    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+    ///
+    /// Default to 20
+    pub max_wrap: Option<u16>,
+    /// Maximum number of indentation that can be carried over from the previous line when softwrapping.
+    /// If a line is indented further then this limit it is rendered at the start of the viewport instead.
+    ///
+    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+    ///
+    /// Default to 40
+    pub max_indent_retain: Option<u16>,
+    /// Indicator placed at the beginning of softwrapped lines
+    ///
+    /// Defaults to ↪
+    pub wrap_indicator: Option<String>,
+    /// Softwrap at `text_width` instead of viewport width if it is shorter
+    pub wrap_at_text_width: Option<bool>,
 }
 
 // Expose loader as Lazy<> global since it's always static?
