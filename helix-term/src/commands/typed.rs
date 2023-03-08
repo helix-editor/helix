@@ -1234,7 +1234,7 @@ fn lsp_stop(
         return Ok(());
     }
 
-    let (_view, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
 
     let ls_id = doc
         .language_server()
