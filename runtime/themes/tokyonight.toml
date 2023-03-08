@@ -49,6 +49,7 @@
 "ui.virtual.ruler" = { bg = "foreground_gutter" }
 "ui.virtual.whitespace" = { fg = "foreground_gutter" }
 "ui.window" = { fg = "black" }
+"ui.wordmatch" = { modifiers = ["bold"] }
 
 "error" = { fg = "red" }
 "warning" = { fg = "yellow" }
