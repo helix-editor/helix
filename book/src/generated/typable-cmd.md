@@ -66,6 +66,8 @@
 | `:get-option`, `:get` | Get the current value of a config option. |
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |
+| `:sortn` | Sort ranges in selection in alphanumeric order. |
+| `:rsortn` | Sort ranges in selection in reverse alphanumeric order. |
 | `:reflow` | Hard-wrap the current selection of lines to a given width. |
 | `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
 | `:config-reload` | Refresh user config. |
