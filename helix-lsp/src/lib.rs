@@ -476,6 +476,16 @@ impl Registry {
         }
     }
 
+    pub fn stop(&mut self, language_config: &LanguageConfiguration) {
+        let scope = language_config.scope.clone();
+
+        if let Some((_, client)) = self.inner.remove(&scope) {
+            tokio::spawn(async move {
+                let _ = client.force_shutdown().await;
+            });
+        }
+    }
+
     pub fn get(
         &mut self,
         language_config: &LanguageConfiguration,
