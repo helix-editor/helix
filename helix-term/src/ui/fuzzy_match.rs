@@ -25,7 +25,7 @@ impl QueryAtom {
             _ => QueryAtomKind::Fuzzy,
         };
 
-        if atom.starts_with(&['^', '\'']) {
+        if atom.starts_with(['^', '\'']) {
             atom.remove(0);
         }
 

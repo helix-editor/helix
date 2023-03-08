@@ -1,8 +1,11 @@
 use futures_util::FutureExt;
 use helix_lsp::{
     block_on,
-    lsp::{self, CodeAction, CodeActionOrCommand, DiagnosticSeverity, NumberOrString},
-    util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
+    lsp::{
+        self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
+        NumberOrString,
+    },
+    util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
 use tui::{
@@ -142,7 +145,8 @@ impl ui::menu::Item for PickerDiagnostic {
         let path = match format {
             DiagnosticsFormat::HideSourcePath => String::new(),
             DiagnosticsFormat::ShowSourcePath => {
-                let path = path::get_truncated_path(self.url.path());
+                let file_path = self.url.to_file_path().unwrap();
+                let path = path::get_truncated_path(file_path);
                 format!("{}: ", path.to_string_lossy())
             }
         };
@@ -192,15 +196,15 @@ fn jump_to_location(
         }
     }
     let (view, doc) = current!(editor);
-    let definition_pos = location.range.start;
     // TODO: convert inside server
-    let new_pos = if let Some(new_pos) = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding)
-    {
-        new_pos
-    } else {
-        return;
-    };
-    doc.set_selection(view.id, Selection::point(new_pos));
+    let new_range =
+        if let Some(new_range) = lsp_range_to_range(doc.text(), location.range, offset_encoding) {
+            new_range
+        } else {
+            log::warn!("lsp position out of bounds - {:?}", location.range);
+            return;
+        };
+    doc.set_selection(view.id, Selection::single(new_range.anchor, new_range.head));
     align_view(doc, view, Align::Center);
 }
 
@@ -561,6 +565,7 @@ pub fn code_action(cx: &mut Context) {
                 .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, offset_encoding))
                 .collect(),
             only: None,
+            trigger_kind: Some(CodeActionTriggerKind::INVOKED),
         },
     ) {
         Some(future) => future,
@@ -1227,49 +1232,115 @@ pub fn hover(cx: &mut Context) {
 }
 
 pub fn rename_symbol(cx: &mut Context) {
-    let (view, doc) = current_ref!(cx.editor);
-    let text = doc.text().slice(..);
-    let primary_selection = doc.selection(view.id).primary();
-    let prefill = if primary_selection.len() > 1 {
-        primary_selection
-    } else {
-        use helix_core::textobject::{textobject_word, TextObject};
-        textobject_word(text, primary_selection, TextObject::Inside, 1, false)
+    fn get_prefill_from_word_boundary(editor: &Editor) -> String {
+        let (view, doc) = current_ref!(editor);
+        let text = doc.text().slice(..);
+        let primary_selection = doc.selection(view.id).primary();
+        if primary_selection.len() > 1 {
+            primary_selection
+        } else {
+            use helix_core::textobject::{textobject_word, TextObject};
+            textobject_word(text, primary_selection, TextObject::Inside, 1, false)
+        }
+        .fragment(text)
+        .into()
     }
-    .fragment(text)
-    .into();
-    ui::prompt_with_input(
-        cx,
-        "rename-to:".into(),
-        prefill,
-        None,
-        ui::completers::none,
-        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            if event != PromptEvent::Validate {
-                return;
+
+    fn get_prefill_from_lsp_response(
+        editor: &Editor,
+        offset_encoding: OffsetEncoding,
+        response: Option<lsp::PrepareRenameResponse>,
+    ) -> Result<String, &'static str> {
+        match response {
+            Some(lsp::PrepareRenameResponse::Range(range)) => {
+                let text = doc!(editor).text();
+
+                Ok(lsp_range_to_range(text, range, offset_encoding)
+                    .ok_or("lsp sent invalid selection range for rename")?
+                    .fragment(text.slice(..))
+                    .into())
             }
+            Some(lsp::PrepareRenameResponse::RangeWithPlaceholder { placeholder, .. }) => {
+                Ok(placeholder)
+            }
+            Some(lsp::PrepareRenameResponse::DefaultBehavior { .. }) => {
+                Ok(get_prefill_from_word_boundary(editor))
+            }
+            None => Err("lsp did not respond to prepare rename request"),
+        }
+    }
 
-            let (view, doc) = current!(cx.editor);
-            let language_server = language_server!(cx.editor, doc);
-            let offset_encoding = language_server.offset_encoding();
+    fn create_rename_prompt(editor: &Editor, prefill: String) -> Box<ui::Prompt> {
+        let prompt = ui::Prompt::new(
+            "rename-to:".into(),
+            None,
+            ui::completers::none,
+            move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+                if event != PromptEvent::Validate {
+                    return;
+                }
 
-            let pos = doc.position(view.id, offset_encoding);
+                let (view, doc) = current!(cx.editor);
+                let language_server = language_server!(cx.editor, doc);
+                let offset_encoding = language_server.offset_encoding();
 
-            let future =
-                match language_server.rename_symbol(doc.identifier(), pos, input.to_string()) {
-                    Some(future) => future,
-                    None => {
-                        cx.editor
-                            .set_error("Language server does not support symbol renaming");
+                let pos = doc.position(view.id, offset_encoding);
+
+                let future =
+                    match language_server.rename_symbol(doc.identifier(), pos, input.to_string()) {
+                        Some(future) => future,
+                        None => {
+                            cx.editor
+                                .set_error("Language server does not support symbol renaming");
+                            return;
+                        }
+                    };
+                match block_on(future) {
+                    Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
+                    Err(err) => cx.editor.set_error(err.to_string()),
+                }
+            },
+        )
+        .with_line(prefill, editor);
+
+        Box::new(prompt)
+    }
+
+    let (view, doc) = current!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = doc.position(view.id, offset_encoding);
+
+    match language_server.prepare_rename(doc.identifier(), pos) {
+        // Language server supports textDocument/prepareRename, use it.
+        Some(future) => cx.callback(
+            future,
+            move |editor, compositor, response: Option<lsp::PrepareRenameResponse>| {
+                let prefill = match get_prefill_from_lsp_response(editor, offset_encoding, response)
+                {
+                    Ok(p) => p,
+                    Err(e) => {
+                        editor.set_error(e);
                         return;
                     }
                 };
-            match block_on(future) {
-                Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
-                Err(err) => cx.editor.set_error(err.to_string()),
-            }
-        },
-    );
+
+                let prompt = create_rename_prompt(editor, prefill);
+
+                compositor.push(prompt);
+            },
+        ),
+        // Language server does not support textDocument/prepareRename, fall back
+        // to word boundary selection.
+        None => {
+            let prefill = get_prefill_from_word_boundary(cx.editor);
+
+            let prompt = create_rename_prompt(cx.editor, prefill);
+
+            cx.push_layer(prompt);
+        }
+    };
 }
 
 pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {

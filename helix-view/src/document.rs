@@ -20,6 +20,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use helix_core::{
     encoding,
@@ -38,6 +39,8 @@ use crate::{DocumentId, Editor, Theme, View, ViewId};
 const BUF_SIZE: usize = 8192;
 
 const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
+
+pub const DEFAULT_LANGUAGE_NAME: &str = "text";
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
@@ -136,6 +139,10 @@ pub struct Document {
 
     pub savepoint: Option<Transaction>,
 
+    // Last time we wrote to the file. This will carry the time the file was last opened if there
+    // were no saves.
+    last_saved_time: SystemTime,
+
     last_saved_revision: usize,
     version: i32, // should be usize?
     pub(crate) modified_since_accessed: bool,
@@ -162,6 +169,7 @@ impl fmt::Debug for Document {
             .field("changes", &self.changes)
             .field("old_state", &self.old_state)
             // .field("history", &self.history)
+            .field("last_saved_time", &self.last_saved_time)
             .field("last_saved_revision", &self.last_saved_revision)
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
@@ -384,6 +392,7 @@ impl Document {
             version: 0,
             history: Cell::new(History::default()),
             savepoint: None,
+            last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
@@ -580,9 +589,11 @@ impl Document {
 
         let encoding = self.encoding;
 
+        let last_saved_time = self.last_saved_time;
+
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
-            use tokio::fs::File;
+            use tokio::{fs, fs::File};
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -590,6 +601,17 @@ impl Document {
                         std::fs::DirBuilder::new().recursive(true).create(parent)?;
                     } else {
                         bail!("can't save file, parent directory does not exist");
+                    }
+                }
+            }
+
+            // Protect against overwriting changes made externally
+            if !force {
+                if let Ok(metadata) = fs::metadata(&path).await {
+                    if let Ok(mtime) = metadata.modified() {
+                        if last_saved_time < mtime {
+                            bail!("file modified by an external process, use :w! to overwrite");
+                        }
                     }
                 }
             }
@@ -670,6 +692,8 @@ impl Document {
         self.apply(&transaction, view.id);
         self.append_changes_to_history(view);
         self.reset_modified();
+
+        self.last_saved_time = SystemTime::now();
 
         self.detect_indent_and_line_ending();
 
@@ -1021,6 +1045,7 @@ impl Document {
             rev
         );
         self.last_saved_revision = rev;
+        self.last_saved_time = SystemTime::now();
     }
 
     /// Get the document's latest saved revision.
@@ -1078,7 +1103,7 @@ impl Document {
     /// Language server if it has been initialized.
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
         let server = self.language_server.as_deref()?;
-        server.is_initialized().then(|| server)
+        server.is_initialized().then_some(server)
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
@@ -1115,11 +1140,16 @@ impl Document {
         self.syntax.as_ref()
     }
 
-    /// Tab size in columns.
+    /// The width that the tab character is rendered at
     pub fn tab_width(&self) -> usize {
         self.language_config()
             .and_then(|config| config.indent.as_ref())
             .map_or(4, |config| config.tab_width) // fallback to 4 columns
+    }
+
+    // The width (in spaces) of a level of indentation.
+    pub fn indent_width(&self) -> usize {
+        self.indent_style.indent_width(self.tab_width())
     }
 
     pub fn changes(&self) -> &ChangeSet {
@@ -1224,24 +1254,61 @@ impl Document {
     }
 
     pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
-        if let Some(max_line_len) = self
+        let config = self.config.load();
+        let text_width = self
             .language_config()
-            .and_then(|config| config.max_line_length)
-        {
-            viewport_width = viewport_width.min(max_line_len as u16)
+            .and_then(|config| config.text_width)
+            .unwrap_or(config.text_width);
+        let soft_wrap_at_text_width = self
+            .language_config()
+            .and_then(|config| {
+                config
+                    .soft_wrap
+                    .as_ref()
+                    .and_then(|soft_wrap| soft_wrap.wrap_at_text_width)
+            })
+            .or(config.soft_wrap.wrap_at_text_width)
+            .unwrap_or(false);
+        if soft_wrap_at_text_width {
+            // We increase max_line_len by 1 because softwrap considers the newline character
+            // as part of the line length while the "typical" expectation is that this is not the case.
+            // In particular other commands like :reflow do not count the line terminator.
+            // This is technically inconsistent for the last line as that line never has a line terminator
+            // but having the last visual line exceed the width by 1 seems like a rare edge case.
+            viewport_width = viewport_width.min(text_width as u16 + 1)
         }
         let config = self.config.load();
-        let soft_wrap = &config.soft_wrap;
+        let editor_soft_wrap = &config.soft_wrap;
+        let language_soft_wrap = self
+            .language
+            .as_ref()
+            .and_then(|config| config.soft_wrap.as_ref());
+        let enable_soft_wrap = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.enable)
+            .or(editor_soft_wrap.enable)
+            .unwrap_or(false);
+        let max_wrap = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.max_wrap)
+            .or(config.soft_wrap.max_wrap)
+            .unwrap_or(20);
+        let max_indent_retain = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.max_indent_retain)
+            .or(editor_soft_wrap.max_indent_retain)
+            .unwrap_or(40);
+        let wrap_indicator = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.wrap_indicator.clone())
+            .or_else(|| config.soft_wrap.wrap_indicator.clone())
+            .unwrap_or_else(|| "↪ ".into());
         let tab_width = self.tab_width() as u16;
         TextFormat {
-            soft_wrap: soft_wrap.enable && viewport_width > 10,
+            soft_wrap: enable_soft_wrap && viewport_width > 10,
             tab_width,
-            max_wrap: soft_wrap.max_wrap.min(viewport_width / 4),
-            max_indent_retain: soft_wrap.max_indent_retain.min(viewport_width * 2 / 5),
+            max_wrap: max_wrap.min(viewport_width / 4),
+            max_indent_retain: max_indent_retain.min(viewport_width * 2 / 5),
             // avoid spinning forever when the window manager
             // sets the size to something tiny
             viewport_width,
-            wrap_indicator: soft_wrap.wrap_indicator.clone().into_boxed_str(),
+            wrap_indicator: wrap_indicator.into_boxed_str(),
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
                 .map(Highlight),

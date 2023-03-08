@@ -1,20 +1,17 @@
-(keyword_btree) @function.builtin
-(keyword_hash) @function.builtin
-(keyword_gist) @function.builtin
-(keyword_spgist) @function.builtin
-(keyword_gin) @function.builtin
-(keyword_brin) @function.builtin
 
-(cast
-  name: (identifier) @function.builtin)
-  
-(count
-  name: (identifier) @function.builtin)
+[
+  (keyword_btree)
+  (keyword_hash)
+  (keyword_gist)
+  (keyword_spgist)
+  (keyword_gin)
+  (keyword_brin)
 
-(keyword_group_concat) @function.builtin  
-
-(invocation
-  name: (identifier) @function.builtin)
+  (cast)
+  (count)
+  (group_concat)
+  (invocation)
+] @function.builtin
   
 (table_reference
   name: (identifier) @namespace)
@@ -57,7 +54,7 @@
 ] @constant.builtin
 
 ((literal) @constant.numeric
-  (#match? @constant.numeric "^(-?\d*\.?\d*)$"))
+  (#match? @constant.numeric "^-?\\d*\\.?\\d*$"))
 
 (literal) @string
 
@@ -92,6 +89,8 @@
   (keyword_primary)
   (keyword_create)
   (keyword_alter)
+  (keyword_change)
+  (keyword_modify)
   (keyword_drop)
   (keyword_add)
   (keyword_table)
@@ -119,8 +118,12 @@
   (keyword_if)
   (keyword_exists)
   (keyword_auto_increment)
+  (keyword_collate)
+  (keyword_character)
+  (keyword_engine)
   (keyword_default)
   (keyword_cascade)
+  (keyword_restrict)
   (keyword_with)
   (keyword_no)
   (keyword_data)
@@ -144,6 +147,7 @@
   (keyword_over)
   (keyword_nulls)
   (keyword_first)
+  (keyword_after)
   (keyword_last)
   (keyword_window)
   (keyword_range)
@@ -170,6 +174,37 @@
   (keyword_like)
   (keyword_similar)
   (keyword_preserve)
+  (keyword_unsigned)
+  (keyword_zerofill)
+
+  (keyword_external)
+  (keyword_stored)
+  (keyword_cached)
+  (keyword_uncached)
+  (keyword_replication)
+  (keyword_tblproperties)
+  (keyword_compute)
+  (keyword_stats)
+  (keyword_location)
+  (keyword_partitioned)
+  (keyword_comment)
+  (keyword_sort)
+  (keyword_format)
+  (keyword_delimited)
+  (keyword_fields)
+  (keyword_terminated)
+  (keyword_escaped)
+  (keyword_lines)
+
+  (keyword_parquet)
+  (keyword_rcfile)
+  (keyword_csv)
+  (keyword_textfile)
+  (keyword_avro)
+  (keyword_sequencefile)
+  (keyword_orc)
+  (keyword_avro)
+  (keyword_jsonfile)
 ] @keyword
 
 [
@@ -193,9 +228,11 @@
   (keyword_smallserial)
   (keyword_serial)
   (keyword_bigserial)
-  (keyword_smallint)
-  (keyword_int)
 
+  (tinyint)
+  (smallint)
+  (mediumint)
+  (int)
   (bigint)
   (decimal)
   (numeric)
@@ -221,6 +258,8 @@
   (keyword_datetime)
   (keyword_timestamp)
   (keyword_timestamptz)
+
+  (keyword_interval)
 
   (keyword_geometry)
   (keyword_geography)

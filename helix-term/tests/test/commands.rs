@@ -67,7 +67,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     const RANGE: RangeInclusive<i32> = 1..=1000;
 
     for i in RANGE {
-        let cmd = format!("%c{}<esc>:w<ret>", i);
+        let cmd = format!("%c{}<esc>:w!<ret>", i);
         command.push_str(&cmd);
     }
 
@@ -128,6 +128,70 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
             #(|lo)#rem
             #(|ip)#sum
             #[|do]#lor
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // Copy the selection to previous line, skipping the first line in the file
+    test((
+        platform_line(indoc! {"\
+            test
+            #[testitem|]#
+            "})
+        .as_str(),
+        "<A-C>",
+        platform_line(indoc! {"\
+            test
+            #[testitem|]#
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // Copy the selection to previous line, including the first line in the file
+    test((
+        platform_line(indoc! {"\
+            test
+            #[test|]#
+            "})
+        .as_str(),
+        "<A-C>",
+        platform_line(indoc! {"\
+            #[test|]#
+            #(test|)#
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // Copy the selection to next line, skipping the last line in the file
+    test((
+        platform_line(indoc! {"\
+            #[testitem|]#
+            test
+            "})
+        .as_str(),
+        "C",
+        platform_line(indoc! {"\
+            #[testitem|]#
+            test
+            "})
+        .as_str(),
+    ))
+    .await?;
+
+    // Copy the selection to next line, including the last line in the file
+    test((
+        platform_line(indoc! {"\
+            #[test|]#
+            test
+            "})
+        .as_str(),
+        "C",
+        platform_line(indoc! {"\
+            #(test|)#
+            #[test|]#
             "})
         .as_str(),
     ))

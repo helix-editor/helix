@@ -227,9 +227,15 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
     };
 
     // Do the main work.
-    (0..count).fold(start_range, |r, _| {
-        slice.chars_at(r.head).range_to_target(target, r)
-    })
+    let mut range = start_range;
+    for _ in 0..count {
+        let next_range = slice.chars_at(range.head).range_to_target(target, range);
+        if range == next_range {
+            break;
+        }
+        range = next_range;
+    }
+    range
 }
 
 pub fn move_prev_paragraph(
@@ -251,6 +257,7 @@ pub fn move_prev_paragraph(
     let mut lines = slice.lines_at(line);
     lines.reverse();
     let mut lines = lines.map(rope_is_line_ending).peekable();
+    let mut last_line = line;
     for _ in 0..count {
         while lines.next_if(|&e| e).is_some() {
             line -= 1;
@@ -258,6 +265,10 @@ pub fn move_prev_paragraph(
         while lines.next_if(|&e| !e).is_some() {
             line -= 1;
         }
+        if line == last_line {
+            break;
+        }
+        last_line = line;
     }
 
     let head = slice.line_to_char(line);
@@ -293,6 +304,7 @@ pub fn move_next_paragraph(
         line += 1;
     }
     let mut lines = slice.lines_at(line).map(rope_is_line_ending).peekable();
+    let mut last_line = line;
     for _ in 0..count {
         while lines.next_if(|&e| !e).is_some() {
             line += 1;
@@ -300,6 +312,10 @@ pub fn move_next_paragraph(
         while lines.next_if(|&e| e).is_some() {
             line += 1;
         }
+        if line == last_line {
+            break;
+        }
+        last_line = line;
     }
     let head = slice.line_to_char(line);
     let anchor = if behavior == Movement::Move {
@@ -523,7 +539,14 @@ pub fn goto_treesitter_object(
         // head of range should be at beginning
         Some(Range::new(start_char, end_char))
     };
-    (0..count).fold(range, |range, _| get_range(range).unwrap_or(range))
+    let mut last_range = range;
+    for _ in 0..count {
+        match get_range(last_range) {
+            Some(r) if r != last_range => last_range = r,
+            _ => break,
+        }
+    }
+    last_range
 }
 
 #[cfg(test)]
