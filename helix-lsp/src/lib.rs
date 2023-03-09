@@ -57,7 +57,6 @@ pub enum OffsetEncoding {
 }
 
 pub mod util {
-
     use super::*;
     use helix_core::line_ending::{line_end_byte_index, line_end_char_index};
     use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
