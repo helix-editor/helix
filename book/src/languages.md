@@ -5,13 +5,15 @@ in `languages.toml` files.
 
 ## `languages.toml` files
 
-There are three possible `languages.toml` files. The first is compiled into
-Helix and lives in the [Helix repository](https://github.com/helix-editor/helix/blob/master/languages.toml).
-This provides the default configurations for languages and language servers.
+There are three possible locations for a `languages.toml` file:
 
-You may define a `languages.toml` in your [configuration directory](./configuration.md)
-which overrides values from the built-in language configuration. For example
-to disable auto-LSP-formatting in Rust:
+1. In the Helix source code, this lives in the
+   [Helix repository](https://github.com/helix-editor/helix/blob/master/languages.toml).
+   It provides the default configurations for languages and language servers.
+
+2. In your [configuration directory](./configuration.md). This overrides values
+   from the built-in language configuration. For example to disable
+   auto-LSP-formatting in Rust:
 
 ```toml
 # in <config_dir>/helix/languages.toml
@@ -21,10 +23,10 @@ name = "rust"
 auto-format = false
 ```
 
-Language configuration may also be overridden local to a project by creating
-a `languages.toml` file under a `.helix` directory. Its settings will be merged
-with the language configuration in the configuration directory and the built-in
-configuration.
+3. In a `.helix` folder in your project. Language configuration may also be
+   overridden local to a project by creating a `languages.toml` file in a
+   `.helix` folder. Its settings will be merged with the language configuration
+   in the configuration directory and the built-in configuration.
 
 ## Language configuration
 
@@ -56,16 +58,16 @@ These configuration keys are available:
 | `auto-format`         | Whether to autoformat this language when saving               |
 | `diagnostic-severity` | Minimal severity of diagnostic for it to be displayed. (Allowed values: `Error`, `Warning`, `Info`, `Hint`) |
 | `comment-token`       | The token to use as a comment-token                           |
-| `indent`              | The indent to use. Has sub keys `tab-width` and `unit`        |
+| `indent`              | The indent to use. Has sub keys `unit` (the text inserted into the document when indenting; usually set to N spaces or `"\t"` for tabs) and `tab-width` (the number of spaces rendered for a tab) |
 | `language-server`     | The Language Server to run. See the Language Server configuration section below. |
 | `config`              | Language Server configuration                                 |
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
 | `formatter`           | The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout |
-| `max-line-length`     | Maximum line length. Used for the `:reflow` command and soft-wrapping           |
+| `text-width`          |  Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap_at_text_width` is set, defaults to `editor.text-width`   |
 
 ### File-type detection and the `file-types` key
 
-Helix determines which language configuration to use with the `file-types` key
+Helix determines which language configuration to use based on the `file-types` key
 from the above section. `file-types` is a list of strings or tables, for
 example:
 

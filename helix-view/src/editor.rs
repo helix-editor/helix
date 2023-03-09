@@ -31,7 +31,7 @@ use std::{
 use tokio::{
     sync::{
         mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-        Notify, RwLock,
+        oneshot, Notify, RwLock,
     },
     time::{sleep, Duration, Instant, Sleep},
 };
@@ -40,12 +40,12 @@ use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::Position;
 use helix_core::{
     auto_pairs::AutoPairs,
-    syntax::{self, AutoPairConfig},
+    syntax::{self, AutoPairConfig, SoftWrap},
     Change,
 };
+use helix_core::{Position, Selection};
 use helix_dap as dap;
 use helix_lsp::lsp;
 
@@ -241,6 +241,8 @@ pub struct Config {
     pub auto_format: bool,
     /// Automatic save on focus lost. Defaults to false.
     pub auto_save: bool,
+    /// Set a global text_width
+    pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -275,43 +277,6 @@ pub struct Config {
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
     pub cursor_word: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
-pub struct SoftWrap {
-    /// Soft wrap lines that exceed viewport width. Default to off
-    pub enable: bool,
-    /// Maximum space left free at the end of the line.
-    /// This space is used to wrap text at word boundaries. If that is not possible within this limit
-    /// the word is simply split at the end of the line.
-    ///
-    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
-    ///
-    /// Default to 20
-    pub max_wrap: u16,
-    /// Maximum number of indentation that can be carried over from the previous line when softwrapping.
-    /// If a line is indented further then this limit it is rendered at the start of the viewport instead.
-    ///
-    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
-    ///
-    /// Default to 40
-    pub max_indent_retain: u16,
-    /// Indicator placed at the beginning of softwrapped lines
-    ///
-    /// Defaults to ↪
-    pub wrap_indicator: String,
-}
-
-impl Default for SoftWrap {
-    fn default() -> Self {
-        SoftWrap {
-            enable: false,
-            max_wrap: 20,
-            max_indent_retain: 40,
-            wrap_indicator: "↪ ".into(),
-        }
-    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -774,6 +739,7 @@ impl Default for Config {
             color_modes: false,
             soft_wrap: SoftWrap::default(),
             cursor_word: false,
+            text_width: 80,
         }
     }
 }
@@ -850,7 +816,12 @@ pub struct Editor {
     /// The currently applied editor theme. While previewing a theme, the previewed theme
     /// is set here.
     pub theme: Theme,
-    pub last_line_number: Option<usize>,
+
+    /// The primary Selection prior to starting a goto_line_number preview. This is
+    /// restored when the preview is aborted, or added to the jumplist when it is
+    /// confirmed.
+    pub last_selection: Option<Selection>,
+
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
@@ -886,6 +857,14 @@ pub struct Editor {
 
     /// Contains all the cursor word highlights
     pub cursor_highlights: Arc<Vec<std::ops::Range<usize>>>,
+    /// When a new completion request is sent to the server old
+    /// unifinished request must be dropped. Each completion
+    /// request is associated with a channel that cancels
+    /// when the channel is dropped. That channel is stored
+    /// here. When a new completion request is sent this
+    /// field is set and any old requests are automatically
+    /// canceled as a result
+    pub completion_request_handle: Option<oneshot::Sender<()>>,
 }
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
@@ -969,7 +948,7 @@ impl Editor {
             syn_loader,
             theme_loader,
             last_theme: None,
-            last_line_number: None,
+            last_selection: None,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
@@ -985,6 +964,7 @@ impl Editor {
             needs_redraw: false,
             cursor_cache: Cell::new(None),
             cursor_highlights: Arc::new(Vec::new()),
+            completion_request_handle: None,
         }
     }
 

@@ -378,7 +378,7 @@ pub mod requests {
 
     impl Request for Launch {
         type Arguments = Value;
-        type Result = Value;
+        type Result = ();
         const COMMAND: &'static str = "launch";
     }
 
@@ -387,7 +387,7 @@ pub mod requests {
 
     impl Request for Attach {
         type Arguments = Value;
-        type Result = Value;
+        type Result = ();
         const COMMAND: &'static str = "attach";
     }
 
@@ -400,6 +400,15 @@ pub mod requests {
         pub terminate_debuggee: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub suspend_debuggee: Option<bool>,
+    }
+
+    #[derive(Debug)]
+    pub enum Restart {}
+
+    impl Request for Restart {
+        type Arguments = Value;
+        type Result = ();
+        const COMMAND: &'static str = "restart";
     }
 
     #[derive(Debug)]

@@ -52,7 +52,7 @@ pub fn general() -> std::io::Result<()> {
     let config_file = helix_loader::config_file();
     let lang_file = helix_loader::lang_config_file();
     let log_file = helix_loader::log_file();
-    let rt_dir = helix_loader::runtime_dir();
+    let rt_dirs = helix_loader::runtime_dirs();
     let clipboard_provider = get_clipboard_provider();
 
     if config_file.exists() {
@@ -66,17 +66,31 @@ pub fn general() -> std::io::Result<()> {
         writeln!(stdout, "Language file: default")?;
     }
     writeln!(stdout, "Log file: {}", log_file.display())?;
-    writeln!(stdout, "Runtime directory: {}", rt_dir.display())?;
-
-    if let Ok(path) = std::fs::read_link(&rt_dir) {
-        let msg = format!("Runtime directory is symlinked to {}", path.display());
-        writeln!(stdout, "{}", msg.yellow())?;
-    }
-    if !rt_dir.exists() {
-        writeln!(stdout, "{}", "Runtime directory does not exist.".red())?;
-    }
-    if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
-        writeln!(stdout, "{}", "Runtime directory is empty.".red())?;
+    writeln!(
+        stdout,
+        "Runtime directories: {}",
+        rt_dirs
+            .iter()
+            .map(|d| d.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(";")
+    )?;
+    for rt_dir in rt_dirs.iter() {
+        if let Ok(path) = std::fs::read_link(rt_dir) {
+            let msg = format!(
+                "Runtime directory {} is symlinked to: {}",
+                rt_dir.display(),
+                path.display()
+            );
+            writeln!(stdout, "{}", msg.yellow())?;
+        }
+        if !rt_dir.exists() {
+            let msg = format!("Runtime directory does not exist: {}", rt_dir.display());
+            writeln!(stdout, "{}", msg.yellow())?;
+        } else if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
+            let msg = format!("Runtime directory is empty: {}", rt_dir.display());
+            writeln!(stdout, "{}", msg.yellow())?;
+        }
     }
     writeln!(stdout, "Clipboard provider: {}", clipboard_provider.name())?;
 

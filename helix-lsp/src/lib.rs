@@ -1,5 +1,6 @@
 mod client;
 pub mod jsonrpc;
+pub mod snippet;
 mod transport;
 
 pub use client::Client;
@@ -60,6 +61,7 @@ pub mod util {
     use super::*;
     use helix_core::line_ending::{line_end_byte_index, line_end_char_index};
     use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
+    use helix_core::{smallvec, SmallVec};
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
     ///
@@ -262,26 +264,17 @@ pub mod util {
     pub fn generate_transaction_from_completion_edit(
         doc: &Rope,
         selection: &Selection,
-        edit: lsp::TextEdit,
-        offset_encoding: OffsetEncoding,
+        start_offset: i128,
+        end_offset: i128,
+        new_text: String,
     ) -> Transaction {
-        let replacement: Option<Tendril> = if edit.new_text.is_empty() {
+        let replacement: Option<Tendril> = if new_text.is_empty() {
             None
         } else {
-            Some(edit.new_text.into())
+            Some(new_text.into())
         };
 
         let text = doc.slice(..);
-        let primary_cursor = selection.primary().cursor(text);
-
-        let start_offset = match lsp_pos_to_pos(doc, edit.range.start, offset_encoding) {
-            Some(start) => start as i128 - primary_cursor as i128,
-            None => return Transaction::new(doc),
-        };
-        let end_offset = match lsp_pos_to_pos(doc, edit.range.end, offset_encoding) {
-            Some(end) => end as i128 - primary_cursor as i128,
-            None => return Transaction::new(doc),
-        };
 
         Transaction::change_by_selection(doc, selection, |range| {
             let cursor = range.cursor(text);
@@ -291,6 +284,74 @@ pub mod util {
                 replacement.clone(),
             )
         })
+    }
+
+    /// Creates a [Transaction] from the [snippet::Snippet] in a completion response.
+    /// The transaction applies the edit to all cursors.
+    pub fn generate_transaction_from_snippet(
+        doc: &Rope,
+        selection: &Selection,
+        start_offset: i128,
+        end_offset: i128,
+        snippet: snippet::Snippet,
+        line_ending: &str,
+        include_placeholder: bool,
+    ) -> Transaction {
+        let text = doc.slice(..);
+
+        // For each cursor store offsets for the first tabstop
+        let mut cursor_tabstop_offsets = Vec::<SmallVec<[(i128, i128); 1]>>::new();
+        let transaction = Transaction::change_by_selection(doc, selection, |range| {
+            let cursor = range.cursor(text);
+            let replacement_start = (cursor as i128 + start_offset) as usize;
+            let replacement_end = (cursor as i128 + end_offset) as usize;
+            let newline_with_offset = format!(
+                "{line_ending}{blank:width$}",
+                line_ending = line_ending,
+                width = replacement_start - doc.line_to_char(doc.char_to_line(replacement_start)),
+                blank = ""
+            );
+
+            let (replacement, tabstops) =
+                snippet::render(&snippet, newline_with_offset, include_placeholder);
+
+            let replacement_len = replacement.chars().count();
+            cursor_tabstop_offsets.push(
+                tabstops
+                    .first()
+                    .unwrap_or(&smallvec![(replacement_len, replacement_len)])
+                    .iter()
+                    .map(|(from, to)| -> (i128, i128) {
+                        (
+                            *from as i128 - replacement_len as i128,
+                            *to as i128 - replacement_len as i128,
+                        )
+                    })
+                    .collect(),
+            );
+
+            (replacement_start, replacement_end, Some(replacement.into()))
+        });
+
+        // Create new selection based on the cursor tabstop from above
+        let mut cursor_tabstop_offsets_iter = cursor_tabstop_offsets.iter();
+        let selection = selection
+            .clone()
+            .map(transaction.changes())
+            .transform_iter(|range| {
+                cursor_tabstop_offsets_iter
+                    .next()
+                    .unwrap()
+                    .iter()
+                    .map(move |(from, to)| {
+                        Range::new(
+                            (range.anchor as i128 + *from) as usize,
+                            (range.anchor as i128 + *to) as usize,
+                        )
+                    })
+            });
+
+        transaction.with_selection(selection)
     }
 
     pub fn generate_transaction_from_edits(
@@ -485,6 +546,16 @@ impl Registry {
 
                 Ok(Some(client))
             }
+        }
+    }
+
+    pub fn stop(&mut self, language_config: &LanguageConfiguration) {
+        let scope = language_config.scope.clone();
+
+        if let Some((_, client)) = self.inner.remove(&scope) {
+            tokio::spawn(async move {
+                let _ = client.force_shutdown().await;
+            });
         }
     }
 

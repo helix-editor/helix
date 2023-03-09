@@ -9,6 +9,7 @@ use helix_core::text_annotations::TextAnnotations;
 use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
+use ::parking_lot::Mutex;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
@@ -18,7 +19,7 @@ use std::fmt::Display;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::time::SystemTime;
 
 use helix_core::{
@@ -105,6 +106,13 @@ pub struct DocumentSavedEvent {
 pub type DocumentSavedEventResult = Result<DocumentSavedEvent, anyhow::Error>;
 pub type DocumentSavedEventFuture = BoxFuture<'static, DocumentSavedEventResult>;
 
+#[derive(Debug)]
+pub struct SavePoint {
+    /// The view this savepoint is associated with
+    pub view: ViewId,
+    revert: Mutex<Transaction>,
+}
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
@@ -136,7 +144,7 @@ pub struct Document {
     pub history: Cell<History>,
     pub config: Arc<dyn DynAccess<Config>>,
 
-    pub savepoint: Option<Transaction>,
+    savepoints: Vec<Weak<SavePoint>>,
 
     // Last time we wrote to the file. This will carry the time the file was last opened if there
     // were no saves.
@@ -389,7 +397,7 @@ impl Document {
             diagnostics: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
-            savepoint: None,
+            savepoints: Vec::new(),
             last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
             modified_since_accessed: false,
@@ -846,11 +854,18 @@ impl Document {
             }
 
             // generate revert to savepoint
-            if self.savepoint.is_some() {
-                take_with(&mut self.savepoint, |prev_revert| {
-                    let revert = transaction.invert(&old_doc);
-                    Some(revert.compose(prev_revert.unwrap()))
-                });
+            if !self.savepoints.is_empty() {
+                let revert = transaction.invert(&old_doc);
+                self.savepoints
+                    .retain_mut(|save_point| match save_point.upgrade() {
+                        Some(savepoint) => {
+                            let mut revert_to_savepoint = savepoint.revert.lock();
+                            *revert_to_savepoint =
+                                revert.clone().compose(mem::take(&mut revert_to_savepoint));
+                            true
+                        }
+                        None => false,
+                    })
             }
 
             // update tree-sitter syntax tree
@@ -940,14 +955,39 @@ impl Document {
         self.undo_redo_impl(view, false)
     }
 
-    pub fn savepoint(&mut self) {
-        self.savepoint = Some(Transaction::new(self.text()));
+    /// Creates a reference counted snapshot (called savpepoint) of the document.
+    ///
+    /// The snapshot will remain valid (and updated) idenfinitly as long as ereferences to it exist.
+    /// Restoring the snapshot will restore the selection and the contents of the document to
+    /// the state it had when this function was called.
+    pub fn savepoint(&mut self, view: &View) -> Arc<SavePoint> {
+        let revert = Transaction::new(self.text()).with_selection(self.selection(view.id).clone());
+        let savepoint = Arc::new(SavePoint {
+            view: view.id,
+            revert: Mutex::new(revert),
+        });
+        self.savepoints.push(Arc::downgrade(&savepoint));
+        savepoint
     }
 
-    pub fn restore(&mut self, view: &mut View) {
-        if let Some(revert) = self.savepoint.take() {
-            self.apply(&revert, view.id);
-        }
+    pub fn restore(&mut self, view: &mut View, savepoint: &SavePoint) {
+        assert_eq!(
+            savepoint.view, view.id,
+            "Savepoint must not be used with a different view!"
+        );
+        // search and remove savepoint using a ptr comparison
+        // this avoids a deadlock as we need to lock the mutex
+        let savepoint_idx = self
+            .savepoints
+            .iter()
+            .position(|savepoint_ref| savepoint_ref.as_ptr() == savepoint as *const _)
+            .expect("Savepoint must belong to this document");
+
+        let savepoint_ref = self.savepoints.remove(savepoint_idx);
+        let mut revert = savepoint.revert.lock();
+        self.apply(&revert, view.id);
+        *revert = Transaction::new(self.text()).with_selection(self.selection(view.id).clone());
+        self.savepoints.push(savepoint_ref)
     }
 
     fn earlier_later_impl(&mut self, view: &mut View, uk: UndoKind, earlier: bool) -> bool {
@@ -1238,24 +1278,61 @@ impl Document {
     }
 
     pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
-        if let Some(max_line_len) = self
+        let config = self.config.load();
+        let text_width = self
             .language_config()
-            .and_then(|config| config.max_line_length)
-        {
-            viewport_width = viewport_width.min(max_line_len as u16)
+            .and_then(|config| config.text_width)
+            .unwrap_or(config.text_width);
+        let soft_wrap_at_text_width = self
+            .language_config()
+            .and_then(|config| {
+                config
+                    .soft_wrap
+                    .as_ref()
+                    .and_then(|soft_wrap| soft_wrap.wrap_at_text_width)
+            })
+            .or(config.soft_wrap.wrap_at_text_width)
+            .unwrap_or(false);
+        if soft_wrap_at_text_width {
+            // We increase max_line_len by 1 because softwrap considers the newline character
+            // as part of the line length while the "typical" expectation is that this is not the case.
+            // In particular other commands like :reflow do not count the line terminator.
+            // This is technically inconsistent for the last line as that line never has a line terminator
+            // but having the last visual line exceed the width by 1 seems like a rare edge case.
+            viewport_width = viewport_width.min(text_width as u16 + 1)
         }
         let config = self.config.load();
-        let soft_wrap = &config.soft_wrap;
+        let editor_soft_wrap = &config.soft_wrap;
+        let language_soft_wrap = self
+            .language
+            .as_ref()
+            .and_then(|config| config.soft_wrap.as_ref());
+        let enable_soft_wrap = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.enable)
+            .or(editor_soft_wrap.enable)
+            .unwrap_or(false);
+        let max_wrap = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.max_wrap)
+            .or(config.soft_wrap.max_wrap)
+            .unwrap_or(20);
+        let max_indent_retain = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.max_indent_retain)
+            .or(editor_soft_wrap.max_indent_retain)
+            .unwrap_or(40);
+        let wrap_indicator = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.wrap_indicator.clone())
+            .or_else(|| config.soft_wrap.wrap_indicator.clone())
+            .unwrap_or_else(|| "↪ ".into());
         let tab_width = self.tab_width() as u16;
         TextFormat {
-            soft_wrap: soft_wrap.enable && viewport_width > 10,
+            soft_wrap: enable_soft_wrap && viewport_width > 10,
             tab_width,
-            max_wrap: soft_wrap.max_wrap.min(viewport_width / 4),
-            max_indent_retain: soft_wrap.max_indent_retain.min(viewport_width * 2 / 5),
+            max_wrap: max_wrap.min(viewport_width / 4),
+            max_indent_retain: max_indent_retain.min(viewport_width * 2 / 5),
             // avoid spinning forever when the window manager
             // sets the size to something tiny
             viewport_width,
-            wrap_indicator: soft_wrap.wrap_indicator.clone().into_boxed_str(),
+            wrap_indicator: wrap_indicator.into_boxed_str(),
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
                 .map(Highlight),
