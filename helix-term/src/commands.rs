@@ -5,6 +5,7 @@ pub(crate) mod typed;
 pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
+use tokio::sync::oneshot;
 use tui::widgets::Row;
 pub use typed::*;
 
@@ -52,7 +53,10 @@ use crate::{
     filter_picker_entry,
     job::Callback,
     keymap::ReverseKeymap,
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent},
+    ui::{
+        self, editor::InsertEvent, overlay::overlayed, FilePicker, Picker, Popup, Prompt,
+        PromptEvent,
+    },
 };
 
 use crate::job::{self, Jobs};
@@ -4226,6 +4230,24 @@ pub fn completion(cx: &mut Context) {
         None => return,
     };
 
+    // setup a chanel that allows the request to be canceled
+    let (tx, rx) = oneshot::channel();
+    // set completion_request so that this request can be canceled
+    // by setting completion_request, the old channel stored there is dropped
+    // and the associated request is automatically dropped
+    cx.editor.completion_request_handle = Some(tx);
+    let future = async move {
+        tokio::select! {
+            biased;
+            _ = rx => {
+                Ok(serde_json::Value::Null)
+            }
+            res = future => {
+                res
+            }
+        }
+    };
+
     let trigger_offset = cursor;
 
     // TODO: trigger_offset should be the cursor offset but we also need a starting offset from where we want to apply
@@ -4236,12 +4258,35 @@ pub fn completion(cx: &mut Context) {
     iter.reverse();
     let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
     let start_offset = cursor.saturating_sub(offset);
+    let savepoint = doc.savepoint(view);
+
+    let trigger_doc = doc.id();
+    let trigger_view = view.id;
+
+    // FIXME: The commands Context can only have a single callback
+    // which means it gets overwritten when executing keybindings
+    // with multiple commands or macros. This would mean that completion
+    // might be incorrectly applied when repeating the insertmode action
+    //
+    // TODO: to solve this either make cx.callback a Vec of callbacks or
+    // alternatively move `last_insert` to `helix_view::Editor`
+    cx.callback = Some(Box::new(
+        move |compositor: &mut Compositor, _cx: &mut compositor::Context| {
+            let ui = compositor.find::<ui::EditorView>().unwrap();
+            ui.last_insert.1.push(InsertEvent::RequestCompletion);
+        },
+    ));
 
     cx.callback(
         future,
         move |editor, compositor, response: Option<lsp::CompletionResponse>| {
-            if editor.mode != Mode::Insert {
-                // we're not in insert mode anymore
+            let (view, doc) = current_ref!(editor);
+            // check if the completion request is stale.
+            //
+            // Completions are completed asynchrounsly and therefore the user could
+            //switch document/view or leave insert mode. In all of thoise cases the
+            // completion should be discarded
+            if editor.mode != Mode::Insert || view.id != trigger_view || doc.id() != trigger_doc {
                 return;
             }
 
@@ -4263,6 +4308,7 @@ pub fn completion(cx: &mut Context) {
             let ui = compositor.find::<ui::EditorView>().unwrap();
             ui.set_completion(
                 editor,
+                savepoint,
                 items,
                 offset_encoding,
                 start_offset,
@@ -4380,7 +4426,6 @@ fn shrink_selection(cx: &mut Context) {
         // try to restore previous selection
         if let Some(prev_selection) = view.object_selections.pop() {
             if current_selection.contains(&prev_selection) {
-                // allow shrinking the selection only if current selection contains the previous object selection
                 doc.set_selection(view.id, prev_selection);
                 return;
             } else {

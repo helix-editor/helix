@@ -43,6 +43,7 @@ toml = "0.7"
 log = "~0.4"
 
 which = "4.4"
+parking_lot = "0.12.1"
 
 
 [target.'cfg(windows)'.dependencies]

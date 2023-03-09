@@ -625,11 +625,6 @@ impl Selection {
 
     // returns true if self ⊇ other
     pub fn contains(&self, other: &Selection) -> bool {
-        // can't contain other if it is larger
-        if other.len() > self.len() {
-            return false;
-        }
-
         let (mut iter_self, mut iter_other) = (self.iter(), other.iter());
         let (mut ele_self, mut ele_other) = (iter_self.next(), iter_other.next());
 
@@ -1240,5 +1235,11 @@ mod test {
             vec!((3, 4), (7, 9))
         ));
         assert!(!contains(vec!((1, 1), (5, 6)), vec!((1, 6))));
+
+        // multiple ranges of other are all contained in some ranges of self,
+        assert!(contains(
+            vec!((1, 4), (7, 10)),
+            vec!((1, 2), (3, 4), (7, 9))
+        ));
     }
 }
