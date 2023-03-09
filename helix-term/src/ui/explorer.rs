@@ -230,10 +230,8 @@ impl Explorer {
     }
 
     pub fn reveal_file(&mut self, path: PathBuf) -> Result<()> {
-        log::error!("Reveal file = {}", path.display());
         let current_root = &self.state.current_root.canonicalize()?;
         let current_path = &path.canonicalize()?;
-        log::error!("current_path = {}", current_path.display());
         let segments = {
             let stripped = match current_path.strip_prefix(current_root) {
                 Ok(stripped) => Ok(stripped),
@@ -1141,17 +1139,17 @@ mod test_explorer {
         // 0. Open the add file/folder prompt
         explorer.handle_events("a").unwrap();
         let prompt = &explorer.prompt.as_ref().unwrap().1;
+        fn sanitize(s: &str) -> String {
+            s.replace(std::path::MAIN_SEPARATOR, "/")
+        }
         assert_eq!(
-            prompt.prompt().replace(std::path::MAIN_SEPARATOR, "/"),
+            sanitize(&prompt.prompt()),
             " New file or folder (ends with '/'): "
         );
-        assert_eq!(
-            prompt.line().replace(std::path::MAIN_SEPARATOR, "/"),
-            "test_explorer/new_folder/"
-        );
+        assert_eq!(sanitize(prompt.line()), "test_explorer/new_folder/");
 
         // 1. Add a new folder at the root
-        explorer.handle_events("yoyo/<ret>").unwrap();
+        explorer.handle_events(&sanitize("yoyo/<ret>")).unwrap();
 
         // 1a. Expect the new folder is added, and is focused
         assert_eq!(
@@ -1173,7 +1171,9 @@ mod test_explorer {
         explorer.handle_events("k").unwrap();
 
         // 3. Add a new folder
-        explorer.handle_events("asus.sass/<ret>").unwrap();
+        explorer
+            .handle_events(&sanitize("asus.sass/<ret>"))
+            .unwrap();
 
         // 3a. Expect the new folder is added under "styles", although "styles" is not opened
         assert_eq!(
@@ -1195,7 +1195,7 @@ mod test_explorer {
         assert!(fs::read_dir(path.join("styles/sus.sass")).is_ok());
 
         // 4. Add a new folder with non-existent parents
-        explorer.handle_events("aa/b/c/<ret>").unwrap();
+        explorer.handle_events(&sanitize("aa/b/c/<ret>")).unwrap();
 
         // 4a. Expect the non-existent parents are created,
         //     and the new folder is created,
@@ -1223,7 +1223,7 @@ mod test_explorer {
         explorer.handle_events("j").unwrap();
 
         // 6. Add a new folder here
-        explorer.handle_events("afoobar/<ret>").unwrap();
+        explorer.handle_events(&sanitize("afoobar/<ret>")).unwrap();
 
         // 6a. Expect the folder is added under "styles",
         //     because the folder of the current item, "style.css" is "styles/"

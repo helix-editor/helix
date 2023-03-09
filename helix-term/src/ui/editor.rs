@@ -21,8 +21,8 @@ use helix_core::{
     visual_offset_from_block, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    editor::{CompleteAction, CursorShapeConfig, ExplorerPosition},
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
+    editor::{CompleteAction, CursorShapeConfig, ExplorerPosition},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
