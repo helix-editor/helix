@@ -256,8 +256,8 @@ cd helix
 <pre><code class="language-sh">cargo install --path helix-term --locked
 </code></pre>
 <p>This command will create the <code>hx</code> executable and construct the tree-sitter
-grammars either in the <code>runtime</code> folder, or in the folder specified in <code>HELIX_RUNTIME</code>
-(as described below). To build the tree-sitter grammars requires a c++ compiler to be installed, for example <code>gcc-c++</code>.</p>
+grammars in the local <code>runtime</code> folder. To build the tree-sitter grammars requires
+a c++ compiler to be installed, for example <code>gcc-c++</code>.</p>
 <blockquote>
 <p>💡 If you are using the musl-libc instead of glibc the following environment variable must be set during the build
 to ensure tree-sitter grammars can be loaded correctly:</p>
@@ -267,21 +267,19 @@ to ensure tree-sitter grammars can be loaded correctly:</p>
 <blockquote>
 <p>💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
 grammars with <code>hx --grammar fetch</code> (requires <code>git</code>) and compile them with
-<code>hx --grammar build</code> (requires a C++ compiler).</p>
+<code>hx --grammar build</code> (requires a C++ compiler). This will install them in
+the <code>runtime</code> directory within the user's helix config directory (more
+<a href="#multiple-runtime-directories">details below</a>).</p>
 </blockquote>
 <h3 id="configuring-helixs-runtime-files"><a class="header" href="#configuring-helixs-runtime-files">Configuring Helix's runtime files</a></h3>
-<ul>
-<li><strong>Linux and macOS</strong></li>
-</ul>
+<h4 id="linux-and-macos"><a class="header" href="#linux-and-macos">Linux and macOS</a></h4>
 <p>Either set the <code>HELIX_RUNTIME</code> environment variable to point to the runtime files and add it to your <code>~/.bashrc</code> or equivalent:</p>
 <pre><code class="language-sh">HELIX_RUNTIME=/home/user-name/src/helix/runtime
 </code></pre>
 <p>Or, create a symlink in <code>~/.config/helix</code> that links to the source code directory:</p>
 <pre><code class="language-sh">ln -s $PWD/runtime ~/.config/helix/runtime
 </code></pre>
-<ul>
-<li><strong>Windows</strong></li>
-</ul>
+<h4 id="windows-1"><a class="header" href="#windows-1">Windows</a></h4>
 <p>Either set the <code>HELIX_RUNTIME</code> environment variable to point to the runtime files using the Windows setting (search for
 <code>Edit environment variables for your account</code>) or use the <code>setx</code> command in
 Cmd:</p>
@@ -292,14 +290,27 @@ Cmd:</p>
 <code>C:\Users\Your-Name\</code> for example.</p>
 </blockquote>
 <p>Or, create a symlink in <code>%appdata%\helix\</code> that links to the source code directory:</p>
-<p>| Method     | Command                                                                                |
-| ---------- | -------------------------------------------------------------------------------------- |
-| PowerShell | <code>New-Item -ItemType Junction -Target &quot;runtime&quot; -Path &quot;$Env:AppData\helix\runtime&quot;</code>     |
-| Cmd        | <code>cd %appdata%\helix</code> <br/> <code>mklink /D runtime &quot;%userprofile%\src\helix\runtime&quot;</code>       |</p>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Command</th></tr></thead><tbody>
+<tr><td>PowerShell</td><td><code>New-Item -ItemType Junction -Target &quot;runtime&quot; -Path &quot;$Env:AppData\helix\runtime&quot;</code></td></tr>
+<tr><td>Cmd</td><td><code>cd %appdata%\helix</code> <br/> <code>mklink /D runtime &quot;%userprofile%\src\helix\runtime&quot;</code></td></tr>
+</tbody></table>
+</div>
 <blockquote>
 <p>💡 On Windows, creating a symbolic link may require running PowerShell or
 Cmd as an administrator.</p>
 </blockquote>
+<h4 id="multiple-runtime-directories"><a class="header" href="#multiple-runtime-directories">Multiple runtime directories</a></h4>
+<p>When Helix finds multiple runtime directories it will search through them for files in the
+following order:</p>
+<ol>
+<li><code>runtime/</code> sibling directory to <code>$CARGO_MANIFEST_DIR</code> directory (this is intended for
+developing and testing helix only).</li>
+<li><code>runtime/</code> subdirectory of OS-dependent helix user config directory.</li>
+<li><code>$HELIX_RUNTIME</code>.</li>
+<li><code>runtime/</code> subdirectory of path to Helix executable.</li>
+</ol>
+<p>This order also sets the priority for selecting which file will be used if multiple runtime
+directories have files with the same name.</p>
 <h3 id="validating-the-installation"><a class="header" href="#validating-the-installation">Validating the installation</a></h3>
 <p>To make sure everything is set up as expected you should run the Helix health
 check:</p>
