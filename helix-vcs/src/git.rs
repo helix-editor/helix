@@ -325,21 +325,23 @@ impl From<RawChanges> for Vec<FileChange> {
             raw.additions
         };
 
-        additions_left
+        let status_entries = additions_left
             .into_iter()
-            .for_each(|item| status_entries.push(FileChange::Untracked { path: item.path }));
-        raw.deletions
-            .values()
-            .into_iter()
-            .flat_map(|val| val.iter())
-            .for_each(|item| {
-                status_entries.push(FileChange::Deleted {
-                    path: item.path.to_owned(),
-                })
-            });
-        raw.modifications
-            .into_iter()
-            .for_each(|item| status_entries.push(FileChange::Modified { path: item.path }));
+            .map(|item| FileChange::Untracked { path: item.path })
+            .chain(
+                raw.deletions
+                    .values()
+                    .flat_map(|val| val.iter())
+                    .map(|item| FileChange::Deleted {
+                        path: item.path.to_owned(),
+                    }),
+            )
+            .chain(
+                raw.modifications
+                    .into_iter()
+                    .map(|item| FileChange::Modified { path: item.path }),
+            )
+            .collect::<Vec<_>>();
 
         status_entries
     }
