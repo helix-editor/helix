@@ -4371,7 +4371,6 @@ fn shrink_selection(cx: &mut Context) {
         // try to restore previous selection
         if let Some(prev_selection) = view.object_selections.pop() {
             if current_selection.contains(&prev_selection) {
-                // allow shrinking the selection only if current selection contains the previous object selection
                 doc.set_selection(view.id, prev_selection);
                 return;
             } else {
