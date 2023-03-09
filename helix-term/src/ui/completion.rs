@@ -118,7 +118,6 @@ impl Completion {
                 view_id: ViewId,
                 item: &CompletionItem,
                 offset_encoding: helix_lsp::OffsetEncoding,
-                start_offset: usize,
                 trigger_offset: usize,
                 include_placeholder: bool,
             ) -> Transaction {
@@ -147,28 +146,18 @@ impl Completion {
                             None => return Transaction::new(doc.text()),
                         };
 
-                    (start_offset, end_offset, edit.new_text)
+                    (Some((start_offset, end_offset)), edit.new_text)
                 } else {
                     let new_text = item
                         .insert_text
                         .clone()
                         .unwrap_or_else(|| item.label.clone());
-
                     // check that we are still at the correct savepoint
                     // we can still generate a transaction regardless but if the
                     // document changed (and not just the selection) then we will
                     // likely delete the wrong text (same if we applied an edit sent by the LS)
                     debug_assert!(primary_cursor == trigger_offset);
-
-                    // TODO: Respect editor.completion_replace?
-                    // Would require detecting the end of the word boundary for every cursor individually.
-                    // We don't do the same for normal `edits, to be consistent we would have to do it for those too
-
-                    (
-                        start_offset as i128 - primary_cursor as i128,
-                        trigger_offset as i128 - primary_cursor as i128,
-                        new_text,
-                    )
+                    (None, Some(0), new_text)
                 };
 
                 if matches!(item.kind, Some(lsp::CompletionItemKind::SNIPPET))
@@ -186,6 +175,7 @@ impl Completion {
                             snippet,
                             doc.line_ending.as_str(),
                             include_placeholder,
+                            doc.tab_width(),
                         ),
                         Err(err) => {
                             log::error!(
@@ -232,7 +222,6 @@ impl Completion {
                         view.id,
                         item,
                         offset_encoding,
-                        start_offset,
                         trigger_offset,
                         true,
                     );
@@ -254,7 +243,6 @@ impl Completion {
                         view.id,
                         item,
                         offset_encoding,
-                        start_offset,
                         trigger_offset,
                         false,
                     );
