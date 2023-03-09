@@ -108,6 +108,7 @@ impl Completion {
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
+        let replace_mode = editor.config().completion_replace;
         // Sort completion items according to their preselect status (given by the LSP server)
         items.sort_by_key(|item| !item.preselect.unwrap_or(false));
 
@@ -120,18 +121,23 @@ impl Completion {
                 offset_encoding: helix_lsp::OffsetEncoding,
                 trigger_offset: usize,
                 include_placeholder: bool,
+                replace_mode: bool,
             ) -> Transaction {
                 use helix_lsp::snippet;
                 let selection = doc.selection(view_id);
                 let text = doc.text().slice(..);
                 let primary_cursor = selection.primary().cursor(text);
 
-                let (start_offset, end_offset, new_text) = if let Some(edit) = &item.text_edit {
+                let (edit_offset, new_text) = if let Some(edit) = &item.text_edit {
                     let edit = match edit {
                         lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
                         lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                            // TODO: support using "insert" instead of "replace" via user config
-                            lsp::TextEdit::new(item.replace, item.new_text.clone())
+                            let range = if replace_mode {
+                                item.replace
+                            } else {
+                                item.insert
+                            };
+                            lsp::TextEdit::new(range, item.new_text.clone())
                         }
                     };
 
@@ -157,7 +163,7 @@ impl Completion {
                     // document changed (and not just the selection) then we will
                     // likely delete the wrong text (same if we applied an edit sent by the LS)
                     debug_assert!(primary_cursor == trigger_offset);
-                    (None, Some(0), new_text)
+                    (None, new_text)
                 };
 
                 if matches!(item.kind, Some(lsp::CompletionItemKind::SNIPPET))
@@ -170,8 +176,8 @@ impl Completion {
                         Ok(snippet) => util::generate_transaction_from_snippet(
                             doc.text(),
                             selection,
-                            start_offset,
-                            end_offset,
+                            edit_offset,
+                            replace_mode,
                             snippet,
                             doc.line_ending.as_str(),
                             include_placeholder,
@@ -190,8 +196,8 @@ impl Completion {
                     util::generate_transaction_from_completion_edit(
                         doc.text(),
                         selection,
-                        start_offset,
-                        end_offset,
+                        edit_offset,
+                        replace_mode,
                         new_text,
                     )
                 }
@@ -224,6 +230,7 @@ impl Completion {
                         offset_encoding,
                         trigger_offset,
                         true,
+                        replace_mode,
                     );
 
                     // initialize a savepoint
@@ -245,6 +252,7 @@ impl Completion {
                         offset_encoding,
                         trigger_offset,
                         false,
+                        replace_mode,
                     );
 
                     doc.apply(&transaction, view.id);

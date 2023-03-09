@@ -251,6 +251,9 @@ pub struct Config {
     )]
     pub idle_timeout: Duration,
     pub completion_trigger_len: u8,
+    /// Whether to instruct the LSP to replace the entire word when applying a completion
+    /// or to only insert new text
+    pub completion_replace: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -738,6 +741,7 @@ impl Default for Config {
             color_modes: false,
             soft_wrap: SoftWrap::default(),
             text_width: 80,
+            completion_replace: false,
         }
     }
 }

@@ -250,18 +250,27 @@ pub mod util {
     /// If the LS did not provide a range for the completion or the range of the
     /// primary cursor can not be used for the secondary cursor, this function
     /// can be used to find the completion range for a cursor
-    fn find_completion_range(text: RopeSlice, cursor: usize) -> (usize, usize) {
+    fn find_completion_range(text: RopeSlice, replace_mode: bool, cursor: usize) -> (usize, usize) {
         let start = cursor
             - text
                 .chars_at(cursor)
                 .reversed()
                 .take_while(|ch| chars::char_is_word(*ch))
                 .count();
-        (start, cursor)
+        let mut end = cursor;
+        if replace_mode {
+            end += text
+                .chars_at(cursor)
+                .skip(1)
+                .take_while(|ch| chars::char_is_word(*ch))
+                .count();
+        }
+        (start, end)
     }
     fn completion_range(
         text: RopeSlice,
         edit_offset: Option<(i128, i128)>,
+        replace_mode: bool,
         cursor: usize,
     ) -> Option<(usize, usize)> {
         let res = match edit_offset {
@@ -276,7 +285,7 @@ pub mod util {
                 }
                 (start_offset as usize, end_offset as usize)
             }
-            None => find_completion_range(text, cursor),
+            None => find_completion_range(text, replace_mode, cursor),
         };
         Some(res)
     }
@@ -287,6 +296,7 @@ pub mod util {
         doc: &Rope,
         selection: &Selection,
         edit_offset: Option<(i128, i128)>,
+        replace_mode: bool,
         new_text: String,
     ) -> Transaction {
         let replacement: Option<Tendril> = if new_text.is_empty() {
@@ -296,9 +306,13 @@ pub mod util {
         };
 
         let text = doc.slice(..);
-        let (removed_start, removed_end) =
-            completion_range(text, edit_offset, selection.primary().cursor(text))
-                .expect("transaction must be valid for primary selection");
+        let (removed_start, removed_end) = completion_range(
+            text,
+            edit_offset,
+            replace_mode,
+            selection.primary().cursor(text),
+        )
+        .expect("transaction must be valid for primary selection");
         let removed_text = text.slice(removed_start..removed_end);
 
         let (transaction, mut selection) = Transaction::change_by_selection_ignore_overlapping(
@@ -306,9 +320,9 @@ pub mod util {
             selection,
             |range| {
                 let cursor = range.cursor(text);
-                completion_range(text, edit_offset, cursor)
+                completion_range(text, edit_offset, replace_mode, cursor)
                     .filter(|(start, end)| text.slice(start..end) == removed_text)
-                    .unwrap_or_else(|| find_completion_range(text, cursor))
+                    .unwrap_or_else(|| find_completion_range(text, replace_mode, cursor))
             },
             |_, _| replacement.clone(),
         );
@@ -326,6 +340,7 @@ pub mod util {
         doc: &Rope,
         selection: &Selection,
         edit_offset: Option<(i128, i128)>,
+        replace_mode: bool,
         snippet: snippet::Snippet,
         line_ending: &str,
         include_placeholder: bool,
@@ -336,9 +351,13 @@ pub mod util {
         let mut off = 0i128;
         let mut mapped_doc = doc.clone();
         let mut selection_tabstops: SmallVec<[_; 1]> = SmallVec::new();
-        let (removed_start, removed_end) =
-            completion_range(text, edit_offset, selection.primary().cursor(text))
-                .expect("transaction must be valid for primary selection");
+        let (removed_start, removed_end) = completion_range(
+            text,
+            edit_offset,
+            replace_mode,
+            selection.primary().cursor(text),
+        )
+        .expect("transaction must be valid for primary selection");
         let removed_text = text.slice(removed_start..removed_end);
 
         let (transaction, selection) = Transaction::change_by_selection_ignore_overlapping(
@@ -346,9 +365,9 @@ pub mod util {
             selection,
             |range| {
                 let cursor = range.cursor(text);
-                completion_range(text, edit_offset, cursor)
+                completion_range(text, edit_offset, replace_mode, cursor)
                     .filter(|(start, end)| text.slice(start..end) == removed_text)
-                    .unwrap_or_else(|| find_completion_range(text, cursor))
+                    .unwrap_or_else(|| find_completion_range(text, replace_mode, cursor))
             },
             |replacement_start, replacement_end| {
                 let mapped_replacement_start = (replacement_start as i128 + off) as usize;
