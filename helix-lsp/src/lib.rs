@@ -56,6 +56,7 @@ pub enum OffsetEncoding {
 }
 
 pub mod util {
+
     use super::*;
     use helix_core::line_ending::{line_end_byte_index, line_end_char_index};
     use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
@@ -243,6 +244,17 @@ pub mod util {
         let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
 
         Some(Range::new(start, end))
+    }
+
+    pub fn lsp_range_to_ops_range(
+        doc: &Rope,
+        range: lsp::Range,
+        offset_encoding: OffsetEncoding,
+    ) -> Option<std::ops::Range<usize>> {
+        let start = lsp_pos_to_pos(doc, range.start, offset_encoding)?;
+        let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
+
+        Some(start..end)
     }
 
     /// Creates a [Transaction] from the [lsp::TextEdit] in a completion response.

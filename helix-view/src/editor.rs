@@ -883,6 +883,9 @@ pub struct Editor {
     /// avoid calculating the cursor position multiple
     /// times during rendering and should not be set by other functions.
     pub cursor_cache: Cell<Option<Option<Position>>>,
+
+    /// Contains all the cursor word highlights
+    pub cursor_highlights: Arc<Vec<std::ops::Range<usize>>>,
 }
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
@@ -981,6 +984,7 @@ impl Editor {
             redraw_handle: Default::default(),
             needs_redraw: false,
             cursor_cache: Cell::new(None),
+            cursor_highlights: Arc::new(Vec::new()),
         }
     }
 
