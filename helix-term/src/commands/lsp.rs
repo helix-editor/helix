@@ -6,7 +6,7 @@ use helix_lsp::{
         NumberOrString,
     },
     util::{
-        diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_ops_range, lsp_range_to_range,
+        diagnostic_to_lsp_diagnostic, lsp_range_to_ops_range, lsp_range_to_range,
         range_to_lsp_range,
     },
     OffsetEncoding,
