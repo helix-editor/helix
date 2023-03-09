@@ -113,8 +113,8 @@ pub fn inline_diagnostics_decorator(
         #[derive(Debug)]
         enum DisplayItem {
             Space(u16),
-            Static(&'static str, Style, u16),
-            String(String, Style, u16),
+            Static(&'static str, Style),
+            String(String, Style),
         }
 
         stack.clear();
@@ -204,20 +204,19 @@ pub fn inline_diagnostics_decorator(
                 match item2 {
                     &StackItem::Space(n) if multi == 0 => left.push(DisplayItem::Space(n)),
                     &StackItem::Space(n) => {
-                        left.push(DisplayItem::String("─".repeat(n as usize), style, n))
+                        left.push(DisplayItem::String("─".repeat(n as usize), style))
                     }
                     StackItem::Blank(_) => {
                         left.push(DisplayItem::Static(
                             if multi == 0 { "└" } else { "┴" },
                             style,
-                            1,
                         ));
                         multi += 1;
                     }
                     StackItem::Diagnostic(_, style) => {
                         // If an overlap follows this, don't add an extra column.
                         if !(matches!(peekable.peek(), Some(StackItem::Overlap))) {
-                            left.push(DisplayItem::Static("│", *style, 1));
+                            left.push(DisplayItem::Static("│", *style));
                         }
                         overlap = false;
                     }
@@ -236,7 +235,7 @@ pub fn inline_diagnostics_decorator(
             };
 
             center.clear();
-            center.push(DisplayItem::Static(center_symbol, style, 5));
+            center.push(DisplayItem::Static(center_symbol, style));
 
             // TODO: We can draw on the left side if and only if:
             // a. Is the last one stacked this line.
@@ -255,6 +254,8 @@ pub fn inline_diagnostics_decorator(
             );
             renderer.surface.set_style(diag_area, background);
 
+            let area_right = diag_area.right();
+
             for (offset, line) in text.lines().enumerate() {
                 let mut pos_x = viewport.x;
                 let diag_pos_y = code_pos_y + 1 + offset as u16;
@@ -265,29 +266,39 @@ pub fn inline_diagnostics_decorator(
                 }
 
                 for item in left.iter().chain(center.iter()) {
-                    let (text, style, width): (Cow<str>, _, _) = match *item {
+                    let (text, style): (Cow<str>, _) = match *item {
                         // No need to allocate a string here when we simply want the default
                         // background filled with empty space
                         DisplayItem::Space(n) => {
                             pos_x = pos_x.saturating_add(n);
                             continue;
                         }
-                        DisplayItem::Static(s, style, n) => (s.into(), style, n),
-                        DisplayItem::String(ref s, style, n) => (s.into(), style, n),
+                        DisplayItem::Static(s, style) => (s.into(), style),
+                        DisplayItem::String(ref s, style) => (s.into(), style),
                     };
 
-                    renderer.surface.set_string(pos_x, diag_pos_y, text, style);
-                    pos_x = pos_x.saturating_add(width);
+                    let (new_x_pos, _) = renderer.surface.set_stringn(
+                        pos_x,
+                        diag_pos_y,
+                        text,
+                        area_right.saturating_sub(pos_x).into(),
+                        style,
+                    );
+                    pos_x = new_x_pos;
                 }
 
-                renderer
-                    .surface
-                    .set_string(pos_x, diag_pos_y, line.trim(), style);
+                renderer.surface.set_stringn(
+                    pos_x,
+                    diag_pos_y,
+                    line.trim(),
+                    area_right.saturating_sub(pos_x).into(),
+                    style,
+                );
 
                 center.clear();
                 // Special-case for continuation lines
                 if overlap {
-                    center.push(DisplayItem::Static("│", style, 1));
+                    center.push(DisplayItem::Static("│", style));
                     center.push(DisplayItem::Space(4));
                 } else {
                     center.push(DisplayItem::Space(5));
