@@ -31,6 +31,7 @@ use crate::{
 use log::{debug, error, warn};
 use std::{
     io::{stdin, stdout},
+    path::Path,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -113,10 +114,9 @@ impl Application {
 
         use helix_view::editor::Action;
 
-        let theme_loader = std::sync::Arc::new(theme::Loader::new(
-            &helix_loader::config_dir(),
-            &helix_loader::runtime_dir(),
-        ));
+        let mut theme_parent_dirs = vec![helix_loader::config_dir()];
+        theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
+        let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
 
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
@@ -162,7 +162,7 @@ impl Application {
         compositor.push(editor_view);
 
         if args.load_tutor {
-            let path = helix_loader::runtime_dir().join("tutor");
+            let path = helix_loader::runtime_file(Path::new("tutor"));
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
