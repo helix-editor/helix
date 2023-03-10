@@ -11,6 +11,7 @@ Example config:
 
 ```toml
 theme = "onedark"
+icons = "nerdfonts"
 
 [editor]
 line-number = "relative"
@@ -108,6 +109,7 @@ The following statusline elements can be configured:
 | `file-line-ending` | The file line endings (CRLF or LF) |
 | `total-line-numbers` | The total line numbers of the opened file |
 | `file-type` | The type of the opened file |
+| `file-type-icon` | The icon representing the language of the open file, or else its file type (see `[editor.icons]` section) |
 | `diagnostics` | The number of warnings and/or errors |
 | `workspace-diagnostics` | The number of warnings and/or errors on workspace |
 | `selections` | The number of active selections |
@@ -322,6 +324,18 @@ Currently unused
 #### `[editor.gutters.spacer]` Section
 
 Currently unused
+
+### `[editor.icons]` Section
+
+Option for displaying icons within the editor.
+
+> Warning: some symbols (such as file-type and symbol-kind icons that you would see in the picker) are not available in the "default" icon set. They usually require a patched font such as [NerdFonts](https://www.nerdfonts.com/) to be installed and configured in your terminal emulator, and the corresponding icon set to be configured in the editor (for example, using `icons = "nerdfonts"` in your configuration file).
+
+| Key                 | Description                                                  | Default |
+| ---                 | ---                                                          | ---     |
+| `picker`            | Whether icons in pickers are enabled.                        | `true`  |
+| `bufferline`        | Whether icons in the buffer line are enabled.                | `true`  |
+| `statusline`        | Whether icons in the status line are enabled.                | `true`  |
 
 ### `[editor.soft-wrap]` Section
 

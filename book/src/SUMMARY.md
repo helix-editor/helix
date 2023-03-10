@@ -10,6 +10,7 @@
 - [Migrating from Vim](./from-vim.md)
 - [Configuration](./configuration.md)
   - [Themes](./themes.md)
+  - [Icons](./icons.md)
   - [Key remapping](./remapping.md)
   - [Languages](./languages.md)
 - [Guides](./guides/README.md)
