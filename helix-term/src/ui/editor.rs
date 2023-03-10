@@ -368,7 +368,7 @@ impl EditorView {
     ) -> Option<Vec<(usize, std::ops::Range<usize>)>> {
         let scope_index = theme.find_scope_index("ui.wordmatch")?;
         let mut result: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
-        let is_lsp_ready = !editor.cursor_highlights.is_empty();
+        let is_lsp_ready = doc.language_server().is_some() && !editor.cursor_highlights.is_empty();
         match is_lsp_ready {
             true => result.extend(
                 editor
