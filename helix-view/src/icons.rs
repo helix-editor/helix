@@ -156,6 +156,7 @@ pub struct Diagnostic {
 pub struct Breakpoint {
     pub verified: Icon,
     pub unverified: Icon,
+    pub pause_indicator: Icon,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

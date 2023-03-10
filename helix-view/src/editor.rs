@@ -479,6 +479,9 @@ pub enum StatusLineElement {
     /// The file type (language ID or "text")
     FileType,
 
+    /// The file type icon (from file path)
+    FileTypeIcon,
+
     /// A summary of the number of errors and warnings
     Diagnostics,
 
