@@ -43,7 +43,7 @@
 
 (number (integer)) @constant.numeric.integer
 
-(boolean) @boolean
+(boolean) @constant.builtin.boolean
 
 ; Strings
 
