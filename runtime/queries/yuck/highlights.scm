@@ -62,7 +62,7 @@
 ; Functions
 
 (function_call
-  name: (ident) @function.call)
+  name: (ident) @function)
 
 ; Variables
 
