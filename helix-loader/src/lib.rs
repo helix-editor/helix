@@ -1,8 +1,14 @@
 pub mod config;
 pub mod grammar;
 
+use anyhow::{anyhow, Result};
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
-use std::path::{Path, PathBuf};
+use once_cell::sync::Lazy;
+use std::{
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+};
+use toml::Value;
 
 pub const VERSION_AND_GIT_HASH: &str = env!("VERSION_AND_GIT_HASH");
 
@@ -154,8 +160,6 @@ pub fn log_file() -> PathBuf {
 /// where one usually wants to override or add to the array instead of
 /// replacing it altogether.
 pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usize) -> toml::Value {
-    use toml::Value;
-
     fn get_name(v: &Value) -> Option<&str> {
         v.get("name").and_then(Value::as_str)
     }
@@ -225,6 +229,99 @@ pub fn find_workspace() -> (PathBuf, bool) {
     }
 
     (current_dir, true)
+}
+
+/// Recursively load a TOML document, merging with any inherited parent files.
+///
+/// The paths that have been visited in the inheritance hierarchy are tracked
+/// to detect and avoid cycling.
+///
+/// It is possible for one file to inherit from another file with the same name
+/// so long as the second file is in a search directory with lower priority.
+/// However, it is not recommended that users do this as it will make tracing
+/// errors more difficult.
+pub fn load_inheritable_toml(
+    name: &str,
+    search_directories: &[PathBuf],
+    visited_paths: &mut HashSet<PathBuf>,
+    default_toml_data: &HashMap<&str, &Lazy<Value>>,
+    merge_toml_docs: fn(Value, Value) -> Value,
+) -> Result<Value> {
+    let path = get_toml_path(name, search_directories, visited_paths)?;
+
+    let toml_doc = load_toml(&path)?;
+
+    let inherits = toml_doc.get("inherits");
+
+    let toml_doc = if let Some(parent_toml_name) = inherits {
+        let parent_toml_name = parent_toml_name.as_str().ok_or_else(|| {
+            anyhow!(
+                "{:?}: expected 'inherits' to be a string: {}",
+                path,
+                parent_toml_name
+            )
+        })?;
+
+        let parent_toml_doc = match default_toml_data.get(parent_toml_name) {
+            Some(p) => (**p).clone(),
+            None => load_inheritable_toml(
+                parent_toml_name,
+                search_directories,
+                visited_paths,
+                default_toml_data,
+                merge_toml_docs,
+            )?,
+        };
+
+        merge_toml_docs(parent_toml_doc, toml_doc)
+    } else {
+        toml_doc
+    };
+
+    Ok(toml_doc)
+}
+
+/// Returns the path to the TOML document with the given name
+///
+/// Ignores paths already visited and follows directory priority order.
+fn get_toml_path(
+    name: &str,
+    search_directories: &[PathBuf],
+    visited_paths: &mut HashSet<PathBuf>,
+) -> Result<PathBuf> {
+    let filename = format!("{}.toml", name);
+
+    let mut cycle_found = false; // track if there was a path, but it was in a cycle
+    search_directories
+        .iter()
+        .find_map(|dir| {
+            let path = dir.join(&filename);
+            if !path.exists() {
+                None
+            } else if visited_paths.contains(&path) {
+                // Avoiding cycle, continuing to look in lower priority directories
+                cycle_found = true;
+                None
+            } else {
+                visited_paths.insert(path.clone());
+                Some(path)
+            }
+        })
+        .ok_or_else(|| {
+            if cycle_found {
+                anyhow!("Toml: cycle found in inheriting: {}", name)
+            } else {
+                anyhow!("Toml: file not found for: {}", name)
+            }
+        })
+}
+
+// Loads the TOML data as `toml::Value`
+fn load_toml(path: &Path) -> Result<Value> {
+    let data = std::fs::read_to_string(path)?;
+    let value = toml::from_str(&data)?;
+
+    Ok(value)
 }
 
 #[cfg(test)]
