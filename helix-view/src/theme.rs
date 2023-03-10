@@ -4,7 +4,7 @@ use std::{
     str,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use helix_core::hashmap;
 use helix_loader::merge_toml_values;
 use log::warn;
@@ -65,71 +65,19 @@ impl Loader {
             ("default", &DEFAULT_THEME_DATA),
             ("base16_default", &BASE16_DEFAULT_THEME_DATA),
         ]);
-        let theme = self
-            .load_inheritable_toml(
-                name,
-                &self.theme_dirs,
-                &mut visited_paths,
-                &default_themes,
-                Self::merge_themes,
-            )
-            .map(Theme::from)?;
+        let theme = helix_loader::load_inheritable_toml(
+            name,
+            &self.theme_dirs,
+            &mut visited_paths,
+            &default_themes,
+            Self::merge_themes,
+        )
+        .map(Theme::from)?;
 
         Ok(Theme {
             name: name.into(),
             ..theme
         })
-    }
-
-    /// Recursively load a TOML document, merging with any inherited parent files.
-    ///
-    /// The paths that have been visited in the inheritance hierarchy are tracked
-    /// to detect and avoid cycling.
-    ///
-    /// It is possible for one file to inherit from another file with the same name
-    /// so long as the second file is in a search directory with lower priority.
-    /// However, it is not recommended that users do this as it will make tracing
-    /// errors more difficult.
-    fn load_inheritable_toml(
-        &self,
-        name: &str,
-        search_directories: &[PathBuf],
-        visited_paths: &mut HashSet<PathBuf>,
-        default_toml_data: &HashMap<&str, &Lazy<Value>>,
-        merge_toml_docs: fn(Value, Value) -> Value,
-    ) -> Result<Value> {
-        let path = self.path(name, search_directories, visited_paths)?;
-
-        let toml_doc = self.load_toml(&path)?;
-
-        let inherits = toml_doc.get("inherits");
-
-        let toml_doc = if let Some(parent_toml_name) = inherits {
-            let parent_toml_name = parent_toml_name.as_str().ok_or_else(|| {
-                anyhow!(
-                    "{:?}: expected 'inherits' to be a string: {}",
-                    path,
-                    parent_toml_name
-                )
-            })?;
-
-            let parent_toml_doc = match default_toml_data.get(parent_toml_name) {
-                Some(p) => (**p).clone(),
-                None => self.load_inheritable_toml(
-                    parent_toml_name,
-                    search_directories,
-                    visited_paths,
-                    default_toml_data,
-                    merge_toml_docs,
-                )?,
-            };
-
-            merge_toml_docs(parent_toml_doc, toml_doc)
-        } else {
-            toml_doc
-        };
-
-        Ok(toml_doc)
     }
 
     pub fn read_names(path: &Path) -> Vec<String> {
@@ -171,50 +119,6 @@ impl Loader {
         let theme = merge_toml_values(parent_theme_toml, theme_toml, 1);
         // merge the before specially handled palette into the theme
         merge_toml_values(theme, palette.into(), 1)
-    }
-
-    // Loads the TOML data as `toml::Value`
-    fn load_toml(&self, path: &Path) -> Result<Value> {
-        let data = std::fs::read_to_string(path)?;
-        let value = toml::from_str(&data)?;
-
-        Ok(value)
-    }
-
-    /// Returns the path to the TOML document with the given name
-    ///
-    /// Ignores paths already visited and follows directory priority order.
-    fn path(
-        &self,
-        name: &str,
-        search_directories: &[PathBuf],
-        visited_paths: &mut HashSet<PathBuf>,
-    ) -> Result<PathBuf> {
-        let filename = format!("{}.toml", name);
-
-        let mut cycle_found = false; // track if there was a path, but it was in a cycle
-        search_directories
-            .iter()
-            .find_map(|dir| {
-                let path = dir.join(&filename);
-                if !path.exists() {
-                    None
-                } else if visited_paths.contains(&path) {
-                    // Avoiding cycle, continuing to look in lower priority directories
-                    cycle_found = true;
-                    None
-                } else {
-                    visited_paths.insert(path.clone());
-                    Some(path)
-                }
-            })
-            .ok_or_else(|| {
-                if cycle_found {
-                    anyhow!("Toml: cycle found in inheriting: {}", name)
-                } else {
-                    anyhow!("Toml: file not found for: {}", name)
-                }
-            })
     }
 
     pub fn default_theme(&self, true_color: bool) -> Theme {
