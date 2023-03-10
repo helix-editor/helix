@@ -4,29 +4,29 @@ use crate::{
     compositor::{Callback, Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
 };
-use tui::{buffer::Buffer as Surface, widgets::Table};
+use tui::{buffer::Buffer as Surface, text::Span, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use fuzzy_matcher::FuzzyMatcher;
 
-use helix_view::{graphics::Rect, Editor};
+use helix_view::{graphics::Rect, icons::Icons, Editor};
 use tui::layout::Constraint;
 
 pub trait Item {
     /// Additional editor state that is used for label calculation.
     type Data;
 
-    fn format(&self, data: &Self::Data) -> Row;
+    fn format<'a>(&self, data: &Self::Data, icons: Option<&'a Icons>) -> Row;
 
     fn sort_text(&self, data: &Self::Data) -> Cow<str> {
-        let label: String = self.format(data).cell_text().collect();
+        let label: String = self.format(data, None).cell_text().collect();
         label.into()
     }
 
     fn filter_text(&self, data: &Self::Data) -> Cow<str> {
-        let label: String = self.format(data).cell_text().collect();
+        let label: String = self.format(data, None).cell_text().collect();
         label.into()
     }
 }
@@ -35,11 +35,15 @@ impl Item for PathBuf {
     /// Root prefix to strip.
     type Data = PathBuf;
 
-    fn format(&self, root_path: &Self::Data) -> Row {
-        self.strip_prefix(root_path)
+    fn format<'a>(&self, root_path: &Self::Data, icons: Option<&'a Icons>) -> Row {
+        let path_str = self
+            .strip_prefix(root_path)
             .unwrap_or(self)
-            .to_string_lossy()
-            .into()
+            .to_string_lossy();
+        match icons.and_then(|icons| icons.icon_from_path(Some(self))) {
+            Some(icon) => Row::new([icon.into(), Span::raw(path_str)]),
+            None => path_str.into(),
+        }
     }
 }
 
@@ -142,10 +146,10 @@ impl<T: Item> Menu<T> {
         let n = self
             .options
             .first()
-            .map(|option| option.format(&self.editor_data).cells.len())
+            .map(|option| option.format(&self.editor_data, None).cells.len())
             .unwrap_or_default();
         let max_lens = self.options.iter().fold(vec![0; n], |mut acc, option| {
-            let row = option.format(&self.editor_data);
+            let row = option.format(&self.editor_data, None);
             // maintain max for each column
             for (acc, cell) in acc.iter_mut().zip(row.cells.iter()) {
                 let width = cell.content.width();
@@ -331,7 +335,7 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         let rows = options
             .iter()
-            .map(|option| option.format(&self.editor_data));
+            .map(|option| option.format(&self.editor_data, None));
         let table = Table::new(rows)
             .style(style)
             .highlight_style(selected)
