@@ -137,7 +137,7 @@ impl Application {
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout());
+        let backend = CrosstermBackend::new(stdout(), &config.editor);
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
