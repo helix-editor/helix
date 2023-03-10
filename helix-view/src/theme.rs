@@ -61,7 +61,19 @@ impl Loader {
         }
 
         let mut visited_paths = HashSet::new();
-        let theme = self.load_theme(name, &mut visited_paths).map(Theme::from)?;
+        let default_themes = HashMap::from([
+            ("default", &DEFAULT_THEME_DATA),
+            ("base16_default", &BASE16_DEFAULT_THEME_DATA),
+        ]);
+        let theme = self
+            .load_inheritable_toml(
+                name,
+                &self.theme_dirs,
+                &mut visited_paths,
+                &default_themes,
+                Self::merge_themes,
+            )
+            .map(Theme::from)?;
 
         Ok(Theme {
             name: name.into(),
@@ -69,43 +81,55 @@ impl Loader {
         })
     }
 
-    /// Recursively load a theme, merging with any inherited parent themes.
+    /// Recursively load a TOML document, merging with any inherited parent files.
     ///
     /// The paths that have been visited in the inheritance hierarchy are tracked
     /// to detect and avoid cycling.
     ///
     /// It is possible for one file to inherit from another file with the same name
-    /// so long as the second file is in a themes directory with lower priority.
+    /// so long as the second file is in a search directory with lower priority.
     /// However, it is not recommended that users do this as it will make tracing
     /// errors more difficult.
-    fn load_theme(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<Value> {
-        let path = self.path(name, visited_paths)?;
+    fn load_inheritable_toml(
+        &self,
+        name: &str,
+        search_directories: &[PathBuf],
+        visited_paths: &mut HashSet<PathBuf>,
+        default_toml_data: &HashMap<&str, &Lazy<Value>>,
+        merge_toml_docs: fn(Value, Value) -> Value,
+    ) -> Result<Value> {
+        let path = self.path(name, search_directories, visited_paths)?;
 
-        let theme_toml = self.load_toml(path)?;
+        let toml_doc = self.load_toml(&path)?;
 
-        let inherits = theme_toml.get("inherits");
+        let inherits = toml_doc.get("inherits");
 
-        let theme_toml = if let Some(parent_theme_name) = inherits {
-            let parent_theme_name = parent_theme_name.as_str().ok_or_else(|| {
+        let toml_doc = if let Some(parent_toml_name) = inherits {
+            let parent_toml_name = parent_toml_name.as_str().ok_or_else(|| {
                 anyhow!(
-                    "Theme: expected 'inherits' to be a string: {}",
-                    parent_theme_name
+                    "{:?}: expected 'inherits' to be a string: {}",
+                    path,
+                    parent_toml_name
                 )
             })?;
 
-            let parent_theme_toml = match parent_theme_name {
-                // load default themes's toml from const.
-                "default" => DEFAULT_THEME_DATA.clone(),
-                "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
-                _ => self.load_theme(parent_theme_name, visited_paths)?,
+            let parent_toml_doc = match default_toml_data.get(parent_toml_name) {
+                Some(p) => (**p).clone(),
+                None => self.load_inheritable_toml(
+                    parent_toml_name,
+                    search_directories,
+                    visited_paths,
+                    default_toml_data,
+                    merge_toml_docs,
+                )?,
             };
 
-            self.merge_themes(parent_theme_toml, theme_toml)
+            merge_toml_docs(parent_toml_doc, toml_doc)
         } else {
-            theme_toml
+            toml_doc
         };
 
-        Ok(theme_toml)
+        Ok(toml_doc)
     }
 
     pub fn read_names(path: &Path) -> Vec<String> {
@@ -124,7 +148,7 @@ impl Loader {
     }
 
     // merge one theme into the parent theme
-    fn merge_themes(&self, parent_theme_toml: Value, theme_toml: Value) -> Value {
+    fn merge_themes(parent_theme_toml: Value, theme_toml: Value) -> Value {
         let parent_palette = parent_theme_toml.get("palette");
         let palette = theme_toml.get("palette");
 
@@ -149,22 +173,27 @@ impl Loader {
         merge_toml_values(theme, palette.into(), 1)
     }
 
-    // Loads the theme data as `toml::Value`
-    fn load_toml(&self, path: PathBuf) -> Result<Value> {
+    // Loads the TOML data as `toml::Value`
+    fn load_toml(&self, path: &Path) -> Result<Value> {
         let data = std::fs::read_to_string(path)?;
         let value = toml::from_str(&data)?;
 
         Ok(value)
     }
 
-    /// Returns the path to the theme with the given name
+    /// Returns the path to the TOML document with the given name
     ///
     /// Ignores paths already visited and follows directory priority order.
-    fn path(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<PathBuf> {
+    fn path(
+        &self,
+        name: &str,
+        search_directories: &[PathBuf],
+        visited_paths: &mut HashSet<PathBuf>,
+    ) -> Result<PathBuf> {
         let filename = format!("{}.toml", name);
 
         let mut cycle_found = false; // track if there was a path, but it was in a cycle
-        self.theme_dirs
+        search_directories
             .iter()
             .find_map(|dir| {
                 let path = dir.join(&filename);
@@ -181,9 +210,9 @@ impl Loader {
             })
             .ok_or_else(|| {
                 if cycle_found {
-                    anyhow!("Theme: cycle found in inheriting: {}", name)
+                    anyhow!("Toml: cycle found in inheriting: {}", name)
                 } else {
-                    anyhow!("Theme: file not found for: {}", name)
+                    anyhow!("Toml: file not found for: {}", name)
                 }
             })
     }
