@@ -1,0 +1,284 @@
+name = "nerdfonts"
+
+[diagnostic]
+error = {icon = ""}
+warning = {icon = ""}
+info = {icon = ""}
+hint = {icon = ""}
+
+[breakpoint]
+verified = {icon = "▲"}
+unverified = {icon = "⊚"} 
+
+[diff]
+added = {icon = "▍"}
+deleted = {icon = "▔"}
+modified = {icon = "▍"}
+
+[symbol-kind]
+file = {icon = ""}
+module = {icon = ""}
+namespace = {icon = ""}
+package = {icon = ""}
+class = {icon = ""}
+method = {icon = ""}
+property = {icon = ""}
+field = {icon = ""}
+constructor = {icon = ""}
+enumeration = {icon = ""}
+interface = {icon = ""}
+variable = {icon = ""}
+function = {icon = "󰊕"}
+constant = {icon = ""}
+string = {icon = ""}
+number = {icon = ""}
+boolean = {icon = ""}
+array = {icon = ""}
+object = {icon = ""}
+key = {icon = ""}
+null = {icon = "󰟢"}
+enum-member = {icon = ""}
+structure = {icon = ""}
+event = {icon = ""}
+operator = {icon = ""}
+type-parameter = {icon = ""}
+
+[ui]
+file = {icon = ""}
+folder = {icon = ""}
+folder_opened = {icon = ""}
+git_branch = {icon = ""}
+
+[mime-type]
+# This is heavily based on https://github.com/nvim-tree/nvim-web-devicons
+".babelrc" = { icon = "ﬥ", color = "#cbcb41" }
+".bash_profile" = { icon = "", color = "#89e051" }
+".bashrc" = { icon = "", color = "#89e051" }
+".DS_Store" = { icon = "", color = "#41535b" }
+".gitattributes" = { icon = "", color = "#41535b" }
+".gitconfig" = { icon = "", color = "#41535b" }
+".gitignore" = { icon = "", color = "#41535b" }
+".gitlab-ci.yml" = { icon = "", color = "#e24329" }
+".gitmodules" = { icon = "", color = "#41535b" }
+".gvimrc" = { icon = "", color = "#019833" }
+".npmignore" = { icon = "", color = "#E8274B" }
+".npmrc" = { icon = "", color = "#E8274B" }
+".settings.json" = { icon = "", color = "#854CC7" }
+".vimrc" = { icon = "", color = "#019833" }
+".zprofile" = { icon = "", color = "#89e051" }
+".zshenv" = { icon = "", color = "#89e051" }
+".zshrc" = { icon = "", color = "#89e051" }
+"Brewfile" = { icon = "", color = "#701516" }
+"CMakeLists.txt" = { icon = "", color = "#6d8086" }
+"COMMIT_EDITMSG" = { icon = "", color = "#41535b" }
+"COPYING" = { icon = "", color = "#cbcb41" }
+"COPYING.LESSER" = { icon = "", color = "#cbcb41" }
+"Dockerfile" = { icon = "", color = "#384d54" }
+"Gemfile$" = { icon = "", color = "#701516" }
+"LICENSE" = { icon = "", color = "#d0bf41" }
+"R" = { icon = "ﳒ", color = "#358a5b" }
+"Rmd" = { icon = "", color = "#519aba" }
+"Vagrantfile$" = { icon = "", color = "#1563FF" }
+"_gvimrc" = { icon = "", color = "#019833" }
+"_vimrc" = { icon = "", color = "#019833" }
+"ai" = { icon = "", color = "#cbcb41" }
+"awk" = { icon = "", color = "#4d5a5e" }
+"bash" = { icon = "", color = "#89e051" }
+"bat" = { icon = "", color = "#C1F12E" }
+"bmp" = { icon = "", color = "#a074c4" }
+"c" = { icon = "", color = "#599eff" }
+"c++" = { icon = "", color = "#f34b7d" }
+"cbl" = { icon = "⚙", color = "#005ca5" }
+"cc" = { icon = "", color = "#f34b7d" }
+"cfg" = { icon = "", color = "#ECECEC" }
+"clj" = { icon = "", color = "#8dc149" }
+"cljc" = { icon = "", color = "#8dc149" }
+"cljs" = { icon = "", color = "#519aba" }
+"cljd" = { icon = "", color = "#519aba" }
+"cmake" = { icon = "", color = "#6d8086" }
+"cob" = { icon = "⚙", color = "#005ca5" }
+"cobol" = { icon = "⚙", color = "#005ca5" }
+"coffee" = { icon = "", color = "#cbcb41" }
+"conf" = { icon = "", color = "#6d8086" }
+"config.ru" = { icon = "", color = "#701516" }
+"cp" = { icon = "", color = "#519aba" }
+"cpp" = { icon = "", color = "#519aba" }
+"cpy" = { icon = "⚙", color = "#005ca5" }
+"cr" = { icon = "" }
+"cs" = { icon = "", color = "#596706" }
+"csh" = { icon = "", color = "#4d5a5e" }
+"cson" = { icon = "", color = "#cbcb41" }
+"css" = { icon = "", color = "#42a5f5" }
+"csv" = { icon = "", color = "#89e051" }
+"cxx" = { icon = "", color = "#519aba" }
+"d" = { icon = "", color = "#427819" }
+"dart" = { icon = "", color = "#03589C" }
+"db" = { icon = "", color = "#dad8d8" }
+"desktop" = { icon = "", color = "#563d7c" }
+"diff" = { icon = "", color = "#41535b" }
+"doc" = { icon = "", color = "#185abd" }
+"dockerfile" = { icon = "", color = "#384d54" }
+"drl" = { icon = "", color = "#ffafaf" }
+"dropbox" = { icon = "", color = "#0061FE" }
+"dump" = { icon = "", color = "#dad8d8" }
+"edn" = { icon = "", color = "#519aba" }
+"eex" = { icon = "", color = "#a074c4" }
+"ejs" = { icon = "", color = "#cbcb41" }
+"elm" = { icon = "", color = "#519aba" }
+"epp" = { icon = "", color = "#FFA61A" }
+"erb" = { icon = "", color = "#701516" }
+"erl" = { icon = "", color = "#B83998" }
+"ex" = { icon = "", color = "#a074c4" }
+"exs" = { icon = "", color = "#a074c4" }
+"f#" = { icon = "", color = "#519aba" }
+"favicon.ico" = { icon = "", color = "#cbcb41" }
+"fnl" = { icon = "🌜", color = "#fff3d7" }
+"fish" = { icon = "", color = "#4d5a5e" }
+"fs" = { icon = "", color = "#519aba" }
+"fsi" = { icon = "", color = "#519aba" }
+"fsscript" = { icon = "", color = "#519aba" }
+"fsx" = { icon = "", color = "#519aba" }
+"gd" = { icon = "", color = "#6d8086" }
+"gemspec" = { icon = "", color = "#701516" }
+"gif" = { icon = "", color = "#a074c4" }
+"git" = { icon = "", color = "#F14C28" }
+"glb" = { icon = "", color = "#FFB13B" }
+"go" = { icon = "", color = "#519aba" }
+"godot" = { icon = "", color = "#6d8086" }
+"graphql" = { icon = "", color = "#e535ab" }
+"gruntfile" = { icon = "", color = "#e37933" }
+"gulpfile" = { icon = "", color = "#cc3e44" }
+"h" = { icon = "", color = "#a074c4" }
+"haml" = { icon = "", color = "#eaeae1" }
+"hbs" = { icon = "", color = "#f0772b" }
+"heex" = { icon = "", color = "#a074c4" }
+"hh" = { icon = "", color = "#a074c4" }
+"hpp" = { icon = "", color = "#a074c4" }
+"hrl" = { icon = "", color = "#B83998" }
+"hs" = { icon = "", color = "#a074c4" }
+"htm" = { icon = "", color = "#e34c26" }
+"html" = { icon = "", color = "#e44d26" }
+"hxx" = { icon = "", color = "#a074c4" }
+"ico" = { icon = "", color = "#cbcb41" }
+"import" = { icon = "", color = "#ECECEC" }
+"ini" = { icon = "", color = "#6d8086" }
+"java" = { icon = "", color = "#cc3e44" }
+"jl" = { icon = "", color = "#a270ba" }
+"jpeg" = { icon = "", color = "#a074c4" }
+"jpg" = { icon = "", color = "#a074c4" }
+"js" = { icon = "", color = "#cbcb41" }
+"json" = { icon = "", color = "#cbcb41" }
+"json5" = { icon = "ﬥ", color = "#cbcb41" }
+"jsx" = { icon = "", color = "#519aba" }
+"ksh" = { icon = "", color = "#4d5a5e" }
+"kt" = { icon = "", color = "#F88A02" }
+"kts" = { icon = "", color = "#F88A02" }
+"leex" = { icon = "", color = "#a074c4" }
+"less" = { icon = "", color = "#563d7c" }
+"lhs" = { icon = "", color = "#a074c4" }
+"license" = { icon = "", color = "#cbcb41" }
+"lua" = { icon = "", color = "#51a0cf" }
+"luau" = { icon = "", color = "#51a0cf" }
+"makefile" = { icon = "", color = "#6d8086" }
+"markdown" = { icon = "", color = "#d74c4c" }
+"material" = { icon = "", color = "#B83998" }
+"md" = { icon = "", color = "#d74c4c" }
+"mdx" = { icon = "", color = "#d74c4c" }
+"mint" = { icon = "", color = "#87c095" }
+"mix.lock" = { icon = "", color = "#a074c4" }
+"mjs" = { icon = "", color = "#f1e05a" }
+"ml" = { icon = "λ", color = "#e37933" }
+"mli" = { icon = "λ", color = "#e37933" }
+"mo" = { icon = "∞", color = "#9772FB" }
+"mustache" = { icon = "", color = "#e37933" }
+"nim" = { icon = "👑", color = "#f3d400" }
+"nix" = { icon = "", color = "#7ebae4" }
+"node_modules" = { icon = "", color = "#E8274B" }
+"opus" = { icon = "", color = "#F88A02" }
+"otf" = { icon = "", color = "#ECECEC" }
+"package.json" = { icon = "", color = "#e8274b" }
+"package-lock.json" = { icon = "", color = "#7a0d21" }
+"pck" = { icon = "", color = "#6d8086" }
+"pdf" = { icon = "", color = "#b30b00" }
+"php" = { icon = "", color = "#a074c4" }
+"pl" = { icon = "", color = "#519aba" }
+"pm" = { icon = "", color = "#519aba" }
+"png" = { icon = "", color = "#a074c4" }
+"pp" = { icon = "", color = "#FFA61A" }
+"ppt" = { icon = "", color = "#cb4a32" }
+"pro" = { icon = "", color = "#e4b854" }
+"Procfile" = { icon = "", color = "#a074c4" }
+"ps1" = { icon = "", color = "#4d5a5e" }
+"psb" = { icon = "", color = "#519aba" }
+"psd" = { icon = "", color = "#519aba" }
+"py" = { icon = "", color = "#ffbc03" }
+"pyc" = { icon = "", color = "#ffe291" }
+"pyd" = { icon = "", color = "#ffe291" }
+"pyo" = { icon = "", color = "#ffe291" }
+"query" = { icon = "", color = "#90a850" }
+"r" = { icon = "ﳒ", color = "#358a5b" }
+"rake" = { icon = "", color = "#701516" }
+"rakefile" = { icon = "", color = "#701516" }
+"rb" = { icon = "", color = "#701516" }
+"rlib" = { icon = "", color = "#dea584" }
+"rmd" = { icon = "", color = "#519aba" }
+"rproj" = { icon = "鉶", color = "#358a5b" }
+"rs" = { icon = "", color = "#dea584" }
+"rss" = { icon = "", color = "#FB9D3B" }
+"sass" = { icon = "", color = "#f55385" }
+"sbt" = { icon = "", color = "#cc3e44" }
+"scala" = { icon = "", color = "#cc3e44" }
+"scm" = { icon = "ﬦ" }
+"scss" = { icon = "", color = "#f55385" }
+"sh" = { icon = "", color = "#4d5a5e" }
+"sig" = { icon = "λ", color = "#e37933" }
+"slim" = { icon = "", color = "#e34c26" }
+"sln" = { icon = "", color = "#854CC7" }
+"sml" = { icon = "λ", color = "#e37933" }
+"sql" = { icon = "", color = "#dad8d8" }
+"sqlite" = { icon = "", color = "#dad8d8" }
+"sqlite3" = { icon = "", color = "#dad8d8" }
+"styl" = { icon = "", color = "#8dc149" }
+"sublime" = { icon = "", color = "#e37933" }
+"suo" = { icon = "", color = "#854CC7" }
+"sv" = { icon = "", color = "#019833" }
+"svelte" = { icon = "", color = "#ff3e00" }
+"svh" = { icon = "", color = "#019833" }
+"svg" = { icon = "ﰟ", color = "#FFB13B" }
+"swift" = { icon = "", color = "#e37933" }
+"t" = { icon = "", color = "#519aba" }
+"tbc" = { icon = "﯑", color = "#1e5cb3" }
+"tcl" = { icon = "﯑", color = "#1e5cb3" }
+"terminal" = { icon = "", color = "#31B53E" }
+"tex" = { icon = "ﭨ", color = "#3D6117" }
+"tf" = { icon = "", color = "#5F43E9" }
+"tfvars" = { icon = "", color = "#5F43E9" }
+"toml" = { icon = "", color = "#6d8086" }
+"tres" = { icon = "", color = "#cbcb41" }
+"ts" = { icon = "", color = "#519aba" }
+"tscn" = { icon = "", color = "#a074c4" }
+"tsx" = { icon = "", color = "#519aba" }
+"twig" = { icon = "", color = "#8dc149" }
+"txt" = { icon = "", color = "#89e051" }
+"v" = { icon = "", color = "#019833" }
+"vh" = { icon = "", color = "#019833" }
+"vhd" = { icon = "", color = "#019833" }
+"vhdl" = { icon = "", color = "#019833" }
+"vim" = { icon = "", color = "#019833" }
+"vue" = { icon = "﵂", color = "#8dc149" }
+"webmanifest" = { icon = "", color = "#f1e05a" }
+"webp" = { icon = "", color = "#a074c4" }
+"webpack" = { icon = "ﰩ", color = "#519aba" }
+"xcplayground" = { icon = "", color = "#e37933" }
+"xls" = { icon = "", color = "#207245" }
+"xml" = { icon = "謹", color = "#e37933" }
+"xul" = { icon = "", color = "#e37933" }
+"yaml" = { icon = "", color = "#6d8086" }
+"yml" = { icon = "", color = "#6d8086" }
+"zig" = { icon = "", color = "#f69a1b" }
+"zsh" = { icon = "", color = "#89e051" }
+"sol" = { icon = "ﲹ", color = "#519aba" }
+".env" = { icon = "", color = "#faf743" }
+"prisma" = { icon = "卑" }
+"lock" = { icon = "", color = "#bbbbbb" }
+"log" = { icon = "" }
