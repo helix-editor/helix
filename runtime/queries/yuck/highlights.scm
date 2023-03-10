@@ -1,66 +1,107 @@
+; Errors
+
 (ERROR) @error
 
-(line_comment) @comment
+; Comments
 
-; keywords and symbols
+(comment) @comment
 
-(keyword) @keyword
-(symbol) @tag
+; Operators
 
-; literals
-
-(bool_literal) @constant.builtin.boolean
-(num_literal) @constant.numeric
-
-; strings
-(string_interpolation
-  (string_interpolation_start) @punctuation.special
-  (string_interpolation_end) @punctuation.special)
-
-(escape_sequence) @constant.character.escape
-
-(string
-  [
-    (unescaped_single_quote_string_fragment)
-    (unescaped_double_quote_string_fragment)
-    (unescaped_backtick_string_fragment)
-    "\""
-    "'"
-    "`"
-  ]) @string
-
-; operators and general punctuation
-
-(unary_expression
-  operator: _ @operator)
-
-(binary_expression
-  operator: _ @operator)
+[
+  "+"
+  "-"
+  "*"
+  "/"
+  "%"
+  "||"
+  "&&"
+  "=="
+  "!="
+  "=~"
+  ">"
+  "<"
+  ">="
+  "<="
+  "!"
+  "?."
+  "?:"
+] @operator
 
 (ternary_expression
-  operator: _ @operator)
+  ["?" ":"] @operator)
 
-[
-  ":"
-  "."
-  ","
-] @punctuation.delimiter
+; Punctuation
 
-[
-  "("
-  ")"
-  "["
-  "]"
-  "{"
-  "}"
-] @punctuation.bracket
-[
-  ":"
-  "."
-  ","
-] @punctuation.delimiter
+[ ":" "." "," ] @punctuation.delimiter
 
-; Rest (general identifiers that are not yet catched)
+[ "{" "}" "[" "]" "(" ")" ] @punctuation.bracket
 
-(index) @variable
+; Literals
+
+(number (float)) @constant.numeric.float
+
+(number (integer)) @constant.numeric.integer
+
+(boolean) @boolean
+
+; Strings
+
+(escape_sequence) @string.escape
+
+(string_interpolation
+  "${" @punctuation.special
+  "}" @punctuation.special)
+
+[ (string_fragment) "\"" "'" "`" ] @string
+
+; Attributes & Fields
+
+(keyword) @attribute
+
+; Functions
+
+(function_call
+  name: (ident) @function.call)
+
+; Variables
+
 (ident) @variable
+
+(array
+  (symbol) @variable)
+
+; Builtin widgets
+
+(list .
+  ((symbol) @tag.builtin
+    (#match? @tag.builtin "^(box|button|calendar|centerbox|checkbox|circular-progress|color-button|color-chooser|combo-box-text|eventbox|expander|graph|image|input|label|literal|overlay|progress|revealer|scale|scroll|transform)$")))
+
+; Keywords
+
+; I think there's a bug in tree-sitter the anchor doesn't seem to be working, see
+; https://github.com/tree-sitter/tree-sitter/pull/2107
+(list .
+  ((symbol) @keyword
+    (#match? @keyword "^(defwindow|defwidget|defvar|defpoll|deflisten|geometry|children|struts)$")))
+
+(list .
+  ((symbol) @keyword.control.import
+    (#eq? @keyword.control.import "include")))
+
+; Loop
+
+(loop_widget . "for" @keyword.control.repeat . (symbol) @variable . "in" @keyword.operator . (symbol) @variable)
+
+(loop_widget . "for" @keyword.control.repeat . (symbol) @variable . "in" @keyword.operator)
+
+; Tags
+
+; TODO apply to every symbol in list? I think it should probably only be applied to the first child of the list
+(list
+  (symbol) @tag)
+
+; Other stuff that has not been catched by the previous queries yet
+
+(ident) @variable
+(index) @variable

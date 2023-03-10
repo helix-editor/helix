@@ -215,6 +215,7 @@ We use a similar set of scopes as
   - `special` (preprocessor in C)
 
 - `tag` - Tags (e.g. `<body>` in HTML)
+  - `builtin`
 
 - `namespace`
 
