@@ -47,7 +47,7 @@ type-parameter = {icon = ""}
 file = {icon = ""}
 folder = {icon = ""}
 folder_opened = {icon = ""}
-git_branch = {icon = ""}
+vcs_branch = {icon = ""}
 
 [mime-type]
 # This is heavily based on https://github.com/nvim-tree/nvim-web-devicons
