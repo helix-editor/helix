@@ -1,5 +1,6 @@
 use anyhow::{anyhow, bail, Context, Error};
 use arc_swap::access::DynAccess;
+use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
@@ -158,6 +159,7 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 
     diff_handle: Option<DiffHandle>,
+    version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
 }
 
 use std::{fmt, mem};
@@ -404,6 +406,7 @@ impl Document {
             language_server: None,
             diff_handle: None,
             config,
+            version_control_head: None,
         }
     }
     pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
@@ -706,6 +709,8 @@ impl Document {
             Some(diff_base) => self.set_diff_base(diff_base, redraw_handle),
             None => self.diff_handle = None,
         }
+
+        self.version_control_head = provider_registry.get_current_head_name(&path);
 
         Ok(())
     }
@@ -1156,6 +1161,17 @@ impl Document {
         } else {
             self.diff_handle = None;
         }
+    }
+
+    pub fn version_control_head(&self) -> Option<Arc<Box<str>>> {
+        self.version_control_head.as_ref().map(|a| a.load_full())
+    }
+
+    pub fn set_version_control_head(
+        &mut self,
+        version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
+    ) {
+        self.version_control_head = version_control_head;
     }
 
     #[inline]

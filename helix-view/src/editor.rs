@@ -467,6 +467,9 @@ pub enum StatusLineElement {
 
     /// A single space
     Spacer,
+
+    /// Current version control information
+    VersionControl,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -1297,6 +1300,7 @@ impl Editor {
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
                 doc.set_diff_base(diff_base, self.redraw_handle.clone());
             }
+            doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
             let id = self.new_document(doc);
             let _ = self.launch_language_server(id);
