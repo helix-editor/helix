@@ -3,10 +3,7 @@ use log::warn;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use std::{
-    path::{Path, PathBuf},
-    str,
-};
+use std::{path::PathBuf, str};
 use toml::Value;
 
 use crate::graphics::{Color, Style};
@@ -220,7 +217,7 @@ pub static DEFAULT_ICONS: Lazy<Icons> = Lazy::new(|| Icons {
 
 impl Loader {
     /// Creates a new loader that can load icons flavors from two directories.
-    pub fn new<P: AsRef<Path>>(dirs: &[PathBuf]) -> Self {
+    pub fn new(dirs: &[PathBuf]) -> Self {
         Self {
             icons_dirs: dirs.iter().map(|p| p.join("icons")).collect(),
         }

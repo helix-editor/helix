@@ -311,6 +311,37 @@ pub mod completers {
         names
     }
 
+    pub fn icons(_editor: &Editor, input: &str) -> Vec<Completion> {
+        let mut names = helix_loader::read_toml_names(&helix_loader::config_dir().join("icons"));
+        for rt_dir in helix_loader::runtime_dirs() {
+            names.extend(helix_loader::read_toml_names(&rt_dir.join("icons")));
+        }
+        names.push("default".into());
+        names.sort();
+        names.dedup();
+
+        let mut names: Vec<_> = names
+            .into_iter()
+            .map(|name| ((0..), Cow::from(name)))
+            .collect();
+
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = names
+            .into_iter()
+            .filter_map(|(_range, name)| {
+                matcher.fuzzy_match(&name, input).map(|score| (name, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by(|(name1, score1), (name2, score2)| {
+            (Reverse(*score1), name1).cmp(&(Reverse(*score2), name2))
+        });
+        names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
+
+        names
+    }
+
     /// Recursive function to get all keys from this value and add them to vec
     fn get_keys(value: &serde_json::Value, vec: &mut Vec<String>, scope: Option<&str>) {
         if let Some(map) = value.as_object() {
