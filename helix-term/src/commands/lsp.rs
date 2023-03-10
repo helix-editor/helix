@@ -1290,8 +1290,7 @@ pub fn rename_symbol(cx: &mut Context) {
                     match language_server.rename_symbol(doc.identifier(), pos, input.to_string()) {
                         Some(future) => future,
                         None => {
-                            cx.editor
-                                .set_error("Language server does not support symbol renaming");
+                            cx.editor.set_error("Failed to rename symbol");
                             return;
                         }
                     };
@@ -1309,6 +1308,12 @@ pub fn rename_symbol(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
+
+    if !language_server.supports_rename() {
+        cx.editor
+            .set_error("Language server does not support symbol renaming");
+        return;
+    }
 
     let pos = doc.position(view.id, offset_encoding);
 
