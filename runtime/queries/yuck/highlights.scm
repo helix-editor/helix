@@ -47,7 +47,7 @@
 
 ; Strings
 
-(escape_sequence) @string.escape
+(escape_sequence) @constant.character.escape
 
 (string_interpolation
   "${" @punctuation.special
