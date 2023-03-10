@@ -240,7 +240,6 @@ pub mod completers {
     use fuzzy_matcher::FuzzyMatcher;
     use helix_core::syntax::LanguageServerFeature;
     use helix_view::document::SCRATCH_BUFFER_NAME;
-    use helix_view::theme;
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
@@ -281,9 +280,9 @@ pub mod completers {
     }
 
     pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
-        let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
+        let mut names = helix_loader::read_toml_names(&helix_loader::config_dir().join("themes"));
         for rt_dir in helix_loader::runtime_dirs() {
-            names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
+            names.extend(helix_loader::read_toml_names(&rt_dir.join("themes")));
         }
         names.push("default".into());
         names.push("base16_default".into());

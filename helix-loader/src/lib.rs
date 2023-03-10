@@ -324,6 +324,22 @@ fn load_toml(path: &Path) -> Result<Value> {
     Ok(value)
 }
 
+/// Returns the names of the TOML documents within a directory
+pub fn read_toml_names(path: &Path) -> Vec<String> {
+    std::fs::read_dir(path)
+        .map(|entries| {
+            entries
+                .filter_map(|entry| {
+                    let entry = entry.ok()?;
+                    let path = entry.path();
+                    (path.extension()? == "toml")
+                        .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod merge_toml_tests {
     use std::str;
