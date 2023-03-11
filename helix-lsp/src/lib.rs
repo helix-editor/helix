@@ -345,6 +345,7 @@ pub mod util {
         line_ending: &str,
         include_placeholder: bool,
         tab_width: usize,
+        indent_width: usize,
     ) -> Transaction {
         let text = doc.slice(..);
 
@@ -374,19 +375,14 @@ pub mod util {
                 let mapped_replacement_end = (replacement_end as i128 + off) as usize;
 
                 let line_idx = mapped_doc.char_to_line(mapped_replacement_start);
-                let pos_on_line = mapped_replacement_start - mapped_doc.line_to_char(line_idx);
-
-                // we only care about the actual offset here (not virtual text/softwrap)
-                // so it's ok to use the deprecated function here
-                #[allow(deprecated)]
-                let width = helix_core::visual_coords_at_pos(
+                let indent_level = helix_core::indent::indent_level_for_line(
                     mapped_doc.line(line_idx),
-                    pos_on_line,
                     tab_width,
-                )
-                .col;
+                    indent_width,
+                ) * indent_width;
+
                 let newline_with_offset = format!(
-                    "{line_ending}{blank:width$}",
+                    "{line_ending}{blank:indent_level$}",
                     line_ending = line_ending,
                     blank = ""
                 );
