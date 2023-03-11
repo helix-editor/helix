@@ -182,6 +182,7 @@ impl Completion {
                             doc.line_ending.as_str(),
                             include_placeholder,
                             doc.tab_width(),
+                            doc.indent_width(),
                         ),
                         Err(err) => {
                             log::error!(
