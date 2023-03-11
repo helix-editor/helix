@@ -921,8 +921,6 @@ impl Document {
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
     fn apply_impl(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
-        use helix_core::Assoc;
-
         let old_doc = self.text().clone();
 
         let changes = transaction.changes();
