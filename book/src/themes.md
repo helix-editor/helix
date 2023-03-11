@@ -1,14 +1,15 @@
 # Themes
 
-To use a theme add `theme = "<name>"` to your [`config.toml`](./configuration.md) at the very top of the file before the first section or select it during runtime using `:theme <name>`.
+To use a theme add `theme = "<name>"` to the top of your [`config.toml`](./configuration.md) file, or select it during runtime using `:theme <name>`.
 
 ## Creating a theme
 
-Create a file with the name of your theme as file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/helix/themes`). The directory might have to be created beforehand.
+Create a file with the name of your theme as the file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/helix/themes` or `%AppData%\helix\themes` on Windows). The directory might have to be created beforehand.
 
-The names "default" and "base16_default" are reserved for the builtin themes and cannot be overridden by user defined themes.
+> 💡 The names "default" and "base16_default" are reserved for built-in themes
+> and cannot be overridden by user-defined themes.
 
-The default theme.toml can be found [here](https://github.com/helix-editor/helix/blob/master/theme.toml), and user submitted themes [here](https://github.com/helix-editor/helix/blob/master/runtime/themes). 
+### Overview
 
 Each line in the theme file is specified as below:
 
@@ -16,7 +17,7 @@ Each line in the theme file is specified as below:
 key = { fg = "#ffffff", bg = "#000000", underline = { color = "#ff0000", style = "curl"}, modifiers = ["bold", "italic"] }
 ```
 
-where `key` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, `underline` the underline `style`/`color`, and `modifiers` is a list of style modifiers. `bg`, `underline` and `modifiers` can be omitted to defer to the defaults.
+Where `key` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, `underline` the underline `style`/`color`, and `modifiers` is a list of style modifiers. `bg`, `underline` and `modifiers` can be omitted to defer to the defaults.
 
 To specify only the foreground color:
 
@@ -24,15 +25,30 @@ To specify only the foreground color:
 key = "#ffffff"
 ```
 
-if the key contains a dot `'.'`, it must be quoted to prevent it being parsed as a [dotted key](https://toml.io/en/v1.0.0#keys).
+If the key contains a dot `'.'`, it must be quoted to prevent it being parsed as a [dotted key](https://toml.io/en/v1.0.0#keys).
 
 ```toml
 "key.key" = "#ffffff"
 ```
 
+For inspiration, you can find the default `theme.toml`
+[here](https://github.com/helix-editor/helix/blob/master/theme.toml) and
+user-submitted themes
+[here](https://github.com/helix-editor/helix/blob/master/runtime/themes).
+
+### Using the linter
+
+Use the supplied linting tool to check for errors and missing scopes:
+
+```sh
+cargo xtask themelint onedark # replace onedark with <name>
+```
+
+## The details of theme creation
+
 ### Color palettes
 
-It's recommended define a palette of named colors, and refer to them from the
+It's recommended to define a palette of named colors, and refer to them in the
 configuration values in your theme. To do this, add a table called
 `palette` to your theme file:
 
@@ -45,8 +61,8 @@ white = "#ffffff"
 black = "#000000"
 ```
 
-Remember that the `[palette]` table includes all keys after its header,
-so you should define the palette after normal theme options.
+Keep in mind that the `[palette]` table includes all keys after its header,
+so it should be defined after the normal theme options.
 
 The default palette uses the terminal's default 16 colors, and the colors names
 are listed below. The `[palette]` section in the config file takes precedence
@@ -73,9 +89,8 @@ over it and is merged into the default palette.
 
 ### Modifiers
 
-The following values may be used as modifiers. 
-
-Less common modifiers might not be supported by your terminal emulator.
+The following values may be used as modifier, provided they are supported by
+your terminal emulator.
 
 | Modifier             |
 | ---                  |
@@ -89,14 +104,13 @@ Less common modifiers might not be supported by your terminal emulator.
 | `hidden`             |
 | `crossed_out`        |
 
-> Note: The `underlined` modifier is deprecated and only available for backwards compatibility.
+> 💡 The `underlined` modifier is deprecated and only available for backwards compatibility.
 > Its behavior is equivalent to setting `underline.style="line"`.
 
-### Underline Style
+### Underline style
 
-One of the following values may be used as a value for `underline.style`. 
-
-Some styles might not be supported by your terminal emulator.
+One of the following values may be used as a value for `underline.style`, providing it is
+supported by your terminal emulator.
 
 | Modifier       |
 | ---            |
@@ -109,7 +123,7 @@ Some styles might not be supported by your terminal emulator.
 
 ### Inheritance
 
-Extend upon other themes by setting the `inherits` property to an existing theme.
+Extend other themes by setting the `inherits` property to an existing theme.
 
 ```toml
 inherits = "boo_berry"
@@ -124,19 +138,19 @@ berry = "#2A2A4D"
 
 ### Scopes
 
-The following is a list of scopes available to use for styling.
+The following is a list of scopes available to use for styling:
 
 #### Syntax highlighting
 
 These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme).
 
-For a given highlight produced, styling will be determined based on the longest matching theme key. For example, the highlight `function.builtin.static` would match the key `function.builtin` rather than `function`.
+When determining styling for a highlight, the longest matching theme key will be used. For example, if the highlight is `function.builtin.static`, the key `function.builtin` will be used instead of `function`.
 
 We use a similar set of scopes as
-[SublimeText](https://www.sublimetext.com/docs/scope_naming.html). See also
+[Sublime Text](https://www.sublimetext.com/docs/scope_naming.html). See also
 [TextMate](https://macromates.com/manual/en/language_grammars) scopes.
 
-- `attribute` - Class attributes, html tag attributes
+- `attribute` - Class attributes, HTML tag attributes
 
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
@@ -144,7 +158,7 @@ We use a similar set of scopes as
     - `variant`
 - `constructor`
 
-- `constant` (TODO: constant.other.placeholder for %v)
+- `constant` (TODO: constant.other.placeholder for `%v`)
   - `builtin` Special constants provided by the language (`true`, `false`, `nil` etc)
     - `boolean`
   - `character`
@@ -162,11 +176,11 @@ We use a similar set of scopes as
 
 - `comment` - Code comments
   - `line` - Single line comments (`//`)
-  - `block` - Block comments (e.g. (`/*     */`)
+  - `block` - Block comments (e.g. (`/* */`)
     - `documentation` - Documentation comments (e.g. `///` in Rust)
 
 - `variable` - Variables
-  - `builtin` - Reserved language variables (`self`, `this`, `super`, etc)
+  - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
   - `parameter` - Function parameters
   - `other`
     - `member` - Fields of composite data types (e.g. structs, unions)
@@ -186,10 +200,10 @@ We use a similar set of scopes as
     - `return`
     - `exception`
   - `operator` - `or`, `in`
-  - `directive` - Preprocessor directives (`#if` in C) 
+  - `directive` - Preprocessor directives (`#if` in C)
   - `function` - `fn`, `func`
   - `storage` - Keywords describing how things are stored
-    - `type` - The type of something, `class`, `function`, `var`, `let`, etc. 
+    - `type` - The type of something, `class`, `function`, `var`, `let`, etc.
     - `modifier` - Storage modifiers like `static`, `mut`, `const`, `ref`, etc.
 
 - `operator` - `||`, `+=`, `>`
@@ -201,6 +215,7 @@ We use a similar set of scopes as
   - `special` (preprocessor in C)
 
 - `tag` - Tags (e.g. `<body>` in HTML)
+  - `builtin`
 
 - `namespace`
 
@@ -216,9 +231,9 @@ We use a similar set of scopes as
   - `bold`
   - `italic`
   - `link`
-    - `url` - urls pointed to by links
-    - `label` - non-url link references
-    - `text` - url and image descriptions in links
+    - `url` - URLs pointed to by links
+    - `label` - non-URL link references
+    - `text` - URL and image descriptions in links
   - `quote`
   - `raw`
     - `inline`
@@ -232,79 +247,76 @@ We use a similar set of scopes as
 
 #### Interface
 
-These scopes are used for theming the editor interface.
+These scopes are used for theming the editor interface:
 
 - `markup`
   - `normal`
-    - `completion` - for completion doc popup ui
-    - `hover` - for hover popup ui
+    - `completion` - for completion doc popup UI
+    - `hover` - for hover popup UI
   - `heading`
-    - `completion` - for completion doc popup ui
-    - `hover` - for hover popup ui
+    - `completion` - for completion doc popup UI
+    - `hover` - for hover popup UI
   - `raw`
     - `inline`
-      - `completion` - for completion doc popup ui
-      - `hover` - for hover popup ui
+      - `completion` - for completion doc popup UI
+      - `hover` - for hover popup UI
 
 
-| Key                         | Notes                                                                                          |
-| ---                         | ---                                                                                            |
-| `ui.background`             |                                                                                                |
-| `ui.background.separator`   | Picker separator below input line                                                              |
-| `ui.cursor`                 |                                                                                                |
-| `ui.cursor.normal`          |                                                                                                |
-| `ui.cursor.insert`          |                                                                                                |
-| `ui.cursor.select`          |                                                                                                |
-| `ui.cursor.match`           | Matching bracket etc.                                                                          |
-| `ui.cursor.primary`         | Cursor with primary selection                                                                  |
-| `ui.cursor.primary.normal`  |                                                                                                |
-| `ui.cursor.primary.insert`  |                                                                                                |
-| `ui.cursor.primary.select`  |                                                                                                |
-| `ui.gutter`                 | Gutter                                                                                         |
-| `ui.gutter.selected`        | Gutter for the line the cursor is on                                                           |
-| `ui.linenr`                 | Line numbers                                                                                   |
-| `ui.linenr.selected`        | Line number for the line the cursor is on                                                      |
-| `ui.statusline`             | Statusline                                                                                     |
-| `ui.statusline.inactive`    | Statusline (unfocused document)                                                                |
-| `ui.statusline.normal`      | Statusline mode during normal mode ([only if `editor.color-modes` is enabled][editor-section]) |
-| `ui.statusline.insert`      | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
-| `ui.statusline.select`      | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
-| `ui.statusline.separator`   | Separator character in statusline                                                              |
-| `ui.popup`                  | Documentation popups (e.g Space + k)                                                           |
-| `ui.popup.info`             | Prompt for multiple key options                                                                |
-| `ui.window`                 | Border lines separating splits                                                                 |
-| `ui.help`                   | Description box for commands                                                                   |
-| `ui.text`                   | Command prompts, popup text, etc.                                                              |
-| `ui.text.focus`             |                                                                                                |
-| `ui.text.inactive`          | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
-| `ui.text.info`              | The key: command text in `ui.popup.info` boxes                                                 |
-| `ui.virtual.ruler`          | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
-| `ui.virtual.whitespace`     | Visible whitespace characters                                                                  |
-| `ui.virtual.indent-guide`   | Vertical indent width guides                                                                   |
-| `ui.virtual.wrap`           | Soft-wrap indicator (see the [`editor.soft-wrap` config][editor-section])                      |
-| `ui.menu`                   | Code and command completion menus                                                              |
-| `ui.menu.selected`          | Selected autocomplete item                                                                     |
-| `ui.menu.scroll`            | `fg` sets thumb color, `bg` sets track color of scrollbar                                      |
-| `ui.selection`              | For selections in the editing area                                                             |
-| `ui.selection.primary`      |                                                                                                |
-| `ui.cursorline.primary`     | The line of the primary cursor ([if cursorline is enabled][editor-section])                    |
-| `ui.cursorline.secondary`   | The lines of any other cursors ([if cursorline is enabled][editor-section])                    |
-| `ui.cursorcolumn.primary`   | The column of the primary cursor ([if cursorcolumn is enabled][editor-section])                |
-| `ui.cursorcolumn.secondary` | The columns of any other cursors ([if cursorcolumn is enabled][editor-section])                |
-| `warning`                   | Diagnostics warning (gutter)                                                                   |
-| `error`                     | Diagnostics error (gutter)                                                                     |
-| `info`                      | Diagnostics info (gutter)                                                                      |
-| `hint`                      | Diagnostics hint (gutter)                                                                      |
-| `diagnostic`                | Diagnostics fallback style (editing area)                                                      |
-| `diagnostic.hint`           | Diagnostics hint (editing area)                                                                |
-| `diagnostic.info`           | Diagnostics info (editing area)                                                                |
-| `diagnostic.warning`        | Diagnostics warning (editing area)                                                             |
-| `diagnostic.error`          | Diagnostics error (editing area)                                                               |
-
-You can check compliance to spec with
-
-```shell
-cargo xtask themelint onedark  # replace onedark with <name>
-```
+| Key                               | Notes                                                                                          |
+| ---                               | ---                                                                                            |
+| `ui.background`                   |                                                                                                |
+| `ui.background.separator`         | Picker separator below input line                                                              |
+| `ui.cursor`                       |                                                                                                |
+| `ui.cursor.normal`                |                                                                                                |
+| `ui.cursor.insert`                |                                                                                                |
+| `ui.cursor.select`                |                                                                                                |
+| `ui.cursor.match`                 | Matching bracket etc.                                                                          |
+| `ui.cursor.primary`               | Cursor with primary selection                                                                  |
+| `ui.cursor.primary.normal`        |                                                                                                |
+| `ui.cursor.primary.insert`        |                                                                                                |
+| `ui.cursor.primary.select`        |                                                                                                |
+| `ui.gutter`                       | Gutter                                                                                         |
+| `ui.gutter.selected`              | Gutter for the line the cursor is on                                                           |
+| `ui.linenr`                       | Line numbers                                                                                   |
+| `ui.linenr.selected`              | Line number for the line the cursor is on                                                      |
+| `ui.statusline`                   | Statusline                                                                                     |
+| `ui.statusline.inactive`          | Statusline (unfocused document)                                                                |
+| `ui.statusline.normal`            | Statusline mode during normal mode ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.insert`            | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.select`            | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.separator`         | Separator character in statusline                                                              |
+| `ui.popup`                        | Documentation popups (e.g. Space + k)                                                          |
+| `ui.popup.info`                   | Prompt for multiple key options                                                                |
+| `ui.window`                       | Borderlines separating splits                                                                  |
+| `ui.help`                         | Description box for commands                                                                   |
+| `ui.text`                         | Command prompts, popup text, etc.                                                              |
+| `ui.text.focus`                   |                                                                                                |
+| `ui.text.inactive`                | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
+| `ui.text.info`                    | The key: command text in `ui.popup.info` boxes                                                 |
+| `ui.virtual.ruler`                | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
+| `ui.virtual.whitespace`           | Visible whitespace characters                                                                  |
+| `ui.virtual.indent-guide`         | Vertical indent width guides                                                                   |
+| `ui.virtual.inlay-hint`           | Default style for inlay hints of all kinds                                                     |
+| `ui.virtual.inlay-hint.parameter` | Style for inlay hints of kind `parameter` (LSPs are not required to set a kind)                |
+| `ui.virtual.inlay-hint.type`      | Style for inlay hints of kind `type` (LSPs are not required to set a kind)                     |
+| `ui.virtual.wrap`                 | Soft-wrap indicator (see the [`editor.soft-wrap` config][editor-section])                      |
+| `ui.menu`                         | Code and command completion menus                                                              |
+| `ui.menu.selected`                | Selected autocomplete item                                                                     |
+| `ui.menu.scroll`                  | `fg` sets thumb color, `bg` sets track color of scrollbar                                      |
+| `ui.selection`                    | For selections in the editing area                                                             |
+| `ui.selection.primary`            |                                                                                                |
+| `ui.cursorline.primary`           | The line of the primary cursor ([if cursorline is enabled][editor-section])                    |
+| `ui.cursorline.secondary`         | The lines of any other cursors ([if cursorline is enabled][editor-section])                    |
+| `ui.cursorcolumn.primary`         | The column of the primary cursor ([if cursorcolumn is enabled][editor-section])                |
+| `ui.cursorcolumn.secondary`       | The columns of any other cursors ([if cursorcolumn is enabled][editor-section])                |
+| `warning`                         | Diagnostics warning (gutter)                                                                   |
+| `error`                           | Diagnostics error (gutter)                                                                     |
+| `info`                            | Diagnostics info (gutter)                                                                      |
+| `hint`                            | Diagnostics hint (gutter)                                                                      |
+| `diagnostic`                      | Diagnostics fallback style (editing area)                                                      |
+| `diagnostic.hint`                 | Diagnostics hint (editing area)                                                                |
+| `diagnostic.info`                 | Diagnostics info (editing area)                                                                |
+| `diagnostic.warning`              | Diagnostics warning (editing area)                                                             |
+| `diagnostic.error`                | Diagnostics error (editing area)                                                               |
 
 [editor-section]: ./configuration.md#editor-section

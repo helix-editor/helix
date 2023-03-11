@@ -30,22 +30,15 @@ use crate::{
 
 use log::{debug, error, warn};
 use std::{
-    io::{stdin, stdout, Write},
+    io::{stdin, stdout},
+    path::Path,
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use anyhow::{Context, Error};
 
-use crossterm::{
-    event::{
-        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent, KeyboardEnhancementFlags,
-        PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
-    },
-    execute, terminal,
-    tty::IsTty,
-};
+use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
 use {
     signal_hook::{consts::signal, low_level},
@@ -63,10 +56,12 @@ use tui::backend::CrosstermBackend;
 use tui::backend::TestBackend;
 
 #[cfg(not(feature = "integration"))]
-type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
+type TerminalBackend = CrosstermBackend<std::io::Stdout>;
 
 #[cfg(feature = "integration")]
-type Terminal = tui::terminal::Terminal<TestBackend>;
+type TerminalBackend = TestBackend;
+
+type Terminal = tui::terminal::Terminal<TerminalBackend>;
 
 pub struct Application {
     compositor: Compositor,
@@ -108,26 +103,6 @@ fn setup_integration_logging() {
         .apply();
 }
 
-fn restore_term() -> Result<(), Error> {
-    let mut stdout = stdout();
-    // reset cursor shape
-    write!(stdout, "\x1B[0 q")?;
-    if matches!(terminal::supports_keyboard_enhancement(), Ok(true)) {
-        execute!(stdout, PopKeyboardEnhancementFlags)?;
-    }
-    // Ignore errors on disabling, this might trigger on windows if we call
-    // disable without calling enable previously
-    let _ = execute!(stdout, DisableMouseCapture);
-    execute!(
-        stdout,
-        DisableBracketedPaste,
-        DisableFocusChange,
-        terminal::LeaveAlternateScreen
-    )?;
-    terminal::disable_raw_mode()?;
-    Ok(())
-}
-
 impl Application {
     pub fn new(
         args: Args,
@@ -139,10 +114,9 @@ impl Application {
 
         use helix_view::editor::Action;
 
-        let theme_loader = std::sync::Arc::new(theme::Loader::new(
-            &helix_loader::config_dir(),
-            &helix_loader::runtime_dir(),
-        ));
+        let mut theme_parent_dirs = vec![helix_loader::config_dir()];
+        theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
+        let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
 
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
@@ -188,7 +162,7 @@ impl Application {
         compositor.push(editor_view);
 
         if args.load_tutor {
-            let path = helix_loader::runtime_dir().join("tutor");
+            let path = helix_loader::runtime_file(Path::new("tutor"));
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
@@ -345,11 +319,11 @@ impl Application {
             tokio::select! {
                 biased;
 
-                Some(event) = input_stream.next() => {
-                    self.handle_terminal_events(event).await;
-                }
                 Some(signal) = self.signals.next() => {
                     self.handle_signals(signal).await;
+                }
+                Some(event) = input_stream.next() => {
+                    self.handle_terminal_events(event).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
@@ -472,13 +446,7 @@ impl Application {
     pub async fn handle_signals(&mut self, signal: i32) {
         match signal {
             signal::SIGTSTP => {
-                // restore cursor
-                use helix_view::graphics::CursorKind;
-                self.terminal
-                    .backend_mut()
-                    .show_cursor(CursorKind::Block)
-                    .ok();
-                restore_term().unwrap();
+                self.restore_term().unwrap();
                 low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
             }
             signal::SIGCONT => {
@@ -960,24 +928,32 @@ impl Application {
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
                 method, params, id, ..
             }) => {
-                let call = match MethodCall::parse(&method, params) {
-                    Ok(call) => call,
+                let reply = match MethodCall::parse(&method, params) {
                     Err(helix_lsp::Error::Unhandled) => {
-                        error!("Language Server: Method not found {}", method);
-                        return;
+                        error!(
+                            "Language Server: Method {} not found in request {}",
+                            method, id
+                        );
+                        Err(helix_lsp::jsonrpc::Error {
+                            code: helix_lsp::jsonrpc::ErrorCode::MethodNotFound,
+                            message: format!("Method not found: {}", method),
+                            data: None,
+                        })
                     }
                     Err(err) => {
                         log::error!(
-                            "received malformed method call from Language Server: {}: {}",
+                            "Language Server: Received malformed method call {} in request {}: {}",
                             method,
+                            id,
                             err
                         );
-                        return;
+                        Err(helix_lsp::jsonrpc::Error {
+                            code: helix_lsp::jsonrpc::ErrorCode::ParseError,
+                            message: format!("Malformed method call: {}", method),
+                            data: None,
+                        })
                     }
-                };
-
-                let reply = match call {
-                    MethodCall::WorkDoneProgressCreate(params) => {
+                    Ok(MethodCall::WorkDoneProgressCreate(params)) => {
                         self.lsp_progress.create(server_id, params.token);
 
                         let editor_view = self
@@ -991,7 +967,7 @@ impl Application {
 
                         Ok(serde_json::Value::Null)
                     }
-                    MethodCall::ApplyWorkspaceEdit(params) => {
+                    Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
                         apply_workspace_edit(
                             &mut self.editor,
                             helix_lsp::OffsetEncoding::Utf8,
@@ -1004,13 +980,13 @@ impl Application {
                             failed_change: None,
                         }))
                     }
-                    MethodCall::WorkspaceFolders => {
+                    Ok(MethodCall::WorkspaceFolders) => {
                         let language_server =
                             self.editor.language_servers.get_by_id(server_id).unwrap();
 
                         Ok(json!(language_server.workspace_folders()))
                     }
-                    MethodCall::WorkspaceConfiguration(params) => {
+                    Ok(MethodCall::WorkspaceConfiguration(params)) => {
                         let result: Vec<_> = params
                             .items
                             .iter()
@@ -1054,37 +1030,19 @@ impl Application {
         }
     }
 
-    async fn claim_term(&mut self) -> Result<(), Error> {
-        use helix_view::graphics::CursorKind;
-        terminal::enable_raw_mode()?;
-        if self.terminal.cursor_kind() == CursorKind::Hidden {
-            self.terminal.backend_mut().hide_cursor().ok();
-        }
-        let mut stdout = stdout();
-        execute!(
-            stdout,
-            terminal::EnterAlternateScreen,
-            EnableBracketedPaste,
-            EnableFocusChange
-        )?;
-        execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
-        if self.config.load().editor.mouse {
-            execute!(stdout, EnableMouseCapture)?;
-        }
-        if matches!(terminal::supports_keyboard_enhancement(), Ok(true)) {
-            log::debug!("The enhanced keyboard protocol is supported on this terminal");
-            execute!(
-                stdout,
-                PushKeyboardEnhancementFlags(
-                    KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
-                        | KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
-                )
-            )?;
-        } else {
-            log::debug!("The enhanced keyboard protocol is not supported on this terminal");
-        }
+    async fn claim_term(&mut self) -> std::io::Result<()> {
+        let terminal_config = self.config.load().editor.clone().into();
+        self.terminal.claim(terminal_config)
+    }
 
-        Ok(())
+    fn restore_term(&mut self) -> std::io::Result<()> {
+        let terminal_config = self.config.load().editor.clone().into();
+        use helix_view::graphics::CursorKind;
+        self.terminal
+            .backend_mut()
+            .show_cursor(CursorKind::Block)
+            .ok();
+        self.terminal.restore(terminal_config)
     }
 
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
@@ -1099,7 +1057,7 @@ impl Application {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`.
-            let _ = restore_term();
+            let _ = TerminalBackend::force_restore();
             hook(info);
         }));
 
@@ -1107,13 +1065,7 @@ impl Application {
 
         let close_errs = self.close().await;
 
-        // restore cursor
-        use helix_view::graphics::CursorKind;
-        self.terminal
-            .backend_mut()
-            .show_cursor(CursorKind::Block)
-            .ok();
-        restore_term()?;
+        self.restore_term()?;
 
         for err in close_errs {
             self.editor.exit_code = 1;

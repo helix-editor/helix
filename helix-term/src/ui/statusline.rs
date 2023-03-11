@@ -160,6 +160,7 @@ where
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::DateTime => render_date_time,
+        helix_view::editor::StatusLineElement::VersionControl => render_version_control,
     }
 }
 
@@ -489,4 +490,17 @@ where
         chrono::Local::now().format(date_time_format).to_string(),
         None,
     );
+}
+
+fn render_version_control<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let head = context
+        .doc
+        .version_control_head()
+        .unwrap_or_default()
+        .to_string();
+
+    write(context, head, None);
 }

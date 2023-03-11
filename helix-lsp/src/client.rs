@@ -315,12 +315,15 @@ impl Client {
                     execute_command: Some(lsp::DynamicRegistrationClientCapabilities {
                         dynamic_registration: Some(false),
                     }),
+                    inlay_hint: Some(lsp::InlayHintWorkspaceClientCapabilities {
+                        refresh_support: Some(false),
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
                     completion: Some(lsp::CompletionClientCapabilities {
                         completion_item: Some(lsp::CompletionItemCapability {
-                            snippet_support: Some(false),
+                            snippet_support: Some(true),
                             resolve_support: Some(lsp::CompletionItemCapabilityResolveSupport {
                                 properties: vec![
                                     String::from("documentation"),
@@ -359,7 +362,7 @@ impl Client {
                     }),
                     rename: Some(lsp::RenameClientCapabilities {
                         dynamic_registration: Some(false),
-                        prepare_support: Some(false),
+                        prepare_support: Some(true),
                         prepare_support_default_behavior: None,
                         honors_change_annotations: Some(false),
                     }),
@@ -385,6 +388,10 @@ impl Client {
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
                         ..Default::default()
+                    }),
+                    inlay_hint: Some(lsp::InlayHintClientCapabilities {
+                        dynamic_registration: Some(false),
+                        resolve_support: None,
                     }),
                     ..Default::default()
                 }),
@@ -726,6 +733,31 @@ impl Client {
         Some(self.call::<lsp::request::SignatureHelpRequest>(params))
     }
 
+    pub fn text_document_range_inlay_hints(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        range: lsp::Range,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match capabilities.inlay_hint_provider {
+            Some(
+                lsp::OneOf::Left(true)
+                | lsp::OneOf::Right(lsp::InlayHintServerCapabilities::Options(_)),
+            ) => (),
+            _ => return None,
+        }
+
+        let params = lsp::InlayHintParams {
+            text_document,
+            range,
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+        };
+
+        Some(self.call::<lsp::request::InlayHintRequest>(params))
+    }
+
     pub fn text_document_hover(
         &self,
         text_document: lsp::TextDocumentIdentifier,
@@ -1032,6 +1064,29 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::DocumentSymbolRequest>(params))
+    }
+
+    pub fn prepare_rename(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match capabilities.rename_provider {
+            Some(lsp::OneOf::Right(lsp::RenameOptions {
+                prepare_provider: Some(true),
+                ..
+            })) => (),
+            _ => return None,
+        }
+
+        let params = lsp::TextDocumentPositionParams {
+            text_document,
+            position,
+        };
+
+        Some(self.call::<lsp::request::PrepareRenameRequest>(params))
     }
 
     // empty string to get all symbols

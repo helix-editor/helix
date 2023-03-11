@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.63
+        uses: dtolnay/rust-toolchain@1.65
 
       - uses: Swatinem/rust-cache@v2
 
@@ -66,7 +66,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.63
+        uses: dtolnay/rust-toolchain@1.65
         with:
           components: rustfmt, clippy
 
@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.63
+        uses: dtolnay/rust-toolchain@1.65
 
       - uses: Swatinem/rust-cache@v2
 

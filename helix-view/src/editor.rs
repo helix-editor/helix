@@ -31,7 +31,7 @@ use std::{
 use tokio::{
     sync::{
         mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-        Notify, RwLock,
+        oneshot, Notify, RwLock,
     },
     time::{sleep, Duration, Instant, Sleep},
 };
@@ -40,12 +40,12 @@ use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
-use helix_core::Position;
 use helix_core::{
     auto_pairs::AutoPairs,
-    syntax::{self, AutoPairConfig},
+    syntax::{self, AutoPairConfig, SoftWrap},
     Change,
 };
+use helix_core::{Position, Selection};
 use helix_dap as dap;
 use helix_lsp::lsp;
 
@@ -241,6 +241,8 @@ pub struct Config {
     pub auto_format: bool,
     /// Automatic save on focus lost. Defaults to false.
     pub auto_save: bool,
+    /// Set a global text_width
+    pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -249,6 +251,9 @@ pub struct Config {
     )]
     pub idle_timeout: Duration,
     pub completion_trigger_len: u8,
+    /// Whether to instruct the LSP to replace the entire word when applying a completion
+    /// or to only insert new text
+    pub completion_replace: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -274,43 +279,6 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
-pub struct SoftWrap {
-    /// Soft wrap lines that exceed viewport width. Default to off
-    pub enable: bool,
-    /// Maximum space left free at the end of the line.
-    /// This space is used to wrap text at word boundaries. If that is not possible within this limit
-    /// the word is simply split at the end of the line.
-    ///
-    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
-    ///
-    /// Default to 20
-    pub max_wrap: u16,
-    /// Maximum number of indentation that can be carried over from the previous line when softwrapping.
-    /// If a line is indented further then this limit it is rendered at the start of the viewport instead.
-    ///
-    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
-    ///
-    /// Default to 40
-    pub max_indent_retain: u16,
-    /// Indicator placed at the beginning of softwrapped lines
-    ///
-    /// Defaults to ↪
-    pub wrap_indicator: String,
-}
-
-impl Default for SoftWrap {
-    fn default() -> Self {
-        SoftWrap {
-            enable: false,
-            max_wrap: 20,
-            max_indent_retain: 40,
-            wrap_indicator: "↪ ".into(),
-        }
-    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -377,6 +345,8 @@ pub struct LspConfig {
     pub auto_signature_help: bool,
     /// Display docs under signature help popup
     pub display_signature_help_docs: bool,
+    /// Display inlay hints
+    pub display_inlay_hints: bool,
 }
 
 impl Default for LspConfig {
@@ -386,6 +356,7 @@ impl Default for LspConfig {
             display_messages: false,
             auto_signature_help: true,
             display_signature_help_docs: true,
+            display_inlay_hints: false,
         }
     }
 }
@@ -504,6 +475,9 @@ pub enum StatusLineElement {
 
     /// The date and time
     DateTime,
+
+    /// Current version control information
+    VersionControl,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -777,6 +751,8 @@ impl Default for Config {
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
             soft_wrap: SoftWrap::default(),
+            text_width: 80,
+            completion_replace: false,
         }
     }
 }
@@ -853,7 +829,12 @@ pub struct Editor {
     /// The currently applied editor theme. While previewing a theme, the previewed theme
     /// is set here.
     pub theme: Theme,
-    pub last_line_number: Option<usize>,
+
+    /// The primary Selection prior to starting a goto_line_number preview. This is
+    /// restored when the preview is aborted, or added to the jumplist when it is
+    /// confirmed.
+    pub last_selection: Option<Selection>,
+
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
@@ -886,6 +867,14 @@ pub struct Editor {
     /// avoid calculating the cursor position multiple
     /// times during rendering and should not be set by other functions.
     pub cursor_cache: Cell<Option<Option<Position>>>,
+    /// When a new completion request is sent to the server old
+    /// unifinished request must be dropped. Each completion
+    /// request is associated with a channel that cancels
+    /// when the channel is dropped. That channel is stored
+    /// here. When a new completion request is sent this
+    /// field is set and any old requests are automatically
+    /// canceled as a result
+    pub completion_request_handle: Option<oneshot::Sender<()>>,
 }
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
@@ -969,7 +958,7 @@ impl Editor {
             syn_loader,
             theme_loader,
             last_theme: None,
-            last_line_number: None,
+            last_selection: None,
             registers: Registers::default(),
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
@@ -984,6 +973,7 @@ impl Editor {
             redraw_handle: Default::default(),
             needs_redraw: false,
             cursor_cache: Cell::new(None),
+            completion_request_handle: None,
         }
     }
 
@@ -1151,6 +1141,19 @@ impl Editor {
 
     fn _refresh(&mut self) {
         let config = self.config();
+
+        // Reset the inlay hints annotations *before* updating the views, that way we ensure they
+        // will disappear during the `.sync_change(doc)` call below.
+        //
+        // We can't simply check this config when rendering because inlay hints are only parts of
+        // the possible annotations, and others could still be active, so we need to selectively
+        // drop the inlay hints.
+        if !config.lsp.display_inlay_hints {
+            for doc in self.documents_mut() {
+                doc.reset_all_inlay_hints();
+            }
+        }
+
         for (view, _) in self.tree.views_mut() {
             let doc = doc_mut!(self, &view.doc);
             view.sync_changes(doc);
@@ -1318,6 +1321,7 @@ impl Editor {
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
                 doc.set_diff_base(diff_base, self.redraw_handle.clone());
             }
+            doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
             let id = self.new_document(doc);
             let _ = self.launch_language_server(id);

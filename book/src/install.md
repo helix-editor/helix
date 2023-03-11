@@ -1,180 +1,239 @@
-# Installation
+# Installing Helix
 
-We provide pre-built binaries on the [GitHub Releases page](https://github.com/helix-editor/helix/releases).
+<!--toc:start-->
+- [Pre-built binaries](#pre-built-binaries)
+- [Linux, macOS, Windows and OpenBSD packaging status](#linux-macos-windows-and-openbsd-packaging-status)
+- [Linux](#linux)
+  - [Ubuntu](#ubuntu)
+  - [Fedora/RHEL](#fedorarhel)
+  - [Arch Linux community](#arch-linux-community)
+  - [NixOS](#nixos)
+- [macOS](#macos)
+  - [Homebrew Core](#homebrew-core)
+- [Windows](#windows)
+  - [Scoop](#scoop)
+  - [Chocolatey](#chocolatey)
+  - [MSYS2](#msys2)
+- [Building from source](#building-from-source)
+  - [Configuring Helix's runtime files](#configuring-helixs-runtime-files)
+  - [Validating the installation](#validating-the-installation)
+  - [Configure the desktop shortcut](#configure-the-desktop-shortcut)
+<!--toc:end-->
+
+To install Helix, follow the instructions specific to your operating system.
+Note that:
+
+- To get the latest nightly version of Helix, you need to
+  [build from source](#building-from-source).
+
+- To take full advantage of Helix, install the language servers for your
+  preferred programming languages. See the
+  [wiki](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)
+  for instructions.
+
+## Pre-built binaries
+
+Download pre-built binaries from the
+[GitHub Releases page](https://github.com/helix-editor/helix/releases). Add the binary to your system's `$PATH` to use it from the command
+line.
+
+## Linux, macOS, Windows and OpenBSD packaging status
+
+Helix is available for Linux, macOS and Windows via the official repositories listed below.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
-## OSX
-
-Helix is available in homebrew-core:
-
-```
-brew install helix
-```
-
 ## Linux
 
-### NixOS
+The following third party repositories are available:
 
-A [flake](https://nixos.wiki/wiki/Flakes) containing the package is available in
-the project root. The flake can also be used to spin up a reproducible development
-shell for working on Helix with `nix develop`.
+### Ubuntu
 
-Flake outputs are cached for each push to master using
-[Cachix](https://www.cachix.org/). The flake is configured to
-automatically make use of this cache assuming the user accepts
-the new settings on first use.
+Helix is available via [Maveonair's PPA](https://launchpad.net/~maveonair/+archive/ubuntu/helix-editor):
 
-If you are using a version of Nix without flakes enabled you can
-[install Cachix cli](https://docs.cachix.org/installation); `cachix use helix` will
-configure Nix to use cached outputs when possible.
-
-### Arch Linux
-
-Releases are available in the `community` repository.
-
-A [helix-git](https://aur.archlinux.org/packages/helix-git/) package is also available on the AUR, which builds the master branch.
-
-### Fedora Linux
-
-You can install the COPR package for Helix via
-
+```sh
+sudo add-apt-repository ppa:maveonair/helix-editor
+sudo apt update
+sudo apt install helix
 ```
+
+### Fedora/RHEL
+
+Helix is available via `copr`:
+
+```sh
 sudo dnf copr enable varlad/helix
 sudo dnf install helix
 ```
 
-### Void Linux
+### Arch Linux community
 
+Releases are available in the `community` repository:
+
+```sh
+sudo pacman -S helix
 ```
-sudo xbps-install helix
+Additionally, a [helix-git](https://aur.archlinux.org/packages/helix-git/) package is available
+in the AUR, which builds the master branch.
+
+### NixOS
+
+Helix is available as a [flake](https://nixos.wiki/wiki/Flakes) in the project
+root. Use `nix develop` to spin up a reproducible development shell. Outputs are
+cached for each push to master using [Cachix](https://www.cachix.org/). The
+flake is configured to automatically make use of this cache assuming the user
+accepts the new settings on first use.
+
+If you are using a version of Nix without flakes enabled,
+[install Cachix CLI](https://docs.cachix.org/installation) and use
+`cachix use helix` to configure Nix to use cached outputs when possible.
+ 
+## macOS
+
+### Homebrew Core
+
+```sh
+brew install helix
 ```
 
 ## Windows
 
-Helix can be installed using [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
+Install on Windows using [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
 or [MSYS2](https://msys2.org/).
 
-**Scoop:**
+### Scoop
 
-```
+```sh
 scoop install helix
 ```
 
-**Chocolatey:**
+### Chocolatey
 
-```
+```sh
 choco install helix
 ```
 
-**MSYS2:**
+### MSYS2
 
-Choose the [proper command](https://www.msys2.org/docs/package-naming/) for your system from below:
+For 64-bit Windows 8.1 or above:
 
-  - For 32 bit Windows 7 or above:
-
-```
-pacman -S mingw-w64-i686-helix
-```
-
-  - For 64 bit Windows 7 or above:
-
-```
-pacman -S mingw-w64-x86_64-helix
-```
-
-  - For 64 bit Windows 8.1 or above:
-
-```
+```sh
 pacman -S mingw-w64-ucrt-x86_64-helix
 ```
 
-## Build from source
+## Building from source
 
-```
+Clone the repository:
+
+```sh
 git clone https://github.com/helix-editor/helix
 cd helix
+```
+
+Compile from source:
+
+```sh
 cargo install --path helix-term --locked
 ```
 
-This will install the `hx` binary to `$HOME/.cargo/bin` and build tree-sitter grammars in `./runtime/grammars`.
+This command will create the `hx` executable and construct the tree-sitter
+grammars in the local `runtime` folder. To build the tree-sitter grammars requires
+a c++ compiler to be installed, for example `gcc-c++`.
 
-If you are using the musl-libc instead of glibc the following environment variable must be set during the build
-to ensure tree sitter grammars can be loaded correctly:
+> 💡 If you are using the musl-libc instead of glibc the following environment variable must be set during the build
+> to ensure tree-sitter grammars can be loaded correctly:
+>
+> ```sh
+> RUSTFLAGS="-C target-feature=-crt-static"
+> ```
 
-```
-RUSTFLAGS="-C target-feature=-crt-static"
-```
+> 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
+> grammars with `hx --grammar fetch` (requires `git`) and compile them with
+> `hx --grammar build` (requires a C++ compiler). This will install them in
+> the `runtime` directory within the user's helix config directory (more
+> [details below](#multiple-runtime-directories)).
 
+### Configuring Helix's runtime files
 
-Helix also needs its runtime files so make sure to copy/symlink the `runtime/` directory into the
-config directory (for example `~/.config/helix/runtime` on Linux/macOS). This location can be overridden
-via the `HELIX_RUNTIME` environment variable.
+#### Linux and macOS
 
-| OS                   | Command                                          |
-| -------------------- | ------------------------------------------------ |
-| Windows (Cmd)        | `xcopy /e /i runtime %AppData%\helix\runtime`    |
-| Windows (PowerShell) | `xcopy /e /i runtime $Env:AppData\helix\runtime` |
-| Linux / macOS        | `ln -s $PWD/runtime ~/.config/helix/runtime`     |
+Either set the `HELIX_RUNTIME` environment variable to point to the runtime files and add it to your `~/.bashrc` or equivalent:
 
-Starting with Windows Vista you can also create symbolic links on Windows. Note that this requires
-elevated privileges - i.e. PowerShell or Cmd must be run as administrator.
-
-**PowerShell:**
-
-```powershell
-New-Item -ItemType Junction -Target "runtime" -Path "$Env:AppData\helix\runtime"
-```
-Note: "runtime" must be the absolute path to the runtime directory.
-
-**Cmd:**
-
-```cmd
-cd %appdata%\helix
-mklink /D runtime "<helix-repo>\runtime"
+```sh
+HELIX_RUNTIME=/home/user-name/src/helix/runtime
 ```
 
-The runtime location can be overridden via the `HELIX_RUNTIME` environment variable.
+Or, create a symlink in `~/.config/helix` that links to the source code directory:
 
-> NOTE: if `HELIX_RUNTIME` is set prior to calling `cargo install --path helix-term --locked`,
-> tree-sitter grammars will be built in `$HELIX_RUNTIME/grammars`.
-
-If you plan on keeping the repo locally, an alternative to copying/symlinking
-runtime files is to set `HELIX_RUNTIME=/path/to/helix/runtime`
-(`HELIX_RUNTIME=$PWD/runtime` if you're in the helix repo directory).
-
-To use Helix in desktop environments that supports [XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html), including Gnome and KDE, copy the provided `.desktop` file to the correct folder:
-
-```bash
-cp contrib/Helix.desktop ~/.local/share/applications
+```sh
+ln -s $PWD/runtime ~/.config/helix/runtime
 ```
 
-To use another terminal than the default, you will need to modify the `.desktop` file. For example, to use `kitty`:
+#### Windows
 
-```bash
-sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
-sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
+Either set the `HELIX_RUNTIME` environment variable to point to the runtime files using the Windows setting (search for
+`Edit environment variables for your account`) or use the `setx` command in
+Cmd:
+
+```sh
+setx HELIX_RUNTIME "%userprofile%\source\repos\helix\runtime"
 ```
 
-Please note: there is no icon for Helix yet, so the system default will be used.
+> 💡 `%userprofile%` resolves to your user directory like
+> `C:\Users\Your-Name\` for example.
 
-## Finishing up the installation
+Or, create a symlink in `%appdata%\helix\` that links to the source code directory:
 
-To make sure everything is set up as expected you should finally run the helix healthcheck via
+| Method     | Command                                                                                |
+| ---------- | -------------------------------------------------------------------------------------- |
+| PowerShell | `New-Item -ItemType Junction -Target "runtime" -Path "$Env:AppData\helix\runtime"`     |
+| Cmd        | `cd %appdata%\helix` <br/> `mklink /D runtime "%userprofile%\src\helix\runtime"`       |
 
-```
+> 💡 On Windows, creating a symbolic link may require running PowerShell or
+> Cmd as an administrator.
+
+#### Multiple runtime directories
+
+When Helix finds multiple runtime directories it will search through them for files in the
+following order:
+
+1. `runtime/` sibling directory to `$CARGO_MANIFEST_DIR` directory (this is intended for
+  developing and testing helix only).
+2. `runtime/` subdirectory of OS-dependent helix user config directory.
+3. `$HELIX_RUNTIME`.
+4. `runtime/` subdirectory of path to Helix executable.
+
+This order also sets the priority for selecting which file will be used if multiple runtime
+directories have files with the same name.
+
+### Validating the installation
+
+To make sure everything is set up as expected you should run the Helix health
+check:
+
+```sh
 hx --health
 ```
 
-For more information on the information displayed in the health check results refer to [Healthcheck](https://github.com/helix-editor/helix/wiki/Healthcheck).
+For more information on the health check results refer to
+[Health check](https://github.com/helix-editor/helix/wiki/Healthcheck).
 
-### Building tree-sitter grammars
+### Configure the desktop shortcut
 
-Tree-sitter grammars must be fetched and compiled if not pre-packaged.
-Fetch grammars with `hx --grammar fetch` (requires `git`) and compile them
-with `hx --grammar build` (requires a C++ compiler).
+If your desktop environment supports the
+[XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html)
+you can configure Helix to show up in the application menu by copying the
+provided `.desktop` and icon files to their correct folders:
 
-### Installing language servers
+```sh
+cp contrib/Helix.desktop ~/.local/share/applications
+cp contrib/helix.png ~/.icons # or ~/.local/share/icons
+```
 
-Language servers can optionally be installed if you want their features (auto-complete, diagnostics etc.).
-Follow the [instructions on the wiki page](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers) to add your language servers of choice.
+To use another terminal than the system default, you can modify the `.desktop`
+file. For example, to use `kitty`:
+
+```sh
+sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
+sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
+```
