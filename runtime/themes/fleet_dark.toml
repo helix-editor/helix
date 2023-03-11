@@ -92,6 +92,7 @@
 "ui.text.focus" = { fg = "White", bg = "Blue 40" }
 
 "ui.virtual" = "Gray 80" # .whitespace
+"ui.virtual.inlay-hint" = "Purple 20"
 # "ui.virtual.ruler" = { bg = "darker"}
 
 "hint" = "Gray 80"
