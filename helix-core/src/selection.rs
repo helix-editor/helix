@@ -578,6 +578,16 @@ impl Selection {
         self.normalize()
     }
 
+    /// Takes a closure and maps each `Range` over the closure to multiple `Range`s.
+    pub fn transform_iter<F, I>(mut self, f: F) -> Self
+    where
+        F: FnMut(Range) -> I,
+        I: Iterator<Item = Range>,
+    {
+        self.ranges = self.ranges.into_iter().flat_map(f).collect();
+        self.normalize()
+    }
+
     // Ensures the selection adheres to the following invariants:
     // 1. All ranges are grapheme aligned.
     // 2. All ranges are at least 1 character wide, unless at the
@@ -615,11 +625,6 @@ impl Selection {
 
     // returns true if self ⊇ other
     pub fn contains(&self, other: &Selection) -> bool {
-        // can't contain other if it is larger
-        if other.len() > self.len() {
-            return false;
-        }
-
         let (mut iter_self, mut iter_other) = (self.iter(), other.iter());
         let (mut ele_self, mut ele_other) = (iter_self.next(), iter_other.next());
 
@@ -653,6 +658,15 @@ impl<'a> IntoIterator for &'a Selection {
 
     fn into_iter(self) -> std::slice::Iter<'a, Range> {
         self.ranges().iter()
+    }
+}
+
+impl IntoIterator for Selection {
+    type Item = Range;
+    type IntoIter = smallvec::IntoIter<[Range; 1]>;
+
+    fn into_iter(self) -> smallvec::IntoIter<[Range; 1]> {
+        self.ranges.into_iter()
     }
 }
 
@@ -1230,5 +1244,11 @@ mod test {
             vec!((3, 4), (7, 9))
         ));
         assert!(!contains(vec!((1, 1), (5, 6)), vec!((1, 6))));
+
+        // multiple ranges of other are all contained in some ranges of self,
+        assert!(contains(
+            vec!((1, 4), (7, 10)),
+            vec!((1, 2), (3, 4), (7, 9))
+        ));
     }
 }

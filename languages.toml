@@ -19,6 +19,14 @@ indent = { tab-width = 4, unit = "    " }
 '"' = '"'
 '`' = '`'
 
+[language.config]
+inlayHints.bindingModeHints.enable = false
+inlayHints.closingBraceHints.minLines = 10
+inlayHints.closureReturnTypeHints.enable = "with_block"
+inlayHints.discriminantHints.enable = "fieldless"
+inlayHints.lifetimeElisionHints.enable = "skip_trivial"
+inlayHints.typeHints.hideClosureInitialization = false
+
 [language.debugger]
 name = "lldb-vscode"
 transport = "stdio"
@@ -291,6 +299,14 @@ language-server = { command = "gopls" }
 # TODO: gopls needs utf-8 offsets?
 indent = { tab-width = 4, unit = "\t" }
 
+[language.config.hints]
+assignVariableTypes = true
+compositeLiteralFields = true
+constantValues = true
+functionTypeParameters = true
+parameterNames = true
+rangeVariableTypes = true
+
 [language.debugger]
 name = "go"
 transport = "tcp"
@@ -324,7 +340,7 @@ args = { mode = "local", processId = "{0}" }
 
 [[grammar]]
 name = "go"
-source = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "05900faa3cdb5d2d8c8bd5e77ee698487e0a8611" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "64457ea6b73ef5422ed1687178d4545c3e91334a" }
 
 [[language]]
 name = "gomod"
@@ -382,6 +398,18 @@ comment-token = "//"
 language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "javascript" }
 indent = { tab-width = 2, unit = "  " }
 
+[language.config]
+hostInfo = "helix"
+
+[language.config.javascript.inlayHints]
+includeInlayEnumMemberValueHints = true
+includeInlayFunctionLikeReturnTypeHints = true
+includeInlayFunctionParameterTypeHints = true
+includeInlayParameterNameHints = "all"
+includeInlayParameterNameHintsWhenArgumentMatchesName = true
+includeInlayPropertyDeclarationTypeHints = true
+includeInlayVariableTypeHints = true
+
 [language.debugger]
 name = "node-debug2"
 transport = "stdio"
@@ -409,6 +437,18 @@ language-server = { command = "typescript-language-server", args = ["--stdio"], 
 indent = { tab-width = 2, unit = "  " }
 grammar = "javascript"
 
+[language.config]
+hostInfo = "helix"
+
+[language.config.javascript.inlayHints]
+includeInlayEnumMemberValueHints = true
+includeInlayFunctionLikeReturnTypeHints = true
+includeInlayFunctionParameterTypeHints = true
+includeInlayParameterNameHints = "all"
+includeInlayParameterNameHintsWhenArgumentMatchesName = true
+includeInlayPropertyDeclarationTypeHints = true
+includeInlayVariableTypeHints = true
+
 [[language]]
 name = "typescript"
 scope = "source.ts"
@@ -419,6 +459,18 @@ roots = []
 # TODO: highlights-params
 language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "typescript"}
 indent = { tab-width = 2, unit = "  " }
+
+[language.config]
+hostInfo = "helix"
+
+[language.config.typescript.inlayHints]
+includeInlayEnumMemberValueHints = true
+includeInlayFunctionLikeReturnTypeHints = true
+includeInlayFunctionParameterTypeHints = true
+includeInlayParameterNameHints = "all"
+includeInlayParameterNameHintsWhenArgumentMatchesName = true
+includeInlayPropertyDeclarationTypeHints = true
+includeInlayVariableTypeHints = true
 
 [[grammar]]
 name = "typescript"
@@ -433,6 +485,18 @@ roots = []
 # TODO: highlights-params
 language-server = { command = "typescript-language-server", args = ["--stdio"], language-id = "typescriptreact" }
 indent = { tab-width = 2, unit = "  " }
+
+[language.config]
+hostInfo = "helix"
+
+[language.config.typescript.inlayHints]
+includeInlayEnumMemberValueHints = true
+includeInlayFunctionLikeReturnTypeHints = true
+includeInlayFunctionParameterTypeHints = true
+includeInlayParameterNameHints = "all"
+includeInlayParameterNameHintsWhenArgumentMatchesName = true
+includeInlayPropertyDeclarationTypeHints = true
+includeInlayVariableTypeHints = true
 
 [[grammar]]
 name = "tsx"
@@ -571,7 +635,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "php"
-source = { git = "https://github.com/tree-sitter/tree-sitter-php", rev = "57f855461aeeca73bd4218754fb26b5ac143f98f" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-php", rev = "f860e598194f4a71747f91789bf536b393ad4a56" }
 
 [[language]]
 name = "twig"
@@ -739,6 +803,14 @@ roots = [".luarc.json", ".luacheckrc", ".stylua.toml", "selene.toml", ".git"]
 comment-token = "--"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "lua-language-server", args = [] }
+
+[language.config.Lua.hint]
+enable = true
+arrayIndex = "Enable"
+setType = true
+paramName = "All"
+paramType = true
+await = true
 
 [[grammar]]
 name = "lua"
@@ -1104,7 +1176,7 @@ file-types = ["COMMIT_EDITMSG"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 rulers = [50, 72]
-max-line-length = 72
+text-width = 72
 
 [[grammar]]
 name = "git-commit"
@@ -1463,7 +1535,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "gdscript"
-source = { git = "https://github.com/PrestonKnopp/tree-sitter-gdscript", rev = "a56a6fcec3fb63ec3324bf9373aae7298861eb30" }
+source = { git = "https://github.com/PrestonKnopp/tree-sitter-gdscript", rev = "a4b57cc3bcbfc24550e858159647e9238e7ad1ac" }
 
 [[language]]
 name = "godot-resource"
@@ -2206,7 +2278,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "yuck"
-source = { git = "https://github.com/Philipp-M/tree-sitter-yuck", rev = "9e97da5773f82123a8c8cccf8f7e795d140ed7d1" }
+source = { git = "https://github.com/Philipp-M/tree-sitter-yuck", rev = "e3d91a3c65decdea467adebe4127b8366fa47919" }
 
 [[language]]
 name = "prql"
@@ -2244,3 +2316,14 @@ indent = { tab-width = 8, unit = "        " }
 [[grammar]]
 name = "nasm"
 source = { git = "https://github.com/naclsn/tree-sitter-nasm", rev = "a0db15db6fcfb1bf2cc8702500e55e558825c48b" }
+
+[[language]]
+name = "rst"
+scope = "source.rst"
+comment-token = ".."
+file-types = ["rst"]
+roots = []
+
+[[grammar]]
+name = "rst"
+source = { git = "https://github.com/stsewd/tree-sitter-rst", rev = "25e6328872ac3a764ba8b926aea12719741103f1" }

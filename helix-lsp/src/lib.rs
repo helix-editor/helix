@@ -1,5 +1,6 @@
 mod client;
 pub mod jsonrpc;
+pub mod snippet;
 mod transport;
 
 pub use client::Client;
@@ -58,6 +59,7 @@ pub enum OffsetEncoding {
 pub mod util {
     use super::*;
     use helix_core::line_ending::{line_end_byte_index, line_end_char_index};
+    use helix_core::{chars, RopeSlice, SmallVec};
     use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
@@ -245,40 +247,227 @@ pub mod util {
         Some(Range::new(start, end))
     }
 
+    /// If the LS did not provide a range for the completion or the range of the
+    /// primary cursor can not be used for the secondary cursor, this function
+    /// can be used to find the completion range for a cursor
+    fn find_completion_range(text: RopeSlice, replace_mode: bool, cursor: usize) -> (usize, usize) {
+        let start = cursor
+            - text
+                .chars_at(cursor)
+                .reversed()
+                .take_while(|ch| chars::char_is_word(*ch))
+                .count();
+        let mut end = cursor;
+        if replace_mode {
+            end += text
+                .chars_at(cursor)
+                .skip(1)
+                .take_while(|ch| chars::char_is_word(*ch))
+                .count();
+        }
+        (start, end)
+    }
+    fn completion_range(
+        text: RopeSlice,
+        edit_offset: Option<(i128, i128)>,
+        replace_mode: bool,
+        cursor: usize,
+    ) -> Option<(usize, usize)> {
+        let res = match edit_offset {
+            Some((start_offset, end_offset)) => {
+                let start_offset = cursor as i128 + start_offset;
+                if start_offset < 0 {
+                    return None;
+                }
+                let end_offset = cursor as i128 + end_offset;
+                if end_offset > text.len_chars() as i128 {
+                    return None;
+                }
+                (start_offset as usize, end_offset as usize)
+            }
+            None => find_completion_range(text, replace_mode, cursor),
+        };
+        Some(res)
+    }
+
     /// Creates a [Transaction] from the [lsp::TextEdit] in a completion response.
     /// The transaction applies the edit to all cursors.
     pub fn generate_transaction_from_completion_edit(
         doc: &Rope,
         selection: &Selection,
-        edit: lsp::TextEdit,
-        offset_encoding: OffsetEncoding,
+        edit_offset: Option<(i128, i128)>,
+        replace_mode: bool,
+        new_text: String,
     ) -> Transaction {
-        let replacement: Option<Tendril> = if edit.new_text.is_empty() {
+        let replacement: Option<Tendril> = if new_text.is_empty() {
             None
         } else {
-            Some(edit.new_text.into())
+            Some(new_text.into())
         };
 
         let text = doc.slice(..);
-        let primary_cursor = selection.primary().cursor(text);
+        let (removed_start, removed_end) = completion_range(
+            text,
+            edit_offset,
+            replace_mode,
+            selection.primary().cursor(text),
+        )
+        .expect("transaction must be valid for primary selection");
+        let removed_text = text.slice(removed_start..removed_end);
 
-        let start_offset = match lsp_pos_to_pos(doc, edit.range.start, offset_encoding) {
-            Some(start) => start as i128 - primary_cursor as i128,
-            None => return Transaction::new(doc),
-        };
-        let end_offset = match lsp_pos_to_pos(doc, edit.range.end, offset_encoding) {
-            Some(end) => end as i128 - primary_cursor as i128,
-            None => return Transaction::new(doc),
-        };
+        let (transaction, mut selection) = Transaction::change_by_selection_ignore_overlapping(
+            doc,
+            selection,
+            |range| {
+                let cursor = range.cursor(text);
+                completion_range(text, edit_offset, replace_mode, cursor)
+                    .filter(|(start, end)| text.slice(start..end) == removed_text)
+                    .unwrap_or_else(|| find_completion_range(text, replace_mode, cursor))
+            },
+            |_, _| replacement.clone(),
+        );
+        if transaction.changes().is_empty() {
+            return transaction;
+        }
+        selection = selection.map(transaction.changes());
+        transaction.with_selection(selection)
+    }
 
-        Transaction::change_by_selection(doc, selection, |range| {
-            let cursor = range.cursor(text);
-            (
-                (cursor as i128 + start_offset) as usize,
-                (cursor as i128 + end_offset) as usize,
-                replacement.clone(),
-            )
-        })
+    /// Creates a [Transaction] from the [snippet::Snippet] in a completion response.
+    /// The transaction applies the edit to all cursors.
+    #[allow(clippy::too_many_arguments)]
+    pub fn generate_transaction_from_snippet(
+        doc: &Rope,
+        selection: &Selection,
+        edit_offset: Option<(i128, i128)>,
+        replace_mode: bool,
+        snippet: snippet::Snippet,
+        line_ending: &str,
+        include_placeholder: bool,
+        tab_width: usize,
+        indent_width: usize,
+    ) -> Transaction {
+        let text = doc.slice(..);
+
+        let mut off = 0i128;
+        let mut mapped_doc = doc.clone();
+        let mut selection_tabstops: SmallVec<[_; 1]> = SmallVec::new();
+        let (removed_start, removed_end) = completion_range(
+            text,
+            edit_offset,
+            replace_mode,
+            selection.primary().cursor(text),
+        )
+        .expect("transaction must be valid for primary selection");
+        let removed_text = text.slice(removed_start..removed_end);
+
+        let (transaction, selection) = Transaction::change_by_selection_ignore_overlapping(
+            doc,
+            selection,
+            |range| {
+                let cursor = range.cursor(text);
+                completion_range(text, edit_offset, replace_mode, cursor)
+                    .filter(|(start, end)| text.slice(start..end) == removed_text)
+                    .unwrap_or_else(|| find_completion_range(text, replace_mode, cursor))
+            },
+            |replacement_start, replacement_end| {
+                let mapped_replacement_start = (replacement_start as i128 + off) as usize;
+                let mapped_replacement_end = (replacement_end as i128 + off) as usize;
+
+                let line_idx = mapped_doc.char_to_line(mapped_replacement_start);
+                let indent_level = helix_core::indent::indent_level_for_line(
+                    mapped_doc.line(line_idx),
+                    tab_width,
+                    indent_width,
+                ) * indent_width;
+
+                let newline_with_offset = format!(
+                    "{line_ending}{blank:indent_level$}",
+                    line_ending = line_ending,
+                    blank = ""
+                );
+
+                let (replacement, tabstops) =
+                    snippet::render(&snippet, &newline_with_offset, include_placeholder);
+                selection_tabstops.push((mapped_replacement_start, tabstops));
+                mapped_doc.remove(mapped_replacement_start..mapped_replacement_end);
+                mapped_doc.insert(mapped_replacement_start, &replacement);
+                off +=
+                    replacement_start as i128 - replacement_end as i128 + replacement.len() as i128;
+
+                Some(replacement)
+            },
+        );
+
+        let changes = transaction.changes();
+        if changes.is_empty() {
+            return transaction;
+        }
+
+        let mut mapped_selection = SmallVec::with_capacity(selection.len());
+        let mut mapped_primary_idx = 0;
+        let primary_range = selection.primary();
+        for (range, (tabstop_anchor, tabstops)) in selection.into_iter().zip(selection_tabstops) {
+            if range == primary_range {
+                mapped_primary_idx = mapped_selection.len()
+            }
+
+            let range = range.map(changes);
+            let tabstops = tabstops.first().filter(|tabstops| !tabstops.is_empty());
+            let Some(tabstops) = tabstops else{
+                // no tabstop normal mapping
+                mapped_selection.push(range);
+                continue;
+            };
+
+            // expand the selection to cover the tabstop to retain the helix selection semantic
+            // the tabstop closest to the range simply replaces `head` while anchor remains in place
+            // the remaining tabstops receive their own single-width cursor
+            if range.head < range.anchor {
+                let first_tabstop = tabstop_anchor + tabstops[0].1;
+
+                // if selection is forward but was moved to the right it is
+                // contained entirely in the replacement text, just do a point
+                // selection (fallback below)
+                if range.anchor >= first_tabstop {
+                    let range = Range::new(range.anchor, first_tabstop);
+                    mapped_selection.push(range);
+                    let rem_tabstops = tabstops[1..]
+                        .iter()
+                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.1));
+                    mapped_selection.extend(rem_tabstops);
+                    continue;
+                }
+            } else {
+                let last_idx = tabstops.len() - 1;
+                let last_tabstop = tabstop_anchor + tabstops[last_idx].1;
+
+                // if selection is forward but was moved to the right it is
+                // contained entirely in the replacement text, just do a point
+                // selection (fallback below)
+                if range.anchor <= last_tabstop {
+                    // we can't properly compute the the next grapheme
+                    // here because the transaction hasn't been applied yet
+                    // that is not a problem because the range gets grapheme aligned anyway
+                    // tough so just adding one will always cause head to be grapheme
+                    // aligned correctly when applied to the document
+                    let range = Range::new(range.anchor, last_tabstop + 1);
+                    mapped_selection.push(range);
+                    let rem_tabstops = tabstops[..last_idx]
+                        .iter()
+                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
+                    mapped_selection.extend(rem_tabstops);
+                    continue;
+                }
+            };
+
+            let tabstops = tabstops
+                .iter()
+                .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
+            mapped_selection.extend(tabstops);
+        }
+
+        transaction.with_selection(Selection::new(mapped_selection, mapped_primary_idx))
     }
 
     pub fn generate_transaction_from_edits(
@@ -473,6 +662,16 @@ impl Registry {
 
                 Ok(Some(client))
             }
+        }
+    }
+
+    pub fn stop(&mut self, language_config: &LanguageConfiguration) {
+        let scope = language_config.scope.clone();
+
+        if let Some((_, client)) = self.inner.remove(&scope) {
+            tokio::spawn(async move {
+                let _ = client.force_shutdown().await;
+            });
         }
     }
 

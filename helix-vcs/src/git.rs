@@ -1,9 +1,10 @@
+use arc_swap::ArcSwap;
 use std::path::Path;
+use std::sync::Arc;
 
-use git::objs::tree::EntryMode;
-use git::sec::trust::DefaultForLevel;
-use git::{Commit, ObjectId, Repository, ThreadSafeRepository};
-use git_repository as git;
+use gix::objs::tree::EntryMode;
+use gix::sec::trust::DefaultForLevel;
+use gix::{Commit, ObjectId, Repository, ThreadSafeRepository};
 
 use crate::DiffProvider;
 
@@ -15,13 +16,13 @@ pub struct Git;
 impl Git {
     fn open_repo(path: &Path, ceiling_dir: Option<&Path>) -> Option<ThreadSafeRepository> {
         // custom open options
-        let mut git_open_opts_map = git::sec::trust::Mapping::<git::open::Options>::default();
+        let mut git_open_opts_map = gix::sec::trust::Mapping::<gix::open::Options>::default();
 
         // On windows various configuration options are bundled as part of the installations
         // This path depends on the install location of git and therefore requires some overhead to lookup
         // This is basically only used on windows and has some overhead hence it's disabled on other platforms.
         // `gitoxide` doesn't use this as default
-        let config = git::permissions::Config {
+        let config = gix::permissions::Config {
             system: true,
             git: true,
             user: true,
@@ -30,16 +31,16 @@ impl Git {
             git_binary: cfg!(windows),
         };
         // change options for config permissions without touching anything else
-        git_open_opts_map.reduced = git_open_opts_map.reduced.permissions(git::Permissions {
+        git_open_opts_map.reduced = git_open_opts_map.reduced.permissions(gix::Permissions {
             config,
-            ..git::Permissions::default_for_level(git::sec::Trust::Reduced)
+            ..gix::Permissions::default_for_level(gix::sec::Trust::Reduced)
         });
-        git_open_opts_map.full = git_open_opts_map.full.permissions(git::Permissions {
+        git_open_opts_map.full = git_open_opts_map.full.permissions(gix::Permissions {
             config,
-            ..git::Permissions::default_for_level(git::sec::Trust::Full)
+            ..gix::Permissions::default_for_level(gix::sec::Trust::Full)
         });
 
-        let mut open_options = git::discover::upwards::Options::default();
+        let mut open_options = gix::discover::upwards::Options::default();
         if let Some(ceiling_dir) = ceiling_dir {
             open_options.ceiling_dirs = vec![ceiling_dir.to_owned()];
         }
@@ -87,6 +88,21 @@ impl DiffProvider for Git {
             data = normalized_file
         }
         Some(data)
+    }
+
+    fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
+        debug_assert!(!file.exists() || file.is_file());
+        debug_assert!(file.is_absolute());
+        let repo = Git::open_repo(file.parent()?, None)?.to_thread_local();
+        let head_ref = repo.head_ref().ok()?;
+        let head_commit = repo.head_commit().ok()?;
+
+        let name = match head_ref {
+            Some(reference) => reference.name().shorten().to_string(),
+            None => head_commit.id.to_hex_with_len(8).to_string(),
+        };
+
+        Some(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
     }
 }
 

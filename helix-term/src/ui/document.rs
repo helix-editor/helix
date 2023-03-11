@@ -202,10 +202,7 @@ pub fn render_text<'t>(
         // formattter.line_pos returns to line index of the next grapheme
         // so it must be called before formatter.next
         let doc_line = formatter.line_pos();
-        // TODO refactor with let .. else once MSRV reaches 1.65
-        let (grapheme, mut pos) = if let Some(it) = formatter.next() {
-            it
-        } else {
+        let Some((grapheme, mut pos)) = formatter.next() else {
             let mut last_pos = formatter.visual_pos();
             if last_pos.row >= row_off {
                 last_pos.col -= 1;
@@ -226,7 +223,6 @@ pub fn render_text<'t>(
         // skip any graphemes on visual lines before the block start
         if pos.row < row_off {
             if char_pos >= style_span.1 {
-                // TODO refactor using let..else once MSRV reaches 1.65
                 style_span = if let Some(style_span) = styles.next() {
                     style_span
                 } else {
@@ -266,12 +262,7 @@ pub fn render_text<'t>(
 
         // aquire the correct grapheme style
         if char_pos >= style_span.1 {
-            // TODO refactor using let..else once MSRV reaches 1.65
-            style_span = if let Some(style_span) = styles.next() {
-                style_span
-            } else {
-                (Style::default(), usize::MAX)
-            }
+            style_span = styles.next().unwrap_or((Style::default(), usize::MAX));
         }
         char_pos += grapheme.doc_chars();
 

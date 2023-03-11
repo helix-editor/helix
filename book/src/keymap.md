@@ -14,14 +14,14 @@
     - [Space mode](#space-mode)
       - [Popup](#popup)
     - [Unimpaired](#unimpaired)
-- [Insert Mode](#insert-mode)
-- [Select / extend mode](#select--extend-mode)
+- [Insert mode](#insert-mode)
+- [Select / extend mode](#select-extend-mode)
 - [Picker](#picker)
 - [Prompt](#prompt)
 
 > 💡 Mappings marked (**LSP**) require an active language server for the file.
 
-> 💡 Mappings marked (**TS**) require a tree-sitter grammar for the filetype.
+> 💡 Mappings marked (**TS**) require a tree-sitter grammar for the file type.
 
 ## Normal mode
 
@@ -109,7 +109,7 @@
 | Key                   | Description                                                       | Command                              |
 | -----                 | -----------                                                       | -------                              |
 | `s`                   | Select all regex matches inside selections                        | `select_regex`                       |
-| `S`                   | Split selection into subselections on regex matches               | `split_selection`                    |
+| `S`                   | Split selection into sub selections on regex matches              | `split_selection`                    |
 | `Alt-s`               | Split selection on newlines                                       | `split_selection_on_newline`         |
 | `Alt-_ `              | Merge consecutive selections                                      | `merge_consecutive_selections`       |
 | `&`                   | Align selection in columns                                        | `align_selections`                   |
@@ -141,7 +141,7 @@
 
 ### Search
 
-Search commands all operate on the `/` register by default. Use `"<char>` to operate on a different one.
+Search commands all operate on the `/` register by default. To use a different register, use `"<char>`.
 
 | Key   | Description                                 | Command              |
 | ----- | -----------                                 | -------              |
@@ -175,9 +175,8 @@ Accessed by typing `z` in [normal mode](#normal-mode).
 
 View mode is intended for scrolling and manipulating the view without changing
 the selection. The "sticky" variant of this mode (accessed by typing `Z` in
-normal mode) is persistent; use the Escape key to return to normal mode after
-usage (useful when you're simply looking over text and not actively editing
-it).
+normal mode) is persistent and can be exited using the escape key. This is
+useful when you're simply looking over text and not actively editing it.
 
 
 | Key                  | Description                                               | Command             |
@@ -225,7 +224,7 @@ Jumps to various locations.
 Accessed by typing `m` in [normal mode](#normal-mode).
 
 See the relevant section in [Usage](./usage.md) for an explanation about
-[surround](./usage.md#surround) and [textobject](./usage.md#textobjects) usage.
+[surround](./usage.md#surround) and [textobject](./usage.md#navigating-using-tree-sitter-textobjects) usage.
 
 | Key              | Description                                     | Command                    |
 | -----            | -----------                                     | -------                    |
@@ -242,7 +241,7 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 Accessed by typing `Ctrl-w` in [normal mode](#normal-mode).
 
-This layer is similar to Vim keybindings as Kakoune does not support window.
+This layer is similar to Vim keybindings as Kakoune does not support windows.
 
 | Key                    | Description                                          | Command           |
 | -----                  | -------------                                        | -------           |
@@ -293,7 +292,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `/`     | Global search in workspace folder                                       | `global_search`                            |
 | `?`     | Open command palette                                                    | `command_palette`                          |
 
-> TIP: Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
+> 💡 Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
 
 ##### Popup
 
@@ -306,7 +305,7 @@ Displays documentation for item under cursor.
 
 #### Unimpaired
 
-Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
+These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
 
 | Key      | Description                                  | Command               |
 | -----    | -----------                                  | -------               |
@@ -335,12 +334,13 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 
 ## Insert mode
 
-Insert mode bindings are somewhat minimal by default. Helix is designed to
+Insert mode bindings are minimal by default. Helix is designed to
 be a modal editor, and this is reflected in the user experience and internal
-mechanics. For example, changes to the text are only saved for undos when
-escaping from insert mode to normal mode. For this reason, new users are
-strongly encouraged to learn the modal editing paradigm to get the smoothest
-experience.
+mechanics. Changes to the text are only saved for undos when
+escaping from insert mode to normal mode.
+
+> 💡 New users are strongly encouraged to learn the modal editing paradigm
+> to get the smoothest experience.
 
 | Key                                         | Description                 | Command                  |
 | -----                                       | -----------                 | -------                  |
@@ -370,8 +370,8 @@ with modal editors.
 | `Home`                                      | Move to line start          | `goto_line_start`        |
 | `End`                                       | Move to line end            | `goto_line_end_newline`  |
 
-If you want to disable them in insert mode as you become more comfortable with modal editing, you can use
-the following in your `config.toml`:
+As you become more comfortable with modal editing, you may want to disable some
+insert mode bindings. You can do this by editing your `config.toml` file.
 
 ```toml
 [keys.insert]
@@ -387,7 +387,7 @@ end = "no_op"
 
 ## Select / extend mode
 
-This mode echoes Normal mode, but changes any movements to extend
+Select mode echoes Normal mode, but changes any movements to extend
 selections rather than replace them. Goto motions are also changed to
 extend, so that `vgl` for example extends the selection to the end of
 the line.

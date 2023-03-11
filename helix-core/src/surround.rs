@@ -275,51 +275,138 @@ mod test {
 
     #[test]
     fn test_get_surround_pos() {
-        let doc = Rope::from("(some) (chars)\n(newline)");
-        let slice = doc.slice(..);
-        let selection = Selection::new(
-            SmallVec::from_slice(&[Range::point(2), Range::point(9), Range::point(20)]),
-            0,
-        );
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations(
+                "(some) (chars)\n(newline)",
+                "_ ^  _ _ ^   _\n_    ^  _"
+            );
 
-        // cursor on s[o]me, c[h]ars, newl[i]ne
         assert_eq!(
-            get_surround_pos(slice, &selection, Some('('), 1)
-                .unwrap()
-                .as_slice(),
-            &[0, 5, 7, 13, 15, 23]
+            get_surround_pos(doc.slice(..), &selection, Some('('), 1).unwrap(),
+            expectations
         );
     }
 
     #[test]
-    fn test_get_surround_pos_bail() {
-        let doc = Rope::from("[some]\n(chars)xx\n(newline)");
-        let slice = doc.slice(..);
+    fn test_get_surround_pos_bail_different_surround_chars() {
+        #[rustfmt::skip]
+        let (doc, selection, _) =
+            rope_with_selections_and_expectations(
+                "[some]\n(chars)xx\n(newline)",
+                "  ^   \n  ^      \n         "
+            );
 
-        let selection =
-            Selection::new(SmallVec::from_slice(&[Range::point(2), Range::point(9)]), 0);
-        // cursor on s[o]me, c[h]ars
         assert_eq!(
-            get_surround_pos(slice, &selection, Some('('), 1),
-            Err(Error::PairNotFound) // different surround chars
+            get_surround_pos(doc.slice(..), &selection, Some('('), 1),
+            Err(Error::PairNotFound)
         );
+    }
 
-        let selection = Selection::new(
-            SmallVec::from_slice(&[Range::point(14), Range::point(24)]),
-            0,
-        );
-        // cursor on [x]x, newli[n]e
+    #[test]
+    fn test_get_surround_pos_bail_overlapping_surround_chars() {
+        #[rustfmt::skip]
+        let (doc, selection, _) =
+            rope_with_selections_and_expectations(
+                "[some]\n(chars)xx\n(newline)",
+                "      \n       ^ \n      ^  "
+            );
+
         assert_eq!(
-            get_surround_pos(slice, &selection, Some('('), 1),
+            get_surround_pos(doc.slice(..), &selection, Some('('), 1),
             Err(Error::PairNotFound) // overlapping surround chars
         );
+    }
 
-        let selection =
-            Selection::new(SmallVec::from_slice(&[Range::point(2), Range::point(3)]), 0);
-        // cursor on s[o][m]e
+    #[test]
+    fn test_get_surround_pos_bail_cursor_overlap() {
+        #[rustfmt::skip]
+        let (doc, selection, _) =
+            rope_with_selections_and_expectations(
+                "[some]\n(chars)xx\n(newline)",
+                "  ^^  \n         \n         "
+            );
+
         assert_eq!(
-            get_surround_pos(slice, &selection, Some('['), 1),
+            get_surround_pos(doc.slice(..), &selection, Some('['), 1),
             Err(Error::CursorOverlap)
         );
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_quote_success() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations(
+                "some 'quoted text' on this 'line'\n'and this one'",
+                "     _        ^  _               \n              "
+            );
+
+        assert_eq!(2, expectations.len());
+        assert_eq!(
+            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 1)
+                .expect("find should succeed"),
+            (expectations[0], expectations[1])
+        )
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_nested_quote_success() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations(
+                "some 'nested 'quoted' text' on this 'line'\n'and this one'",
+                "     _           ^        _               \n              "
+            );
+
+        assert_eq!(2, expectations.len());
+        assert_eq!(
+            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 2)
+                .expect("find should succeed"),
+            (expectations[0], expectations[1])
+        )
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_inside_quote_ambiguous() {
+        #[rustfmt::skip]
+        let (doc, selection, _) =
+            rope_with_selections_and_expectations(
+                "some 'nested 'quoted' text' on this 'line'\n'and this one'",
+                "                    ^                     \n              "
+            );
+
+        assert_eq!(
+            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 1),
+            Err(Error::CursorOnAmbiguousPair)
+        )
+    }
+
+    // Create a Rope and a matching Selection using a specification language.
+    // ^ is a single-point selection.
+    // _ is an expected index. These are returned as a Vec<usize> for use in assertions.
+    fn rope_with_selections_and_expectations(
+        text: &str,
+        spec: &str,
+    ) -> (Rope, Selection, Vec<usize>) {
+        if text.len() != spec.len() {
+            panic!("specification must match text length -- are newlines aligned?");
+        }
+
+        let rope = Rope::from(text);
+
+        let selections: SmallVec<[Range; 1]> = spec
+            .match_indices('^')
+            .into_iter()
+            .map(|(i, _)| Range::point(i))
+            .collect();
+
+        let expectations: Vec<usize> = spec
+            .match_indices('_')
+            .into_iter()
+            .map(|(i, _)| i)
+            .collect();
+
+        (rope, Selection::new(selections, 0), expectations)
     }
 }

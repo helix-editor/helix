@@ -100,7 +100,7 @@ pub fn diff<'doc>(
     let deleted = theme.get("diff.minus");
     let modified = theme.get("diff.delta");
     if let Some(diff_handle) = doc.diff_handle() {
-        let hunks = diff_handle.hunks();
+        let hunks = diff_handle.load();
         let mut hunk_i = 0;
         let mut hunk = hunks.nth_hunk(hunk_i);
         Box::new(
@@ -333,6 +333,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            None,
         );
 
         assert_eq!(view.gutters.layout.len(), 5);
@@ -358,6 +359,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            None,
         );
 
         assert_eq!(view.gutters.layout.len(), 1);
@@ -376,6 +378,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            None,
         );
 
         assert_eq!(view.gutters.layout.len(), 2);
@@ -398,6 +401,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            None,
         );
 
         let rope = Rope::from_str("a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np");
@@ -405,6 +409,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            None,
         );
 
         assert_eq!(view.gutters.layout.len(), 2);
