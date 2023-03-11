@@ -1,19 +1,21 @@
 use crate::{
     align_view,
+    document::DocumentInlayHints,
     editor::{GutterConfig, GutterType},
     graphics::Rect,
     Align, Document, DocumentId, Theme, ViewId,
 };
 
 use helix_core::{
-    char_idx_at_visual_offset, doc_formatter::TextFormat, text_annotations::TextAnnotations,
-    visual_offset_from_anchor, visual_offset_from_block, Position, RopeSlice, Selection,
-    Transaction,
+    char_idx_at_visual_offset, doc_formatter::TextFormat, syntax::Highlight,
+    text_annotations::TextAnnotations, visual_offset_from_anchor, visual_offset_from_block,
+    Position, RopeSlice, Selection, Transaction,
 };
 
 use std::{
     collections::{HashMap, VecDeque},
     fmt,
+    rc::Rc,
 };
 
 const JUMP_LIST_CAPACITY: usize = 30;
@@ -402,9 +404,50 @@ impl View {
         Some(pos)
     }
 
+    /// Get the text annotations to display in the current view for the given document and theme.
     pub fn text_annotations(&self, doc: &Document, theme: Option<&Theme>) -> TextAnnotations {
         // TODO custom annotations for custom views like side by side diffs
-        doc.text_annotations(theme)
+
+        let mut text_annotations = doc.text_annotations(theme);
+
+        let DocumentInlayHints {
+            id: _,
+            type_inlay_hints,
+            parameter_inlay_hints,
+            other_inlay_hints,
+            padding_before_inlay_hints,
+            padding_after_inlay_hints,
+        } = match doc.inlay_hints.get(&self.id) {
+            Some(doc_inlay_hints) => doc_inlay_hints,
+            None => return text_annotations,
+        };
+
+        let type_style = theme
+            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.type"))
+            .map(Highlight);
+        let parameter_style = theme
+            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.parameter"))
+            .map(Highlight);
+        let other_style = theme
+            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint"))
+            .map(Highlight);
+
+        let mut add_annotations = |annotations: &Rc<[_]>, style| {
+            if !annotations.is_empty() {
+                text_annotations.add_inline_annotations(Rc::clone(annotations), style);
+            }
+        };
+
+        // Overlapping annotations are ignored apart from the first so the order here is not random:
+        // types -> parameters -> others should hopefully be the "correct" order for most use cases,
+        // with the padding coming before and after as expected.
+        add_annotations(padding_before_inlay_hints, None);
+        add_annotations(type_inlay_hints, type_style);
+        add_annotations(parameter_inlay_hints, parameter_style);
+        add_annotations(other_inlay_hints, other_style);
+        add_annotations(padding_after_inlay_hints, None);
+
+        text_annotations
     }
 
     pub fn text_pos_at_screen_coords(

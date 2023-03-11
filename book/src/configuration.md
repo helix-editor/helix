@@ -120,9 +120,12 @@ The following statusline elements can be configured:
 | `enable`              | Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.| `true` |
 | `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
+| `display-inlay-hints` | Display inlay hints[^2]                                     | `false` |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
 
 [^1]: By default, a progress spinner is shown in the statusline beside the file path.
+[^2]: You may also have to activate them in the LSP config for them to appear, not just in Helix.
+      Inlay hints in Helix are still being improved on and may be a little bit laggy/janky under some circumstances, please report any bugs you see so we can fix them!
 
 ### `[editor.cursor-shape]` Section
 
