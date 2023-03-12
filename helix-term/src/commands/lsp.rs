@@ -1290,7 +1290,8 @@ pub fn rename_symbol(cx: &mut Context) {
                     match language_server.rename_symbol(doc.identifier(), pos, input.to_string()) {
                         Some(future) => future,
                         None => {
-                            cx.editor.set_error("Failed to rename symbol");
+                            cx.editor
+                                .set_error("Language server does not support symbol renaming");
                             return;
                         }
                     };

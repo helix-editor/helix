@@ -1106,7 +1106,10 @@ impl Client {
 
     pub fn supports_rename(&self) -> bool {
         let capabilities = self.capabilities.get().unwrap();
-        matches!(capabilities.rename_provider, Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)))
+        matches!(
+            capabilities.rename_provider,
+            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
+        )
     }
 
     pub fn rename_symbol(
@@ -1115,6 +1118,10 @@ impl Client {
         position: lsp::Position,
         new_name: String,
     ) -> Option<impl Future<Output = Result<lsp::WorkspaceEdit>>> {
+        if !self.supports_rename() {
+            return None;
+        }
+
         let params = lsp::RenameParams {
             text_document_position: lsp::TextDocumentPositionParams {
                 text_document,
