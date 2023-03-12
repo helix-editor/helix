@@ -999,16 +999,19 @@ impl Application {
                         Ok(serde_json::Value::Null)
                     }
                     Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
-                        apply_workspace_edit(
+                        let res = apply_workspace_edit(
                             &mut self.editor,
                             helix_lsp::OffsetEncoding::Utf8,
                             &params.edit,
                         );
 
                         Ok(json!(lsp::ApplyWorkspaceEditResponse {
-                            applied: true,
-                            failure_reason: None,
-                            failed_change: None,
+                            applied: res.is_ok(),
+                            failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
+                            failed_change: res
+                                .as_ref()
+                                .err()
+                                .map(|err| err.failed_change_idx as u32),
                         }))
                     }
                     Ok(MethodCall::WorkspaceFolders) => {
