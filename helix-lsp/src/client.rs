@@ -387,6 +387,7 @@ impl Client {
                         ..Default::default()
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
+                        version_support: Some(true),
                         ..Default::default()
                     }),
                     inlay_hint: Some(lsp::InlayHintClientCapabilities {

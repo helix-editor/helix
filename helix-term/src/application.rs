@@ -687,7 +687,16 @@ impl Application {
                                 return;
                             }
                         };
-                        let doc = self.editor.document_by_path_mut(&path);
+                        let doc = self.editor.document_by_path_mut(&path).filter(|doc| {
+                            if let Some(version) = params.version {
+                                if version != doc.version() {
+                                    log::info!("Version ({version}) is out of date for {path:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
+                                    return false;
+                                }
+                            }
+
+                            true
+                        });
 
                         if let Some(doc) = doc {
                             let lang_conf = doc.language_config();
