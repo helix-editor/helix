@@ -341,6 +341,15 @@ impl MappableCommand {
         goto_last_change, "Goto last change",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
+        goto_first_buffer, "Goto first buffer",
+        goto_second_buffer, "Goto second buffer",
+        goto_third_buffer, "Goto third buffer",
+        goto_fourth_buffer, "Goto fourth buffer",
+        goto_fifth_buffer, "Goto fifth buffer",
+        goto_sixth_buffer, "Goto sixth buffer",
+        goto_seventh_buffer, "Goto seventh buffer",
+        goto_eight_buffer, "Goto eight buffer",
+        goto_ninth_buffer, "Goto ninth buffer",
         goto_next_buffer, "Goto next buffer",
         goto_previous_buffer, "Goto previous buffer",
         goto_line_end_newline, "Goto newline at line end",
@@ -749,36 +758,88 @@ fn goto_line_start(cx: &mut Context) {
     )
 }
 
+fn goto_first_buffer(cx: &mut Context) {
+    goto_buffer_by_index_impl(cx.editor, 0);
+}
+
+fn goto_second_buffer(cx: &mut Context) {
+    goto_buffer_by_index_impl(cx.editor, 1);
+}
+
+fn goto_third_buffer(cx: &mut Context) {
+    goto_buffer_by_index_impl(cx.editor, 2);
+}
+
+fn goto_fourth_buffer(cx: &mut Context) {
+    goto_buffer_by_index_impl(cx.editor, 3);
+}
+
+fn goto_fifth_buffer(cx: &mut Context) {
+    goto_buffer_by_index_impl(cx.editor, 4);
+}
+
+fn goto_sixth_buffer(cx: &mut Context) {
+    goto_buffer_by_index_impl(cx.editor, 5);
+}
+
+fn goto_seventh_buffer(cx: &mut Context) {
+    goto_buffer_by_index_impl(cx.editor, 6);
+}
+
+fn goto_eight_buffer(cx: &mut Context) {
+    goto_buffer_by_index_impl(cx.editor, 7);
+}
+
+fn goto_ninth_buffer(cx: &mut Context) {
+    goto_buffer_by_index_impl(cx.editor, 8);
+}
+
 fn goto_next_buffer(cx: &mut Context) {
-    goto_buffer(cx.editor, Direction::Forward);
+    goto_buffer_by_direction(cx.editor, Direction::Forward)
 }
 
 fn goto_previous_buffer(cx: &mut Context) {
-    goto_buffer(cx.editor, Direction::Backward);
+    goto_buffer_by_direction(cx.editor, Direction::Backward)
 }
 
-fn goto_buffer(editor: &mut Editor, direction: Direction) {
-    let current = view!(editor).doc;
+fn goto_buffer_by_direction(editor: &mut Editor, direction: Direction) {
+    let doc_id = &view!(editor).doc;
+    let buffers_len = editor.documents.len();
+    let current_index = editor
+        .documents
+        .keys()
+        .position(|d| d == doc_id)
+        .expect("current document was not in documents");
 
-    let id = match direction {
-        Direction::Forward => {
-            let iter = editor.documents.keys();
-            let mut iter = iter.skip_while(|id| *id != &current);
-            iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().next())
-        }
-        Direction::Backward => {
-            let iter = editor.documents.keys();
-            let mut iter = iter.rev().skip_while(|id| *id != &current);
-            iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().rev().next())
-        }
-    }
-    .unwrap();
+    let new_index = match direction {
+        Direction::Forward if current_index < buffers_len - 1 => current_index + 1,
+        Direction::Forward => 0, // Would be out of bounds, wrap to front.
+        Direction::Backward if current_index > 0 => current_index - 1,
+        Direction::Backward => buffers_len - 1, // Would be out of bounds, wrap to back.
+    };
 
-    let id = *id;
+    // Safety: The above logic ensures that the new index is always in bounds.
+    goto_buffer_by_index_impl(editor, new_index).unwrap();
+}
 
-    editor.switch(id, Action::Replace);
+/// Goto a buffer by providing it's index.
+///
+/// Note that the index starts from 0.
+///
+/// # Errors
+///
+/// Returns an error if the index could not be found - is out of bounds.
+fn goto_buffer_by_index_impl(editor: &mut Editor, index: usize) -> anyhow::Result<()> {
+    let doc_id = editor
+        .documents
+        .keys()
+        .nth(index)
+        .copied()
+        .ok_or_else(|| anyhow!("no buffer '{}' in editor", index + 1))?;
+
+    editor.switch(doc_id, Action::Replace);
+
+    Ok(())
 }
 
 fn extend_to_line_start(cx: &mut Context) {

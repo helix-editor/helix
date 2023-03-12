@@ -265,7 +265,8 @@ fn buffer_next(
         return Ok(());
     }
 
-    goto_buffer(cx.editor, Direction::Forward);
+    goto_buffer_by_direction(cx.editor, Direction::Forward);
+
     Ok(())
 }
 
@@ -278,7 +279,38 @@ fn buffer_previous(
         return Ok(());
     }
 
-    goto_buffer(cx.editor, Direction::Backward);
+    goto_buffer_by_direction(cx.editor, Direction::Backward);
+
+    Ok(())
+}
+
+/// Goto a buffer by providing <i> (index) as the argument.
+///
+/// Note that the index starts from 1.
+fn goto_buffer_by_index(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let index_str = args
+        .first()
+        .ok_or_else(|| anyhow!("requires an argument for <i>"))?
+        .as_ref();
+    let index = index_str
+        .parse::<usize>()
+        .map_err(|_| anyhow!("'{}' is not a valid index", index_str))?;
+
+    if index < 1 {
+        bail!("indices bellow 1 not supported");
+    }
+
+    // Convert to zero based index
+    goto_buffer_by_index_impl(cx.editor, index - 1)?;
+
     Ok(())
 }
 
@@ -2134,14 +2166,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["bc", "bclose"],
             doc: "Close the current buffer.",
             fun: buffer_close,
-            completer: Some(completers::buffer),
+            completer: Some(completers::buffer_name),
         },
         TypableCommand {
             name: "buffer-close!",
             aliases: &["bc!", "bclose!"],
             doc: "Close the current buffer forcefully, ignoring unsaved changes.",
             fun: force_buffer_close,
-            completer: Some(completers::buffer),
+            completer: Some(completers::buffer_name),
         },
         TypableCommand {
             name: "buffer-close-others",
@@ -2170,6 +2202,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Force close all buffers ignoring unsaved changes without quitting.",
             fun: force_buffer_close_all,
             completer: None,
+        },
+        TypableCommand {
+            name: "buffer-goto",
+            aliases: &["b"],
+            doc: "Goto the buffer number <n>.",
+            fun: goto_buffer_by_index,
+            completer: Some(completers::buffer_index),
         },
         TypableCommand {
             name: "buffer-next",
