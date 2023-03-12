@@ -339,7 +339,9 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
 pub struct LspConfig {
     /// Enables LSP
     pub enable: bool,
-    /// Display LSP progress messages below statusline
+    /// Display LSP messagess from $/progress below statusline
+    pub display_progress_messages: bool,
+    /// Display LSP messages from window/showMessage below statusline
     pub display_messages: bool,
     /// Enable automatic pop up of signature help (parameter hints)
     pub auto_signature_help: bool,
@@ -353,6 +355,7 @@ impl Default for LspConfig {
     fn default() -> Self {
         Self {
             enable: true,
+            display_progress_messages: false,
             display_messages: false,
             auto_signature_help: true,
             display_signature_help_docs: true,
@@ -1020,6 +1023,13 @@ impl Editor {
         let error = error.into();
         log::error!("editor error: {}", error);
         self.status_msg = Some((error, Severity::Error));
+    }
+
+    #[inline]
+    pub fn set_warning<T: Into<Cow<'static, str>>>(&mut self, warning: T) {
+        let warning = warning.into();
+        log::warn!("editor warning: {}", warning);
+        self.status_msg = Some((warning, Severity::Warning));
     }
 
     #[inline]
