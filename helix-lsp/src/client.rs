@@ -1106,11 +1106,7 @@ impl Client {
 
     pub fn supports_rename(&self) -> bool {
         let capabilities = self.capabilities.get().unwrap();
-        match capabilities.rename_provider {
-            Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => true,
-            // None | Some(false)
-            _ => false,
-        }
+        matches!(capabilities.rename_provider, Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)))
     }
 
     pub fn rename_symbol(
