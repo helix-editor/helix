@@ -736,6 +736,55 @@ impl Transaction {
         Self::delete(doc, selection.iter().map(f))
     }
 
+    /// Generate a transaction with a change per selection range, which
+    /// generates a new selection as well. Each range is operated upon by
+    /// the given function and can optionally produce a new range. If none
+    /// is returned by the function, that range is dropped from the resulting
+    /// selection.
+    pub fn change_by_and_with_selection<F>(doc: &Rope, selection: &Selection, mut f: F) -> Self
+    where
+        F: FnMut(&Range) -> (Change, Option<Range>),
+    {
+        let mut end_ranges = SmallVec::with_capacity(selection.len());
+        let mut offset = 0;
+
+        let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
+            let ((from, to, replacement), end_range) = f(start_range);
+            let mut change_size = to as isize - from as isize;
+
+            if let Some(ref text) = replacement {
+                change_size = text.chars().count() as isize - change_size;
+            } else {
+                change_size = -change_size;
+            }
+
+            if let Some(end_range) = end_range {
+                let offset_range = Range::new(
+                    (end_range.anchor as isize + offset) as usize,
+                    (end_range.head as isize + offset) as usize,
+                );
+
+                log::trace!("end range {:?} offset to: {:?}", end_range, offset_range);
+
+                end_ranges.push(offset_range);
+            }
+
+            offset += change_size;
+
+            log::trace!(
+                "from: {}, to: {}, replacement: {:?}, offset: {}",
+                from,
+                to,
+                replacement,
+                offset
+            );
+
+            (from, to, replacement)
+        });
+
+        transaction.with_selection(Selection::new(end_ranges, selection.primary_index()))
+    }
+
     /// Insert text at each selection head.
     pub fn insert(doc: &Rope, selection: &Selection, text: Tendril) -> Self {
         Self::change_by_selection(doc, selection, |range| {
