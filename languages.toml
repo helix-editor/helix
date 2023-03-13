@@ -2327,3 +2327,27 @@ roots = []
 [[grammar]]
 name = "rst"
 source = { git = "https://github.com/stsewd/tree-sitter-rst", rev = "25e6328872ac3a764ba8b926aea12719741103f1" }
+
+[[language]]
+name = "nim"
+scope = "source.nim"
+injection-regex = "nim"
+file-types = ["nim", "nims", "nimble"]
+shebangs = []
+roots = []
+auto-format = false
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "nimlangserver" }
+
+[language.auto-pairs]
+'(' = ')'
+'[' = ']'
+'"' = '"'
+"'" = "'"
+'{' = '}'
+
+# Nim's tree-sitter grammar is in heavy development.
+[[grammar]]
+name = "nim"
+source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b232550e431d67de250d1b5856209e7f06" }
