@@ -336,7 +336,12 @@ mod parser {
                 "${",
                 digit(),
                 ":",
-                one_or_more(anything(TEXT_ESCAPE_CHARS)),
+                // according to the grammar there is just a single anything here.
+                // However in the procese it is explained that placeholders can be nested
+                // the example there contains both a placeholder text and a nested placeholder
+                // which indicates a list. Looking at the VSCode sourcecode, the placeholder
+                // is indeed parsed as zero_or_more so the grammar is simply incorrect here
+                zero_or_more(anything(TEXT_ESCAPE_CHARS)),
                 "}"
             ),
             |seq| SnippetElement::Placeholder {
