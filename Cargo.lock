@@ -1076,6 +1076,7 @@ dependencies = [
  "arc-swap",
  "bitflags",
  "chrono",
+ "dunce",
  "encoding_rs",
  "etcetera",
  "hashbrown 0.13.2",
