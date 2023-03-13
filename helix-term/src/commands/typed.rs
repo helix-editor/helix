@@ -10,6 +10,7 @@ use helix_core::{encoding, line_ending, shellwords::Shellwords};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
+
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -339,26 +340,8 @@ fn write_impl(
         insert_final_newline(doc, view);
     }
 
-    let fmt = if config.auto_format {
-        doc.auto_format().map(|fmt| {
-            let callback = make_format_callback(
-                doc.id(),
-                doc.version(),
-                view.id,
-                fmt,
-                Some((path.map(Into::into), force)),
-            );
-
-            jobs.add(Job::with_callback(callback).wait_before_exiting());
-        })
-    } else {
-        None
-    };
-
-    if fmt.is_none() {
-        let id = doc.id();
-        cx.editor.save(id, path, force)?;
-    }
+    let callback = make_on_save_callback(doc.id(), view.id, path.map(Into::into), force);
+    jobs.add(Job::with_callback(callback).wait_before_exiting());
 
     Ok(())
 }
@@ -452,7 +435,7 @@ fn format(
 
     let (view, doc) = current!(cx.editor);
     if let Some(format) = doc.format() {
-        let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
+        let callback = make_format_callback(doc.id(), doc.version(), view.id, format);
         cx.jobs.callback(callback);
     }
 
@@ -717,24 +700,8 @@ pub fn write_all_impl(
             insert_final_newline(doc, view_mut!(cx.editor, target_view));
         }
 
-        let fmt = if config.auto_format {
-            doc.auto_format().map(|fmt| {
-                let callback = make_format_callback(
-                    doc_id,
-                    doc.version(),
-                    target_view,
-                    fmt,
-                    Some((None, force)),
-                );
-                jobs.add(Job::with_callback(callback).wait_before_exiting());
-            })
-        } else {
-            None
-        };
-
-        if fmt.is_none() {
-            cx.editor.save::<PathBuf>(doc_id, None, force)?;
-        }
+        let callback = make_on_save_callback(doc.id(), target_view, None, force);
+        jobs.add(Job::with_callback(callback).wait_before_exiting());
     }
 
     if !errors.is_empty() && !force {

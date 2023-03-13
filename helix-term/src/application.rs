@@ -319,11 +319,11 @@ impl Application {
                     self.handle_terminal_events(event).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback).await;
                     self.render().await;
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback).await;
                     self.render().await;
                 }
                 event = self.editor.wait_event() => {
