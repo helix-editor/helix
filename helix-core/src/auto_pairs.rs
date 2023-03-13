@@ -4,8 +4,6 @@
 use crate::{graphemes, movement::Direction, Range, Rope, Selection, Tendril, Transaction};
 use std::collections::HashMap;
 
-use smallvec::SmallVec;
-
 // Heavily based on https://github.com/codemirror/closebrackets/
 pub const DEFAULT_PAIRS: &[(char, char)] = &[
     ('(', ')'),
@@ -146,7 +144,7 @@ fn prev_char(doc: &Rope, pos: usize) -> Option<char> {
 }
 
 /// calculate what the resulting range should be for an auto pair insertion
-fn get_next_range(doc: &Rope, start_range: &Range, offset: usize, len_inserted: usize) -> Range {
+fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range {
     // When the character under the cursor changes due to complete pair
     // insertion, we must look backward a grapheme and then add the length
     // of the insertion to put the resulting cursor in the right place, e.g.
@@ -165,10 +163,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, offset: usize, len_inserted: 
 
     // inserting at the very end of the document after the last newline
     if start_range.head == doc.len_chars() && start_range.anchor == doc.len_chars() {
-        return Range::new(
-            start_range.anchor + offset + 1,
-            start_range.head + offset + 1,
-        );
+        return Range::new(start_range.anchor + 1, start_range.head + 1);
     }
 
     let doc_slice = doc.slice(..);
@@ -177,7 +172,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, offset: usize, len_inserted: 
     // just skip over graphemes
     if len_inserted == 0 {
         let end_anchor = if single_grapheme {
-            graphemes::next_grapheme_boundary(doc_slice, start_range.anchor) + offset
+            graphemes::next_grapheme_boundary(doc_slice, start_range.anchor)
 
         // even for backward inserts with multiple grapheme selections,
         // we want the anchor to stay where it is so that the relative
@@ -185,42 +180,38 @@ fn get_next_range(doc: &Rope, start_range: &Range, offset: usize, len_inserted: 
         //
         // foo([) wor]d -> insert ) -> foo()[ wor]d
         } else {
-            start_range.anchor + offset
+            start_range.anchor
         };
 
         return Range::new(
             end_anchor,
-            graphemes::next_grapheme_boundary(doc_slice, start_range.head) + offset,
+            graphemes::next_grapheme_boundary(doc_slice, start_range.head),
         );
     }
 
     // trivial case: only inserted a single-char opener, just move the selection
     if len_inserted == 1 {
         let end_anchor = if single_grapheme || start_range.direction() == Direction::Backward {
-            start_range.anchor + offset + 1
+            start_range.anchor + 1
         } else {
-            start_range.anchor + offset
+            start_range.anchor
         };
 
-        return Range::new(end_anchor, start_range.head + offset + 1);
+        return Range::new(end_anchor, start_range.head + 1);
     }
 
     // If the head = 0, then we must be in insert mode with a backward
     // cursor, which implies the head will just move
     let end_head = if start_range.head == 0 || start_range.direction() == Direction::Backward {
-        start_range.head + offset + 1
+        start_range.head + 1
     } else {
         // We must have a forward cursor, which means we must move to the
         // other end of the grapheme to get to where the new characters
         // are inserted, then move the head to where it should be
         let prev_bound = graphemes::prev_grapheme_boundary(doc_slice, start_range.head);
-        log::trace!(
-            "prev_bound: {}, offset: {}, len_inserted: {}",
-            prev_bound,
-            offset,
-            len_inserted
-        );
-        prev_bound + offset + len_inserted
+        log::trace!("prev_bound: {}, len_inserted: {}", prev_bound, len_inserted);
+
+        prev_bound + len_inserted
     };
 
     let end_anchor = match (start_range.len(), start_range.direction()) {
@@ -239,7 +230,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, offset: usize, len_inserted: 
             // if we are appending, the anchor stays where it is; only offset
             // for multiple range insertions
             } else {
-                start_range.anchor + offset
+                start_range.anchor
             }
         }
 
@@ -248,13 +239,11 @@ fn get_next_range(doc: &Rope, start_range: &Range, offset: usize, len_inserted: 
                 // if we're backward, then the head is at the first char
                 // of the typed char, so we need to add the length of
                 // the closing char
-                graphemes::prev_grapheme_boundary(doc.slice(..), start_range.anchor)
-                    + len_inserted
-                    + offset
+                graphemes::prev_grapheme_boundary(doc.slice(..), start_range.anchor) + len_inserted
             } else {
                 // when we are inserting in front of a selection, we need to move
                 // the anchor over by however many characters were inserted overall
-                start_range.anchor + offset + len_inserted
+                start_range.anchor + len_inserted
             }
         }
     };
@@ -263,10 +252,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, offset: usize, len_inserted: 
 }
 
 fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
-    let mut end_ranges = SmallVec::with_capacity(selection.len());
-    let mut offs = 0;
-
-    let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
+    let transaction = Transaction::change_by_and_with_selection(doc, selection, |start_range| {
         let cursor = start_range.cursor(doc.slice(..));
         let next_char = doc.get_char(cursor);
         let len_inserted;
@@ -289,23 +275,17 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
             }
         };
 
-        let next_range = get_next_range(doc, start_range, offs, len_inserted);
-        end_ranges.push(next_range);
-        offs += len_inserted;
+        let next_range = get_next_range(doc, start_range, len_inserted);
 
-        change
+        (change, Some(next_range))
     });
 
-    let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
-    log::debug!("auto pair transaction: {:#?}", t);
-    t
+    log::debug!("auto pair transaction: {:#?}", transaction);
+    transaction
 }
 
 fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
-    let mut end_ranges = SmallVec::with_capacity(selection.len());
-    let mut offs = 0;
-
-    let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
+    let transaction = Transaction::change_by_and_with_selection(doc, selection, |start_range| {
         let cursor = start_range.cursor(doc.slice(..));
         let next_char = doc.get_char(cursor);
         let mut len_inserted = 0;
@@ -320,25 +300,18 @@ fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
             (cursor, cursor, Some(tendril))
         };
 
-        let next_range = get_next_range(doc, start_range, offs, len_inserted);
-        end_ranges.push(next_range);
-        offs += len_inserted;
+        let next_range = get_next_range(doc, start_range, len_inserted);
 
-        change
+        (change, Some(next_range))
     });
 
-    let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
-    log::debug!("auto pair transaction: {:#?}", t);
-    t
+    log::debug!("auto pair transaction: {:#?}", transaction);
+    transaction
 }
 
 /// handle cases where open and close is the same, or in triples ("""docstring""")
 fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
-    let mut end_ranges = SmallVec::with_capacity(selection.len());
-
-    let mut offs = 0;
-
-    let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
+    let transaction = Transaction::change_by_and_with_selection(doc, selection, |start_range| {
         let cursor = start_range.cursor(doc.slice(..));
         let mut len_inserted = 0;
         let next_char = doc.get_char(cursor);
@@ -360,14 +333,12 @@ fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
             (cursor, cursor, Some(pair_str))
         };
 
-        let next_range = get_next_range(doc, start_range, offs, len_inserted);
-        end_ranges.push(next_range);
-        offs += len_inserted;
+        let next_range = get_next_range(doc, start_range, len_inserted);
 
-        change
+        (change, Some(next_range))
     });
 
-    let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
-    log::debug!("auto pair transaction: {:#?}", t);
-    t
+    log::debug!("auto pair transaction: {:#?}", transaction);
+
+    transaction
 }
