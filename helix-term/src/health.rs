@@ -2,10 +2,7 @@ use crossterm::{
     style::{Color, Print, Stylize},
     tty::IsTty,
 };
-use helix_core::{
-    config::{default_syntax_loader, user_syntax_loader},
-    syntax::LanguageServerFeatureConfiguration,
-};
+use helix_core::config::{default_syntax_loader, user_syntax_loader};
 use helix_loader::grammar::load_runtime_file;
 use helix_view::clipboard::get_clipboard_provider;
 use std::io::Write;

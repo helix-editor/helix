@@ -50,7 +50,7 @@
 | `:reload-all` | Discard changes and reload all documents from the source files. |
 | `:update`, `:u` | Write changes only if the file has been modified. |
 | `:lsp-workspace-command` | Open workspace command picker |
-| `:lsp-restart` | Restarts the language servers used by the currently opened file |
+| `:lsp-restart` | Restarts the language servers used by the current doc |
 | `:lsp-stop` | Stops the Language Server that is in use by the current doc |
 | `:tree-sitter-scopes` | Display tree sitter scopes, primarily for theming and development. |
 | `:debug-start`, `:dbg` | Start a debug session from a given template with given parameters. |
