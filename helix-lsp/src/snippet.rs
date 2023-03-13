@@ -314,7 +314,7 @@ mod parser {
                 "${",
                 digit(),
                 ":",
-                one_or_more(choice!(anything(), text)),
+                zero_or_more(choice!(anything(), text)),
                 "}"
             ),
             |seq| SnippetElement::Placeholder {
