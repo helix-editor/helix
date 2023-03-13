@@ -15,6 +15,15 @@ pub struct InlineAnnotation {
     pub char_idx: usize,
 }
 
+impl InlineAnnotation {
+    pub fn new(char_idx: usize, text: impl Into<Tendril>) -> Self {
+        Self {
+            char_idx,
+            text: text.into(),
+        }
+    }
+}
+
 /// Represents a **single Grapheme** that is part of the document
 /// that start at `char_idx` that will be replaced with
 /// a different `grapheme`.
@@ -33,22 +42,13 @@ pub struct InlineAnnotation {
 /// use helix_core::text_annotations::Overlay;
 ///
 /// // replaces a
-/// Overlay {
-///   char_idx: 0,
-///   grapheme: "X".into(),
-/// };
+/// Overlay::new(0, "X");
 ///
 /// // replaces X͎̊͢͜͝͡
-/// Overlay{
-///   char_idx: 1,
-///   grapheme: "\t".into(),
-/// };
+/// Overlay::new(1, "\t");
 ///
 /// // replaces b
-/// Overlay{
-///   char_idx: 6,
-///   grapheme: "X̢̢̟͖̲͌̋̇͑͝".into(),
-/// };
+/// Overlay::new(6, "X̢̢̟͖̲͌̋̇͑͝");
 /// ```
 ///
 /// The following examples are invalid uses
@@ -57,21 +57,24 @@ pub struct InlineAnnotation {
 /// use helix_core::text_annotations::Overlay;
 ///
 /// // overlay is not aligned at grapheme boundary
-/// Overlay{
-///   char_idx: 3,
-///   grapheme: "x".into(),
-/// };
+/// Overlay::new(3, "x");
 ///
 /// // overlay contains multiple graphemes
-/// Overlay{
-///   char_idx: 0,
-///   grapheme: "xy".into(),
-/// };
+/// Overlay::new(0, "xy");
 /// ```
 #[derive(Debug, Clone)]
 pub struct Overlay {
     pub char_idx: usize,
     pub grapheme: Tendril,
+}
+
+impl Overlay {
+    pub fn new(char_idx: usize, grapheme: impl Into<Tendril>) -> Self {
+        Self {
+            char_idx,
+            grapheme: grapheme.into(),
+        }
+    }
 }
 
 /// Line annotations allow for virtual text between normal

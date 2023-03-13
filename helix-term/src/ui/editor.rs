@@ -992,6 +992,8 @@ impl EditorView {
     }
 
     pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
+        commands::compute_inlay_hints_for_all_views(cx.editor, cx.jobs);
+
         if let Some(completion) = &mut self.completion {
             return if completion.ensure_item_resolved(cx) {
                 EventResult::Consumed(None)
@@ -1016,6 +1018,10 @@ impl EditorView {
         event: &MouseEvent,
         cxt: &mut commands::Context,
     ) -> EventResult {
+        if event.kind != MouseEventKind::Moved {
+            cxt.editor.reset_idle_timer();
+        }
+
         let config = cxt.editor.config();
         let MouseEvent {
             kind,

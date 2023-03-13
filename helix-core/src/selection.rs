@@ -661,6 +661,15 @@ impl<'a> IntoIterator for &'a Selection {
     }
 }
 
+impl IntoIterator for Selection {
+    type Item = Range;
+    type IntoIter = smallvec::IntoIter<[Range; 1]>;
+
+    fn into_iter(self) -> smallvec::IntoIter<[Range; 1]> {
+        self.ranges.into_iter()
+    }
+}
+
 // TODO: checkSelection -> check if valid for doc length && sorted
 
 pub fn keep_or_remove_matches(

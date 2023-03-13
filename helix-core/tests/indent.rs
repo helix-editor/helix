@@ -1,5 +1,5 @@
 use helix_core::{
-    indent::{treesitter_indent_for_pos, IndentStyle},
+    indent::{indent_level_for_line, treesitter_indent_for_pos, IndentStyle},
     syntax::Loader,
     Syntax,
 };
@@ -15,6 +15,39 @@ fn test_treesitter_indent_rust_2() {
     // TODO Use commands.rs as indentation test.
     // Currently this fails because we can't align the parameters of a closure yet
     // test_treesitter_indent("commands.rs", "source.rust");
+}
+
+#[test]
+fn test_indent_level_for_line_with_spaces() {
+    let tab_width: usize = 4;
+    let indent_width: usize = 4;
+
+    let line = ropey::Rope::from_str("        Indented with 8 spaces");
+
+    let indent_level = indent_level_for_line(line.slice(0..), tab_width, indent_width);
+    assert_eq!(indent_level, 2)
+}
+
+#[test]
+fn test_indent_level_for_line_with_tabs() {
+    let tab_width: usize = 4;
+    let indent_width: usize = 4;
+
+    let line = ropey::Rope::from_str("\t\tIndented with 2 tabs");
+
+    let indent_level = indent_level_for_line(line.slice(0..), tab_width, indent_width);
+    assert_eq!(indent_level, 2)
+}
+
+#[test]
+fn test_indent_level_for_line_with_spaces_and_tabs() {
+    let tab_width: usize = 4;
+    let indent_width: usize = 4;
+
+    let line = ropey::Rope::from_str("   \t \tIndented with mix of spaces and tabs");
+
+    let indent_level = indent_level_for_line(line.slice(0..), tab_width, indent_width);
+    assert_eq!(indent_level, 2)
 }
 
 fn test_treesitter_indent(file_name: &str, lang_scope: &str) {

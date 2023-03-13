@@ -1,11 +1,12 @@
 use anyhow::{anyhow, bail, Context, Error};
 use arc_swap::access::DynAccess;
+use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::syntax::Highlight;
-use helix_core::text_annotations::TextAnnotations;
+use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
 use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
@@ -18,6 +19,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
 use std::time::SystemTime;
@@ -118,6 +120,14 @@ pub struct Document {
     text: Rope,
     selections: HashMap<ViewId, Selection>,
 
+    /// Inlay hints annotations for the document, by view.
+    ///
+    /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
+    pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
+    /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
+    /// update from the LSP
+    pub inlay_hints_oudated: bool,
+
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
 
@@ -158,6 +168,74 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 
     diff_handle: Option<DiffHandle>,
+    version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
+}
+
+/// Inlay hints for a single `(Document, View)` combo.
+///
+/// There are `*_inlay_hints` field for each kind of hints an LSP can send since we offer the
+/// option to style theme differently in the theme according to the (currently supported) kinds
+/// (`type`, `parameter` and the rest).
+///
+/// Inlay hints are always `InlineAnnotation`s, not overlays or line-ones: LSP may choose to place
+/// them anywhere in the text and will sometime offer config options to move them where the user
+/// wants them but it shouldn't be Helix who decides that so we use the most precise positioning.
+///
+/// The padding for inlay hints needs to be stored separately for before and after (the LSP spec
+/// uses 'left' and 'right' but not all text is left to right so let's be correct) padding because
+/// the 'before' padding must be added to a layer *before* the regular inlay hints and the 'after'
+/// padding comes ... after.
+#[derive(Debug, Clone)]
+pub struct DocumentInlayHints {
+    /// Identifier for the inlay hints stored in this structure. To be checked to know if they have
+    /// to be recomputed on idle or not.
+    pub id: DocumentInlayHintsId,
+
+    /// Inlay hints of `TYPE` kind, if any.
+    pub type_inlay_hints: Rc<[InlineAnnotation]>,
+
+    /// Inlay hints of `PARAMETER` kind, if any.
+    pub parameter_inlay_hints: Rc<[InlineAnnotation]>,
+
+    /// Inlay hints that are neither `TYPE` nor `PARAMETER`.
+    ///
+    /// LSPs are not required to associate a kind to their inlay hints, for example Rust-Analyzer
+    /// currently never does (February 2023) and the LSP spec may add new kinds in the future that
+    /// we want to display even if we don't have some special highlighting for them.
+    pub other_inlay_hints: Rc<[InlineAnnotation]>,
+
+    /// Inlay hint padding. When creating the final `TextAnnotations`, the `before` padding must be
+    /// added first, then the regular inlay hints, then the `after` padding.
+    pub padding_before_inlay_hints: Rc<[InlineAnnotation]>,
+    pub padding_after_inlay_hints: Rc<[InlineAnnotation]>,
+}
+
+impl DocumentInlayHints {
+    /// Generate an empty list of inlay hints with the given ID.
+    pub fn empty_with_id(id: DocumentInlayHintsId) -> Self {
+        Self {
+            id,
+            type_inlay_hints: Rc::new([]),
+            parameter_inlay_hints: Rc::new([]),
+            other_inlay_hints: Rc::new([]),
+            padding_before_inlay_hints: Rc::new([]),
+            padding_after_inlay_hints: Rc::new([]),
+        }
+    }
+}
+
+/// Associated with a [`Document`] and [`ViewId`], uniquely identifies the state of inlay hints for
+/// for that document and view: if this changed since the last save, the inlay hints for the view
+/// should be recomputed.
+///
+/// We can't store the `ViewOffset` instead of the first and last asked-for lines because if
+/// softwrapping changes, the `ViewOffset` may not change while the displayed lines will.
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct DocumentInlayHintsId {
+    /// First line for which the inlay hints were requested.
+    pub first_line: usize,
+    /// Last line for which the inlay hints were requested.
+    pub last_line: usize,
 }
 
 use std::{fmt, mem};
@@ -167,6 +245,8 @@ impl fmt::Debug for Document {
             .field("id", &self.id)
             .field("text", &self.text)
             .field("selections", &self.selections)
+            .field("inlay_hints_oudated", &self.inlay_hints_oudated)
+            .field("text_annotations", &self.inlay_hints)
             .field("path", &self.path)
             .field("encoding", &self.encoding)
             .field("restore_cursor", &self.restore_cursor)
@@ -181,6 +261,15 @@ impl fmt::Debug for Document {
             .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
             // .field("language_server", &self.language_server)
+            .finish()
+    }
+}
+
+impl fmt::Debug for DocumentInlayHintsId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Much more agreable to read when debugging
+        f.debug_struct("DocumentInlayHintsId")
+            .field("lines", &(self.first_line..self.last_line))
             .finish()
     }
 }
@@ -387,6 +476,8 @@ impl Document {
             encoding,
             text,
             selections: HashMap::default(),
+            inlay_hints: HashMap::default(),
+            inlay_hints_oudated: false,
             indent_style: DEFAULT_INDENT,
             line_ending: DEFAULT_LINE_ENDING,
             restore_cursor: false,
@@ -404,6 +495,7 @@ impl Document {
             language_server: None,
             diff_handle: None,
             config,
+            version_control_head: None,
         }
     }
     pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
@@ -707,6 +799,8 @@ impl Document {
             None => self.diff_handle = None,
         }
 
+        self.version_control_head = provider_registry.get_current_head_name(&path);
+
         Ok(())
     }
 
@@ -814,13 +908,16 @@ impl Document {
         }
     }
 
-    /// Remove a view's selection from this document.
+    /// Remove a view's selection and inlay hints from this document.
     pub fn remove_view(&mut self, view_id: ViewId) {
         self.selections.remove(&view_id);
+        self.inlay_hints.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
     fn apply_impl(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+        use helix_core::Assoc;
+
         let old_doc = self.text().clone();
 
         let success = transaction.changes().apply(&mut self.text);
@@ -876,10 +973,10 @@ impl Document {
                     .unwrap();
             }
 
+            let changes = transaction.changes();
+
             // map state.diagnostics over changes::map_pos too
             for diagnostic in &mut self.diagnostics {
-                use helix_core::Assoc;
-                let changes = transaction.changes();
                 diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
                 diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
                 diagnostic.line = self.text.char_to_line(diagnostic.range.start);
@@ -887,13 +984,40 @@ impl Document {
             self.diagnostics
                 .sort_unstable_by_key(|diagnostic| diagnostic.range);
 
+            // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
+            let apply_inlay_hint_changes = |annotations: &mut Rc<[InlineAnnotation]>| {
+                if let Some(data) = Rc::get_mut(annotations) {
+                    for inline in data.iter_mut() {
+                        inline.char_idx = changes.map_pos(inline.char_idx, Assoc::After);
+                    }
+                }
+            };
+
+            self.inlay_hints_oudated = true;
+            for text_annotation in self.inlay_hints.values_mut() {
+                let DocumentInlayHints {
+                    id: _,
+                    type_inlay_hints,
+                    parameter_inlay_hints,
+                    other_inlay_hints,
+                    padding_before_inlay_hints,
+                    padding_after_inlay_hints,
+                } = text_annotation;
+
+                apply_inlay_hint_changes(padding_before_inlay_hints);
+                apply_inlay_hint_changes(type_inlay_hints);
+                apply_inlay_hint_changes(parameter_inlay_hints);
+                apply_inlay_hint_changes(other_inlay_hints);
+                apply_inlay_hint_changes(padding_after_inlay_hints);
+            }
+
             // emit lsp notification
             if let Some(language_server) = self.language_server() {
                 let notify = language_server.text_document_did_change(
                     self.versioned_identifier(),
                     &old_doc,
                     self.text(),
-                    transaction.changes(),
+                    changes,
                 );
 
                 if let Some(notify) = notify {
@@ -1158,6 +1282,17 @@ impl Document {
         }
     }
 
+    pub fn version_control_head(&self) -> Option<Arc<Box<str>>> {
+        self.version_control_head.as_ref().map(|a| a.load_full())
+    }
+
+    pub fn set_version_control_head(
+        &mut self,
+        version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
+    ) {
+        self.version_control_head = version_control_head;
+    }
+
     #[inline]
     /// Tree-sitter AST tree
     pub fn syntax(&self) -> Option<&Syntax> {
@@ -1201,6 +1336,7 @@ impl Document {
         &self.selections[&view_id]
     }
 
+    #[inline]
     pub fn selections(&self) -> &HashMap<ViewId, Selection> {
         &self.selections
     }
@@ -1339,8 +1475,26 @@ impl Document {
         }
     }
 
+    /// Get the text annotations that apply to the whole document, those that do not apply to any
+    /// specific view.
     pub fn text_annotations(&self, _theme: Option<&Theme>) -> TextAnnotations {
         TextAnnotations::default()
+    }
+
+    /// Set the inlay hints for this document and `view_id`.
+    pub fn set_inlay_hints(&mut self, view_id: ViewId, inlay_hints: DocumentInlayHints) {
+        self.inlay_hints.insert(view_id, inlay_hints);
+    }
+
+    /// Get the inlay hints for this document and `view_id`.
+    pub fn inlay_hints(&self, view_id: ViewId) -> Option<&DocumentInlayHints> {
+        self.inlay_hints.get(&view_id)
+    }
+
+    /// Completely removes all the inlay hints saved for the document, dropping them to free memory
+    /// (since it often means inlay hints have been fully deactivated).
+    pub fn reset_all_inlay_hints(&mut self) {
+        self.inlay_hints = Default::default();
     }
 }
 

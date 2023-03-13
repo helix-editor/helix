@@ -50,6 +50,7 @@ signal to the Helix process on Unix operating systems, such as by using the comm
 | `auto-save` | Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal | `false` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
+| `completion-replace` | Set to `true` to make completions always replace the entire word and not just the part before the cursor | `false` |
 | `auto-info` | Whether to display info boxes | `true` |
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative | `false` |
 | `rulers` | List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file | `[]` |
@@ -110,6 +111,7 @@ The following statusline elements can be configured:
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
 | `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
+| `version-control` | The current branch name or detached commit hash of the opened workspace |
 
 ### `[editor.lsp]` Section
 
@@ -118,9 +120,12 @@ The following statusline elements can be configured:
 | `enable`              | Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.| `true` |
 | `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
+| `display-inlay-hints` | Display inlay hints[^2]                                     | `false` |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
 
 [^1]: By default, a progress spinner is shown in the statusline beside the file path.
+[^2]: You may also have to activate them in the LSP config for them to appear, not just in Helix.
+      Inlay hints in Helix are still being improved on and may be a little bit laggy/janky under some circumstances, please report any bugs you see so we can fix them!
 
 ### `[editor.cursor-shape]` Section
 
