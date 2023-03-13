@@ -32,8 +32,7 @@ use crate::{
 };
 
 use std::{
-    borrow::Cow, cmp::Ordering, collections::BTreeMap, fmt::Write, future::Future, path::PathBuf,
-    sync::Arc,
+    cmp::Ordering, collections::BTreeMap, fmt::Write, future::Future, path::PathBuf, sync::Arc,
 };
 
 /// Gets the language server that is attached to a document, and
@@ -138,15 +137,11 @@ impl ui::menu::Item for PickerDiagnostic {
         // remove background as it is distracting in the picker list
         style.bg = None;
 
-        let code: Cow<'_, str> = self
-            .diag
-            .code
-            .as_ref()
-            .map(|c| match c {
-                NumberOrString::Number(n) => n.to_string().into(),
-                NumberOrString::String(s) => s.as_str().into(),
-            })
-            .unwrap_or_default();
+        let code = match self.diag.code.as_ref() {
+            Some(NumberOrString::Number(n)) => format!(" ({n})"),
+            Some(NumberOrString::String(s)) => format!(" ({s})"),
+            None => String::new(),
+        };
 
         let path = match format {
             DiagnosticsFormat::HideSourcePath => String::new(),
