@@ -40,10 +40,7 @@ use anyhow::{Context, Error};
 
 use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
-use {
-    signal_hook::{consts::signal, low_level},
-    signal_hook_tokio::Signals,
-};
+use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
@@ -447,7 +444,32 @@ impl Application {
         match signal {
             signal::SIGTSTP => {
                 self.restore_term().unwrap();
-                low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
+
+                // SAFETY:
+                //
+                // - helix must have permissions to send signals to all processes in its signal
+                //   group, either by already having the requisite permission, or by having the
+                //   user's UID / EUID / SUID match that of the receiving process(es).
+                let res = unsafe {
+                    // A pid of 0 sends the signal to the entire process group, allowing the user to
+                    // regain control of their terminal if the editor was spawned under another process
+                    // (e.g. when running `git commit`).
+                    //
+                    // We have to send SIGSTOP (not SIGTSTP) to the entire process group, because,
+                    // as mentioned above, the terminal will get stuck if `helix` was spawned from
+                    // an external process and that process waits for `helix` to complete. This may
+                    // be an issue with signal-hook-tokio, but the author of signal-hook believes it
+                    // could be a tokio issue instead:
+                    // https://github.com/vorner/signal-hook/issues/132
+                    libc::kill(0, signal::SIGSTOP)
+                };
+
+                if res != 0 {
+                    let err = std::io::Error::last_os_error();
+                    eprintln!("{}", err);
+                    let res = err.raw_os_error().unwrap_or(1);
+                    std::process::exit(res);
+                }
             }
             signal::SIGCONT => {
                 self.claim_term().await.unwrap();

@@ -1177,6 +1177,7 @@ dependencies = [
  "helix-view",
  "ignore",
  "indoc",
+ "libc",
  "log",
  "once_cell",
  "pulldown-cmark",
