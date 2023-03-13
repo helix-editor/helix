@@ -384,9 +384,14 @@ mod parser {
     }
 
     pub fn parse(s: &str) -> Result<Snippet, &str> {
-        snippet().parse(s).map(|(_input, elements)| elements)
+        snippet().parse(s).and_then(|(remainder, snippet)| {
+            if remainder.is_empty() {
+                Ok(snippet)
+            } else {
+                Err(remainder)
+            }
+        })
     }
-
     #[cfg(test)]
     mod test {
         use super::SnippetElement::*;
@@ -411,6 +416,28 @@ mod parser {
                     ]
                 }),
                 parse("match(${1:Arg1})")
+            )
+        }
+
+        #[test]
+        fn parse_unterminated_placeholder_error() {
+            assert_eq!(Err("${1:)"), parse("match(${1:)"))
+        }
+
+        #[test]
+        fn parse_empty_placeholder() {
+            assert_eq!(
+                Ok(Snippet {
+                    elements: vec![
+                        Text("match(".into()),
+                        Placeholder {
+                            tabstop: 1,
+                            value: vec![],
+                        },
+                        Text(")".into())
+                    ]
+                }),
+                parse("match(${1:})")
             )
         }
 
