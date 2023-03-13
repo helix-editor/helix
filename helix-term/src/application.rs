@@ -1014,6 +1014,17 @@ impl Application {
                             .collect();
                         Ok(json!(result))
                     }
+                    Ok(MethodCall::RegisterCapability(_params)) => {
+                        log::warn!("Ignoring a client/registerCapability request because dynamic capability registration is not enabled. Please report this upstream to the language server");
+                        // Language Servers based on the `vscode-languageserver-node` library often send
+                        // client/registerCapability even though we do not enable dynamic registration
+                        // for any capabilities. We should send a MethodNotFound JSONRPC error in this
+                        // case but that rejects the registration promise in the server which causes an
+                        // exit. So we work around this by ignoring the request and sending back an OK
+                        // response.
+
+                        Ok(serde_json::Value::Null)
+                    }
                 };
 
                 let language_server = match self.editor.language_servers.get_by_id(server_id) {
