@@ -42,6 +42,9 @@ fn get_rules() -> Vec<Require> {
         Require::Existence(Rule::has_either("ui.virtual.indent-guide")),
         // Check for editor.rulers
         Require::Existence(Rule::has_either("ui.virtual.ruler")),
+        // Check for editor.lsp.display-inlay-hints
+        Require::Existence(Rule::has_either("ui.virtual.inlay-hint.parameter")),
+        Require::Existence(Rule::has_either("ui.virtual.inlay-hint.type")),
         // Check for menus and prompts
         Require::Existence(Rule::has_both("ui.menu")),
         Require::Existence(Rule::has_both("ui.help")),
