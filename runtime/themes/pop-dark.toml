@@ -39,6 +39,7 @@ error = { fg = 'brownD', bg = 'redE', modifiers = ['bold'] }
 'ui.virtual.ruler' = { bg = 'brownR' }
 'ui.virtual.whitespace' = { fg = 'brownV' }
 'ui.virtual.indent-guide' = { fg = 'brownR' }
+'ui.virtual.inlay-hint' = {fg = 'brownD', bg = 'brownU'}
 'ui.menu' = { fg = 'greyT', bg = 'brownD' }
 'ui.menu.selected' = { fg = 'orangeH', bg = 'brownH' }
 'ui.popup' = { bg = 'brownD' }

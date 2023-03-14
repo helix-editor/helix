@@ -1,4 +1,6 @@
+use arc_swap::ArcSwap;
 use std::path::Path;
+use std::sync::Arc;
 
 use gix::objs::tree::EntryMode;
 use gix::sec::trust::DefaultForLevel;
@@ -86,6 +88,21 @@ impl DiffProvider for Git {
             data = normalized_file
         }
         Some(data)
+    }
+
+    fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
+        debug_assert!(!file.exists() || file.is_file());
+        debug_assert!(file.is_absolute());
+        let repo = Git::open_repo(file.parent()?, None)?.to_thread_local();
+        let head_ref = repo.head_ref().ok()?;
+        let head_commit = repo.head_commit().ok()?;
+
+        let name = match head_ref {
+            Some(reference) => reference.name().shorten().to_string(),
+            None => head_commit.id.to_hex_with_len(8).to_string(),
+        };
+
+        Some(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
     }
 }
 

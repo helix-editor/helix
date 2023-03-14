@@ -1,4 +1,5 @@
-use std::path::Path;
+use arc_swap::ArcSwap;
+use std::{path::Path, sync::Arc};
 
 #[cfg(feature = "git")]
 pub use git::Git;
@@ -18,12 +19,17 @@ pub trait DiffProvider {
     /// The data is returned as raw byte without any decoding or encoding performed
     /// to ensure all file encodings are handled correctly.
     fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>>;
+    fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>>;
 }
 
 #[doc(hidden)]
 pub struct Dummy;
 impl DiffProvider for Dummy {
     fn get_diff_base(&self, _file: &Path) -> Option<Vec<u8>> {
+        None
+    }
+
+    fn get_current_head_name(&self, _file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
         None
     }
 }
@@ -37,6 +43,12 @@ impl DiffProviderRegistry {
         self.providers
             .iter()
             .find_map(|provider| provider.get_diff_base(file))
+    }
+
+    pub fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
+        self.providers
+            .iter()
+            .find_map(|provider| provider.get_current_head_name(file))
     }
 }
 

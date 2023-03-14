@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use anyhow::{anyhow, Result};
-use helix_core::{smallvec, SmallVec};
+use helix_core::{smallvec, SmallVec, Tendril};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum CaseChange {
@@ -57,10 +57,10 @@ pub fn parse(s: &str) -> Result<Snippet<'_>> {
 
 fn render_elements(
     snippet_elements: &[SnippetElement<'_>],
-    insert: &mut String,
+    insert: &mut Tendril,
     offset: &mut usize,
     tabstops: &mut Vec<(usize, (usize, usize))>,
-    newline_with_offset: &String,
+    newline_with_offset: &str,
     include_placeholer: bool,
 ) {
     use SnippetElement::*;
@@ -121,10 +121,10 @@ fn render_elements(
 #[allow(clippy::type_complexity)] // only used one time
 pub fn render(
     snippet: &Snippet<'_>,
-    newline_with_offset: String,
+    newline_with_offset: &str,
     include_placeholer: bool,
-) -> (String, Vec<SmallVec<[(usize, usize); 1]>>) {
-    let mut insert = String::new();
+) -> (Tendril, Vec<SmallVec<[(usize, usize); 1]>>) {
+    let mut insert = Tendril::new();
     let mut tabstops = Vec::new();
     let mut offset = 0;
 
@@ -133,7 +133,7 @@ pub fn render(
         &mut insert,
         &mut offset,
         &mut tabstops,
-        &newline_with_offset,
+        newline_with_offset,
         include_placeholer,
     );
 

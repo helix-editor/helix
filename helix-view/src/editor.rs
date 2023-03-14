@@ -251,6 +251,9 @@ pub struct Config {
     )]
     pub idle_timeout: Duration,
     pub completion_trigger_len: u8,
+    /// Whether to instruct the LSP to replace the entire word when applying a completion
+    /// or to only insert new text
+    pub completion_replace: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -260,6 +263,8 @@ pub struct Config {
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
     pub true_color: bool,
+    /// Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative. Defaults to `false`.
+    pub undercurl: bool,
     /// Search configuration.
     #[serde(default)]
     pub search: SearchConfig,
@@ -343,6 +348,8 @@ pub struct LspConfig {
     pub auto_signature_help: bool,
     /// Display docs under signature help popup
     pub display_signature_help_docs: bool,
+    /// Display inlay hints
+    pub display_inlay_hints: bool,
 }
 
 impl Default for LspConfig {
@@ -352,6 +359,7 @@ impl Default for LspConfig {
             display_messages: false,
             auto_signature_help: true,
             display_signature_help_docs: true,
+            display_inlay_hints: false,
         }
     }
 }
@@ -465,6 +473,9 @@ pub enum StatusLineElement {
 
     /// A single space
     Spacer,
+
+    /// Current version control information
+    VersionControl,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -729,6 +740,7 @@ impl Default for Config {
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
+            undercurl: false,
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
@@ -740,6 +752,7 @@ impl Default for Config {
             soft_wrap: SoftWrap::default(),
             cursor_word: false,
             text_width: 80,
+            completion_replace: false,
         }
     }
 }
@@ -1132,6 +1145,19 @@ impl Editor {
 
     fn _refresh(&mut self) {
         let config = self.config();
+
+        // Reset the inlay hints annotations *before* updating the views, that way we ensure they
+        // will disappear during the `.sync_change(doc)` call below.
+        //
+        // We can't simply check this config when rendering because inlay hints are only parts of
+        // the possible annotations, and others could still be active, so we need to selectively
+        // drop the inlay hints.
+        if !config.lsp.display_inlay_hints {
+            for doc in self.documents_mut() {
+                doc.reset_all_inlay_hints();
+            }
+        }
+
         for (view, _) in self.tree.views_mut() {
             let doc = doc_mut!(self, &view.doc);
             view.sync_changes(doc);
@@ -1299,6 +1325,7 @@ impl Editor {
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
                 doc.set_diff_base(diff_base, self.redraw_handle.clone());
             }
+            doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
             let id = self.new_document(doc);
             let _ = self.launch_language_server(id);
