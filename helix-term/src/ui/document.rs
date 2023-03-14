@@ -287,9 +287,11 @@ pub fn render_text<'t>(
             style_span.0
         };
 
+        let virt = grapheme.is_virtual().clone();
         renderer.draw_grapheme(
             grapheme.grapheme,
             grapheme_style,
+            virt,
             &mut last_line_indent_level,
             &mut is_in_indent_area,
             pos,
@@ -392,6 +394,7 @@ impl<'a> TextRenderer<'a> {
         &mut self,
         grapheme: Grapheme,
         mut style: Style,
+        is_virtual: bool,
         last_indent_level: &mut usize,
         is_in_indent_area: &mut bool,
         position: Position,
@@ -405,14 +408,16 @@ impl<'a> TextRenderer<'a> {
         }
 
         let width = grapheme.width();
+        let space = if is_virtual { " " } else { &self.space };
+        let nbsp = if is_virtual { " " } else { &self.nbsp };
         let grapheme = match grapheme {
             Grapheme::Tab { width } => {
                 let grapheme_tab_width = char_to_byte_idx(&self.tab, width);
                 &self.tab[..grapheme_tab_width]
             }
             // TODO special rendering for other whitespaces?
-            Grapheme::Other { ref g } if g == " " => &self.space,
-            Grapheme::Other { ref g } if g == "\u{00A0}" => &self.nbsp,
+            Grapheme::Other { ref g } if g == " " => space,
+            Grapheme::Other { ref g } if g == "\u{00A0}" => nbsp,
             Grapheme::Other { ref g } => g,
             Grapheme::Newline => &self.newline,
         };
