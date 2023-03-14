@@ -67,7 +67,7 @@ impl<'a> Context<'a> {
         let config = Arc::new(ArcSwap::from_pointee(Config::default()));
         Editor::new(
             Rect::new(0, 0, 60, 120),
-            Arc::new(theme::Loader::new("", "")),
+            Arc::new(theme::Loader::new(&[])),
             Arc::new(syntax::Loader::new(Configuration { language: vec![] })),
             Arc::new(Arc::new(Map::new(
                 Arc::clone(&config),
