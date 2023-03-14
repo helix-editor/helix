@@ -256,6 +256,7 @@ pub mod util {
         let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
 
         Some(start..end)
+    }
     /// If the LS did not provide a range for the completion or the range of the
     /// primary cursor can not be used for the secondary cursor, this function
     /// can be used to find the completion range for a cursor
