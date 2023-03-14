@@ -2503,7 +2503,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Stops the Language Server that is in use by the current doc",
             fun: lsp_stop,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "tree-sitter-scopes",
@@ -2693,7 +2693,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["diffget", "diffg"],
             doc: "Reset the diff change at the cursor position.",
             fun: reset_diff_change,
-            completer: None,
+            signature: CommandSignature::none(),
         },
     ];
 
