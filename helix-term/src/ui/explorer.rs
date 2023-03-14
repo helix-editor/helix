@@ -755,11 +755,7 @@ fn close_documents(current_item_path: PathBuf, cx: &mut Context) -> Result<()> {
         .documents
         .iter()
         .filter_map(|(id, doc)| {
-            if doc
-                .path()
-                .map(|p| p.starts_with(&current_item_path))
-                .unwrap_or(false)
-            {
+            if doc.path()?.starts_with(&current_item_path) {
                 Some(*id)
             } else {
                 None
