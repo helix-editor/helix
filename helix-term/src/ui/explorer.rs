@@ -612,51 +612,47 @@ impl Explorer {
     }
 
     fn handle_prompt_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
-        fn handle_prompt_event(
-            explorer: &mut Explorer,
-            event: &KeyEvent,
-            cx: &mut Context,
-        ) -> Result<EventResult> {
-            let (action, mut prompt) = match explorer.prompt.take() {
+        let result = (|| -> Result<EventResult> {
+            let (action, mut prompt) = match self.prompt.take() {
                 Some((action, p)) => (action, p),
                 _ => return Ok(EventResult::Ignored(None)),
             };
             let line = prompt.line();
 
-            let current_item_path = explorer.tree.current_item()?.path.clone();
+            let current_item_path = self.tree.current_item()?.path.clone();
             match (&action, event) {
                 (PromptAction::CreateFileOrFolder, key!(Enter)) => {
                     if line.ends_with(std::path::MAIN_SEPARATOR) {
-                        explorer.new_folder(line)?
+                        self.new_folder(line)?
                     } else {
-                        explorer.new_file(line)?
+                        self.new_file(line)?
                     }
                 }
                 (PromptAction::RemoveFolder, key) => {
                     if let key!('y') = key {
                         close_documents(current_item_path, cx)?;
-                        explorer.remove_folder()?;
+                        self.remove_folder()?;
                     }
                 }
                 (PromptAction::RemoveFile, key) => {
                     if let key!('y') = key {
                         close_documents(current_item_path, cx)?;
-                        explorer.remove_file()?;
+                        self.remove_file()?;
                     }
                 }
                 (PromptAction::RenameFile, key!(Enter)) => {
                     close_documents(current_item_path, cx)?;
-                    explorer.rename_current(line)?;
+                    self.rename_current(line)?;
                 }
                 (_, key!(Esc) | ctrl!('c')) => {}
                 _ => {
                     prompt.handle_event(&Event::Key(*event), cx);
-                    explorer.prompt = Some((action, prompt));
+                    self.prompt = Some((action, prompt));
                 }
             }
             Ok(EventResult::Consumed(None))
-        }
-        match handle_prompt_event(self, event, cx) {
+        })();
+        match result {
             Ok(event_result) => event_result,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
