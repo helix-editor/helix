@@ -287,7 +287,7 @@ pub fn render_text<'t>(
             style_span.0
         };
 
-        let virt = grapheme.is_virtual().clone();
+        let virt = grapheme.is_virtual();
         renderer.draw_grapheme(
             grapheme.grapheme,
             grapheme_style,
@@ -315,6 +315,7 @@ pub struct TextRenderer<'a> {
     pub nbsp: String,
     pub space: String,
     pub tab: String,
+    pub virtual_tab: String,
     pub indent_width: u16,
     pub starting_indent: usize,
     pub draw_indent_guides: bool,
@@ -344,6 +345,7 @@ impl<'a> TextRenderer<'a> {
         } else {
             " ".repeat(tab_width)
         };
+        let virtual_tab = " ".repeat(tab_width);
         let newline = if ws_render.newline() == WhitespaceRenderValue::All {
             ws_chars.newline.into()
         } else {
@@ -372,6 +374,7 @@ impl<'a> TextRenderer<'a> {
             nbsp,
             space,
             tab,
+            virtual_tab,
             whitespace_style: theme.get("ui.virtual.whitespace"),
             indent_width,
             starting_indent: col_offset / indent_width as usize
@@ -412,8 +415,13 @@ impl<'a> TextRenderer<'a> {
         let nbsp = if is_virtual { " " } else { &self.nbsp };
         let grapheme = match grapheme {
             Grapheme::Tab { width } => {
-                let grapheme_tab_width = char_to_byte_idx(&self.tab, width);
-                &self.tab[..grapheme_tab_width]
+                if !is_virtual {
+                    let grapheme_tab_width = char_to_byte_idx(&self.tab, width);
+                    &self.tab[..grapheme_tab_width]
+                } else {
+                    let grapheme_tab_width = char_to_byte_idx(&self.virtual_tab, width);
+                    &self.virtual_tab[..grapheme_tab_width]
+                }
             }
             // TODO special rendering for other whitespaces?
             Grapheme::Other { ref g } if g == " " => space,
