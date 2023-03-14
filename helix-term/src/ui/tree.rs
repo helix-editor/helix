@@ -74,7 +74,7 @@ impl<T: Clone> Clone for Tree<T> {
             item: self.item.clone(),
             index: self.index,
             children: self.children.clone(),
-            is_opened: false,
+            is_opened: self.is_opened,
             parent_index: self.parent_index,
         }
     }
