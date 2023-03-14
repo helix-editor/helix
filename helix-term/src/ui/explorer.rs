@@ -389,7 +389,7 @@ impl Explorer {
         self.prompt = Some((
             PromptAction::RemoveFile,
             Prompt::new(
-                format!(" Delete file: '{}'? y/n: ", item.path.display()).into(),
+                format!(" Delete file: '{}'? y/N: ", item.path.display()).into(),
                 None,
                 ui::completers::none,
                 |_, _, _| {},
@@ -409,7 +409,7 @@ impl Explorer {
         self.prompt = Some((
             PromptAction::RemoveFolder,
             Prompt::new(
-                format!(" Delete folder: '{}'? y/n: ", item.path.display()).into(),
+                format!(" Delete folder: '{}'? y/N: ", item.path.display()).into(),
                 None,
                 ui::completers::none,
                 |_, _, _| {},
