@@ -413,15 +413,15 @@ impl<'a> TextRenderer<'a> {
         let width = grapheme.width();
         let space = if is_virtual { " " } else { &self.space };
         let nbsp = if is_virtual { " " } else { &self.nbsp };
+        let tab = if is_virtual {
+            &self.virtual_tab
+        } else {
+            &self.tab
+        };
         let grapheme = match grapheme {
             Grapheme::Tab { width } => {
-                if !is_virtual {
-                    let grapheme_tab_width = char_to_byte_idx(&self.tab, width);
-                    &self.tab[..grapheme_tab_width]
-                } else {
-                    let grapheme_tab_width = char_to_byte_idx(&self.virtual_tab, width);
-                    &self.virtual_tab[..grapheme_tab_width]
-                }
+                let grapheme_tab_width = char_to_byte_idx(&tab, width);
+                &tab[..grapheme_tab_width]
             }
             // TODO special rendering for other whitespaces?
             Grapheme::Other { ref g } if g == " " => space,
