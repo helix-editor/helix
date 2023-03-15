@@ -314,15 +314,6 @@ impl Completion {
         language_server: &helix_lsp::Client,
         completion_item: lsp::CompletionItem,
     ) -> Option<lsp::CompletionItem> {
-        let completion_resolve_provider = language_server
-            .capabilities()
-            .completion_provider
-            .as_ref()?
-            .resolve_provider;
-        if completion_resolve_provider != Some(true) {
-            return None;
-        }
-
         let future = language_server.resolve_completion_item(completion_item)?;
         let response = helix_lsp::block_on(future);
         match response {
