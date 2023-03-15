@@ -242,7 +242,7 @@ impl Client {
         Ok((client, server_rx, initialize_notify))
     }
 
-    pub fn name(&self) -> &String {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
