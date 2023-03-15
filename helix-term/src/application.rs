@@ -1055,7 +1055,7 @@ impl Application {
                         let result: Vec<_> = params
                             .items
                             .iter()
-                            .filter_map(|item| {
+                            .map(|item| {
                                 let mut config = language_server.config()?;
                                 if let Some(section) = item.section.as_ref() {
                                     // for some reason some lsps send an empty string (observed in 'vscode-eslint-language-server')
