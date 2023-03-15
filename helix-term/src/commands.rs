@@ -4254,7 +4254,7 @@ pub fn completion(cx: &mut Context) {
         .filter_map(|language_server| {
             let language_server_id = language_server.id();
             let offset_encoding = language_server.offset_encoding();
-            let pos = pos_to_lsp_pos(doc.text(), cursor, helix_lsp::OffsetEncoding::Utf8);
+            let pos = pos_to_lsp_pos(doc.text(), cursor, offset_encoding);
             let completion_request = language_server.completion(doc.identifier(), pos, None)?;
 
             Some(async move {
