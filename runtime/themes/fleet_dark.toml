@@ -91,9 +91,9 @@
 "ui.text" = "Gray 120" # .focus / .info
 "ui.text.focus" = { fg = "White", bg = "Blue 40" }
 
-"ui.virtual" = "Gray 80" # .whitespace
+"ui.virtual" = "Gray 20" # .whitespace
 "ui.virtual.inlay-hint" = { fg = "Gray 70" }
-# "ui.virtual.ruler" = { bg = "darker"}
+"ui.virtual.ruler" = { bg = "Gray 20" }
 
 "hint" = "Gray 80"
 "info" = "#A366C4"
