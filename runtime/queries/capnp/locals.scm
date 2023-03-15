@@ -1,3 +1,5 @@
+; Scopes
+
 [
   (message)
   (annotation_targets)
@@ -12,79 +14,83 @@
   (struct)
   (struct_shorthand)
   (union)
-] @scope
+] @local.scope
+
+; References
 
 [
   (extend_type)
   (field_type)
-] @reference
-(custom_type (type_identifier) @reference)
+] @local.reference
+(custom_type (type_identifier) @local.reference)
 (custom_type
   (generics
     (generic_parameters 
-      (generic_identifier) @reference)))
+      (generic_identifier) @local.reference)))
 
-(annotation_definition_identifier) @definition
+; Definitions
 
-(const_identifier) @definition.constant
+(annotation_definition_identifier) @local.definition
 
-(enum (enum_identifier) @definition.enum)
+(const_identifier) @local.definition
+
+(enum (enum_identifier) @local.definition)
 
 [
   (enum_member)
   (field_identifier)
-] @definition.field
+] @local.definition
 
-(method_identifier) @definition.method
+(method_identifier) @local.definition
 
-(namespace) @definition.namespace
+(namespace) @local.definition
 
 [
   (param_identifier)
   (return_identifier)
-] @definition.parameter
+] @local.definition
 
-(group (type_identifier) @definition.type)
+(group (type_identifier) @local.definition)
 
-(struct (type_identifier) @definition.type)
+(struct (type_identifier) @local.definition)
 
-(union (type_identifier) @definition.type)
+(union (type_identifier) @local.definition)
 
-(interface (type_identifier) @definition.type)
+(interface (type_identifier) @local.definition)
 
 ; Generics Related (don't know how to combine these)
 
 (struct
   (generics
     (generic_parameters
-      (generic_identifier) @definition.parameter)))
+      (generic_identifier) @local.definition)))
 
 (interface
   (generics
     (generic_parameters
-      (generic_identifier) @definition.parameter)))
+      (generic_identifier) @local.definition)))
 
 (method
   (implicit_generics
     (implicit_generic_parameters
-      (generic_identifier) @definition.parameter)))
+      (generic_identifier) @local.definition)))
 
 (method
   (generics
     (generic_parameters
-      (generic_identifier) @definition.parameter)))
+      (generic_identifier) @local.definition)))
 
 (annotation
   (generics
     (generic_parameters
-      (generic_identifier) @definition.type)))
+      (generic_identifier) @local.definition)))
 
 (replace_using
   (generics
     (generic_parameters
-      (generic_identifier) @definition.type)))
+      (generic_identifier) @local.definition)))
 
 (return_type
   (generics
     (generic_parameters
-      (generic_identifier) @definition.type)))
+      (generic_identifier) @local.definition)))
