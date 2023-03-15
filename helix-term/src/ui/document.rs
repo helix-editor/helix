@@ -420,7 +420,7 @@ impl<'a> TextRenderer<'a> {
         };
         let grapheme = match grapheme {
             Grapheme::Tab { width } => {
-                let grapheme_tab_width = char_to_byte_idx(&tab, width);
+                let grapheme_tab_width = char_to_byte_idx(tab, width);
                 &tab[..grapheme_tab_width]
             }
             // TODO special rendering for other whitespaces?
