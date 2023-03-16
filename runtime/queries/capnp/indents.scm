@@ -13,22 +13,7 @@
   (union)
 ] @indent
 
-((struct_shorthand (property)) @aligned_indent
-  (#set! "delimiter" "()"))
-
-((const_list (const_value)) @aligned_indent
-  (#set! "delimiter" "[]"))
-
 [
   "}"
   ")"
-] @indent_end
-
-[ "{" "}" ] @branch
-
-[ "(" ")" ] @branch
-
-[
-  (ERROR)
-  (comment)
-] @auto
+] @outdent
