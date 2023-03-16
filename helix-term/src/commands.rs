@@ -11,6 +11,7 @@ pub use typed::*;
 
 use helix_core::{
     char_idx_at_visual_offset, comment,
+    diagnostic::Severity,
     doc_formatter::TextFormat,
     encoding, find_first_non_whitespace_char, find_root, graphemes,
     history::UndoKind,
@@ -335,6 +336,8 @@ impl MappableCommand {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        goto_next_error, "Goto next error diagnostic",
+        goto_prev_error, "Goto prev error diagnostic",
         goto_next_change, "Goto next change",
         goto_prev_change, "Goto previous change",
         goto_first_change, "Goto first change",
@@ -3007,6 +3010,57 @@ fn goto_prev_diag(cx: &mut Context) {
         .rev()
         .find(|diag| diag.range.start < cursor_pos)
         .or_else(|| doc.diagnostics().last());
+
+    let selection = match diag {
+        // NOTE: the selection is reversed because we're jumping to the
+        // previous diagnostic.
+        Some(diag) => Selection::single(diag.range.end, diag.range.start),
+        None => return,
+    };
+    doc.set_selection(view.id, selection);
+}
+
+fn goto_next_error(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let cursor_pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
+
+    let next_err = || {
+        doc.diagnostics()
+            .iter()
+            .filter(|diag| diag.severity.unwrap_or(Severity::Hint) >= Severity::Error)
+    };
+    let diag = next_err()
+        .find(|diag| diag.range.start > cursor_pos)
+        .or_else(|| next_err().next());
+
+    let selection = match diag {
+        Some(diag) => Selection::single(diag.range.start, diag.range.end),
+        None => return,
+    };
+    doc.set_selection(view.id, selection);
+}
+
+fn goto_prev_error(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let cursor_pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
+
+    let next_err = || {
+        doc.diagnostics()
+            .iter()
+            .rev()
+            .filter(|diag| diag.severity.unwrap_or(Severity::Hint) >= Severity::Error)
+    };
+    let diag = next_err()
+        .find(|diag| diag.range.start < cursor_pos)
+        .or_else(|| next_err().next());
 
     let selection = match diag {
         // NOTE: the selection is reversed because we're jumping to the
