@@ -44,13 +44,10 @@ pub fn get_normalized_path(path: &Path) -> PathBuf {
     // then run handrolled normalization on the non-existent remainder
     let (base, path) = path
         .ancestors()
-        .find(|path| path.exists())
-        .and_then(|path| Some((path, dunce::canonicalize(path).ok()?)))
-        .map(|(base, canonicalized)| {
-            (
-                canonicalized,
-                path.strip_prefix(base).unwrap(/* base is an ancestor of path */).into(),
-            )
+        .find_map(|base| {
+            let canonicalized_base = dunce::canonicalize(base).ok()?;
+            let remainder = path.strip_prefix(base).ok()?.into();
+            Some((canonicalized_base, remainder))
         })
         .unwrap_or_else(|| (PathBuf::new(), PathBuf::from(path)));
 
