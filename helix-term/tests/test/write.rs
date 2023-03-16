@@ -3,7 +3,7 @@ use std::{
     ops::RangeInclusive,
 };
 
-use helix_core::diagnostic::Severity;
+use helix_core::{diagnostic::Severity, path::get_normalized_path};
 use helix_view::doc;
 
 use super::*;
@@ -179,7 +179,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&file.path().to_path_buf()), doc.path());
+            assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
         }),
         false,
     )
@@ -251,7 +251,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
                 Some(&|app| {
                     let doc = doc!(app.editor);
                     assert!(!app.editor.is_err());
-                    assert_eq!(file1.path(), doc.path().unwrap());
+                    assert_eq!(&get_normalized_path(file1.path()), doc.path().unwrap());
                 }),
             ),
             (
@@ -259,7 +259,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
                 Some(&|app| {
                     let doc = doc!(app.editor);
                     assert!(!app.editor.is_err());
-                    assert_eq!(file2.path(), doc.path().unwrap());
+                    assert_eq!(&get_normalized_path(file2.path()), doc.path().unwrap());
                     assert!(app.editor.document_by_path(file1.path()).is_none());
                 }),
             ),

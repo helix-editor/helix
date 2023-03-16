@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use helix_core::diagnostic::Severity;
+use helix_core::{diagnostic::Severity, path::get_normalized_path};
 use helix_term::application::Application;
 
 use super::*;
@@ -20,7 +20,7 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(file.path()), doc.path().map(PathBuf::as_path));
+            assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
         false,
