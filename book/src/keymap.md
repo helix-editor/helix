@@ -313,6 +313,8 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 | `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`      |
 | `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`      |
 | `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`     |
+| `]e`     | Go to next error diagnostic (**LSP**)        | `goto_next_error`     |
+| `[e`     | Go to previous error diagnostic (**LSP**)    | `goto_prev_error`     |
 | `]f`     | Go to next function (**TS**)                 | `goto_next_function`  |
 | `[f`     | Go to previous function (**TS**)             | `goto_prev_function`  |
 | `]t`     | Go to next type definition (**TS**)          | `goto_next_class`     |
