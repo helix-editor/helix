@@ -120,9 +120,9 @@ impl<'a, T> DoubleEndedIterator for TreeIter<'a, T> {
 impl<'a, T> ExactSizeIterator for TreeIter<'a, T> {}
 
 impl<T: TreeViewItem> Tree<T> {
-    fn open(&mut self, filter: &str) -> Result<()> {
+    fn open(&mut self) -> Result<()> {
         if self.item.is_parent() {
-            self.children = self.get_filtered_children(filter)?;
+            self.children = self.get_children()?;
             self.is_opened = true;
         }
         Ok(())
@@ -133,11 +133,11 @@ impl<T: TreeViewItem> Tree<T> {
         self.children = vec![];
     }
 
-    fn refresh(&mut self, filter: &str) -> Result<()> {
+    fn refresh(&mut self) -> Result<()> {
         if !self.is_opened {
             return Ok(());
         }
-        let latest_children = self.get_filtered_children(filter)?;
+        let latest_children = self.get_children()?;
         let filtered = std::mem::take(&mut self.children)
             .into_iter()
             // Remove children that does not exists in latest_children
@@ -147,7 +147,7 @@ impl<T: TreeViewItem> Tree<T> {
                     .any(|child| tree.item.name().eq(&child.item.name()))
             })
             .map(|mut tree| {
-                tree.refresh(filter)?;
+                tree.refresh()?;
                 Ok(tree)
             })
             .collect::<Result<Vec<_>>>()?;
@@ -171,15 +171,10 @@ impl<T: TreeViewItem> Tree<T> {
         Ok(())
     }
 
-    fn get_filtered_children(&self, filter: &str) -> Result<Vec<Tree<T>>> {
+    fn get_children(&self) -> Result<Vec<Tree<T>>> {
         Ok(vec_to_tree(
             self.item
                 .get_children()?
-                .into_iter()
-                .filter(|item| {
-                    item.is_parent() || item.name().to_lowercase().contains(&filter.to_lowercase())
-                })
-                .collect(),
         ))
     }
 
@@ -278,11 +273,7 @@ pub struct TreeView<T: TreeViewItem> {
 
     search_prompt: Option<(Direction, Prompt)>,
 
-    filter_prompt: Option<Prompt>,
-
     search_str: String,
-
-    filter: String,
 
     /// Selected item idex
     selected: usize,
@@ -336,9 +327,7 @@ impl<T: TreeViewItem> TreeView<T> {
             on_folded_fn: None,
             on_next_key: None,
             search_prompt: None,
-            filter_prompt: None,
             search_str: "".into(),
-            filter: "".into(),
         })
     }
 
@@ -388,7 +377,7 @@ impl<T: TreeViewItem> TreeView<T> {
                     {
                         Some(tree) => {
                             if !tree.is_opened {
-                                tree.open(&self.filter)?;
+                                tree.open()?;
                             }
                             Ok(tree)
                         }
@@ -445,13 +434,13 @@ impl<T: TreeViewItem> TreeView<T> {
         Ok(())
     }
 
-    fn move_to_children(&mut self, filter: &str) -> Result<()> {
+    fn move_to_children(&mut self) -> Result<()> {
         let current = self.current_mut()?;
         if current.is_opened {
             self.set_selected(self.selected + 1);
             Ok(())
         } else {
-            current.open(filter)?;
+            current.open()?;
             if !current.children.is_empty() {
                 self.set_selected(self.selected + 1);
                 self.regenerate_index();
@@ -461,14 +450,11 @@ impl<T: TreeViewItem> TreeView<T> {
     }
 
     pub fn refresh(&mut self) -> Result<()> {
-        self.refresh_with_filter(&self.filter.clone())
-    }
-
-    fn refresh_with_filter(&mut self, filter: &str) -> Result<()> {
-        self.tree.refresh(filter)?;
+        self.tree.refresh()?;
         self.set_selected(self.selected);
         Ok(())
     }
+
 
     fn move_to_first_line(&mut self) {
         self.move_up(usize::MAX / 2)
@@ -509,7 +495,6 @@ pub fn tree_view_help() -> Vec<(&'static str, &'static str)> {
         ("H", "Go to first child"),
         ("L", "Go to last child"),
         ("R", "Refresh"),
-        ("f", "Filter"),
         ("/", "Search"),
         ("n", "Go to next search match"),
         ("N", "Go to previous search match"),
@@ -535,7 +520,6 @@ impl<T: TreeViewItem> TreeView<T> {
         cx: &mut Context,
         params: &mut T::Params,
         selected_index: usize,
-        filter: &str,
     ) -> Result<()> {
         let selected_item = self.get_mut(selected_index)?;
         if selected_item.is_opened {
@@ -549,7 +533,7 @@ impl<T: TreeViewItem> TreeView<T> {
                 let current = self.current_mut()?;
                 match on_open_fn(&mut current.item, cx, params) {
                     TreeOp::GetChildsAndInsert => {
-                        if let Err(err) = current.open(filter) {
+                        if let Err(err) = current.open() {
                             cx.editor.set_error(format!("{err}"))
                         }
                     }
@@ -793,7 +777,6 @@ struct RenderTreeParams<'a, T> {
     prefix: &'a String,
     level: usize,
     selected: usize,
-    filter: &'a str,
 }
 
 fn render_tree<T: TreeViewItem>(
@@ -802,7 +785,6 @@ fn render_tree<T: TreeViewItem>(
         prefix,
         level,
         selected,
-        filter,
     }: RenderTreeParams<T>,
 ) -> Vec<RenderedLine> {
     let indent = if level > 0 {
@@ -835,7 +817,6 @@ fn render_tree<T: TreeViewItem>(
                 prefix: &prefix,
                 level: level + 1,
                 selected,
-                filter,
             })
         }))
         .collect()
@@ -844,22 +825,7 @@ fn render_tree<T: TreeViewItem>(
 impl<T: TreeViewItem + Clone> TreeView<T> {
     pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let style = cx.editor.theme.get(&self.tree_symbol_style);
-
-        let filter_prompt_area = area.with_height(1);
-        if let Some(prompt) = self.filter_prompt.as_mut() {
-            surface.set_style(filter_prompt_area, style.add_modifier(Modifier::REVERSED));
-            prompt.render_prompt(filter_prompt_area, surface, cx)
-        } else {
-            surface.set_stringn(
-                filter_prompt_area.x,
-                filter_prompt_area.y,
-                format!("[FILTER]: {}", self.filter.clone()),
-                filter_prompt_area.width as usize,
-                style,
-            );
-        }
-
-        let search_prompt_area = area.clip_top(1).with_height(1);
+        let search_prompt_area = area;
         if let Some((_, prompt)) = self.search_prompt.as_mut() {
             surface.set_style(search_prompt_area, style.add_modifier(Modifier::REVERSED));
             prompt.render_prompt(search_prompt_area, surface, cx)
@@ -882,7 +848,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             }
         };
 
-        let area = area.clip_top(2);
+        let area = area.clip_top(1);
         let iter = self.render_lines(area).into_iter().enumerate();
 
         for (index, line) in iter {
@@ -950,7 +916,6 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             prefix: &"".to_string(),
             level: 0,
             selected: self.selected,
-            filter: &self.filter,
         };
 
         let lines = render_tree(params);
@@ -1099,13 +1064,8 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                 return Ok(EventResult::Consumed(c));
             }
 
-            if let EventResult::Consumed(c) = self.handle_filter_event(key_event, cx) {
-                return Ok(EventResult::Consumed(c));
-            }
-
             let count = std::mem::replace(&mut self.count, 0);
 
-            let filter = self.filter.clone();
             match key_event {
                 key!(i @ '0'..='9') => {
                     self.count = i.to_digit(10).unwrap_or(0) as usize + count * 10
@@ -1117,8 +1077,8 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                 key!('j') | key!(Down) | ctrl!('n') => self.move_down(1.max(count)),
                 key!('k') | key!(Up) | ctrl!('p') => self.move_up(1.max(count)),
                 key!('h') | key!(Left) => self.move_to_parent()?,
-                key!('l') | key!(Right) => self.move_to_children(&filter)?,
-                key!(Enter) | key!('o') => self.on_enter(cx, params, self.selected, &filter)?,
+                key!('l') | key!(Right) => self.move_to_children()?,
+                key!(Enter) | key!('o') => self.on_enter(cx, params, self.selected)?,
                 ctrl!('d') => self.move_down_half_page(),
                 ctrl!('u') => self.move_up_half_page(),
                 key!('z') => {
@@ -1147,12 +1107,10 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
                 key!('/') => self.new_search_prompt(Direction::Forward),
                 key!('n') => self.move_to_next_search_match(),
                 shift!('N') => self.move_to_previous_next_match(),
-                key!('f') => self.new_filter_prompt(cx),
                 key!(PageDown) => self.move_down_page(),
                 key!(PageUp) => self.move_up_page(),
                 shift!('R') => {
-                    let filter = self.filter.clone();
-                    if let Err(error) = self.refresh_with_filter(&filter) {
+                    if let Err(error) = self.refresh() {
                         cx.editor.set_error(error.to_string())
                     }
                 }
@@ -1168,42 +1126,6 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             cx.editor.set_error(format!("{err}"));
             EventResult::Consumed(None)
         })
-    }
-
-    fn handle_filter_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
-        if let Some(mut prompt) = self.filter_prompt.take() {
-            (|| -> Result<()> {
-                match event {
-                    key!(Enter) => {
-                        if let EventResult::Consumed(_) =
-                            prompt.handle_event(&Event::Key(*event), cx)
-                        {
-                            self.saved_view = None;
-                            self.filter = prompt.line().clone();
-                            self.refresh_with_filter(prompt.line())?;
-                        }
-                    }
-                    key!(Esc) => self.restore_saved_view()?,
-                    ctrl!('c') => {
-                        self.filter.clear();
-                        self.refresh_with_filter("")?;
-                    }
-                    _ => {
-                        if let EventResult::Consumed(_) =
-                            prompt.handle_event(&Event::Key(*event), cx)
-                        {
-                            self.refresh_with_filter(prompt.line())?;
-                        }
-                        self.filter_prompt = Some(prompt);
-                    }
-                };
-                Ok(())
-            })()
-            .unwrap_or_else(|err| cx.editor.set_error(format!("{err}")));
-            EventResult::Consumed(None)
-        } else {
-            EventResult::Ignored(None)
-        }
     }
 
     fn handle_search_event(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
@@ -1250,21 +1172,8 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
         ))
     }
 
-    fn new_filter_prompt(&mut self, cx: &mut Context) {
-        self.save_view();
-        self.filter_prompt = Some(
-            Prompt::new(
-                "[FILTER]: ".into(),
-                None,
-                ui::completers::none,
-                |_, _, _| {},
-            )
-            .with_line(self.filter.clone(), cx.editor),
-        )
-    }
-
     pub fn prompting(&self) -> bool {
-        self.filter_prompt.is_some() || self.search_prompt.is_some() || self.on_next_key.is_some()
+        self.search_prompt.is_some() || self.on_next_key.is_some()
     }
 }
 
@@ -1361,9 +1270,6 @@ mod test_tree_view {
             }
         }
 
-        fn filter(&self, s: &str) -> bool {
-            self.name().to_lowercase().contains(&s.to_lowercase())
-        }
     }
 
     fn dummy_tree_view<'a>() -> TreeView<DivisibleItem<'a>> {
@@ -1509,8 +1415,8 @@ mod test_tree_view {
     #[test]
     fn test_move_to_first_last_sibling() {
         let mut view = dummy_tree_view();
-        view.move_to_children("").unwrap();
-        view.move_to_children("").unwrap();
+        view.move_to_children().unwrap();
+        view.move_to_children().unwrap();
         view.move_to_parent().unwrap();
         assert_eq!(
             render(&mut view),
@@ -1554,8 +1460,8 @@ mod test_tree_view {
     #[test]
     fn test_move_to_previous_next_sibling() {
         let mut view = dummy_tree_view();
-        view.move_to_children("").unwrap();
-        view.move_to_children("").unwrap();
+        view.move_to_children().unwrap();
+        view.move_to_children().unwrap();
         assert_eq!(
             render(&mut view),
             "
@@ -1818,10 +1724,9 @@ mod test_tree_view {
 
     #[test]
     fn move_to_children_parent() {
-        let filter = "".to_string();
         let mut view = dummy_tree_view();
         view.move_down(1);
-        view.move_to_children(&filter).unwrap();
+        view.move_to_children().unwrap();
         assert_eq!(
             render(&mut view),
             "
@@ -1980,9 +1885,8 @@ krabby_patty
     #[test]
     fn test_move_to_parent_child() {
         let mut view = dummy_tree_view();
-        let filter = "".to_string();
 
-        view.move_to_children(&filter).unwrap();
+        view.move_to_children().unwrap();
         assert_eq!(
             render(&mut view),
             "
@@ -1995,7 +1899,7 @@ krabby_patty
             .trim()
         );
 
-        view.move_to_children(&filter).unwrap();
+        view.move_to_children().unwrap();
         assert_eq!(
             render(&mut view),
             "
@@ -2228,41 +2132,6 @@ krabby_patty
         );
     }
 
-    #[test]
-    fn test_refresh() {
-        let mut view = dummy_tree_view();
-
-        // 1. Move to the last child item on the tree
-        view.move_to_last_line();
-        view.move_to_children("").unwrap();
-        view.move_to_last_line();
-        view.move_to_children("").unwrap();
-        view.move_to_last_line();
-        view.move_to_children("").unwrap();
-        view.move_to_last_line();
-        view.move_to_children("").unwrap();
-
-        // 1a. Expect the current selected item is the last child on the tree
-        assert_eq!(
-            render(&mut view),
-            "
-⏷ [spongebob_squarepants]
-  ⏷ [squarepants]
-    ⏷ [squar]
-      ⏷ [uar]
-          (ar)"
-                .trim_start_matches(|c| c == '\n')
-        );
-
-        // 2. Refreshes the tree with a filter that will remove the last child
-        view.refresh_with_filter("ar").unwrap();
-
-        // 3. Get the current item
-        let item = view.current_item().unwrap();
-
-        // 3a. Expects no failure
-        assert_eq!(item.name, "ar")
-    }
 
     #[test]
     fn test_jump_backward_forward() {
@@ -2393,9 +2262,6 @@ krabby_patty
                 }
             }
 
-            fn filter(&self, s: &str) -> bool {
-                self.name().to_lowercase().contains(&s.to_lowercase())
-            }
         }
 
         pub fn render(view: &mut TreeView<StaticItem<'_>>) -> String {
@@ -2436,9 +2302,8 @@ krabby_patty
         );
 
         // 1. Move down to "a", and expand it
-        let filter = "".to_string();
         view.move_down(1);
-        view.move_to_children(&filter).unwrap();
+        view.move_to_children().unwrap();
 
         assert_eq!(
             render(&mut view),
@@ -2480,7 +2345,7 @@ krabby_patty
         );
 
         // 4. Move to the children of "b", which is "ba"
-        view.move_to_children(&filter).unwrap();
+        view.move_to_children().unwrap();
         assert_eq!(
             render(&mut view),
             "
@@ -2492,7 +2357,7 @@ krabby_patty
         );
 
         // 5. Move to the children of "ba", which is "baa"
-        view.move_to_children(&filter).unwrap();
+        view.move_to_children().unwrap();
 
         // 5a. Expect the furthest ancestor "root" is out of view,
         //     because when there's no enough space, the nearest ancestor takes precedence
@@ -2507,7 +2372,7 @@ krabby_patty
         );
 
         // 5.1 Move to child
-        view.move_to_children(&filter).unwrap();
+        view.move_to_children().unwrap();
         assert_eq!(
             render(&mut view),
             "
@@ -2667,91 +2532,6 @@ krabby_patty
         );
     }
 
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_filter_prompt() {
-        use static_tree::*;
-        let mut editor = Context::dummy_editor();
-        let mut jobs = Context::dummy_jobs();
-        let mut cx = Context::dummy(&mut jobs, &mut editor);
-
-        let mut view = TreeView::build_tree(parent(
-            "root",
-            vec![
-                parent("src", vec![child("bar.rs"), child("foo.toml")]),
-                parent("tests", vec![child("hello.toml"), child("spam.rs")]),
-            ],
-        ))
-        .unwrap();
-
-        fn render(view: &mut TreeView<StaticItem<'_>>) -> String {
-            view.render_to_string(dummy_area().with_height(5))
-        }
-
-        // Open all the children
-        view.handle_events("lljjl", &mut cx, &mut ()).unwrap();
-        assert_eq!(
-            render(&mut view),
-            "
-[root]
-    bar.rs
-    foo.toml
-⏷ [tests]
-    (hello.toml)
-           "
-            .trim()
-        );
-
-        view.handle_events("frs<ret>", &mut cx, &mut ()).unwrap();
-        assert_eq!(
-            render(&mut view),
-            "
-[root]
-    bar.rs
-⏷ [tests]
-    (spam.rs)
-           "
-            .trim()
-        );
-
-        view.handle_events("f<C-w>toml", &mut cx, &mut ()).unwrap();
-        assert_eq!(
-            render(&mut view),
-            "
-[root]
-    foo.toml
-⏷ [tests]
-    (hello.toml)
-           "
-            .trim()
-        );
-
-        // Escape should causes the filter to be reverted
-        view.handle_events("<esc>", &mut cx, &mut ()).unwrap();
-        assert_eq!(
-            render(&mut view),
-            "
-[root]
-    bar.rs
-⏷ [tests]
-    (spam.rs)
-           "
-            .trim()
-        );
-
-        // C-c should clear the filter
-        view.handle_events("f<C-c>", &mut cx, &mut ()).unwrap();
-        assert_eq!(
-            render(&mut view),
-            "
-[root]
-    bar.rs
-    foo.toml
-⏷ (tests)
-    hello.toml
-           "
-            .trim()
-        );
-    }
 }
 
 #[cfg(test)]
