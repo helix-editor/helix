@@ -1027,13 +1027,13 @@ impl Application {
                     Ok(MethodCall::ShowMessageRequest(params)) => {
                         if let Some(actions) = params.actions {
                             let call_id = id.clone();
-                            let icon = match params.typ {
-                                MessageType::ERROR => "❗",
-                                MessageType::WARNING => "⚠️",
-                                MessageType::INFO => "ℹ️",
-                                _ => "📝",
+                            let message_type = match params.typ {
+                                MessageType::ERROR => "ERROR",
+                                MessageType::WARNING => "WARNING",
+                                MessageType::INFO => "INFO",
+                                _ => "LOG",
                             };
-                            let message = format!("{}: {}", icon, &params.message);
+                            let message = format!("{}: {}", message_type, &params.message);
                             let rope = Rope::from(message);
                             let picker = FilePicker::new(
                                 actions,
