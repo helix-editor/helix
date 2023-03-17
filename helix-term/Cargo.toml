@@ -29,6 +29,7 @@ helix-lsp = { version = "0.6", path = "../helix-lsp" }
 helix-dap = { version = "0.6", path = "../helix-dap" }
 helix-vcs = { version = "0.6", path = "../helix-vcs" }
 helix-loader = { version = "0.6", path = "../helix-loader" }
+helix-spell = { version = "0.6", path = "../helix-spell" }
 
 anyhow = "1"
 once_cell = "1.17"

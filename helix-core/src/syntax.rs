@@ -116,6 +116,8 @@ pub struct LanguageConfiguration {
     pub(crate) indent_query: OnceCell<Option<Query>>,
     #[serde(skip)]
     pub(crate) textobject_query: OnceCell<Option<TextObjectQuery>>,
+    #[serde(skip)]
+    pub(crate) spellcheck_query: OnceCell<Option<TextObjectQuery>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debugger: Option<DebugAdapterConfig>,
 
@@ -520,6 +522,15 @@ impl LanguageConfiguration {
         self.textobject_query
             .get_or_init(|| {
                 self.load_query("textobjects.scm")
+                    .map(|query| TextObjectQuery { query })
+            })
+            .as_ref()
+    }
+
+    pub fn spellcheck_query(&self) -> Option<&TextObjectQuery> {
+        self.spellcheck_query
+            .get_or_init(|| {
+                self.load_query("spellchecks.scm")
                     .map(|query| TextObjectQuery { query })
             })
             .as_ref()

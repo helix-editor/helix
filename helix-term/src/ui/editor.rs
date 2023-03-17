@@ -372,7 +372,8 @@ impl EditorView {
         let mut warning_vec = Vec::new();
         let mut error_vec = Vec::new();
 
-        for diagnostic in doc.diagnostics() {
+        let all_diagnostics = doc.all_diagnostics();
+        for diagnostic in all_diagnostics {
             // Separate diagnostics into different Vecs by severity.
             let (vec, scope) = match diagnostic.severity {
                 Some(Severity::Info) => (&mut info_vec, info),
@@ -662,7 +663,8 @@ impl EditorView {
             .primary()
             .cursor(doc.text().slice(..));
 
-        let diagnostics = doc.diagnostics().iter().filter(|diagnostic| {
+        let all_diagnostics = doc.all_diagnostics();
+        let diagnostics = all_diagnostics.iter().filter(|diagnostic| {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
         });
 

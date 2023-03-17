@@ -15,8 +15,10 @@ use helix_vcs::DiffProviderRegistry;
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::Call;
+use helix_spell::client as spell;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+use ::parking_lot::Mutex;
 use std::{
     borrow::Cow,
     cell::Cell,
@@ -239,6 +241,8 @@ pub struct Config {
     pub auto_completion: bool,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
+    /// Automatic spell checking on save. Defaults to true.
+    pub auto_spellcheck: bool,
     /// Automatic save on focus lost. Defaults to false.
     pub auto_save: bool,
     /// Set a global text_width
@@ -731,6 +735,7 @@ impl Default for Config {
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             auto_format: true,
+            auto_spellcheck: true,
             auto_save: false,
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
@@ -812,6 +817,7 @@ pub struct Editor {
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
     pub diff_providers: DiffProviderRegistry,
+    pub spell_checker: Arc<Mutex<spell::Client>>,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -972,6 +978,7 @@ impl Editor {
             needs_redraw: false,
             cursor_cache: Cell::new(None),
             completion_request_handle: None,
+            spell_checker: Arc::new(Mutex::new(spell::Client::new())),
         }
     }
 
@@ -1320,6 +1327,8 @@ impl Editor {
                 doc.set_diff_base(diff_base, self.redraw_handle.clone());
             }
             doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
+
+            doc.set_spell_checker(Some(self.spell_checker.clone()));
 
             let id = self.new_document(doc);
             let _ = self.launch_language_server(id);

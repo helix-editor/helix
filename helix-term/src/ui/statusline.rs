@@ -223,19 +223,20 @@ fn render_diagnostics<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let (warnings, errors) = context
-        .doc
-        .diagnostics()
-        .iter()
-        .fold((0, 0), |mut counts, diag| {
-            use helix_core::diagnostic::Severity;
-            match diag.severity {
-                Some(Severity::Warning) => counts.0 += 1,
-                Some(Severity::Error) | None => counts.1 += 1,
-                _ => {}
-            }
-            counts
-        });
+    let (warnings, errors) =
+        context
+            .doc
+            .all_diagnostics()
+            .iter()
+            .fold((0, 0), |mut counts, diag| {
+                use helix_core::diagnostic::Severity;
+                match diag.severity {
+                    Some(Severity::Warning) => counts.0 += 1,
+                    Some(Severity::Error) | None => counts.1 += 1,
+                    _ => {}
+                }
+                counts
+            });
 
     if warnings > 0 {
         write(
