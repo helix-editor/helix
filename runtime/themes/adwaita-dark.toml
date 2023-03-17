@@ -99,6 +99,9 @@
 "diagnostic.error" = { fg = "red_4", modifiers = ["underlined"] }
 "diagnostic.warning" = { fg = "yellow_2", modifiers = ["underlined"] }
 
+"ui.bufferline" = { fg = "dark_2", bg = "libadwaita_dark" }
+"ui.bufferline.active" = { fg = "light_4", bg = "libadwaita_dark_alt" }
+
 [palette]
 blue_1 = "#99C1F1"
 blue_2 = "#62A0EA"
