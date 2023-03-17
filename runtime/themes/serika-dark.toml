@@ -53,8 +53,6 @@
 "ui.virtual.whitespace" = "bg2"
 "ui.virtual.ruler" = { bg = "grey2" } 
 "ui.virtual.inlay-hint" = { fg = "grey2", modifiers = ["italic"] }
-"ui.virtual.inlay-hint.parameter" = { fg = "grey2", modifiers = ["italic"] }
-"ui.virtual.inlay-hint.type" = { fg = "grey2", modifiers = ["italic"] }
 
 "hint" = "blue"
 "info" = "aqua"
