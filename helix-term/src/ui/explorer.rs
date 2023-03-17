@@ -423,7 +423,13 @@ impl Explorer {
         self.render_tree(list_area, area, surface, cx)
     }
 
-    fn render_tree(&mut self, area: Rect, prompt_area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render_tree(
+        &mut self,
+        area: Rect,
+        prompt_area: Rect,
+        surface: &mut Surface,
+        cx: &mut Context,
+    ) {
         let title_style = cx.editor.theme.get("ui.text");
         let title_style = if self.is_focus() {
             title_style.add_modifier(Modifier::BOLD)

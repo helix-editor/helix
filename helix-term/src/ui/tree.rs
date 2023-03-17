@@ -172,10 +172,7 @@ impl<T: TreeViewItem> Tree<T> {
     }
 
     fn get_children(&self) -> Result<Vec<Tree<T>>> {
-        Ok(vec_to_tree(
-            self.item
-                .get_children()?
-        ))
+        Ok(vec_to_tree(self.item.get_children()?))
     }
 
     fn sort(&mut self) {
@@ -454,7 +451,6 @@ impl<T: TreeViewItem> TreeView<T> {
         self.set_selected(self.selected);
         Ok(())
     }
-
 
     fn move_to_first_line(&mut self) {
         self.move_up(usize::MAX / 2)
@@ -823,11 +819,17 @@ fn render_tree<T: TreeViewItem>(
 }
 
 impl<T: TreeViewItem + Clone> TreeView<T> {
-    pub fn render(&mut self, area: Rect, prompt_area: Rect, surface: &mut Surface, cx: &mut Context) {
+    pub fn render(
+        &mut self,
+        area: Rect,
+        prompt_area: Rect,
+        surface: &mut Surface,
+        cx: &mut Context,
+    ) {
         let style = cx.editor.theme.get(&self.tree_symbol_style);
         if let Some((_, prompt)) = self.search_prompt.as_mut() {
             prompt.render_prompt(prompt_area, surface, cx)
-        } 
+        }
 
         let ancestor_style = {
             let style = cx.editor.theme.get("ui.selection");
@@ -1152,12 +1154,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
         self.save_view();
         self.search_prompt = Some((
             direction,
-            Prompt::new(
-                "search: ".into(),
-                None,
-                ui::completers::none,
-                |_, _, _| {},
-            ),
+            Prompt::new("search: ".into(), None, ui::completers::none, |_, _, _| {}),
         ))
     }
 
@@ -1258,7 +1255,6 @@ mod test_tree_view {
                 Ok(vec![])
             }
         }
-
     }
 
     fn dummy_tree_view<'a>() -> TreeView<DivisibleItem<'a>> {
@@ -2121,7 +2117,6 @@ krabby_patty
         );
     }
 
-
     #[test]
     fn test_jump_backward_forward() {
         let mut view = dummy_tree_view();
@@ -2250,7 +2245,6 @@ krabby_patty
                     None => Ok(vec![]),
                 }
             }
-
         }
 
         pub fn render(view: &mut TreeView<StaticItem<'_>>) -> String {
@@ -2520,7 +2514,6 @@ krabby_patty
             .trim()
         );
     }
-
 }
 
 #[cfg(test)]
