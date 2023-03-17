@@ -221,28 +221,8 @@ pub struct ExplorerConfig {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ExplorerPosition {
-    Overlay,
     Left,
     Right,
-}
-
-pub enum ExplorerPositionEmbed {
-    Left,
-    Right,
-}
-
-impl ExplorerConfig {
-    pub fn is_embed(&self) -> Option<ExplorerPositionEmbed> {
-        match self.position {
-            ExplorerPosition::Overlay => None,
-            ExplorerPosition::Left => Some(ExplorerPositionEmbed::Left),
-            ExplorerPosition::Right => Some(ExplorerPositionEmbed::Right),
-        }
-    }
-
-    pub fn is_overlay(&self) -> bool {
-        matches!(self.position, ExplorerPosition::Overlay)
-    }
 }
 
 impl Default for ExplorerConfig {

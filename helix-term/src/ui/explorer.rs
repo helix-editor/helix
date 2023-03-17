@@ -6,7 +6,7 @@ use crate::{
 use anyhow::{bail, ensure, Result};
 use helix_core::Position;
 use helix_view::{
-    editor::{Action, ExplorerPositionEmbed},
+    editor::{Action, ExplorerPosition},
     graphics::{CursorKind, Rect},
     info::Info,
     input::{Event, KeyEvent},
@@ -400,29 +400,6 @@ impl Explorer {
         })
     }
 
-    fn render_float(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        let float_area_box = area.overlayed();
-        let background = cx.editor.theme.get("ui.background");
-        surface.clear_with(float_area_box, background);
-        let float_area = render_block(float_area_box, surface, Borders::ALL);
-
-        let help_area = float_area.clip_left(self.column_width + 1);
-        if let Some((_, prompt)) = self.prompt.as_mut() {
-            prompt.render(area, surface, cx);
-        }
-        if self.show_help {
-            self.render_help(help_area, surface, cx);
-        }
-
-        let list_area = render_block(
-            float_area.clip_right(help_area.width),
-            surface,
-            Borders::RIGHT,
-        );
-
-        self.render_tree(list_area, area, surface, cx)
-    }
-
     fn render_tree(
         &mut self,
         area: Rect,
@@ -446,12 +423,12 @@ impl Explorer {
         self.tree.render(area.clip_top(1), prompt_area, surface, cx);
     }
 
-    pub fn render_embed(
+    fn render_embed(
         &mut self,
         area: Rect,
         surface: &mut Surface,
         cx: &mut Context,
-        position: &ExplorerPositionEmbed,
+        position: &ExplorerPosition,
     ) {
         if !self.state.open {
             return;
@@ -461,8 +438,8 @@ impl Explorer {
         self.state.area_width = area.width;
 
         let side_area = match position {
-            ExplorerPositionEmbed::Left => Rect { width, ..area },
-            ExplorerPositionEmbed::Right => Rect {
+            ExplorerPosition::Left => Rect { width, ..area },
+            ExplorerPosition::Right => Rect {
                 x: area.width - width,
                 width,
                 ..area
@@ -475,10 +452,10 @@ impl Explorer {
         let prompt_area = area.clip_top(side_area.height);
 
         let list_area = match position {
-            ExplorerPositionEmbed::Left => {
+            ExplorerPosition::Left => {
                 render_block(side_area.clip_left(1), surface, Borders::RIGHT).clip_bottom(1)
             }
-            ExplorerPositionEmbed::Right => {
+            ExplorerPosition::Right => {
                 render_block(side_area.clip_right(1), surface, Borders::LEFT).clip_bottom(1)
             }
         };
@@ -492,16 +469,16 @@ impl Explorer {
             };
             let area = side_area.clip_top(list_area.height);
             let area = match position {
-                ExplorerPositionEmbed::Left => area.clip_right(1),
-                ExplorerPositionEmbed::Right => area.clip_left(1),
+                ExplorerPosition::Left => area.clip_right(1),
+                ExplorerPosition::Right => area.clip_left(1),
             };
             surface.clear_with(area, statusline);
         }
 
         if self.is_focus() && self.show_help {
             let help_area = match position {
-                ExplorerPositionEmbed::Left => area,
-                ExplorerPositionEmbed::Right => area.clip_right(list_area.width.saturating_add(2)),
+                ExplorerPosition::Left => area,
+                ExplorerPosition::Right => area.clip_right(list_area.width.saturating_add(2)),
             };
             self.render_help(help_area, surface, cx);
         }
@@ -740,11 +717,8 @@ impl Component for Explorer {
             return;
         }
         let config = &cx.editor.config().explorer;
-        if let Some(position) = config.is_embed() {
-            self.render_embed(area, surface, cx, &position);
-        } else {
-            self.render_float(area, surface, cx);
-        }
+        let position = config.position;
+        self.render_embed(area, surface, cx, &position);
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {

@@ -1386,7 +1386,6 @@ impl Component for EditorView {
             // We should have a Dock trait that allows a component to dock to the top/left/bottom/right
             // of another component.
             match config.explorer.position {
-                ExplorerPosition::Overlay => editor_area,
                 ExplorerPosition::Left => editor_area.clip_left(explorer_column_width),
                 ExplorerPosition::Right => editor_area.clip_right(explorer_column_width),
             }
@@ -1399,14 +1398,12 @@ impl Component for EditorView {
 
         if let Some(explorer) = self.explorer.as_mut() {
             if !explorer.is_focus() {
-                if let Some(position) = config.explorer.is_embed() {
-                    let area = if use_bufferline {
-                        area.clip_top(1)
-                    } else {
-                        area
-                    };
-                    explorer.render_embed(area, surface, cx, &position);
-                }
+                let area = if use_bufferline {
+                    area.clip_top(1)
+                } else {
+                    area
+                };
+                explorer.render(area, surface, cx);
             }
         }
 
@@ -1491,16 +1488,12 @@ impl Component for EditorView {
 
         if let Some(explore) = self.explorer.as_mut() {
             if explore.is_focus() {
-                if let Some(position) = config.explorer.is_embed() {
-                    let area = if use_bufferline {
-                        area.clip_top(1)
-                    } else {
-                        area
-                    };
-                    explore.render_embed(area, surface, cx, &position);
+                let area = if use_bufferline {
+                    area.clip_top(1)
                 } else {
-                    explore.render(area, surface, cx);
-                }
+                    area
+                };
+                explore.render(area, surface, cx);
             }
         }
     }
@@ -1508,9 +1501,6 @@ impl Component for EditorView {
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         if let Some(explore) = &self.explorer {
             if explore.is_focus() {
-                if editor.config().explorer.is_overlay() {
-                    return explore.cursor(_area, editor);
-                }
                 let cursor = explore.cursor(_area, editor);
                 if cursor.0.is_some() {
                     return cursor;
