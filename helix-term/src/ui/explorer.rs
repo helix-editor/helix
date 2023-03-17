@@ -21,12 +21,6 @@ use tui::{
     widgets::{Block, Borders, Widget},
 };
 
-macro_rules! get_theme {
-    ($theme: expr, $s1: expr, $s2: expr) => {
-        $theme.try_get($s1).unwrap_or_else(|| $theme.get($s2))
-    };
-}
-
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 enum FileType {
     File,
@@ -165,7 +159,6 @@ pub struct Explorer {
     tree: TreeView<FileInfo>,
     history: Vec<ExplorerHistory>,
     show_help: bool,
-    show_preview: bool,
     state: State,
     prompt: Option<(PromptAction, Prompt)>,
     #[allow(clippy::type_complexity)]
@@ -182,7 +175,6 @@ impl Explorer {
             tree: Self::new_tree_view(current_root.clone())?,
             history: vec![],
             show_help: false,
-            show_preview: false,
             state: State::new(true, current_root),
             prompt: None,
             on_next_key: None,
@@ -196,7 +188,6 @@ impl Explorer {
             tree: Self::new_tree_view(root.clone())?,
             history: vec![],
             show_help: false,
-            show_preview: false,
             state: State::new(true, root),
             prompt: None,
             on_next_key: None,
@@ -286,39 +277,6 @@ impl Explorer {
 
     pub fn is_focus(&self) -> bool {
         self.state.focus
-    }
-
-    fn render_preview(&mut self, area: Rect, surface: &mut Surface, editor: &Editor) {
-        if let Ok(current) = self.tree.current() {
-            let item = current.item();
-            let head_area = render_block(
-                area.clip_bottom(area.height.saturating_sub(2)),
-                surface,
-                Borders::BOTTOM,
-            );
-            let path_str = format!("{}", item.path.display());
-            surface.set_stringn(
-                head_area.x,
-                head_area.y,
-                path_str,
-                head_area.width as usize,
-                get_theme!(editor.theme, "ui.explorer.dir", "ui.text"),
-            );
-
-            let body_area = area.clip_top(2);
-            let style = editor.theme.get("ui.text");
-            let content = get_preview(&item.path, body_area.height as usize)
-                .unwrap_or_else(|err| vec![err.to_string()]);
-            content.into_iter().enumerate().for_each(|(row, line)| {
-                surface.set_stringn(
-                    body_area.x,
-                    body_area.y + row as u16,
-                    line,
-                    body_area.width as usize,
-                    style,
-                );
-            })
-        }
     }
 
     fn new_create_file_or_folder_prompt(&mut self, cx: &mut Context) -> Result<()> {
@@ -448,26 +406,24 @@ impl Explorer {
         surface.clear_with(float_area_box, background);
         let float_area = render_block(float_area_box, surface, Borders::ALL);
 
-        let preview_area = float_area.clip_left(self.column_width + 1);
+        let help_area = float_area.clip_left(self.column_width + 1);
         if let Some((_, prompt)) = self.prompt.as_mut() {
             prompt.render(area, surface, cx);
         }
         if self.show_help {
-            self.render_help(preview_area, surface, cx);
-        } else {
-            self.render_preview(preview_area, surface, cx.editor);
+            self.render_help(help_area, surface, cx);
         }
 
         let list_area = render_block(
-            float_area.clip_right(preview_area.width),
+            float_area.clip_right(help_area.width),
             surface,
             Borders::RIGHT,
         );
 
-        self.render_tree(list_area, surface, cx)
+        self.render_tree(list_area, area, surface, cx)
     }
 
-    fn render_tree(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render_tree(&mut self, area: Rect, prompt_area: Rect, surface: &mut Surface, cx: &mut Context) {
         let title_style = cx.editor.theme.get("ui.text");
         let title_style = if self.is_focus() {
             title_style.add_modifier(Modifier::BOLD)
@@ -481,7 +437,7 @@ impl Explorer {
             area.width.into(),
             title_style,
         );
-        self.tree.render(area.clip_top(1), surface, cx);
+        self.tree.render(area.clip_top(1), prompt_area, surface, cx);
     }
 
     pub fn render_embed(
@@ -520,7 +476,7 @@ impl Explorer {
                 render_block(side_area.clip_right(1), surface, Borders::LEFT).clip_bottom(1)
             }
         };
-        self.render_tree(list_area, surface, cx);
+        self.render_tree(list_area, prompt_area, surface, cx);
 
         {
             let statusline = if self.is_focus() {
@@ -536,51 +492,12 @@ impl Explorer {
             surface.clear_with(area, statusline);
         }
 
-        if self.is_focus() {
-            if self.show_help {
-                let help_area = match position {
-                    ExplorerPositionEmbed::Left => area,
-                    ExplorerPositionEmbed::Right => {
-                        area.clip_right(list_area.width.saturating_add(2))
-                    }
-                };
-                self.render_help(help_area, surface, cx);
-            }
-            if self.show_preview {
-                const PREVIEW_AREA_MAX_WIDTH: u16 = 90;
-                const PREVIEW_AREA_MAX_HEIGHT: u16 = 30;
-                let preview_area_width =
-                    (area.width.saturating_sub(side_area.width)).min(PREVIEW_AREA_MAX_WIDTH);
-                let preview_area_height = area.height.min(PREVIEW_AREA_MAX_HEIGHT);
-
-                let preview_area = match position {
-                    ExplorerPositionEmbed::Left => area.clip_left(side_area.width),
-                    ExplorerPositionEmbed::Right => (Rect {
-                        x: area
-                            .width
-                            .saturating_sub(side_area.width)
-                            .saturating_sub(preview_area_width),
-                        ..area
-                    })
-                    .clip_right(side_area.width),
-                }
-                .clip_bottom(2);
-                if preview_area.width < 30 || preview_area.height < 3 {
-                    return;
-                }
-                let y = self.tree.winline() as u16;
-                let y = if (preview_area_height + y) > preview_area.height {
-                    preview_area.height.saturating_sub(preview_area_height)
-                } else {
-                    y
-                }
-                .saturating_add(1);
-                let area = Rect::new(preview_area.x, y, preview_area_width, preview_area_height);
-                surface.clear_with(area, background);
-                let area = render_block(area, surface, Borders::all());
-
-                self.render_preview(area, surface, cx.editor);
-            }
+        if self.is_focus() && self.show_help {
+            let help_area = match position {
+                ExplorerPositionEmbed::Left => area,
+                ExplorerPositionEmbed::Right => area.clip_right(list_area.width.saturating_add(2)),
+            };
+            self.render_help(help_area, surface, cx);
         }
 
         if let Some((_, prompt)) = self.prompt.as_mut() {
@@ -601,7 +518,6 @@ impl Explorer {
                 ("[", "Go to previous root"),
                 ("+, =", "Increase size"),
                 ("-, _", "Decrease size"),
-                ("C-t", "Toggle preview (left/right only)"),
                 ("q", "Close"),
             ]
             .into_iter()
@@ -743,10 +659,6 @@ impl Explorer {
         std::fs::remove_file(&item.path)?;
         self.tree.refresh()
     }
-
-    fn toggle_preview(&mut self) {
-        self.show_preview = !self.show_preview
-    }
 }
 
 fn close_documents(current_item_path: PathBuf, cx: &mut Context) -> Result<()> {
@@ -804,7 +716,6 @@ impl Component for Explorer {
                 key!('r') => self.new_rename_prompt(cx)?,
                 key!('-') | key!('_') => self.decrease_size(),
                 key!('+') | key!('=') => self.increase_size(),
-                ctrl!('t') => self.toggle_preview(),
                 _ => {
                     self.tree
                         .handle_event(&Event::Key(*key_event), cx, &mut self.state);
@@ -838,44 +749,6 @@ impl Component for Explorer {
         let (x, y) = (area.x, area.y + area.height.saturating_sub(1));
         prompt.cursor(Rect::new(x, y, area.width, 1), editor)
     }
-}
-
-fn get_preview(p: impl AsRef<Path>, max_line: usize) -> Result<Vec<String>> {
-    let p = p.as_ref();
-    if p.is_dir() {
-        let mut entries = p
-            .read_dir()?
-            .filter_map(|entry| {
-                entry
-                    .ok()
-                    .and_then(|entry| dir_entry_to_file_info(entry, p))
-            })
-            .take(max_line)
-            .collect::<Vec<_>>();
-
-        entries.sort();
-
-        return Ok(entries
-            .into_iter()
-            .map(|entry| match entry.file_type {
-                FileType::Folder => format!("{}/", entry.name()),
-                _ => entry.name(),
-            })
-            .collect());
-    }
-
-    ensure!(p.is_file(), "path: {} is not file or dir", p.display());
-    use std::fs::OpenOptions;
-    use std::io::BufRead;
-    let mut fd = OpenOptions::new();
-    fd.read(true);
-    let fd = fd.open(p)?;
-    Ok(std::io::BufReader::new(fd)
-        .lines()
-        .take(max_line)
-        .filter_map(|line| line.ok())
-        .map(|line| line.replace('\t', "    "))
-        .collect())
 }
 
 fn render_block(area: Rect, surface: &mut Surface, borders: Borders) -> Rect {

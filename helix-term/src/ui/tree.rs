@@ -823,21 +823,11 @@ fn render_tree<T: TreeViewItem>(
 }
 
 impl<T: TreeViewItem + Clone> TreeView<T> {
-    pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    pub fn render(&mut self, area: Rect, prompt_area: Rect, surface: &mut Surface, cx: &mut Context) {
         let style = cx.editor.theme.get(&self.tree_symbol_style);
-        let search_prompt_area = area;
         if let Some((_, prompt)) = self.search_prompt.as_mut() {
-            surface.set_style(search_prompt_area, style.add_modifier(Modifier::REVERSED));
-            prompt.render_prompt(search_prompt_area, surface, cx)
-        } else {
-            surface.set_stringn(
-                search_prompt_area.x,
-                search_prompt_area.y,
-                format!("[SEARCH]: {}", self.search_str.clone()),
-                search_prompt_area.width as usize,
-                style,
-            );
-        }
+            prompt.render_prompt(prompt_area, surface, cx)
+        } 
 
         let ancestor_style = {
             let style = cx.editor.theme.get("ui.selection");
@@ -848,7 +838,6 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
             }
         };
 
-        let area = area.clip_top(1);
         let iter = self.render_lines(area).into_iter().enumerate();
 
         for (index, line) in iter {
@@ -1164,7 +1153,7 @@ impl<T: TreeViewItem + Clone> TreeView<T> {
         self.search_prompt = Some((
             direction,
             Prompt::new(
-                "[SEARCH]: ".into(),
+                "search: ".into(),
                 None,
                 ui::completers::none,
                 |_, _, _| {},
