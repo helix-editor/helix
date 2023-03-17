@@ -266,7 +266,7 @@ where
             .diagnostics
             .values()
             .flatten()
-            .fold((0, 0), |mut counts, (diag, _, _)| {
+            .fold((0, 0), |mut counts, (diag, _)| {
                 match diag.severity {
                     Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
                     Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,

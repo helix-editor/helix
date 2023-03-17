@@ -721,7 +721,7 @@ impl Application {
                             ));
                         }
                     }
-                    Notification::PublishDiagnostics(mut params) => {
+                    Notification::PublishDiagnostics(params) => {
                         let path = match params.uri.to_file_path() {
                             Ok(path) => path,
                             Err(_) => {
@@ -841,15 +841,10 @@ impl Application {
                             doc.replace_diagnostics(diagnostics, server_id);
                         }
 
-                        // Sort diagnostics first by severity and then by line numbers.
-                        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-                        params
-                            .diagnostics
-                            .sort_unstable_by_key(|d| (d.severity, d.range.start));
-                        let diagnostics = params
+                        let mut diagnostics = params
                             .diagnostics
                             .into_iter()
-                            .map(|d| (d, server_id, offset_encoding))
+                            .map(|d| (d, server_id))
                             .collect();
 
                         // Insert the original lsp::Diagnostics here because we may have no open document
@@ -859,10 +854,16 @@ impl Application {
                             Entry::Occupied(o) => {
                                 let current_diagnostics = o.into_mut();
                                 // there may entries of other language servers, which is why we can't overwrite the whole entry
-                                current_diagnostics.retain(|(_, lsp_id, _)| *lsp_id != server_id);
-                                current_diagnostics.extend(diagnostics);
+                                current_diagnostics.retain(|(_, lsp_id)| *lsp_id != server_id);
+                                current_diagnostics.append(&mut diagnostics);
+                                // Sort diagnostics first by severity and then by line numbers.
+                                // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
+                                current_diagnostics
+                                    .sort_unstable_by_key(|(d, _)| (d.severity, d.range.start));
                             }
                             Entry::Vacant(v) => {
+                                diagnostics
+                                    .sort_unstable_by_key(|(d, _)| (d.severity, d.range.start));
                                 v.insert(diagnostics);
                             }
                         };
