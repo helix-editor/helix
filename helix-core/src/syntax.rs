@@ -237,25 +237,25 @@ pub enum LanguageServerFeature {
 
 impl Display for LanguageServerFeature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            LanguageServerFeature::Format => write!(f, "format"),
-            LanguageServerFeature::GotoDeclaration => write!(f, "goto-declaration"),
-            LanguageServerFeature::GotoDefinition => write!(f, "goto-definition"),
-            LanguageServerFeature::GotoTypeDefinition => write!(f, "goto-type-definition"),
-            LanguageServerFeature::GotoReference => write!(f, "goto-type-definition"),
-            LanguageServerFeature::GotoImplementation => write!(f, "goto-implementation"),
-            LanguageServerFeature::SignatureHelp => write!(f, "signature-help"),
-            LanguageServerFeature::Hover => write!(f, "hover"),
-            LanguageServerFeature::DocumentHighlight => write!(f, "document-highlight"),
-            LanguageServerFeature::Completion => write!(f, "completion"),
-            LanguageServerFeature::CodeAction => write!(f, "code-action"),
-            LanguageServerFeature::WorkspaceCommand => write!(f, "workspace-command"),
-            LanguageServerFeature::DocumentSymbols => write!(f, "document-symbols"),
-            LanguageServerFeature::WorkspaceSymbols => write!(f, "workspace-symbols"),
-            LanguageServerFeature::Diagnostics => write!(f, "diagnostics"),
-            LanguageServerFeature::RenameSymbol => write!(f, "rename-symbol"),
-            LanguageServerFeature::InlayHints => write!(f, "inlay-hints"),
-        }
+        write!(f, "{}", match self {
+            LanguageServerFeature::Format => "format",
+            LanguageServerFeature::GotoDeclaration => "goto-declaration",
+            LanguageServerFeature::GotoDefinition => "goto-definition",
+            LanguageServerFeature::GotoTypeDefinition => "goto-type-definition",
+            LanguageServerFeature::GotoReference => "goto-type-definition",
+            LanguageServerFeature::GotoImplementation => "goto-implementation",
+            LanguageServerFeature::SignatureHelp => "signature-help",
+            LanguageServerFeature::Hover => "hover",
+            LanguageServerFeature::DocumentHighlight => "document-highlight",
+            LanguageServerFeature::Completion => "completion",
+            LanguageServerFeature::CodeAction => "code-action",
+            LanguageServerFeature::WorkspaceCommand => "workspace-command",
+            LanguageServerFeature::DocumentSymbols => "document-symbols",
+            LanguageServerFeature::WorkspaceSymbols => "workspace-symbols",
+            LanguageServerFeature::Diagnostics => "diagnostics",
+            LanguageServerFeature::RenameSymbol => "rename-symbol",
+            LanguageServerFeature::InlayHints => "inlay-hints",
+        })
     }
 }
 
