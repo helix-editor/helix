@@ -1,16 +1,23 @@
 # Next
 
-> Checkpoint: `9c98043c1cd6a8b92f35214007a90bb0f287beda`
+> Checkpoint: `bd473928ae049dfe956f8966bfde19859c148e81`
 
 Breaking changes:
 
-- Select diagnostic range in `goto_*_diag` commands (#4713, #5164)
-- Remove jump behavior from `increment`/`decrement` (#4123)
+- Select diagnostic range in `goto_*_diag` commands (#4713, #5164, #6193)
+- Remove jump behavior from `increment`/`decrement` (#4123, #5929)
+- Select change range in `goto_*_change` commands (#5206)
+- Split file modification indicator from filename statusline elements (#4731, #6036)
+- Jump to symbol ranges in LSP goto commands (#5986)
 
 Features:
 
 - Dynamic workspace symbol picker (#5055)
-- Soft-wrap (#5420, #5786)
+- Soft-wrap (#5420, #5786, #5893)
+- Enable the Kitty keyboard protocol on terminals with support (#4939, #6170, #6194)
+- Initial support for LSP snippet completions (#5864, b1f7528, #6263, bbf4800, 90348b8, f87299f)
+- Add a statusline element for showing the current HEAD (#5682)
+- Display LSP type hints (#5934, #6312)
 
 Commands:
 
@@ -20,6 +27,10 @@ Commands:
 - `goto_declaration` (`gD`, requires LSP) which jumps to a symbol's declaration (#5646)
 - `file_picker_in_current_buffer_directory` (#4666)
 - `:character-info` which shows information about the character under the cursor (#4000)
+- `:toggle-option` for toggling config options at runtime (#4085)
+- `dap_restart` for restarting a debug session in DAP (#5651)
+- `:lsp-stop` to stop the language server of the current buffer (#5964)
+- `:reset-diff-change` for resetting a diff hunk to its original text (#4974)
 
 Usability improvements and fixes:
 
@@ -63,36 +74,86 @@ Usability improvements and fixes:
 - Remove C-j and C-k bindings from the completion menu (#5070)
 - Add an option to disable LSP (#4425)
 - Always commit to history when pasting (#5790)
+- Short-circuit tree-sitter and word object motions (#5851)
+- Properly handle LSP position encoding (#5711)
+- Fix infinite loop in `copy_selection_on_prev_line` (#5888)
+- Add exit code to failed command message (#5898)
+- Make `m` textobject look for pairs enclosing selections (#3344)
+- Negotiate LSP position encoding (#5894)
+- Fix completion popup positioning (#5842)
+- Fix a panic when uncommenting a line with only a comment token (#5933)
+- Display deprecated LSP completions with strikethrough (#5932)
+- Fix panic in `goto_window_center` at EOF (#5987)
+- Add JSONRPC request ID to failed LSP/DAP request log messages (#6010, #6018)
+- Ignore case when filtering LSP completions (#6008)
+- Ignore invalid file URIs sent by a language server (#6000)
+- Decode LSP URIs for the workspace diagnostics picker (#6016)
+- Fix incorrect usages of `tab_width` with `indent_width` (#5918)
+- Show current language when no arguments are passed to `:set-language` (#5895)
+- DAP: Send Disconnect if the Terminated event is received (#5532)
+- DAP: Validate key and index exist when requesting variables (#5628)
+- Fix indent guide rendering (#6136)
+- Fix division by zero panic (#6155)
+- Fix scrolloff at view bottom (#6142)
+- Fix lacking space panic (#6109)
+- Refactor and rewrite all book documentation (#5534)
+- Send error replies for malformed and unhandled LSP requests (#6058)
+- Fix table column calculations for dynamic pickers (#5920)
+- Skip adding jumplist entries for `:<n>` line number previews (#5751)
+- Support LSP `textDocument/prepareRename` (#6103)
+- Fix completion race conditions (#6173)
+- Fix `shrink_selection` with multiple cursors (#6093)
+- Allow multiple runtime directories with priorities (#5411)
+- Allow configuring whether to insert or replace completions (#5728)
+- Fix indentation calculation for lines with mixed tabs/spaces (#6278)
+- No-op `client/registerCapability` LSP requests (#6258)
+- Send the STOP signal to all processes in the process group (#3546)
+- Check LSP renaming support before prompting for rename text (#6257)
+- Separate diagnostic picker message and code (#6095)
+- Add a config option to bypass undercurl detection (#6253)
+- Only complete appropriate arguments for typed commands (#5966)
+- Discard outdated LSP diagnostics (3c9d5d0)
+- Discard outdated LSP workspace edits (b6a4927)
+- Fix workspace edit client capabilities declaration (7bf168d)
 
 Themes:
 
-- Update `serika` (#5038)
-- Update `flatwhite` (#5036)
-- Update `autumn` (#5051, #5397)
+- Update `serika` (#5038, #6344)
+- Update `flatwhite` (#5036, #6323)
+- Update `autumn` (#5051, #5397, #6280, #6316)
 - Update `acme` (#5019, #5486, #5488)
-- Update `gruvbox` themes (#5066, #5333, #5540)
+- Update `gruvbox` themes (#5066, #5333, #5540, #6285, #6295)
 - Update `base16_transparent` (#5105)
 - Update `dark_high_contrast` (#5105)
 - Update `dracula` (#5236, #5627)
 - Update `monokai_pro_spectrum` (#5250, #5602)
 - Update `rose_pine` (#5267, #5489)
-- Update `kanagawa` (#5273)
+- Update `kanagawa` (#5273, #5571, #6085)
 - Update `emacs` (#5334)
 - Add `github` themes (#5353, efeec12)
     - Dark themes: `github_dark`, `github_dark_colorblind`, `github_dark_dimmed`, `github_dark_high_contrast`, `github_dark_tritanopia`
     - Light themes: `github_light`, `github_light_colorblind`, `github_light_dimmed`, `github_light_high_contrast`, `github_light_tritanopia`
-- Update `solarized_dark` (#5445)
-- Update `catppuccin` (#5404)
+- Update `solarized` variants (#5445, #6327)
+- Update `catppuccin` variants (#5404, #6107, #6269)
 - Use curly underlines in built-in themes (#5419)
 - Update `zenburn` (#5573)
-- Update `kanagawa` (#5571)
 - Rewrite `snazzy` (#3971)
 - Add `monokai_aqua` (#5578)
 - Add `markup.strikethrough` to existing themes (#5619)
 - Update `sonokai` (#5440)
 - Update `onedark` (#5755)
-- Add `ayu_evolve` (#5638)
+- Add `ayu_evolve` (#5638, #6028, #6225)
 - Add `jellybeans` (#5719)
+- Update `fleet_dark` (#5605, #6266, #6324)
+- Add `darcula-solid` (#5778)
+- Remove text background from monokai themes (#6009)
+- Update `pop_dark` (#5992, #6208, #6227, #6292)
+- Add `everblush` (#6086)
+- Add `adwaita-dark` (#6042, #6342)
+- Update `papercolor` (#6162)
+- Update `onelight` (#6192, #6276)
+- Add `molokai` (#6260)
+- Update `ayu` variants (#6329)
 
 LSP configurations:
 
@@ -111,6 +172,16 @@ New languages:
 - DHall (1f6809c)
 - Sagemath (#5649)
 - MSBuild (#5793)
+- pem (#5797)
+- passwd (#4959)
+- hosts (#4950, #5914)
+- uxntal (#6047)
+- Yuck (#6064, #6242)
+- GNU gettext PO (#5996)
+- Sway (#6023)
+- NASM (#6068)
+- PRQL (#6126)
+- reStructuredText (#6180)
 
 Updated languages and queries:
 
@@ -142,11 +213,35 @@ Updated languages and queries:
 - Use the bash grammar and queries for env language (#5720)
 - Add podspec files to ruby file-types (#5811)
 - Recognize `.C` and `.H` file-types as C++ (#5808)
+- Recognize plist and mobileconfig files as XML (#5863)
+- Fix `select` indentation in Go (#5713)
+- Check for external file modifications when writing (#5805)
+- Recognize containerfiles as dockerfile syntax (#5873)
+- Update godot grammar and queries (#5944, #6186)
+- Improve DHall highlights (#5959)
+- Recognize `.env.dist` and `source.env` as env language (#6003)
+- Update tree-sitter-git-rebase (#6030, #6094)
+- Improve SQL highlights (#6041)
+- Improve markdown highlights and inject LaTeX (#6100)
+- Add textobject queries for Elm (#6084)
+- Recognize graphql schema file type (#6159)
+- Improve highlighting in comments (#6143)
+- Improve highlighting for JavaScript/TypeScript/ECMAScript languages (#6205)
+- Improve PHP highlights (#6203, #6250, #6299)
+- Improve Go highlights (#6204)
+- Highlight unchecked sqlx functions as SQL in Rust (#6256)
+- Improve Erlang highlights (cdd6c8d)
+- Improve Nix highlights (fb4d703)
+- Improve gdscript highlights (#6311)
+- Improve Vlang highlights (#6279)
+- Improve Makefile highlights (#6339)
 
 Packaging:
 
 - Fix Nix flake devShell for darwin hosts (#5368)
 - Add Appstream metadata file to `contrib/` (#5643)
+- Increase the MSRV to 1.65 (#5570, #6185)
+- Expose the Nix flake's `wrapper` (#5994)
 
 # 22.12 (2022-12-06)
 
