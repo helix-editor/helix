@@ -477,6 +477,14 @@ impl<T: TreeViewItem> TreeView<T> {
             Ok(())
         }
     }
+
+    pub fn prompt(&self) -> Option<&Prompt> {
+        if let Some((_, prompt)) = self.search_prompt.as_ref() {
+            Some(prompt)
+        } else {
+            None
+        }
+    }
 }
 
 pub fn tree_view_help() -> Vec<(&'static str, &'static str)> {

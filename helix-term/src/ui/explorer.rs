@@ -722,12 +722,17 @@ impl Component for Explorer {
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        let prompt = match self.prompt.as_ref() {
-            Some((_, prompt)) => prompt,
-            None => return (None, CursorKind::Hidden),
-        };
-        let (x, y) = (area.x, area.y + area.height.saturating_sub(1));
-        prompt.cursor(Rect::new(x, y, area.width, 1), editor)
+        if let Some(prompt) = self
+            .prompt
+            .as_ref()
+            .map(|(_, prompt)| prompt)
+            .or_else(|| self.tree.prompt())
+        {
+            let (x, y) = (area.x, area.y + area.height.saturating_sub(1));
+            prompt.cursor(Rect::new(x, y, area.width, 1), editor)
+        } else {
+            (None, CursorKind::Hidden)
+        }
     }
 }
 
