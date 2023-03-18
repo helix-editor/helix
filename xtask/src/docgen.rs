@@ -97,8 +97,8 @@ pub fn lang_features() -> Result<String, DynError> {
         }
         row.push(
             lc.language_servers
-                .iter()
-                .filter_map(|ls| config.language_server.get(ls.name()))
+                .keys()
+                .filter_map(|ls| config.language_server.get(ls))
                 .map(|s| md_mono(&s.command.clone()))
                 .collect::<Vec<_>>()
                 .join(", "),

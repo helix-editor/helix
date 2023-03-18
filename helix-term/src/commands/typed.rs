@@ -2635,7 +2635,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "lsp-stop",
             aliases: &[],
-            doc: "Stops the Language Server that is in use by the current doc",
+            doc: "Stops the language servers that are used by the current doc",
             fun: lsp_stop,
             signature: CommandSignature::none(),
         },
