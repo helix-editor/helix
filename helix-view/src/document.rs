@@ -460,7 +460,7 @@ where
 }
 
 #[derive(Clone, Copy, Debug, Default)]
-pub struct DocumentConfig<T> {
+struct DocumentConfig<T> {
     pub config: T,
     pub encoding: Option<&'static encoding::Encoding>,
     pub line_ending: Option<LineEnding>,
@@ -481,7 +481,7 @@ impl<T> DocumentConfig<T> {
 }
 
 /// Trait representing methods of configuring the document as it's being opened.
-pub trait ConfigureDocument {
+trait ConfigureDocument {
     type Config;
     /// Loads document configuration for a file at `path`.
     fn load(&self, path: &Path) -> Result<DocumentConfig<Self::Config>, Error>;
