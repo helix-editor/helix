@@ -66,8 +66,9 @@
 
 # ui specific
 "ui.background" = { bg = "Gray 10" } # .separator
-"ui.statusline" = { fg = "Gray 120", bg = "Gray 10" } # .inactive / .normal / .insert / .select
-# "ui.statusline.normal" = { fg = "Gray 120", bg = "darker"}
+"ui.statusline" = { fg = "Gray 120", bg = "Gray 20" } # .inactive / .normal / .insert / .select
+"ui.statusline.normal" = { fg = "Gray 120", bg = "Gray 20" }
+"ui.statusline.inactive" = { fg = "Gray 90"}
 "ui.statusline.insert" = { fg = "Gray 20", bg = "Blue 90" }
 "ui.statusline.select" = { fg = "Gray 20", bg = "Yellow 60" }
 
@@ -91,7 +92,7 @@
 "ui.text" = "Gray 120" # .focus / .info
 "ui.text.focus" = { fg = "White", bg = "Blue 40" }
 
-"ui.virtual" = "Gray 20" # .whitespace
+"ui.virtual" = "Gray 90" # .whitespace
 "ui.virtual.inlay-hint" = { fg = "Gray 70" }
 "ui.virtual.ruler" = { bg = "Gray 20" }
 
