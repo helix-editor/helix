@@ -242,25 +242,27 @@ pub enum LanguageServerFeature {
 
 impl Display for LanguageServerFeature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            LanguageServerFeature::Format => "format",
-            LanguageServerFeature::GotoDeclaration => "goto-declaration",
-            LanguageServerFeature::GotoDefinition => "goto-definition",
-            LanguageServerFeature::GotoTypeDefinition => "goto-type-definition",
-            LanguageServerFeature::GotoReference => "goto-type-definition",
-            LanguageServerFeature::GotoImplementation => "goto-implementation",
-            LanguageServerFeature::SignatureHelp => "signature-help",
-            LanguageServerFeature::Hover => "hover",
-            LanguageServerFeature::DocumentHighlight => "document-highlight",
-            LanguageServerFeature::Completion => "completion",
-            LanguageServerFeature::CodeAction => "code-action",
-            LanguageServerFeature::WorkspaceCommand => "workspace-command",
-            LanguageServerFeature::DocumentSymbols => "document-symbols",
-            LanguageServerFeature::WorkspaceSymbols => "workspace-symbols",
-            LanguageServerFeature::Diagnostics => "diagnostics",
-            LanguageServerFeature::RenameSymbol => "rename-symbol",
-            LanguageServerFeature::InlayHints => "inlay-hints",
-        })
+        use LanguageServerFeature::*;
+        let feature = match self {
+            Format => "format",
+            GotoDeclaration => "goto-declaration",
+            GotoDefinition => "goto-definition",
+            GotoTypeDefinition => "goto-type-definition",
+            GotoReference => "goto-type-definition",
+            GotoImplementation => "goto-implementation",
+            SignatureHelp => "signature-help",
+            Hover => "hover",
+            DocumentHighlight => "document-highlight",
+            Completion => "completion",
+            CodeAction => "code-action",
+            WorkspaceCommand => "workspace-command",
+            DocumentSymbols => "document-symbols",
+            WorkspaceSymbols => "workspace-symbols",
+            Diagnostics => "diagnostics",
+            RenameSymbol => "rename-symbol",
+            InlayHints => "inlay-hints",
+        };
+        write!(f, "{feature}",)
     }
 }
 
