@@ -5,8 +5,6 @@
 ; overrides are unnecessary.
 ; -------
 
-
-
 ; -------
 ; Types
 ; -------
@@ -47,7 +45,8 @@
   "'" @label
   (identifier) @label)
 (loop_label
-  (identifier) @type)
+  "'" @label
+  (identifier) @label)
 
 ; ---
 ; Punctuation
@@ -67,6 +66,7 @@
   "]"
   "{"
   "}"
+  "#"
 ] @punctuation.bracket
 (type_arguments
   [
@@ -78,6 +78,8 @@
     "<"
     ">"
   ] @punctuation.bracket)
+(closure_parameters
+  "|" @punctuation.bracket)
 
 ; ---
 ; Variables
@@ -101,30 +103,34 @@
 (closure_parameters
 	(identifier) @variable.parameter)
 
-
-
 ; -------
 ; Keywords
 ; -------
 
 (for_expression
-  "for" @keyword.control)
+  "for" @keyword.control.repeat)
 ((identifier) @keyword.control
   (#match? @keyword.control "^yield$"))
-[
-  "while"
-  "loop"
-  "in"
-  "break"
-  "continue"
 
+"in" @keyword.control
+
+[
   "match"
   "if"
   "else"
-  "return"
+] @keyword.control.conditional
 
+[
+  "while"
+  "loop"
+] @keyword.control.repeat
+
+[
+  "break"
+  "continue"
+  "return"
   "await"
-] @keyword.control
+] @keyword.control.return
 
 "use" @keyword.control.import
 (mod_item "mod" @keyword.control.import !body)
@@ -140,25 +146,26 @@
   "mod"
   "extern"
 
-  "struct"
-  "enum"
   "impl"
   "where"
   "trait"
   "for"
 
-  "type"
-  "union"
-  "unsafe"
   "default"
-  "macro_rules!"
-
-  "let"
-
   "async"
 ] @keyword
 
+[
+  "struct"
+  "enum"
+  "union"
+  "type"
+] @keyword.storage.type
+
+"let" @keyword.storage
 "fn" @keyword.function
+"unsafe" @keyword.special
+"macro_rules!" @function.macro
 
 (mutable_specifier) @keyword.storage.modifier.mut
 
@@ -180,7 +187,7 @@
 ; -------
 
 ((identifier) @constant
- (#match? @constant "^[A-Z][A-Z\\d_]+$"))
+ (#match? @constant "^[A-Z][A-Z\\d_]*$"))
 
 ; ---
 ; PascalCase identifiers in call_expressions (e.g. `Ok()`)
@@ -189,11 +196,11 @@
 
 (call_expression
   function: [
-    ((identifier) @type.variant
-      (#match? @type.variant "^[A-Z]"))
+    ((identifier) @type.enum.variant
+      (#match? @type.enum.variant "^[A-Z]"))
     (scoped_identifier
-      name: ((identifier) @type.variant
-        (#match? @type.variant "^[A-Z]")))
+      name: ((identifier) @type.enum.variant
+        (#match? @type.enum.variant "^[A-Z]")))
   ])
 
 ; ---
@@ -224,8 +231,6 @@
 ((identifier) @type
   (#match? @type "^[A-Z]"))
 
-
-
 ; -------
 ; Functions
 ; -------
@@ -250,11 +255,28 @@
 (function_item
   name: (identifier) @function)
 
+(function_signature_item
+  name: (identifier) @function)
+
 ; ---
 ; Macros
 ; ---
-(meta_item
+
+(attribute
+  (identifier) @special
+  arguments: (token_tree (identifier) @type)
+  (#eq? @special "derive")
+)
+
+(attribute
   (identifier) @function.macro)
+(attribute
+  [
+    (identifier) @function.macro
+    (scoped_identifier
+      name: (identifier) @function.macro)
+  ]
+  (token_tree (identifier) @function.macro)?)
 
 (inner_attribute_item) @attribute
 
@@ -270,8 +292,6 @@
 
 (metavariable) @variable.parameter
 (fragment_specifier) @type
-
-
 
 ; -------
 ; Operators
@@ -318,8 +338,6 @@
   "'"
 ] @operator
 
-
-
 ; -------
 ; Paths
 ; -------
@@ -349,8 +367,6 @@
   name: (identifier) @namespace)
 (scoped_type_identifier
   path: (identifier) @namespace)
-
-
 
 ; -------
 ; Remaining Identifiers

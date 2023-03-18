@@ -1,3 +1,5 @@
+use smallvec::SmallVec;
+
 use crate::{Range, Rope, Selection, Tendril};
 use std::borrow::Cow;
 
@@ -56,7 +58,7 @@ impl ChangeSet {
     }
 
     // Changeset builder operations: delete/insert/retain
-    fn delete(&mut self, n: usize) {
+    pub(crate) fn delete(&mut self, n: usize) {
         use Operation::*;
         if n == 0 {
             return;
@@ -71,7 +73,7 @@ impl ChangeSet {
         }
     }
 
-    fn insert(&mut self, fragment: Tendril) {
+    pub(crate) fn insert(&mut self, fragment: Tendril) {
         use Operation::*;
 
         if fragment.is_empty() {
@@ -93,7 +95,7 @@ impl ChangeSet {
         self.changes.push(new_last);
     }
 
-    fn retain(&mut self, n: usize) {
+    pub(crate) fn retain(&mut self, n: usize) {
         use Operation::*;
         if n == 0 {
             return;
@@ -466,6 +468,33 @@ impl Transaction {
         self
     }
 
+    /// Generate a transaction from a set of potentially overlapping changes. The `change_ranges`
+    /// iterator yield the range (of removed text) in the old document for each edit. If any change
+    /// overlaps with a range overlaps with a previous range then that range is ignored.
+    ///
+    /// The `process_change` callback is called for each edit that is not ignored (in the order
+    /// yielded by `changes`) and should return the new text that the associated range will be
+    /// replaced with.
+    ///
+    /// To make this function more flexible the iterator can yield additional data for each change
+    /// that is passed to `process_change`
+    pub fn change_ignore_overlapping<T>(
+        doc: &Rope,
+        change_ranges: impl Iterator<Item = (usize, usize, T)>,
+        mut process_change: impl FnMut(usize, usize, T) -> Option<Tendril>,
+    ) -> Self {
+        let mut last = 0;
+        let changes = change_ranges.filter_map(|(from, to, data)| {
+            if from < last {
+                return None;
+            }
+            let tendril = process_change(from, to, data);
+            last = to;
+            Some((from, to, tendril))
+        });
+        Self::change(doc, changes)
+    }
+
     /// Generate a transaction from a set of changes.
     pub fn change<I>(doc: &Rope, changes: I) -> Self
     where
@@ -481,6 +510,11 @@ impl Transaction {
         for (from, to, tendril) in changes {
             // Verify ranges are ordered and not overlapping
             debug_assert!(last <= from);
+            // Verify ranges are correct
+            debug_assert!(
+                from <= to,
+                "Edit end must end before it starts (should {from} <= {to})"
+            );
 
             // Retain from last "to" to current "from"
             changeset.retain(from - last);
@@ -506,6 +540,44 @@ impl Transaction {
         F: FnMut(&Range) -> Change,
     {
         Self::change(doc, selection.iter().map(f))
+    }
+
+    pub fn change_by_selection_ignore_overlapping(
+        doc: &Rope,
+        selection: &Selection,
+        mut change_range: impl FnMut(&Range) -> (usize, usize),
+        mut create_tendril: impl FnMut(usize, usize) -> Option<Tendril>,
+    ) -> (Transaction, Selection) {
+        let mut last_selection_idx = None;
+        let mut new_primary_idx = None;
+        let mut ranges: SmallVec<[Range; 1]> = SmallVec::new();
+        let process_change = |change_start, change_end, (idx, range): (usize, &Range)| {
+            // update the primary idx
+            if idx == selection.primary_index() {
+                new_primary_idx = Some(idx);
+            } else if new_primary_idx.is_none() {
+                if idx > selection.primary_index() {
+                    new_primary_idx = last_selection_idx;
+                } else {
+                    last_selection_idx = Some(idx);
+                }
+            }
+            ranges.push(*range);
+            create_tendril(change_start, change_end)
+        };
+        let transaction = Self::change_ignore_overlapping(
+            doc,
+            selection.iter().enumerate().map(|range| {
+                let (change_start, change_end) = change_range(range.1);
+                (change_start, change_end, range)
+            }),
+            process_change,
+        );
+
+        (
+            transaction,
+            Selection::new(ranges, new_primary_idx.unwrap_or(0)),
+        )
     }
 
     /// Insert text at each selection head.
@@ -577,7 +649,7 @@ impl<'a> Iterator for ChangeIterator<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::State;
+    use crate::history::State;
 
     #[test]
     fn composition() {
@@ -704,7 +776,10 @@ mod test {
 
     #[test]
     fn optimized_composition() {
-        let mut state = State::new("".into());
+        let mut state = State {
+            doc: "".into(),
+            selection: Selection::point(0),
+        };
         let t1 = Transaction::insert(&state.doc, &state.selection, Tendril::from("h"));
         t1.apply(&mut state.doc);
         state.selection = state.selection.clone().map(t1.changes());

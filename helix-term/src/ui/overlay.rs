@@ -1,4 +1,3 @@
-use crossterm::event::Event;
 use helix_core::Position;
 use helix_view::{
     graphics::{CursorKind, Rect},
@@ -6,7 +5,7 @@ use helix_view::{
 };
 use tui::buffer::Buffer;
 
-use crate::compositor::{Component, Context, EventResult};
+use crate::compositor::{Component, Context, Event, EventResult};
 
 /// Contains a component placed in the center of the parent component
 pub struct Overlay<T> {
@@ -62,12 +61,16 @@ impl<T: Component + 'static> Component for Overlay<T> {
         Some((width, height))
     }
 
-    fn handle_event(&mut self, event: Event, ctx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
         self.content.handle_event(event, ctx)
     }
 
     fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
         let dimensions = (self.calc_child_size)(area);
         self.content.cursor(dimensions, ctx)
+    }
+
+    fn id(&self) -> Option<&'static str> {
+        self.content.id()
     }
 }

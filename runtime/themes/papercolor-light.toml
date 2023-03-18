@@ -1,0 +1,123 @@
+# Palette based on https://github.com/NLKNguyen/papercolor-theme
+# Author: Soc Virnyl Estela <socvirnyl.estela@gmail.com>
+
+"ui.linenr.selected" = { fg = "linenr_fg_selected" }
+"ui.background" = {bg="background"}
+"ui.text" = "foreground"
+"ui.text.focus" = { fg = "selection_background", modifiers = ["bold"]}
+"ui.selection" = {bg="selection_background", fg="selection_foreground"}
+"ui.highlight" = {bg="cursorline_background"}
+"ui.cursorline" = {bg="cursorline_background"}
+"ui.statusline" = {bg="paper_bar_bg", fg="regular0"}
+"ui.statusline.select" = {bg="background", fg="bright7"}
+"ui.statusline.normal" = {bg="background", fg="bright3"}
+"ui.statusline.inactive" = {bg="bright0", fg="foreground"}
+"ui.virtual" = "indent"
+"ui.virtual.whitespace" = { fg = "regular5" }
+"ui.virtual.ruler" = {bg="cursorline_background"}
+"ui.cursor.match" = {bg = "regular5", fg = "regular0"}
+"ui.cursor" = {bg = "regular5", fg = "background"}
+"ui.window" = {bg = "#D0D0D0", fg = "bright2"}
+"ui.help" = {bg = "background", fg = "bright2"}
+"ui.popup" = {bg = "#D0D0D0", fg = "bright7"}
+"ui.menu" = {bg = "#D0D0D0", fg = "bright7"}
+"ui.menu.selected" = {bg = "selection_background", fg="selection_foreground"}
+
+"markup.heading" = { fg = "bright7", modifiers = ["bold"] }
+"markup.heading.1" = { fg = "bright2", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "bright4", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "bright3", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "bright4", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "bright4", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "bright4", modifiers = ["bold"] }
+"markup.list" = "regular4"
+"markup.bold" = { fg = "foreground", modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "regular4", modifiers = ["underlined"] }
+"markup.link.text" = "bright2"
+"markup.link.label" = { fg = "regular7", modifiers = ["bold"] }
+"markup.raw" = "foreground"
+
+"string" = "foreground"
+"attribute" = "bright7"
+"keyword" = { fg = "regular4", modifiers = ["bold"]}
+"keyword.directive" = "regular1"
+"namespace" = "regular1"
+"type" = "bright2"
+"type.builtin" = { fg = "regular4", modifiers = ["bold"]}
+"variable" = "foreground"
+"variable.builtin" = "cyan"
+"variable.other.member" = "regular4"
+"variable.parameter" = "foreground"
+
+"special" = "#3E999F"
+"function"  = "bright1"
+"constructor" = "bright1"
+"function.builtin" = { fg = "regular4", modifiers = ["bold"]}
+"function.macro" = { fg = "regular1" }
+"comment" = { fg = "bright0", modifiers = ["dim"] }
+"ui.linenr" = { fg = "bright0" }
+"module" = "#af0000"
+"constant" = "#5f8700"
+"constant.builtin" = "#5f8700"
+"constant.numeric" = "#d75f00"
+"constant.character.escape" = { fg = "#8700af", modifiers = ["bold"]}
+"operator" = { fg = "regular4", modifiers = ["bold"]}
+
+"label" = { fg = "selection_background", modifiers = ["bold", "italic"] }
+
+"diff.plus" = "regular2"
+"diff.delta" = "bright0"
+"diff.minus" = "bright1"
+
+"warning" = "bright4"
+"error" = "regular1"
+"info" = "#FFAF00"
+
+"diagnostic.warning".underline = { color = "bright4", style = "curl" } 
+"diagnostic.error".underline = { color = "regular1", style = "curl" } 
+"diagnostic.info".underline = { color = "#FFAF00", style = "curl" } 
+"diagnostic.hint".underline = { color = "#FFAF00", style = "curl" } 
+
+
+[palette]
+background="#eeeeee"
+foreground="#444444"
+regular0="#eeeeee"
+regular1="#af0000"
+regular2="#008700"
+regular3="#5f8700"
+regular4="#0087af"
+regular5="#878787"
+regular6="#005f87"
+regular7="#764e37"
+bright0="#bcbcbc"
+bright1="#d70000"
+bright2="#d70087"
+bright3="#8700af"
+bright4="#d75f00"
+bright5="#d75f00"
+bright6="#4c7a5d"
+bright7="#005faf"
+selection_foreground="#eeeeee"
+selection_background="#0087af"
+cursorline_background="#fdfdfd"
+paper_bar_bg="#005F87"
+black="#eeeeee"
+red="#d70000"
+green="#008700"
+yellow="#5f8700"
+blue="#0087af"
+magenta="#878787"
+cyan="#005f87"
+gray="#764e37"
+light-red="#d70000"
+light-green="#d70087"
+light-yellow="#8700af"
+light-blue="#d75f00"
+light-magenta="#d75f00"
+light-cyan="#4c7a4d"
+light-gray="#005faf"
+white="#444444"
+linenr_fg_selected="#AF634D"

@@ -1,4 +1,6 @@
 use helix_core::{coords_at_pos, encoding, Position};
+use helix_lsp::lsp::DiagnosticSeverity;
+use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -68,7 +70,9 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Left side of the status line.
 
-    let element_ids = &context.editor.config().statusline.left;
+    let config = context.editor.config();
+
+    let element_ids = &config.statusline.left;
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
@@ -83,7 +87,7 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Right side of the status line.
 
-    let element_ids = &context.editor.config().statusline.right;
+    let element_ids = &config.statusline.right;
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
@@ -101,7 +105,7 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     // Center of the status line.
 
-    let element_ids = &context.editor.config().statusline.center;
+    let element_ids = &config.statusline.center;
     element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
@@ -136,16 +140,26 @@ where
     match element_id {
         helix_view::editor::StatusLineElement::Mode => render_mode,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
+        helix_view::editor::StatusLineElement::FileBaseName => render_file_base_name,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
+        helix_view::editor::StatusLineElement::FileModificationIndicator => {
+            render_file_modification_indicator
+        }
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
+        helix_view::editor::StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
+        helix_view::editor::StatusLineElement::PrimarySelectionLength => {
+            render_primary_selection_length
+        }
         helix_view::editor::StatusLineElement::Position => render_position,
         helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
+        helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
+        helix_view::editor::StatusLineElement::VersionControl => render_version_control,
     }
 }
 
@@ -154,24 +168,25 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let visible = context.focused;
-
+    let config = context.editor.config();
+    let modenames = &config.statusline.mode;
     write(
         context,
         format!(
             " {} ",
             if visible {
-                match context.doc.mode() {
-                    Mode::Insert => "INS",
-                    Mode::Select => "SEL",
-                    Mode::Normal => "NOR",
+                match context.editor.mode() {
+                    Mode::Insert => &modenames.insert,
+                    Mode::Select => &modenames.select,
+                    Mode::Normal => &modenames.normal,
                 }
             } else {
                 // If not focused, explicitly leave an empty space instead of returning None.
                 "   "
             }
         ),
-        if visible && context.editor.config().color_modes {
-            match context.doc.mode() {
+        if visible && config.color_modes {
+            match context.editor.mode() {
                 Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
                 Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
                 Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
@@ -241,6 +256,48 @@ where
     }
 }
 
+fn render_workspace_diagnostics<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let (warnings, errors) =
+        context
+            .editor
+            .diagnostics
+            .values()
+            .flatten()
+            .fold((0, 0), |mut counts, diag| {
+                match diag.severity {
+                    Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
+                    Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
+                    _ => {}
+                }
+                counts
+            });
+
+    if warnings > 0 || errors > 0 {
+        write(context, format!(" {} ", "W"), None);
+    }
+
+    if warnings > 0 {
+        write(
+            context,
+            "●".to_string(),
+            Some(context.editor.theme.get("warning")),
+        );
+        write(context, format!(" {} ", warnings), None);
+    }
+
+    if errors > 0 {
+        write(
+            context,
+            "●".to_string(),
+            Some(context.editor.theme.get("error")),
+        );
+        write(context, format!(" {} ", errors), None);
+    }
+}
+
 fn render_selections<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
@@ -249,6 +306,18 @@ where
     write(
         context,
         format!(" {} sel{} ", count, if count == 1 { "" } else { "s" }),
+        None,
+    );
+}
+
+fn render_primary_selection_length<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let tot_sel = context.doc.selection(context.view.id).primary().len();
+    write(
+        context,
+        format!(" {} char{} ", tot_sel, if tot_sel == 1 { "" } else { "s" }),
         None,
     );
 }
@@ -274,6 +343,15 @@ where
         format!(" {}:{} ", position.row + 1, position.col + 1),
         None,
     );
+}
+
+fn render_total_line_numbers<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let total_line_numbers = context.doc.text().len_lines();
+
+    write(context, format!(" {} ", total_line_numbers), None);
 }
 
 fn render_position_percentage<F>(context: &mut RenderContext, write: F)
@@ -329,7 +407,7 @@ fn render_file_type<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let file_type = context.doc.language_id().unwrap_or("text");
+    let file_type = context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
 
     write(context, format!(" {} ", file_type), None);
 }
@@ -344,11 +422,37 @@ where
             .as_ref()
             .map(|p| p.to_string_lossy())
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-        format!(
-            " {}{} ",
-            path,
-            if context.doc.is_modified() { "[+]" } else { "" }
-        )
+        format!(" {} ", path)
+    };
+
+    write(context, title, None);
+}
+
+fn render_file_modification_indicator<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = (if context.doc.is_modified() {
+        "[+]"
+    } else {
+        "   "
+    })
+    .to_string();
+
+    write(context, title, None);
+}
+
+fn render_file_base_name<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = {
+        let rel_path = context.doc.relative_path();
+        let path = rel_path
+            .as_ref()
+            .and_then(|p| p.as_path().file_name().map(|s| s.to_string_lossy()))
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+        format!(" {} ", path)
     };
 
     write(context, title, None);
@@ -372,4 +476,17 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     write(context, String::from(" "), None);
+}
+
+fn render_version_control<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let head = context
+        .doc
+        .version_control_head()
+        .unwrap_or_default()
+        .to_string();
+
+    write(context, head, None);
 }

@@ -1,4 +1,4 @@
-# Adding Indent Queries
+# Adding indent queries
 
 Helix uses tree-sitter to correctly indent new lines. This requires
 a tree-sitter grammar and an `indent.scm` query file placed in
@@ -36,7 +36,7 @@ changed by using a `#set!` declaration anywhere in the pattern:
   (#set! "scope" "all"))
 ```
 
-## Capture Types
+## Capture types
 
 - `@indent` (default scope `tail`):
 Increase the indent level by 1. Multiple occurrences in the same line
@@ -45,6 +45,20 @@ capture on the same line, the indent level isn't changed at all.
 
 - `@outdent` (default scope `all`):
 Decrease the indent level by 1. The same rules as for `@indent` apply.
+
+- `@extend`:
+Extend the range of this node to the end of the line and to lines that
+are indented more than the line that this node starts on. This is useful
+for languages like Python, where for the purpose of indentation some nodes
+(like functions or classes) should also contain indented lines that follow them.
+
+- `@extend.prevent-once`:
+Prevents the first extension of an ancestor of this node. For example, in Python
+a return expression always ends the block that it is in. Note that this only stops the
+extension of the next `@extend` capture. If multiple ancestors are captured,
+only the extension of the innermost one is prevented. All other ancestors are unaffected
+(regardless of whether the innermost ancestor would actually have been extended).
+
 
 ## Predicates
 

@@ -8,11 +8,12 @@
 # Email: sainnhe@gmail.com
 # License: MIT License
 
-"constant.character.escape" = "orange"
 "type" = "yellow"
 "constant" = "purple"
 "constant.numeric" = "purple"
+"constant.character.escape" = "orange"
 "string" = "green"
+"string.regexp" = "blue"
 "comment" = "grey0"
 "variable" = "fg"
 "variable.builtin" = "blue"
@@ -23,6 +24,7 @@
 "punctuation.delimiter" = "grey2"
 "punctuation.bracket" = "fg"
 "keyword" = "red"
+"keyword.directive" = "aqua"
 "operator" = "orange"
 "function" = "green"
 "function.builtin" = "blue"
@@ -44,6 +46,7 @@
 "markup.list" = "red"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "blue", modifiers = ["underlined"] }
 "markup.link.text" = "purple"
 "markup.quote" = "grey2"
@@ -54,29 +57,43 @@
 "diff.minus" = "red"
 
 "ui.background" = { bg = "bg0" }
+"ui.background.separator" = "grey0"
 "ui.cursor" = { fg = "bg0", bg = "fg" }
 "ui.cursor.match" = { fg = "orange", bg = "bg_yellow" }
 "ui.cursor.insert" = { fg = "bg0", bg = "grey1" }
 "ui.cursor.select" = { fg = "bg0", bg = "blue" }
+"ui.cursorline.primary" = { bg = "bg1" }
+"ui.cursorline.secondary" = { bg = "bg1" }
+"ui.selection" = { bg = "bg3" }
 "ui.linenr" = "grey0"
 "ui.linenr.selected" = "fg"
-"ui.statusline" = { fg = "grey2", bg = "bg2" }
+"ui.statusline" = { fg = "grey2", bg = "bg3" }
 "ui.statusline.inactive" = { fg = "grey0", bg = "bg1" }
-"ui.popup" = { fg = "grey2", bg = "bg1" }
-"ui.window" = { fg = "grey2", bg = "bg1" }
-"ui.help" = { fg = "fg", bg = "bg1" }
+"ui.statusline.normal" = { fg = "bg0", bg = "grey2", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "bg0", bg = "yellow", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "bg0", bg = "blue", modifiers = ["bold"] }
+"ui.bufferline" = { fg = "grey0", bg = "bg1" }
+"ui.bufferline.active" = { fg = "fg", bg = "bg3", modifiers = ["bold"] }
+"ui.popup" = { fg = "grey2", bg = "bg2" }
+"ui.window" = { fg = "grey0", bg = "bg0" }
+"ui.help" = { fg = "fg", bg = "bg2" }
 "ui.text" = "fg"
 "ui.text.focus" = "fg"
-"ui.menu" = { fg = "fg", bg = "bg2" }
+"ui.menu" = { fg = "fg", bg = "bg3" }
 "ui.menu.selected" = { fg = "bg0", bg = "green" }
-"ui.selection" = { bg = "bg3" }
-"ui.virtual.whitespace" = "grey0"
+"ui.virtual.whitespace" = { fg = "bg4" }
+"ui.virtual.indent-guide" = { fg = "bg4" }
+"ui.virtual.ruler" = { bg = "bg3" }
 
 "hint" = "blue"
 "info" = "aqua"
 "warning" = "yellow"
 "error" = "red"
-"diagnostic" = { modifiers = ["underlined"] }
+
+"diagnostic.hint" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.info" = { underline = { color = "aqua", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
 
 
 [palette]

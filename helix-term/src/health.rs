@@ -52,7 +52,7 @@ pub fn general() -> std::io::Result<()> {
     let config_file = helix_loader::config_file();
     let lang_file = helix_loader::lang_config_file();
     let log_file = helix_loader::log_file();
-    let rt_dir = helix_loader::runtime_dir();
+    let rt_dirs = helix_loader::runtime_dirs();
     let clipboard_provider = get_clipboard_provider();
 
     if config_file.exists() {
@@ -66,19 +66,60 @@ pub fn general() -> std::io::Result<()> {
         writeln!(stdout, "Language file: default")?;
     }
     writeln!(stdout, "Log file: {}", log_file.display())?;
-    writeln!(stdout, "Runtime directory: {}", rt_dir.display())?;
-
-    if let Ok(path) = std::fs::read_link(&rt_dir) {
-        let msg = format!("Runtime directory is symlinked to {}", path.display());
-        writeln!(stdout, "{}", msg.yellow())?;
-    }
-    if !rt_dir.exists() {
-        writeln!(stdout, "{}", "Runtime directory does not exist.".red())?;
-    }
-    if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
-        writeln!(stdout, "{}", "Runtime directory is empty.".red())?;
+    writeln!(
+        stdout,
+        "Runtime directories: {}",
+        rt_dirs
+            .iter()
+            .map(|d| d.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(";")
+    )?;
+    for rt_dir in rt_dirs.iter() {
+        if let Ok(path) = std::fs::read_link(rt_dir) {
+            let msg = format!(
+                "Runtime directory {} is symlinked to: {}",
+                rt_dir.display(),
+                path.display()
+            );
+            writeln!(stdout, "{}", msg.yellow())?;
+        }
+        if !rt_dir.exists() {
+            let msg = format!("Runtime directory does not exist: {}", rt_dir.display());
+            writeln!(stdout, "{}", msg.yellow())?;
+        } else if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
+            let msg = format!("Runtime directory is empty: {}", rt_dir.display());
+            writeln!(stdout, "{}", msg.yellow())?;
+        }
     }
     writeln!(stdout, "Clipboard provider: {}", clipboard_provider.name())?;
+
+    Ok(())
+}
+
+pub fn clipboard() -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    let board = get_clipboard_provider();
+    match board.name().as_ref() {
+        "none" => {
+            writeln!(
+                stdout,
+                "{}",
+                "System clipboard provider: Not installed".red()
+            )?;
+            writeln!(
+                stdout,
+                "    {}",
+                "For troubleshooting system clipboard issues, refer".red()
+            )?;
+            writeln!(stdout, "    {}",
+                "https://github.com/helix-editor/helix/wiki/Troubleshooting#copypaste-fromto-system-clipboard-not-working"
+            .red().underlined())?;
+        }
+        name => writeln!(stdout, "System clipboard provider: {}", name)?,
+    }
 
     Ok(())
 }
@@ -142,7 +183,7 @@ pub fn languages_all() -> std::io::Result<()> {
 
     let check_binary = |cmd: Option<String>| match cmd {
         Some(cmd) => match which::which(&cmd) {
-            Ok(_) => column(&format!("✔ {}", cmd), Color::Green),
+            Ok(_) => column(&format!("✓ {}", cmd), Color::Green),
             Err(_) => column(&format!("✘ {}", cmd), Color::Red),
         },
         None => column("None", Color::Yellow),
@@ -162,7 +203,7 @@ pub fn languages_all() -> std::io::Result<()> {
 
         for ts_feat in TsFeature::all() {
             match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
-                true => column("✔", Color::Green),
+                true => column("✓", Color::Green),
                 false => column("✘", Color::Red),
             }
         }
@@ -256,7 +297,7 @@ fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::R
     if let Some(cmd) = server_cmd {
         let path = match which::which(&cmd) {
             Ok(path) => path.display().to_string().green(),
-            Err(_) => "Not found in $PATH".to_string().red(),
+            Err(_) => format!("'{}' not found in $PATH", cmd).red(),
         };
         writeln!(stdout, "Binary for {}: {}", protocol_name, path)?;
     }
@@ -271,7 +312,7 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
     let mut stdout = stdout.lock();
 
     let found = match load_runtime_file(lang, feature.runtime_filename()).is_ok() {
-        true => "✔".green(),
+        true => "✓".green(),
         false => "✘".red(),
     };
     writeln!(stdout, "{} queries: {}", feature.short_title(), found)?;
@@ -281,13 +322,15 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
 
 pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
     match health_arg.as_deref() {
-        Some("all") => languages_all()?,
-        Some(lang) => language(lang.to_string())?,
-        None => {
+        Some("languages") => languages_all()?,
+        Some("clipboard") => clipboard()?,
+        None | Some("all") => {
             general()?;
+            clipboard()?;
             writeln!(std::io::stdout().lock())?;
             languages_all()?;
         }
+        Some(lang) => language(lang.to_string())?,
     }
     Ok(())
 }

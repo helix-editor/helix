@@ -1,0 +1,124 @@
+# Palette based on https://github.com/NLKNguyen/papercolor-theme
+# Author: Soc Virnyl Estela <socvirnyl.estela@gmail.com>
+
+"ui.linenr.selected" = { fg = "linenr_fg_selected" }
+"ui.background" = {bg="background"}
+"ui.text" = "foreground"
+"ui.text.focus" = { fg = "selection_background", modifiers = ["bold"]}
+"ui.selection" = {bg="selection_background", fg="selection_foreground"}
+"ui.cursorline" = {bg="cursorline_background"}
+"ui.highlight" = {bg="cursorline_background"}
+"ui.statusline" = {bg="paper_bar_bg", fg="regular0"}
+"ui.statusline.select" = {bg="background", fg="bright7"}
+"ui.statusline.normal" = {bg="background", fg="bright3"}
+"ui.statusline.inactive" = {bg="selection_foreground", fg="foreground"}
+"ui.virtual.whitespace" = { fg = "regular5" }
+"ui.virtual.ruler" = {bg="cursorline_background"}
+"ui.cursor.match" = {bg = "regular5", fg = "regular0"}
+"ui.cursor" = {bg = "regular5", fg = "background"}
+"ui.window" = {bg = "#303030", fg = "bright2"}
+"ui.help" = {bg = "background", fg = "bright2"}
+"ui.popup" = {bg = "#303030", fg = "bright6"}
+"ui.menu" = {bg = "#303030", fg = "bright6"}
+"ui.menu.selected" = {bg = "#C6C6C6", fg="selection_foreground"}
+
+"markup.heading" = { fg = "regular4", modifiers = ["bold"] }
+"markup.heading.1" = { fg = "bright2", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "bright5", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "bright3", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "bright5", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "bright5", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "bright5", modifiers = ["bold"] }
+"markup.list" = "bright3"
+"markup.bold" = { fg = "foreground", modifiers = ["bold"] }
+"markup.italic" = { fg = "bright0", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "bright6", modifiers = ["underlined"] }
+"markup.link.text" = "bright2"
+"markup.link.label" = { fg = "regular2", modifiers = ["bold"] }
+"markup.raw" = "foreground"
+
+"string" = "foreground"
+"attribute" = "bright7"
+"keyword" = { fg = "regular4", modifiers = ["bold"]}
+"keyword.directive" = "regular4"
+"keyword.control.conditional" = "bright3"
+"keyword.function" = "regular4"
+"namespace" = "bright1"
+"type" = "bright2"
+"type.builtin" = { fg = "foreground", modifiers = ["bold"]}
+"variable" = "foreground"
+"variable.builtin" = "cyan"
+"variable.other.member" = "cyan"
+"variable.parameter" = "foreground"
+
+"special" = "#3E999F"
+"function"  = "bright6"
+"constructor" = "regular4"
+"function.builtin" = { fg = "foreground", modifiers = ["bold"]}
+"function.macro" = { fg = "regular4", modifiers = ["bold"] }
+"comment" = { fg = "#686868", modifiers = ["dim"] }
+"ui.linenr" = { fg = "bright0" }
+"module" = "regular4"
+"constant" = "bright5"
+"constant.builtin" = "bright6"
+"constant.numeric" = "bright5"
+"constant.character.escape" = { fg = "foreground", modifiers = ["bold"]}
+"operator" = { fg = "regular4", modifiers = ["bold"]}
+
+"label" = { fg = "selection_background", modifiers = ["bold", "italic"] }
+
+"diff.plus" = "regular2"
+"diff.delta" = "regular6"
+"diff.minus" = "regular1"
+
+"warning" = "bright4"
+"error" = "regular1"
+"info" = "bright4"
+
+"diagnostic.warning".underline = { color = "bright4", style = "curl" } 
+"diagnostic.error".underline = { color = "regular1", style = "curl" } 
+"diagnostic.info".underline = { color = "bright4", style = "curl" } 
+"diagnostic.hint".underline = { color = "bright4", style = "curl" } 
+
+
+[palette]
+background="#1c1c1c"
+foreground="#d0d0d0"
+regular0="#1c1c1c"
+regular1="#af005f"
+regular2="#5faf00"
+regular3="#d7af5f"
+regular4="#5fafd7"
+regular5="#808080"
+regular6="#d7875f"
+regular7="#d0d0d0"
+bright0="#585858"
+bright1="#5faf5f"
+bright2="#afd700"
+bright3="#af87d7"
+bright4="#FFAF00"
+bright5="#ff5faf"
+bright6="#00afaf"
+bright7="#5f8787"
+selection_foreground="#585858"
+selection_background="#8787AF"
+cursorline_background="#303030"
+paper_bar_bg="#5F8787"
+black="#1c1c1c"
+red="#af005f"
+green="#5faf00"
+yellow="#d7af5f"
+blue="#5fafd7"
+magenta="#808080"
+cyan="#d7875f"
+gray="#d0d0d0"
+light-red="#5faf5f"
+light-green="#afd700"
+light-yellow="#af87d7"
+light-blue="#FFAF00"
+light-magenta="#ff5faf"
+light-cyan="#00afaf"
+light-gray="#5f8787"
+white="#808080"
+linenr_fg_selected="#FFFF00"

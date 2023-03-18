@@ -1,26 +1,35 @@
 [
-  (_compound_statement)
+  (if_statement)
+  (for_statement)
+  (while_statement)
   (match_statement)
-  (parenthesized_expression)
-  
-  (pattern_array)
-  (pattern_dictionary)
-  (argument_list)
-  (binary_operator)
-  
-  (parameters)
-  (body)
-  (enumerator_list)
-  
+  (pattern_section)
+
   (function_definition)
   (constructor_definition)
   (class_definition)
+  (enum_definition)
+
+  (dictionary (_))
+  (array (_))
+  (setget)
 ] @indent
 
 [
-  ")",
-  "]",
-  "}",
+  (if_statement)
+  (for_statement)
+  (while_statement)
+  (match_statement)
+  (pattern_section)
+
+  (function_definition)
+  (class_definition)
+] @extend
+
+[
   (return_statement)
+  (break_statement)
+  (continue_statement)
   (pass_statement)
-] @outdent
+] @extend.prevent-once
+

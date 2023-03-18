@@ -21,14 +21,14 @@ use std::borrow::Cow;
 /// can be in any order, or even share the same position.
 ///
 /// The anchor and head positions use gap indexing, meaning
-/// that their indices represent the the gaps *between* `char`s
+/// that their indices represent the gaps *between* `char`s
 /// rather than the `char`s themselves. For example, 1
 /// represents the position between the first and second `char`.
 ///
-/// Below are some example `Range` configurations to better
-/// illustrate.  The anchor and head indices are show as
-/// "(anchor, head)", followed by example text with "[" and "]"
-/// inserted to represent the anchor and head positions:
+/// Below are some examples of `Range` configurations.
+/// The anchor and head indices are shown as "(anchor, head)"
+/// tuples, followed by example text with "[" and "]" symbols
+/// representing the anchor and head positions:
 ///
 /// - (0, 3): `[Som]e text`.
 /// - (3, 0): `]Som[e text`.
@@ -53,7 +53,9 @@ pub struct Range {
     pub anchor: usize,
     /// The head of the range, moved when extending.
     pub head: usize,
-    pub horiz: Option<u32>,
+    /// The previous visual offset (softwrapped lines and columns) from
+    /// the start of the line
+    pub old_visual_position: Option<(u32, u32)>,
 }
 
 impl Range {
@@ -61,7 +63,7 @@ impl Range {
         Self {
             anchor,
             head,
-            horiz: None,
+            old_visual_position: None,
         }
     }
 
@@ -122,12 +124,22 @@ impl Range {
         }
     }
 
-    // flips the direction of the selection
+    /// Flips the direction of the selection
     pub fn flip(&self) -> Self {
         Self {
             anchor: self.head,
             head: self.anchor,
-            horiz: self.horiz,
+            old_visual_position: self.old_visual_position,
+        }
+    }
+
+    /// Returns the selection if it goes in the direction of `direction`,
+    /// flipping the selection otherwise.
+    pub fn with_direction(self, direction: Direction) -> Self {
+        if self.direction() == direction {
+            self
+        } else {
+            self.flip()
         }
     }
 
@@ -175,7 +187,7 @@ impl Range {
         Self {
             anchor,
             head,
-            horiz: None,
+            old_visual_position: None,
         }
     }
 
@@ -188,13 +200,13 @@ impl Range {
             Self {
                 anchor: self.anchor.min(from),
                 head: self.head.max(to),
-                horiz: None,
+                old_visual_position: None,
             }
         } else {
             Self {
                 anchor: self.anchor.max(to),
                 head: self.head.min(from),
-                horiz: None,
+                old_visual_position: None,
             }
         }
     }
@@ -209,13 +221,13 @@ impl Range {
             Range {
                 anchor: self.anchor.max(other.anchor),
                 head: self.head.min(other.head),
-                horiz: None,
+                old_visual_position: None,
             }
         } else {
             Range {
                 anchor: self.from().min(other.from()),
                 head: self.to().max(other.to()),
-                horiz: None,
+                old_visual_position: None,
             }
         }
     }
@@ -269,8 +281,8 @@ impl Range {
         Range {
             anchor: new_anchor,
             head: new_head,
-            horiz: if new_anchor == self.anchor {
-                self.horiz
+            old_visual_position: if new_anchor == self.anchor {
+                self.old_visual_position
             } else {
                 None
             },
@@ -296,7 +308,7 @@ impl Range {
             Range {
                 anchor: self.anchor,
                 head: next_grapheme_boundary(slice, self.head),
-                horiz: self.horiz,
+                old_visual_position: self.old_visual_position,
             }
         } else {
             *self
@@ -368,7 +380,7 @@ impl From<(usize, usize)> for Range {
         Self {
             anchor,
             head,
-            horiz: None,
+            old_visual_position: None,
         }
     }
 }
@@ -472,7 +484,7 @@ impl Selection {
             ranges: smallvec![Range {
                 anchor,
                 head,
-                horiz: None
+                old_visual_position: None
             }],
             primary_index: 0,
         }
@@ -485,28 +497,53 @@ impl Selection {
 
     /// Normalizes a `Selection`.
     fn normalize(mut self) -> Self {
-        let primary = self.ranges[self.primary_index];
+        let mut primary = self.ranges[self.primary_index];
         self.ranges.sort_unstable_by_key(Range::from);
+
+        self.ranges.dedup_by(|curr_range, prev_range| {
+            if prev_range.overlaps(curr_range) {
+                let new_range = curr_range.merge(*prev_range);
+                if prev_range == &primary || curr_range == &primary {
+                    primary = new_range;
+                }
+                *prev_range = new_range;
+                true
+            } else {
+                false
+            }
+        });
+
         self.primary_index = self
             .ranges
             .iter()
             .position(|&range| range == primary)
             .unwrap();
 
-        let mut prev_i = 0;
-        for i in 1..self.ranges.len() {
-            if self.ranges[prev_i].overlaps(&self.ranges[i]) {
-                self.ranges[prev_i] = self.ranges[prev_i].merge(self.ranges[i]);
-            } else {
-                prev_i += 1;
-                self.ranges[prev_i] = self.ranges[i];
-            }
-            if i == self.primary_index {
-                self.primary_index = prev_i;
-            }
-        }
+        self
+    }
 
-        self.ranges.truncate(prev_i + 1);
+    // Merges all ranges that are consecutive
+    pub fn merge_consecutive_ranges(mut self) -> Self {
+        let mut primary = self.ranges[self.primary_index];
+
+        self.ranges.dedup_by(|curr_range, prev_range| {
+            if prev_range.to() == curr_range.from() {
+                let new_range = curr_range.merge(*prev_range);
+                if prev_range == &primary || curr_range == &primary {
+                    primary = new_range;
+                }
+                *prev_range = new_range;
+                true
+            } else {
+                false
+            }
+        });
+
+        self.primary_index = self
+            .ranges
+            .iter()
+            .position(|&range| range == primary)
+            .unwrap();
 
         self
     }
@@ -531,13 +568,23 @@ impl Selection {
     }
 
     /// Takes a closure and maps each `Range` over the closure.
-    pub fn transform<F>(mut self, f: F) -> Self
+    pub fn transform<F>(mut self, mut f: F) -> Self
     where
-        F: Fn(Range) -> Range,
+        F: FnMut(Range) -> Range,
     {
         for range in self.ranges.iter_mut() {
             *range = f(*range)
         }
+        self.normalize()
+    }
+
+    /// Takes a closure and maps each `Range` over the closure to multiple `Range`s.
+    pub fn transform_iter<F, I>(mut self, f: F) -> Self
+    where
+        F: FnMut(Range) -> I,
+        I: Iterator<Item = Range>,
+    {
+        self.ranges = self.ranges.into_iter().flat_map(f).collect();
         self.normalize()
     }
 
@@ -578,11 +625,6 @@ impl Selection {
 
     // returns true if self ⊇ other
     pub fn contains(&self, other: &Selection) -> bool {
-        // can't contain other if it is larger
-        if other.len() > self.len() {
-            return false;
-        }
-
         let (mut iter_self, mut iter_other) = (self.iter(), other.iter());
         let (mut ele_self, mut ele_other) = (iter_self.next(), iter_other.next());
 
@@ -616,6 +658,15 @@ impl<'a> IntoIterator for &'a Selection {
 
     fn into_iter(self) -> std::slice::Iter<'a, Range> {
         self.ranges().iter()
+    }
+}
+
+impl IntoIterator for Selection {
+    type Item = Range;
+    type IntoIter = smallvec::IntoIter<[Range; 1]>;
+
+    fn into_iter(self) -> smallvec::IntoIter<[Range; 1]> {
+        self.ranges.into_iter()
     }
 }
 
@@ -659,7 +710,13 @@ pub fn select_on_matches(
 
             let start = text.byte_to_char(start_byte + mat.start());
             let end = text.byte_to_char(start_byte + mat.end());
-            result.push(Range::new(start, end));
+
+            let range = Range::new(start, end);
+            // Make sure the match is not right outside of the selection.
+            // These invalid matches can come from using RegEx anchors like `^`, `$`
+            if range != Range::point(sel.to()) {
+                result.push(range);
+            }
         }
     }
 
@@ -930,6 +987,76 @@ mod test {
     }
 
     #[test]
+    fn test_select_on_matches() {
+        use crate::regex::{Regex, RegexBuilder};
+
+        let r = Rope::from_str("Nobody expects the Spanish inquisition");
+        let s = r.slice(..);
+
+        let selection = Selection::single(0, r.len_chars());
+        assert_eq!(
+            select_on_matches(s, &selection, &Regex::new(r"[A-Z][a-z]*").unwrap()),
+            Some(Selection::new(
+                smallvec![Range::new(0, 6), Range::new(19, 26)],
+                0
+            ))
+        );
+
+        let r = Rope::from_str("This\nString\n\ncontains multiple\nlines");
+        let s = r.slice(..);
+
+        let start_of_line = RegexBuilder::new(r"^").multi_line(true).build().unwrap();
+        let end_of_line = RegexBuilder::new(r"$").multi_line(true).build().unwrap();
+
+        // line without ending
+        assert_eq!(
+            select_on_matches(s, &Selection::single(0, 4), &start_of_line),
+            Some(Selection::single(0, 0))
+        );
+        assert_eq!(
+            select_on_matches(s, &Selection::single(0, 4), &end_of_line),
+            None
+        );
+        // line with ending
+        assert_eq!(
+            select_on_matches(s, &Selection::single(0, 5), &start_of_line),
+            Some(Selection::single(0, 0))
+        );
+        assert_eq!(
+            select_on_matches(s, &Selection::single(0, 5), &end_of_line),
+            Some(Selection::single(4, 4))
+        );
+        // line with start of next line
+        assert_eq!(
+            select_on_matches(s, &Selection::single(0, 6), &start_of_line),
+            Some(Selection::new(
+                smallvec![Range::point(0), Range::point(5)],
+                0
+            ))
+        );
+        assert_eq!(
+            select_on_matches(s, &Selection::single(0, 6), &end_of_line),
+            Some(Selection::single(4, 4))
+        );
+
+        // multiple lines
+        assert_eq!(
+            select_on_matches(
+                s,
+                &Selection::single(0, s.len_chars()),
+                &RegexBuilder::new(r"^[a-z ]*$")
+                    .multi_line(true)
+                    .build()
+                    .unwrap()
+            ),
+            Some(Selection::new(
+                smallvec![Range::point(12), Range::new(13, 30), Range::new(31, 36)],
+                0
+            ))
+        );
+    }
+
+    #[test]
     fn test_line_range() {
         let r = Rope::from_str("\r\nHi\r\nthere!");
         let s = r.slice(..);
@@ -1046,6 +1173,52 @@ mod test {
             &["", "abcd", "efg", "rs", "xyz"]
         );
     }
+
+    #[test]
+    fn test_merge_consecutive_ranges() {
+        let selection = Selection::new(
+            smallvec![
+                Range::new(0, 1),
+                Range::new(1, 10),
+                Range::new(15, 20),
+                Range::new(25, 26),
+                Range::new(26, 30)
+            ],
+            4,
+        );
+
+        let result = selection.merge_consecutive_ranges();
+
+        assert_eq!(
+            result.ranges(),
+            &[Range::new(0, 10), Range::new(15, 20), Range::new(25, 30)]
+        );
+        assert_eq!(result.primary_index, 2);
+
+        let selection = Selection::new(smallvec![Range::new(0, 1)], 0);
+        let result = selection.merge_consecutive_ranges();
+
+        assert_eq!(result.ranges(), &[Range::new(0, 1)]);
+        assert_eq!(result.primary_index, 0);
+
+        let selection = Selection::new(
+            smallvec![
+                Range::new(0, 1),
+                Range::new(1, 5),
+                Range::new(5, 8),
+                Range::new(8, 10),
+                Range::new(10, 15),
+                Range::new(18, 25)
+            ],
+            3,
+        );
+
+        let result = selection.merge_consecutive_ranges();
+
+        assert_eq!(result.ranges(), &[Range::new(0, 15), Range::new(18, 25)]);
+        assert_eq!(result.primary_index, 0);
+    }
+
     #[test]
     fn test_selection_contains() {
         fn contains(a: Vec<(usize, usize)>, b: Vec<(usize, usize)>) -> bool {
@@ -1071,5 +1244,11 @@ mod test {
             vec!((3, 4), (7, 9))
         ));
         assert!(!contains(vec!((1, 1), (5, 6)), vec!((1, 6))));
+
+        // multiple ranges of other are all contained in some ranges of self,
+        assert!(contains(
+            vec!((1, 4), (7, 10)),
+            vec!((1, 2), (3, 4), (7, 9))
+        ));
     }
 }

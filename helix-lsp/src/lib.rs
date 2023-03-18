@@ -1,5 +1,6 @@
 mod client;
 pub mod jsonrpc;
+pub mod snippet;
 mod transport;
 
 pub use client::Client;
@@ -9,7 +10,8 @@ pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::syntax::LanguageConfiguration;
+use helix_core::syntax::{LanguageConfiguration, LanguageServerConfiguration};
+use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -19,7 +21,6 @@ use std::{
     },
 };
 
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -34,31 +35,32 @@ pub enum Error {
     Parse(#[from] serde_json::Error),
     #[error("IO Error: {0}")]
     IO(#[from] std::io::Error),
-    #[error("request timed out")]
-    Timeout,
+    #[error("request {0} timed out")]
+    Timeout(jsonrpc::Id),
     #[error("server closed the stream")]
     StreamClosed,
-    #[error("LSP not defined")]
-    LspNotDefined,
     #[error("Unhandled")]
     Unhandled,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum OffsetEncoding {
     /// UTF-8 code units aka bytes
-    #[serde(rename = "utf-8")]
     Utf8,
+    /// UTF-32 code units aka chars
+    Utf32,
     /// UTF-16 code units
-    #[serde(rename = "utf-16")]
+    #[default]
     Utf16,
 }
 
 pub mod util {
     use super::*;
-    use helix_core::{diagnostic::NumberOrString, Range, Rope, Transaction};
+    use helix_core::line_ending::{line_end_byte_index, line_end_char_index};
+    use helix_core::{chars, RopeSlice, SmallVec};
+    use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
     ///
@@ -86,21 +88,39 @@ pub mod util {
             None => None,
         };
 
-        // TODO: add support for Diagnostic.data
-        lsp::Diagnostic::new(
-            range_to_lsp_range(doc, range, offset_encoding),
+        let new_tags: Vec<_> = diag
+            .tags
+            .iter()
+            .map(|tag| match tag {
+                helix_core::diagnostic::DiagnosticTag::Unnecessary => {
+                    lsp::DiagnosticTag::UNNECESSARY
+                }
+                helix_core::diagnostic::DiagnosticTag::Deprecated => lsp::DiagnosticTag::DEPRECATED,
+            })
+            .collect();
+
+        let tags = if !new_tags.is_empty() {
+            Some(new_tags)
+        } else {
+            None
+        };
+
+        lsp::Diagnostic {
+            range: range_to_lsp_range(doc, range, offset_encoding),
             severity,
             code,
-            None,
-            diag.message.to_owned(),
-            None,
-            None,
-        )
+            source: diag.source.clone(),
+            message: diag.message.to_owned(),
+            related_information: None,
+            tags,
+            data: diag.data.to_owned(),
+            ..Default::default()
+        }
     }
 
     /// Converts [`lsp::Position`] to a position in the document.
     ///
-    /// Returns `None` if position exceeds document length or an operation overflows.
+    /// Returns `None` if position.line is out of bounds or an overflow occurs
     pub fn lsp_pos_to_pos(
         doc: &Rope,
         pos: lsp::Position,
@@ -111,22 +131,63 @@ pub mod util {
             return None;
         }
 
-        match offset_encoding {
+        // We need to be careful here to fully comply ith the LSP spec.
+        // Two relevant quotes from the spec:
+        //
+        // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#position
+        // > If the character value is greater than the line length it defaults back
+        // >  to the line length.
+        //
+        // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocuments
+        // > To ensure that both client and server split the string into the same
+        // > line representation the protocol specifies the following end-of-line sequences:
+        // > ‘\n’, ‘\r\n’ and ‘\r’. Positions are line end character agnostic.
+        // > So you can not specify a position that denotes \r|\n or \n| where | represents the character offset.
+        //
+        // This means that while the line must be in bounds the `charater`
+        // must be capped to the end of the line.
+        // Note that the end of the line here is **before** the line terminator
+        // so we must use `line_end_char_index` istead of `doc.line_to_char(pos_line + 1)`
+        //
+        // FIXME: Helix does not fully comply with the LSP spec for line terminators.
+        // The LSP standard requires that line terminators are ['\n', '\r\n', '\r'].
+        // Without the unicode-linebreak feature disabled, the `\r` terminator is not handled by helix.
+        // With the unicode-linebreak feature, helix recognizes multiple extra line break chars
+        // which means that positions will be decoded/encoded incorrectly in their presence
+
+        let line = match offset_encoding {
             OffsetEncoding::Utf8 => {
-                let line = doc.line_to_char(pos_line);
-                let pos = line.checked_add(pos.character as usize)?;
-                if pos <= doc.len_chars() {
-                    Some(pos)
-                } else {
-                    None
-                }
+                let line_start = doc.line_to_byte(pos_line);
+                let line_end = line_end_byte_index(&doc.slice(..), pos_line);
+                line_start..line_end
             }
             OffsetEncoding::Utf16 => {
-                let line = doc.line_to_char(pos_line);
-                let line_start = doc.char_to_utf16_cu(line);
-                let pos = line_start.checked_add(pos.character as usize)?;
-                doc.try_utf16_cu_to_char(pos).ok()
+                // TODO directly translate line index to char-idx
+                // ropey can do this just as easily as utf-8 byte translation
+                // but the functions are just missing.
+                // Translate to char first and then utf-16 as a workaround
+                let line_start = doc.line_to_char(pos_line);
+                let line_end = line_end_char_index(&doc.slice(..), pos_line);
+                doc.char_to_utf16_cu(line_start)..doc.char_to_utf16_cu(line_end)
             }
+            OffsetEncoding::Utf32 => {
+                let line_start = doc.line_to_char(pos_line);
+                let line_end = line_end_char_index(&doc.slice(..), pos_line);
+                line_start..line_end
+            }
+        };
+
+        // The LSP spec demands that the offset is capped to the end of the line
+        let pos = line
+            .start
+            .checked_add(pos.character as usize)
+            .unwrap_or(line.end)
+            .min(line.end);
+
+        match offset_encoding {
+            OffsetEncoding::Utf8 => doc.try_byte_to_char(pos).ok(),
+            OffsetEncoding::Utf16 => doc.try_utf16_cu_to_char(pos).ok(),
+            OffsetEncoding::Utf32 => Some(pos),
         }
     }
 
@@ -141,8 +202,8 @@ pub mod util {
         match offset_encoding {
             OffsetEncoding::Utf8 => {
                 let line = doc.char_to_line(pos);
-                let line_start = doc.line_to_char(line);
-                let col = pos - line_start;
+                let line_start = doc.line_to_byte(line);
+                let col = doc.char_to_byte(pos) - line_start;
 
                 lsp::Position::new(line as u32, col as u32)
             }
@@ -150,6 +211,13 @@ pub mod util {
                 let line = doc.char_to_line(pos);
                 let line_start = doc.char_to_utf16_cu(doc.line_to_char(line));
                 let col = doc.char_to_utf16_cu(pos) - line_start;
+
+                lsp::Position::new(line as u32, col as u32)
+            }
+            OffsetEncoding::Utf32 => {
+                let line = doc.char_to_line(pos);
+                let line_start = doc.line_to_char(line);
+                let col = pos - line_start;
 
                 lsp::Position::new(line as u32, col as u32)
             }
@@ -179,6 +247,229 @@ pub mod util {
         Some(Range::new(start, end))
     }
 
+    /// If the LS did not provide a range for the completion or the range of the
+    /// primary cursor can not be used for the secondary cursor, this function
+    /// can be used to find the completion range for a cursor
+    fn find_completion_range(text: RopeSlice, replace_mode: bool, cursor: usize) -> (usize, usize) {
+        let start = cursor
+            - text
+                .chars_at(cursor)
+                .reversed()
+                .take_while(|ch| chars::char_is_word(*ch))
+                .count();
+        let mut end = cursor;
+        if replace_mode {
+            end += text
+                .chars_at(cursor)
+                .skip(1)
+                .take_while(|ch| chars::char_is_word(*ch))
+                .count();
+        }
+        (start, end)
+    }
+    fn completion_range(
+        text: RopeSlice,
+        edit_offset: Option<(i128, i128)>,
+        replace_mode: bool,
+        cursor: usize,
+    ) -> Option<(usize, usize)> {
+        let res = match edit_offset {
+            Some((start_offset, end_offset)) => {
+                let start_offset = cursor as i128 + start_offset;
+                if start_offset < 0 {
+                    return None;
+                }
+                let end_offset = cursor as i128 + end_offset;
+                if end_offset > text.len_chars() as i128 {
+                    return None;
+                }
+                (start_offset as usize, end_offset as usize)
+            }
+            None => find_completion_range(text, replace_mode, cursor),
+        };
+        Some(res)
+    }
+
+    /// Creates a [Transaction] from the [lsp::TextEdit] in a completion response.
+    /// The transaction applies the edit to all cursors.
+    pub fn generate_transaction_from_completion_edit(
+        doc: &Rope,
+        selection: &Selection,
+        edit_offset: Option<(i128, i128)>,
+        replace_mode: bool,
+        new_text: String,
+    ) -> Transaction {
+        let replacement: Option<Tendril> = if new_text.is_empty() {
+            None
+        } else {
+            Some(new_text.into())
+        };
+
+        let text = doc.slice(..);
+        let (removed_start, removed_end) = completion_range(
+            text,
+            edit_offset,
+            replace_mode,
+            selection.primary().cursor(text),
+        )
+        .expect("transaction must be valid for primary selection");
+        let removed_text = text.slice(removed_start..removed_end);
+
+        let (transaction, mut selection) = Transaction::change_by_selection_ignore_overlapping(
+            doc,
+            selection,
+            |range| {
+                let cursor = range.cursor(text);
+                completion_range(text, edit_offset, replace_mode, cursor)
+                    .filter(|(start, end)| text.slice(start..end) == removed_text)
+                    .unwrap_or_else(|| find_completion_range(text, replace_mode, cursor))
+            },
+            |_, _| replacement.clone(),
+        );
+        if transaction.changes().is_empty() {
+            return transaction;
+        }
+        selection = selection.map(transaction.changes());
+        transaction.with_selection(selection)
+    }
+
+    /// Creates a [Transaction] from the [snippet::Snippet] in a completion response.
+    /// The transaction applies the edit to all cursors.
+    #[allow(clippy::too_many_arguments)]
+    pub fn generate_transaction_from_snippet(
+        doc: &Rope,
+        selection: &Selection,
+        edit_offset: Option<(i128, i128)>,
+        replace_mode: bool,
+        snippet: snippet::Snippet,
+        line_ending: &str,
+        include_placeholder: bool,
+        tab_width: usize,
+        indent_width: usize,
+    ) -> Transaction {
+        let text = doc.slice(..);
+
+        let mut off = 0i128;
+        let mut mapped_doc = doc.clone();
+        let mut selection_tabstops: SmallVec<[_; 1]> = SmallVec::new();
+        let (removed_start, removed_end) = completion_range(
+            text,
+            edit_offset,
+            replace_mode,
+            selection.primary().cursor(text),
+        )
+        .expect("transaction must be valid for primary selection");
+        let removed_text = text.slice(removed_start..removed_end);
+
+        let (transaction, selection) = Transaction::change_by_selection_ignore_overlapping(
+            doc,
+            selection,
+            |range| {
+                let cursor = range.cursor(text);
+                completion_range(text, edit_offset, replace_mode, cursor)
+                    .filter(|(start, end)| text.slice(start..end) == removed_text)
+                    .unwrap_or_else(|| find_completion_range(text, replace_mode, cursor))
+            },
+            |replacement_start, replacement_end| {
+                let mapped_replacement_start = (replacement_start as i128 + off) as usize;
+                let mapped_replacement_end = (replacement_end as i128 + off) as usize;
+
+                let line_idx = mapped_doc.char_to_line(mapped_replacement_start);
+                let indent_level = helix_core::indent::indent_level_for_line(
+                    mapped_doc.line(line_idx),
+                    tab_width,
+                    indent_width,
+                ) * indent_width;
+
+                let newline_with_offset = format!(
+                    "{line_ending}{blank:indent_level$}",
+                    line_ending = line_ending,
+                    blank = ""
+                );
+
+                let (replacement, tabstops) =
+                    snippet::render(&snippet, &newline_with_offset, include_placeholder);
+                selection_tabstops.push((mapped_replacement_start, tabstops));
+                mapped_doc.remove(mapped_replacement_start..mapped_replacement_end);
+                mapped_doc.insert(mapped_replacement_start, &replacement);
+                off +=
+                    replacement_start as i128 - replacement_end as i128 + replacement.len() as i128;
+
+                Some(replacement)
+            },
+        );
+
+        let changes = transaction.changes();
+        if changes.is_empty() {
+            return transaction;
+        }
+
+        let mut mapped_selection = SmallVec::with_capacity(selection.len());
+        let mut mapped_primary_idx = 0;
+        let primary_range = selection.primary();
+        for (range, (tabstop_anchor, tabstops)) in selection.into_iter().zip(selection_tabstops) {
+            if range == primary_range {
+                mapped_primary_idx = mapped_selection.len()
+            }
+
+            let range = range.map(changes);
+            let tabstops = tabstops.first().filter(|tabstops| !tabstops.is_empty());
+            let Some(tabstops) = tabstops else{
+                // no tabstop normal mapping
+                mapped_selection.push(range);
+                continue;
+            };
+
+            // expand the selection to cover the tabstop to retain the helix selection semantic
+            // the tabstop closest to the range simply replaces `head` while anchor remains in place
+            // the remaining tabstops receive their own single-width cursor
+            if range.head < range.anchor {
+                let first_tabstop = tabstop_anchor + tabstops[0].1;
+
+                // if selection is forward but was moved to the right it is
+                // contained entirely in the replacement text, just do a point
+                // selection (fallback below)
+                if range.anchor >= first_tabstop {
+                    let range = Range::new(range.anchor, first_tabstop);
+                    mapped_selection.push(range);
+                    let rem_tabstops = tabstops[1..]
+                        .iter()
+                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.1));
+                    mapped_selection.extend(rem_tabstops);
+                    continue;
+                }
+            } else {
+                let last_idx = tabstops.len() - 1;
+                let last_tabstop = tabstop_anchor + tabstops[last_idx].1;
+
+                // if selection is forward but was moved to the right it is
+                // contained entirely in the replacement text, just do a point
+                // selection (fallback below)
+                if range.anchor <= last_tabstop {
+                    // we can't properly compute the the next grapheme
+                    // here because the transaction hasn't been applied yet
+                    // that is not a problem because the range gets grapheme aligned anyway
+                    // tough so just adding one will always cause head to be grapheme
+                    // aligned correctly when applied to the document
+                    let range = Range::new(range.anchor, last_tabstop + 1);
+                    mapped_selection.push(range);
+                    let rem_tabstops = tabstops[..last_idx]
+                        .iter()
+                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
+                    mapped_selection.extend(rem_tabstops);
+                    continue;
+                }
+            };
+
+            let tabstops = tabstops
+                .iter()
+                .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
+            mapped_selection.extend(tabstops);
+        }
+
+        transaction.with_selection(Selection::new(mapped_selection, mapped_primary_idx))
+    }
+
     pub fn generate_transaction_from_edits(
         doc: &Rope,
         mut edits: Vec<lsp::TextEdit>,
@@ -187,6 +478,20 @@ pub mod util {
         // Sort edits by start range, since some LSPs (Omnisharp) send them
         // in reverse order.
         edits.sort_unstable_by_key(|edit| edit.range.start);
+
+        // Generate a diff if the edit is a full document replacement.
+        #[allow(clippy::collapsible_if)]
+        if edits.len() == 1 {
+            let is_document_replacement = edits.first().and_then(|edit| {
+                let start = lsp_pos_to_pos(doc, edit.range.start, offset_encoding)?;
+                let end = lsp_pos_to_pos(doc, edit.range.end, offset_encoding)?;
+                Some(start..end)
+            }) == Some(0..doc.len_chars());
+            if is_document_replacement {
+                let new_text = Rope::from(edits.pop().unwrap().new_text);
+                return helix_core::diff::compare_ropes(doc, &new_text);
+            }
+        }
 
         Transaction::change(
             doc,
@@ -221,6 +526,7 @@ pub enum MethodCall {
     ApplyWorkspaceEdit(lsp::ApplyWorkspaceEditParams),
     WorkspaceFolders,
     WorkspaceConfiguration(lsp::ConfigurationParams),
+    RegisterCapability(lsp::RegistrationParams),
 }
 
 impl MethodCall {
@@ -240,6 +546,10 @@ impl MethodCall {
                 let params: lsp::ConfigurationParams = params.parse()?;
                 Self::WorkspaceConfiguration(params)
             }
+            lsp::request::RegisterCapability::METHOD => {
+                let params: lsp::RegistrationParams = params.parse()?;
+                Self::RegisterCapability(params)
+            }
             _ => {
                 return Err(Error::Unhandled);
             }
@@ -252,6 +562,8 @@ impl MethodCall {
 pub enum Notification {
     // we inject this notification to signal the LSP is ready
     Initialized,
+    // and this notification to signal that the LSP exited
+    Exit,
     PublishDiagnostics(lsp::PublishDiagnosticsParams),
     ShowMessage(lsp::ShowMessageParams),
     LogMessage(lsp::LogMessageParams),
@@ -264,6 +576,7 @@ impl Notification {
 
         let notification = match method {
             lsp::notification::Initialized::METHOD => Self::Initialized,
+            lsp::notification::Exit::METHOD => Self::Exit,
             lsp::notification::PublishDiagnostics::METHOD => {
                 let params: lsp::PublishDiagnosticsParams = params.parse()?;
                 Self::PublishDiagnostics(params)
@@ -320,57 +633,75 @@ impl Registry {
             .map(|(_, client)| client.as_ref())
     }
 
-    pub fn get(&mut self, language_config: &LanguageConfiguration) -> Result<Arc<Client>> {
+    pub fn remove_by_id(&mut self, id: usize) {
+        self.inner.retain(|_, (client_id, _)| client_id != &id)
+    }
+
+    pub fn restart(
+        &mut self,
+        language_config: &LanguageConfiguration,
+        doc_path: Option<&std::path::PathBuf>,
+    ) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
-            None => return Err(Error::LspNotDefined),
+            None => return Ok(None),
+        };
+
+        let scope = language_config.scope.clone();
+
+        match self.inner.entry(scope) {
+            Entry::Vacant(_) => Ok(None),
+            Entry::Occupied(mut entry) => {
+                // initialize a new client
+                let id = self.counter.fetch_add(1, Ordering::Relaxed);
+
+                let NewClientResult(client, incoming) =
+                    start_client(id, language_config, config, doc_path)?;
+                self.incoming.push(UnboundedReceiverStream::new(incoming));
+
+                let (_, old_client) = entry.insert((id, client.clone()));
+
+                tokio::spawn(async move {
+                    let _ = old_client.force_shutdown().await;
+                });
+
+                Ok(Some(client))
+            }
+        }
+    }
+
+    pub fn stop(&mut self, language_config: &LanguageConfiguration) {
+        let scope = language_config.scope.clone();
+
+        if let Some((_, client)) = self.inner.remove(&scope) {
+            tokio::spawn(async move {
+                let _ = client.force_shutdown().await;
+            });
+        }
+    }
+
+    pub fn get(
+        &mut self,
+        language_config: &LanguageConfiguration,
+        doc_path: Option<&std::path::PathBuf>,
+    ) -> Result<Option<Arc<Client>>> {
+        let config = match &language_config.language_server {
+            Some(config) => config,
+            None => return Ok(None),
         };
 
         match self.inner.entry(language_config.scope.clone()) {
-            Entry::Occupied(entry) => Ok(entry.get().1.clone()),
+            Entry::Occupied(entry) => Ok(Some(entry.get().1.clone())),
             Entry::Vacant(entry) => {
                 // initialize a new client
                 let id = self.counter.fetch_add(1, Ordering::Relaxed);
-                let (client, incoming, initialize_notify) = Client::start(
-                    &config.command,
-                    &config.args,
-                    language_config.config.clone(),
-                    &language_config.roots,
-                    id,
-                    config.timeout,
-                )?;
+
+                let NewClientResult(client, incoming) =
+                    start_client(id, language_config, config, doc_path)?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
-                let client = Arc::new(client);
-
-                // Initialize the client asynchronously
-                let _client = client.clone();
-                tokio::spawn(async move {
-                    use futures_util::TryFutureExt;
-                    let value = _client
-                        .capabilities
-                        .get_or_try_init(|| {
-                            _client
-                                .initialize()
-                                .map_ok(|response| response.capabilities)
-                        })
-                        .await;
-
-                    if let Err(e) = value {
-                        log::error!("failed to initialize language server: {}", e);
-                        return;
-                    }
-
-                    // next up, notify<initialized>
-                    _client
-                        .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-                        .await
-                        .unwrap();
-
-                    initialize_notify.notify_one();
-                });
 
                 entry.insert((id, client.clone()));
-                Ok(client)
+                Ok(Some(client))
             }
         }
     }
@@ -458,6 +789,59 @@ impl LspProgressMap {
     }
 }
 
+struct NewClientResult(Arc<Client>, UnboundedReceiver<(usize, Call)>);
+
+/// start_client takes both a LanguageConfiguration and a LanguageServerConfiguration to ensure that
+/// it is only called when it makes sense.
+fn start_client(
+    id: usize,
+    config: &LanguageConfiguration,
+    ls_config: &LanguageServerConfiguration,
+    doc_path: Option<&std::path::PathBuf>,
+) -> Result<NewClientResult> {
+    let (client, incoming, initialize_notify) = Client::start(
+        &ls_config.command,
+        &ls_config.args,
+        config.config.clone(),
+        ls_config.environment.clone(),
+        &config.roots,
+        id,
+        ls_config.timeout,
+        doc_path,
+    )?;
+
+    let client = Arc::new(client);
+
+    // Initialize the client asynchronously
+    let _client = client.clone();
+    tokio::spawn(async move {
+        use futures_util::TryFutureExt;
+        let value = _client
+            .capabilities
+            .get_or_try_init(|| {
+                _client
+                    .initialize()
+                    .map_ok(|response| response.capabilities)
+            })
+            .await;
+
+        if let Err(e) = value {
+            log::error!("failed to initialize language server: {}", e);
+            return;
+        }
+
+        // next up, notify<initialized>
+        _client
+            .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
+            .await
+            .unwrap();
+
+        initialize_notify.notify_one();
+    });
+
+    Ok(NewClientResult(client, incoming))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{lsp, util::*, OffsetEncoding};
@@ -475,16 +859,55 @@ mod tests {
         }
 
         test_case!("", (0, 0) => Some(0));
-        test_case!("", (0, 1) => None);
+        test_case!("", (0, 1) => Some(0));
         test_case!("", (1, 0) => None);
         test_case!("\n\n", (0, 0) => Some(0));
         test_case!("\n\n", (1, 0) => Some(1));
-        test_case!("\n\n", (1, 1) => Some(2));
+        test_case!("\n\n", (1, 1) => Some(1));
         test_case!("\n\n", (2, 0) => Some(2));
         test_case!("\n\n", (3, 0) => None);
         test_case!("test\n\n\n\ncase", (4, 3) => Some(11));
         test_case!("test\n\n\n\ncase", (4, 4) => Some(12));
-        test_case!("test\n\n\n\ncase", (4, 5) => None);
+        test_case!("test\n\n\n\ncase", (4, 5) => Some(12));
         test_case!("", (u32::MAX, u32::MAX) => None);
+    }
+
+    #[test]
+    fn emoji_format_gh_4791() {
+        use lsp_types::{Position, Range, TextEdit};
+
+        let edits = vec![
+            TextEdit {
+                range: Range {
+                    start: Position {
+                        line: 0,
+                        character: 1,
+                    },
+                    end: Position {
+                        line: 1,
+                        character: 0,
+                    },
+                },
+                new_text: "\n  ".to_string(),
+            },
+            TextEdit {
+                range: Range {
+                    start: Position {
+                        line: 1,
+                        character: 7,
+                    },
+                    end: Position {
+                        line: 2,
+                        character: 0,
+                    },
+                },
+                new_text: "\n  ".to_string(),
+            },
+        ];
+
+        let mut source = Rope::from_str("[\n\"🇺🇸\",\n\"🎄\",\n]");
+
+        let transaction = generate_transaction_from_edits(&source, edits, OffsetEncoding::Utf8);
+        assert!(transaction.apply(&mut source));
     }
 }

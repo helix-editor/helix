@@ -4,36 +4,27 @@ on:
   push:
     branches:
       - master
+  merge_group:
   schedule:
     - cron: '00 01 * * *'
 
 jobs:
   check:
-    name: Check
+    name: Check (msrv)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, msrv]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-
-      - name: Use MSRV rust toolchain
-        if: matrix.rust == 'msrv'
-        run: cp .github/workflows/msrv-rust-toolchain.toml rust-toolchain.toml
-
       - name: Install stable toolchain
         uses: helix-editor/rust-toolchain@v1
         with:
           profile: minimal
           override: true
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
+        run: cargo check
 
   test:
     name: Test Suite
@@ -46,12 +37,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
-        with:
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@1.65
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Cache test tree-sitter grammar
         uses: actions/cache@v3
@@ -61,15 +49,10 @@ jobs:
           restore-keys: ${{ runner.os }}-stable-v${{ env.CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace
+        run: cargo test --workspace
 
       - name: Run cargo integration-test
-        uses: actions-rs/cargo@v1
-        with:
-          command: integration-test
+        run: cargo integration-test
 
     strategy:
       matrix:
@@ -83,25 +66,22 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@1.65
         with:
-          profile: minimal
-          override: true
           components: rustfmt, clippy
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all --check
 
       - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run cargo doc
+        run: cargo doc --no-deps --workspace --document-private-items
+        env:
+          RUSTDOCFLAGS: -D warnings
 
   docs:
     name: Docs
@@ -111,18 +91,15 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
-        with:
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@1.65
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Validate queries
+        run: cargo xtask query-check
 
       - name: Generate docs
-        uses: actions-rs/cargo@v1
-        with:
-          command: xtask
-          args: docgen
+        run: cargo xtask docgen
 
       - name: Check uncommitted documentation changes
         run: |

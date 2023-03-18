@@ -144,12 +144,68 @@ impl DerefMut for KeyTrieNode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(untagged)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum KeyTrie {
     Leaf(MappableCommand),
     Sequence(Vec<MappableCommand>),
     Node(KeyTrieNode),
+}
+
+impl<'de> Deserialize<'de> for KeyTrie {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(KeyTrieVisitor)
+    }
+}
+
+struct KeyTrieVisitor;
+
+impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
+    type Value = KeyTrie;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "a command, list of commands, or sub-keymap")
+    }
+
+    fn visit_str<E>(self, command: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        command
+            .parse::<MappableCommand>()
+            .map(KeyTrie::Leaf)
+            .map_err(E::custom)
+    }
+
+    fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
+    where
+        S: serde::de::SeqAccess<'de>,
+    {
+        let mut commands = Vec::new();
+        while let Some(command) = seq.next_element::<String>()? {
+            commands.push(
+                command
+                    .parse::<MappableCommand>()
+                    .map_err(serde::de::Error::custom)?,
+            )
+        }
+        Ok(KeyTrie::Sequence(commands))
+    }
+
+    fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+    where
+        M: serde::de::MapAccess<'de>,
+    {
+        let mut mapping = HashMap::new();
+        let mut order = Vec::new();
+        while let Some((key, value)) = map.next_entry::<KeyEvent, KeyTrie>()? {
+            mapping.insert(key, value);
+            order.push(key);
+        }
+        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping, order)))
+    }
 }
 
 impl KeyTrie {
@@ -334,18 +390,18 @@ impl Keymaps {
 
         self.state.push(key);
         match trie.search(&self.state[1..]) {
-            Some(&KeyTrie::Node(ref map)) => {
+            Some(KeyTrie::Node(map)) => {
                 if map.is_sticky {
                     self.state.clear();
                     self.sticky = Some(map.clone());
                 }
                 KeymapResult::Pending(map.clone())
             }
-            Some(&KeyTrie::Leaf(ref cmd)) => {
+            Some(KeyTrie::Leaf(cmd)) => {
                 self.state.clear();
                 KeymapResult::Matched(cmd.clone())
             }
-            Some(&KeyTrie::Sequence(ref cmds)) => {
+            Some(KeyTrie::Sequence(cmds)) => {
                 self.state.clear();
                 KeymapResult::MatchedSequence(cmds.clone())
             }
@@ -543,5 +599,44 @@ mod tests {
             ]),
             "Mismatch"
         )
+    }
+
+    #[test]
+    fn escaped_keymap() {
+        use crate::commands::MappableCommand;
+        use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
+
+        let keys = r#"
+"+" = [
+    "select_all",
+    ":pipe sed -E 's/\\s+$//g'",
+]
+        "#;
+
+        let key = KeyEvent {
+            code: KeyCode::Char('+'),
+            modifiers: KeyModifiers::NONE,
+        };
+
+        let expectation = Keymap::new(KeyTrie::Node(KeyTrieNode::new(
+            "",
+            hashmap! {
+                key => KeyTrie::Sequence(vec!{
+                    MappableCommand::select_all,
+                    MappableCommand::Typable {
+                        name: "pipe".to_string(),
+                        args: vec!{
+                            "sed".to_string(),
+                            "-E".to_string(),
+                            "'s/\\s+$//g'".to_string()
+                        },
+                        doc: "".to_string(),
+                    },
+                })
+            },
+            vec![key],
+        )));
+
+        assert_eq!(toml::from_str(keys), Ok(expectation));
     }
 }

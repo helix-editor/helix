@@ -18,6 +18,7 @@ _hx() {
 		"--hsplit[Splits all given files horizontally into different windows]" \
 		"-c[Specifies a file to use for configuration]" \
 		"--config[Specifies a file to use for configuration]" \
+		"--log[Specifies a file to write log data into]" \
 		"*:file:_files"
 
 	case "$state" in

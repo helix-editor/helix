@@ -1,9 +1,8 @@
 use crate::{
     commands::Open,
-    compositor::{Callback, Component, Context, EventResult},
+    compositor::{Callback, Component, Context, Event, EventResult},
     ctrl, key,
 };
-use crossterm::event::Event;
 use tui::buffer::Buffer as Surface;
 
 use helix_core::Position;
@@ -23,6 +22,7 @@ pub struct Popup<T: Component> {
     auto_close: bool,
     ignore_escape_key: bool,
     id: &'static str,
+    has_scrollbar: bool,
 }
 
 impl<T: Component> Popup<T> {
@@ -38,9 +38,14 @@ impl<T: Component> Popup<T> {
             auto_close: false,
             ignore_escape_key: false,
             id,
+            has_scrollbar: true,
         }
     }
 
+    /// Set the anchor position next to which the popup should be drawn.
+    ///
+    /// Note that this is not the position of the top-left corner of the rendered popup itself,
+    /// but rather the screen-space position of the information to which the popup refers.
     pub fn position(mut self, pos: Option<Position>) -> Self {
         self.position = pos;
         self
@@ -50,6 +55,10 @@ impl<T: Component> Popup<T> {
         self.position
     }
 
+    /// Set the popup to prefer to render above or below the anchor position.
+    ///
+    /// This preference will be ignored if the viewport doesn't have enough space in the
+    /// chosen direction.
     pub fn position_bias(mut self, bias: Open) -> Self {
         self.position_bias = bias;
         self
@@ -77,6 +86,8 @@ impl<T: Component> Popup<T> {
         self
     }
 
+    /// Calculate the position where the popup should be rendered and return the coordinates of the
+    /// top left corner.
     pub fn get_rel_position(&mut self, viewport: Rect, cx: &Context) -> (u16, u16) {
         let position = self
             .position
@@ -129,6 +140,14 @@ impl<T: Component> Popup<T> {
         }
     }
 
+    /// Toggles the Popup's scrollbar.
+    /// Consider disabling the scrollbar in case the child
+    /// already has its own.
+    pub fn with_scrollbar(mut self, enable_scrollbar: bool) -> Self {
+        self.has_scrollbar = enable_scrollbar;
+        self
+    }
+
     pub fn contents(&self) -> &T {
         &self.contents
     }
@@ -139,9 +158,9 @@ impl<T: Component> Popup<T> {
 }
 
 impl<T: Component> Component for Popup<T> {
-    fn handle_event(&mut self, event: Event, cx: &mut Context) -> EventResult {
+    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let key = match event {
-            Event::Key(event) => event,
+            Event::Key(event) => *event,
             Event::Resize(_, _) => {
                 // TODO: calculate inner area, call component's handle_event with that area
                 return EventResult::Ignored(None);
@@ -149,7 +168,7 @@ impl<T: Component> Component for Popup<T> {
             _ => return EventResult::Ignored(None),
         };
 
-        if key!(Esc) == key.into() && self.ignore_escape_key {
+        if key!(Esc) == key && self.ignore_escape_key {
             return EventResult::Ignored(None);
         }
 
@@ -158,7 +177,7 @@ impl<T: Component> Component for Popup<T> {
             compositor.remove(self.id.as_ref());
         });
 
-        match key.into() {
+        match key {
             // esc or ctrl-c aborts the completion and closes the menu
             key!(Esc) | ctrl!('c') => {
                 let _ = self.contents.handle_event(event, cx);
@@ -229,6 +248,40 @@ impl<T: Component> Component for Popup<T> {
 
         let inner = area.inner(&self.margin);
         self.contents.render(inner, surface, cx);
+
+        // render scrollbar if contents do not fit
+        if self.has_scrollbar {
+            let win_height = inner.height as usize;
+            let len = self.child_size.1 as usize;
+            let fits = len <= win_height;
+            let scroll = self.scroll;
+            let scroll_style = cx.editor.theme.get("ui.menu.scroll");
+
+            const fn div_ceil(a: usize, b: usize) -> usize {
+                (a + b - 1) / b
+            }
+
+            if !fits {
+                let scroll_height = div_ceil(win_height.pow(2), len).min(win_height);
+                let scroll_line = (win_height - scroll_height) * scroll
+                    / std::cmp::max(1, len.saturating_sub(win_height));
+
+                let mut cell;
+                for i in 0..win_height {
+                    cell = &mut surface[(inner.right() - 1, inner.top() + i as u16)];
+
+                    cell.set_symbol("▐"); // right half block
+
+                    if scroll_line <= i && i < scroll_line + scroll_height {
+                        // Draw scroll thumb
+                        cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
+                    } else {
+                        // Draw scroll track
+                        cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
+                    }
+                }
+            }
+        }
     }
 
     fn id(&self) -> Option<&'static str> {

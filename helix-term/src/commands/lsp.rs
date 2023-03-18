@@ -1,24 +1,39 @@
+use futures_util::FutureExt;
 use helix_lsp::{
     block_on,
-    lsp::{self, DiagnosticSeverity, NumberOrString},
-    util::{diagnostic_to_lsp_diagnostic, lsp_pos_to_pos, lsp_range_to_range, range_to_lsp_range},
+    lsp::{
+        self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
+        NumberOrString,
+    },
+    util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
 };
-use tui::text::{Span, Spans};
+use tui::{
+    text::{Span, Spans},
+    widgets::Row,
+};
 
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
-use helix_core::{path, Selection};
-use helix_view::{editor::Action, theme::Style};
+use helix_core::{path, text_annotations::InlineAnnotation, Selection};
+use helix_view::{
+    document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
+    editor::Action,
+    theme::Style,
+    Document, View,
+};
 
 use crate::{
     compositor::{self, Compositor},
     ui::{
-        self, lsp::SignatureHelp, overlay::overlayed, FileLocation, FilePicker, Popup, PromptEvent,
+        self, lsp::SignatureHelp, overlay::overlayed, DynamicPicker, FileLocation, FilePicker,
+        Popup, PromptEvent,
     },
 };
 
-use std::{borrow::Cow, collections::BTreeMap, path::PathBuf, sync::Arc};
+use std::{
+    cmp::Ordering, collections::BTreeMap, fmt::Write, future::Future, path::PathBuf, sync::Arc,
+};
 
 /// Gets the language server that is attached to a document, and
 /// if it's not active displays a status message. Using this macro
@@ -42,24 +57,33 @@ impl ui::menu::Item for lsp::Location {
     /// Current working directory.
     type Data = PathBuf;
 
-    fn label(&self, cwdir: &Self::Data) -> Spans {
-        let file: Cow<'_, str> = (self.uri.scheme() == "file")
-            .then(|| {
-                self.uri
-                    .to_file_path()
-                    .map(|path| {
-                        // strip root prefix
-                        path.strip_prefix(&cwdir)
-                            .map(|path| path.to_path_buf())
-                            .unwrap_or(path)
-                    })
-                    .map(|path| Cow::from(path.to_string_lossy().into_owned()))
-                    .ok()
-            })
-            .flatten()
-            .unwrap_or_else(|| self.uri.as_str().into());
-        let line = self.range.start.line;
-        format!("{}:{}", file, line).into()
+    fn format(&self, cwdir: &Self::Data) -> Row {
+        // The preallocation here will overallocate a few characters since it will account for the
+        // URL's scheme, which is not used most of the time since that scheme will be "file://".
+        // Those extra chars will be used to avoid allocating when writing the line number (in the
+        // common case where it has 5 digits or less, which should be enough for a cast majority
+        // of usages).
+        let mut res = String::with_capacity(self.uri.as_str().len());
+
+        if self.uri.scheme() == "file" {
+            // With the preallocation above and UTF-8 paths already, this closure will do one (1)
+            // allocation, for `to_file_path`, else there will be two (2), with `to_string_lossy`.
+            let mut write_path_to_res = || -> Option<()> {
+                let path = self.uri.to_file_path().ok()?;
+                res.push_str(&path.strip_prefix(cwdir).unwrap_or(&path).to_string_lossy());
+                Some(())
+            };
+            write_path_to_res();
+        } else {
+            // Never allocates since we declared the string with this capacity already.
+            res.push_str(self.uri.as_str());
+        }
+
+        // Most commonly, this will not allocate, especially on Unix systems where the root prefix
+        // is a simple `/` and not `C:\` (with whatever drive letter)
+        write!(&mut res, ":{}", self.range.start.line)
+            .expect("Will only failed if allocating fail");
+        res.into()
     }
 }
 
@@ -67,16 +91,14 @@ impl ui::menu::Item for lsp::SymbolInformation {
     /// Path to currently focussed document
     type Data = Option<lsp::Url>;
 
-    fn label(&self, current_doc_path: &Self::Data) -> Spans {
+    fn format(&self, current_doc_path: &Self::Data) -> Row {
         if current_doc_path.as_ref() == Some(&self.location.uri) {
             self.name.as_str().into()
         } else {
             match self.location.uri.to_file_path() {
                 Ok(path) => {
-                    let relative_path = helix_core::path::get_relative_path(path.as_path())
-                        .to_string_lossy()
-                        .into_owned();
-                    format!("{} ({})", &self.name, relative_path).into()
+                    let get_relative_path = path::get_relative_path(path.as_path());
+                    format!("{} ({})", &self.name, get_relative_path.to_string_lossy()).into()
                 }
                 Err(_) => format!("{} ({})", &self.name, &self.location.uri).into(),
             }
@@ -99,7 +121,7 @@ struct PickerDiagnostic {
 impl ui::menu::Item for PickerDiagnostic {
     type Data = (DiagnosticStyles, DiagnosticsFormat);
 
-    fn label(&self, (styles, format): &Self::Data) -> Spans {
+    fn format(&self, (styles, format): &Self::Data) -> Row {
         let mut style = self
             .diag
             .severity
@@ -115,24 +137,18 @@ impl ui::menu::Item for PickerDiagnostic {
         // remove background as it is distracting in the picker list
         style.bg = None;
 
-        let code = self
-            .diag
-            .code
-            .as_ref()
-            .map(|c| match c {
-                NumberOrString::Number(n) => n.to_string(),
-                NumberOrString::String(s) => s.to_string(),
-            })
-            .map(|code| format!(" ({})", code))
-            .unwrap_or_default();
+        let code = match self.diag.code.as_ref() {
+            Some(NumberOrString::Number(n)) => format!(" ({n})"),
+            Some(NumberOrString::String(s)) => format!(" ({s})"),
+            None => String::new(),
+        };
 
         let path = match format {
             DiagnosticsFormat::HideSourcePath => String::new(),
             DiagnosticsFormat::ShowSourcePath => {
-                let path = path::get_truncated_path(self.url.path())
-                    .to_string_lossy()
-                    .into_owned();
-                format!("{}: ", path)
+                let file_path = self.url.to_file_path().unwrap();
+                let path = path::get_truncated_path(file_path);
+                format!("{}: ", path.to_string_lossy())
             }
         };
 
@@ -141,6 +157,7 @@ impl ui::menu::Item for PickerDiagnostic {
             Span::styled(&self.diag.message, style),
             Span::styled(code, style),
         ])
+        .into()
     }
 }
 
@@ -150,7 +167,7 @@ fn location_to_file_location(location: &lsp::Location) -> FileLocation {
         location.range.start.line as usize,
         location.range.end.line as usize,
     ));
-    (path, line)
+    (path.into(), line)
 }
 
 // TODO: share with symbol picker(symbol.location)
@@ -180,15 +197,15 @@ fn jump_to_location(
         }
     }
     let (view, doc) = current!(editor);
-    let definition_pos = location.range.start;
     // TODO: convert inside server
-    let new_pos = if let Some(new_pos) = lsp_pos_to_pos(doc.text(), definition_pos, offset_encoding)
-    {
-        new_pos
-    } else {
-        return;
-    };
-    doc.set_selection(view.id, Selection::point(new_pos));
+    let new_range =
+        if let Some(new_range) = lsp_range_to_range(doc.text(), location.range, offset_encoding) {
+            new_range
+        } else {
+            log::warn!("lsp position out of bounds - {:?}", location.range);
+            return;
+        };
+    doc.set_selection(view.id, Selection::single(new_range.anchor, new_range.head));
     align_view(doc, view, Align::Center);
 }
 
@@ -211,7 +228,6 @@ fn sym_picker(
                     Ok(path) => path,
                     Err(_) => {
                         let err = format!("unable to convert URI to filepath: {}", uri);
-                        log::error!("{}", err);
                         cx.editor.set_error(err);
                         return;
                     }
@@ -328,7 +344,14 @@ pub fn symbol_picker(cx: &mut Context) {
     let current_url = doc.url();
     let offset_encoding = language_server.offset_encoding();
 
-    let future = language_server.document_symbols(doc.identifier());
+    let future = match language_server.document_symbols(doc.identifier()) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support document symbols");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -360,15 +383,55 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     let current_url = doc.url();
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
-    let future = language_server.workspace_symbols("".to_string());
+    let future = match language_server.workspace_symbols("".to_string()) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support workspace symbols");
+            return;
+        }
+    };
 
     cx.callback(
         future,
         move |_editor, compositor, response: Option<Vec<lsp::SymbolInformation>>| {
-            if let Some(symbols) = response {
-                let picker = sym_picker(symbols, current_url, offset_encoding);
-                compositor.push(Box::new(overlayed(picker)))
-            }
+            let symbols = response.unwrap_or_default();
+            let picker = sym_picker(symbols, current_url, offset_encoding);
+            let get_symbols = |query: String, editor: &mut Editor| {
+                let doc = doc!(editor);
+                let language_server = match doc.language_server() {
+                    Some(s) => s,
+                    None => {
+                        // This should not generally happen since the picker will not
+                        // even open in the first place if there is no server.
+                        return async move { Err(anyhow::anyhow!("LSP not active")) }.boxed();
+                    }
+                };
+                let symbol_request = match language_server.workspace_symbols(query) {
+                    Some(future) => future,
+                    None => {
+                        // This should also not happen since the language server must have
+                        // supported workspace symbols before to reach this block.
+                        return async move {
+                            Err(anyhow::anyhow!(
+                                "Language server does not support workspace symbols"
+                            ))
+                        }
+                        .boxed();
+                    }
+                };
+
+                let future = async move {
+                    let json = symbol_request.await?;
+                    let response: Option<Vec<lsp::SymbolInformation>> =
+                        serde_json::from_value(json)?;
+
+                    Ok(response.unwrap_or_default())
+                };
+                future.boxed()
+            };
+            let dyn_picker = DynamicPicker::new(picker, Box::new(get_symbols));
+            compositor.push(Box::new(overlayed(dyn_picker)))
         },
     )
 }
@@ -413,12 +476,69 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
 
 impl ui::menu::Item for lsp::CodeActionOrCommand {
     type Data = ();
-    fn label(&self, _data: &Self::Data) -> Spans {
+    fn format(&self, _data: &Self::Data) -> Row {
         match self {
             lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
             lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
         }
     }
+}
+
+/// Determines the category of the `CodeAction` using the `CodeAction::kind` field.
+/// Returns a number that represent these categories.
+/// Categories with a lower number should be displayed first.
+///
+///
+/// While the `kind` field is defined as open ended in the LSP spec (any value may be used)
+/// in practice a closed set of common values (mostly suggested in the LSP spec) are used.
+/// VSCode displays each of these categories seperatly (seperated by a heading in the codeactions picker)
+/// to make them easier to navigate. Helix does not display these  headings to the user.
+/// However it does sort code actions by their categories to achieve the same order as the VScode picker,
+/// just without the headings.
+///
+/// The order used here is modeled after the [vscode sourcecode](https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeActionWidget.ts>)
+fn action_category(action: &CodeActionOrCommand) -> u32 {
+    if let CodeActionOrCommand::CodeAction(CodeAction {
+        kind: Some(kind), ..
+    }) = action
+    {
+        let mut components = kind.as_str().split('.');
+        match components.next() {
+            Some("quickfix") => 0,
+            Some("refactor") => match components.next() {
+                Some("extract") => 1,
+                Some("inline") => 2,
+                Some("rewrite") => 3,
+                Some("move") => 4,
+                Some("surround") => 5,
+                _ => 7,
+            },
+            Some("source") => 6,
+            _ => 7,
+        }
+    } else {
+        7
+    }
+}
+
+fn action_prefered(action: &CodeActionOrCommand) -> bool {
+    matches!(
+        action,
+        CodeActionOrCommand::CodeAction(CodeAction {
+            is_preferred: Some(true),
+            ..
+        })
+    )
+}
+
+fn action_fixes_diagnostics(action: &CodeActionOrCommand) -> bool {
+    matches!(
+        action,
+        CodeActionOrCommand::CodeAction(CodeAction {
+            diagnostics: Some(diagnostics),
+            ..
+        }) if !diagnostics.is_empty()
+    )
 }
 
 pub fn code_action(cx: &mut Context) {
@@ -431,7 +551,7 @@ pub fn code_action(cx: &mut Context) {
 
     let range = range_to_lsp_range(doc.text(), selection_range, offset_encoding);
 
-    let future = language_server.code_actions(
+    let future = match language_server.code_actions(
         doc.identifier(),
         range,
         // Filter and convert overlapping diagnostics
@@ -446,20 +566,73 @@ pub fn code_action(cx: &mut Context) {
                 .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, offset_encoding))
                 .collect(),
             only: None,
+            trigger_kind: Some(CodeActionTriggerKind::INVOKED),
         },
-    );
+    ) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support code actions");
+            return;
+        }
+    };
 
     cx.callback(
         future,
         move |editor, compositor, response: Option<lsp::CodeActionResponse>| {
-            let actions = match response {
+            let mut actions = match response {
                 Some(a) => a,
                 None => return,
             };
+
+            // remove disabled code actions
+            actions.retain(|action| {
+                matches!(
+                    action,
+                    CodeActionOrCommand::Command(_)
+                        | CodeActionOrCommand::CodeAction(CodeAction { disabled: None, .. })
+                )
+            });
+
             if actions.is_empty() {
                 editor.set_status("No code actions available");
                 return;
             }
+
+            // Sort codeactions into a useful order. This behaviour is only partially described in the LSP spec.
+            // Many details are modeled after vscode because langauge servers are usually tested against it.
+            // VScode sorts the codeaction two times:
+            //
+            // First the codeactions that fix some diagnostics are moved to the front.
+            // If both codeactions fix some diagnostics (or both fix none) the codeaction
+            // that is marked with `is_preffered` is shown first. The codeactions are then shown in seperate
+            // submenus that only contain a certain category (see `action_category`) of actions.
+            //
+            // Below this done in in a single sorting step
+            actions.sort_by(|action1, action2| {
+                // sort actions by category
+                let order = action_category(action1).cmp(&action_category(action2));
+                if order != Ordering::Equal {
+                    return order;
+                }
+                // within the categories sort by relevancy.
+                // Modeled after the `codeActionsComparator` function in vscode:
+                // https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeAction.ts
+
+                // if one code action fixes a diagnostic but the other one doesn't show it first
+                let order = action_fixes_diagnostics(action1)
+                    .cmp(&action_fixes_diagnostics(action2))
+                    .reverse();
+                if order != Ordering::Equal {
+                    return order;
+                }
+
+                // if one of the codeactions is marked as prefered show it first
+                // otherwise keep the original LSP sorting
+                action_prefered(action1)
+                    .cmp(&action_prefered(action2))
+                    .reverse()
+            });
 
             let mut picker = ui::Menu::new(actions, (), move |editor, code_action, event| {
                 if event != PromptEvent::Validate {
@@ -478,7 +651,7 @@ pub fn code_action(cx: &mut Context) {
                         log::debug!("code action: {:?}", code_action);
                         if let Some(ref workspace_edit) = code_action.edit {
                             log::debug!("edit: {:?}", workspace_edit);
-                            apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                            let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
                         }
 
                         // if code action provides both edit and command first the edit
@@ -491,21 +664,35 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup =
-                Popup::new("code-action", picker).margin(helix_view::graphics::Margin::all(1));
+            let popup = Popup::new("code-action", picker).with_scrollbar(false);
             compositor.replace_or_push("code-action", popup);
         },
     )
 }
+
+impl ui::menu::Item for lsp::Command {
+    type Data = ();
+    fn format(&self, _data: &Self::Data) -> Row {
+        self.title.as_str().into()
+    }
+}
+
 pub fn execute_lsp_command(editor: &mut Editor, cmd: lsp::Command) {
     let doc = doc!(editor);
     let language_server = language_server!(editor, doc);
 
     // the command is executed on the server and communicated back
     // to the client asynchronously using workspace edits
-    let command_future = language_server.command(cmd);
+    let future = match language_server.command(cmd) {
+        Some(future) => future,
+        None => {
+            editor.set_error("Language server does not support executing commands");
+            return;
+        }
+    };
+
     tokio::spawn(async move {
-        let res = command_future.await;
+        let res = future.await;
 
         if let Err(e) = res {
             log::error!("execute LSP command: {}", e);
@@ -528,7 +715,7 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
                 // Create directory if it does not exist
                 if let Some(dir) = path.parent() {
                     if !dir.is_dir() {
-                        fs::create_dir_all(&dir)?;
+                        fs::create_dir_all(dir)?;
                     }
                 }
 
@@ -564,25 +751,56 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
             if ignore_if_exists && to.exists() {
                 Ok(())
             } else {
-                fs::rename(&from, &to)
+                fs::rename(from, &to)
             }
         }
     }
 }
 
+#[derive(Debug)]
+pub struct ApplyEditError {
+    pub kind: ApplyEditErrorKind,
+    pub failed_change_idx: usize,
+}
+
+#[derive(Debug)]
+pub enum ApplyEditErrorKind {
+    DocumentChanged,
+    FileNotFound,
+    UnknownURISchema,
+    IoError(std::io::Error),
+    // TODO: check edits before applying and propagate failure
+    // InvalidEdit,
+}
+
+impl ToString for ApplyEditErrorKind {
+    fn to_string(&self) -> String {
+        match self {
+            ApplyEditErrorKind::DocumentChanged => "document has changed".to_string(),
+            ApplyEditErrorKind::FileNotFound => "file not found".to_string(),
+            ApplyEditErrorKind::UnknownURISchema => "URI schema not supported".to_string(),
+            ApplyEditErrorKind::IoError(err) => err.to_string(),
+        }
+    }
+}
+
+///TODO make this transactional (and set failureMode to transactional)
 pub fn apply_workspace_edit(
     editor: &mut Editor,
     offset_encoding: OffsetEncoding,
     workspace_edit: &lsp::WorkspaceEdit,
-) {
-    let mut apply_edits = |uri: &helix_lsp::Url, text_edits: Vec<lsp::TextEdit>| {
+) -> Result<(), ApplyEditError> {
+    let mut apply_edits = |uri: &helix_lsp::Url,
+                           version: Option<i32>,
+                           text_edits: Vec<lsp::TextEdit>|
+     -> Result<(), ApplyEditErrorKind> {
         let path = match uri.to_file_path() {
             Ok(path) => path,
             Err(_) => {
                 let err = format!("unable to convert URI to filepath: {}", uri);
                 log::error!("{}", err);
                 editor.set_error(err);
-                return;
+                return Err(ApplyEditErrorKind::UnknownURISchema);
             }
         };
 
@@ -593,13 +811,19 @@ pub fn apply_workspace_edit(
                 let err = format!("failed to open document: {}: {}", uri, err);
                 log::error!("{}", err);
                 editor.set_error(err);
-                return;
+                return Err(ApplyEditErrorKind::FileNotFound);
             }
         };
 
-        let doc = editor
-            .document_mut(doc_id)
-            .expect("Document for document_changes not found");
+        let doc = doc_mut!(editor, &doc_id);
+        if let Some(version) = version {
+            if version != doc.version() {
+                let err = format!("outdated workspace edit for {path:?}");
+                log::error!("{err}, expected {} but got {version}", doc.version());
+                editor.set_error(err);
+                return Err(ApplyEditErrorKind::DocumentChanged);
+            }
+        }
 
         // Need to determine a view for apply/append_changes_to_history
         let selections = doc.selections();
@@ -620,33 +844,16 @@ pub fn apply_workspace_edit(
             text_edits,
             offset_encoding,
         );
-        doc.apply(&transaction, view_id);
-        doc.append_changes_to_history(view_id);
+        let view = view_mut!(editor, view_id);
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view);
+        Ok(())
     };
-
-    if let Some(ref changes) = workspace_edit.changes {
-        log::debug!("workspace changes: {:?}", changes);
-        for (uri, text_edits) in changes {
-            let text_edits = text_edits.to_vec();
-            apply_edits(uri, text_edits)
-        }
-        return;
-        // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
-        // TODO: find some example that uses workspace changes, and test it
-        // for (url, edits) in changes.iter() {
-        //     let file_path = url.origin().ascii_serialization();
-        //     let file_path = std::path::PathBuf::from(file_path);
-        //     let file = std::fs::File::open(file_path).unwrap();
-        //     let mut text = Rope::from_reader(file).unwrap();
-        //     let transaction = edits_to_changes(&text, edits);
-        //     transaction.apply(&mut text);
-        // }
-    }
 
     if let Some(ref document_changes) = workspace_edit.document_changes {
         match document_changes {
             lsp::DocumentChanges::Edits(document_edits) => {
-                for document_edit in document_edits {
+                for (i, document_edit) in document_edits.iter().enumerate() {
                     let edits = document_edit
                         .edits
                         .iter()
@@ -658,15 +865,26 @@ pub fn apply_workspace_edit(
                         })
                         .cloned()
                         .collect();
-                    apply_edits(&document_edit.text_document.uri, edits);
+                    apply_edits(
+                        &document_edit.text_document.uri,
+                        document_edit.text_document.version,
+                        edits,
+                    )
+                    .map_err(|kind| ApplyEditError {
+                        kind,
+                        failed_change_idx: i,
+                    })?;
                 }
             }
             lsp::DocumentChanges::Operations(operations) => {
                 log::debug!("document changes - operations: {:?}", operations);
-                for operation in operations {
+                for (i, operation) in operations.iter().enumerate() {
                     match operation {
                         lsp::DocumentChangeOperation::Op(op) => {
-                            apply_document_resource_op(op).unwrap();
+                            apply_document_resource_op(op).map_err(|io| ApplyEditError {
+                                kind: ApplyEditErrorKind::IoError(io),
+                                failed_change_idx: i,
+                            })?;
                         }
 
                         lsp::DocumentChangeOperation::Edit(document_edit) => {
@@ -681,13 +899,36 @@ pub fn apply_workspace_edit(
                                 })
                                 .cloned()
                                 .collect();
-                            apply_edits(&document_edit.text_document.uri, edits);
+                            apply_edits(
+                                &document_edit.text_document.uri,
+                                document_edit.text_document.version,
+                                edits,
+                            )
+                            .map_err(|kind| ApplyEditError {
+                                kind,
+                                failed_change_idx: i,
+                            })?;
                         }
                     }
                 }
             }
         }
+
+        return Ok(());
     }
+
+    if let Some(ref changes) = workspace_edit.changes {
+        log::debug!("workspace changes: {:?}", changes);
+        for (i, (uri, text_edits)) in changes.iter().enumerate() {
+            let text_edits = text_edits.to_vec();
+            apply_edits(uri, None, text_edits).map_err(|kind| ApplyEditError {
+                kind,
+                failed_change_idx: i,
+            })?;
+        }
+    }
+
+    Ok(())
 }
 
 fn goto_impl(
@@ -734,6 +975,31 @@ fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Lo
     }
 }
 
+pub fn goto_declaration(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = doc.position(view.id, offset_encoding);
+
+    let future = match language_server.goto_declaration(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-declaration");
+            return;
+        }
+    };
+
+    cx.callback(
+        future,
+        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
+            let items = to_locations(response);
+            goto_impl(editor, compositor, items, offset_encoding);
+        },
+    );
+}
+
 pub fn goto_definition(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
@@ -741,7 +1007,14 @@ pub fn goto_definition(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.goto_definition(doc.identifier(), pos, None);
+    let future = match language_server.goto_definition(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-definition");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -759,7 +1032,14 @@ pub fn goto_type_definition(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.goto_type_definition(doc.identifier(), pos, None);
+    let future = match language_server.goto_type_definition(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-type-definition");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -777,7 +1057,14 @@ pub fn goto_implementation(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.goto_implementation(doc.identifier(), pos, None);
+    let future = match language_server.goto_implementation(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-implementation");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -795,7 +1082,14 @@ pub fn goto_reference(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.goto_reference(doc.identifier(), pos, None);
+    let future = match language_server.goto_reference(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-reference");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -806,7 +1100,7 @@ pub fn goto_reference(cx: &mut Context) {
     );
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum SignatureHelpInvoked {
     Manual,
     Automatic,
@@ -838,7 +1132,13 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
 
     let future = match language_server.text_document_signature_help(doc.identifier(), pos, None) {
         Some(f) => f,
-        None => return,
+        None => {
+            if was_manually_invoked {
+                cx.editor
+                    .set_error("Language server does not support signature-help");
+            }
+            return;
+        }
     };
 
     cx.callback(
@@ -853,6 +1153,14 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                 return;
             }
 
+            // If the signature help invocation is automatic, don't show it outside of Insert Mode:
+            // it very probably means the server was a little slow to respond and the user has
+            // already moved on to something else, making a signature help popup will just be an
+            // annoyance, see https://github.com/helix-editor/helix/issues/3112
+            if !was_manually_invoked && editor.mode != Mode::Insert {
+                return;
+            }
+
             let response = match response {
                 // According to the spec the response should be None if there
                 // are no signatures, but some servers don't follow this.
@@ -863,10 +1171,7 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
                 }
             };
             let doc = doc!(editor);
-            let language = doc
-                .language()
-                .and_then(|scope| scope.strip_prefix("source."))
-                .unwrap_or("");
+            let language = doc.language_name().unwrap_or("");
 
             let signature = match response
                 .signatures
@@ -934,7 +1239,14 @@ pub fn hover(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.text_document_hover(doc.identifier(), pos, None);
+    let future = match language_server.text_document_hover(doc.identifier(), pos, None) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support hover");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -976,41 +1288,123 @@ pub fn hover(cx: &mut Context) {
 }
 
 pub fn rename_symbol(cx: &mut Context) {
-    let (view, doc) = current_ref!(cx.editor);
-    let text = doc.text().slice(..);
-    let primary_selection = doc.selection(view.id).primary();
-    let prefill = if primary_selection.len() > 1 {
-        primary_selection
-    } else {
-        use helix_core::textobject::{textobject_word, TextObject};
-        textobject_word(text, primary_selection, TextObject::Inside, 1, false)
+    fn get_prefill_from_word_boundary(editor: &Editor) -> String {
+        let (view, doc) = current_ref!(editor);
+        let text = doc.text().slice(..);
+        let primary_selection = doc.selection(view.id).primary();
+        if primary_selection.len() > 1 {
+            primary_selection
+        } else {
+            use helix_core::textobject::{textobject_word, TextObject};
+            textobject_word(text, primary_selection, TextObject::Inside, 1, false)
+        }
+        .fragment(text)
+        .into()
     }
-    .fragment(text)
-    .into();
-    ui::prompt_with_input(
-        cx,
-        "rename-to:".into(),
-        prefill,
-        None,
-        ui::completers::none,
-        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            if event != PromptEvent::Validate {
-                return;
+
+    fn get_prefill_from_lsp_response(
+        editor: &Editor,
+        offset_encoding: OffsetEncoding,
+        response: Option<lsp::PrepareRenameResponse>,
+    ) -> Result<String, &'static str> {
+        match response {
+            Some(lsp::PrepareRenameResponse::Range(range)) => {
+                let text = doc!(editor).text();
+
+                Ok(lsp_range_to_range(text, range, offset_encoding)
+                    .ok_or("lsp sent invalid selection range for rename")?
+                    .fragment(text.slice(..))
+                    .into())
             }
-
-            let (view, doc) = current!(cx.editor);
-            let language_server = language_server!(cx.editor, doc);
-            let offset_encoding = language_server.offset_encoding();
-
-            let pos = doc.position(view.id, offset_encoding);
-
-            let task = language_server.rename_symbol(doc.identifier(), pos, input.to_string());
-            match block_on(task) {
-                Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
-                Err(err) => cx.editor.set_error(err.to_string()),
+            Some(lsp::PrepareRenameResponse::RangeWithPlaceholder { placeholder, .. }) => {
+                Ok(placeholder)
             }
-        },
-    );
+            Some(lsp::PrepareRenameResponse::DefaultBehavior { .. }) => {
+                Ok(get_prefill_from_word_boundary(editor))
+            }
+            None => Err("lsp did not respond to prepare rename request"),
+        }
+    }
+
+    fn create_rename_prompt(editor: &Editor, prefill: String) -> Box<ui::Prompt> {
+        let prompt = ui::Prompt::new(
+            "rename-to:".into(),
+            None,
+            ui::completers::none,
+            move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+                if event != PromptEvent::Validate {
+                    return;
+                }
+
+                let (view, doc) = current!(cx.editor);
+                let language_server = language_server!(cx.editor, doc);
+                let offset_encoding = language_server.offset_encoding();
+
+                let pos = doc.position(view.id, offset_encoding);
+
+                let future =
+                    match language_server.rename_symbol(doc.identifier(), pos, input.to_string()) {
+                        Some(future) => future,
+                        None => {
+                            cx.editor
+                                .set_error("Language server does not support symbol renaming");
+                            return;
+                        }
+                    };
+                match block_on(future) {
+                    Ok(edits) => {
+                        let _ = apply_workspace_edit(cx.editor, offset_encoding, &edits);
+                    }
+                    Err(err) => cx.editor.set_error(err.to_string()),
+                }
+            },
+        )
+        .with_line(prefill, editor);
+
+        Box::new(prompt)
+    }
+
+    let (view, doc) = current!(cx.editor);
+    let language_server = language_server!(cx.editor, doc);
+    let offset_encoding = language_server.offset_encoding();
+
+    if !language_server.supports_rename() {
+        cx.editor
+            .set_error("Language server does not support symbol renaming");
+        return;
+    }
+
+    let pos = doc.position(view.id, offset_encoding);
+
+    match language_server.prepare_rename(doc.identifier(), pos) {
+        // Language server supports textDocument/prepareRename, use it.
+        Some(future) => cx.callback(
+            future,
+            move |editor, compositor, response: Option<lsp::PrepareRenameResponse>| {
+                let prefill = match get_prefill_from_lsp_response(editor, offset_encoding, response)
+                {
+                    Ok(p) => p,
+                    Err(e) => {
+                        editor.set_error(e);
+                        return;
+                    }
+                };
+
+                let prompt = create_rename_prompt(editor, prefill);
+
+                compositor.push(prompt);
+            },
+        ),
+        // Language server does not support textDocument/prepareRename, fall back
+        // to word boundary selection.
+        None => {
+            let prefill = get_prefill_from_word_boundary(cx.editor);
+
+            let prompt = create_rename_prompt(cx.editor, prefill);
+
+            cx.push_layer(prompt);
+        }
+    };
 }
 
 pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
@@ -1020,7 +1414,15 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = language_server.text_document_document_highlight(doc.identifier(), pos, None);
+    let future = match language_server.text_document_document_highlight(doc.identifier(), pos, None)
+    {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support document highlight");
+            return;
+        }
+    };
 
     cx.callback(
         future,
@@ -1052,4 +1454,175 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
             doc.set_selection(view.id, selection);
         },
     );
+}
+
+pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::job::Jobs) {
+    if !editor.config().lsp.display_inlay_hints {
+        return;
+    }
+
+    for (view, _) in editor.tree.views() {
+        let doc = match editor.documents.get(&view.doc) {
+            Some(doc) => doc,
+            None => continue,
+        };
+        if let Some(callback) = compute_inlay_hints_for_view(view, doc) {
+            jobs.callback(callback);
+        }
+    }
+}
+
+fn compute_inlay_hints_for_view(
+    view: &View,
+    doc: &Document,
+) -> Option<std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>>>>> {
+    let view_id = view.id;
+    let doc_id = view.doc;
+
+    let language_server = doc.language_server()?;
+
+    let capabilities = language_server.capabilities();
+
+    let (future, new_doc_inlay_hints_id) = match capabilities.inlay_hint_provider {
+        Some(
+            lsp::OneOf::Left(true)
+            | lsp::OneOf::Right(lsp::InlayHintServerCapabilities::Options(_)),
+        ) => {
+            let doc_text = doc.text();
+            let len_lines = doc_text.len_lines();
+
+            // Compute ~3 times the current view height of inlay hints, that way some scrolling
+            // will not show half the view with hints and half without while still being faster
+            // than computing all the hints for the full file (which could be dozens of time
+            // longer than the view is).
+            let view_height = view.inner_height();
+            let first_visible_line = doc_text.char_to_line(view.offset.anchor);
+            let first_line = first_visible_line.saturating_sub(view_height);
+            let last_line = first_visible_line
+                .saturating_add(view_height.saturating_mul(2))
+                .min(len_lines);
+
+            let new_doc_inlay_hint_id = DocumentInlayHintsId {
+                first_line,
+                last_line,
+            };
+            // Don't recompute the annotations in case nothing has changed about the view
+            if !doc.inlay_hints_oudated
+                && doc
+                    .inlay_hints(view_id)
+                    .map_or(false, |dih| dih.id == new_doc_inlay_hint_id)
+            {
+                return None;
+            }
+
+            let doc_slice = doc_text.slice(..);
+            let first_char_in_range = doc_slice.line_to_char(first_line);
+            let last_char_in_range = doc_slice.line_to_char(last_line);
+
+            let range = helix_lsp::util::range_to_lsp_range(
+                doc_text,
+                helix_core::Range::new(first_char_in_range, last_char_in_range),
+                language_server.offset_encoding(),
+            );
+
+            (
+                language_server.text_document_range_inlay_hints(doc.identifier(), range, None),
+                new_doc_inlay_hint_id,
+            )
+        }
+        _ => return None,
+    };
+
+    let callback = super::make_job_callback(
+        future?,
+        move |editor, _compositor, response: Option<Vec<lsp::InlayHint>>| {
+            // The config was modified or the window was closed while the request was in flight
+            if !editor.config().lsp.display_inlay_hints || editor.tree.try_get(view_id).is_none() {
+                return;
+            }
+
+            // Add annotations to relevant document, not the current one (it may have changed in between)
+            let doc = match editor.documents.get_mut(&doc_id) {
+                Some(doc) => doc,
+                None => return,
+            };
+
+            // If we have neither hints nor an LSP, empty the inlay hints since they're now oudated
+            let (mut hints, offset_encoding) = match (response, doc.language_server()) {
+                (Some(h), Some(ls)) if !h.is_empty() => (h, ls.offset_encoding()),
+                _ => {
+                    doc.set_inlay_hints(
+                        view_id,
+                        DocumentInlayHints::empty_with_id(new_doc_inlay_hints_id),
+                    );
+                    doc.inlay_hints_oudated = false;
+                    return;
+                }
+            };
+
+            // Most language servers will already send them sorted but ensure this is the case to
+            // avoid errors on our end.
+            hints.sort_unstable_by_key(|inlay_hint| inlay_hint.position);
+
+            let mut padding_before_inlay_hints = Vec::new();
+            let mut type_inlay_hints = Vec::new();
+            let mut parameter_inlay_hints = Vec::new();
+            let mut other_inlay_hints = Vec::new();
+            let mut padding_after_inlay_hints = Vec::new();
+
+            let doc_text = doc.text();
+
+            for hint in hints {
+                let char_idx =
+                    match helix_lsp::util::lsp_pos_to_pos(doc_text, hint.position, offset_encoding)
+                    {
+                        Some(pos) => pos,
+                        // Skip inlay hints that have no "real" position
+                        None => continue,
+                    };
+
+                let label = match hint.label {
+                    lsp::InlayHintLabel::String(s) => s,
+                    lsp::InlayHintLabel::LabelParts(parts) => parts
+                        .into_iter()
+                        .map(|p| p.value)
+                        .collect::<Vec<_>>()
+                        .join(""),
+                };
+
+                let inlay_hints_vec = match hint.kind {
+                    Some(lsp::InlayHintKind::TYPE) => &mut type_inlay_hints,
+                    Some(lsp::InlayHintKind::PARAMETER) => &mut parameter_inlay_hints,
+                    // We can't warn on unknown kind here since LSPs are free to set it or not, for
+                    // example Rust Analyzer does not: every kind will be `None`.
+                    _ => &mut other_inlay_hints,
+                };
+
+                if let Some(true) = hint.padding_left {
+                    padding_before_inlay_hints.push(InlineAnnotation::new(char_idx, " "));
+                }
+
+                inlay_hints_vec.push(InlineAnnotation::new(char_idx, label));
+
+                if let Some(true) = hint.padding_right {
+                    padding_after_inlay_hints.push(InlineAnnotation::new(char_idx, " "));
+                }
+            }
+
+            doc.set_inlay_hints(
+                view_id,
+                DocumentInlayHints {
+                    id: new_doc_inlay_hints_id,
+                    type_inlay_hints: type_inlay_hints.into(),
+                    parameter_inlay_hints: parameter_inlay_hints.into(),
+                    other_inlay_hints: other_inlay_hints.into(),
+                    padding_before_inlay_hints: padding_before_inlay_hints.into(),
+                    padding_after_inlay_hints: padding_after_inlay_hints.into(),
+                },
+            );
+            doc.inlay_hints_oudated = false;
+        },
+    );
+
+    Some(callback)
 }

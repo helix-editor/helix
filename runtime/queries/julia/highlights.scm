@@ -1,110 +1,182 @@
+; ----------
+; Primitives
+; ----------
 
 [
-  (triple_string)
-  (string)
-] @string
+  (line_comment)
+  (block_comment)
+] @comment
 
-(string
-  prefix: (identifier) @constant.builtin)
+(
+  ((identifier) @constant.builtin)
+  (#match? @constant.builtin "^(nothing|missing|undef)$"))
 
-(macro_identifier) @function.macro
-(macro_identifier (identifier) @function.macro) ; for any one using the variable highlight
-(macro_definition
-  name: (identifier) @function.macro
-  ["macro" "end" @keyword])
+[
+  (true)
+  (false)
+] @constant.builtin.boolean
 
-(field_expression
-  (identifier)
-  (identifier) @variable.other.member .)
+(integer_literal) @constant.numeric.integer
+(float_literal) @constant.numeric.float
 
-(function_definition
-  name: (identifier) @function)
-(call_expression
-  (identifier) @function)
-(call_expression
-  (field_expression (identifier) @function.method .))
-(broadcast_call_expression
-  (identifier) @function)
-(broadcast_call_expression
-  (field_expression (identifier) @function.method .))
-(parameter_list
-  (identifier) @variable.parameter)
-(parameter_list
-  (optional_parameter .
-    (identifier) @variable.parameter))
-(typed_parameter
-  (identifier) @variable.parameter
-  (identifier) @type)
-(type_parameter_list
-  (identifier) @type)
-(typed_parameter
-  (identifier) @variable.parameter
-  (parameterized_identifier) @type)
-(function_expression
-  . (identifier) @variable.parameter)
-(spread_parameter) @variable.parameter
-(spread_parameter
-  (identifier) @variable.parameter)
-(named_argument
-    . (identifier) @variable.parameter)
-(argument_list
-  (typed_expression
-    (identifier) @variable.parameter
-    (identifier) @type))
-(argument_list
-  (typed_expression
-    (identifier) @variable.parameter
-    (parameterized_identifier) @type))
+(
+  ((identifier) @constant.numeric.float)
+  (#match? @constant.numeric.float "^((Inf|NaN)(16|32|64)?)$"))
 
-;; Symbol expressions (:my-wanna-be-lisp-keyword)
+(character_literal) @constant.character
+(escape_sequence) @constant.character.escape
+
+(string_literal) @string
+
+(prefixed_string_literal
+  prefix: (identifier) @function.macro) @string
+
 (quote_expression
- (identifier)) @string.special.symbol
+  (identifier) @string.special.symbol) 
+  
+; -------------------
+; Modules and Imports
+; -------------------
 
-;; Parsing error! foo (::Type) get's parsed as two quote expressions
-(argument_list 
-  (quote_expression
-    (quote_expression
-      (identifier) @type)))
+(module_definition
+  name: (identifier) @namespace)
+  
+(import_statement
+  (identifier) @namespace)
+  
+(selected_import
+  . (identifier) @namespace)
 
-(type_argument_list
-  (identifier) @type)
-(parameterized_identifier (_)) @type
-(argument_list
-  (typed_expression . (identifier) @variable.parameter))
+(scoped_identifier
+  (identifier) @namespace)
 
-(typed_expression
-  (identifier) @type .)
-(typed_expression
-  (parameterized_identifier) @type .)
+; -----
+; Types
+; -----
+
+(abstract_definition
+  name: (identifier) @type)
+  
+(primitive_definition
+  name: (identifier) @type)
 
 (struct_definition
   name: (identifier) @type)
 
-(number) @constant.numeric.integer
-(range_expression
-    (identifier) @constant.numeric.integer
-      (eq? @constant.numeric.integer "end"))
-(range_expression
-  (_
-    (identifier) @constant.numeric.integer
-      (eq? @constant.numeric.integer "end")))
-(coefficient_expression
-  (number)
-  (identifier) @constant.builtin)
+(struct_definition
+  . (_)
+    (identifier) @variable.other.member)
 
-;; TODO: operators.
-;; Those are a bit difficult to implement since the respective nodes are hidden right now (_power_operator)
-;; and heavily use Unicode chars (support for those are bad in vim/lua regexes)
-;[;
-    ;(power_operator);
-    ;(times_operator);
-    ;(plus_operator);
-    ;(arrow_operator);
-    ;(comparison_operator);
-    ;(assign_operator);
-;] @operator ;
+(struct_definition
+  . (_)
+  (typed_expression
+    . (identifier) @variable.other.member))
+    
+(type_parameter_list
+  (identifier) @type)
 
-"end" @keyword
+(constrained_type_parameter
+  (identifier) @type)
+  
+(subtype_clause
+  (identifier) @type)
+
+(typed_expression
+  (identifier) @type . )
+
+(parameterized_identifier
+  (identifier) @type)
+  
+(type_argument_list
+  (identifier) @type)
+
+(where_clause
+  (identifier) @type)
+
+; -------------------
+; Function definition
+; -------------------
+
+(
+  (function_definition
+    name: [
+      (identifier) @function
+      (scoped_identifier
+        (identifier) @namespace
+        (identifier) @function)
+    ])
+  ; prevent constructors (PascalCase) to be highlighted as functions
+  (#match? @function "^[^A-Z]"))
+
+(
+  (short_function_definition
+    name: [
+      (identifier) @function
+      (scoped_identifier
+        (identifier) @namespace
+        (identifier) @function)
+    ])
+  ; prevent constructors (PascalCase) to be highlighted as functions
+  (#match? @function "^[^A-Z]"))
+
+(parameter_list
+  (identifier) @variable.parameter)
+
+(typed_parameter
+  (identifier) @variable.parameter
+  (identifier)? @type)
+
+(optional_parameter
+  . (identifier) @variable.parameter)
+
+(slurp_parameter
+  (identifier) @variable.parameter)
+
+(function_expression
+  . (identifier) @variable.parameter)
+
+; ---------------
+; Functions calls
+; ---------------
+
+(
+  (call_expression
+    (identifier) @function)
+  ; prevent constructors (PascalCase) to be highlighted as functions
+  (#match? @function "^[^A-Z]"))
+
+(
+  (broadcast_call_expression
+    (identifier) @function)
+  (#match? @function "^[^A-Z]"))
+
+(
+  (call_expression
+    (field_expression (identifier) @function .))
+  (#match? @function "^[^A-Z]"))
+
+(
+  (broadcast_call_expression
+    (field_expression (identifier) @function .))
+  (#match? @function "^[^A-Z]"))
+
+; ------
+; Macros
+; ------
+
+(macro_definition
+  name: (identifier) @function.macro)
+
+(macro_identifier
+  "@" @function.macro
+  (identifier) @function.macro)
+
+; --------
+; Keywords
+; --------
+
+(function_definition 
+  ["function" "end"] @keyword.function)
 
 (if_statement
   ["if" "end"] @keyword.control.conditional)
@@ -115,33 +187,6 @@
 (ternary_expression
   ["?" ":"] @keyword.control.conditional)
 
-(function_definition ["function" "end"] @keyword.function)
-
-(comment) @comment
-
-[
-  "const"
-  "return"
-  "macro"
-  "struct"
-  "primitive"
-  "type"
-] @keyword
-
-((identifier) @keyword (match? @keyword "global|local"))
-
-(compound_expression
-  ["begin" "end"] @keyword)
-(try_statement
-  ["try" "end" ] @keyword.control.exception)
-(finally_clause
-  "finally" @keyword.control.exception)
-(catch_clause
-  "catch" @keyword.control.exception)
-(quote_statement
-  ["quote" "end"] @keyword)
-(let_statement
-  ["let" "end"] @keyword)
 (for_statement
   ["for" "end"] @keyword.control.repeat)
 (while_statement
@@ -152,33 +197,98 @@
   "in" @keyword.control.repeat)
 (for_clause
   "for" @keyword.control.repeat)
-(do_clause
-  ["do" "end"] @keyword)
 
-(export_statement
-  ["export"] @keyword.control.import)
+(try_statement
+  ["try" "end" ] @keyword.control.exception)
+(finally_clause
+  "finally" @keyword.control.exception)
+(catch_clause
+  "catch" @keyword.control.exception)
 
 [
-  "using"
-  "module"
+  "export"
   "import"
+  "using"
 ] @keyword.control.import
 
-((identifier) @keyword.control.import (#eq? @keyword.control.import "baremodule"))
+[
+  "abstract"
+  "baremodule"
+  "begin"
+  "const"
+  "do"
+  "end"
+  "let"
+  "macro"
+  "module"
+  "mutable"
+  "primitive"
+  "quote"
+  "return"
+  "struct"
+  "type"
+  "where"
+] @keyword
 
-(((identifier) @constant.builtin) (match? @constant.builtin "^(nothing|Inf|NaN)$"))
-(((identifier) @constant.builtin.boolean) (#eq? @constant.builtin.boolean "true"))
-(((identifier) @constant.builtin.boolean) (#eq? @constant.builtin.boolean "false"))
+; TODO: fix this
+((identifier) @keyword (match? @keyword "global|local"))
 
+; ---------
+; Operators
+; ---------
 
-["::" ":" "." "," "..." "!"] @punctuation.delimiter
-["[" "]" "(" ")" "{" "}"] @punctuation.bracket
+[
+  (operator)
+  "::"
+  "<:"
+  ":"
+  "=>"
+  "..."
+  "$"
+] @operator
 
-["="] @operator
+; ------------
+; Punctuations
+; ------------
+
+[
+  "."
+  "," 
+  ";"
+] @punctuation.delimiter
+
+[
+  "["
+  "]"
+  "("
+  ")" 
+  "{" 
+  "}"
+] @punctuation.bracket
+
+; ---------------------
+; Remaining identifiers
+; ---------------------
+
+(const_statement
+  (variable_declaration
+    . (identifier) @constant))
+
+; SCREAMING_SNAKE_CASE
+(
+  (identifier) @constant
+  (match? @constant "^[A-Z][A-Z0-9_]*$"))
+
+; remaining identifiers that start with capital letters should be types (PascalCase)
+(
+  (identifier) @type
+  (match? @type "^[A-Z]"))
+
+; Field expressions are either module content or struct fields.
+; Module types and constants should already be captured, so this
+; assumes the remaining identifiers to be struct fields.
+(field_expression
+  (_)
+  (identifier) @variable.other.member)
 
 (identifier) @variable
-;; In case you want type highlighting based on Julia naming conventions (this might collide with mathematical notation)
-;((identifier) @type ; exception: mark `A_foo` sort of identifiers as variables
-  ;(match? @type "^[A-Z][^_]"))
-((identifier) @constant
-  (match? @constant "^[A-Z][A-Z_]{2}[A-Z_]*$"))

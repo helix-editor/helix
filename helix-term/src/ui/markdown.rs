@@ -178,6 +178,21 @@ impl Markdown {
             .map(|key| get_theme(key))
             .collect();
 
+        // Transform text in `<code>` blocks into `Event::Code`
+        let mut in_code = false;
+        let parser = parser.filter_map(|event| match event {
+            Event::Html(tag) if *tag == *"<code>" => {
+                in_code = true;
+                None
+            }
+            Event::Html(tag) if *tag == *"</code>" => {
+                in_code = false;
+                None
+            }
+            Event::Text(text) if in_code => Some(Event::Code(text)),
+            _ => Some(event),
+        });
+
         for event in parser {
             match event {
                 Event::Start(Tag::List(list)) => {
@@ -229,10 +244,7 @@ impl Markdown {
                 Event::End(tag) => {
                     tags.pop();
                     match tag {
-                        Tag::Heading(_, _, _)
-                        | Tag::Paragraph
-                        | Tag::CodeBlock(CodeBlockKind::Fenced(_))
-                        | Tag::Item => {
+                        Tag::Heading(_, _, _) | Tag::Paragraph | Tag::CodeBlock(_) | Tag::Item => {
                             push_line(&mut spans, &mut lines);
                         }
                         _ => (),
@@ -240,17 +252,18 @@ impl Markdown {
 
                     // whenever heading, code block or paragraph closes, empty line
                     match tag {
-                        Tag::Heading(_, _, _)
-                        | Tag::Paragraph
-                        | Tag::CodeBlock(CodeBlockKind::Fenced(_)) => {
+                        Tag::Heading(_, _, _) | Tag::Paragraph | Tag::CodeBlock(_) => {
                             lines.push(Spans::default());
                         }
                         _ => (),
                     }
                 }
                 Event::Text(text) => {
-                    // TODO: temp workaround
-                    if let Some(Tag::CodeBlock(CodeBlockKind::Fenced(language))) = tags.last() {
+                    if let Some(Tag::CodeBlock(kind)) = tags.last() {
+                        let language = match kind {
+                            CodeBlockKind::Fenced(language) => language,
+                            CodeBlockKind::Indented => "",
+                        };
                         let tui_text = highlighted_code_block(
                             text.to_string(),
                             language,
@@ -329,13 +342,10 @@ impl Component for Markdown {
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let padding = 2;
-        if padding >= viewport.1 || padding >= viewport.0 {
-            return None;
-        }
         let contents = self.parse(None);
 
         // TODO: account for tab width
-        let max_text_width = (viewport.0 - padding).min(120);
+        let max_text_width = (viewport.0.saturating_sub(padding)).min(120);
         let (width, height) = crate::ui::text::required_size(&contents, max_text_width);
 
         Some((width + padding, height + padding))

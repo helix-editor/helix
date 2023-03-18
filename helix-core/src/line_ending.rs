@@ -6,7 +6,7 @@ pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::Crlf;
 pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::LF;
 
 /// Represents one of the valid Unicode line endings.
-#[derive(PartialEq, Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum LineEnding {
     Crlf, // CarriageReturn followed by LineFeed
     LF,   // U+000A -- LineFeed
@@ -203,6 +203,13 @@ pub fn line_end_char_index(slice: &RopeSlice, line: usize) -> usize {
             .unwrap_or(0)
 }
 
+pub fn line_end_byte_index(slice: &RopeSlice, line: usize) -> usize {
+    slice.line_to_byte(line + 1)
+        - get_line_ending(&slice.line(line))
+            .map(|le| le.as_str().len())
+            .unwrap_or(0)
+}
+
 /// Fetches line `line_idx` from the passed rope slice, sans any line ending.
 pub fn line_without_line_ending<'a>(slice: &'a RopeSlice, line_idx: usize) -> RopeSlice<'a> {
     let start = slice.line_to_char(line_idx);
@@ -305,8 +312,17 @@ mod line_ending_tests {
     fn line_end_char_index_rope_slice() {
         let r = Rope::from_str("Hello\rworld\nhow\r\nare you?");
         let s = &r.slice(..);
-        assert_eq!(line_end_char_index(s, 0), 11);
-        assert_eq!(line_end_char_index(s, 1), 15);
-        assert_eq!(line_end_char_index(s, 2), 25);
+        #[cfg(not(feature = "unicode-lines"))]
+        {
+            assert_eq!(line_end_char_index(s, 0), 11);
+            assert_eq!(line_end_char_index(s, 1), 15);
+            assert_eq!(line_end_char_index(s, 2), 25);
+        }
+        #[cfg(feature = "unicode-lines")]
+        {
+            assert_eq!(line_end_char_index(s, 0), 5);
+            assert_eq!(line_end_char_index(s, 1), 11);
+            assert_eq!(line_end_char_index(s, 2), 15);
+        }
     }
 }

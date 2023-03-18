@@ -1,11 +1,11 @@
 use crate::editor::{Action, Breakpoint};
 use crate::{align_view, Align, Editor};
+use dap::requests::DisconnectArguments;
 use helix_core::Selection;
-use helix_dap::{self as dap, Client, Payload, Request, ThreadId};
+use helix_dap::{self as dap, Client, ConnectionType, Payload, Request, ThreadId};
 use helix_lsp::block_on;
 use log::warn;
 use std::fmt::Write;
-use std::io::ErrorKind;
 use std::path::PathBuf;
 
 #[macro_export]
@@ -263,7 +263,7 @@ impl Editor {
                     log::info!("{}", output);
                     self.set_status(format!("{} {}", prefix, output));
                 }
-                Event::Initialized => {
+                Event::Initialized(_) => {
                     // send existing breakpoints
                     for (path, breakpoints) in &mut self.breakpoints {
                         // TODO: call futures in parallel, await all
@@ -274,6 +274,66 @@ impl Editor {
                     if debugger.configuration_done().await.is_ok() {
                         self.set_status("Debugged application started");
                     }; // TODO: do we need to handle error?
+                }
+                Event::Terminated(terminated) => {
+                    let restart_args = if let Some(terminated) = terminated {
+                        terminated.restart
+                    } else {
+                        None
+                    };
+
+                    let disconnect_args = Some(DisconnectArguments {
+                        restart: Some(restart_args.is_some()),
+                        terminate_debuggee: None,
+                        suspend_debuggee: None,
+                    });
+
+                    if let Err(err) = debugger.disconnect(disconnect_args).await {
+                        self.set_error(format!(
+                            "Cannot disconnect debugger upon terminated event receival {:?}",
+                            err
+                        ));
+                        return false;
+                    }
+
+                    match restart_args {
+                        Some(restart_args) => {
+                            log::info!("Attempting to restart debug session.");
+                            let connection_type = match debugger.connection_type() {
+                                Some(connection_type) => connection_type,
+                                None => {
+                                    self.set_error("No starting request found, to be used in restarting the debugging session.");
+                                    return false;
+                                }
+                            };
+
+                            let relaunch_resp = if let ConnectionType::Launch = connection_type {
+                                debugger.launch(restart_args).await
+                            } else {
+                                debugger.attach(restart_args).await
+                            };
+
+                            if let Err(err) = relaunch_resp {
+                                self.set_error(format!(
+                                    "Failed to restart debugging session: {:?}",
+                                    err
+                                ));
+                            }
+                        }
+                        None => {
+                            self.set_status(
+                                "Terminated debugging session and disconnected debugger.",
+                            );
+                        }
+                    }
+                }
+                Event::Exited(resp) => {
+                    let exit_code = resp.exit_code;
+                    if exit_code != 0 {
+                        self.set_error(format!(
+                            "Debuggee failed to exit successfully (exit code: {exit_code})."
+                        ));
+                    }
                 }
                 ev => {
                     log::warn!("Unhandled event {:?}", ev);
@@ -287,32 +347,32 @@ impl Editor {
                         serde_json::from_value(request.arguments.unwrap_or_default()).unwrap();
                     // TODO: no unwrap
 
-                    let process = if cfg!(windows) {
-                        std::process::Command::new("wt")
-                            .arg("new-tab")
-                            .arg("--title")
-                            .arg("DEBUG")
-                            .arg("cmd")
-                            .arg("/C")
-                            .arg(arguments.args.join(" "))
-                            .spawn()
-                            .unwrap_or_else(|error| match error.kind() {
-                                ErrorKind::NotFound => std::process::Command::new("conhost")
-                                    .arg("cmd")
-                                    .arg("/C")
-                                    .arg(arguments.args.join(" "))
-                                    .spawn()
-                                    .unwrap(),
-                                // TODO replace the pretty print {:?} with a regular format {}
-                                // when the MSRV is raised to 1.60.0
-                                e => panic!("Error to start debug console: {:?}", e),
-                            })
-                    } else {
-                        std::process::Command::new("tmux")
-                            .arg("split-window")
-                            .arg(arguments.args.join(" "))
-                            .spawn()
-                            .unwrap()
+                    let config = match self.config().terminal.clone() {
+                        Some(config) => config,
+                        None => {
+                            self.set_error("No external terminal defined");
+                            return true;
+                        }
+                    };
+
+                    // Re-borrowing debugger to avoid issues when loading config
+                    let debugger = match self.debugger.as_mut() {
+                        Some(debugger) => debugger,
+                        None => return false,
+                    };
+
+                    let process = match std::process::Command::new(config.command)
+                        .args(config.args)
+                        .arg(arguments.args.join(" "))
+                        .spawn()
+                    {
+                        Ok(process) => process,
+                        Err(err) => {
+                            // TODO replace the pretty print {:?} with a regular format {}
+                            // when the MSRV is raised to 1.60.0
+                            self.set_error(format!("Error starting external terminal: {:?}", err));
+                            return true;
+                        }
                     };
 
                     let _ = debugger
