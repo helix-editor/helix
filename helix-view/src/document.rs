@@ -16,7 +16,7 @@ use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -1581,13 +1581,16 @@ impl Document {
     }
 
     pub fn shown_diagnostics(&self) -> impl Iterator<Item = &Diagnostic> + DoubleEndedIterator {
-        let ls_ids: HashSet<_> = self
-            .language_servers_with_feature(LanguageServerFeature::Diagnostics)
-            .map(|ls| ls.id())
-            .collect();
-        self.diagnostics
-            .iter()
-            .filter(move |d| ls_ids.contains(&d.language_server_id))
+        self.diagnostics.iter().filter(|d| {
+            self.language_servers()
+                .find(|ls| ls.id() == d.language_server_id)
+                .and_then(|ls| {
+                    let config = self.language_config()?;
+                    let features = config.language_servers.get(ls.name())?;
+                    Some(features.has_feature(LanguageServerFeature::Diagnostics))
+                })
+                == Some(true)
+        })
     }
 
     pub fn replace_diagnostics(
