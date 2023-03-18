@@ -11,7 +11,7 @@ use helix_view::{
     document::DocumentSavedEventResult,
     editor::{ConfigEvent, EditorEvent},
     graphics::Rect,
-    theme,
+    icons, theme,
     tree::Layout,
     Align, Editor,
 };
@@ -69,6 +69,7 @@ pub struct Application {
 
     #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
+    icons_loader: Arc<icons::Loader>,
     #[allow(dead_code)]
     syn_loader: Arc<syntax::Loader>,
 
@@ -111,9 +112,9 @@ impl Application {
 
         use helix_view::editor::Action;
 
-        let mut theme_parent_dirs = vec![helix_loader::config_dir()];
-        theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
-        let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
+        let mut theme_and_icons_parent_dirs = vec![helix_loader::config_dir()];
+        theme_and_icons_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
+        let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_and_icons_parent_dirs));
 
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
@@ -131,6 +132,21 @@ impl Application {
             })
             .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
+        let icons_loader = std::sync::Arc::new(icons::Loader::new(&theme_and_icons_parent_dirs));
+        let icons = config
+            .icons
+            .as_ref()
+            .and_then(|icons| {
+                icons_loader
+                    .load(icons, &theme, true_color)
+                    .map_err(|e| {
+                        log::warn!("failed to load icons `{}` - {}", icons, e);
+                        e
+                    })
+                    .ok()
+            })
+            .unwrap_or_else(|| icons_loader.default(&theme));
+
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         #[cfg(not(feature = "integration"))]
@@ -146,11 +162,15 @@ impl Application {
         let mut editor = Editor::new(
             area,
             theme_loader.clone(),
+            icons_loader.clone(),
             syn_loader.clone(),
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
         );
+
+        editor.set_theme(theme);
+        editor.set_icons(icons);
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -168,7 +188,7 @@ impl Application {
             if first.is_dir() {
                 std::env::set_current_dir(first).context("set current dir")?;
                 editor.new_file(Action::VerticalSplit);
-                let picker = ui::file_picker(".".into(), &config.load().editor);
+                let picker = ui::file_picker(".".into(), &config.load().editor, &editor.icons);
                 compositor.push(Box::new(overlayed(picker)));
             } else {
                 let nr_of_files = args.files.len();
@@ -225,8 +245,6 @@ impl Application {
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
         }
 
-        editor.set_theme(theme);
-
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
@@ -241,6 +259,7 @@ impl Application {
             config,
 
             theme_loader,
+            icons_loader,
             syn_loader,
 
             signals,
@@ -410,12 +429,27 @@ impl Application {
         Ok(())
     }
 
+    /// Refresh icons after config change
+    fn refresh_icons(&mut self, config: &Config) -> Result<(), Error> {
+        if let Some(icons) = config.icons.clone() {
+            let true_color = self.true_color();
+            let icons = self
+                .icons_loader
+                .load(&icons, &self.editor.theme, true_color)
+                .map_err(|err| anyhow::anyhow!("Failed to load icons `{}`: {}", icons, err))?;
+            self.editor.set_icons(icons);
+        }
+
+        Ok(())
+    }
+
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
             self.refresh_theme(&default_config)?;
+            self.refresh_icons(&default_config)?;
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())

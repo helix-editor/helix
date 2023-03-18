@@ -19,6 +19,7 @@ use crate::filter_picker_entry;
 use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
+use helix_view::icons::Icons;
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{DynamicPicker, FileLocation, FilePicker, Picker};
@@ -158,7 +159,11 @@ pub fn regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker<PathBuf> {
+pub fn file_picker(
+    root: PathBuf,
+    config: &helix_view::editor::Config,
+    icons: &Icons,
+) -> FilePicker<PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
 
@@ -220,6 +225,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     FilePicker::new(
         files,
         root,
+        config.icons.picker.then_some(icons),
         move |cx, path: &PathBuf, action| {
             if let Err(e) = cx.editor.open(path, action) {
                 let err = if let Some(err) = e.source() {
@@ -239,7 +245,6 @@ pub mod completers {
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
     use helix_view::document::SCRATCH_BUFFER_NAME;
-    use helix_view::theme;
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
@@ -280,12 +285,43 @@ pub mod completers {
     }
 
     pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
-        let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
+        let mut names = helix_loader::read_toml_names(&helix_loader::config_dir().join("themes"));
         for rt_dir in helix_loader::runtime_dirs() {
-            names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
+            names.extend(helix_loader::read_toml_names(&rt_dir.join("themes")));
         }
         names.push("default".into());
         names.push("base16_default".into());
+        names.sort();
+        names.dedup();
+
+        let mut names: Vec<_> = names
+            .into_iter()
+            .map(|name| ((0..), Cow::from(name)))
+            .collect();
+
+        let matcher = Matcher::default();
+
+        let mut matches: Vec<_> = names
+            .into_iter()
+            .filter_map(|(_range, name)| {
+                matcher.fuzzy_match(&name, input).map(|score| (name, score))
+            })
+            .collect();
+
+        matches.sort_unstable_by(|(name1, score1), (name2, score2)| {
+            (Reverse(*score1), name1).cmp(&(Reverse(*score2), name2))
+        });
+        names = matches.into_iter().map(|(name, _)| ((0..), name)).collect();
+
+        names
+    }
+
+    pub fn icons(_editor: &Editor, input: &str) -> Vec<Completion> {
+        let mut names = helix_loader::read_toml_names(&helix_loader::config_dir().join("icons"));
+        for rt_dir in helix_loader::runtime_dirs() {
+            names.extend(helix_loader::read_toml_names(&rt_dir.join("icons")));
+        }
+        names.push("default".into());
         names.sort();
         names.dedup();
 

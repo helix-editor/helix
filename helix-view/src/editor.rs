@@ -3,6 +3,7 @@ use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider},
     document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
     graphics::{CursorKind, Rect},
+    icons::{self, Icons},
     info::Info,
     input::KeyEvent,
     theme::{self, Theme},
@@ -212,6 +213,27 @@ impl Default for FilePickerConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct IconsConfig {
+    /// Enables icons in front of buffer names in bufferline. Defaults to `true`
+    pub bufferline: bool,
+    /// Enables icons in front of items in the picker. Defaults to `true`
+    pub picker: bool,
+    /// Enables icons in front of items in the statusline. Defaults to `true`
+    pub statusline: bool,
+}
+
+impl Default for IconsConfig {
+    fn default() -> Self {
+        Self {
+            bufferline: true,
+            picker: true,
+            statusline: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
@@ -281,6 +303,8 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
+    /// Icons configuration
+    pub icons: IconsConfig,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -445,6 +469,9 @@ pub enum StatusLineElement {
 
     /// The file type (language ID or "text")
     FileType,
+
+    /// The file type icon (from file path)
+    FileTypeIcon,
 
     /// A summary of the number of errors and warnings
     Diagnostics,
@@ -751,6 +778,7 @@ impl Default for Config {
             soft_wrap: SoftWrap::default(),
             text_width: 80,
             completion_replace: false,
+            icons: IconsConfig::default(),
         }
     }
 }
@@ -827,6 +855,8 @@ pub struct Editor {
     /// The currently applied editor theme. While previewing a theme, the previewed theme
     /// is set here.
     pub theme: Theme,
+    pub icons: Icons,
+    pub icons_loader: Arc<icons::Loader>,
 
     /// The primary Selection prior to starting a goto_line_number preview. This is
     /// restored when the preview is aborted, or added to the jumplist when it is
@@ -925,11 +955,14 @@ impl Editor {
     pub fn new(
         mut area: Rect,
         theme_loader: Arc<theme::Loader>,
+        icons_loader: Arc<icons::Loader>,
         syn_loader: Arc<syntax::Loader>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
+        let theme = theme_loader.default();
+        let icons = icons_loader.default(&theme);
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
@@ -972,6 +1005,8 @@ impl Editor {
             needs_redraw: false,
             cursor_cache: Cell::new(None),
             completion_request_handle: None,
+            icons,
+            icons_loader,
         }
     }
 
@@ -1072,10 +1107,18 @@ impl Editor {
             }
             ThemeAction::Set => {
                 self.last_theme = None;
+                // Reload the icons to apply default colors based on theme
+                self.icons.set_diagnostic_icons_base_style(&theme);
+                self.icons.set_symbolkind_icons_base_style(&theme);
                 self.theme = theme;
             }
         }
 
+        self._refresh();
+    }
+
+    pub fn set_icons(&mut self, icons: Icons) {
+        self.icons = icons;
         self._refresh();
     }
 
