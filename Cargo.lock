@@ -322,6 +322,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0bd4b30a6560bbd9b4620f4de34c3f14f60848e58a9b7216801afcb4c7b31c3c"
 
 [[package]]
+name = "ec4rs"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db540f6c584d6e2960617a2b550632715bbe0a50a4d79c0f682a13da100b34eb"
+
+[[package]]
 name = "either"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1233,6 +1239,7 @@ dependencies = [
  "chardetng",
  "clipboard-win",
  "crossterm",
+ "ec4rs",
  "futures-util",
  "helix-core",
  "helix-dap",

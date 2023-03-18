@@ -281,6 +281,9 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
+    /// Whether to import settings from [EditorConfig](https://editorconfig.org/).
+    /// Defaults to `true`.
+    pub editorconfig: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -751,6 +754,7 @@ impl Default for Config {
             soft_wrap: SoftWrap::default(),
             text_width: 80,
             completion_replace: false,
+            editorconfig: true,
         }
     }
 }

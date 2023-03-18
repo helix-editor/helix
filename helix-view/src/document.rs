@@ -135,6 +135,8 @@ pub struct Document {
 
     /// Current indent style.
     pub indent_style: IndentStyle,
+    /// Current tab width in columns.
+    pub tab_width: usize,
 
     /// The document's default line ending.
     pub line_ending: LineEnding,
@@ -457,6 +459,101 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DocumentConfig<T> {
+    pub config: T,
+    pub encoding: Option<&'static encoding::Encoding>,
+    pub line_ending: Option<LineEnding>,
+}
+
+impl<T> DocumentConfig<T> {
+    pub(self) fn transpose(option: Option<DocumentConfig<T>>) -> DocumentConfig<Option<T>> {
+        if let Some(doc_config) = option {
+            DocumentConfig {
+                config: Some(doc_config.config),
+                encoding: doc_config.encoding,
+                line_ending: doc_config.line_ending,
+            }
+        } else {
+            DocumentConfig::default()
+        }
+    }
+}
+
+/// Trait representing methods of configuring the document as it's being opened.
+pub trait ConfigureDocument {
+    type Config;
+    /// Loads document configuration for a file at `path`.
+    fn load(&self, path: &Path) -> Result<DocumentConfig<Self::Config>, Error>;
+    /// Applies document configuration except for the non-`config` fields of `DocumentConfig`.
+    fn configure_document(doc: &mut Document, settings: Self::Config);
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct Autodetect;
+#[derive(Clone, Copy, Debug, Default)]
+struct EditorConfig;
+
+impl ConfigureDocument for Autodetect {
+    type Config = ();
+
+    fn load(&self, _: &Path) -> Result<DocumentConfig<()>, Error> {
+        Ok(DocumentConfig::default())
+    }
+
+    fn configure_document(doc: &mut Document, _: Self::Config) {
+        doc.detect_indent();
+    }
+}
+
+impl ConfigureDocument for EditorConfig {
+    type Config = ec4rs::Properties;
+
+    fn load(&self, path: &Path) -> Result<DocumentConfig<Self::Config>, Error> {
+        use ec4rs::property::{Charset, EndOfLine};
+        use encoding::Encoding;
+        let mut config = ec4rs::properties_of(path)?;
+        config.use_fallbacks();
+        let encoding = config
+            .get_raw::<Charset>()
+            .filter_unset()
+            .into_result()
+            .ok()
+            .and_then(|string| Encoding::for_label(string.to_lowercase().as_bytes()));
+        let line_ending = match config.get::<EndOfLine>() {
+            Ok(EndOfLine::Lf) => Some(LineEnding::LF),
+            Ok(EndOfLine::CrLf) => Some(LineEnding::Crlf),
+            #[cfg(feature = "unicode-lines")]
+            Ok(EndOfLine::Cr) => Some(LineEnding::CR),
+            _ => None,
+        };
+        Ok(DocumentConfig {
+            config,
+            encoding,
+            line_ending,
+        })
+    }
+
+    fn configure_document(doc: &mut Document, settings: Self::Config) {
+        use ec4rs::property::{IndentSize, IndentStyle as IndentStyleEc, TabWidth};
+        match settings.get::<IndentStyleEc>() {
+            Ok(IndentStyleEc::Tabs) => doc.indent_style = IndentStyle::Tabs,
+            Ok(IndentStyleEc::Spaces) => {
+                let spaces = if let Ok(IndentSize::Value(cols)) = settings.get::<IndentSize>() {
+                    cols
+                } else {
+                    doc.tab_width
+                };
+                doc.indent_style = IndentStyle::Spaces(spaces.try_into().unwrap_or(u8::MAX));
+            }
+            _ => doc.detect_indent(),
+        }
+        if let Ok(TabWidth::Value(width)) = settings.get::<TabWidth>() {
+            doc.tab_width = width;
+        }
+    }
+}
+
 use helix_lsp::lsp;
 use url::Url;
 
@@ -479,6 +576,7 @@ impl Document {
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
             indent_style: DEFAULT_INDENT,
+            tab_width: 4,
             line_ending: DEFAULT_LINE_ENDING,
             restore_cursor: false,
             syntax: None,
@@ -511,17 +609,50 @@ impl Document {
         config_loader: Option<Arc<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, Error> {
-        // Open the file if it exists, otherwise assume it is a new file (and thus empty).
-        let (rope, encoding) = if path.exists() {
-            let mut file =
-                std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
-            from_reader(&mut file, encoding)?
+        if config.load().editorconfig {
+            Document::open_with_cfg(&EditorConfig, path, encoding, config_loader, config)
         } else {
-            let encoding = encoding.unwrap_or(encoding::UTF_8);
-            (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
+            Document::open_with_cfg(&Autodetect, path, encoding, config_loader, config)
+        }
+    }
+    // TODO: async fn?
+    fn open_with_cfg<C: ConfigureDocument>(
+        doc_config_loader: &C,
+        path: &Path,
+        encoding: Option<&'static encoding::Encoding>,
+        config_loader: Option<Arc<syntax::Loader>>,
+        config: Arc<dyn DynAccess<Config>>,
+    ) -> Result<Self, Error> {
+        let (rope, doc_config) = match std::fs::File::open(path) {
+            // Match errors that we should NOT ignore.
+            Err(e) if !matches!(e.kind(), std::io::ErrorKind::NotFound) => {
+                return Err(e).context(format!("unable to open {:?}", path));
+            }
+            result => {
+                // Load doc_config for the file at this path.
+                let mut doc_config = DocumentConfig::transpose(
+                    doc_config_loader
+                        .load(path)
+                        .map_err(|e| {
+                            log::warn!("unable to load document config for {:?}: {}", path, e)
+                        })
+                        .ok(),
+                );
+                // Override the doc_config encoding.
+                doc_config.encoding = encoding.or(doc_config.encoding);
+                if let Ok(mut file) = result {
+                    let (rope, encoding) = from_reader(&mut file, doc_config.encoding)?;
+                    doc_config.encoding = Some(encoding);
+                    (rope, doc_config)
+                } else {
+                    // If we're here, the error can be recovered from.
+                    // Treat this as a new file.
+                    let line_ending = doc_config.line_ending.get_or_insert(DEFAULT_LINE_ENDING);
+                    (Rope::from(line_ending.as_str()), doc_config)
+                }
+            }
         };
-
-        let mut doc = Self::from(rope, Some(encoding), config);
+        let mut doc = Self::from(rope, doc_config.encoding, config);
 
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
@@ -529,7 +660,26 @@ impl Document {
             doc.detect_language(loader);
         }
 
-        doc.detect_indent_and_line_ending();
+        // Set the tab witdh from language config, allowing it to be overridden later.
+        // Default of 4 is set in Document::from.
+        if let Some(indent) = doc
+            .language_config()
+            .and_then(|config| config.indent.as_ref())
+        {
+            doc.tab_width = indent.tab_width
+        }
+
+        if let Some(doc_config) = doc_config.config {
+            C::configure_document(&mut doc, doc_config);
+        } else {
+            Autodetect::configure_document(&mut doc, ());
+        }
+
+        if let Some(line_ending) = doc_config.line_ending {
+            doc.line_ending = line_ending;
+        } else {
+            doc.detect_line_ending()
+        }
 
         Ok(doc)
     }
@@ -754,15 +904,26 @@ impl Document {
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
-    /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
-    /// is likewise auto-detected, and will fallback to the default OS line ending.
-    pub fn detect_indent_and_line_ending(&mut self) {
+    /// configured in `languages.toml`, with a fallback to tabs if it isn't specified.
+    pub fn detect_indent(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
             self.language_config()
                 .and_then(|config| config.indent.as_ref())
                 .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
         });
+    }
+
+    /// Detect the line endings used in the file, with a fallback to the default OS line ending.
+    pub fn detect_line_ending(&mut self) {
         self.line_ending = auto_detect_line_ending(&self.text).unwrap_or(DEFAULT_LINE_ENDING);
+    }
+
+    /// Detect the indentation used in the file, or otherwise defaults to the language indentation
+    /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
+    /// is likewise auto-detected, and will fallback to the default OS line ending.
+    pub fn detect_indent_and_line_ending(&mut self) {
+        self.detect_indent();
+        self.detect_line_ending();
     }
 
     /// Reload the document from its path.
@@ -1301,9 +1462,7 @@ impl Document {
 
     /// The width that the tab character is rendered at
     pub fn tab_width(&self) -> usize {
-        self.language_config()
-            .and_then(|config| config.indent.as_ref())
-            .map_or(4, |config| config.tab_width) // fallback to 4 columns
+        self.tab_width
     }
 
     // The width (in spaces) of a level of indentation.
