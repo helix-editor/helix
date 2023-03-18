@@ -702,7 +702,7 @@ impl Application {
                         let docs = self
                             .editor
                             .documents()
-                            .filter(|doc| doc.language_servers().any(|l| l.id() == server_id));
+                            .filter(|doc| doc.supports_language_server(server_id));
 
                         // trigger textDocument/didOpen for docs that are already open
                         for doc in docs {
@@ -969,10 +969,7 @@ impl Application {
                             .editor
                             .documents_mut()
                             .filter_map(|doc| {
-                                if doc
-                                    .language_servers()
-                                    .any(|server| server.id() == server_id)
-                                {
+                                if doc.supports_language_server(server_id) {
                                     doc.clear_diagnostics(server_id);
                                     doc.url()
                                 } else {

@@ -1456,6 +1456,10 @@ impl Document {
         })
     }
 
+    pub fn supports_language_server(&self, id: usize) -> bool {
+        self.language_servers().any(|l| l.id() == id)
+    }
+
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
         self.diff_handle.as_ref()
     }
