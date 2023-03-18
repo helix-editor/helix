@@ -6,7 +6,7 @@ use helix_lsp::{
         NumberOrString,
     },
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
-    OffsetEncoding,
+    Client, OffsetEncoding,
 };
 use serde_json::Value;
 use tokio_stream::StreamExt;
@@ -1028,151 +1028,90 @@ fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Lo
     }
 }
 
-// TODO find a way to reduce boilerplate of all the goto functions, without unnecessary complexity...
-pub fn goto_declaration(cx: &mut Context) {
+fn goto_single_impl<P, F>(cx: &mut Context, feature: LanguageServerFeature, request_provider: P)
+where
+    P: Fn(&Client, lsp::Position, lsp::TextDocumentIdentifier) -> Option<F>,
+    F: Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
+{
     let (view, doc) = current!(cx.editor);
-    let future_offset_encoding = doc
-        .language_servers_with_feature(LanguageServerFeature::GotoDeclaration)
-        .find_map(|language_server| {
-            let offset_encoding = language_server.offset_encoding();
-            let pos = doc.position(view.id, offset_encoding);
-            let future = language_server.goto_declaration(doc.identifier(), pos, None)?;
-            Some((future, offset_encoding))
-        });
-    let (future, offset_encoding) = match future_offset_encoding {
-        Some(future_offset_encoding) => future_offset_encoding,
-        None => {
-            cx.editor
-                .set_error("No language server supports goto-declaration");
-            return;
-        }
-    };
+    if let Some((future, offset_encoding)) =
+        doc.run_on_first_supported_language_server(view.id, feature, |ls, encoding, pos, doc_id| {
+            Some((request_provider(ls, pos, doc_id)?, encoding))
+        })
+    {
+        cx.callback(
+            future,
+            move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
+                let items = to_locations(response);
+                goto_impl(editor, compositor, items, offset_encoding);
+            },
+        );
+    } else {
+        cx.editor.set_error("No language server supports {feature}");
+    }
+}
 
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
-            let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
-        },
+pub fn goto_declaration(cx: &mut Context) {
+    goto_single_impl(
+        cx,
+        LanguageServerFeature::GotoDeclaration,
+        |ls, pos, doc_id| ls.goto_declaration(doc_id, pos, None),
     );
 }
 
 pub fn goto_definition(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    let future_offset_encoding = doc
-        .language_servers_with_feature(LanguageServerFeature::GotoDefinition)
-        .find_map(|language_server| {
-            let offset_encoding = language_server.offset_encoding();
-            let pos = doc.position(view.id, offset_encoding);
-            let future = language_server.goto_definition(doc.identifier(), pos, None)?;
-            Some((future, offset_encoding))
-        });
-    let (future, offset_encoding) = match future_offset_encoding {
-        Some(future_offset_encoding) => future_offset_encoding,
-        None => {
-            cx.editor
-                .set_error("No language server supports goto-definition");
-            return;
-        }
-    };
-
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
-            let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
-        },
+    goto_single_impl(
+        cx,
+        LanguageServerFeature::GotoDefinition,
+        |ls, pos, doc_id| ls.goto_definition(doc_id, pos, None),
     );
 }
 
 pub fn goto_type_definition(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    let future_offset_encoding = doc
-        .language_servers_with_feature(LanguageServerFeature::GotoTypeDefinition)
-        .find_map(|language_server| {
-            let offset_encoding = language_server.offset_encoding();
-            let pos = doc.position(view.id, offset_encoding);
-            let future = language_server.goto_type_definition(doc.identifier(), pos, None)?;
-            Some((future, offset_encoding))
-        });
-    let (future, offset_encoding) = match future_offset_encoding {
-        Some(future_offset_encoding) => future_offset_encoding,
-        None => {
-            cx.editor
-                .set_error("No language server supports goto-type-definition");
-            return;
-        }
-    };
-
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
-            let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
-        },
+    goto_single_impl(
+        cx,
+        LanguageServerFeature::GotoTypeDefinition,
+        |ls, pos, doc_id| ls.goto_type_definition(doc_id, pos, None),
     );
 }
 
 pub fn goto_implementation(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-    let future_offset_encoding = doc
-        .language_servers_with_feature(LanguageServerFeature::GotoImplementation)
-        .find_map(|language_server| {
-            let offset_encoding = language_server.offset_encoding();
-            let pos = doc.position(view.id, offset_encoding);
-            let future = language_server.goto_implementation(doc.identifier(), pos, None)?;
-            Some((future, offset_encoding))
-        });
-    let (future, offset_encoding) = match future_offset_encoding {
-        Some(future_offset_encoding) => future_offset_encoding,
-        None => {
-            cx.editor
-                .set_error("No language server supports goto-implementation");
-            return;
-        }
-    };
-
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
-            let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
-        },
+    goto_single_impl(
+        cx,
+        LanguageServerFeature::GotoImplementation,
+        |ls, pos, doc_id| ls.goto_implementation(doc_id, pos, None),
     );
 }
 
 pub fn goto_reference(cx: &mut Context) {
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
-    let future_offset_encoding = doc
-        .language_servers_with_feature(LanguageServerFeature::GotoReference)
-        .find_map(|language_server| {
-            let offset_encoding = language_server.offset_encoding();
-            let pos = doc.position(view.id, offset_encoding);
-            let future = language_server.goto_reference(
-                doc.identifier(),
-                pos,
-                config.lsp.goto_reference_include_declaration,
-                None,
-            )?;
-            Some((future, offset_encoding))
-        });
-    let (future, offset_encoding) = match future_offset_encoding {
-        Some(future_offset_encoding) => future_offset_encoding,
-        None => {
-            cx.editor
-                .set_error("No language server supports goto-reference");
-            return;
-        }
-    };
-
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<Vec<lsp::Location>>| {
-            let items = response.unwrap_or_default();
-            goto_impl(editor, compositor, items, offset_encoding);
+    if let Some((future, offset_encoding)) = doc.run_on_first_supported_language_server(
+        view.id,
+        LanguageServerFeature::GotoReference,
+        |ls, encoding, pos, doc_id| {
+            Some((
+                ls.goto_reference(
+                    doc_id,
+                    pos,
+                    config.lsp.goto_reference_include_declaration,
+                    None,
+                )?,
+                encoding,
+            ))
         },
-    );
+    ) {
+        cx.callback(
+            future,
+            move |editor, compositor, response: Option<Vec<lsp::Location>>| {
+                let items = response.unwrap_or_default();
+                goto_impl(editor, compositor, items, offset_encoding);
+            },
+        );
+    } else {
+        cx.editor
+            .set_error("No language server supports goto-reference");
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]

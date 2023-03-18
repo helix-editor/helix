@@ -580,7 +580,7 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
-use helix_lsp::lsp;
+use helix_lsp::{lsp, Client, OffsetEncoding};
 use url::Url;
 
 impl Document {
@@ -1458,6 +1458,23 @@ impl Document {
 
     pub fn supports_language_server(&self, id: usize) -> bool {
         self.language_servers().any(|l| l.id() == id)
+    }
+
+    pub fn run_on_first_supported_language_server<T, P>(
+        &self,
+        view_id: ViewId,
+        feature: LanguageServerFeature,
+        request_provider: P,
+    ) -> Option<T>
+    where
+        P: Fn(&Client, OffsetEncoding, lsp::Position, lsp::TextDocumentIdentifier) -> Option<T>,
+    {
+        self.language_servers_with_feature(feature)
+            .find_map(|language_server| {
+                let offset_encoding = language_server.offset_encoding();
+                let pos = self.position(view_id, offset_encoding);
+                request_provider(language_server, offset_encoding, pos, self.identifier())
+            })
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
