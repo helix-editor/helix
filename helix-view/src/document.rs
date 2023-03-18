@@ -1607,7 +1607,7 @@ impl Document {
         &self.diagnostics
     }
 
-    pub fn shown_diagnostics(&self) -> impl Iterator<Item = &Diagnostic> {
+    pub fn shown_diagnostics(&self) -> impl Iterator<Item = &Diagnostic> + DoubleEndedIterator {
         let ls_ids: HashSet<_> = self
             .language_servers_with_feature(LanguageServerFeature::Diagnostics)
             .iter()

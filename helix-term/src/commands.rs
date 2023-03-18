@@ -3076,8 +3076,6 @@ fn goto_prev_diag(cx: &mut Context) {
 
     let diag = doc
         .shown_diagnostics()
-        .collect::<Vec<_>>()
-        .into_iter()
         .rev()
         .find(|diag| diag.range.start < cursor_pos)
         .or_else(|| doc.shown_diagnostics().last());
