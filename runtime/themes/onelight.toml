@@ -1,28 +1,28 @@
 # Author : erasin<erasinoo@gmail.com>
 
 "attribute" = { fg = "yellow" }
-"constructor" = { fg = "brown" }
 "label" = { fg = "cyan" }
 "operator" = { fg = "red" }
 "tag" = { fg = "cyan" }
-"namespace" = { fg = "blue" }
 "special" = { fg = "deep-purple" }
 "property" = { fg = "purple" }
-"module" = { fg = "cyan" }
+"constructor" = { fg = "blue" }
+"namespace" = { fg = "blue" }
+"module" = { fg = "blue" }
 
 "type" = { fg = "gold" }
-"type.builtin" = { fg = "light-blue" }
+"type.builtin" = { fg = "yellow" }
 "type.enum" = { fg = "cyan" }
 "type.enum.variant" = { fg = "cyan" }
 
 "constant" = { fg = "cyan", modifiers = ["bold"] }
 "constant.builtin" = { fg = "deep-purple" }
-"constant.builtin.boolean" = { fg = "deep-purple" }
+"constant.builtin.boolean" = { fg = "purple" }
 "constant.character" = { fg = "green" }
 "constant.character.escape" = { fg = "brown" }
-"constant.numeric" = { fg = "gold" }
-"constant.numeric.integer" = { fg = "gold" }
-"constant.numeric.float" = { fg = "gold" }
+"constant.numeric" = { fg = "brown" }
+"constant.numeric.integer" = { fg = "brown" }
+"constant.numeric.float" = { fg = "brown" }
 
 "string" = { fg = "green" }
 "string.regexp" = { fg = "purple" }
@@ -55,7 +55,7 @@
 "keyword.control.return" = { fg = "deep-purple", modifiers = ["bold"] }
 "keyword.control.exception" = { fg = "purple" }
 "keyword.operator" = { fg = "red" }
-"keyword.directive" = { fg = "purple" }
+"keyword.directive" = { fg = "deep-purple" }
 "keyword.function" = { fg = "purple" }
 "keyword.storage" = { fg = "purple" }
 "keyword.storage.type" = { fg = "purple" }
@@ -82,6 +82,7 @@
 "markup.list.numbered" = { fg = "light-blue" }
 "markup.bold" = { fg = "yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "purple", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link" = { fg = "light-blue" }
 "markup.link.url" = { fg = "cyan", modifiers = ["underlined"] }
 "markup.link.text" = { fg = "light-blue" }
@@ -103,7 +104,7 @@
 "ui.cursor.normal" = { fg = "white", bg = "grey" }
 "ui.cursor.insert" = { fg = "white", bg = "grey" }
 "ui.cursor.select" = { fg = "white", bg = "grey" }
-"ui.cursor.match" = { bg = "light-white", modifiers = ["bold"] }
+"ui.cursor.match" = { bg = "grey-300", modifiers = ["bold"] }
 "ui.cursor.primary" = { fg = "white", bg = "black" }
 "ui.cursor.primary.normal" = { fg = "white", bg = "black" }
 "ui.cursor.primary.insert" = { fg = "red", bg = "black" }
@@ -115,11 +116,11 @@
 "ui.linenr" = { fg = "grey-500" }
 "ui.linenr.selected" = { fg = "black", modifiers = ["bold"] }
 
-"ui.statusline" = { fg = "black", bg = "light-white" }
+"ui.statusline" = { fg = "black", bg = "grey-300" }
 "ui.statusline.inactive" = { fg = "grey", bg = "grey-200" }
-"ui.statusline.normal" = { fg = "light-white", bg = "light-blue" }
-"ui.statusline.insert" = { fg = "light-white", bg = "green" }
-"ui.statusline.select" = { fg = "light-white", bg = "purple" }
+"ui.statusline.normal" = { fg = "grey-300", bg = "light-blue" }
+"ui.statusline.insert" = { fg = "grey-300", bg = "green" }
+"ui.statusline.select" = { fg = "grey-300", bg = "purple" }
 
 "ui.popup" = { fg = "black", bg = "grey-200" }
 "ui.popup.info" = { fg = "black", bg = "grey-200" }
@@ -127,23 +128,25 @@
 "ui.help" = { fg = "black", bg = "grey-200" }
 
 "ui.text" = { fg = "black" }
-"ui.text.focus" = { fg = "red", bg = "light-white", modifiers = ["bold"] }
+"ui.text.focus" = { fg = "red", bg = "grey-300", modifiers = ["bold"] }
 "ui.text.inactive" = { fg = "grey" }
 "ui.text.info" = { fg = "black" }
 
-"ui.virtual" = { fg = "light-white" }
-"ui.virtual.ruler" = { bg = "light-white" }
-"ui.virtual.wrap" = { bg = "light-white" }
-"ui.virtual.whitespace" = { fg = "light-white" }
+"ui.virtual" = { fg = "grey-500" }
+"ui.virtual.ruler" = { bg = "grey-200" }
+"ui.virtual.wrap" = { fg = "grey-500" }
+"ui.virtual.whitespace" = { fg = "grey-300" }
 "ui.virtual.indent-guide" = { fg = "grey-500" }
-"ui.virtual.inlay-hint" = { fg = "grey" }
+"ui.virtual.inlay-hint" = { fg = "grey-500" }
+"ui.virtual.inlay-hint.parameter" = { fg = "grey-500", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.type" = { fg = "grey-500" }
 
-"ui.menu" = { fg = "black", bg = "light-white" }
+"ui.menu" = { fg = "black", bg = "grey-300" }
 "ui.menu.selected" = { fg = "white", bg = "light-blue" }
 "ui.menu.scroll" = { fg = "light-blue", bg = "white" }
 
-"ui.selection" = { bg = "light-white", modifiers = ["dim"] }
-"ui.selection.primary" = { bg = "light-white" }
+"ui.selection" = { bg = "grey-300", modifiers = ["dim"] }
+"ui.selection.primary" = { bg = "grey-300" }
 
 "ui.cursorline.primary" = { fg = "white", bg = "grey-100" }
 "ui.cursorline.secondary" = { fg = "white", bg = "grey-200" }
@@ -151,7 +154,7 @@
 "ui.cursorcolumn.primary" = { fg = "white", bg = "grey-100" }
 "ui.cursorcolumn.secondary" = { fg = "white", bg = "grey-200" }
 
-"ui.highlight" = { bg = "light-white" }
+"ui.highlight" = { bg = "grey-300" }
 
 "diagnostic.info" = { underline = { color = "blue", style = "dotted" } }
 "diagnostic.hint" = { underline = { color = "green", style = "dashed" } }
@@ -167,7 +170,7 @@
 white = "#FAFAFA"
 yellow = "#FF6F00"
 gold = "#D35400"
-brown = "#4E342E"
+brown = "#795548"
 blue = "#0061FF"
 light-blue = "#0091EA"
 red = "#D50000"
@@ -177,8 +180,9 @@ deep-purple = "#651FFF"
 green = "#24A443"
 cyan = "#0086C1"
 black = "#282C34"
-light-white = "#E3E3E3"
 grey = "#5C6370"
-grey-100 = "#F3F3F3"
-grey-200 = "#EDEDED"
 grey-500 = "#9E9E9E"
+grey-400 = "#BDBDBD"
+grey-300 = "#E0E0E0"
+grey-200 = "#EEEEEE"
+grey-100 = "#F2F2F2"

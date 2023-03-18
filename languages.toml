@@ -591,7 +591,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nix"
-source = { git = "https://github.com/cstrahan/tree-sitter-nix", rev = "6b71a810c0acd49b980c50fc79092561f7cee307" }
+source = { git = "https://github.com/nix-community/tree-sitter-nix", rev = "6b71a810c0acd49b980c50fc79092561f7cee307" }
 
 [[language]]
 name = "ruby"
@@ -1317,6 +1317,7 @@ scope = "source.erlang"
 injection-regex = "erl(ang)?"
 file-types = ["erl", "hrl", "app", "rebar.config", "rebar.lock"]
 roots = ["rebar.config"]
+shebangs = ["escript"]
 comment-token = "%%"
 indent = { tab-width = 4, unit = "    " }
 language-server = { command = "erlang_ls" }
@@ -1686,7 +1687,7 @@ source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "c0741320bf
 [[language]]
 name = "v"
 scope = "source.v"
-file-types = ["v", "vv"]
+file-types = ["v", "vv", "vsh"]
 shebangs = ["v run"]
 roots = ["v.mod"]
 language-server = { command = "v", args = ["ls"] }
@@ -1696,7 +1697,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "v"
-source = { git = "https://github.com/vlang/vls", subpath = "tree_sitter_v", rev = "3e8124ea4ab80aa08ec77f03df53f577902a0cdd" }
+source = { git = "https://github.com/vlang/vls", subpath = "tree_sitter_v", rev = "66cf9d3086fb5ecc827cb32c64c5d812ab17d2c6" }
 
 [[language]]
 name = "verilog"

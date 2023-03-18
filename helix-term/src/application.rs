@@ -40,10 +40,7 @@ use anyhow::{Context, Error};
 
 use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
-use {
-    signal_hook::{consts::signal, low_level},
-    signal_hook_tokio::Signals,
-};
+use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
@@ -137,7 +134,7 @@ impl Application {
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout());
+        let backend = CrosstermBackend::new(stdout(), &config.editor);
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
@@ -447,7 +444,32 @@ impl Application {
         match signal {
             signal::SIGTSTP => {
                 self.restore_term().unwrap();
-                low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
+
+                // SAFETY:
+                //
+                // - helix must have permissions to send signals to all processes in its signal
+                //   group, either by already having the requisite permission, or by having the
+                //   user's UID / EUID / SUID match that of the receiving process(es).
+                let res = unsafe {
+                    // A pid of 0 sends the signal to the entire process group, allowing the user to
+                    // regain control of their terminal if the editor was spawned under another process
+                    // (e.g. when running `git commit`).
+                    //
+                    // We have to send SIGSTOP (not SIGTSTP) to the entire process group, because,
+                    // as mentioned above, the terminal will get stuck if `helix` was spawned from
+                    // an external process and that process waits for `helix` to complete. This may
+                    // be an issue with signal-hook-tokio, but the author of signal-hook believes it
+                    // could be a tokio issue instead:
+                    // https://github.com/vorner/signal-hook/issues/132
+                    libc::kill(0, signal::SIGSTOP)
+                };
+
+                if res != 0 {
+                    let err = std::io::Error::last_os_error();
+                    eprintln!("{}", err);
+                    let res = err.raw_os_error().unwrap_or(1);
+                    std::process::exit(res);
+                }
             }
             signal::SIGCONT => {
                 self.claim_term().await.unwrap();
@@ -687,7 +709,16 @@ impl Application {
                                 return;
                             }
                         };
-                        let doc = self.editor.document_by_path_mut(&path);
+                        let doc = self.editor.document_by_path_mut(&path).filter(|doc| {
+                            if let Some(version) = params.version {
+                                if version != doc.version() {
+                                    log::info!("Version ({version}) is out of date for {path:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
+                                    return false;
+                                }
+                            }
+
+                            true
+                        });
 
                         if let Some(doc) = doc {
                             let lang_conf = doc.language_config();
@@ -968,16 +999,19 @@ impl Application {
                         Ok(serde_json::Value::Null)
                     }
                     Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
-                        apply_workspace_edit(
+                        let res = apply_workspace_edit(
                             &mut self.editor,
                             helix_lsp::OffsetEncoding::Utf8,
                             &params.edit,
                         );
 
                         Ok(json!(lsp::ApplyWorkspaceEditResponse {
-                            applied: true,
-                            failure_reason: None,
-                            failed_change: None,
+                            applied: res.is_ok(),
+                            failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
+                            failed_change: res
+                                .as_ref()
+                                .err()
+                                .map(|err| err.failed_change_idx as u32),
                         }))
                     }
                     Ok(MethodCall::WorkspaceFolders) => {
@@ -1013,6 +1047,17 @@ impl Application {
                             })
                             .collect();
                         Ok(json!(result))
+                    }
+                    Ok(MethodCall::RegisterCapability(_params)) => {
+                        log::warn!("Ignoring a client/registerCapability request because dynamic capability registration is not enabled. Please report this upstream to the language server");
+                        // Language Servers based on the `vscode-languageserver-node` library often send
+                        // client/registerCapability even though we do not enable dynamic registration
+                        // for any capabilities. We should send a MethodNotFound JSONRPC error in this
+                        // case but that rejects the registration promise in the server which causes an
+                        // exit. So we work around this by ignoring the request and sending back an OK
+                        // response.
+
+                        Ok(serde_json::Value::Null)
                     }
                 };
 

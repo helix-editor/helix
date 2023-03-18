@@ -230,6 +230,7 @@ We use a similar set of scopes as
     - `numbered`
   - `bold`
   - `italic`
+  - `strikethrough`
   - `link`
     - `url` - URLs pointed to by links
     - `label` - non-URL link references

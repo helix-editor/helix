@@ -805,7 +805,7 @@ impl Document {
         let path = self
             .path()
             .filter(|path| path.exists())
-            .ok_or_else(|| anyhow!("can't find file to reload from"))?
+            .ok_or_else(|| anyhow!("can't find file to reload from {:?}", self.display_name()))?
             .to_owned();
 
         let mut file = std::fs::File::open(&path)?;

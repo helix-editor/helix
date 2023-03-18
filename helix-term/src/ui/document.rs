@@ -287,9 +287,11 @@ pub fn render_text<'t>(
             style_span.0
         };
 
+        let virt = grapheme.is_virtual();
         renderer.draw_grapheme(
             grapheme.grapheme,
             grapheme_style,
+            virt,
             &mut last_line_indent_level,
             &mut is_in_indent_area,
             pos,
@@ -313,6 +315,7 @@ pub struct TextRenderer<'a> {
     pub nbsp: String,
     pub space: String,
     pub tab: String,
+    pub virtual_tab: String,
     pub indent_width: u16,
     pub starting_indent: usize,
     pub draw_indent_guides: bool,
@@ -342,6 +345,7 @@ impl<'a> TextRenderer<'a> {
         } else {
             " ".repeat(tab_width)
         };
+        let virtual_tab = " ".repeat(tab_width);
         let newline = if ws_render.newline() == WhitespaceRenderValue::All {
             ws_chars.newline.into()
         } else {
@@ -370,6 +374,7 @@ impl<'a> TextRenderer<'a> {
             nbsp,
             space,
             tab,
+            virtual_tab,
             whitespace_style: theme.get("ui.virtual.whitespace"),
             indent_width,
             starting_indent: col_offset / indent_width as usize
@@ -392,6 +397,7 @@ impl<'a> TextRenderer<'a> {
         &mut self,
         grapheme: Grapheme,
         mut style: Style,
+        is_virtual: bool,
         last_indent_level: &mut usize,
         is_in_indent_area: &mut bool,
         position: Position,
@@ -405,14 +411,21 @@ impl<'a> TextRenderer<'a> {
         }
 
         let width = grapheme.width();
+        let space = if is_virtual { " " } else { &self.space };
+        let nbsp = if is_virtual { " " } else { &self.nbsp };
+        let tab = if is_virtual {
+            &self.virtual_tab
+        } else {
+            &self.tab
+        };
         let grapheme = match grapheme {
             Grapheme::Tab { width } => {
-                let grapheme_tab_width = char_to_byte_idx(&self.tab, width);
-                &self.tab[..grapheme_tab_width]
+                let grapheme_tab_width = char_to_byte_idx(tab, width);
+                &tab[..grapheme_tab_width]
             }
             // TODO special rendering for other whitespaces?
-            Grapheme::Other { ref g } if g == " " => &self.space,
-            Grapheme::Other { ref g } if g == "\u{00A0}" => &self.nbsp,
+            Grapheme::Other { ref g } if g == " " => space,
+            Grapheme::Other { ref g } if g == "\u{00A0}" => nbsp,
             Grapheme::Other { ref g } => g,
             Grapheme::Newline => &self.newline,
         };

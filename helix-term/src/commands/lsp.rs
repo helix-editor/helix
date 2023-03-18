@@ -32,8 +32,7 @@ use crate::{
 };
 
 use std::{
-    borrow::Cow, cmp::Ordering, collections::BTreeMap, fmt::Write, future::Future, path::PathBuf,
-    sync::Arc,
+    cmp::Ordering, collections::BTreeMap, fmt::Write, future::Future, path::PathBuf, sync::Arc,
 };
 
 /// Gets the language server that is attached to a document, and
@@ -138,15 +137,11 @@ impl ui::menu::Item for PickerDiagnostic {
         // remove background as it is distracting in the picker list
         style.bg = None;
 
-        let code: Cow<'_, str> = self
-            .diag
-            .code
-            .as_ref()
-            .map(|c| match c {
-                NumberOrString::Number(n) => n.to_string().into(),
-                NumberOrString::String(s) => s.as_str().into(),
-            })
-            .unwrap_or_default();
+        let code = match self.diag.code.as_ref() {
+            Some(NumberOrString::Number(n)) => format!(" ({n})"),
+            Some(NumberOrString::String(s)) => format!(" ({s})"),
+            None => String::new(),
+        };
 
         let path = match format {
             DiagnosticsFormat::HideSourcePath => String::new(),
@@ -656,7 +651,7 @@ pub fn code_action(cx: &mut Context) {
                         log::debug!("code action: {:?}", code_action);
                         if let Some(ref workspace_edit) = code_action.edit {
                             log::debug!("edit: {:?}", workspace_edit);
-                            apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                            let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
                         }
 
                         // if code action provides both edit and command first the edit
@@ -762,19 +757,50 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
     }
 }
 
+#[derive(Debug)]
+pub struct ApplyEditError {
+    pub kind: ApplyEditErrorKind,
+    pub failed_change_idx: usize,
+}
+
+#[derive(Debug)]
+pub enum ApplyEditErrorKind {
+    DocumentChanged,
+    FileNotFound,
+    UnknownURISchema,
+    IoError(std::io::Error),
+    // TODO: check edits before applying and propagate failure
+    // InvalidEdit,
+}
+
+impl ToString for ApplyEditErrorKind {
+    fn to_string(&self) -> String {
+        match self {
+            ApplyEditErrorKind::DocumentChanged => "document has changed".to_string(),
+            ApplyEditErrorKind::FileNotFound => "file not found".to_string(),
+            ApplyEditErrorKind::UnknownURISchema => "URI schema not supported".to_string(),
+            ApplyEditErrorKind::IoError(err) => err.to_string(),
+        }
+    }
+}
+
+///TODO make this transactional (and set failureMode to transactional)
 pub fn apply_workspace_edit(
     editor: &mut Editor,
     offset_encoding: OffsetEncoding,
     workspace_edit: &lsp::WorkspaceEdit,
-) {
-    let mut apply_edits = |uri: &helix_lsp::Url, text_edits: Vec<lsp::TextEdit>| {
+) -> Result<(), ApplyEditError> {
+    let mut apply_edits = |uri: &helix_lsp::Url,
+                           version: Option<i32>,
+                           text_edits: Vec<lsp::TextEdit>|
+     -> Result<(), ApplyEditErrorKind> {
         let path = match uri.to_file_path() {
             Ok(path) => path,
             Err(_) => {
                 let err = format!("unable to convert URI to filepath: {}", uri);
                 log::error!("{}", err);
                 editor.set_error(err);
-                return;
+                return Err(ApplyEditErrorKind::UnknownURISchema);
             }
         };
 
@@ -785,11 +811,19 @@ pub fn apply_workspace_edit(
                 let err = format!("failed to open document: {}: {}", uri, err);
                 log::error!("{}", err);
                 editor.set_error(err);
-                return;
+                return Err(ApplyEditErrorKind::FileNotFound);
             }
         };
 
         let doc = doc_mut!(editor, &doc_id);
+        if let Some(version) = version {
+            if version != doc.version() {
+                let err = format!("outdated workspace edit for {path:?}");
+                log::error!("{err}, expected {} but got {version}", doc.version());
+                editor.set_error(err);
+                return Err(ApplyEditErrorKind::DocumentChanged);
+            }
+        }
 
         // Need to determine a view for apply/append_changes_to_history
         let selections = doc.selections();
@@ -813,31 +847,13 @@ pub fn apply_workspace_edit(
         let view = view_mut!(editor, view_id);
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view);
+        Ok(())
     };
-
-    if let Some(ref changes) = workspace_edit.changes {
-        log::debug!("workspace changes: {:?}", changes);
-        for (uri, text_edits) in changes {
-            let text_edits = text_edits.to_vec();
-            apply_edits(uri, text_edits)
-        }
-        return;
-        // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
-        // TODO: find some example that uses workspace changes, and test it
-        // for (url, edits) in changes.iter() {
-        //     let file_path = url.origin().ascii_serialization();
-        //     let file_path = std::path::PathBuf::from(file_path);
-        //     let file = std::fs::File::open(file_path).unwrap();
-        //     let mut text = Rope::from_reader(file).unwrap();
-        //     let transaction = edits_to_changes(&text, edits);
-        //     transaction.apply(&mut text);
-        // }
-    }
 
     if let Some(ref document_changes) = workspace_edit.document_changes {
         match document_changes {
             lsp::DocumentChanges::Edits(document_edits) => {
-                for document_edit in document_edits {
+                for (i, document_edit) in document_edits.iter().enumerate() {
                     let edits = document_edit
                         .edits
                         .iter()
@@ -849,15 +865,26 @@ pub fn apply_workspace_edit(
                         })
                         .cloned()
                         .collect();
-                    apply_edits(&document_edit.text_document.uri, edits);
+                    apply_edits(
+                        &document_edit.text_document.uri,
+                        document_edit.text_document.version,
+                        edits,
+                    )
+                    .map_err(|kind| ApplyEditError {
+                        kind,
+                        failed_change_idx: i,
+                    })?;
                 }
             }
             lsp::DocumentChanges::Operations(operations) => {
                 log::debug!("document changes - operations: {:?}", operations);
-                for operation in operations {
+                for (i, operation) in operations.iter().enumerate() {
                     match operation {
                         lsp::DocumentChangeOperation::Op(op) => {
-                            apply_document_resource_op(op).unwrap();
+                            apply_document_resource_op(op).map_err(|io| ApplyEditError {
+                                kind: ApplyEditErrorKind::IoError(io),
+                                failed_change_idx: i,
+                            })?;
                         }
 
                         lsp::DocumentChangeOperation::Edit(document_edit) => {
@@ -872,13 +899,36 @@ pub fn apply_workspace_edit(
                                 })
                                 .cloned()
                                 .collect();
-                            apply_edits(&document_edit.text_document.uri, edits);
+                            apply_edits(
+                                &document_edit.text_document.uri,
+                                document_edit.text_document.version,
+                                edits,
+                            )
+                            .map_err(|kind| ApplyEditError {
+                                kind,
+                                failed_change_idx: i,
+                            })?;
                         }
                     }
                 }
             }
         }
+
+        return Ok(());
     }
+
+    if let Some(ref changes) = workspace_edit.changes {
+        log::debug!("workspace changes: {:?}", changes);
+        for (i, (uri, text_edits)) in changes.iter().enumerate() {
+            let text_edits = text_edits.to_vec();
+            apply_edits(uri, None, text_edits).map_err(|kind| ApplyEditError {
+                kind,
+                failed_change_idx: i,
+            })?;
+        }
+    }
+
+    Ok(())
 }
 
 fn goto_impl(
@@ -1302,7 +1352,9 @@ pub fn rename_symbol(cx: &mut Context) {
                         }
                     };
                 match block_on(future) {
-                    Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
+                    Ok(edits) => {
+                        let _ = apply_workspace_edit(cx.editor, offset_encoding, &edits);
+                    }
                     Err(err) => cx.editor.set_error(err.to_string()),
                 }
             },
@@ -1315,6 +1367,12 @@ pub fn rename_symbol(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
+
+    if !language_server.supports_rename() {
+        cx.editor
+            .set_error("Language server does not support symbol renaming");
+        return;
+    }
 
     let pos = doc.position(view.id, offset_encoding);
 
