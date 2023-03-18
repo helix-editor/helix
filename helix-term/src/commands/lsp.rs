@@ -353,7 +353,6 @@ pub fn symbol_picker(cx: &mut Context) {
 
     let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentSymbols)
-        .iter()
         .filter_map(|ls| {
             let request = ls.document_symbols(doc.identifier())?;
             Some((request, ls.offset_encoding(), doc.identifier()))
@@ -420,7 +419,6 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         let doc = doc!(editor);
         let mut futures: FuturesUnordered<_> = doc
             .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
-            .iter()
             .filter_map(|ls| Some((ls.workspace_symbols(pattern.clone())?, ls.offset_encoding())))
             .map(|(request, offset_encoding)| async move {
                 let json = request.await?;
@@ -581,7 +579,6 @@ pub fn code_action(cx: &mut Context) {
 
     let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::CodeAction)
-        .iter()
         // TODO this should probably already been filtered in something like "language_servers_with_feature"
         .filter_map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
@@ -1034,15 +1031,15 @@ fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Lo
 // TODO find a way to reduce boilerplate of all the goto functions, without unnecessary complexity...
 pub fn goto_declaration(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let (future, offset_encoding) = match doc
+    let future_offset_encoding = doc
         .language_servers_with_feature(LanguageServerFeature::GotoDeclaration)
-        .iter()
         .find_map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
             let pos = doc.position(view.id, offset_encoding);
             let future = language_server.goto_declaration(doc.identifier(), pos, None)?;
             Some((future, offset_encoding))
-        }) {
+        });
+    let (future, offset_encoding) = match future_offset_encoding {
         Some(future_offset_encoding) => future_offset_encoding,
         None => {
             cx.editor
@@ -1062,15 +1059,15 @@ pub fn goto_declaration(cx: &mut Context) {
 
 pub fn goto_definition(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let (future, offset_encoding) = match doc
+    let future_offset_encoding = doc
         .language_servers_with_feature(LanguageServerFeature::GotoDefinition)
-        .iter()
         .find_map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
             let pos = doc.position(view.id, offset_encoding);
             let future = language_server.goto_definition(doc.identifier(), pos, None)?;
             Some((future, offset_encoding))
-        }) {
+        });
+    let (future, offset_encoding) = match future_offset_encoding {
         Some(future_offset_encoding) => future_offset_encoding,
         None => {
             cx.editor
@@ -1090,15 +1087,15 @@ pub fn goto_definition(cx: &mut Context) {
 
 pub fn goto_type_definition(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let (future, offset_encoding) = match doc
+    let future_offset_encoding = doc
         .language_servers_with_feature(LanguageServerFeature::GotoTypeDefinition)
-        .iter()
         .find_map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
             let pos = doc.position(view.id, offset_encoding);
             let future = language_server.goto_type_definition(doc.identifier(), pos, None)?;
             Some((future, offset_encoding))
-        }) {
+        });
+    let (future, offset_encoding) = match future_offset_encoding {
         Some(future_offset_encoding) => future_offset_encoding,
         None => {
             cx.editor
@@ -1118,15 +1115,15 @@ pub fn goto_type_definition(cx: &mut Context) {
 
 pub fn goto_implementation(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let (future, offset_encoding) = match doc
+    let future_offset_encoding = doc
         .language_servers_with_feature(LanguageServerFeature::GotoImplementation)
-        .iter()
         .find_map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
             let pos = doc.position(view.id, offset_encoding);
             let future = language_server.goto_implementation(doc.identifier(), pos, None)?;
             Some((future, offset_encoding))
-        }) {
+        });
+    let (future, offset_encoding) = match future_offset_encoding {
         Some(future_offset_encoding) => future_offset_encoding,
         None => {
             cx.editor
@@ -1147,9 +1144,8 @@ pub fn goto_implementation(cx: &mut Context) {
 pub fn goto_reference(cx: &mut Context) {
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
-    let (future, offset_encoding) = match doc
+    let future_offset_encoding = doc
         .language_servers_with_feature(LanguageServerFeature::GotoReference)
-        .iter()
         .find_map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
             let pos = doc.position(view.id, offset_encoding);
@@ -1160,7 +1156,8 @@ pub fn goto_reference(cx: &mut Context) {
                 None,
             )?;
             Some((future, offset_encoding))
-        }) {
+        });
+    let (future, offset_encoding) = match future_offset_encoding {
         Some(future_offset_encoding) => future_offset_encoding,
         None => {
             cx.editor
@@ -1192,13 +1189,14 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
     let (view, doc) = current!(cx.editor);
 
     // TODO merge multiple language server signature help into one instead of just taking the first language server that supports it
-    let future = match doc
+    let future = doc
         .language_servers_with_feature(LanguageServerFeature::SignatureHelp)
-        .iter()
         .find_map(|language_server| {
             let pos = doc.position(view.id, language_server.offset_encoding());
             language_server.text_document_signature_help(doc.identifier(), pos, None)
-        }) {
+        });
+
+    let future = match future {
         Some(future) => future.boxed(),
         None => {
             // Do not show the message if signature help was invoked
@@ -1328,7 +1326,6 @@ pub fn hover(cx: &mut Context) {
     // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
     let request = doc
         .language_servers_with_feature(LanguageServerFeature::Hover)
-        .iter()
         .find_map(|language_server| {
             let pos = doc.position(view.id, language_server.offset_encoding());
             language_server.text_document_hover(doc.identifier(), pos, None)
@@ -1436,7 +1433,6 @@ pub fn rename_symbol(cx: &mut Context) {
                 let (view, doc) = current!(cx.editor);
                 let request = doc
                     .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
-                    .iter()
                     .find_map(|language_server| {
                         if let Some(language_server_id) = language_server_id {
                             if language_server.id() != language_server_id {
@@ -1475,7 +1471,6 @@ pub fn rename_symbol(cx: &mut Context) {
 
     let prepare_rename_request = doc
         .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
-        .iter()
         .find_map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
             let pos = doc.position(view.id, offset_encoding);
@@ -1516,17 +1511,17 @@ pub fn rename_symbol(cx: &mut Context) {
 
 pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let (future, offset_encoding) = match doc
+    let future_offset_encoding = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentHighlight)
-        .iter()
         .find_map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
             let pos = doc.position(view.id, offset_encoding);
             let future =
                 language_server.text_document_document_highlight(doc.identifier(), pos, None)?;
             Some((future, offset_encoding))
-        }) {
-        Some(future) => future,
+        });
+    let (future, offset_encoding) = match future_offset_encoding {
+        Some(future_offset_encoding) => future_offset_encoding,
         None => {
             cx.editor
                 .set_error("No language server supports document-highlight");
@@ -1587,8 +1582,8 @@ fn compute_inlay_hints_for_view(
     let view_id = view.id;
     let doc_id = view.doc;
 
-    let language_servers = doc.language_servers_with_feature(LanguageServerFeature::InlayHints);
-    let language_server = language_servers.iter().find(|language_server| {
+    let mut language_servers = doc.language_servers_with_feature(LanguageServerFeature::InlayHints);
+    let language_server = language_servers.find(|language_server| {
         matches!(
             language_server.capabilities().inlay_hint_provider,
             Some(

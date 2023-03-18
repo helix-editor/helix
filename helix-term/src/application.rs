@@ -699,9 +699,10 @@ impl Application {
                             tokio::spawn(language_server.did_change_configuration(config.clone()));
                         }
 
-                        let docs = self.editor.documents().filter(|doc| {
-                            doc.language_servers().iter().any(|l| l.id() == server_id)
-                        });
+                        let docs = self
+                            .editor
+                            .documents()
+                            .filter(|doc| doc.language_servers().any(|l| l.id() == server_id));
 
                         // trigger textDocument/didOpen for docs that are already open
                         for doc in docs {
@@ -970,7 +971,6 @@ impl Application {
                             .filter_map(|doc| {
                                 if doc
                                     .language_servers()
-                                    .iter()
                                     .any(|server| server.id() == server_id)
                                 {
                                     doc.clear_diagnostics(server_id);

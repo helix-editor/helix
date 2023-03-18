@@ -16,7 +16,7 @@ use slotmap::{DefaultKey as LayerId, HopSlotMap};
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     fmt::{self, Display},
     hash::{Hash, Hasher},
     mem::{replace, transmute},
@@ -26,7 +26,7 @@ use std::{
 };
 
 use once_cell::sync::{Lazy, OnceCell};
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeSeq, Deserialize, Serialize};
 
 use helix_loader::grammar::{get_language, load_runtime_file};
 
@@ -110,8 +110,13 @@ pub struct LanguageConfiguration {
     #[serde(skip)]
     pub(crate) highlight_config: OnceCell<Option<Arc<HighlightConfiguration>>>,
     // tags_config OnceCell<> https://github.com/tree-sitter/tree-sitter/pull/583
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub language_servers: Vec<LanguageServerFeatureConfiguration>,
+    #[serde(
+        default,
+        skip_serializing_if = "HashMap::is_empty",
+        serialize_with = "serialize_lang_features",
+        deserialize_with = "deserialize_lang_features"
+    )]
+    pub language_servers: HashMap<String, LanguageServerFeatures>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub indent: Option<IndentationConfiguration>,
 
@@ -211,7 +216,7 @@ impl<'de> Deserialize<'de> for FileType {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "kebab-case")]
 pub enum LanguageServerFeature {
     Format,
@@ -261,16 +266,79 @@ impl Display for LanguageServerFeature {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged, rename_all = "kebab-case", deny_unknown_fields)]
-pub enum LanguageServerFeatureConfiguration {
+enum LanguageServerFeatureConfiguration {
     #[serde(rename_all = "kebab-case")]
     Features {
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        only_features: Vec<LanguageServerFeature>,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        except_features: Vec<LanguageServerFeature>,
+        #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+        only_features: HashSet<LanguageServerFeature>,
+        #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+        except_features: HashSet<LanguageServerFeature>,
         name: String,
     },
     Simple(String),
+}
+
+#[derive(Debug, Default)]
+pub struct LanguageServerFeatures {
+    pub only: HashSet<LanguageServerFeature>,
+    pub excluded: HashSet<LanguageServerFeature>,
+}
+
+impl LanguageServerFeatures {
+    pub fn has_feature(&self, feature: LanguageServerFeature) -> bool {
+        self.only.is_empty() || self.only.contains(&feature) && !self.excluded.contains(&feature)
+    }
+}
+
+fn deserialize_lang_features<'de, D>(
+    deserializer: D,
+) -> Result<HashMap<String, LanguageServerFeatures>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw: Vec<LanguageServerFeatureConfiguration> = Deserialize::deserialize(deserializer)?;
+    let res = raw
+        .into_iter()
+        .map(|config| match config {
+            LanguageServerFeatureConfiguration::Simple(name) => {
+                (name, LanguageServerFeatures::default())
+            }
+            LanguageServerFeatureConfiguration::Features {
+                only_features,
+                except_features,
+                name,
+            } => (
+                name,
+                LanguageServerFeatures {
+                    only: only_features,
+                    excluded: except_features,
+                },
+            ),
+        })
+        .collect();
+    Ok(res)
+}
+fn serialize_lang_features<S>(
+    map: &HashMap<String, LanguageServerFeatures>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let mut serializer = serializer.serialize_seq(Some(map.len()))?;
+    for (name, features) in map {
+        let features = if features.only.is_empty() && features.excluded.is_empty() {
+            LanguageServerFeatureConfiguration::Simple(name.to_owned())
+        } else {
+            LanguageServerFeatureConfiguration::Features {
+                only_features: features.only.clone(),
+                except_features: features.excluded.clone(),
+                name: name.to_owned(),
+            }
+        };
+        serializer.serialize_element(&features)?;
+    }
+    serializer.end()
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -648,15 +716,6 @@ pub struct SoftWrap {
     pub wrap_indicator: Option<String>,
     /// Softwrap at `text_width` instead of viewport width if it is shorter
     pub wrap_at_text_width: Option<bool>,
-}
-
-impl LanguageServerFeatureConfiguration {
-    pub fn name(&self) -> &String {
-        match self {
-            LanguageServerFeatureConfiguration::Simple(name) => name,
-            LanguageServerFeatureConfiguration::Features { name, .. } => name,
-        }
-    }
 }
 
 // Expose loader as Lazy<> global since it's always static?

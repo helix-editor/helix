@@ -689,12 +689,10 @@ impl Registry {
     ) -> Result<Vec<Arc<Client>>> {
         language_config
             .language_servers
-            .iter()
-            .filter_map(|config| {
-                let name = config.name().clone();
-
+            .keys()
+            .filter_map(|name| {
                 #[allow(clippy::map_entry)]
-                if self.inner.contains_key(&name) {
+                if self.inner.contains_key(name) {
                     let client = match self.start_client(
                         name.clone(),
                         language_config,
@@ -705,7 +703,10 @@ impl Registry {
                         Ok(client) => client,
                         error => return Some(error),
                     };
-                    let old_clients = self.inner.insert(name, vec![client.clone()]).unwrap();
+                    let old_clients = self
+                        .inner
+                        .insert(name.clone(), vec![client.clone()])
+                        .unwrap();
 
                     // TODO what if there are different language servers for different workspaces,
                     // I think the language servers will be stopped without being restarted, which is not intended
@@ -742,9 +743,8 @@ impl Registry {
     ) -> Result<Vec<Arc<Client>>> {
         language_config
             .language_servers
-            .iter()
-            .map(|features| {
-                let name = features.name();
+            .keys()
+            .map(|name| {
                 if let Some(clients) = self.inner.get_mut(name) {
                     if let Some((_, client)) = clients.iter_mut().enumerate().find(|(i, client)| {
                         client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
@@ -759,7 +759,7 @@ impl Registry {
                     root_dirs,
                     enable_snippets,
                 )?;
-                let clients = self.inner.entry(features.name().clone()).or_default();
+                let clients = self.inner.entry(name.clone()).or_default();
                 clients.push(client.clone());
                 Ok(client)
             })

@@ -202,11 +202,10 @@ fn render_lsp_spinner<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let language_servers = context.doc.language_servers();
+    let language_server = context.doc.language_servers().next();
     write(
         context,
-        language_servers
-            .first()
+        language_server
             .and_then(|srv| {
                 context
                     .spinners

@@ -689,7 +689,7 @@ pub struct WhitespaceCharacters {
 impl Default for WhitespaceCharacters {
     fn default() -> Self {
         Self {
-            space: '·',    // U+00B7
+            space: '·',   // U+00B7
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
@@ -1129,7 +1129,8 @@ impl Editor {
 
         if let Some(language_servers) = language_servers {
             // only spawn new lang servers if the servers aren't the same
-            let doc_language_servers = doc.language_servers();
+            // TODO simplify?
+            let doc_language_servers = doc.language_servers().collect::<Vec<_>>();
             let spawn_new_servers = language_servers.len() != doc_language_servers.len()
                 || language_servers
                     .iter()

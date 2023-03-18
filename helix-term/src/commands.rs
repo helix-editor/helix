@@ -3235,7 +3235,6 @@ pub mod insert {
         let doc = doc_mut!(cx.editor);
         let trigger_completion = doc
             .language_servers_with_feature(LanguageServerFeature::Completion)
-            .iter()
             .any(|ls| {
                 let capabilities = ls.capabilities();
 
@@ -3264,7 +3263,6 @@ pub mod insert {
         // TODO support multiple language servers (not just the first that is found)
         let future = doc
             .language_servers_with_feature(LanguageServerFeature::SignatureHelp)
-            .iter()
             .find_map(|ls| {
                 let capabilities = ls.capabilities();
 
@@ -4067,10 +4065,8 @@ fn format_selections(cx: &mut Context) {
             .set_error("format_selections only supports a single selection for now");
         return;
     }
-
-    let (future, offset_encoding) = match doc
+    let future_offset_encoding = doc
         .language_servers_with_feature(LanguageServerFeature::Format)
-        .iter()
         .find_map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
             let ranges: Vec<lsp::Range> = doc
@@ -4091,7 +4087,9 @@ fn format_selections(cx: &mut Context) {
                 None,
             )?;
             Some((future, offset_encoding))
-        }) {
+        });
+
+    let (future, offset_encoding) = match future_offset_encoding {
         Some(future_offset_encoding) => future_offset_encoding,
         None => {
             cx.editor
@@ -4247,7 +4245,6 @@ pub fn completion(cx: &mut Context) {
 
     let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::Completion)
-        .iter()
         // TODO this should probably already been filtered in something like "language_servers_with_feature"
         .filter_map(|language_server| {
             let language_server_id = language_server.id();
