@@ -407,20 +407,7 @@ impl Explorer {
         surface: &mut Surface,
         cx: &mut Context,
     ) {
-        let title_style = cx.editor.theme.get("ui.text");
-        let title_style = if self.is_focus() {
-            title_style.add_modifier(Modifier::BOLD)
-        } else {
-            title_style
-        };
-        surface.set_stringn(
-            area.x,
-            area.y,
-            "Explorer: press ? for help",
-            area.width.into(),
-            title_style,
-        );
-        self.tree.render(area.clip_top(1), prompt_area, surface, cx);
+        self.tree.render(area, prompt_area, surface, cx);
     }
 
     fn render_embed(
@@ -473,6 +460,24 @@ impl Explorer {
                 ExplorerPosition::Right => area.clip_left(1),
             };
             surface.clear_with(area, statusline);
+
+            let title_style = cx.editor.theme.get("ui.text");
+            let title_style = if self.is_focus() {
+                title_style.add_modifier(Modifier::BOLD)
+            } else {
+                title_style
+            };
+            surface.set_stringn(
+                area.x,
+                area.y,
+                if self.is_focus() {
+                    " EXPLORER: press ? for help"
+                } else {
+                    " EXPLORER"
+                },
+                area.width.into(),
+                title_style,
+            );
         }
 
         if self.is_focus() && self.show_help {
