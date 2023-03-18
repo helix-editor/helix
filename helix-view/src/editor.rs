@@ -48,7 +48,7 @@ use helix_core::{
 };
 use helix_core::{Position, Selection};
 use helix_dap as dap;
-use helix_lsp::{lsp, OffsetEncoding};
+use helix_lsp::lsp;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 

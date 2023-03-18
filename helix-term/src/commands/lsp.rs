@@ -1130,7 +1130,7 @@ pub fn goto_implementation(cx: &mut Context) {
         Some(future_offset_encoding) => future_offset_encoding,
         None => {
             cx.editor
-                .set_error("no language server supports goto-implementation");
+                .set_error("No language server supports goto-implementation");
             return;
         }
     };
@@ -1164,7 +1164,7 @@ pub fn goto_reference(cx: &mut Context) {
         Some(future_offset_encoding) => future_offset_encoding,
         None => {
             cx.editor
-                .set_error("language server supports goto-reference");
+                .set_error("No language server supports goto-reference");
             return;
         }
     };
