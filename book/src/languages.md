@@ -140,10 +140,14 @@ config = { format = { "semicolons" = "insert", "insertSpaceBeforeFunctionParenth
 ### Configuring Language Servers for a language
 
 The `language-servers` attribute in a language tells helix which language servers are used for this language.
+
 They have to be defined in the `[language-server]` table as described in the previous section.
+
 Different languages can use the same language server instance, e.g. `typescript-language-server` is used for javascript, jsx, tsx and typescript by default.
+
 In case multiple language servers are specified in the `language-servers` attribute of a `language`,
 it's often useful to only enable/disable certain language-server features for these language servers.
+
 For example `efm-lsp-prettier` of the previous example is used only with a formatting command `prettier`,
 so everything else should be handled by the `typescript-language-server` (which is configured by default)
 The language configuration for typescript could look like this:
@@ -162,12 +166,12 @@ name = "typescript"
 language-servers = [ { name = "typescript-language-server", except-features = [ "format" ] }, "efm-lsp-prettier" ]
 ```
 
-Each requested LSP feature is priorized in the order of the `language-servers` array.
+Each requested LSP feature is prioritized in the order of the `language-servers` array.
 For example the first `goto-definition` supported language server (in this case `typescript-language-server`) will be taken for the relevant LSP request (command `goto_definition`).
 If no `except-features` or `only-features` is given all features for the language server are enabled.
 If a language server itself doesn't support a feature the next language server array entry will be tried (and so on).
 
-The list of supported features are:
+The list of supported features is:
 
 - `format`
 - `goto-definition`
