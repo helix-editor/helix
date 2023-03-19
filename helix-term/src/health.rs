@@ -194,10 +194,10 @@ pub fn languages_all() -> std::io::Result<()> {
 
         // TODO multiple language servers (check binary for each supported language server, not just the first)
 
-        let lsp = lang.language_servers.keys().next().and_then(|ls_name| {
+        let lsp = lang.language_servers.first().and_then(|ls| {
             syn_loader_conf
                 .language_server
-                .get(ls_name)
+                .get(&ls.name)
                 .map(|config| config.command.clone())
         });
         check_binary(lsp);
@@ -271,10 +271,10 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     // TODO multiple language servers
     probe_protocol(
         "language server",
-        lang.language_servers.keys().next().and_then(|ls_name| {
+        lang.language_servers.first().and_then(|ls| {
             syn_loader_conf
                 .language_server
-                .get(ls_name)
+                .get(&ls.name)
                 .map(|config| config.command.clone())
         }),
     )?;

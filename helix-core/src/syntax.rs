@@ -112,11 +112,11 @@ pub struct LanguageConfiguration {
     // tags_config OnceCell<> https://github.com/tree-sitter/tree-sitter/pull/583
     #[serde(
         default,
-        skip_serializing_if = "HashMap::is_empty",
+        skip_serializing_if = "Vec::is_empty",
         serialize_with = "serialize_lang_features",
         deserialize_with = "deserialize_lang_features"
     )]
-    pub language_servers: HashMap<String, LanguageServerFeatures>,
+    pub language_servers: Vec<LanguageServerFeatures>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub indent: Option<IndentationConfiguration>,
 
@@ -282,19 +282,20 @@ enum LanguageServerFeatureConfiguration {
 
 #[derive(Debug, Default)]
 pub struct LanguageServerFeatures {
+    pub name: String,
     pub only: HashSet<LanguageServerFeature>,
     pub excluded: HashSet<LanguageServerFeature>,
 }
 
 impl LanguageServerFeatures {
     pub fn has_feature(&self, feature: LanguageServerFeature) -> bool {
-        self.only.is_empty() || self.only.contains(&feature) && !self.excluded.contains(&feature)
+        (self.only.is_empty() || self.only.contains(&feature)) && !self.excluded.contains(&feature)
     }
 }
 
 fn deserialize_lang_features<'de, D>(
     deserializer: D,
-) -> Result<HashMap<String, LanguageServerFeatures>, D::Error>
+) -> Result<Vec<LanguageServerFeatures>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -302,40 +303,39 @@ where
     let res = raw
         .into_iter()
         .map(|config| match config {
-            LanguageServerFeatureConfiguration::Simple(name) => {
-                (name, LanguageServerFeatures::default())
-            }
+            LanguageServerFeatureConfiguration::Simple(name) => LanguageServerFeatures {
+                name,
+                ..Default::default()
+            },
             LanguageServerFeatureConfiguration::Features {
                 only_features,
                 except_features,
                 name,
-            } => (
+            } => LanguageServerFeatures {
                 name,
-                LanguageServerFeatures {
-                    only: only_features,
-                    excluded: except_features,
-                },
-            ),
+                only: only_features,
+                excluded: except_features,
+            },
         })
         .collect();
     Ok(res)
 }
 fn serialize_lang_features<S>(
-    map: &HashMap<String, LanguageServerFeatures>,
+    map: &Vec<LanguageServerFeatures>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
     let mut serializer = serializer.serialize_seq(Some(map.len()))?;
-    for (name, features) in map {
+    for features in map {
         let features = if features.only.is_empty() && features.excluded.is_empty() {
-            LanguageServerFeatureConfiguration::Simple(name.to_owned())
+            LanguageServerFeatureConfiguration::Simple(features.name.to_owned())
         } else {
             LanguageServerFeatureConfiguration::Features {
                 only_features: features.only.clone(),
                 except_features: features.excluded.clone(),
-                name: name.to_owned(),
+                name: features.name.to_owned(),
             }
         };
         serializer.serialize_element(&features)?;

@@ -689,7 +689,7 @@ pub struct WhitespaceCharacters {
 impl Default for WhitespaceCharacters {
     fn default() -> Self {
         Self {
-            space: '·',   // U+00B7
+            space: '·',    // U+00B7
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
@@ -1103,9 +1103,9 @@ impl Editor {
         if !self.config().lsp.enable {
             return None;
         }
-
         // if doc doesn't have a URL it's a scratch buffer, ignore it
-        let doc = self.document(doc_id)?;
+        let doc = self.documents.get_mut(&doc_id)?;
+        let doc_url = doc.url()?;
         let (lang, path) = (doc.language.clone(), doc.path().cloned());
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
@@ -1124,37 +1124,37 @@ impl Editor {
                 .ok()
         });
 
-        let doc = self.document_mut(doc_id)?;
-        let doc_url = doc.url()?;
-
         if let Some(language_servers) = language_servers {
-            // only spawn new lang servers if the servers aren't the same
-            // TODO simplify?
-            let doc_language_servers = doc.language_servers().collect::<Vec<_>>();
-            let spawn_new_servers = language_servers.len() != doc_language_servers.len()
-                || language_servers
-                    .iter()
-                    .zip(doc_language_servers.iter())
-                    .any(|(l, dl)| l.id() != dl.id());
-            if spawn_new_servers {
-                for doc_language_server in doc_language_servers {
-                    tokio::spawn(doc_language_server.text_document_did_close(doc.identifier()));
-                }
+            let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
-                let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
+            // only spawn new language servers if the servers aren't the same
 
-                for language_server in &language_servers {
-                    // TODO: this now races with on_init code if the init happens too quickly
-                    tokio::spawn(language_server.text_document_did_open(
-                        doc_url.clone(),
-                        doc.version(),
-                        doc.text(),
-                        language_id.clone(),
-                    ));
-                }
+            let doc_language_servers_not_in_registry =
+                doc.language_servers.iter().filter(|(name, doc_ls)| {
+                    !language_servers.contains_key(*name)
+                        || language_servers[*name].id() != doc_ls.id()
+                });
 
-                doc.set_language_servers(language_servers);
+            for (_, language_server) in doc_language_servers_not_in_registry {
+                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
             }
+
+            let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
+                !doc.language_servers.contains_key(*name)
+                    || doc.language_servers[*name].id() != ls.id()
+            });
+
+            for (_, language_server) in language_servers_not_in_doc {
+                // TODO: this now races with on_init code if the init happens too quickly
+                tokio::spawn(language_server.text_document_did_open(
+                    doc_url.clone(),
+                    doc.version(),
+                    doc.text(),
+                    language_id.clone(),
+                ));
+            }
+
+            doc.language_servers = language_servers;
         }
         Some(())
     }

@@ -180,7 +180,7 @@ pub struct Document {
     pub(crate) modified_since_accessed: bool,
 
     diagnostics: Vec<Diagnostic>,
-    language_servers: Vec<Arc<helix_lsp::Client>>,
+    pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
 
     diff_handle: Option<DiffHandle>,
     version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
@@ -580,7 +580,7 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
-use helix_lsp::{lsp, Client, OffsetEncoding};
+use helix_lsp::{lsp, Client, LanguageServerName, OffsetEncoding};
 use url::Url;
 
 impl Document {
@@ -616,7 +616,7 @@ impl Document {
             last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
             modified_since_accessed: false,
-            language_servers: Vec::new(),
+            language_servers: HashMap::new(),
             diff_handle: None,
             config,
             version_control_head: None,
@@ -850,7 +850,7 @@ impl Document {
                 text: text.clone(),
             };
 
-            for language_server in language_servers {
+            for (_, language_server) in language_servers {
                 if !language_server.is_initialized() {
                     return Ok(event);
                 }
@@ -1004,11 +1004,6 @@ impl Document {
             .ok_or_else(|| anyhow!("invalid language id: {}", language_id))?;
         self.set_language(Some(language_config), Some(config_loader));
         Ok(())
-    }
-
-    /// Set the LSP.
-    pub fn set_language_servers(&mut self, language_servers: Vec<Arc<helix_lsp::Client>>) {
-        self.language_servers = language_servers;
     }
 
     /// Select text within the [`Document`].
@@ -1437,16 +1432,17 @@ impl Document {
     }
 
     pub fn language_servers(&self) -> impl Iterator<Item = &helix_lsp::Client> {
-        self.language_servers
-            .iter()
-            .filter_map(|l| if l.is_initialized() { Some(&**l) } else { None })
+        self.language_servers.values().filter_map(|l| {
+            if l.is_initialized() {
+                Some(&**l)
+            } else {
+                None
+            }
+        })
     }
 
     pub fn remove_language_server_by_name(&mut self, name: &str) -> Option<Arc<Client>> {
-        match self.language_servers.iter().position(|l| l.name() == name) {
-            Some(index) => Some(self.language_servers.remove(index)),
-            None => None,
-        }
+        self.language_servers.remove(name)
     }
 
     // TODO filter also based on LSP capabilities?
@@ -1454,12 +1450,15 @@ impl Document {
         &self,
         feature: LanguageServerFeature,
     ) -> impl Iterator<Item = &helix_lsp::Client> {
-        self.language_servers().filter(move |server| {
-            self.language_config()
-                .and_then(|config| config.language_servers.get(server.name()))
-                .map_or(false, |server_features| {
-                    server_features.has_feature(feature)
-                })
+        self.language_config().into_iter().flat_map(move |config| {
+            config.language_servers.iter().filter_map(move |features| {
+                let ls = &**self.language_servers.get(&features.name)?;
+                if ls.is_initialized() && features.has_feature(feature) {
+                    Some(ls)
+                } else {
+                    None
+                }
+            })
         })
     }
 
@@ -1610,7 +1609,10 @@ impl Document {
                 .find(|ls| ls.id() == d.language_server_id)
                 .and_then(|ls| {
                     let config = self.language_config()?;
-                    let features = config.language_servers.get(ls.name())?;
+                    let features = config
+                        .language_servers
+                        .iter()
+                        .find(|features| features.name == ls.name())?;
                     Some(features.has_feature(LanguageServerFeature::Diagnostics))
                 })
                 == Some(true)
