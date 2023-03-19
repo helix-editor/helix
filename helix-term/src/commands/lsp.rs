@@ -399,11 +399,7 @@ pub fn symbol_picker(cx: &mut Context) {
         while let Some(mut lsp_items) = futures.try_next().await? {
             symbols.append(&mut lsp_items);
         }
-        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
-            if symbols.is_empty() {
-                editor.set_error("No symbols available");
-                return;
-            }
+        let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
             let picker = sym_picker(symbols, current_url);
             compositor.push(Box::new(overlaid(picker)))
         };
