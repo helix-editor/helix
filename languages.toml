@@ -2341,3 +2341,19 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "capnp"
 source = { git = "https://github.com/amaanq/tree-sitter-capnp", rev = "fc6e2addf103861b9b3dffb82c543eb6b71061aa" }
+
+[[language]]
+name = "smithy"
+scope = "source.smithy"
+injection-regex = "smithy"
+file-types = ["smithy"]
+shebangs = []
+roots = ["smithy-build.json"]
+auto-format = false
+comment-token = "//"
+indent = { tab-width = 4, unit = "  "  }
+language-server = { command = "cs", args = ["launch", "com.disneystreaming.smithy:smithy-language-server:0.0.21", "--", "0"] }
+
+[[grammar]]
+name = "smithy"
+source = { git = "https://github.com/indoorvivants/tree-sitter-smithy", rev = "cf8c7eb9faf7c7049839585eac19c94af231e6a0" }
