@@ -409,9 +409,9 @@ impl Client {
                 }),
                 window: Some(lsp::WindowClientCapabilities {
                     show_message: Some(lsp::ShowMessageRequestClientCapabilities {
-                        message_action_item: (Some(lsp::MessageActionItemCapabilities {
+                        message_action_item: Some(lsp::MessageActionItemCapabilities {
                             additional_properties_support: Some(true),
-                        })),
+                        }),
                     }),
                     work_done_progress: Some(true),
                     ..Default::default()

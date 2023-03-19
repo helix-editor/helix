@@ -2117,32 +2117,31 @@ fn global_search(cx: &mut Context) {
                     all_matches,
                     current_path,
                     move |cx, file_result, action| {
-                        if let Some(FileResult { path, line_num }) = file_result {
-                            match cx.editor.open(path, action) {
-                                Ok(_) => {}
-                                Err(e) => {
-                                    cx.editor.set_error(format!(
-                                        "Failed to open file '{}': {}",
-                                        path.display(),
-                                        e
-                                    ));
-                                    return;
-                                }
-                            }
-
-                            let line_num = *line_num;
-                            let (view, doc) = current!(cx.editor);
-                            let text = doc.text();
-                            if line_num >= text.len_lines() {
-                                cx.editor.set_error("The line you jumped to does not exist anymore because the file has changed.");
+                        let Some(FileResult { path, line_num }) = file_result else { return; };
+                        match cx.editor.open(path, action) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                cx.editor.set_error(format!(
+                                    "Failed to open file '{}': {}",
+                                    path.display(),
+                                    e
+                                ));
                                 return;
                             }
-                            let start = text.line_to_char(line_num);
-                            let end = text.line_to_char((line_num + 1).min(text.len_lines()));
-
-                            doc.set_selection(view.id, Selection::single(start, end));
-                            align_view(doc, view, Align::Center);
                         }
+
+                        let line_num = *line_num;
+                        let (view, doc) = current!(cx.editor);
+                        let text = doc.text();
+                        if line_num >= text.len_lines() {
+                            cx.editor.set_error("The line you jumped to does not exist anymore because the file has changed.");
+                            return;
+                        }
+                        let start = text.line_to_char(line_num);
+                        let end = text.line_to_char((line_num + 1).min(text.len_lines()));
+
+                        doc.set_selection(view.id, Selection::single(start, end));
+                        align_view(doc, view, Align::Center);
                     },
                     |_editor, FileResult { path, line_num }| {
                         Some((path.clone().into(), Some((*line_num, *line_num))))
@@ -2499,9 +2498,8 @@ fn buffer_picker(cx: &mut Context) {
             .collect(),
         (),
         |cx, buffer_meta, action| {
-            if let Some(meta) = buffer_meta {
-                cx.editor.switch(meta.id, action);
-            }
+            let Some(meta) = buffer_meta else { return; };
+            cx.editor.switch(meta.id, action);
         },
         |editor, meta| {
             let doc = &editor.documents.get(&meta.id)?;
@@ -2583,13 +2581,12 @@ fn jumplist_picker(cx: &mut Context) {
             .collect(),
         (),
         |cx, jump_meta, action| {
-            if let Some(meta) = jump_meta {
-                cx.editor.switch(meta.id, action);
-                let config = cx.editor.config();
-                let (view, doc) = current!(cx.editor);
-                doc.set_selection(view.id, meta.selection.clone());
-                view.ensure_cursor_in_view_center(doc, config.scrolloff);
-            }
+            let Some(meta) = jump_meta else {return;};
+            cx.editor.switch(meta.id, action);
+            let config = cx.editor.config();
+            let (view, doc) = current!(cx.editor);
+            doc.set_selection(view.id, meta.selection.clone());
+            view.ensure_cursor_in_view_center(doc, config.scrolloff);
         },
         |editor, meta| {
             let doc = &editor.documents.get(&meta.id)?;
@@ -2646,30 +2643,29 @@ pub fn command_palette(cx: &mut Context) {
             }));
 
             let picker = Picker::new(commands, keymap, move |cx, mappable_command, _action| {
-                if let Some(command) = mappable_command {
-                    let mut ctx = Context {
-                        register: None,
-                        count: std::num::NonZeroUsize::new(1),
-                        editor: cx.editor,
-                        callback: None,
-                        on_next_key_callback: None,
-                        jobs: cx.jobs,
-                    };
-                    let focus = view!(ctx.editor).id;
+                let Some(command) = mappable_command else {return;};
+                let mut ctx = Context {
+                    register: None,
+                    count: std::num::NonZeroUsize::new(1),
+                    editor: cx.editor,
+                    callback: None,
+                    on_next_key_callback: None,
+                    jobs: cx.jobs,
+                };
+                let focus = view!(ctx.editor).id;
 
-                    command.execute(&mut ctx);
+                command.execute(&mut ctx);
 
-                    if ctx.editor.tree.contains(focus) {
-                        let config = ctx.editor.config();
-                        let mode = ctx.editor.mode();
-                        let view = view_mut!(ctx.editor, focus);
-                        let doc = doc_mut!(ctx.editor, &view.doc);
+                if ctx.editor.tree.contains(focus) {
+                    let config = ctx.editor.config();
+                    let mode = ctx.editor.mode();
+                    let view = view_mut!(ctx.editor, focus);
+                    let doc = doc_mut!(ctx.editor, &view.doc);
 
-                        view.ensure_cursor_in_view(doc, config.scrolloff);
+                    view.ensure_cursor_in_view(doc, config.scrolloff);
 
-                        if mode != Mode::Insert {
-                            doc.append_changes_to_history(view);
-                        }
+                    if mode != Mode::Insert {
+                        doc.append_changes_to_history(view);
                     }
                 }
             });
