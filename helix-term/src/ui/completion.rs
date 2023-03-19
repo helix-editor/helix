@@ -88,7 +88,6 @@ impl menu::Item for CompletionItem {
 pub struct CompletionItem {
     pub item: lsp::CompletionItem,
     pub language_server_id: usize,
-    pub offset_encoding: OffsetEncoding,
     pub resolved: bool,
 }
 
@@ -121,6 +120,7 @@ impl Completion {
                 doc: &Document,
                 view_id: ViewId,
                 item: &CompletionItem,
+                offset_encoding: OffsetEncoding,
                 trigger_offset: usize,
                 include_placeholder: bool,
                 replace_mode: bool,
@@ -142,8 +142,6 @@ impl Completion {
                             lsp::TextEdit::new(range, item.new_text.clone())
                         }
                     };
-
-                    let offset_encoding = item.offset_encoding;
 
                     let Some(range) = util::lsp_range_to_range(doc.text(), edit.range, offset_encoding) else{
                         return Transaction::new(doc.text());
@@ -238,8 +236,21 @@ impl Completion {
                     // always present here
                     let item = item.unwrap();
 
-                    let transaction =
-                        item_to_transaction(doc, view.id, item, trigger_offset, true, replace_mode);
+                    let offset_encoding = editor
+                        .language_servers
+                        .get_by_id(item.language_server_id)
+                        .expect("language server disappeared between completion request and application")
+                        .offset_encoding();
+
+                    let transaction = item_to_transaction(
+                        doc,
+                        view.id,
+                        item,
+                        offset_encoding,
+                        trigger_offset,
+                        true,
+                        replace_mode,
+                    );
                     doc.apply_temporary(&transaction, view.id);
                 }
                 PromptEvent::Validate => {
@@ -250,6 +261,12 @@ impl Completion {
                     }
                     // always present here
                     let mut item = item.unwrap().clone();
+
+                    let offset_encoding = editor
+                        .language_servers
+                        .get_by_id(item.language_server_id)
+                        .expect("language server disappeared between completion request and application")
+                        .offset_encoding();
 
                     let language_server = editor
                         .language_servers
@@ -270,6 +287,7 @@ impl Completion {
                         doc,
                         view.id,
                         &item,
+                        offset_encoding,
                         trigger_offset,
                         false,
                         replace_mode,
@@ -287,7 +305,7 @@ impl Completion {
                             let transaction = util::generate_transaction_from_edits(
                                 doc.text(),
                                 additional_edits,
-                                item.offset_encoding, // TODO: should probably transcode in Client
+                                offset_encoding, // TODO: should probably transcode in Client
                             );
                             doc.apply(&transaction, view.id);
                         }
@@ -414,7 +432,6 @@ impl Completion {
                     let resolved_item = CompletionItem {
                         item: resolved_item,
                         language_server_id: current_item.language_server_id,
-                        offset_encoding: current_item.offset_encoding,
                         resolved: true,
                     };
 

@@ -4269,7 +4269,6 @@ pub fn completion(cx: &mut Context) {
                 .map(|item| CompletionItem {
                     item,
                     language_server_id,
-                    offset_encoding,
                     resolved: false,
                 })
                 .collect();
