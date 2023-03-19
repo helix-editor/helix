@@ -179,7 +179,7 @@ pub struct Document {
     version: i32, // should be usize?
     pub(crate) modified_since_accessed: bool,
 
-    diagnostics: Vec<Diagnostic>,
+    pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
 
     diff_handle: Option<DiffHandle>,
@@ -1605,17 +1605,8 @@ impl Document {
 
     pub fn shown_diagnostics(&self) -> impl Iterator<Item = &Diagnostic> + DoubleEndedIterator {
         self.diagnostics.iter().filter(|d| {
-            self.language_servers()
-                .find(|ls| ls.id() == d.language_server_id)
-                .and_then(|ls| {
-                    let config = self.language_config()?;
-                    let features = config
-                        .language_servers
-                        .iter()
-                        .find(|features| features.name == ls.name())?;
-                    Some(features.has_feature(LanguageServerFeature::Diagnostics))
-                })
-                == Some(true)
+            self.language_servers_with_feature(LanguageServerFeature::Diagnostics)
+                .any(|ls| ls.id() == d.language_server_id)
         })
     }
 
