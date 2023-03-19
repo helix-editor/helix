@@ -15,6 +15,19 @@ pub mod tasks {
     use crate::themelint::{lint, lint_all};
     use crate::DynError;
 
+    use schemars::schema_for;
+
+    pub fn dump_config_schema() -> Result<(), DynError> {
+        let schema = schema_for!(helix_view::editor::Config);
+
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&schema).expect("valid schema to be generated")
+        );
+
+        Ok(())
+    }
+
     pub fn docgen() -> Result<(), DynError> {
         write(TYPABLE_COMMANDS_MD_OUTPUT, &typable_commands()?);
         write(LANG_SUPPORT_MD_OUTPUT, &lang_features()?);
@@ -54,6 +67,7 @@ fn main() -> Result<(), DynError> {
             "docgen" => tasks::docgen()?,
             "themelint" => tasks::themelint(env::args().nth(2))?,
             "query-check" => tasks::querycheck()?,
+            "dump-config-schema" => tasks::dump_config_schema()?,
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };

@@ -11,3 +11,5 @@ helix-core = { version = "0.6", path = "../helix-core" }
 helix-view = { version = "0.6", path = "../helix-view" }
 helix-loader = { version = "0.6", path = "../helix-loader" }
 toml = "0.7"
+schemars = { version = "0.8.12", features = ["derive_json_schema"] }
+serde_json = "1.0.93"

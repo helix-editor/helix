@@ -26,6 +26,7 @@ use std::{
 };
 
 use once_cell::sync::{Lazy, OnceCell};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use helix_loader::grammar::{get_language, load_runtime_file};
@@ -286,7 +287,7 @@ pub struct IndentationConfiguration {
 }
 
 /// Configuration for auto pairs
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields, untagged)]
 pub enum AutoPairConfig {
     /// Enables or disables auto pairing. False means disabled. True means to use the default pairs.
@@ -547,7 +548,7 @@ impl LanguageConfiguration {
             .ok()
     }
 }
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SoftWrap {
     /// Soft wrap lines that exceed viewport width. Default to off

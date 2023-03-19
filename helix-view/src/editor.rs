@@ -15,6 +15,7 @@ use helix_vcs::DiffProviderRegistry;
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::Call;
+use schemars::JsonSchema;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -49,36 +50,17 @@ use helix_core::{Position, Selection};
 use helix_dap as dap;
 use helix_lsp::lsp;
 
-use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize};
 
 use arc_swap::access::{DynAccess, DynGuard};
 
-fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let millis = u64::deserialize(deserializer)?;
-    Ok(Duration::from_millis(millis))
-}
-
-fn serialize_duration_millis<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_u64(
-        duration
-            .as_millis()
-            .try_into()
-            .map_err(|_| serde::ser::Error::custom("duration value overflowed u64"))?,
-    )
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct GutterConfig {
-    /// Gutter Layout
+    /// Gutters to display: Available are diagnostics and diff and line-numbers and spacer, note that diagnostics also
+    /// includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty.
     pub layout: Vec<GutterType>,
-    /// Options specific to the "line-numbers" gutter
+    // Options specific to the "line-numbers" gutter.
     pub line_numbers: GutterLineNumbersConfig,
 }
 
@@ -150,7 +132,7 @@ where
     deserializer.deserialize_any(GutterVisitor)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct GutterLineNumbersConfig {
     /// Minimum number of characters to use for line number gutter. Defaults to 3.
@@ -163,10 +145,11 @@ impl Default for GutterLineNumbersConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+// TODO: Import text here.
 pub struct FilePickerConfig {
-    /// IgnoreOptions
+    // IgnoreOptions
     /// Enables ignoring hidden files.
     /// Whether to hide hidden files in file picker and global search results. Defaults to true.
     pub hidden: bool,
@@ -189,7 +172,7 @@ pub struct FilePickerConfig {
     /// Enables reading `.git/info/exclude` files.
     /// Whether to hide files listed in .git/info/exclude in file picker and global search results. Defaults to true.
     pub git_exclude: bool,
-    /// WalkBuilder options
+    // WalkBuilder options
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
 }
@@ -210,58 +193,57 @@ impl Default for FilePickerConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
-    /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
+    /// Number of lines of padding around the edge of the screen when scrolling.
     pub scrolloff: usize,
-    /// Number of lines to scroll at once. Defaults to 3
+    /// Number of lines to scroll per scroll wheel step.
     pub scroll_lines: isize,
-    /// Mouse support. Defaults to true.
+    /// Enable mouse mode.
     pub mouse: bool,
-    /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
+    /// Shell to use when running external commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
     pub shell: Vec<String>,
-    /// Line number mode.
+    /// Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers.
     pub line_number: LineNumber,
-    /// Highlight the lines cursors are currently on. Defaults to false.
+    /// Highlight all lines with a cursor.
     pub cursorline: bool,
-    /// Highlight the columns cursors are currently on. Defaults to false.
+    /// Highlight all columns with a cursor.
     pub cursorcolumn: bool,
     #[serde(deserialize_with = "deserialize_gutter_seq_or_struct")]
     pub gutters: GutterConfig,
-    /// Middle click paste support. Defaults to true.
+    /// Middle click paste support.
     pub middle_click_paste: bool,
+    // TODO: Not parsed by JsonSchema magic.
     /// Automatic insertion of pairs to parentheses, brackets,
     /// etc. Optionally, this can be a list of 2-tuples to specify a
     /// global list of characters to pair. Defaults to true.
     pub auto_pairs: AutoPairConfig,
-    /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
+    /// Enable automatic pop up of auto-completion.
     pub auto_completion: bool,
-    /// Automatic formatting on save. Defaults to true.
+    /// Enable automatic formatting on save.
     pub auto_format: bool,
-    /// Automatic save on focus lost. Defaults to false.
+    // TODO: Markdown elements?
+    /// Enable automatic saving on focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal.
     pub auto_save: bool,
     /// Set a global text_width
     pub text_width: usize,
-    /// Time in milliseconds since last keypress before idle timers trigger.
-    /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
-    #[serde(
-        serialize_with = "serialize_duration_millis",
-        deserialize_with = "deserialize_duration_millis"
-    )]
-    pub idle_timeout: Duration,
+    /// Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant.
+    pub idle_timeout: u64,
+    /// The min-length of word under cursor to trigger autocompletion.
     pub completion_trigger_len: u8,
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
     pub completion_replace: bool,
-    /// Whether to display infoboxes. Defaults to true.
+    /// Whether to display infoboxes.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
-    /// Configuration of the statusline elements
+    /// Configuration of the statusline elements.
     pub statusline: StatusLineConfig,
-    /// Shape for cursor in each mode
+    // TODO: Not parsed by JsonSchema magic.
+    /// Shape for cursor in each mode.
     pub cursor_shape: CursorShapeConfig,
-    /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
+    /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative.
     pub true_color: bool,
     /// Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative. Defaults to `false`.
     pub undercurl: bool,
@@ -270,20 +252,20 @@ pub struct Config {
     pub search: SearchConfig,
     pub lsp: LspConfig,
     pub terminal: Option<TerminalConfig>,
-    /// Column numbers at which to draw the rulers. Default to `[]`, meaning no rulers.
+    /// List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file.
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
-    /// Persistently display open buffers along the top
+    /// Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use).
     pub bufferline: BufferLine,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,
-    /// Whether to color modes with different colors. Defaults to `false`.
+    /// Whether to color the mode indicator with different colors depending on the mode itself.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct TerminalConfig {
     pub command: String,
@@ -336,7 +318,7 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
     None
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LspConfig {
     /// Enables LSP
@@ -363,7 +345,7 @@ impl Default for LspConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct SearchConfig {
     /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
@@ -372,7 +354,7 @@ pub struct SearchConfig {
     pub wrap_around: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct StatusLineConfig {
     pub left: Vec<StatusLineElement>,
@@ -401,7 +383,7 @@ impl Default for StatusLineConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ModeConfig {
     pub normal: String,
@@ -419,7 +401,7 @@ impl Default for ModeConfig {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum StatusLineElement {
     /// The editor mode (Normal, Insert, Visual/Selection)
@@ -531,8 +513,37 @@ impl Default for CursorShapeConfig {
     }
 }
 
+// Since CursorShapeConfig has some performance optimizations and a custom (de)serializer,
+// the derived JsonSchema is not accurate to the input from users.
+impl JsonSchema for CursorShapeConfig {
+    fn schema_name() -> String {
+        "CursorShapeConfig".to_owned()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        // Here we create a type that looks a lot more like the input we expect in the configuration
+        // and from the user at runtime and use that for creating the schema.
+
+        #[derive(JsonSchema, Default)]
+        #[allow(dead_code)]
+        struct FakeCursorShapeConfig {
+            /// Cursor used when in insert mode. Default: block.
+            insert: CursorKind,
+
+            /// Cursor used when in normal mode. Default: block.
+            normal: CursorKind,
+
+            /// Cursor used when in select mode. Default: block.
+            select: CursorKind,
+        }
+
+        // TODO: This resulting schema does not have a default value for some reason. :-(
+        return <FakeCursorShapeConfig>::json_schema(gen);
+    }
+}
+
 /// bufferline render modes
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum BufferLine {
     /// Don't render bufferline
@@ -549,7 +560,7 @@ impl Default for BufferLine {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum LineNumber {
     /// Show absolute line number
@@ -572,7 +583,7 @@ impl std::str::FromStr for LineNumber {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum GutterType {
     /// Show diagnostics and other features like breakpoints
@@ -599,8 +610,9 @@ impl std::str::FromStr for GutterType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
+// TODO: Not handled by JsonSchema magic.
 pub struct WhitespaceConfig {
     pub render: WhitespaceRender,
     pub characters: WhitespaceCharacters,
@@ -615,7 +627,7 @@ impl Default for WhitespaceConfig {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged, rename_all = "kebab-case")]
 pub enum WhitespaceRender {
     Basic(WhitespaceRenderValue),
@@ -628,7 +640,7 @@ pub enum WhitespaceRender {
     },
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum WhitespaceRenderValue {
     None,
@@ -672,7 +684,7 @@ impl WhitespaceRender {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 pub struct WhitespaceCharacters {
     pub space: char,
@@ -694,11 +706,16 @@ impl Default for WhitespaceCharacters {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(default, rename_all = "kebab-case")]
 pub struct IndentGuidesConfig {
+    /// Whether to render indent guides.
     pub render: bool,
+
+    /// Literal character to use for rendering the indent guide.
     pub character: char,
+
+    /// Number of indent levels to skip.
     pub skip_levels: u8,
 }
 
@@ -709,6 +726,12 @@ impl Default for IndentGuidesConfig {
             render: false,
             character: '│',
         }
+    }
+}
+
+impl Config {
+    fn idle_timeout(&self) -> Duration {
+        Duration::from_millis(self.idle_timeout)
     }
 }
 
@@ -732,7 +755,7 @@ impl Default for Config {
             auto_completion: true,
             auto_format: true,
             auto_save: false,
-            idle_timeout: Duration::from_millis(400),
+            idle_timeout: 400,
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
@@ -961,7 +984,7 @@ impl Editor {
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
             autoinfo: None,
-            idle_timer: Box::pin(sleep(conf.idle_timeout)),
+            idle_timer: Box::pin(sleep(conf.idle_timeout())),
             last_motion: None,
             last_completion: None,
             config,
@@ -1004,7 +1027,7 @@ impl Editor {
         let config = self.config();
         self.idle_timer
             .as_mut()
-            .reset(Instant::now() + config.idle_timeout);
+            .reset(Instant::now() + config.idle_timeout());
     }
 
     pub fn clear_status(&mut self) {

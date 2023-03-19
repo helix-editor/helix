@@ -1719,6 +1719,14 @@ fn set_option(
     }
     let (key, arg) = (&args[0].to_lowercase(), &args[1]);
 
+    // Attempt to provide helpful failure messages based on structured option
+    // documentation.
+    log::debug!("attempting to validate {}:{} using option docs", key, arg);
+    if OPTION_DOCUMENTATION.is_ok() {
+        log::debug!("documentation is ok!");
+        OPTION_DOCUMENTATION.as_ref().unwrap().validate(key, arg)?;
+    }
+
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
     let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
 
@@ -2708,6 +2716,19 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
             .collect()
     });
 
+pub static OPTION_DOCUMENTATION: Lazy<anyhow::Result<runtime_options::Options>> =
+    Lazy::new(|| runtime_options::from_config());
+
+// Longer term this may call for some sort of "enhanced documentation" option on TypedCommand.
+pub static OPTION_DOCUMENTATION_COMMANDS: [&'static str; 6] = [
+    "set",
+    "set-option",
+    "get",
+    "get-option",
+    "toggle",
+    "toggle-option",
+];
+
 #[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
@@ -2798,20 +2819,7 @@ pub(super) fn command_mode(cx: &mut Context) {
             }
         },
     );
-    prompt.doc_fn = Box::new(|input: &str| {
-        let part = input.split(' ').next().unwrap_or_default();
-
-        if let Some(typed::TypableCommand { doc, aliases, .. }) =
-            typed::TYPABLE_COMMAND_MAP.get(part)
-        {
-            if aliases.is_empty() {
-                return Some((*doc).into());
-            }
-            return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
-        }
-
-        None
-    });
+    prompt.doc_fn = Box::new(command_mode_documentation);
 
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
@@ -2824,6 +2832,40 @@ fn argument_number_of(shellwords: &Shellwords) -> usize {
     } else {
         shellwords.words().len().saturating_sub(2)
     }
+}
+
+fn command_mode_documentation(input: &str) -> Option<Cow<str>> {
+    let mut words_iter = input.split(' ');
+    let part = words_iter.next().unwrap_or_default();
+
+    if OPTION_DOCUMENTATION.is_ok() && OPTION_DOCUMENTATION_COMMANDS.contains(&part) {
+        let option_name = words_iter.next().unwrap_or_default();
+
+        match OPTION_DOCUMENTATION.as_ref().unwrap().get_help(option_name) {
+            Some(option_doc) => {
+                let mut doc = option_doc
+                    .description
+                    .clone()
+                    .unwrap_or_else(|| format!("No documentation available for '{option_name}'."));
+
+                if let Some(default) = &option_doc.default {
+                    doc.push_str(&format!("\nDefault: {default}."));
+                }
+
+                return Some(doc.into());
+            }
+            None => (),
+        }
+    }
+
+    if let Some(typed::TypableCommand { doc, aliases, .. }) = typed::TYPABLE_COMMAND_MAP.get(part) {
+        if aliases.is_empty() {
+            return Some((*doc).into());
+        }
+        return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
+    }
+
+    None
 }
 
 #[test]
@@ -2842,4 +2884,29 @@ fn test_argument_number_of() {
     for case in cases {
         assert_eq!(case.1, argument_number_of(&Shellwords::from(case.0)));
     }
+}
+
+#[test]
+fn command_mode_doc_basic() {
+    assert_eq!(
+        None,
+        command_mode_documentation("buffer-n") // Incomplete command.
+    );
+    assert_eq!(
+        Some(Cow::from("Goto next buffer.\nAliases: bn, bnext")),
+        command_mode_documentation("buffer-next")
+    );
+}
+
+#[test]
+fn command_mode_doc_detailed_options() {
+    assert_eq!(
+        Some(Cow::from("Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.\nAliases: set")),
+        command_mode_documentation("set-option buffe") // Incomplete option, show set-option documentation.
+    );
+
+    assert_eq!(
+        Some(Cow::from("Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use)")),
+        command_mode_documentation("set-option bufferline")
+    );
 }

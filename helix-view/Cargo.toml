@@ -44,6 +44,7 @@ log = "~0.4"
 
 which = "4.4"
 parking_lot = "0.12.1"
+schemars = { version = "0.8.12", features = ["derive_json_schema"] }
 
 
 [target.'cfg(windows)'.dependencies]
