@@ -11,17 +11,17 @@ pub enum CaseChange {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum FormatItem<'a> {
+pub enum FormatItem {
     Text(Tendril),
     Capture(usize),
     CaseChange(usize, CaseChange),
-    Conditional(usize, Option<&'a str>, Option<&'a str>),
+    Conditional(usize, Option<Tendril>, Option<Tendril>),
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Regex<'a> {
+pub struct Regex {
     value: Tendril,
-    replacement: Vec<FormatItem<'a>>,
+    replacement: Vec<FormatItem>,
     options: Tendril,
 }
 
@@ -40,8 +40,8 @@ pub enum SnippetElement<'a> {
     },
     Variable {
         name: &'a str,
-        default: Option<&'a str>,
-        regex: Option<Regex<'a>>,
+        default: Option<Vec<SnippetElement<'a>>>,
+        regex: Option<Regex>,
     },
     Text(Tendril),
 }
@@ -77,15 +77,20 @@ fn render_elements(
                 *offset += text.chars().count();
                 insert.push_str(&text);
             }
-            &Variable {
+            Variable {
                 name: _,
                 regex: _,
                 r#default,
             } => {
                 // TODO: variables. For now, fall back to the default, which defaults to "".
-                let text = r#default.unwrap_or_default();
-                *offset += text.chars().count();
-                insert.push_str(text);
+                render_elements(
+                    r#default.as_deref().unwrap_or_default(),
+                    insert,
+                    offset,
+                    tabstops,
+                    newline_with_offset,
+                    include_placeholer,
+                );
             }
             &Tabstop { tabstop } => {
                 tabstops.push((tabstop, (*offset, *offset)));
@@ -212,25 +217,28 @@ mod parser {
     }
 
     const TEXT_ESCAPE_CHARS: &[char] = &['\\', '}', '$'];
-    const REPLACE_ESCAPE_CHARS: &[char] = &['\\', '}', '$', '/'];
-    const CHOICE_TEXT_ESCAPE_CHARS: &[char] = &['\\', '}', '$', '|', ','];
+    const CHOICE_TEXT_ESCAPE_CHARS: &[char] = &['\\', '|', ','];
 
-    fn text<'a>(escape_chars: &'static [char]) -> impl Parser<'a, Output = Tendril> {
+    fn text<'a>(
+        escape_chars: &'static [char],
+        term_chars: &'static [char],
+    ) -> impl Parser<'a, Output = Tendril> {
         move |input: &'a str| {
-            let mut chars = input.char_indices();
+            let mut chars = input.char_indices().peekable();
             let mut res = Tendril::new();
             while let Some((i, c)) = chars.next() {
                 match c {
                     '\\' => {
-                        if let Some((_, c)) = chars.next() {
+                        if let Some(&(_, c)) = chars.peek() {
                             if escape_chars.contains(&c) {
+                                chars.next();
                                 res.push(c);
                                 continue;
                             }
                         }
-                        return Ok((&input[i..], res));
+                        res.push('\\');
                     }
-                    c if escape_chars.contains(&c) => return Ok((&input[i..], res)),
+                    c if term_chars.contains(&c) => return Ok((&input[i..], res)),
                     c => res.push(c),
                 }
             }
@@ -253,7 +261,7 @@ mod parser {
         )
     }
 
-    fn format<'a>() -> impl Parser<'a, Output = FormatItem<'a>> {
+    fn format<'a>() -> impl Parser<'a, Output = FormatItem> {
         use FormatItem::*;
 
         choice!(
@@ -267,7 +275,7 @@ mod parser {
             }),
             // '${' int ':+' if '}'
             map(
-                seq!("${", digit(), ":+", take_until(|c| c == '}'), "}"),
+                seq!("${", digit(), ":+", text(TEXT_ESCAPE_CHARS, &['}']), "}"),
                 |seq| { Conditional(seq.1, Some(seq.3), None) }
             ),
             // '${' int ':?' if ':' else '}'
@@ -276,9 +284,9 @@ mod parser {
                     "${",
                     digit(),
                     ":?",
-                    take_until(|c| c == ':'),
+                    text(TEXT_ESCAPE_CHARS, &[':']),
                     ":",
-                    take_until(|c| c == '}'),
+                    text(TEXT_ESCAPE_CHARS, &['}']),
                     "}"
                 ),
                 |seq| { Conditional(seq.1, Some(seq.3), Some(seq.5)) }
@@ -290,7 +298,7 @@ mod parser {
                     digit(),
                     ":",
                     optional("-"),
-                    take_until(|c| c == '}'),
+                    text(TEXT_ESCAPE_CHARS, &['}']),
                     "}"
                 ),
                 |seq| { Conditional(seq.1, None, Some(seq.4)) }
@@ -298,19 +306,24 @@ mod parser {
         )
     }
 
-    fn regex<'a>() -> impl Parser<'a, Output = Regex<'a>> {
+    fn regex<'a>() -> impl Parser<'a, Output = Regex> {
         map(
             seq!(
                 "/",
                 // TODO parse as ECMAScript and convert to rust regex
-                non_empty(text(&['/', '\\'])),
+                non_empty(text(&['/'], &['/'])),
                 "/",
                 one_or_more(choice!(
                     format(),
-                    map(text(REPLACE_ESCAPE_CHARS), FormatItem::Text)
+                    // text doesn't parse $, if format fails we just accept the $ as text
+                    map("$", |_| FormatItem::Text("$".into())),
+                    map(text(&['\\', '/'], &['/', '$']), FormatItem::Text),
                 )),
                 "/",
-                text(&['}', '\\',]),
+                // vscode really doesn't allow escaping } here
+                // so it's impossible to write a regex escape containing a }
+                // we can consider deviating here and allowing the escape
+                text(&[], &['}']),
             ),
             |(_, value, _, replacement, _, options)| Regex {
                 value,
@@ -341,7 +354,7 @@ mod parser {
                 // The example there contains both a placeholder text and a nested placeholder
                 // which indicates a list. Looking at the VSCode sourcecode, the placeholder
                 // is indeed parsed as zero_or_more so the grammar is simply incorrect here
-                zero_or_more(anything(TEXT_ESCAPE_CHARS)),
+                zero_or_more(anything(TEXT_ESCAPE_CHARS, true)),
                 "}"
             ),
             |seq| SnippetElement::Placeholder {
@@ -357,7 +370,7 @@ mod parser {
                 "${",
                 digit(),
                 "|",
-                sep(text(CHOICE_TEXT_ESCAPE_CHARS), ","),
+                sep(text(CHOICE_TEXT_ESCAPE_CHARS, &['|', ',']), ","),
                 "|}",
             ),
             |seq| SnippetElement::Choice {
@@ -377,7 +390,13 @@ mod parser {
             }),
             // ${var:default}
             map(
-                seq!("${", var(), ":", take_until(|c| c == '}'), "}",),
+                seq!(
+                    "${",
+                    var(),
+                    ":",
+                    zero_or_more(anything(TEXT_ESCAPE_CHARS, true)),
+                    "}",
+                ),
                 |values| SnippetElement::Variable {
                     name: values.1,
                     default: Some(values.3),
@@ -395,22 +414,27 @@ mod parser {
         )
     }
 
-    fn anything<'a>(escape_chars: &'static [char]) -> impl Parser<'a, Output = SnippetElement<'a>> {
+    fn anything<'a>(
+        escape_chars: &'static [char],
+        end_at_brace: bool,
+    ) -> impl Parser<'a, Output = SnippetElement<'a>> {
+        let term_chars: &[_] = if end_at_brace { &['$', '}'] } else { &['$'] };
         move |input: &'a str| {
             let parser = choice!(
                 tabstop(),
                 placeholder(),
                 choice(),
                 variable(),
-                map(text(escape_chars), SnippetElement::Text)
+                map("$", |_| SnippetElement::Text("$".into())),
+                map(text(escape_chars, term_chars), SnippetElement::Text),
             );
             parser.parse(input)
         }
     }
 
     fn snippet<'a>() -> impl Parser<'a, Output = Snippet<'a>> {
-        map(one_or_more(anything(TEXT_ESCAPE_CHARS)), |parts| Snippet {
-            elements: parts,
+        map(one_or_more(anything(TEXT_ESCAPE_CHARS, false)), |parts| {
+            Snippet { elements: parts }
         })
     }
 
@@ -452,8 +476,13 @@ mod parser {
         }
 
         #[test]
-        fn parse_unterminated_placeholder_error() {
-            assert_eq!(Err("${1:)"), parse("match(${1:)"))
+        fn unterminated_placeholder() {
+            assert_eq!(
+                Ok(Snippet {
+                    elements: vec![Text("match(".into()), Text("$".into()), Text("{1:)".into())]
+                }),
+                parse("match(${1:)")
+            )
         }
 
         #[test]
@@ -542,7 +571,7 @@ mod parser {
                         Text(" ".into()),
                         Variable {
                             name: "name",
-                            default: Some("foo"),
+                            default: Some(vec![Text("foo".into())]),
                             regex: None
                         },
                         Text(" ".into()),
@@ -572,12 +601,56 @@ mod parser {
                         default: None,
                         regex: Some(Regex {
                             value: "(.*).+$".into(),
-                            replacement: vec![FormatItem::Capture(1)],
+                            replacement: vec![FormatItem::Capture(1), FormatItem::Text("$".into())],
                             options: Tendril::new(),
                         }),
                     }]
                 }),
-                parse("${TM_FILENAME/(.*).+$/$1/}")
+                parse("${TM_FILENAME/(.*).+$/$1$/}")
+            );
+        }
+
+        #[test]
+        fn rust_macro() {
+            assert_eq!(
+                Ok(Snippet {
+                    elements: vec![
+                        Text("macro_rules! ".into()),
+                        Tabstop { tabstop: 1 },
+                        Text(" {\n    (".into()),
+                        Tabstop { tabstop: 2 },
+                        Text(") => {\n        ".into()),
+                        Tabstop { tabstop: 0 },
+                        Text("\n    };\n}".into())
+                    ]
+                }),
+                parse("macro_rules! $1 {\n    ($2) => {\n        $0\n    };\n}")
+            );
+        }
+        #[test]
+        fn robust_parsing() {
+            assert_eq!(
+                Ok(Snippet {
+                    elements: vec![
+                        Text("$".into()),
+                        Text("{}".into()),
+                        Text("$".into()),
+                        Text("\\a$}\\".into()),
+                    ]
+                }),
+                parse("${}$\\a\\$\\}\\\\")
+            );
+            assert_eq!(
+                Ok(Snippet {
+                    elements: vec![
+                        Placeholder {
+                            tabstop: 1,
+                            value: vec![Text("$".into()), Text("{".into())]
+                        },
+                        Text("}".into())
+                    ]
+                }),
+                parse("${1:${}}")
             );
         }
     }
