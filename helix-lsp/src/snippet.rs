@@ -311,9 +311,9 @@ mod parser {
             seq!(
                 "/",
                 // TODO parse as ECMAScript and convert to rust regex
-                non_empty(text(&['/'], &['/'])),
+                text(&['/'], &['/']),
                 "/",
-                one_or_more(choice!(
+                zero_or_more(choice!(
                     format(),
                     // text doesn't parse $, if format fails we just accept the $ as text
                     map("$", |_| FormatItem::Text("$".into())),
