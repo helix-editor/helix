@@ -196,23 +196,23 @@ mod parser {
 
     fn var<'a>() -> impl Parser<'a, Output = &'a str> {
         // var = [_a-zA-Z][_a-zA-Z0-9]*
-        move |input: &'a str| match input
-            .char_indices()
-            .take_while(|(p, c)| {
-                *c == '_'
-                    || if *p == 0 {
-                        c.is_ascii_alphabetic()
-                    } else {
-                        c.is_ascii_alphanumeric()
-                    }
-            })
-            .last()
-        {
-            Some((index, c)) if index >= 1 => {
-                let index = index + c.len_utf8();
-                Ok((&input[index..], &input[0..index]))
-            }
-            _ => Err(input),
+        move |input: &'a str| {
+            input
+                .char_indices()
+                .take_while(|(p, c)| {
+                    *c == '_'
+                        || if *p == 0 {
+                            c.is_ascii_alphabetic()
+                        } else {
+                            c.is_ascii_alphanumeric()
+                        }
+                })
+                .last()
+                .map(|(index, c)| {
+                    let index = index + c.len_utf8();
+                    (&input[index..], &input[0..index])
+                })
+                .ok_or(input)
         }
     }
 
