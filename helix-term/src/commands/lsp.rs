@@ -219,7 +219,7 @@ fn sym_picker(
         symbols,
         current_path.clone(),
         move |cx, symbol_information, action| {
-            let Some(symbol) = symbol_information else {return;};
+            let Some(symbol) = symbol_information else { return };
             let (view, doc) = current!(cx.editor);
             push_jump(view, doc);
 
@@ -295,7 +295,7 @@ fn diag_picker(
         flat_diag,
         (styles, format),
         move |cx, picker_diagnostic, action| {
-            let Some(PickerDiagnostic { url, diag }) = picker_diagnostic else {return;};
+            let Some(PickerDiagnostic { url, diag }) = picker_diagnostic else { return };
             if current_path.as_ref() == Some(url) {
                 let (view, doc) = current!(cx.editor);
                 push_jump(view, doc);
@@ -960,7 +960,7 @@ fn goto_impl(
                 locations,
                 cwdir,
                 move |cx, location, action| {
-                    let Some(l) = location else {return;};
+                    let Some(l) = location else { return };
                     jump_to_location(cx.editor, l, offset_encoding, action)
                 },
                 move |_editor, location| Some(location_to_file_location(location)),
