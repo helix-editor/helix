@@ -4093,7 +4093,7 @@ fn format_selections(cx: &mut Context) {
         Some(future_offset_encoding) => future_offset_encoding,
         None => {
             cx.editor
-                .set_error("No language server supports range formatting");
+                .set_error("No configured language server supports range formatting");
             return;
         }
     };

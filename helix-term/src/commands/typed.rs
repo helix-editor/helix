@@ -1330,23 +1330,19 @@ fn lsp_workspace_command(
         return Ok(());
     }
     let doc = doc!(cx.editor);
-    let id_options = doc
+    let Some((language_server_id, options)) = doc
         .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
         .find_map(|ls| {
             ls.capabilities()
                 .execute_command_provider
                 .as_ref()
                 .map(|options| (ls.id(), options))
-        });
-
-    let (language_server_id, options) = match id_options {
-        Some(id_options) => id_options,
-        None => {
-            cx.editor.set_status(
-                "No active language servers for this document support workspace commands",
-            );
-            return Ok(());
-        }
+        })
+    else {
+        cx.editor.set_status(
+             "No active language servers for this document support workspace commands",
+        );
+        return Ok(());
     };
 
     if args.is_empty() {
