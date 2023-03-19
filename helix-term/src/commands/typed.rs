@@ -1442,62 +1442,19 @@ fn lsp_stop(
         return Ok(());
     }
 
-    let doc = doc!(cx.editor);
-
-    // TODO this stops language servers which may be used in another doc/language type that uses the same language servers
-    // I'm not sure if this is really what we want
-    let ls_shutdown_names = doc
+    let ls_shutdown_names = doc!(cx.editor)
         .language_servers()
-        .map(|ls| ls.name())
+        .map(|ls| ls.name().to_string())
         .collect::<Vec<_>>();
 
     for ls_name in &ls_shutdown_names {
         cx.editor.language_servers.stop(ls_name);
-    }
 
-    let doc_ids_active_clients: Vec<_> = cx
-        .editor
-        .documents()
-        .filter_map(|doc| {
-            let doc_active_ls_ids: Vec<_> = doc
-                .language_servers()
-                .filter(|ls| !ls_shutdown_names.contains(&ls.name()))
-                .map(|ls| ls.id())
-                .collect();
-
-            let active_clients: Vec<_> = cx
-                .editor
-                .language_servers
-                .iter_clients()
-                .filter(|client| doc_active_ls_ids.contains(&client.id()))
-                .map(Clone::clone)
-                .collect();
-
-            if active_clients.len() != doc.language_servers().count() {
-                Some((doc.id(), active_clients))
-            } else {
-                None
+        for doc in cx.editor.documents_mut() {
+            if let Some(client) = doc.remove_language_server_by_name(ls_name) {
+                doc.clear_diagnostics(client.id());
             }
-        })
-        .collect();
-
-    for (doc_id, active_clients) in doc_ids_active_clients {
-        let doc = cx.editor.documents.get_mut(&doc_id).unwrap();
-
-        let stopped_clients: Vec<_> = doc
-            .language_servers()
-            .filter(|ls| {
-                !active_clients
-                    .iter()
-                    .any(|active_ls| active_ls.id() == ls.id())
-            })
-            .map(|ls| ls.id())
-            .collect(); // is necessary because of borrow-checking
-
-        for client_id in stopped_clients {
-            doc.clear_diagnostics(client_id)
         }
-        doc.set_language_servers(active_clients);
     }
 
     Ok(())

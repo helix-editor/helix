@@ -1442,6 +1442,13 @@ impl Document {
             .filter_map(|l| if l.is_initialized() { Some(&**l) } else { None })
     }
 
+    pub fn remove_language_server_by_name(&mut self, name: &str) -> Option<Arc<Client>> {
+        match self.language_servers.iter().position(|l| l.name() == name) {
+            Some(index) => Some(self.language_servers.remove(index)),
+            None => None,
+        }
+    }
+
     // TODO filter also based on LSP capabilities?
     pub fn language_servers_with_feature(
         &self,
