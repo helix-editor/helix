@@ -388,6 +388,12 @@ mod parser {
                 default: None,
                 regex: None,
             }),
+            // ${var}
+            map(seq!("${", var(), "}",), |values| SnippetElement::Variable {
+                name: values.1,
+                default: None,
+                regex: None,
+            }),
             // ${var:default}
             map(
                 seq!(
