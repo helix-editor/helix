@@ -1429,13 +1429,17 @@ impl Document {
         self.version
     }
 
+    /// maintains the order as configured in the language_servers TOML array
     pub fn language_servers(&self) -> impl Iterator<Item = &helix_lsp::Client> {
-        self.language_servers.values().filter_map(|l| {
-            if l.is_initialized() {
-                Some(&**l)
-            } else {
-                None
-            }
+        self.language_config().into_iter().flat_map(move |config| {
+            config.language_servers.iter().filter_map(move |features| {
+                let ls = &**self.language_servers.get(&features.name)?;
+                if ls.is_initialized() {
+                    Some(ls)
+                } else {
+                    None
+                }
+            })
         })
     }
 
