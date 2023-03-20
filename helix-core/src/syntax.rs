@@ -287,7 +287,7 @@ pub struct IndentationConfiguration {
 }
 
 /// Configuration for auto pairs
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields, untagged)]
 pub enum AutoPairConfig {
     /// Enables or disables auto pairing. False means disabled. True means to use the default pairs.
@@ -326,6 +326,42 @@ impl FromStr for AutoPairConfig {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let enable: bool = s.parse()?;
         Ok(AutoPairConfig::Enable(enable))
+    }
+}
+
+// Allow runtime enable/disable with documentation. Changing the pair mapping at runtime
+// is currently not possible.
+impl JsonSchema for AutoPairConfig {
+    fn schema_name() -> String {
+        "AutoPairConfig".to_owned()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        #[derive(JsonSchema)]
+        struct FakeAutoPairsConfig {
+            /// docs
+            auto_pairs: bool,
+        }
+
+        impl Default for FakeAutoPairsConfig {
+            fn default() -> Self {
+                FakeAutoPairsConfig { auto_pairs: true }
+            }
+        }
+
+        let schema = FakeAutoPairsConfig::json_schema(gen);
+        log::debug!("runtime_options: {:#?}", &schema);
+
+        schema
+            .into_object()
+            .object()
+            .properties
+            .to_owned()
+            .get("auto_pairs")
+            .unwrap()
+            .clone()
+            .into_object()
+            .into()
     }
 }
 
