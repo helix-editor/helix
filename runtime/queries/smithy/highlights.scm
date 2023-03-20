@@ -1,6 +1,6 @@
 ; Queries are taken from: https://github.com/indoorvivants/tree-sitter-smithy/blob/main/queries/highlights.scm
 ; Preproc
-(control_key) @preproc
+(control_key) @keyword.directive
 
 ; Namespace
 (namespace) @namespace
@@ -21,13 +21,13 @@
 ] @type.builtin
 
 ; Fields (Members)
-; (field) @field
+; (field) @variable.other.member
 
-(key_identifier) @field
+(key_identifier) @variable.other.member
 (shape_member
-  (field) @field)
-(operation_field) @field
-(operation_error_field) @field
+  (field) @variable.other.member)
+(operation_field) @variable.other.member
+(operation_error_field) @variable.other.member
 
 ; Constants
 (enum_member
@@ -42,7 +42,7 @@
 (mixins
   (shape_id) @attribute)
 (trait_statement
-  (shape_id (#set! "priority" 105)) @attribute)
+  (shape_id @attribute)
 
 ; Operators
 [
@@ -68,13 +68,13 @@
 
 ; Literals
 (string) @string
-(escape_sequence) @string.escape
+(escape_sequence) @constant.character.escape
 
 (number) @number
 
 (float) @float
 
-(boolean) @boolean
+(boolean) @constant.builtin.boolean
 
 (null) @constant.builtin
 
@@ -99,4 +99,4 @@
 [
   (comment)
   (documentation_comment)
-] @comment @spell
+] @comment
