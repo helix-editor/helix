@@ -42,7 +42,7 @@
 (mixins
   (shape_id) @attribute)
 (trait_statement
-  (shape_id @attribute))
+  (shape_id) @attribute)
 
 ; Operators
 [
