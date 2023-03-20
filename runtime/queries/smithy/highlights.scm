@@ -31,7 +31,7 @@
 
 ; Constants
 (enum_member
-  (enum_field) @constant)
+  (enum_field) @type.enum)
 
 ; Types
 (identifier) @type
@@ -42,7 +42,7 @@
 (mixins
   (shape_id) @attribute)
 (trait_statement
-  (shape_id @attribute)
+  (shape_id @attribute))
 
 ; Operators
 [
@@ -70,9 +70,9 @@
 (string) @string
 (escape_sequence) @constant.character.escape
 
-(number) @number
+(number) @constant.numeric
 
-(float) @float
+(float) @constant.numeric.float
 
 (boolean) @constant.builtin.boolean
 
