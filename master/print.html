@@ -167,6 +167,7 @@ For everything else (e.g., how to install supported language servers), see the <
 <li><a href="install.html#fedorarhel">Fedora/RHEL</a></li>
 <li><a href="install.html#arch-linux-community">Arch Linux community</a></li>
 <li><a href="install.html#nixos">NixOS</a></li>
+<li><a href="install.html#appimage">AppImage</a></li>
 </ul>
 </li>
 <li><a href="install.html#macos">macOS</a>
@@ -239,6 +240,12 @@ accepts the new settings on first use.</p>
 <p>If you are using a version of Nix without flakes enabled,
 <a href="https://docs.cachix.org/installation">install Cachix CLI</a> and use
 <code>cachix use helix</code> to configure Nix to use cached outputs when possible.</p>
+<h3 id="appimage"><a class="header" href="#appimage">AppImage</a></h3>
+<p>Install Helix using <a href="https://appimage.org/">AppImage</a>.
+Download Helix AppImage from the <a href="https://github.com/helix-editor/helix/releases/latest">latest releases</a> page.</p>
+<pre><code class="language-sh">chmod +x helix-*.AppImage # change permission for executable mode
+./helix-*.AppImage # run helix
+</code></pre>
 <h2 id="macos"><a class="header" href="#macos">macOS</a></h2>
 <h3 id="homebrew-core"><a class="header" href="#homebrew-core">Homebrew Core</a></h3>
 <pre><code class="language-sh">brew install helix
