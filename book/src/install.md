@@ -92,10 +92,10 @@ If you are using a version of Nix without flakes enabled,
 ### AppImage
 
 Install Helix using [AppImage](https://appimage.org/).
-Download Helix AppImage from the [Releases](https://github.com/helix-editor/helix/releases) page.
+Download Helix AppImage from the [latest releases](https://github.com/helix-editor/helix/releases/latest) page.
 
 ```sh
-chmod +x helix-*.AppImage # change permission for exercutable mode
+chmod +x helix-*.AppImage # change permission for executable mode
 ./helix-*.AppImage # run helix
 ```
  
