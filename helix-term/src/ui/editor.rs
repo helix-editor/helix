@@ -11,6 +11,7 @@ use crate::{
 };
 
 use helix_core::{
+    diagnostic::NumberOrString,
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
@@ -684,6 +685,14 @@ impl EditorView {
                 });
             let text = Text::styled(&diagnostic.message, style);
             lines.extend(text.lines);
+            let code = diagnostic.code.as_ref().map(|x| match x {
+                NumberOrString::Number(n) => format!("({n})"),
+                NumberOrString::String(s) => format!("({s})"),
+            });
+            if let Some(code) = code {
+                let text = Text::styled(code, style);
+                lines.extend(text.lines);
+            }
         }
 
         let paragraph = Paragraph::new(lines)
