@@ -3236,10 +3236,8 @@ pub mod insert {
         let trigger_completion = doc
             .language_servers_with_feature(LanguageServerFeature::Completion)
             .any(|ls| {
-                let capabilities = ls.capabilities();
-
                 // TODO: what if trigger is multiple chars long
-                matches!(&capabilities.completion_provider, Some(lsp::CompletionOptions {
+                matches!(&ls.capabilities().completion_provider, Some(lsp::CompletionOptions {
                     trigger_characters: Some(triggers),
                     ..
                 }) if triggers.iter().any(|trigger| trigger.contains(ch)))
@@ -3252,51 +3250,39 @@ pub mod insert {
     }
 
     fn signature_help(cx: &mut Context, ch: char) {
-        use futures_util::FutureExt;
         use helix_lsp::lsp;
         // if ch matches signature_help char, trigger
-        let (view, doc) = current!(cx.editor);
-        // lsp doesn't tell us when to close the signature help, so we request
-        // the help information again after common close triggers which should
-        // return None, which in turn closes the popup.
-        let close_triggers = &[')', ';', '.'];
-        // TODO support multiple language servers (not just the first that is found)
-        let future = doc
+        let doc = doc_mut!(cx.editor);
+        // TODO support multiple language servers (not just the first that is found), likely by merging UI somehow
+        let Some(language_server) = doc
             .language_servers_with_feature(LanguageServerFeature::SignatureHelp)
-            .find_map(|ls| {
-                let capabilities = ls.capabilities();
+            .next()
+        else {
+            return;
+        };
 
-                match capabilities {
-                    lsp::ServerCapabilities {
-                        signature_help_provider:
-                            Some(lsp::SignatureHelpOptions {
-                                trigger_characters: Some(triggers),
-                                // TODO: retrigger_characters
-                                ..
-                            }),
-                        ..
-                    } if triggers.iter().any(|trigger| trigger.contains(ch))
-                        || close_triggers.contains(&ch) =>
-                    {
-                        let pos = doc.position(view.id, ls.offset_encoding());
-                        ls.text_document_signature_help(doc.identifier(), pos, None)
-                    }
-                    _ if close_triggers.contains(&ch) => ls.text_document_signature_help(
-                        doc.identifier(),
-                        doc.position(view.id, ls.offset_encoding()),
-                        None,
-                    ),
-                    // TODO: what if trigger is multiple chars long
-                    _ => None,
-                }
-            });
+        let capabilities = language_server.capabilities();
 
-        if let Some(future) = future {
-            super::signature_help_impl_with_future(
-                cx,
-                future.boxed(),
-                SignatureHelpInvoked::Automatic,
-            )
+        if let lsp::ServerCapabilities {
+            signature_help_provider:
+                Some(lsp::SignatureHelpOptions {
+                    trigger_characters: Some(triggers),
+                    // TODO: retrigger_characters
+                    ..
+                }),
+            ..
+        } = capabilities
+        {
+            // TODO: what if trigger is multiple chars long
+            let is_trigger = triggers.iter().any(|trigger| trigger.contains(ch));
+            // lsp doesn't tell us when to close the signature help, so we request
+            // the help information again after common close triggers which should
+            // return None, which in turn closes the popup.
+            let close_triggers = &[')', ';', '.'];
+
+            if is_trigger || close_triggers.contains(&ch) {
+                super::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
+            }
         }
     }
 
@@ -3310,7 +3296,7 @@ pub mod insert {
         Some(transaction)
     }
 
-    use helix_core::{auto_pairs, syntax::LanguageServerFeature};
+    use helix_core::auto_pairs;
 
     pub fn insert_char(cx: &mut Context, c: char) {
         let (view, doc) = current_ref!(cx.editor);
@@ -4065,38 +4051,43 @@ fn format_selections(cx: &mut Context) {
             .set_error("format_selections only supports a single selection for now");
         return;
     }
-    let future_offset_encoding = doc
+
+    // TODO extra LanguageServerFeature::FormatSelections?
+    // maybe such that LanguageServerFeature::Format contains it as well
+    let Some(language_server) = doc
         .language_servers_with_feature(LanguageServerFeature::Format)
-        .find_map(|language_server| {
-            let offset_encoding = language_server.offset_encoding();
-            let ranges: Vec<lsp::Range> = doc
-                .selection(view_id)
-                .iter()
-                .map(|range| range_to_lsp_range(doc.text(), *range, offset_encoding))
-                .collect();
-
-            // TODO: handle fails
-            // TODO: concurrent map over all ranges
-
-            let range = ranges[0];
-
-            let future = language_server.text_document_range_formatting(
-                doc.identifier(),
-                range,
-                lsp::FormattingOptions::default(),
-                None,
-            )?;
-            Some((future, offset_encoding))
-        });
-
-    let (future, offset_encoding) = match future_offset_encoding {
-        Some(future_offset_encoding) => future_offset_encoding,
-        None => {
-            cx.editor
-                .set_error("No configured language server supports range formatting");
-            return;
-        }
+        .find(|ls| {
+            matches!(
+                ls.capabilities().document_range_formatting_provider,
+                Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
+            )
+        })
+    else {
+        cx.editor
+            .set_error("No configured language server does not support range formatting");
+        return;
     };
+
+    let offset_encoding = language_server.offset_encoding();
+    let ranges: Vec<lsp::Range> = doc
+        .selection(view_id)
+        .iter()
+        .map(|range| range_to_lsp_range(doc.text(), *range, offset_encoding))
+        .collect();
+
+    // TODO: handle fails
+    // TODO: concurrent map over all ranges
+
+    let range = ranges[0];
+
+    let future = language_server
+        .text_document_range_formatting(
+            doc.identifier(),
+            range,
+            lsp::FormattingOptions::default(),
+            None,
+        )
+        .unwrap();
 
     let edits = tokio::task::block_in_place(|| helix_lsp::block_on(future)).unwrap_or_default();
 
@@ -4247,15 +4238,15 @@ pub fn completion(cx: &mut Context) {
 
     let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::Completion)
-        // TODO this should probably already been filtered in something like "language_servers_with_feature"
         .filter(|ls| seen_language_servers.insert(ls.id()))
-        .filter_map(|language_server| {
+        .map(|language_server| {
             let language_server_id = language_server.id();
             let offset_encoding = language_server.offset_encoding();
             let pos = pos_to_lsp_pos(doc.text(), cursor, offset_encoding);
-            let completion_request = language_server.completion(doc.identifier(), pos, None)?;
+            let doc_id = doc.identifier();
+            let completion_request = language_server.completion(doc_id, pos, None).unwrap();
 
-            Some(async move {
+            async move {
                 let json = completion_request.await?;
                 let response: Option<lsp::CompletionResponse> = serde_json::from_value(json)?;
 
@@ -4277,7 +4268,7 @@ pub fn completion(cx: &mut Context) {
                 .collect();
 
                 anyhow::Ok(items)
-            })
+            }
         })
         .collect();
 

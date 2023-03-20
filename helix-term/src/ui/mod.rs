@@ -394,14 +394,11 @@ pub mod completers {
     pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
         let matcher = Matcher::default();
 
-        let options = match doc!(editor)
+        let Some(options) = doc!(editor)
             .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
             .find_map(|ls| ls.capabilities().execute_command_provider.as_ref())
-        {
-            Some(options) => options,
-            None => {
-                return vec![];
-            }
+        else {
+            return vec![];
         };
 
         let mut matches: Vec<_> = options

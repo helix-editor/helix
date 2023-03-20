@@ -580,7 +580,7 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
-use helix_lsp::{lsp, Client, LanguageServerName, OffsetEncoding};
+use helix_lsp::{lsp, Client, LanguageServerName};
 use url::Url;
 
 impl Document {
@@ -732,21 +732,19 @@ impl Document {
 
         let text = self.text.clone();
         // finds first language server that supports formatting and then formats
-        let (offset_encoding, request) = self
+        let language_server = self
             .language_servers_with_feature(LanguageServerFeature::Format)
-            .find_map(|language_server| {
-                let offset_encoding = language_server.offset_encoding();
-                let request = language_server.text_document_formatting(
-                    self.identifier(),
-                    lsp::FormattingOptions {
-                        tab_size: self.tab_width() as u32,
-                        insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
-                        ..Default::default()
-                    },
-                    None,
-                )?;
-                Some((offset_encoding, request))
-            })?;
+            .next()?;
+        let offset_encoding = language_server.offset_encoding();
+        let request = language_server.text_document_formatting(
+            self.identifier(),
+            lsp::FormattingOptions {
+                tab_size: self.tab_width() as u32,
+                insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
+                ..Default::default()
+            },
+            None,
+        )?;
 
         let fut = async move {
             let edits = request.await.unwrap_or_else(|e| {
@@ -1445,7 +1443,6 @@ impl Document {
         self.language_servers.remove(name)
     }
 
-    // TODO filter also based on LSP capabilities?
     pub fn language_servers_with_feature(
         &self,
         feature: LanguageServerFeature,
@@ -1453,7 +1450,10 @@ impl Document {
         self.language_config().into_iter().flat_map(move |config| {
             config.language_servers.iter().filter_map(move |features| {
                 let ls = &**self.language_servers.get(&features.name)?;
-                if ls.is_initialized() && features.has_feature(feature) {
+                if ls.is_initialized()
+                    && ls.supports_feature(feature)
+                    && features.has_feature(feature)
+                {
                     Some(ls)
                 } else {
                     None
@@ -1464,23 +1464,6 @@ impl Document {
 
     pub fn supports_language_server(&self, id: usize) -> bool {
         self.language_servers().any(|l| l.id() == id)
-    }
-
-    pub fn run_on_first_supported_language_server<T, P>(
-        &self,
-        view_id: ViewId,
-        feature: LanguageServerFeature,
-        request_provider: P,
-    ) -> Option<T>
-    where
-        P: Fn(&Client, OffsetEncoding, lsp::Position, lsp::TextDocumentIdentifier) -> Option<T>,
-    {
-        self.language_servers_with_feature(feature)
-            .find_map(|language_server| {
-                let offset_encoding = language_server.offset_encoding();
-                let pos = self.position(view_id, offset_encoding);
-                request_provider(language_server, offset_encoding, pos, self.identifier())
-            })
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
