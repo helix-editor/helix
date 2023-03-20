@@ -37,7 +37,12 @@ use crate::{
 };
 
 use std::{
-    cmp::Ordering, collections::BTreeMap, fmt::Write, future::Future, path::PathBuf, sync::Arc,
+    cmp::Ordering,
+    collections::{BTreeMap, HashSet},
+    fmt::Write,
+    future::Future,
+    path::PathBuf,
+    sync::Arc,
 };
 
 impl ui::menu::Item for lsp::Location {
@@ -351,8 +356,11 @@ pub fn symbol_picker(cx: &mut Context) {
     }
     let doc = doc!(cx.editor);
 
+    let mut seen_language_servers = HashSet::new();
+
     let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentSymbols)
+        .filter(|ls| seen_language_servers.insert(ls.id()))
         .filter_map(|ls| {
             let request = ls.document_symbols(doc.identifier())?;
             Some((request, ls.offset_encoding(), doc.identifier()))
@@ -413,8 +421,10 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 
     let get_symbols = move |pattern: String, editor: &mut Editor| {
         let doc = doc!(editor);
+        let mut seen_language_servers = HashSet::new();
         let mut futures: FuturesUnordered<_> = doc
             .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
+            .filter(|ls| seen_language_servers.insert(ls.id()))
             .filter_map(|ls| Some((ls.workspace_symbols(pattern.clone())?, ls.offset_encoding())))
             .map(|(request, offset_encoding)| async move {
                 let json = request.await?;
@@ -573,8 +583,11 @@ pub fn code_action(cx: &mut Context) {
 
     let selection_range = doc.selection(view.id).primary();
 
+    let mut seen_language_servers = HashSet::new();
+
     let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::CodeAction)
+        .filter(|ls| seen_language_servers.insert(ls.id()))
         // TODO this should probably already been filtered in something like "language_servers_with_feature"
         .filter_map(|language_server| {
             let offset_encoding = language_server.offset_encoding();

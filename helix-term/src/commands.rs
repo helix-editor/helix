@@ -4243,9 +4243,12 @@ pub fn completion(cx: &mut Context) {
     let text = savepoint.text.clone();
     let cursor = savepoint.cursor();
 
+    let mut seen_language_servers = HashSet::new();
+
     let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::Completion)
         // TODO this should probably already been filtered in something like "language_servers_with_feature"
+        .filter(|ls| seen_language_servers.insert(ls.id()))
         .filter_map(|language_server| {
             let language_server_id = language_server.id();
             let offset_encoding = language_server.offset_encoding();
