@@ -775,6 +775,13 @@ comment-token = "(**)"
 language-server = { command = "ocamllsp" }
 indent = { tab-width = 2, unit = "  " }
 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+
 [[grammar]]
 name = "ocaml"
 source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "23d419ba45789c5a47d31448061557716b02750a", subpath = "ocaml" }
@@ -788,6 +795,13 @@ roots = []
 comment-token = "(**)"
 language-server = { command = "ocamllsp" }
 indent = { tab-width = 2, unit = "  " }
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
 
 [[grammar]]
 name = "ocaml-interface"
