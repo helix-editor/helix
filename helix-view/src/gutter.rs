@@ -296,9 +296,9 @@ pub fn breakpoints<'doc>(
             };
 
             let sym = if breakpoint.verified {
-                editor.icons.breakpoint.verified.icon_char
+                editor.icons.breakpoint.stackframe.verified.icon_char
             } else {
-                editor.icons.breakpoint.unverified.icon_char
+                editor.icons.breakpoint.stackframe.unverified.icon_char
             };
             write!(out, "{}", sym).unwrap();
             Some(style)

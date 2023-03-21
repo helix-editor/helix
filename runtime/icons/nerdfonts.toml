@@ -7,8 +7,28 @@ info = {icon = ""}
 hint = {icon = ""}
 
 [breakpoint]
-verified = {icon = "▲"}
-unverified = {icon = "⊚"} 
+unsupported = {icon = ""}
+circle = {icon = ""}
+
+[breakpoint.stackframe]
+verified = {icon = ""}
+unverified = {icon = ""} 
+
+[breakpoint.log]
+verified = {icon = ""}
+unverified = {icon = ""}
+
+[breakpoint.conditional]
+verified = {icon = ""}
+unverified = {icon = ""}
+
+[breakpoint.data]
+verified = {icon = ""}
+unverified = {icon = ""}
+
+[breakpoint.function]
+verified = {icon = ""}
+unverified = {icon = ""}
 
 [diff]
 added = {icon = "▍"}

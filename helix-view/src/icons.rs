@@ -154,6 +154,16 @@ pub struct Diagnostic {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Breakpoint {
+    pub stackframe: Verification,
+    pub log: Verification,
+    pub conditional: Verification,
+    pub data: Verification,
+    pub function: Verification,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct Verification {
     pub verified: Icon,
     pub unverified: Icon,
 }
