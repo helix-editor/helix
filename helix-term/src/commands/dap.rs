@@ -736,7 +736,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
         frames,
         (),
         move |cx, stack_frame, _action| {
-            let Some(frame) = stack_frame else {return;};
+            let Some(frame) = stack_frame else { return };
             let debugger = debugger!(cx.editor);
             // TODO: this should be simpler to find
             let pos = debugger.stack_frames[&thread_id]
