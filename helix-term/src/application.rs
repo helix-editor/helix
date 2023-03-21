@@ -1064,7 +1064,7 @@ impl Application {
                                     Some(file_location)
                                 },
                             );
-                            let popup_id = "show_message_request";
+                            let popup_id = "show-message-request";
                             let popup = Popup::new(popup_id, picker);
                             self.compositor.replace_or_push(popup_id, popup);
                             // do not send a reply just yet
