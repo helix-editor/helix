@@ -17,6 +17,11 @@
 ] @indent
 
 [
+  (switch_case)
+  (switch_default)
+] @indent @extend
+
+[
   "}"
   "]"
   ")"
