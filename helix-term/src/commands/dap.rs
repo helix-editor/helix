@@ -277,7 +277,7 @@ pub fn dap_launch(cx: &mut Context) {
         templates,
         (),
         |cx, debug_template, _action| {
-            let Some(template) = debug_template else {return;};
+            let Some(template) = debug_template else { return };
             let completions = template.completion.clone();
             let name = template.name.clone();
             let callback = Box::pin(async move {
