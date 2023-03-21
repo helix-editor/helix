@@ -2347,11 +2347,9 @@ name = "smithy"
 scope = "source.smithy"
 injection-regex = "smithy"
 file-types = ["smithy"]
-shebangs = []
 roots = ["smithy-build.json"]
-auto-format = false
 comment-token = "//"
-indent = { tab-width = 4, unit = "  "  }
+indent = { tab-width = 4, unit = "    " }
 language-server = { command = "cs", args = ["launch", "com.disneystreaming.smithy:smithy-language-server:latest.release", "--", "0"] }
 
 [[grammar]]

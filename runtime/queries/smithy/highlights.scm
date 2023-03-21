@@ -8,7 +8,7 @@
 ; Includes
 [
   "use"
-] @include
+] @keyword.control.import
 
 ; Builtins
 (primitive) @type.builtin
