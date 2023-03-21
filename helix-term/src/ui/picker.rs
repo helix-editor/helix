@@ -9,7 +9,6 @@ use crate::{
         EditorView,
     },
 };
-use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use tui::{
     buffer::Buffer as Surface,
@@ -21,10 +20,7 @@ use tui::{
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
 use tui::widgets::Widget;
 
-use std::{
-    cmp::{self, Ordering},
-    sync::Arc,
-};
+use std::cmp::{self, Ordering};
 use std::{collections::HashMap, io::Read, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
@@ -33,7 +29,7 @@ use helix_core::{
     unicode::segmentation::UnicodeSegmentation, Position, Rope,
 };
 use helix_view::{
-    editor::{Action, Config},
+    editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
     theme::Style,
     view::ViewPosition,
@@ -220,11 +216,7 @@ impl<T: Item> FilePicker<T> {
                 Preview::EditorDocument(doc)
             }
             PathOrId::Text(rope) => {
-                let doc = Document::from(
-                    rope,
-                    None,
-                    Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-                );
+                let doc = Document::from(rope, None, editor.config.clone());
                 Preview::Text(Box::new(doc))
             }
         }
