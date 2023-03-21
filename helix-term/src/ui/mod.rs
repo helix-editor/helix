@@ -221,7 +221,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         files,
         root,
         move |cx, path_buff, action| {
-            let Some(path) = path_buff  else { return };
+            let Some(path) = path_buff else { return };
             if let Err(e) = cx.editor.open(path, action) {
                 let err = if let Some(err) = e.source() {
                     format!("{}", err)
