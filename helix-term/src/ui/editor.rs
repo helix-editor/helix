@@ -31,7 +31,7 @@ use helix_view::{
 };
 use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
-use tui::buffer::Buffer as Surface;
+use tui::{buffer::Buffer as Surface, text::Span};
 
 use super::statusline;
 use super::{document::LineDecoration, lsp::SignatureHelp};
@@ -690,8 +690,8 @@ impl EditorView {
                 NumberOrString::String(s) => format!("({s})"),
             });
             if let Some(code) = code {
-                let text = Text::styled(code, style);
-                lines.extend(text.lines);
+                let span = Span::styled(code, style);
+                lines.push(span.into());
             }
         }
 
