@@ -77,7 +77,7 @@ fn thread_picker(
                 threads,
                 thread_states,
                 move |cx, thread, _action| {
-                    let Some(t) = thread else {return;};
+                    let Some(t) = thread else { return };
                     callback_fn(cx.editor, t)
                 },
                 move |editor, thread| {
