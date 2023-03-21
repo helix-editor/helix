@@ -11,6 +11,7 @@ use crate::{
 };
 
 use helix_core::{
+    diagnostic::NumberOrString,
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
@@ -30,7 +31,7 @@ use helix_view::{
 };
 use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
-use tui::buffer::Buffer as Surface;
+use tui::{buffer::Buffer as Surface, text::Span};
 
 use super::statusline;
 use super::{document::LineDecoration, lsp::SignatureHelp};
@@ -684,6 +685,14 @@ impl EditorView {
                 });
             let text = Text::styled(&diagnostic.message, style);
             lines.extend(text.lines);
+            let code = diagnostic.code.as_ref().map(|x| match x {
+                NumberOrString::Number(n) => format!("({n})"),
+                NumberOrString::String(s) => format!("({s})"),
+            });
+            if let Some(code) = code {
+                let span = Span::styled(code, style);
+                lines.push(span.into());
+            }
         }
 
         let paragraph = Paragraph::new(lines)
