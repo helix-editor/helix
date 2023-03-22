@@ -455,13 +455,17 @@ impl<'a> Table<'a> {
                 if is_selected {
                     buf.set_style(table_row_area, self.highlight_style);
                 }
-                let rect = Rect {
-                    x: col,
-                    y: row,
-                    width: *width,
-                    height: table_row.height,
-                };
-                render_cell(buf, cell, rect, truncate);
+                render_cell(
+                    buf,
+                    cell,
+                    Rect {
+                        x: col,
+                        y: row,
+                        width: *width,
+                        height: table_row.height,
+                    },
+                    truncate,
+                );
                 col += *width + self.column_spacing;
             }
         }
