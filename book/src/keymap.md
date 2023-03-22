@@ -292,7 +292,6 @@ This layer is a kludge of mappings, mostly pickers.
 | `/`     | Global search in workspace folder                                       | `global_search`                            |
 | `?`     | Open command palette                                                    | `command_palette`                          |
 | `e`     | Reveal current file in explorer                                         | `reveal_current_file`                      |
-| `E`     | Open or focus explorer                                                  | `toggle_or_focus_explorer`                 |
 
 
 > 💡 Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
