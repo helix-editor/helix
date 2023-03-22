@@ -1470,7 +1470,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     let cursor = range.cursor(text);
     let height = view.inner_height();
 
-    let scrolloff = config.scrolloff.min(height / 2);
+    let scrolloff = config.scrolloff.min(height.saturating_sub(1) as usize / 2);
     let offset = match direction {
         Forward => offset as isize,
         Backward => -(offset as isize),
@@ -1510,7 +1510,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
             head = char_idx_at_visual_offset(
                 doc_text,
                 view.offset.anchor,
-                (view.offset.vertical_offset + height - scrolloff) as isize,
+                (view.offset.vertical_offset + height - scrolloff - 1) as isize,
                 0,
                 &text_fmt,
                 &annotations,
