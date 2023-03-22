@@ -1154,20 +1154,10 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     }
     for sel in paths {
         let p = sel.trim();
-        if p.is_empty() {
-            continue;
-        }
-
-        let path = &PathBuf::from(p);
-        if let Err(err) = (|| -> anyhow::Result<()> {
-            if path.is_file() {
-                cx.editor.open(path, action)?;
-            } else {
-                reveal_file(cx, Some(path.clone()));
+        if !p.is_empty() {
+            if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
+                cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
-            Ok(())
-        })() {
-            cx.editor.set_error(format!("Open file failed: {:?}", err));
         }
     }
 }
