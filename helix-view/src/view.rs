@@ -138,17 +138,17 @@ impl fmt::Debug for View {
 }
 
 impl View {
-    pub fn new(doc: DocumentId, gutters: GutterConfig) -> Self {
+    pub fn new(doc_id: DocumentId, gutters: GutterConfig) -> Self {
         Self {
             id: ViewId::default(),
-            doc_id: doc,
+            doc_id,
             offset: ViewPosition {
                 anchor: 0,
                 horizontal_offset: 0,
                 vertical_offset: 0,
             },
             area: Rect::default(), // will get calculated upon inserting into tree
-            jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
+            jumps: JumpList::new((doc_id, Selection::point(0))), // TODO: use actual sel
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
@@ -157,11 +157,15 @@ impl View {
         }
     }
 
-    pub fn add_to_history(&mut self, id: DocumentId) {
-        if let Some(pos) = self.docs_access_history.iter().position(|&doc| doc == id) {
+    pub fn add_to_history(&mut self, doc_id: DocumentId) {
+        if let Some(pos) = self
+            .docs_access_history
+            .iter()
+            .position(|&doc| doc == doc_id)
+        {
             self.docs_access_history.remove(pos);
         }
-        self.docs_access_history.push(id);
+        self.docs_access_history.push(doc_id);
     }
 
     pub fn inner_area(&self, doc: &Document) -> Rect {

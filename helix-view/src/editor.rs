@@ -1166,10 +1166,10 @@ impl Editor {
         align_view(doc, view, Align::Center);
     }
 
-    pub fn switch(&mut self, id: DocumentId, action: Action) {
+    pub fn switch(&mut self, doc_id: DocumentId, action: Action) {
         use crate::tree::Layout;
 
-        if !self.documents.contains_key(&id) {
+        if !self.documents.contains_key(&doc_id) {
             log::error!("cannot switch to document that does not exist (anymore)");
             return;
         }
@@ -1186,7 +1186,7 @@ impl Editor {
                     // If the buffer has no path and is not modified, it is an empty scratch buffer.
                     && doc.path().is_none()
                     // If the buffer we are changing to is not this buffer
-                    && id != doc.id
+                    && doc_id != doc.id
                     // Ensure the buffer is not displayed in any other splits.
                     && !self
                         .tree
@@ -1213,7 +1213,7 @@ impl Editor {
                     let jump = (view.doc_id, doc.selection(view.id).clone());
                     view.jumps.push(jump);
                     // Set last accessed doc if it is a different document
-                    if doc.id != id {
+                    if doc.id != doc_id {
                         view.add_to_history(view.doc_id);
                         // Set last modified doc if modified and last modified doc is different
                         if std::mem::take(&mut doc.modified_since_accessed)
@@ -1225,13 +1225,13 @@ impl Editor {
                     }
                 }
 
-                self.replace_document_in_view(view_id, id);
+                self.replace_document_in_view(view_id, doc_id);
 
                 return;
             }
             Action::Load => {
                 let view_id = view!(self).id;
-                let doc = doc_mut!(self, &id);
+                let doc = doc_mut!(self, &doc_id);
                 doc.ensure_view_init(view_id);
                 return;
             }
@@ -1240,9 +1240,9 @@ impl Editor {
                 let view = self
                     .tree
                     .try_get(self.tree.focus)
-                    .filter(|v| id == v.doc_id) // Different Document
+                    .filter(|v| doc_id == v.doc_id) // Different Document
                     .cloned()
-                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
+                    .unwrap_or_else(|| View::new(doc_id, self.config().gutters.clone()));
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -1252,7 +1252,7 @@ impl Editor {
                     },
                 );
                 // initialize selection for view
-                let doc = doc_mut!(self, &id);
+                let doc = doc_mut!(self, &doc_id);
                 doc.ensure_view_init(view_id);
             }
         }
@@ -1262,26 +1262,25 @@ impl Editor {
 
     /// Generate an id for a new document and register it.
     fn new_document(&mut self, mut doc: Document) -> DocumentId {
-        let id = self.next_document_id;
+        let doc_id = self.next_document_id;
         // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
         self.next_document_id =
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
-        doc.id = id;
-        self.documents.insert(id, doc);
+        doc.id = doc_id;
+        self.documents.insert(doc_id, doc);
 
         let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
-        self.saves.insert(id, save_sender);
-
+        self.saves.insert(doc_id, save_sender);
         let stream = UnboundedReceiverStream::new(save_receiver).flatten();
         self.save_queue.push(stream);
 
-        id
+        doc_id
     }
 
     fn new_file_from_document(&mut self, action: Action, doc: Document) -> DocumentId {
-        let id = self.new_document(doc);
-        self.switch(id, action);
-        id
+        let doc_id = self.new_document(doc);
+        self.switch(doc_id, action);
+        doc_id
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
