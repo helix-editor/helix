@@ -295,10 +295,17 @@ pub fn breakpoints<'doc>(
                 }
             };
 
-            let sym = if breakpoint.verified {
-                editor.icons.breakpoint.stackframe.verified.icon_char
-            } else {
-                editor.icons.breakpoint.stackframe.unverified.icon_char
+            let sym = match (
+                &breakpoint.condition,
+                &breakpoint.log_message,
+                breakpoint.verified,
+            ) {
+                (Some(_), _, true) => editor.icons.breakpoint.conditional.verified.icon_char,
+                (Some(_), _, false) => editor.icons.breakpoint.conditional.unverified.icon_char,
+                (_, Some(_), true) => editor.icons.breakpoint.log.verified.icon_char,
+                (_, Some(_), false) => editor.icons.breakpoint.log.unverified.icon_char,
+                (_, _, true) => editor.icons.breakpoint.stackframe.verified.icon_char,
+                (_, _, false) => editor.icons.breakpoint.stackframe.unverified.icon_char,
             };
             write!(out, "{}", sym).unwrap();
             Some(style)
