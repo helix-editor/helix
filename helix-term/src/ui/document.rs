@@ -175,7 +175,6 @@ pub fn render_text<'t>(
         text_annotations,
     );
     row_off += offset.vertical_offset;
-    assert_eq!(0, offset.vertical_offset);
 
     let (mut formatter, mut first_visible_char_idx) =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, offset.anchor);
