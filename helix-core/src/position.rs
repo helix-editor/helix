@@ -317,10 +317,11 @@ pub fn char_idx_at_visual_offset<'a>(
     text_fmt: &TextFormat,
     annotations: &TextAnnotations,
 ) -> (usize, usize) {
+    let mut pos = anchor;
     // convert row relative to visual line containing anchor to row relative to a block containing anchor (anchor may change)
     loop {
         let (visual_pos_in_block, block_char_offset) =
-            visual_offset_from_block(text, anchor, anchor, text_fmt, annotations);
+            visual_offset_from_block(text, anchor, pos, text_fmt, annotations);
         row_offset += visual_pos_in_block.row as isize;
         anchor = block_char_offset;
         if row_offset >= 0 {
@@ -332,10 +333,10 @@ pub fn char_idx_at_visual_offset<'a>(
             break;
         }
         // the row_offset is negative so we need to look at the previous block
-        // set the anchor to the last char before the current block
-        // this char index is also always a line earlier so increase the row_offset by 1
+        // set the anchor to the last char before the current block so that we can compute
+        // the distance of this block from the start of the previous block
+        pos = anchor;
         anchor -= 1;
-        row_offset += 1;
     }
 
     char_idx_at_visual_block_offset(
