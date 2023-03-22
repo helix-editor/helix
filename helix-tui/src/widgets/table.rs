@@ -354,7 +354,13 @@ impl TableState {
 impl<'a> Table<'a> {
     // type State = TableState;
 
-    pub fn render_table(mut self, area: Rect, buf: &mut Buffer, state: &mut TableState) {
+    pub fn render_table(
+        mut self,
+        area: Rect,
+        buf: &mut Buffer,
+        state: &mut TableState,
+        truncate_rows: bool,
+    ) {
         if area.area() == 0 {
             return;
         }
@@ -448,19 +454,30 @@ impl<'a> Table<'a> {
                 if is_selected {
                     buf.set_style(table_row_area, self.highlight_style);
                 }
-                render_cell(
-                    buf,
-                    cell,
-                    Rect {
-                        x: col,
-                        y: row,
-                        width: *width,
-                        height: table_row.height,
-                    },
-                );
+                let rect = Rect {
+                    x: col,
+                    y: row,
+                    width: *width,
+                    height: table_row.height,
+                };
+                if truncate_rows {
+                    render_cell_truncated(buf, cell, rect);
+                } else {
+                    render_cell(buf, cell, rect);
+                }
                 col += *width + self.column_spacing;
             }
         }
+    }
+}
+
+fn render_cell_truncated(buf: &mut Buffer, cell: &Cell, area: Rect) {
+    buf.set_style(area, cell.style);
+    for (i, spans) in cell.content.lines.iter().enumerate() {
+        if i as u16 >= area.height {
+            break;
+        }
+        buf.set_spans_truncated(area.x, area.y + i as u16, spans, area.width);
     }
 }
 
@@ -477,7 +494,7 @@ fn render_cell(buf: &mut Buffer, cell: &Cell, area: Rect) {
 impl<'a> Widget for Table<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut state = TableState::default();
-        Table::render_table(self, area, buf, &mut state);
+        Table::render_table(self, area, buf, &mut state, false);
     }
 }
 
