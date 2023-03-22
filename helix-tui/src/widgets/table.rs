@@ -359,7 +359,7 @@ impl<'a> Table<'a> {
         area: Rect,
         buf: &mut Buffer,
         state: &mut TableState,
-        truncate_rows: bool,
+        truncate: bool,
     ) {
         if area.area() == 0 {
             return;
@@ -407,6 +407,7 @@ impl<'a> Table<'a> {
                         width: *width,
                         height: max_header_height,
                     },
+                    false,
                 );
                 col += *width + self.column_spacing;
             }
@@ -460,34 +461,24 @@ impl<'a> Table<'a> {
                     width: *width,
                     height: table_row.height,
                 };
-                if truncate_rows {
-                    render_cell_truncated(buf, cell, rect);
-                } else {
-                    render_cell(buf, cell, rect);
-                }
+                render_cell(buf, cell, rect, truncate);
                 col += *width + self.column_spacing;
             }
         }
     }
 }
 
-fn render_cell_truncated(buf: &mut Buffer, cell: &Cell, area: Rect) {
+fn render_cell(buf: &mut Buffer, cell: &Cell, area: Rect, truncate: bool) {
     buf.set_style(area, cell.style);
     for (i, spans) in cell.content.lines.iter().enumerate() {
         if i as u16 >= area.height {
             break;
         }
-        buf.set_spans_truncated(area.x, area.y + i as u16, spans, area.width);
-    }
-}
-
-fn render_cell(buf: &mut Buffer, cell: &Cell, area: Rect) {
-    buf.set_style(area, cell.style);
-    for (i, spans) in cell.content.lines.iter().enumerate() {
-        if i as u16 >= area.height {
-            break;
+        if cell.content.width() > 1 && truncate {
+            buf.set_spans_truncated(area.x, area.y + i as u16, spans, area.width);
+        } else {
+            buf.set_spans(area.x, area.y + i as u16, spans, area.width);
         }
-        buf.set_spans(area.x, area.y + i as u16, spans, area.width);
     }
 }
 
