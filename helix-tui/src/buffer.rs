@@ -434,28 +434,16 @@ impl Buffer {
     }
 
     pub fn set_spans_truncated(&mut self, x: u16, y: u16, spans: &Spans, width: u16) -> (u16, u16) {
-        let mut remaining_width = width;
-        let mut alt_x = x;
-        let (text, styles) =
-            spans
-                .0
-                .iter()
-                .fold((String::new(), vec![]), |(mut s, mut h), span| {
-                    s.push_str(span.content.as_ref());
-                    let mut styles = span
-                        .styled_graphemes(span.style)
-                        .map(|grapheme| grapheme.style)
-                        .collect();
-                    h.append(&mut styles);
+        let mut text = String::new();
+        let mut styles = vec![];
 
-                    let w = span.width() as u16;
-                    alt_x = alt_x + w;
-                    remaining_width = remaining_width.saturating_sub(w);
+        for span in &spans.0 {
+            text.push_str(span.content.as_ref());
+            span.styled_graphemes(span.style)
+                .for_each(|grapheme| styles.push(grapheme.style));
+        }
 
-                    (s, h)
-                });
-        self.set_string_truncated(x, y, &text, width.into(), |idx| styles[idx], true, true);
-        (x, y)
+        self.set_string_truncated(x, y, &text, width.into(), |idx| styles[idx], true, true)
     }
 
     pub fn set_spans(&mut self, x: u16, y: u16, spans: &Spans, width: u16) -> (u16, u16) {
