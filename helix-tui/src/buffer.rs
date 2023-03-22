@@ -434,6 +434,20 @@ impl Buffer {
     }
 
     pub fn set_spans_truncated(&mut self, x: u16, y: u16, spans: &Spans, width: u16) -> (u16, u16) {
+        // if the spans contains only 1 span and the
+        // content length of that span is 1, we can
+        // assume that we dont need to truncate the
+        // string.
+        if spans.0.len() == 1 {
+            match spans.0.first() {
+                Some(s) if s.content.len() == 1 => {
+                    return self.set_stringn(x, y, s.content.as_ref(), width as usize, s.style)
+                }
+                // if we pass the above checks, we continue as normal
+                _ => {}
+            }
+        }
+
         let mut remaining_width = width;
         let mut alt_x = x;
         let (text, styles) =
