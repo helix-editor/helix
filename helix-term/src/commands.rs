@@ -1489,18 +1489,19 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         &annotations,
     );
 
-    let head;
+    let mut head;
     match direction {
         Forward => {
-            head = char_idx_at_visual_offset(
+            let off;
+            (head, off) = char_idx_at_visual_offset(
                 doc_text,
                 view.offset.anchor,
                 (view.offset.vertical_offset + scrolloff) as isize,
                 0,
                 &text_fmt,
                 &annotations,
-            )
-            .0;
+            );
+            head += (off != 0) as usize;
             if head <= cursor {
                 return;
             }
