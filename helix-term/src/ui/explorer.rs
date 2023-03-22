@@ -754,29 +754,38 @@ mod test_explorer {
 
     use super::Explorer;
     use helix_view::graphics::Rect;
-    use pretty_assertions::assert_eq;
     use std::{fs, path::PathBuf};
 
+    /// This code should create the following file tree:
+    ///
+    ///   test_explorer/<name>
+    ///   ├── index.html
+    ///   ├── .gitignore
+    ///   ├── scripts
+    ///   │   └── main.js
+    ///   └── styles
+    ///      ├── style.css
+    ///      └── public
+    ///          └── file
+    ///
     fn dummy_file_tree(name: &str) -> PathBuf {
-        use build_fs_tree::{dir, file, Build, MergeableFileSystemTree};
-        let tree = MergeableFileSystemTree::<&str, &str>::from(dir! {
-            "index.html" => file!("")
-            "scripts" => dir! {
-                "main.js" => file!("")
-            }
-            "styles" => dir! {
-                "style.css" => file!("")
-                "public" => dir! {
-                    "file" => file!("")
-                }
-            }
-            ".gitignore" => file!("")
-        });
         let path: PathBuf = format!("test_explorer{}{}", std::path::MAIN_SEPARATOR, name).into();
         if path.exists() {
             fs::remove_dir_all(path.clone()).unwrap();
         }
-        tree.build(&path).unwrap();
+        fs::create_dir_all(path.clone()).unwrap();
+        fs::write(path.join("index.html"), "").unwrap();
+        fs::write(path.join(".gitignore"), "").unwrap();
+
+        fs::create_dir_all(path.join("scripts")).unwrap();
+        fs::write(path.join("scripts").join("main.js"), "").unwrap();
+
+        fs::create_dir_all(path.join("styles")).unwrap();
+        fs::write(path.join("styles").join("style.css"), "").unwrap();
+
+        fs::create_dir_all(path.join("styles").join("public")).unwrap();
+        fs::write(path.join("styles").join("public").join("file"), "").unwrap();
+
         path
     }
 

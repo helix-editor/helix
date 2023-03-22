@@ -1218,7 +1218,6 @@ mod test_tree_view {
     use crate::compositor::Context;
 
     use super::{TreeView, TreeViewItem};
-    use pretty_assertions::assert_eq;
 
     #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
     /// The children of DivisibleItem is the division of itself.
