@@ -1,5 +1,4 @@
-# Language support configuration.
-# See the languages documentation: https://docs.helix-editor.com/master/languages.html
+# Language support configuration. See the languages documentation: https://docs.helix-editor.com/master/languages.html
 
 [[language]]
 name = "rust"
@@ -2369,3 +2368,16 @@ language-server = { command = "cs", args = ["launch", "com.disneystreaming.smith
 [[grammar]]
 name = "smithy"
 source = { git = "https://github.com/indoorvivants/tree-sitter-smithy", rev = "cf8c7eb9faf7c7049839585eac19c94af231e6a0" }
+
+[[language]]
+name = "puppet"
+scope = "source.puppet"
+injection-regex = "puppet"
+file-types = ["puppet"]
+roots = []
+indent = { tab_width = 2, unit = "  " }
+comment-token = "#"
+
+[[grammar]]
+name = "puppet"
+source = { git = "https://github.com/neovim-puppet/tree-sitter-puppet" }
