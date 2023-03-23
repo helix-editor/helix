@@ -106,6 +106,7 @@ pest-language-server = { command = "pest-language-server" }
 pkl-lsp = { command = "pkl-lsp" }
 pony-lsp = { command = "pony-lsp", args = ["--stdio"], config = {defines = [], ponypath = []}}
 prisma-language-server = { command = "prisma-language-server", args = ["--stdio"], config.prisma.enableDiagnostics = true }
+puppet-languageserver = { command = "puppet-languageserver", args = ["--stdio"] }
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
 pylsp = { command = "pylsp" }
 pyrefly = { command = "pyrefly", args = ["lsp"] }
@@ -3068,7 +3069,7 @@ source = { git = "https://github.com/hongquan/tree-sitter-esdl", rev = "c824fe2b
 name = "pascal"
 scope = "source.pascal"
 injection-regex = "pascal"
-file-types = ["pas", "pp", "inc", "lpr", "lfm"]
+file-types = ["pas", "inc", "lpr", "lfm"]
 comment-token = "//"
 block-comment-tokens = { start = "{", end = "}" }
 indent = { tab-width = 2, unit = "  " }
@@ -5428,3 +5429,17 @@ comment-token = "//"
 [[grammar]]
 name = "tql"
 source = { git = "https://github.com/tenzir/tree-sitter-tql", rev = "d3b3b2699bc09fd0c63e2c13f15f6e474665c62e" }
+
+[[language]]
+name = "puppet"
+scope = "source.puppet"
+injection-regex = "puppet"
+file-types = ["pp"]
+indent = { tab-width = 2, unit = " " }
+comment-token = "#"
+language-servers = [ "puppet-languageserver" ]
+formatter = { command = "puppet-fmt" }
+
+[[grammar]]
+name = "puppet"
+source = { git = "https://github.com/smoeding/tree-sitter-puppet", rev = "6bc409e0818b53d34ee775f51d88961e710037ac" }
