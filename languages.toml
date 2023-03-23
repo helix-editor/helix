@@ -2380,4 +2380,4 @@ comment-token = "#"
 
 [[grammar]]
 name = "puppet"
-source = { git = "https://github.com/neovim-puppet/tree-sitter-puppet" }
+source = { git = "https://github.com/neovim-puppet/tree-sitter-puppet", rev = "bdedf4d5b13b4020745a678364e2f441cd3abf2a" }
