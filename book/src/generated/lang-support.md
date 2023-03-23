@@ -112,6 +112,7 @@
 | r | ✓ |  |  | `R` |
 | racket | ✓ |  |  | `racket` |
 | regex | ✓ |  |  |  |
+| rego | ✓ |  |  | `regols` |
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
 | rmarkdown | ✓ |  | ✓ | `R` |
 | ron | ✓ |  | ✓ |  |
