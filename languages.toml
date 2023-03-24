@@ -453,7 +453,7 @@ includeInlayVariableTypeHints = true
 name = "typescript"
 scope = "source.ts"
 injection-regex = "(ts|typescript)"
-file-types = ["ts"]
+file-types = ["ts", "mts", "cts"]
 shebangs = []
 roots = []
 # TODO: highlights-params
