@@ -1860,7 +1860,6 @@ fn rename_buffer(
             if let Ok(new_uri_str) = Url::from_file_path(&path_new) {
                 let new_uri = new_uri_str.to_string();
                 let files = vec![lsp::FileRename { old_uri, new_uri }];
-                log::debug!("{:?}", files);
                 match helix_lsp::block_on(lsp_client.will_rename_files(&files)) {
                     Ok(edit) => {
                         apply_workspace_edit(cx.editor, helix_lsp::OffsetEncoding::Utf8, &edit)
