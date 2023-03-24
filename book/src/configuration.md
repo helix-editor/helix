@@ -305,7 +305,7 @@ Example:
 min-width = 1
 ```
 
-#### `[editor.gutters.diagnotics]` Section
+#### `[editor.gutters.diagnostics]` Section
 
 Currently unused
 
