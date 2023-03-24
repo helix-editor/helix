@@ -2421,3 +2421,14 @@ language-server = { command = "nimlangserver" }
 [[grammar]]
 name = "nim"
 source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b232550e431d67de250d1b5856209e7f06" }
+
+[[language]]
+name = "markdoc"
+scope = "text.markdoc"
+roots = []
+file-types = ["mdoc"]
+language-server = { command = "markdoc-ls", args = ["--stdio"] }
+
+[[grammar]]
+name = "markdoc"
+source = { git = "https://github.com/markdoc-extra/tree-sitter-markdoc", rev = "5ffe71b29e8a3f94823913ea9cea51fcfa7e3bf8" }
