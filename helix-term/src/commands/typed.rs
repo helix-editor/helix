@@ -1,4 +1,6 @@
 use std::fmt::Write;
+use std::fmt::Write;
+use std::ops::Deref;
 use std::{ffi::OsStr, ops::Deref};
 
 use crate::job::Job;
@@ -2447,7 +2449,11 @@ fn rename_buffer(
                 let files = vec![lsp::FileRename { old_uri, new_uri }];
                 match helix_lsp::block_on(lsp_client.will_rename_files(&files)) {
                     Ok(edit) => {
-                        apply_workspace_edit(cx.editor, helix_lsp::OffsetEncoding::Utf8, &edit)
+                        if apply_workspace_edit(cx.editor, helix_lsp::OffsetEncoding::Utf8, &edit)
+                            .is_err()
+                        {
+                            log::error!(":rename command failed to apply edits")
+                        }
                     }
                     Err(err) => log::error!("Language server error: {}", err),
                 }
