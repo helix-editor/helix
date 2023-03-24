@@ -38,6 +38,7 @@
 "ui.virtual.ruler" = { bg = "overlay" }
 "ui.virtual.whitespace" = { fg = "highlight_low" }
 "ui.virtual.indent-guide" = { fg = "muted" }
+"ui.virtual.inlay-hint" = { fg = "subtle" }
 
 "ui.menu" = { fg = "subtle", bg = "surface" }
 "ui.menu.selected" = { fg = "text" }

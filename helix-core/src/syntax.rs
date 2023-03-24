@@ -82,7 +82,8 @@ pub struct LanguageConfiguration {
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
-    pub max_line_length: Option<usize>,
+    pub text_width: Option<usize>,
+    pub soft_wrap: Option<SoftWrap>,
 
     #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
     pub config: Option<serde_json::Value>,
@@ -427,7 +428,7 @@ impl TextObjectQuery {
                 let nodes: Vec<_> = mat
                     .captures
                     .iter()
-                    .filter_map(|cap| (cap.index == capture_idx).then(|| cap.node))
+                    .filter_map(|cap| (cap.index == capture_idx).then_some(cap.node))
                     .collect();
 
                 if nodes.len() > 1 {
@@ -545,6 +546,33 @@ impl LanguageConfiguration {
             })
             .ok()
     }
+}
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct SoftWrap {
+    /// Soft wrap lines that exceed viewport width. Default to off
+    pub enable: Option<bool>,
+    /// Maximum space left free at the end of the line.
+    /// This space is used to wrap text at word boundaries. If that is not possible within this limit
+    /// the word is simply split at the end of the line.
+    ///
+    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+    ///
+    /// Default to 20
+    pub max_wrap: Option<u16>,
+    /// Maximum number of indentation that can be carried over from the previous line when softwrapping.
+    /// If a line is indented further then this limit it is rendered at the start of the viewport instead.
+    ///
+    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+    ///
+    /// Default to 40
+    pub max_indent_retain: Option<u16>,
+    /// Indicator placed at the beginning of softwrapped lines
+    ///
+    /// Defaults to ↪
+    pub wrap_indicator: Option<String>,
+    /// Softwrap at `text_width` instead of viewport width if it is shorter
+    pub wrap_at_text_width: Option<bool>,
 }
 
 // Expose loader as Lazy<> global since it's always static?
@@ -1092,21 +1120,14 @@ impl Syntax {
                     }],
                     cursor,
                     _tree: None,
-                    captures,
+                    captures: RefCell::new(captures),
                     config: layer.config.as_ref(), // TODO: just reuse `layer`
                     depth: layer.depth,            // TODO: just reuse `layer`
-                    ranges: &layer.ranges,         // TODO: temp
                 })
             })
             .collect::<Vec<_>>();
 
-        // HAXX: arrange layers by byte range, with deeper layers positioned first
-        layers.sort_by_key(|layer| {
-            (
-                layer.ranges.first().cloned(),
-                std::cmp::Reverse(layer.depth),
-            )
-        });
+        layers.sort_unstable_by_key(|layer| layer.sort_key());
 
         let mut result = HighlightIter {
             source,
@@ -1136,6 +1157,7 @@ impl Syntax {
 bitflags! {
     /// Flags that track the status of a layer
     /// in the `Sytaxn::update` function
+    #[derive(Debug)]
     struct LayerUpdateFlags : u32{
         const MODIFIED = 0b001;
         const MOVED = 0b010;
@@ -1424,12 +1446,11 @@ impl<'a> TextProvider<'a> for RopeProvider<'a> {
 struct HighlightIterLayer<'a> {
     _tree: Option<Tree>,
     cursor: QueryCursor,
-    captures: iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>>>,
+    captures: RefCell<iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>>>>,
     config: &'a HighlightConfiguration,
     highlight_end_stack: Vec<usize>,
     scope_stack: Vec<LocalScope<'a>>,
     depth: u32,
-    ranges: &'a [Range],
 }
 
 impl<'a> fmt::Debug for HighlightIterLayer<'a> {
@@ -1610,10 +1631,11 @@ impl<'a> HighlightIterLayer<'a> {
     // First, sort scope boundaries by their byte offset in the document. At a
     // given position, emit scope endings before scope beginnings. Finally, emit
     // scope boundaries from deeper layers first.
-    fn sort_key(&mut self) -> Option<(usize, bool, isize)> {
+    fn sort_key(&self) -> Option<(usize, bool, isize)> {
         let depth = -(self.depth as isize);
         let next_start = self
             .captures
+            .borrow_mut()
             .peek()
             .map(|(m, i)| m.captures[*i].node.start_byte());
         let next_end = self.highlight_end_stack.last().cloned();
@@ -1838,7 +1860,8 @@ impl<'a> Iterator for HighlightIter<'a> {
             // Get the next capture from whichever layer has the earliest highlight boundary.
             let range;
             let layer = &mut self.layers[0];
-            if let Some((next_match, capture_index)) = layer.captures.peek() {
+            let captures = layer.captures.get_mut();
+            if let Some((next_match, capture_index)) = captures.peek() {
                 let next_capture = next_match.captures[*capture_index];
                 range = next_capture.node.byte_range();
 
@@ -1861,7 +1884,7 @@ impl<'a> Iterator for HighlightIter<'a> {
                 return self.emit_event(self.source.len_bytes(), None);
             };
 
-            let (mut match_, capture_index) = layer.captures.next().unwrap();
+            let (mut match_, capture_index) = captures.next().unwrap();
             let mut capture = match_.captures[capture_index];
 
             // Remove from the local scope stack any local scopes that have already ended.
@@ -1937,11 +1960,11 @@ impl<'a> Iterator for HighlightIter<'a> {
                 }
 
                 // Continue processing any additional matches for the same node.
-                if let Some((next_match, next_capture_index)) = layer.captures.peek() {
+                if let Some((next_match, next_capture_index)) = captures.peek() {
                     let next_capture = next_match.captures[*next_capture_index];
                     if next_capture.node == capture.node {
                         capture = next_capture;
-                        match_ = layer.captures.next().unwrap().0;
+                        match_ = captures.next().unwrap().0;
                         continue;
                     }
                 }
@@ -1964,11 +1987,11 @@ impl<'a> Iterator for HighlightIter<'a> {
             // highlighting patterns that are disabled for local variables.
             if definition_highlight.is_some() || reference_highlight.is_some() {
                 while layer.config.non_local_variable_patterns[match_.pattern_index] {
-                    if let Some((next_match, next_capture_index)) = layer.captures.peek() {
+                    if let Some((next_match, next_capture_index)) = captures.peek() {
                         let next_capture = next_match.captures[*next_capture_index];
                         if next_capture.node == capture.node {
                             capture = next_capture;
-                            match_ = layer.captures.next().unwrap().0;
+                            match_ = captures.next().unwrap().0;
                             continue;
                         }
                     }
@@ -1983,10 +2006,10 @@ impl<'a> Iterator for HighlightIter<'a> {
             // for a given node are ordered by pattern index, so these subsequent
             // captures are guaranteed to be for highlighting, not injections or
             // local variables.
-            while let Some((next_match, next_capture_index)) = layer.captures.peek() {
+            while let Some((next_match, next_capture_index)) = captures.peek() {
                 let next_capture = next_match.captures[*next_capture_index];
                 if next_capture.node == capture.node {
-                    layer.captures.next();
+                    captures.next();
                 } else {
                     break;
                 }

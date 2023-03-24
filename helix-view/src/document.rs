@@ -1,10 +1,16 @@
 use anyhow::{anyhow, bail, Context, Error};
+use arc_swap::access::DynAccess;
+use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
+use helix_core::doc_formatter::TextFormat;
+use helix_core::syntax::Highlight;
+use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
 use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
+use ::parking_lot::Mutex;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
@@ -13,8 +19,10 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
+use std::time::SystemTime;
 
 use helix_core::{
     encoding,
@@ -26,13 +34,15 @@ use helix_core::{
     DEFAULT_LINE_ENDING,
 };
 
-use crate::editor::RedrawHandle;
-use crate::{DocumentId, Editor, View, ViewId};
+use crate::editor::{Config, RedrawHandle};
+use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
 
 const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
+
+pub const DEFAULT_LANGUAGE_NAME: &str = "text";
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
@@ -98,10 +108,25 @@ pub struct DocumentSavedEvent {
 pub type DocumentSavedEventResult = Result<DocumentSavedEvent, anyhow::Error>;
 pub type DocumentSavedEventFuture = BoxFuture<'static, DocumentSavedEventResult>;
 
+#[derive(Debug)]
+pub struct SavePoint {
+    /// The view this savepoint is associated with
+    pub view: ViewId,
+    revert: Mutex<Transaction>,
+}
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     selections: HashMap<ViewId, Selection>,
+
+    /// Inlay hints annotations for the document, by view.
+    ///
+    /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
+    pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
+    /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
+    /// update from the LSP
+    pub inlay_hints_oudated: bool,
 
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
@@ -127,8 +152,13 @@ pub struct Document {
     // it back as it separated from the edits. We could split out the parts manually but that will
     // be more troublesome.
     pub history: Cell<History>,
+    pub config: Arc<dyn DynAccess<Config>>,
 
-    pub savepoint: Option<Transaction>,
+    savepoints: Vec<Weak<SavePoint>>,
+
+    // Last time we wrote to the file. This will carry the time the file was last opened if there
+    // were no saves.
+    last_saved_time: SystemTime,
 
     last_saved_revision: usize,
     version: i32, // should be usize?
@@ -138,6 +168,74 @@ pub struct Document {
     language_server: Option<Arc<helix_lsp::Client>>,
 
     diff_handle: Option<DiffHandle>,
+    version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
+}
+
+/// Inlay hints for a single `(Document, View)` combo.
+///
+/// There are `*_inlay_hints` field for each kind of hints an LSP can send since we offer the
+/// option to style theme differently in the theme according to the (currently supported) kinds
+/// (`type`, `parameter` and the rest).
+///
+/// Inlay hints are always `InlineAnnotation`s, not overlays or line-ones: LSP may choose to place
+/// them anywhere in the text and will sometime offer config options to move them where the user
+/// wants them but it shouldn't be Helix who decides that so we use the most precise positioning.
+///
+/// The padding for inlay hints needs to be stored separately for before and after (the LSP spec
+/// uses 'left' and 'right' but not all text is left to right so let's be correct) padding because
+/// the 'before' padding must be added to a layer *before* the regular inlay hints and the 'after'
+/// padding comes ... after.
+#[derive(Debug, Clone)]
+pub struct DocumentInlayHints {
+    /// Identifier for the inlay hints stored in this structure. To be checked to know if they have
+    /// to be recomputed on idle or not.
+    pub id: DocumentInlayHintsId,
+
+    /// Inlay hints of `TYPE` kind, if any.
+    pub type_inlay_hints: Rc<[InlineAnnotation]>,
+
+    /// Inlay hints of `PARAMETER` kind, if any.
+    pub parameter_inlay_hints: Rc<[InlineAnnotation]>,
+
+    /// Inlay hints that are neither `TYPE` nor `PARAMETER`.
+    ///
+    /// LSPs are not required to associate a kind to their inlay hints, for example Rust-Analyzer
+    /// currently never does (February 2023) and the LSP spec may add new kinds in the future that
+    /// we want to display even if we don't have some special highlighting for them.
+    pub other_inlay_hints: Rc<[InlineAnnotation]>,
+
+    /// Inlay hint padding. When creating the final `TextAnnotations`, the `before` padding must be
+    /// added first, then the regular inlay hints, then the `after` padding.
+    pub padding_before_inlay_hints: Rc<[InlineAnnotation]>,
+    pub padding_after_inlay_hints: Rc<[InlineAnnotation]>,
+}
+
+impl DocumentInlayHints {
+    /// Generate an empty list of inlay hints with the given ID.
+    pub fn empty_with_id(id: DocumentInlayHintsId) -> Self {
+        Self {
+            id,
+            type_inlay_hints: Rc::new([]),
+            parameter_inlay_hints: Rc::new([]),
+            other_inlay_hints: Rc::new([]),
+            padding_before_inlay_hints: Rc::new([]),
+            padding_after_inlay_hints: Rc::new([]),
+        }
+    }
+}
+
+/// Associated with a [`Document`] and [`ViewId`], uniquely identifies the state of inlay hints for
+/// for that document and view: if this changed since the last save, the inlay hints for the view
+/// should be recomputed.
+///
+/// We can't store the `ViewOffset` instead of the first and last asked-for lines because if
+/// softwrapping changes, the `ViewOffset` may not change while the displayed lines will.
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct DocumentInlayHintsId {
+    /// First line for which the inlay hints were requested.
+    pub first_line: usize,
+    /// Last line for which the inlay hints were requested.
+    pub last_line: usize,
 }
 
 use std::{fmt, mem};
@@ -147,6 +245,8 @@ impl fmt::Debug for Document {
             .field("id", &self.id)
             .field("text", &self.text)
             .field("selections", &self.selections)
+            .field("inlay_hints_oudated", &self.inlay_hints_oudated)
+            .field("text_annotations", &self.inlay_hints)
             .field("path", &self.path)
             .field("encoding", &self.encoding)
             .field("restore_cursor", &self.restore_cursor)
@@ -155,11 +255,21 @@ impl fmt::Debug for Document {
             .field("changes", &self.changes)
             .field("old_state", &self.old_state)
             // .field("history", &self.history)
+            .field("last_saved_time", &self.last_saved_time)
             .field("last_saved_revision", &self.last_saved_revision)
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
             // .field("language_server", &self.language_server)
+            .finish()
+    }
+}
+
+impl fmt::Debug for DocumentInlayHintsId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Much more agreable to read when debugging
+        f.debug_struct("DocumentInlayHintsId")
+            .field("lines", &(self.first_line..self.last_line))
             .finish()
     }
 }
@@ -351,7 +461,11 @@ use helix_lsp::lsp;
 use url::Url;
 
 impl Document {
-    pub fn from(text: Rope, encoding: Option<&'static encoding::Encoding>) -> Self {
+    pub fn from(
+        text: Rope,
+        encoding: Option<&'static encoding::Encoding>,
+        config: Arc<dyn DynAccess<Config>>,
+    ) -> Self {
         let encoding = encoding.unwrap_or(encoding::UTF_8);
         let changes = ChangeSet::new(&text);
         let old_state = None;
@@ -362,6 +476,8 @@ impl Document {
             encoding,
             text,
             selections: HashMap::default(),
+            inlay_hints: HashMap::default(),
+            inlay_hints_oudated: false,
             indent_style: DEFAULT_INDENT,
             line_ending: DEFAULT_LINE_ENDING,
             restore_cursor: false,
@@ -372,14 +488,20 @@ impl Document {
             diagnostics: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
-            savepoint: None,
+            savepoints: Vec::new(),
+            last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_server: None,
             diff_handle: None,
+            config,
+            version_control_head: None,
         }
     }
-
+    pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
+        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
+        Self::from(text, None, config)
+    }
     // TODO: async fn?
     /// Create a new document from `path`. Encoding is auto-detected, but it can be manually
     /// overwritten with the `encoding` parameter.
@@ -387,6 +509,7 @@ impl Document {
         path: &Path,
         encoding: Option<&'static encoding::Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
+        config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding) = if path.exists() {
@@ -398,7 +521,7 @@ impl Document {
             (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
         };
 
-        let mut doc = Self::from(rope, Some(encoding));
+        let mut doc = Self::from(rope, Some(encoding), config);
 
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
@@ -563,9 +686,11 @@ impl Document {
 
         let encoding = self.encoding;
 
+        let last_saved_time = self.last_saved_time;
+
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
-            use tokio::fs::File;
+            use tokio::{fs, fs::File};
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -573,6 +698,17 @@ impl Document {
                         std::fs::DirBuilder::new().recursive(true).create(parent)?;
                     } else {
                         bail!("can't save file, parent directory does not exist");
+                    }
+                }
+            }
+
+            // Protect against overwriting changes made externally
+            if !force {
+                if let Ok(metadata) = fs::metadata(&path).await {
+                    if let Ok(mtime) = metadata.modified() {
+                        if last_saved_time < mtime {
+                            bail!("file modified by an external process, use :w! to overwrite");
+                        }
                     }
                 }
             }
@@ -640,7 +776,7 @@ impl Document {
         let path = self
             .path()
             .filter(|path| path.exists())
-            .ok_or_else(|| anyhow!("can't find file to reload from"))?
+            .ok_or_else(|| anyhow!("can't find file to reload from {:?}", self.display_name()))?
             .to_owned();
 
         let mut file = std::fs::File::open(&path)?;
@@ -654,12 +790,16 @@ impl Document {
         self.append_changes_to_history(view);
         self.reset_modified();
 
+        self.last_saved_time = SystemTime::now();
+
         self.detect_indent_and_line_ending();
 
         match provider_registry.get_diff_base(&path) {
             Some(diff_base) => self.set_diff_base(diff_base, redraw_handle),
             None => self.diff_handle = None,
         }
+
+        self.version_control_head = provider_registry.get_current_head_name(&path);
 
         Ok(())
     }
@@ -768,13 +908,16 @@ impl Document {
         }
     }
 
-    /// Remove a view's selection from this document.
+    /// Remove a view's selection and inlay hints from this document.
     pub fn remove_view(&mut self, view_id: ViewId) {
         self.selections.remove(&view_id);
+        self.inlay_hints.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
     fn apply_impl(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+        use helix_core::Assoc;
+
         let old_doc = self.text().clone();
 
         let success = transaction.changes().apply(&mut self.text);
@@ -808,11 +951,18 @@ impl Document {
             }
 
             // generate revert to savepoint
-            if self.savepoint.is_some() {
-                take_with(&mut self.savepoint, |prev_revert| {
-                    let revert = transaction.invert(&old_doc);
-                    Some(revert.compose(prev_revert.unwrap()))
-                });
+            if !self.savepoints.is_empty() {
+                let revert = transaction.invert(&old_doc);
+                self.savepoints
+                    .retain_mut(|save_point| match save_point.upgrade() {
+                        Some(savepoint) => {
+                            let mut revert_to_savepoint = savepoint.revert.lock();
+                            *revert_to_savepoint =
+                                revert.clone().compose(mem::take(&mut revert_to_savepoint));
+                            true
+                        }
+                        None => false,
+                    })
             }
 
             // update tree-sitter syntax tree
@@ -823,10 +973,10 @@ impl Document {
                     .unwrap();
             }
 
+            let changes = transaction.changes();
+
             // map state.diagnostics over changes::map_pos too
             for diagnostic in &mut self.diagnostics {
-                use helix_core::Assoc;
-                let changes = transaction.changes();
                 diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
                 diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
                 diagnostic.line = self.text.char_to_line(diagnostic.range.start);
@@ -834,13 +984,40 @@ impl Document {
             self.diagnostics
                 .sort_unstable_by_key(|diagnostic| diagnostic.range);
 
+            // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
+            let apply_inlay_hint_changes = |annotations: &mut Rc<[InlineAnnotation]>| {
+                if let Some(data) = Rc::get_mut(annotations) {
+                    for inline in data.iter_mut() {
+                        inline.char_idx = changes.map_pos(inline.char_idx, Assoc::After);
+                    }
+                }
+            };
+
+            self.inlay_hints_oudated = true;
+            for text_annotation in self.inlay_hints.values_mut() {
+                let DocumentInlayHints {
+                    id: _,
+                    type_inlay_hints,
+                    parameter_inlay_hints,
+                    other_inlay_hints,
+                    padding_before_inlay_hints,
+                    padding_after_inlay_hints,
+                } = text_annotation;
+
+                apply_inlay_hint_changes(padding_before_inlay_hints);
+                apply_inlay_hint_changes(type_inlay_hints);
+                apply_inlay_hint_changes(parameter_inlay_hints);
+                apply_inlay_hint_changes(other_inlay_hints);
+                apply_inlay_hint_changes(padding_after_inlay_hints);
+            }
+
             // emit lsp notification
             if let Some(language_server) = self.language_server() {
                 let notify = language_server.text_document_did_change(
                     self.versioned_identifier(),
                     &old_doc,
                     self.text(),
-                    transaction.changes(),
+                    changes,
                 );
 
                 if let Some(notify) = notify {
@@ -902,14 +1079,39 @@ impl Document {
         self.undo_redo_impl(view, false)
     }
 
-    pub fn savepoint(&mut self) {
-        self.savepoint = Some(Transaction::new(self.text()));
+    /// Creates a reference counted snapshot (called savpepoint) of the document.
+    ///
+    /// The snapshot will remain valid (and updated) idenfinitly as long as ereferences to it exist.
+    /// Restoring the snapshot will restore the selection and the contents of the document to
+    /// the state it had when this function was called.
+    pub fn savepoint(&mut self, view: &View) -> Arc<SavePoint> {
+        let revert = Transaction::new(self.text()).with_selection(self.selection(view.id).clone());
+        let savepoint = Arc::new(SavePoint {
+            view: view.id,
+            revert: Mutex::new(revert),
+        });
+        self.savepoints.push(Arc::downgrade(&savepoint));
+        savepoint
     }
 
-    pub fn restore(&mut self, view: &mut View) {
-        if let Some(revert) = self.savepoint.take() {
-            self.apply(&revert, view.id);
-        }
+    pub fn restore(&mut self, view: &mut View, savepoint: &SavePoint) {
+        assert_eq!(
+            savepoint.view, view.id,
+            "Savepoint must not be used with a different view!"
+        );
+        // search and remove savepoint using a ptr comparison
+        // this avoids a deadlock as we need to lock the mutex
+        let savepoint_idx = self
+            .savepoints
+            .iter()
+            .position(|savepoint_ref| savepoint_ref.as_ptr() == savepoint as *const _)
+            .expect("Savepoint must belong to this document");
+
+        let savepoint_ref = self.savepoints.remove(savepoint_idx);
+        let mut revert = savepoint.revert.lock();
+        self.apply(&revert, view.id);
+        *revert = Transaction::new(self.text()).with_selection(self.selection(view.id).clone());
+        self.savepoints.push(savepoint_ref)
     }
 
     fn earlier_later_impl(&mut self, view: &mut View, uk: UndoKind, earlier: bool) -> bool {
@@ -1002,6 +1204,7 @@ impl Document {
             rev
         );
         self.last_saved_revision = rev;
+        self.last_saved_time = SystemTime::now();
     }
 
     /// Get the document's latest saved revision.
@@ -1059,7 +1262,7 @@ impl Document {
     /// Language server if it has been initialized.
     pub fn language_server(&self) -> Option<&helix_lsp::Client> {
         let server = self.language_server.as_deref()?;
-        server.is_initialized().then(|| server)
+        server.is_initialized().then_some(server)
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
@@ -1079,17 +1282,33 @@ impl Document {
         }
     }
 
+    pub fn version_control_head(&self) -> Option<Arc<Box<str>>> {
+        self.version_control_head.as_ref().map(|a| a.load_full())
+    }
+
+    pub fn set_version_control_head(
+        &mut self,
+        version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
+    ) {
+        self.version_control_head = version_control_head;
+    }
+
     #[inline]
     /// Tree-sitter AST tree
     pub fn syntax(&self) -> Option<&Syntax> {
         self.syntax.as_ref()
     }
 
-    /// Tab size in columns.
+    /// The width that the tab character is rendered at
     pub fn tab_width(&self) -> usize {
         self.language_config()
             .and_then(|config| config.indent.as_ref())
             .map_or(4, |config| config.tab_width) // fallback to 4 columns
+    }
+
+    // The width (in spaces) of a level of indentation.
+    pub fn indent_width(&self) -> usize {
+        self.indent_style.indent_width(self.tab_width())
     }
 
     pub fn changes(&self) -> &ChangeSet {
@@ -1117,6 +1336,7 @@ impl Document {
         &self.selections[&view_id]
     }
 
+    #[inline]
     pub fn selections(&self) -> &HashMap<ViewId, Selection> {
         &self.selections
     }
@@ -1192,12 +1412,89 @@ impl Document {
             None => global_config,
         }
     }
-}
 
-impl Default for Document {
-    fn default() -> Self {
-        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
-        Self::from(text, None)
+    pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
+        let config = self.config.load();
+        let text_width = self
+            .language_config()
+            .and_then(|config| config.text_width)
+            .unwrap_or(config.text_width);
+        let soft_wrap_at_text_width = self
+            .language_config()
+            .and_then(|config| {
+                config
+                    .soft_wrap
+                    .as_ref()
+                    .and_then(|soft_wrap| soft_wrap.wrap_at_text_width)
+            })
+            .or(config.soft_wrap.wrap_at_text_width)
+            .unwrap_or(false);
+        if soft_wrap_at_text_width {
+            // We increase max_line_len by 1 because softwrap considers the newline character
+            // as part of the line length while the "typical" expectation is that this is not the case.
+            // In particular other commands like :reflow do not count the line terminator.
+            // This is technically inconsistent for the last line as that line never has a line terminator
+            // but having the last visual line exceed the width by 1 seems like a rare edge case.
+            viewport_width = viewport_width.min(text_width as u16 + 1)
+        }
+        let config = self.config.load();
+        let editor_soft_wrap = &config.soft_wrap;
+        let language_soft_wrap = self
+            .language
+            .as_ref()
+            .and_then(|config| config.soft_wrap.as_ref());
+        let enable_soft_wrap = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.enable)
+            .or(editor_soft_wrap.enable)
+            .unwrap_or(false);
+        let max_wrap = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.max_wrap)
+            .or(config.soft_wrap.max_wrap)
+            .unwrap_or(20);
+        let max_indent_retain = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.max_indent_retain)
+            .or(editor_soft_wrap.max_indent_retain)
+            .unwrap_or(40);
+        let wrap_indicator = language_soft_wrap
+            .and_then(|soft_wrap| soft_wrap.wrap_indicator.clone())
+            .or_else(|| config.soft_wrap.wrap_indicator.clone())
+            .unwrap_or_else(|| "↪ ".into());
+        let tab_width = self.tab_width() as u16;
+        TextFormat {
+            soft_wrap: enable_soft_wrap && viewport_width > 10,
+            tab_width,
+            max_wrap: max_wrap.min(viewport_width / 4),
+            max_indent_retain: max_indent_retain.min(viewport_width * 2 / 5),
+            // avoid spinning forever when the window manager
+            // sets the size to something tiny
+            viewport_width,
+            wrap_indicator: wrap_indicator.into_boxed_str(),
+            wrap_indicator_highlight: theme
+                .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
+                .map(Highlight),
+        }
+    }
+
+    /// Get the text annotations that apply to the whole document, those that do not apply to any
+    /// specific view.
+    pub fn text_annotations(&self, _theme: Option<&Theme>) -> TextAnnotations {
+        TextAnnotations::default()
+    }
+
+    /// Set the inlay hints for this document and `view_id`.
+    pub fn set_inlay_hints(&mut self, view_id: ViewId, inlay_hints: DocumentInlayHints) {
+        self.inlay_hints.insert(view_id, inlay_hints);
+    }
+
+    /// Get the inlay hints for this document and `view_id`.
+    pub fn inlay_hints(&self, view_id: ViewId) -> Option<&DocumentInlayHints> {
+        self.inlay_hints.get(&view_id)
+    }
+
+    /// Completely removes all the inlay hints saved for the document, dropping them to free memory
+    /// (since it often means inlay hints have been fully deactivated).
+    pub fn reset_all_inlay_hints(&mut self) {
+        self.inlay_hints = Default::default();
     }
 }
 
@@ -1236,13 +1533,19 @@ impl Display for FormatterError {
 
 #[cfg(test)]
 mod test {
+    use arc_swap::ArcSwap;
+
     use super::*;
 
     #[test]
     fn changeset_to_changes_ignore_line_endings() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello\r\nworld");
-        let mut doc = Document::from(text, None);
+        let mut doc = Document::from(
+            text,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(0, 0));
 
@@ -1276,7 +1579,11 @@ mod test {
     fn changeset_to_changes() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello");
-        let mut doc = Document::from(text, None);
+        let mut doc = Document::from(
+            text,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));
 
@@ -1389,7 +1696,9 @@ mod test {
     #[test]
     fn test_line_ending() {
         assert_eq!(
-            Document::default().text().to_string(),
+            Document::default(Arc::new(ArcSwap::new(Arc::new(Config::default()))))
+                .text()
+                .to_string(),
             DEFAULT_LINE_ENDING.as_str()
         );
     }

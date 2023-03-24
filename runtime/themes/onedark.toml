@@ -59,9 +59,11 @@
 "ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
 "ui.cursor.match" = { fg = "blue", modifiers = ["underlined"]}
 
-"ui.selection" = { bg = "light-gray" }
+"ui.selection" = { bg = "faint-gray" }
 "ui.selection.primary" = { bg = "gray" }
 "ui.cursorline.primary" = { bg = "light-black" }
+
+"ui.highlight" = { bg = "gray" }
 
 "ui.linenr" = { fg = "linenr" }
 "ui.linenr.selected" = { fg = "white" }

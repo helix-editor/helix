@@ -8,13 +8,13 @@ info = { fg = 'yellowH', bg = 'brownD' }
 hint = { fg = 'brownD', bg = 'yellowH', modifiers = ['bold'] }
 warning = { fg = 'brownD', bg = 'orangeW', modifiers = ['bold'] }
 error = { fg = 'brownD', bg = 'redE', modifiers = ['bold'] }
-"diagnostic.info".underline = { color = "yellowH", style = "curl" } 
-"diagnostic.hint".underline = { color = "yellowH", style = "curl" } 
-"diagnostic.warning".underline = { color = "orangeW", style = "curl" } 
-"diagnostic.error".underline = { color = "redE", style = "curl" } 
+'diagnostic.info'.underline = { color = 'yellowH', style = 'curl' } 
+'diagnostic.hint'.underline = { color = 'yellowH', style = 'curl' } 
+'diagnostic.warning'.underline = { color = 'orangeW', style = 'curl' } 
+'diagnostic.error'.underline = { color = 'redE', style = 'curl' } 
 'ui.background' = { bg = 'brownN' }
-'ui.window' = { bg = 'brownH', fg = "brownD" } 
-'ui.gutter' = { bg = 'brownH' }
+'ui.window' = { bg = 'brownH', fg = 'brownD' } 
+'ui.gutter' = { bg = 'brownU' }
 'ui.text' = { fg = 'greyT' }
 'ui.text.focus' = { fg = 'orangeN' }
 'ui.text.info' = { fg = 'orangeH', bg = 'brownH' }
@@ -25,18 +25,22 @@ error = { fg = 'brownD', bg = 'redE', modifiers = ['bold'] }
 'ui.cursor.primary' = { fg = 'black', bg = 'orangeN' }
 'ui.selection' = { bg = 'blueH', fg = 'white' }
 'ui.selection.primary' = { bg = 'blueD', fg = 'white' }
-'ui.linenr' = { bg = "brownN", fg = 'greyL' }
-'ui.linenr.selected' = { bg = 'brownH', fg = 'orangeH' }
-'ui.cursorline' = { bg = 'brownD' }
-'ui.statusline' = { fg = "greyT", bg = 'brownH' }
-'ui.statusline.inactive' = { fg = "greyT", bg = 'brownN' }
-'ui.help' = { fg = "greyT", bg = 'brownD' }
+'ui.linenr' = { bg = 'brownU', fg = 'greyL' }
+'ui.linenr.selected' = { fg = 'orangeH' }
+'ui.cursorline' = { bg = 'brownH' }
+'ui.statusline' = { fg = 'greyT', bg = 'brownU' }
+'ui.statusline.inactive' = { fg = 'greyT', bg = 'brownN' }
+'ui.statusline.normal' = { fg = 'greyT', bg = 'brownD', modifiers = ['bold'] }
+'ui.statusline.select' = { bg = 'blueL', fg = 'brownD', modifiers = ['bold'] }
+'ui.statusline.insert' = { bg = 'orangeL', fg = 'brownD', modifiers = ['bold'] }
+'ui.help' = { fg = 'greyT', bg = 'brownD' }
 'ui.highlight' = { bg = 'brownH' }
 'ui.virtual' = { fg = 'brownV' }
 'ui.virtual.ruler' = { bg = 'brownR' }
 'ui.virtual.whitespace' = { fg = 'brownV' }
 'ui.virtual.indent-guide' = { fg = 'brownR' }
-'ui.menu' = { fg = "greyT", bg = 'brownD' }
+'ui.virtual.inlay-hint' = {fg = 'brownD', bg = 'brownU'}
+'ui.menu' = { fg = 'greyT', bg = 'brownD' }
 'ui.menu.selected' = { fg = 'orangeH', bg = 'brownH' }
 'ui.popup' = { bg = 'brownD' }
 'ui.popup.info' = { bg = 'brownH', fg = 'greyT' }
@@ -103,7 +107,7 @@ namespace = { fg = 'orangeL' }
 'markup.list.unnumbered' = { fg = 'greenN' }
 'markup.bold' = { modifiers = ['bold'] }
 'markup.italic' = { modifiers = ['italic'] }
-"markup.strikethrough" = { modifiers = ["crossed_out"] }
+'markup.strikethrough' = { modifiers = ['crossed_out'] }
 'markup.link' = { fg = 'blueD' }
 'markup.link.url' = { fg = 'blueL' }
 'markup.link.label' = { fg = 'blueH' }
@@ -151,8 +155,8 @@ blueL = '#6dd2fa'
 blueN = '#39B7C7'
 blueD = '#4AAAD6'
 brownV = '#67634F'
-brownH = '#56524E'
-brownN = '#3F3B39'
+brownH = '#4b4845'
+brownN = '#3E3B39'
 brownR = '#35312f'
 brownD = '#2B2928'
-
+brownU = '#4C4643'

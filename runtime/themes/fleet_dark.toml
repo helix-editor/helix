@@ -4,128 +4,163 @@
 # Original author: @krfl
 # Contributors:
 # @matoous
+# @kirawi
 
-"attribute" = "green"
-"type" = "light_blue"
-"type.enum.variant" = "purple"
-"constructor" = "yellow"
-"constant" = "cyan"
+"attribute" = "Lime"
+
+"type" = "Blue"
+"type.return" = "Blue Light"
+"type.parameter" = "Blue Light"
+"constructor" = "Yellow"
+
+"constant" = "Violet"
 # "constant.builtin" = {} # .boolean
-"constant.builtin.boolean" = "yellow"
-"constant.character" = "yellow"
-"constant.characted.escape" = "light"
-"constant.numeric" = "yellow"
-"string" = "pink"
-"string.regexp" = "light"
-"string.special" = { fg = "yellow", modifiers = ["underlined"] } #.path / .url / .symbol
-"comment" = "light_gray" # .line
+"constant.builtin.boolean" = "Cyan"
+"constant.character" = "Yellow"
+"constant.character.escape" = "Cyan"
+"constant.numeric" = "Yellow"
+"string" = "Pink"
+"string.regexp" = "Cyan"
+"string.special" = { fg = "Yellow", modifiers = ["underlined"] } #.path / .url / .symbol
+
+"comment" = "Gray 90" # .line
 # "comment.block" = {} # .documentation
-"variable" = "light" # .builtin
-"variable.builtin" = { fg = "red", modifiers = ["underlined"] }
-"variable.parameter" = "light"
+"variable" = "Gray 120" # .builtin
+"variable.builtin" = { fg = "Coral" }
 # "variable.other" = {} # .member
-"variable.other.member" = "purple"
-"label" = "yellow"
-"punctuation" = "light" # .delimiter / .bracket
-"keyword" = "cyan" # .operator / .directive / .function
-# "keyword.control" = "cyan" # .conditional / .repeat / .import / .return / .exception
-"keyword.control.exception" = "purple"
-"operator" = "light"
-"function" = "yellow"
-"function.macro" = "green"
-"function.builtin" = "green"
-"function.special" = "green"
-"function.method" = "light"
+"variable.other.member" = "Violet"
+"label" = "Yellow"
+"keyword" = "Cyan" # .operator / .directive / .function
+"function" = "Yellow"
+"function.declaration" = "#EFEFEF"
+"function.macro" = "Lime"
+"function.builtin" = "Lime"
+"function.special" = "Lime"
 #"function.declaration.method" = { fg = "lightest", modifiers = ["bold"] } #depends on #4892
-"tag" = "light_blue"
-"special" = "green"
-"namespace" = "light"
+"tag" = "Blue"
+"special" = "Lime"
+"namespace" = "Blue"
 
 # used in theming
 # "markup" = {} # .normal / .quote / .raw
 # "markup.normal" = {} # .completion / .hover
-"markup.bold" = { fg = "lightest", modifiers = ["bold"] }
+"markup.bold" = {  modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.heading" = { fg = "cyan", modifiers = ["bold"] } # .marker / .1 / .2 / .3 / .4 / .5 / .6
-"markup.list" = "pink" # .unnumbered / .numbered
-"markup.list.numbered" = "cyan"
-"markup.list.unnumbered" = "cyan"
+"markup.heading" = { fg = "Cyan", modifiers = ["bold"] } # .marker / .1 / .2 / .3 / .4 / .5 / .6
+"markup.list" = "Pink" # .unnumbered / .numbered
+"markup.list.numbered" = "Cyan"
+"markup.list.unnumbered" = "Cyan"
 # "markup.link" = "green"
-"markup.link.url" = { fg = "pink", modifiers = ['italic', 'underlined'] }
-"markup.link.text" = "cyan"
-"markup.link.label" = "purple"
-"markup.quote" = "pink"
-"markup.raw" = "pink"
-"markup.raw.inline" = "cyan" # .completion / .hover
-"markup.raw.block" = "pink"
+"markup.link.url" = { fg = "Pink", modifiers = ['italic', 'underlined'] }
+"markup.link.text" = "Cyan"
+"markup.link.label" = "Purple 20"
+"markup.quote" = "Pink"
+"markup.raw" = "Pink"
+"markup.raw.inline" = "Cyan" # .completion / .hover
+"markup.raw.block" = "#EB83E2"
 
-"diff.plus" = "diff_plus"
-"diff.minus" = "red_accent"
-"diff.delta" = "blue_accent"
+"diff.plus" = "Green 50"
+"diff.minus" = "Red 50"
+"diff.delta" = "Blue 80"
 
 # ui specific
-"ui.background" = { bg = "background" } # .separator
-"ui.cursor" = { bg = "dark_gray", modifiers = ["reversed"] } # .insert / .select / .match / .primary
-"ui.cursor.match" = { fg = "light", bg = "selection" } # .insert / .select / .match / .primary
-"ui.cursorline" = { bg = "darker" }
-"ui.linenr" = "dark_gray"
-"ui.linenr.selected" = { fg = "light", bg = "darker" }
-"ui.statusline" = { fg = "light", bg = "darker" } # .inactive / .normal / .insert / .select
-"ui.statusline.inactive" = { fg = "dark", bg = "darker" }
-"ui.statusline.normal" = { fg = "lightest", bg = "darker"}
-"ui.statusline.insert" = { fg = "lightest", bg = "blue_accent" }
-"ui.statusline.select" = { fg = "lightest", bg = "orange_accent" }
-"ui.popup" = { fg = "light", bg = "darkest" } # .info
-"ui.window" = { fg = "dark", bg = "darkest" }
-"ui.help" = { fg = "light", bg = "darkest" }
-"ui.text" = "light" # .focus / .info
-"ui.text.focus" = { fg = "lightest", bg = "focus" }
-"ui.virtual" = "dark" # .whitespace
-"ui.virtual.ruler" = { bg = "darker"}
-"ui.menu" = { fg = "light", bg = "darkest" } # .selected
-"ui.menu.selected" = { fg = "lightest", bg = "focus" } # .selected
-"ui.selection" = { bg = "darker" } # .primary
-"ui.selection.primary" = { bg = "selection" }
-"hint" = "blue"
-"info" = "yellow_accent"
-"warning" = "orange_accent"
-"error" = "red_error"
-"diagnostic" = { modifiers = [] }
-"diagnostic.hint" = { underline = { color = "light", style = "curl" } }
-"diagnostic.info" = { underline = { color = "blue_accent", style = "curl" } }
-"diagnostic.warning" = { underline = { color = "yellow_accent", style = "curl" } }
-"diagnostic.error" = { underline = { color = "red_error", style = "curl" } }
+"ui.background" = { bg = "Gray 10" } # .separator
+"ui.statusline" = { fg = "Gray 120", bg = "Gray 20" } # .inactive / .normal / .insert / .select
+"ui.statusline.normal" = { fg = "Gray 120", bg = "Gray 20" }
+"ui.statusline.inactive" = { fg = "Gray 90"}
+"ui.statusline.insert" = { fg = "Gray 20", bg = "Blue 90" }
+"ui.statusline.select" = { fg = "Gray 20", bg = "Yellow 60" }
+
+"ui.cursor" = { modifiers = ["reversed"] } # .insert / .select / .match / .primary
+"ui.cursor.match" = { bg = "Blue 30" } # .insert / .select / .match / .primary
+"ui.selection" = { bg = "Gray 50" } # .primary
+"ui.selection.primary" = { bg = "Blue 40" }
+
+"ui.cursorline" = { bg = "Gray 20" }
+"ui.linenr" = "Gray 70"
+"ui.linenr.selected" = "Gray 110"
+
+"ui.popup" = { fg = "Gray 120", bg = "Gray 20" } # .info
+"ui.window" = { fg = "Gray 50" }
+"ui.help" = { fg = "Gray 120", bg = "Gray 20" }
+"ui.menu" = { fg = "Gray 120", bg = "Gray 20" } # .selected
+"ui.menu.selected" = { fg = "White", bg = "Blue 40" } # .selected
+# Calculated as #ffffff with 30% opacity
+"ui.menu.scroll" = { fg = "#dfdfdf" }
+
+"ui.text" = "Gray 120" # .focus / .info
+"ui.text.focus" = { fg = "White", bg = "Blue 40" }
+
+"ui.virtual" = "Gray 90" # .whitespace
+"ui.virtual.inlay-hint" = { fg = "Gray 70" }
+"ui.virtual.ruler" = { bg = "Gray 20" }
+
+"hint" = "Gray 80"
+"info" = "#A366C4"
+"warning" = "#FACb66"
+"error" = "#FF5269"
+
+"diagnostic.hint" = { underline = { color = "Gray 80", style = "line" } }
+"diagnostic.info" = { underline = { color = "#A366C4", style = "line" } }
+"diagnostic.warning" = { underline = { color = "#FACB66", style = "line" } }
+"diagnostic.error" = { underline = { color = "#FF5269", style = "line" } }
 
 [palette]
-background = "#181818"
-darkest = "#1e1e1e"
-darker = "#292929"
-dark = "#898989"
+"White" = "#ffffff"
+"Gray 120" = "#d1d1d1"
+"Gray 110" = "#c2c2c2"
+"Gray 100" = "#a0a0a0"
+"Gray 90" = "#898989"
+"Gray 80" = "#767676"
+"Gray 70" = "#5d5d5d"
+"Gray 60" = "#484848"
+"Gray 50" = "#383838"
+"Gray 40" = "#333333"
+"Gray 30" = "#2d2d2d"
+"Gray 20" = "#292929"
+"Gray 10" = "#181818"
+"Black" = "#000000"
+"Blue 110" = "#6daaf7"
+"Blue 100" = "#4d9bf8"
+"Blue 90" = "#3691f9"
+"Blue 80" = "#1a85f6"
+"Blue 70" = "#0273eb"
+"Blue 60" = "#0c6ddd"
+"Blue 50" = "#195eb5"
+"Blue 40" = "#194176"
+"Blue 30" = "#163764"
+"Blue 20" = "#132c4f"
+"Blue 10" = "#0b1b32"
+"Red 80" = "#ec7388"
+"Red 70" = "#ea4b67"
+"Red 60" = "#d93953"
+"Red 50" = "#ce364d"
+"Red 40" = "#c03248"
+"Red 30" = "#a72a3f"
+"Red 20" = "#761b2d"
+"Red 10" = "#390813"
+"Green 50" = "#4ca988"
+"Green 40" = "#3ea17f"
+"Green 30" = "#028764"
+"Green 20" = "#134939"
+"Green 10" = "#081f19"
+"Yellow 60" = "#f8ab17"
+"Yellow 50" = "#e1971b"
+"Yellow 40" = "#b5791f"
+"Yellow 30" = "#7c511a"
+"Yellow 20" = "#5a3a14"
+"Yellow 10" = "#281806"
+"Purple 20" = "#c07bf3"
+"Purple 10" = "#b35def"
 
-light = "#d6d6dd"
-lightest = "#ffffff"
-
-dark_gray = "#535353"
-light_gray = "#6d6d6d"
-purple = "#a390f0"
-light_blue = "#7dbeff"
-blue = "#52a7f6"
-pink = "#d898d8"
-green = "#afcb85"
-cyan = "#78d0bd"
-orange = "#efb080"
-yellow = "#e5c995"
-red = "#CC7C8A"
-
-blue_accent = "#2197F3"
-pink_accent = "#E44C7A"
-green_accent = "#00AF99"
-orange_accent = "#EE7F25"
-yellow_accent = "#DEA407"
-red_accent = "#F44747"
-
-red_error = "#EB5F6A"
-selection = "#1F3661"
-diff_plus = "#5A9F81"
-focus = "#204474"
+"Blue" = "#87C3FF"
+"Blue Light" = "#ADD1DE"
+"Coral" = "#CC7C8A"
+"Cyan" = "#82D2CE"
+"Cyan Dark" = "#779E9E"
+"Lime" = "#A8CC7C"
+"Orange" = "#E09B70"
+"Pink" = "#E394DC"
+"Violet" = "#AF9CFF"
+"Yellow" = "#EBC88D"
