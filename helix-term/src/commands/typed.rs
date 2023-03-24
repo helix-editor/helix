@@ -1,13 +1,13 @@
-use std::fmt::Write;
 use std::ffi::OsStr;
+use std::fmt::Write;
 use std::ops::Deref;
 
 use crate::job::Job;
 
 use super::*;
 
-use helix_lsp::{lsp, Url};
 use helix_core::{encoding, shellwords::Shellwords};
+use helix_lsp::{lsp, Url};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
@@ -2189,7 +2189,9 @@ fn rename_buffer(
                 let files = vec![lsp::FileRename { old_uri, new_uri }];
                 match helix_lsp::block_on(lsp_client.will_rename_files(&files)) {
                     Ok(edit) => {
-                        if apply_workspace_edit(cx.editor, helix_lsp::OffsetEncoding::Utf8, &edit).is_err() {
+                        if apply_workspace_edit(cx.editor, helix_lsp::OffsetEncoding::Utf8, &edit)
+                            .is_err()
+                        {
                             log::error!(":rename command failed to apply edits")
                         }
                     }
