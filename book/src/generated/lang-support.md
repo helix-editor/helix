@@ -10,6 +10,7 @@
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
 | cairo | ✓ |  |  |  |
+| capnp | ✓ |  | ✓ |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
@@ -122,6 +123,7 @@
 | scheme | ✓ |  |  |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
 | slint | ✓ |  | ✓ | `slint-lsp` |
+| smithy | ✓ |  |  | `cs` |
 | sml | ✓ |  |  |  |
 | solidity | ✓ |  |  | `solc` |
 | sql | ✓ |  |  |  |
@@ -140,9 +142,10 @@
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | ungrammar | ✓ |  |  |  |
 | uxntal | ✓ |  |  |  |
-| v | ✓ |  |  | `v` |
+| v | ✓ | ✓ | ✓ | `v` |
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
+| vhdl | ✓ |  |  | `vhdl_ls` |
 | vhs | ✓ |  |  |  |
 | vue | ✓ |  |  | `vls` |
 | wast | ✓ |  |  |  |
