@@ -2,7 +2,7 @@
 
 (comment) @comment.line
 (multilineComment) @comment.block
-(docComment) @comment.documentation
+(docComment) @comment.block.documentation
 (multilineDocComment) @comment.block.documentation
 ; comments
 
@@ -73,9 +73,6 @@
 
 (pragma) @attribute
 ; pragmas
-
-(ERROR) @error
-; syntax or parser errors
 
 
 ;; Imports and Exports

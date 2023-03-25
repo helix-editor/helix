@@ -2335,7 +2335,6 @@ injection-regex = "nim"
 file-types = ["nim", "nims", "nimble"]
 shebangs = []
 roots = []
-auto-format = false
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-server = { command = "nimlangserver" }
