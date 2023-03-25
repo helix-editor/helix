@@ -31,7 +31,7 @@ pub fn cancelation() -> (CancelSender, CancelReciver) {
 #[derive(Debug)]
 pub struct CancelSender(watch::Sender<()>);
 
-/// A cancel flag that can be awaited in an async contex
+/// A cancel flag that can be awaited in an async context
 /// and cheaply checked with a non-blocking check for use in
 /// a synchronous call
 // using a watch intead of a Notify so we can implement is_cancelled
@@ -55,10 +55,8 @@ impl CancelReciver {
 /// * The user can cancel an unresponsive task with C-c
 pub struct BlockingJob {
     future: JobFuture,
-    // when blocking job is dropped all watchers are automatically notified
-    // so it looks like this is unused but it's use is infact in its Drop
-    // implementation. We could manuall call `self.cancel.send(())` but
-    // it's unnecessary as the `Drop` already handels that for us
+    // When a BlockingJob is dropped all watchers are notified by the Drop
+    // implementation of watch::channel.
     cancel: CancelSender,
     pub msg: &'static str,
 }

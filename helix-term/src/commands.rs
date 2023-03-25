@@ -51,7 +51,7 @@ use crate::{
     args,
     compositor::{self, Component, Compositor},
     filter_picker_entry,
-    job::{BlockingJob, Callback, CancelSender},
+    job::{cancelation, BlockingJob, Callback, CancelSender},
     keymap::ReverseKeymap,
     ui::{
         self, editor::InsertEvent, overlay::overlayed, FilePicker, Picker, Popup, Prompt,
@@ -125,6 +125,27 @@ impl<'a> Context<'a> {
         F: FnOnce(&mut Editor, &mut Compositor, T) + Send + 'static,
     {
         self.jobs.callback(make_job_callback(call, callback));
+    }
+
+    pub fn callback_blocking<T, F>(
+        &mut self,
+        // The editor status message while awaiting the callback.
+        msg: &'static str,
+        call: impl Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
+        callback: F,
+    ) where
+        T: for<'de> serde::Deserialize<'de> + Send + 'static,
+        F: FnOnce(&mut Editor, &mut Compositor, T) + Send + 'static,
+    {
+        // No cancelation subscribers -- the only cleanup we need to do is to clear the
+        // status message, which is handled by BlockingJob's integration into the UI
+        // thread.
+        let (sender, _) = cancelation();
+        self.blocking_callback = Some(BlockingJob::new(
+            make_job_callback(call, callback),
+            sender,
+            msg,
+        ))
     }
 
     /// Returns 1 if no explicit count was provided

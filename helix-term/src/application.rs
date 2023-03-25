@@ -653,7 +653,9 @@ impl Application {
                 if cx.jobs.blocking_job.is_some()
                     && helix_view::input::KeyEvent::from(event) == ctrl!('c') =>
             {
-                cx.jobs.blocking_job.as_ref().unwrap().cancel();
+                cx.editor.clear_status();
+                cx.jobs.blocking_job = None;
+
                 true
             }
 
@@ -904,7 +906,9 @@ impl Application {
                                     if !self.lsp_progress.is_progressing(server_id) {
                                         editor_view.spinners_mut().get_or_create(server_id).stop();
                                     }
-                                    self.editor.clear_status();
+                                    if self.config.load().editor.lsp.display_messages {
+                                        self.editor.clear_status();
+                                    }
 
                                     // we want to render to clear any leftover spinners or messages
                                     return;
