@@ -42,7 +42,7 @@ fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> b
             .path()
             .canonicalize()
             .ok()
-            .map_or(false, |path| !path.starts_with(&root));
+            .map_or(false, |path| !path.starts_with(root));
     }
 
     true

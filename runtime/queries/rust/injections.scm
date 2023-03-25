@@ -51,3 +51,30 @@
     [(string_literal) (raw_string_literal)] @injection.content
   )
   (#set! injection.language "sql"))
+
+; Highlight SQL in `sqlx::query_unchecked!()`
+(macro_invocation
+  macro: (scoped_identifier
+    path: (identifier) @_sqlx (#eq? @_sqlx "sqlx")
+    name: (identifier) @_query_as (#eq? @_query_as "query_unchecked"))
+  (token_tree
+    ; Only the first argument is SQL
+    .
+    [(string_literal) (raw_string_literal)] @injection.content
+  )
+  (#set! injection.language "sql"))
+
+; Highlight SQL in `sqlx::query_as_unchecked!()`
+(macro_invocation
+  macro: (scoped_identifier
+    path: (identifier) @_sqlx (#eq? @_sqlx "sqlx")
+    name: (identifier) @_query_as (#eq? @_query_as "query_as_unchecked"))
+  (token_tree
+    ; Only the second argument is SQL
+    .
+    ; Allow anything as the first argument in case the user has lower case type
+    ; names for some reason
+    (_)
+    [(string_literal) (raw_string_literal)] @injection.content
+  )
+  (#set! injection.language "sql"))

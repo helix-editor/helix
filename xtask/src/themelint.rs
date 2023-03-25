@@ -36,6 +36,8 @@ fn get_rules() -> Vec<Require> {
         Require::Difference("ui.statusline.normal", "ui.statusline.select"),
         // Check for editor.cursorline
         Require::Existence(Rule::has_bg("ui.cursorline.primary")),
+        // Check for general ui.virtual (such as inlay-hint)
+        Require::Existence(Rule::has_fg("ui.virtual")),
         // Check for editor.whitespace
         Require::Existence(Rule::has_fg("ui.virtual.whitespace")),
         // Check fir rulers
@@ -156,7 +158,7 @@ pub fn lint(file: String) -> Result<(), DynError> {
         return Ok(());
     }
     let path = path::themes().join(file.clone() + ".toml");
-    let theme = std::fs::read_to_string(&path).unwrap();
+    let theme = std::fs::read_to_string(path).unwrap();
     let theme: Theme = toml::from_str(&theme).expect("Failed to parse theme");
 
     let mut messages: Vec<String> = vec![];

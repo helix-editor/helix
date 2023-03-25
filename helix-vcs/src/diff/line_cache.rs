@@ -43,6 +43,14 @@ impl InternedRopeLines {
         res
     }
 
+    pub fn doc(&self) -> Rope {
+        self.doc.clone()
+    }
+
+    pub fn diff_base(&self) -> Rope {
+        self.diff_base.clone()
+    }
+
     /// Updates the `diff_base` and optionally the document if `doc` is not None
     pub fn update_diff_base(&mut self, diff_base: Rope, doc: Option<Rope>) {
         self.interned.clear();

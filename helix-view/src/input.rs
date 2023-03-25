@@ -380,7 +380,7 @@ impl std::str::FromStr for KeyEvent {
                 let function: String = function.chars().skip(1).collect();
                 let function = str::parse::<u8>(&function)?;
                 (function > 0 && function < 13)
-                    .then(|| KeyCode::F(function))
+                    .then_some(KeyCode::F(function))
                     .ok_or_else(|| anyhow!("Invalid function key '{}'", function))?
             }
             invalid => return Err(anyhow!("Invalid key code '{}'", invalid)),

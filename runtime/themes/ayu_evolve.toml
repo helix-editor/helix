@@ -3,7 +3,6 @@ inherits = 'ayu_dark'
 "keyword.control" = "orange"
 "keyword.storage" = "yellow"
 "keyword.storage.modifier" = "magenta"
-"variable.other.member" = "gray"
 "variable" = "light_gray"
 "constructor" = "magenta"
 "type.builtin" = { fg = "blue", modifiers = ["italic"] }
@@ -26,6 +25,8 @@ inherits = 'ayu_dark'
 "ui.cursor.primary.select" = { fg = "dark_gray", bg = "magenta" }
 "ui.cursor.primary.insert" = { fg = "dark_gray", bg = "green" }
 "ui.text.inactive" = "gray"
+"ui.bufferline" = { fg = "light_gray", bg = "background" }
+"ui.bufferline.active" = { fg = "light_gray", bg = "dark_gray" }
 
 [palette]
 background = '#020202'

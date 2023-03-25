@@ -7,6 +7,7 @@ use helix_view::graphics::{CursorKind, Rect};
 use tui::buffer::Buffer as Surface;
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
+pub type SyncCallback = Box<dyn FnOnce(&mut Compositor, &mut Context) + Sync>;
 
 // Cursive-inspired
 pub enum EventResult {

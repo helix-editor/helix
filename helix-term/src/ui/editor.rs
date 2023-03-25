@@ -1,5 +1,5 @@
 use crate::{
-    commands,
+    commands::{self, OnKeyCallback},
     compositor::{Component, Context, Event, EventResult},
     job::{self, Callback},
     key,
@@ -11,6 +11,7 @@ use crate::{
 };
 
 use helix_core::{
+    diagnostic::NumberOrString,
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
@@ -21,25 +22,25 @@ use helix_core::{
     visual_offset_from_block, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{num::NonZeroUsize, path::PathBuf, rc::Rc};
+use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
-use tui::buffer::Buffer as Surface;
+use tui::{buffer::Buffer as Surface, text::Span};
 
 use super::statusline;
 use super::{document::LineDecoration, lsp::SignatureHelp};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
-    on_next_key: Option<Box<dyn FnOnce(&mut commands::Context, KeyEvent)>>,
+    on_next_key: Option<OnKeyCallback>,
     pseudo_pending: Vec<KeyEvent>,
-    last_insert: (commands::MappableCommand, Vec<InsertEvent>),
+    pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
 }
@@ -49,6 +50,7 @@ pub enum InsertEvent {
     Key(KeyEvent),
     CompletionApply(CompleteAction),
     TriggerCompletion,
+    RequestCompletion,
 }
 
 impl Default for EditorView {
@@ -206,7 +208,7 @@ impl EditorView {
             highlights,
             theme,
             &mut line_decorations,
-            &mut *translated_positions,
+            &mut translated_positions,
         );
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
@@ -683,6 +685,14 @@ impl EditorView {
                 });
             let text = Text::styled(&diagnostic.message, style);
             lines.extend(text.lines);
+            let code = diagnostic.code.as_ref().map(|x| match x {
+                NumberOrString::Number(n) => format!("({n})"),
+                NumberOrString::String(s) => format!("({s})"),
+            });
+            if let Some(code) = code {
+                let span = Span::styled(code, style);
+                lines.push(span.into());
+            }
         }
 
         let paragraph = Paragraph::new(lines)
@@ -723,12 +733,7 @@ impl EditorView {
         let viewport = view.area;
 
         let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
-            let area = Rect::new(
-                viewport.x,
-                viewport.y + pos.visual_line as u16,
-                viewport.width,
-                1,
-            );
+            let area = Rect::new(viewport.x, viewport.y + pos.visual_line, viewport.width, 1);
             if primary_line == pos.doc_line {
                 renderer.surface.set_style(area, primary_style);
             } else if secondary_lines.binary_search(&pos.doc_line).is_ok() {
@@ -825,6 +830,7 @@ impl EditorView {
                 (Mode::Insert, Mode::Normal) => {
                     // if exiting insert mode, remove completion
                     self.completion = None;
+                    cxt.editor.completion_request_handle = None;
 
                     // TODO: Use an on_mode_change hook to remove signature help
                     cxt.jobs.callback(async {
@@ -895,6 +901,8 @@ impl EditorView {
                 for _ in 0..cxt.editor.count.map_or(1, NonZeroUsize::into) {
                     // first execute whatever put us into insert mode
                     self.last_insert.0.execute(cxt);
+                    let mut last_savepoint = None;
+                    let mut last_request_savepoint = None;
                     // then replay the inputs
                     for key in self.last_insert.1.clone() {
                         match key {
@@ -902,7 +910,9 @@ impl EditorView {
                             InsertEvent::CompletionApply(compl) => {
                                 let (view, doc) = current!(cxt.editor);
 
-                                doc.restore(view);
+                                if let Some(last_savepoint) = last_savepoint.as_deref() {
+                                    doc.restore(view, last_savepoint);
+                                }
 
                                 let text = doc.text().slice(..);
                                 let cursor = doc.selection(view.id).primary().cursor(text);
@@ -919,8 +929,11 @@ impl EditorView {
                                 doc.apply(&tx, view.id);
                             }
                             InsertEvent::TriggerCompletion => {
-                                let (_, doc) = current!(cxt.editor);
-                                doc.savepoint();
+                                last_savepoint = take(&mut last_request_savepoint);
+                            }
+                            InsertEvent::RequestCompletion => {
+                                let (view, doc) = current!(cxt.editor);
+                                last_request_savepoint = Some(doc.savepoint(view));
                             }
                         }
                     }
@@ -945,25 +958,30 @@ impl EditorView {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn set_completion(
         &mut self,
         editor: &mut Editor,
+        savepoint: Arc<SavePoint>,
         items: Vec<helix_lsp::lsp::CompletionItem>,
         offset_encoding: helix_lsp::OffsetEncoding,
         start_offset: usize,
         trigger_offset: usize,
         size: Rect,
     ) {
-        let mut completion =
-            Completion::new(editor, items, offset_encoding, start_offset, trigger_offset);
+        let mut completion = Completion::new(
+            editor,
+            savepoint,
+            items,
+            offset_encoding,
+            start_offset,
+            trigger_offset,
+        );
 
         if completion.is_empty() {
             // skip if we got no completion results
             return;
         }
-
-        // Immediately initialize a savepoint
-        doc_mut!(editor).savepoint();
 
         editor.last_completion = None;
         self.last_insert.1.push(InsertEvent::TriggerCompletion);
@@ -977,12 +995,12 @@ impl EditorView {
         self.completion = None;
 
         // Clear any savepoints
-        let doc = doc_mut!(editor);
-        doc.savepoint = None;
         editor.clear_idle_timer(); // don't retrigger
     }
 
     pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
+        commands::compute_inlay_hints_for_all_views(cx.editor, cx.jobs);
+
         if let Some(completion) = &mut self.completion {
             return if completion.ensure_item_resolved(cx) {
                 EventResult::Consumed(None)
@@ -1007,6 +1025,10 @@ impl EditorView {
         event: &MouseEvent,
         cxt: &mut commands::Context,
     ) -> EventResult {
+        if event.kind != MouseEventKind::Moved {
+            cxt.editor.reset_idle_timer();
+        }
+
         let config = cxt.editor.config();
         let MouseEvent {
             kind,

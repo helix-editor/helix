@@ -106,8 +106,7 @@
   "property"
   "release"
   "sequence"
-]  
-@keyword
+] @keyword
 
 [
   ; vhdl 02

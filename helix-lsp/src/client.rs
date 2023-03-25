@@ -6,6 +6,7 @@ use crate::{
 
 use helix_core::{find_root, ChangeSet, Rope};
 use helix_loader::{self, VERSION_AND_GIT_HASH};
+use lsp::PositionEncodingKind;
 use lsp_types as lsp;
 use serde::Deserialize;
 use serde_json::Value;
@@ -32,7 +33,6 @@ pub struct Client {
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
-    offset_encoding: OffsetEncoding,
     config: Option<Value>,
     root_path: std::path::PathBuf,
     root_uri: Option<lsp::Url>,
@@ -104,7 +104,6 @@ impl Client {
             server_tx,
             request_counter: AtomicU64::new(0),
             capabilities: OnceCell::new(),
-            offset_encoding: OffsetEncoding::Utf8,
             config,
             req_timeout,
 
@@ -147,7 +146,19 @@ impl Client {
     }
 
     pub fn offset_encoding(&self) -> OffsetEncoding {
-        self.offset_encoding
+        self.capabilities()
+            .position_encoding
+            .as_ref()
+            .and_then(|encoding| match encoding.as_str() {
+                "utf-8" => Some(OffsetEncoding::Utf8),
+                "utf-16" => Some(OffsetEncoding::Utf16),
+                "utf-32" => Some(OffsetEncoding::Utf32),
+                encoding => {
+                    log::error!("Server provided invalid position encording {encoding}, defaulting to utf-16");
+                    None
+                },
+            })
+            .unwrap_or_default()
     }
 
     pub fn config(&self) -> Option<&Value> {
@@ -190,7 +201,7 @@ impl Client {
 
             let request = jsonrpc::MethodCall {
                 jsonrpc: Some(jsonrpc::Version::V2),
-                id,
+                id: id.clone(),
                 method: R::METHOD.to_string(),
                 params: Self::value_into_params(params),
             };
@@ -207,7 +218,7 @@ impl Client {
             // TODO: delay other calls until initialize success
             timeout(Duration::from_secs(timeout_secs), rx.recv())
                 .await
-                .map_err(|_| Error::Timeout)? // return Timeout
+                .map_err(|_| Error::Timeout(id))? // return Timeout
                 .ok_or(Error::StreamClosed)?
         }
     }
@@ -304,12 +315,26 @@ impl Client {
                     execute_command: Some(lsp::DynamicRegistrationClientCapabilities {
                         dynamic_registration: Some(false),
                     }),
+                    inlay_hint: Some(lsp::InlayHintWorkspaceClientCapabilities {
+                        refresh_support: Some(false),
+                    }),
+                    workspace_edit: Some(lsp::WorkspaceEditClientCapabilities {
+                        document_changes: Some(true),
+                        resource_operations: Some(vec![
+                            lsp::ResourceOperationKind::Create,
+                            lsp::ResourceOperationKind::Rename,
+                            lsp::ResourceOperationKind::Delete,
+                        ]),
+                        failure_handling: Some(lsp::FailureHandlingKind::Abort),
+                        normalizes_line_endings: Some(false),
+                        change_annotation_support: None,
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
                     completion: Some(lsp::CompletionClientCapabilities {
                         completion_item: Some(lsp::CompletionItemCapability {
-                            snippet_support: Some(false),
+                            snippet_support: Some(true),
                             resolve_support: Some(lsp::CompletionItemCapabilityResolveSupport {
                                 properties: vec![
                                     String::from("documentation"),
@@ -318,6 +343,10 @@ impl Client {
                                 ],
                             }),
                             insert_replace_support: Some(true),
+                            deprecated_support: Some(true),
+                            tag_support: Some(lsp::TagSupport {
+                                value_set: vec![lsp::CompletionItemTag::DEPRECATED],
+                            }),
                             ..Default::default()
                         }),
                         completion_item_kind: Some(lsp::CompletionItemKindCapability {
@@ -344,7 +373,7 @@ impl Client {
                     }),
                     rename: Some(lsp::RenameClientCapabilities {
                         dynamic_registration: Some(false),
-                        prepare_support: Some(false),
+                        prepare_support: Some(true),
                         prepare_support_default_behavior: None,
                         honors_change_annotations: Some(false),
                     }),
@@ -369,12 +398,25 @@ impl Client {
                         ..Default::default()
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
+                        version_support: Some(true),
                         ..Default::default()
+                    }),
+                    inlay_hint: Some(lsp::InlayHintClientCapabilities {
+                        dynamic_registration: Some(false),
+                        resolve_support: None,
                     }),
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
                     work_done_progress: Some(true),
+                    ..Default::default()
+                }),
+                general: Some(lsp::GeneralClientCapabilities {
+                    position_encodings: Some(vec![
+                        PositionEncodingKind::UTF32,
+                        PositionEncodingKind::UTF8,
+                        PositionEncodingKind::UTF16,
+                    ]),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -577,7 +619,7 @@ impl Client {
                 }]
             }
             lsp::TextDocumentSyncKind::INCREMENTAL => {
-                Self::changeset_to_changes(old_text, new_text, changes, self.offset_encoding)
+                Self::changeset_to_changes(old_text, new_text, changes, self.offset_encoding())
             }
             lsp::TextDocumentSyncKind::NONE => return None,
             kind => unimplemented!("{:?}", kind),
@@ -628,7 +670,7 @@ impl Client {
         Some(self.notify::<lsp::notification::DidSaveTextDocument>(
             lsp::DidSaveTextDocumentParams {
                 text_document,
-                text: include_text.then(|| text.into()),
+                text: include_text.then_some(text.into()),
             },
         ))
     }
@@ -701,6 +743,31 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::SignatureHelpRequest>(params))
+    }
+
+    pub fn text_document_range_inlay_hints(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        range: lsp::Range,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match capabilities.inlay_hint_provider {
+            Some(
+                lsp::OneOf::Left(true)
+                | lsp::OneOf::Right(lsp::InlayHintServerCapabilities::Options(_)),
+            ) => (),
+            _ => return None,
+        }
+
+        let params = lsp::InlayHintParams {
+            text_document,
+            range,
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+        };
+
+        Some(self.call::<lsp::request::InlayHintRequest>(params))
     }
 
     pub fn text_document_hover(
@@ -1011,6 +1078,29 @@ impl Client {
         Some(self.call::<lsp::request::DocumentSymbolRequest>(params))
     }
 
+    pub fn prepare_rename(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match capabilities.rename_provider {
+            Some(lsp::OneOf::Right(lsp::RenameOptions {
+                prepare_provider: Some(true),
+                ..
+            })) => (),
+            _ => return None,
+        }
+
+        let params = lsp::TextDocumentPositionParams {
+            text_document,
+            position,
+        };
+
+        Some(self.call::<lsp::request::PrepareRenameRequest>(params))
+    }
+
     // empty string to get all symbols
     pub fn workspace_symbols(&self, query: String) -> Option<impl Future<Output = Result<Value>>> {
         let capabilities = self.capabilities.get().unwrap();
@@ -1027,7 +1117,7 @@ impl Client {
             partial_result_params: lsp::PartialResultParams::default(),
         };
 
-        Some(self.call::<lsp::request::WorkspaceSymbol>(params))
+        Some(self.call::<lsp::request::WorkspaceSymbolRequest>(params))
     }
 
     pub fn code_actions(
@@ -1058,20 +1148,23 @@ impl Client {
         Some(self.call::<lsp::request::CodeActionRequest>(params))
     }
 
+    pub fn supports_rename(&self) -> bool {
+        let capabilities = self.capabilities.get().unwrap();
+        matches!(
+            capabilities.rename_provider,
+            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
+        )
+    }
+
     pub fn rename_symbol(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         new_name: String,
     ) -> Option<impl Future<Output = Result<lsp::WorkspaceEdit>>> {
-        let capabilities = self.capabilities.get().unwrap();
-
-        // Return early if the language server does not support renaming.
-        match capabilities.rename_provider {
-            Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => (),
-            // None | Some(false)
-            _ => return None,
-        };
+        if !self.supports_rename() {
+            return None;
+        }
 
         let params = lsp::RenameParams {
             text_document_position: lsp::TextDocumentPositionParams {

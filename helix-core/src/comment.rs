@@ -45,7 +45,7 @@ fn find_line_comment(
 
             // determine margin of 0 or 1 for uncommenting; if any comment token is not followed by a space,
             // a margin of 0 is used for all lines.
-            if matches!(line_slice.get_char(pos + token_len), Some(c) if c != ' ') {
+            if !matches!(line_slice.get_char(pos + token_len), Some(c) if c == ' ') {
                 margin = 0;
             }
 
@@ -68,7 +68,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     let mut min_next_line = 0;
     for selection in selection {
         let (start, end) = selection.line_range(text);
-        let start = start.max(min_next_line).min(text.len_lines());
+        let start = start.clamp(min_next_line, text.len_lines());
         let end = (end + 1).min(text.len_lines());
 
         lines.extend(start..end);
@@ -108,8 +108,8 @@ mod test {
         let text = doc.slice(..);
 
         let res = find_line_comment("//", text, 0..3);
-        // (commented = true, to_change = [line 0, line 2], min = col 2, margin = 1)
-        assert_eq!(res, (false, vec![0, 2], 2, 1));
+        // (commented = true, to_change = [line 0, line 2], min = col 2, margin = 0)
+        assert_eq!(res, (false, vec![0, 2], 2, 0));
 
         // comment
         let transaction = toggle_line_comments(&doc, &selection, None);
@@ -134,6 +134,17 @@ mod test {
         transaction.apply(&mut doc);
         selection = selection.map(transaction.changes());
         assert_eq!(doc, "  1\n\n  2\n  3");
+        assert!(selection.len() == 1); // to ignore the selection unused warning
+
+        // 0 margin comments, with no space
+        doc = Rope::from("//");
+        // reset the selection.
+        selection = Selection::single(0, doc.len_chars() - 1);
+
+        let transaction = toggle_line_comments(&doc, &selection, None);
+        transaction.apply(&mut doc);
+        selection = selection.map(transaction.changes());
+        assert_eq!(doc, "");
         assert!(selection.len() == 1); // to ignore the selection unused warning
 
         // TODO: account for uncommenting with uneven comment indentation

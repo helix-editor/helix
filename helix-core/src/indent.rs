@@ -4,6 +4,7 @@ use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
 
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
+    graphemes::tab_width_at,
     syntax::{LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
     Rope, RopeSlice,
@@ -54,6 +55,14 @@ impl IndentStyle {
                 debug_assert!(n > 0 && n <= 8); // Always triggers. `debug_panic!()` wanted.
                 "  "
             }
+        }
+    }
+
+    #[inline]
+    pub fn indent_width(&self, tab_width: usize) -> usize {
+        match *self {
+            IndentStyle::Tabs => tab_width,
+            IndentStyle::Spaces(width) => width as usize,
         }
     }
 }
@@ -177,17 +186,17 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
 
 /// To determine indentation of a newly inserted line, figure out the indentation at the last col
 /// of the previous line.
-pub fn indent_level_for_line(line: RopeSlice, tab_width: usize) -> usize {
+pub fn indent_level_for_line(line: RopeSlice, tab_width: usize, indent_width: usize) -> usize {
     let mut len = 0;
     for ch in line.chars() {
         match ch {
-            '\t' => len += tab_width,
+            '\t' => len += tab_width_at(len, tab_width as u16),
             ' ' => len += 1,
             _ => break,
         }
     }
 
-    len / tab_width
+    len / indent_width
 }
 
 /// Computes for node and all ancestors whether they are the first node on their line.
@@ -466,6 +475,7 @@ fn extend_nodes<'a>(
     text: RopeSlice,
     line: usize,
     tab_width: usize,
+    indent_width: usize,
 ) {
     let mut stop_extend = false;
 
@@ -490,10 +500,12 @@ fn extend_nodes<'a>(
                         if deepest_preceding.end_position().row == line {
                             extend_node = true;
                         } else {
-                            let cursor_indent = indent_level_for_line(text.line(line), tab_width);
+                            let cursor_indent =
+                                indent_level_for_line(text.line(line), tab_width, indent_width);
                             let node_indent = indent_level_for_line(
                                 text.line(deepest_preceding.start_position().row),
                                 tab_width,
+                                indent_width,
                             );
                             if cursor_indent > node_indent {
                                 extend_node = true;
@@ -562,6 +574,7 @@ pub fn treesitter_indent_for_pos(
     syntax: &Syntax,
     indent_style: &IndentStyle,
     tab_width: usize,
+    indent_width: usize,
     text: RopeSlice,
     line: usize,
     pos: usize,
@@ -604,7 +617,7 @@ pub fn treesitter_indent_for_pos(
                 &mut cursor,
                 text,
                 query_range,
-                new_line.then(|| (line, byte_pos)),
+                new_line.then_some((line, byte_pos)),
             );
             ts_parser.cursors.push(cursor);
             (query_result, deepest_preceding)
@@ -622,9 +635,10 @@ pub fn treesitter_indent_for_pos(
             text,
             line,
             tab_width,
+            indent_width,
         );
     }
-    let mut first_in_line = get_first_in_line(node, new_line.then(|| byte_pos));
+    let mut first_in_line = get_first_in_line(node, new_line.then_some(byte_pos));
 
     let mut result = Indentation::default();
     // We always keep track of all the indent changes on one line, in order to only indent once
@@ -709,6 +723,7 @@ pub fn indent_for_newline(
     line_before_end_pos: usize,
     current_line: usize,
 ) -> String {
+    let indent_width = indent_style.indent_width(tab_width);
     if let (Some(query), Some(syntax)) = (
         language_config.and_then(|config| config.indent_query()),
         syntax,
@@ -718,6 +733,7 @@ pub fn indent_for_newline(
             syntax,
             indent_style,
             tab_width,
+            indent_width,
             text,
             line_before,
             line_before_end_pos,
@@ -726,7 +742,7 @@ pub fn indent_for_newline(
             return indent;
         };
     }
-    let indent_level = indent_level_for_line(text.line(current_line), tab_width);
+    let indent_level = indent_level_for_line(text.line(current_line), tab_width, indent_width);
     indent_style.as_str().repeat(indent_level)
 }
 
@@ -763,12 +779,22 @@ mod test {
     #[test]
     fn test_indent_level() {
         let tab_width = 4;
+        let indent_width = 4;
         let line = Rope::from("        fn new"); // 8 spaces
-        assert_eq!(indent_level_for_line(line.slice(..), tab_width), 2);
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            2
+        );
         let line = Rope::from("\t\t\tfn new"); // 3 tabs
-        assert_eq!(indent_level_for_line(line.slice(..), tab_width), 3);
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            3
+        );
         // mixed indentation
         let line = Rope::from("\t    \tfn new"); // 1 tab, 4 spaces, tab
-        assert_eq!(indent_level_for_line(line.slice(..), tab_width), 3);
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            3
+        );
     }
 }
