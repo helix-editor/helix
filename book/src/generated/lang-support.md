@@ -41,7 +41,7 @@
 | fortran | ✓ |  | ✓ | `fortls` |
 | gdscript | ✓ | ✓ | ✓ |  |
 | git-attributes | ✓ |  |  |  |
-| git-commit | ✓ |  |  |  |
+| git-commit | ✓ | ✓ |  |  |
 | git-config | ✓ |  |  |  |
 | git-ignore | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
