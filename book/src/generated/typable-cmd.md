@@ -76,5 +76,5 @@
 | `:pipe` | Pipe each selection to the shell command. |
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh` | Run a shell command |
-| `:rename`, `:rnm` | Rename the currently selected buffer |
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
+| `:rename`, `:rnm` | Rename the currently selected buffer |
