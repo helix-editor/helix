@@ -228,6 +228,8 @@ We use a similar set of scopes as
   - `list`
     - `unnumbered`
     - `numbered`
+    - `checked`
+    - `unchecked`
   - `bold`
   - `italic`
   - `strikethrough`
