@@ -78,21 +78,20 @@ where
     }
 
     #[inline]
-    fn supports_keyboard_enhancement_protocol(&self) -> io::Result<bool> {
-        self.supports_keyboard_enhancement_protocol
-            .get_or_try_init(|| {
+    fn supports_keyboard_enhancement_protocol(&self) -> bool {
+        *self.supports_keyboard_enhancement_protocol
+            .get_or_init(|| {
                 use std::time::Instant;
 
                 let now = Instant::now();
-                let support = terminal::supports_keyboard_enhancement();
+                let supported = matches!(terminal::supports_keyboard_enhancement(), Ok(true));
                 log::debug!(
                     "The keyboard enhancement protocol is {}supported in this terminal (checked in {:?})",
-                    if matches!(support, Ok(true)) { "" } else { "not " },
+                    if supported { "" } else { "not " },
                     Instant::now().duration_since(now)
                 );
-                support
+                supported
             })
-            .copied()
     }
 }
 
@@ -125,7 +124,7 @@ where
         if config.enable_mouse_capture {
             execute!(self.buffer, EnableMouseCapture)?;
         }
-        if self.supports_keyboard_enhancement_protocol()? {
+        if self.supports_keyboard_enhancement_protocol() {
             execute!(
                 self.buffer,
                 PushKeyboardEnhancementFlags(
@@ -143,7 +142,7 @@ where
         if config.enable_mouse_capture {
             execute!(self.buffer, DisableMouseCapture)?;
         }
-        if self.supports_keyboard_enhancement_protocol()? {
+        if self.supports_keyboard_enhancement_protocol() {
             execute!(self.buffer, PopKeyboardEnhancementFlags)?;
         }
         execute!(
