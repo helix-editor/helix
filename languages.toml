@@ -453,7 +453,7 @@ includeInlayVariableTypeHints = true
 name = "typescript"
 scope = "source.ts"
 injection-regex = "(ts|typescript)"
-file-types = ["ts"]
+file-types = ["ts", "mts", "cts"]
 shebangs = []
 roots = []
 # TODO: highlights-params
@@ -775,6 +775,13 @@ comment-token = "(**)"
 language-server = { command = "ocamllsp" }
 indent = { tab-width = 2, unit = "  " }
 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+
 [[grammar]]
 name = "ocaml"
 source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "23d419ba45789c5a47d31448061557716b02750a", subpath = "ocaml" }
@@ -788,6 +795,13 @@ roots = []
 comment-token = "(**)"
 language-server = { command = "ocamllsp" }
 indent = { tab-width = 2, unit = "  " }
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
 
 [[grammar]]
 name = "ocaml-interface"
@@ -2054,7 +2068,7 @@ source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d1
 name = "xml"
 scope = "source.xml"
 injection-regex = "xml"
-file-types = ["xml", "mobileconfig", "plist"]
+file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard"]
 indent = { tab-width = 2, unit = "  " }
 roots = []
 
@@ -2328,3 +2342,30 @@ roots = []
 [[grammar]]
 name = "rst"
 source = { git = "https://github.com/stsewd/tree-sitter-rst", rev = "25e6328872ac3a764ba8b926aea12719741103f1" }
+
+[[language]]
+name = "capnp"
+scope = "source.capnp"
+injection-regex = "capnp"
+file-types = ["capnp"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "capnp"
+source = { git = "https://github.com/amaanq/tree-sitter-capnp", rev = "fc6e2addf103861b9b3dffb82c543eb6b71061aa" }
+
+[[language]]
+name = "smithy"
+scope = "source.smithy"
+injection-regex = "smithy"
+file-types = ["smithy"]
+roots = ["smithy-build.json"]
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+language-server = { command = "cs", args = ["launch", "com.disneystreaming.smithy:smithy-language-server:latest.release", "--", "0"] }
+
+[[grammar]]
+name = "smithy"
+source = { git = "https://github.com/indoorvivants/tree-sitter-smithy", rev = "cf8c7eb9faf7c7049839585eac19c94af231e6a0" }

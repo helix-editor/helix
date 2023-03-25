@@ -2062,18 +2062,14 @@ fn run_shell_command(
         return Ok(());
     }
 
-    let shell = &cx.editor.config().shell;
-    let (output, success) = shell_impl(shell, &args.join(" "), None)?;
-    if success {
-        cx.editor.set_status("Command succeeded");
-    } else {
-        cx.editor.set_error("Command failed");
-    }
+    let shell = cx.editor.config().shell.clone();
+    let args = args.join(" ");
 
-    if !output.is_empty() {
-        let callback = async move {
-            let call: job::Callback = Callback::EditorCompositor(Box::new(
-                move |editor: &mut Editor, compositor: &mut Compositor| {
+    let callback = async move {
+        let (output, success) = shell_impl_async(&shell, &args, None).await?;
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                if !output.is_empty() {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output),
                         editor.syn_loader.clone(),
@@ -2082,13 +2078,17 @@ fn run_shell_command(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
                     ));
                     compositor.replace_or_push("shell", popup);
-                },
-            ));
-            Ok(call)
-        };
-
-        cx.jobs.callback(callback);
-    }
+                }
+                if success {
+                    editor.set_status("Command succeeded");
+                } else {
+                    editor.set_error("Command failed");
+                }
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
 
     Ok(())
 }
