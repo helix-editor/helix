@@ -17,8 +17,11 @@
 
 ; Function definitions
 
-(function_definition (name) @function)
+(function_definition 
+  name: (name) @function
+  parameters: (parameters) @variable.parameter )
 (constructor_definition "_init" @function)
+(lambda (parameters) @variable.parameter)
 
 
 ;; Literals
@@ -28,9 +31,28 @@
 (type) @type
 (expression_statement (array (identifier) @type))
 (binary_operator (identifier) @type)
+(enum_definition (name) @type.enum)
+(enumerator (identifier) @type.enum.variant)
+[
+  (null)
+  (underscore)
+] @type.builtin
+
 
 (variable_statement (identifier) @variable)
-(get_node) @label
+(attribute 
+  (identifier) 
+  (identifier) @variable.other.member)
+(attribute 
+  (identifier) @type.builtin
+  (#match? @type.builtin "^(AABB|Array|Basis|bool|Callable|Color|Dictionary|float|int|NodePath|Object|Packed(Byte|Color|String)Array|PackedFloat(32|64)Array|PackedInt(32|64)Array|PackedVector(2|3)Array|Plane|Projection|Quaternion|Rect2([i]{0,1})|RID|Signal|String|StringName|Transform(2|3)D|Variant|Vector(2|3|4)([i]{0,1}))$"))
+
+[
+  (string_name)
+  (node_path)
+  (get_node)
+] @label
+(signal_statement (name) @label)
 
 (const_statement (name) @constant)
 (integer) @constant.numeric.integer
@@ -40,7 +62,6 @@
   (true)
   (false)
 ] @constant.builtin.boolean
-(null) @constant.builtin
 
 [
   "+"
@@ -66,6 +87,7 @@
   "~"
   "<<"
   ">>"
+  ":="
 ] @operator
 
 (annotation (identifier) @keyword.storage.modifier)
@@ -74,6 +96,7 @@
   "if"
   "else"
   "elif"
+  "match"
 ] @keyword.control.conditional
 
 [
@@ -100,7 +123,6 @@
   "in"
   "is"
   "as"
-  "match"
   "and"
   "or"
   "not"
@@ -128,5 +150,6 @@
   "extends"
   "set"
   "get"
+  "await"
 ] @keyword
 

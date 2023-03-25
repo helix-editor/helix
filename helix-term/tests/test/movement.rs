@@ -395,7 +395,7 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
     test((
         "#[foo|]#",
         "abar<esc>",
-        helpers::platform_line("#[foobar|]#\n").as_ref(),
+        helpers::platform_line("#[foobar|]#\n"),
     ))
     .await?;
 
@@ -403,7 +403,7 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
     test((
         "#[|foo]#",
         "abar<esc>",
-        helpers::platform_line("#[foobar|]#\n").as_ref(),
+        helpers::platform_line("#[foobar|]#\n"),
     ))
     .await?;
 
@@ -413,28 +413,21 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::Result<()> {
     test_with_config(
-        Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-        helpers::test_syntax_conf(None),
+        AppBuilder::new().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 #[/|]#// Increments
                 fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }
-            "})
-            .as_ref(),
+            "}),
             "]fv]f",
             helpers::platform_line(indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }|]#
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;
@@ -445,28 +438,21 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Result<()> {
     test_with_config(
-        Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-        helpers::test_syntax_conf(None),
+        AppBuilder::new().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }|]#
-            "})
-            .as_ref(),
+            "}),
             "v[f",
             helpers::platform_line(indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }|]#
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;
@@ -478,12 +464,7 @@ async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Res
 async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> anyhow::Result<()> {
     // Note: the anchor stays put and the head moves back.
     test_with_config(
-        Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-        helpers::test_syntax_conf(None),
+        AppBuilder::new().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -492,8 +473,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 #[fn ident(x: usize) -> usize { x }|]#
-            "})
-            .as_ref(),
+            "}),
             "v[f",
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -502,19 +482,13 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 #[|fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 ]#fn ident(x: usize) -> usize { x }
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;
 
     test_with_config(
-        Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-        helpers::test_syntax_conf(None),
+        AppBuilder::new().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -523,8 +497,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 #[fn ident(x: usize) -> usize { x }|]#
-            "})
-            .as_ref(),
+            "}),
             "v[f[f",
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -533,8 +506,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 ]#fn ident(x: usize) -> usize { x }
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;

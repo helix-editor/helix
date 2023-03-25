@@ -709,7 +709,16 @@ impl Application {
                                 return;
                             }
                         };
-                        let doc = self.editor.document_by_path_mut(&path);
+                        let doc = self.editor.document_by_path_mut(&path).filter(|doc| {
+                            if let Some(version) = params.version {
+                                if version != doc.version() {
+                                    log::info!("Version ({version}) is out of date for {path:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
+                                    return false;
+                                }
+                            }
+
+                            true
+                        });
 
                         if let Some(doc) = doc {
                             let lang_conf = doc.language_config();
@@ -990,16 +999,19 @@ impl Application {
                         Ok(serde_json::Value::Null)
                     }
                     Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
-                        apply_workspace_edit(
+                        let res = apply_workspace_edit(
                             &mut self.editor,
                             helix_lsp::OffsetEncoding::Utf8,
                             &params.edit,
                         );
 
                         Ok(json!(lsp::ApplyWorkspaceEditResponse {
-                            applied: true,
-                            failure_reason: None,
-                            failed_change: None,
+                            applied: res.is_ok(),
+                            failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
+                            failed_change: res
+                                .as_ref()
+                                .err()
+                                .map(|err| err.failed_change_idx as u32),
                         }))
                     }
                     Ok(MethodCall::WorkspaceFolders) => {
