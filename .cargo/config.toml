@@ -2,8 +2,16 @@
 xtask = "run --package xtask --"
 integration-test = "test --features integration --profile integration --workspace --test integration"
 
-[target.aarch64-unknown-linux-musl]
 # By default, on musl linux, statically linked binaries are produced.
 # But such binaries do not support loading libraries using `dlopen()` ("libloading" crate),
 # which is required for loading treesitter grammars.
+[target.arm-unknown-linux-musleabihf]
+rustflags = ["-C", "target-feature=-crt-static"]
+[target.armv7-unknown-linux-musleabihf]
+rustflags = ["-C", "target-feature=-crt-static"]
+[target.aarch64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=-crt-static"]
+[target.i686-unknown-linux-musl]
+rustflags = ["-C", "target-feature=-crt-static"]
+[target.x86_64-unknown-linux-musl]
 rustflags = ["-C", "target-feature=-crt-static"]
