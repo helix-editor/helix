@@ -1,6 +1,7 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_core::{
+    chars::char_is_word,
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
     pos_at_coords, syntax, Selection,
@@ -811,7 +812,6 @@ impl Application {
                                         log::warn!("lsp position out of bounds - {:?}", diagnostic);
                                         return None;
                                     };
-
                                     let severity =
                                         diagnostic.severity.map(|severity| match severity {
                                             DiagnosticSeverity::ERROR => Error,
@@ -863,8 +863,17 @@ impl Application {
                                         Vec::new()
                                     };
 
+                                    let ends_at_word = start != end
+                                        && end != 0
+                                        && text.get_char(end - 1).map_or(false, char_is_word);
+                                    let starts_at_word = start != end
+                                        && text.get_char(start).map_or(false, char_is_word);
+
                                     Some(Diagnostic {
                                         range: Range { start, end },
+                                        ends_at_word,
+                                        starts_at_word,
+                                        zero_width: start == end,
                                         line: diagnostic.range.start.line as usize,
                                         message: diagnostic.message.clone(),
                                         severity,
