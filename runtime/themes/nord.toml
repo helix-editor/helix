@@ -19,6 +19,7 @@
 "ui.statusline.insert" = { fg = "nord0", bg = "nord13" }
 "ui.statusline.select" = { fg = "nord0", bg = "nord15" }
 
+
 # nord1 - status bars, panels, modals, autocompletion
 "ui.statusline" = { fg = "nord4", bg = "nord1" }
 "ui.popup" = { bg = "nord1" }
@@ -33,6 +34,8 @@
 "comment" = { fg = "nord3_bright", modifiers = ["italic"] }
 "ui.linenr" = "nord3_bright"
 "ui.virtual.whitespace" = "nord3_bright"
+"ui.virtual.inlay-hint" = { fg = "nord3_bright" }
+
 
 # Snow Storm
 # nord4 - cursor, variables, constants, attributes, fields

@@ -318,6 +318,17 @@ impl Client {
                     inlay_hint: Some(lsp::InlayHintWorkspaceClientCapabilities {
                         refresh_support: Some(false),
                     }),
+                    workspace_edit: Some(lsp::WorkspaceEditClientCapabilities {
+                        document_changes: Some(true),
+                        resource_operations: Some(vec![
+                            lsp::ResourceOperationKind::Create,
+                            lsp::ResourceOperationKind::Rename,
+                            lsp::ResourceOperationKind::Delete,
+                        ]),
+                        failure_handling: Some(lsp::FailureHandlingKind::Abort),
+                        normalizes_line_endings: Some(false),
+                        change_annotation_support: None,
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -387,6 +398,7 @@ impl Client {
                         ..Default::default()
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
+                        version_support: Some(true),
                         ..Default::default()
                     }),
                     inlay_hint: Some(lsp::InlayHintClientCapabilities {
@@ -1136,20 +1148,23 @@ impl Client {
         Some(self.call::<lsp::request::CodeActionRequest>(params))
     }
 
+    pub fn supports_rename(&self) -> bool {
+        let capabilities = self.capabilities.get().unwrap();
+        matches!(
+            capabilities.rename_provider,
+            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
+        )
+    }
+
     pub fn rename_symbol(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         new_name: String,
     ) -> Option<impl Future<Output = Result<lsp::WorkspaceEdit>>> {
-        let capabilities = self.capabilities.get().unwrap();
-
-        // Return early if the language server does not support renaming.
-        match capabilities.rename_provider {
-            Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_)) => (),
-            // None | Some(false)
-            _ => return None,
-        };
+        if !self.supports_rename() {
+            return None;
+        }
 
         let params = lsp::RenameParams {
             text_document_position: lsp::TextDocumentPositionParams {

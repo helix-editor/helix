@@ -228,6 +228,8 @@ We use a similar set of scopes as
   - `list`
     - `unnumbered`
     - `numbered`
+    - `checked`
+    - `unchecked`
   - `bold`
   - `italic`
   - `strikethrough`
@@ -306,6 +308,7 @@ These scopes are used for theming the editor interface:
 | `ui.menu.scroll`                  | `fg` sets thumb color, `bg` sets track color of scrollbar                                      |
 | `ui.selection`                    | For selections in the editing area                                                             |
 | `ui.selection.primary`            |                                                                                                |
+| `ui.highlight`                    | Highlighted lines in the picker preview                                                        |
 | `ui.cursorline.primary`           | The line of the primary cursor ([if cursorline is enabled][editor-section])                    |
 | `ui.cursorline.secondary`         | The lines of any other cursors ([if cursorline is enabled][editor-section])                    |
 | `ui.cursorcolumn.primary`         | The column of the primary cursor ([if cursorcolumn is enabled][editor-section])                |

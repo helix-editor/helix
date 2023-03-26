@@ -8,6 +8,7 @@
   - [Fedora/RHEL](#fedorarhel)
   - [Arch Linux community](#arch-linux-community)
   - [NixOS](#nixos)
+  - [AppImage](#appimage)
 - [macOS](#macos)
   - [Homebrew Core](#homebrew-core)
 - [Windows](#windows)
@@ -87,6 +88,16 @@ accepts the new settings on first use.
 If you are using a version of Nix without flakes enabled,
 [install Cachix CLI](https://docs.cachix.org/installation) and use
 `cachix use helix` to configure Nix to use cached outputs when possible.
+
+### AppImage
+
+Install Helix using [AppImage](https://appimage.org/).
+Download Helix AppImage from the [latest releases](https://github.com/helix-editor/helix/releases/latest) page.
+
+```sh
+chmod +x helix-*.AppImage # change permission for executable mode
+./helix-*.AppImage # run helix
+```
  
 ## macOS
 
