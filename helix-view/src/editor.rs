@@ -1602,7 +1602,6 @@ impl Editor {
                         let timeout = Instant::now() + Duration::from_millis(96);
                         if timeout < self.idle_timer.deadline() {
                             self.idle_timer.as_mut().reset(timeout);
-                            self.tick_frame.as_mut().reset();
                         }
                     }
                 }
