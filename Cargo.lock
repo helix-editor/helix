@@ -1220,6 +1220,7 @@ dependencies = [
 name = "helix-vcs"
 version = "0.6.0"
 dependencies = [
+ "anyhow",
  "arc-swap",
  "gix",
  "helix-core",
