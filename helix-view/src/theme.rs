@@ -103,13 +103,18 @@ impl Loader {
     /// However, it is not recommended that users do this as it will make tracing
     /// errors more difficult.
     fn load_theme(
+        
         &self,
+       
+        config: &ThemeConfig,
         name: &str,
         config: &ThemeConfig,
+       
         visited_paths: &mut HashSet<PathBuf>,
+    ,
     ) -> Result<Value> {
         let name = &config.name;
-        let path = self.path(name, only_default_dir);
+        let path = self.path(name, visited_paths);
         let theme_toml = self.load_toml(path)?;
 
         let inherits = theme_toml.get("inherits");
