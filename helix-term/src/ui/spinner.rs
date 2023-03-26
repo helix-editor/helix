@@ -1,77 +1,28 @@
-use std::{collections::HashMap, time::Instant};
+use std::collections::HashMap;
+use std::time::Instant;
+
+const FRAMES: &[&str] = &["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
+const INTERVAL: u128 = 80;
 
 #[derive(Default, Debug)]
 pub struct ProgressSpinners {
-    inner: HashMap<usize, Spinner>,
+    inner: HashMap<usize, Instant>,
 }
 
 impl ProgressSpinners {
     pub fn start(&mut self, id: usize) {
-        self.inner
-            .entry(id)
-            .or_insert_with(Spinner::default)
-            .start();
+        self.inner.entry(id).or_insert_with(Instant::now);
     }
 
     pub fn stop(&mut self, id: usize) {
-        self.inner.entry(id).or_insert_with(Spinner::default).stop();
+        self.inner.remove(&id);
     }
 
     pub fn frame(&self, id: usize) -> Option<&str> {
-        self.inner.get(&id).and_then(|spinner| spinner.frame())
-    }
-}
+        let start = self.inner.get(&id)?;
+        let idx =
+            (Instant::now().duration_since(*start).as_millis() / INTERVAL) as usize % FRAMES.len();
 
-impl Default for Spinner {
-    fn default() -> Self {
-        Self::dots(80)
-    }
-}
-
-#[derive(Debug)]
-struct Spinner {
-    frames: Vec<&'static str>,
-    count: usize,
-    start: Option<Instant>,
-    interval: u64,
-}
-
-impl Spinner {
-    /// Creates a new spinner with `frames` and `interval`.
-    /// Expects the frames count and interval to be greater than 0.
-    fn new(frames: Vec<&'static str>, interval: u64) -> Self {
-        let count = frames.len();
-        assert!(count > 0);
-        assert!(interval > 0);
-
-        Self {
-            frames,
-            count,
-            interval,
-            start: None,
-        }
-    }
-
-    fn dots(interval: u64) -> Self {
-        Self::new(vec!["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"], interval)
-    }
-
-    fn start(&mut self) {
-        self.start = Some(Instant::now());
-    }
-
-    fn frame(&self) -> Option<&str> {
-        let idx = (self
-            .start
-            .map(|time| Instant::now().duration_since(time))?
-            .as_millis()
-            / self.interval as u128) as usize
-            % self.count;
-
-        self.frames.get(idx).copied()
-    }
-
-    fn stop(&mut self) {
-        self.start = None;
+        Some(FRAMES[idx])
     }
 }
