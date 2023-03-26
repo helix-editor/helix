@@ -500,6 +500,16 @@ impl Application {
         }
     }
 
+    pub async fn handle_frame_tick(&mut self) {
+        let editor_view = self
+            .compositor
+            .find::<ui::EditorView>()
+            .expect("expected at least one EditorView");
+        if editor_view.spinners_mut().spinning() {
+            self.render().await;
+        }
+    }
+
     pub fn handle_document_write(&mut self, doc_save_event: DocumentSavedEventResult) {
         let doc_save_event = match doc_save_event {
             Ok(event) => event,
@@ -599,6 +609,9 @@ impl Application {
                 {
                     return true;
                 }
+            }
+            EditorEvent::TickFrame => {
+                self.handle_frame_tick().await;
             }
         }
 

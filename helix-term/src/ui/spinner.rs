@@ -19,6 +19,10 @@ impl ProgressSpinners {
         self.inner.remove(&id);
     }
 
+    pub fn spinning(&self) -> bool {
+        !self.inner.is_empty()
+    }
+
     pub fn frame(&self, id: usize) -> Option<&str> {
         let start = self.inner.get(&id)?;
         let idx =
