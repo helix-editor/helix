@@ -1593,16 +1593,16 @@ impl Editor {
                 }
 
                 _ = self.redraw_handle.0.notified() => {
-                    if  !self.needs_redraw{
+                    if !self.needs_redraw {
                         self.needs_redraw = true;
                         let timeout = Instant::now() + Duration::from_millis(96);
-                        if timeout < self.idle_timer.deadline(){
+                        if timeout < self.idle_timer.deadline() {
                             self.idle_timer.as_mut().reset(timeout)
                         }
                     }
                 }
 
-                _ = &mut self.idle_timer  => {
+                _ = &mut self.idle_timer => {
                     return EditorEvent::IdleTimer
                 }
             }
