@@ -24,7 +24,7 @@ pub use menu::Menu;
 pub use picker::{DynamicPicker, FileLocation, FilePicker, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
-pub use spinner::{ProgressSpinners, Spinner};
+pub use spinner::ProgressSpinners;
 pub use text::Text;
 
 use helix_core::regex::Regex;

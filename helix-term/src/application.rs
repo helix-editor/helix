@@ -872,7 +872,7 @@ impl Application {
                                 } else {
                                     self.lsp_progress.end_progress(server_id, &token);
                                     if !self.lsp_progress.is_progressing(server_id) {
-                                        editor_view.spinners_mut().get_or_create(server_id).stop();
+                                        editor_view.spinners_mut().stop(server_id);
                                     }
                                     self.editor.clear_status();
 
@@ -915,7 +915,7 @@ impl Application {
                         if let lsp::WorkDoneProgress::End(_) = work {
                             self.lsp_progress.end_progress(server_id, &token);
                             if !self.lsp_progress.is_progressing(server_id) {
-                                editor_view.spinners_mut().get_or_create(server_id).stop();
+                                editor_view.spinners_mut().stop(server_id);
                             }
                         } else {
                             self.lsp_progress.update(server_id, token, work);
@@ -991,10 +991,7 @@ impl Application {
                             .compositor
                             .find::<ui::EditorView>()
                             .expect("expected at least one EditorView");
-                        let spinner = editor_view.spinners_mut().get_or_create(server_id);
-                        if spinner.is_stopped() {
-                            spinner.start();
-                        }
+                        editor_view.spinners_mut().start(server_id);
 
                         Ok(serde_json::Value::Null)
                     }

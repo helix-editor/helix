@@ -6,12 +6,19 @@ pub struct ProgressSpinners {
 }
 
 impl ProgressSpinners {
-    pub fn get(&self, id: usize) -> Option<&Spinner> {
-        self.inner.get(&id)
+    pub fn start(&mut self, id: usize) {
+        self.inner
+            .entry(id)
+            .or_insert_with(Spinner::default)
+            .start();
     }
 
-    pub fn get_or_create(&mut self, id: usize) -> &mut Spinner {
-        self.inner.entry(id).or_insert_with(Spinner::default)
+    pub fn stop(&mut self, id: usize) {
+        self.inner.entry(id).or_insert_with(Spinner::default).stop();
+    }
+
+    pub fn frame(&self, id: usize) -> Option<&str> {
+        self.inner.get(&id).and_then(|spinner| spinner.frame())
     }
 }
 
@@ -22,7 +29,7 @@ impl Default for Spinner {
 }
 
 #[derive(Debug)]
-pub struct Spinner {
+struct Spinner {
     frames: Vec<&'static str>,
     count: usize,
     start: Option<Instant>,
@@ -32,7 +39,7 @@ pub struct Spinner {
 impl Spinner {
     /// Creates a new spinner with `frames` and `interval`.
     /// Expects the frames count and interval to be greater than 0.
-    pub fn new(frames: Vec<&'static str>, interval: u64) -> Self {
+    fn new(frames: Vec<&'static str>, interval: u64) -> Self {
         let count = frames.len();
         assert!(count > 0);
         assert!(interval > 0);
@@ -45,15 +52,15 @@ impl Spinner {
         }
     }
 
-    pub fn dots(interval: u64) -> Self {
+    fn dots(interval: u64) -> Self {
         Self::new(vec!["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"], interval)
     }
 
-    pub fn start(&mut self) {
+    fn start(&mut self) {
         self.start = Some(Instant::now());
     }
 
-    pub fn frame(&self) -> Option<&str> {
+    fn frame(&self) -> Option<&str> {
         let idx = (self
             .start
             .map(|time| Instant::now().duration_since(time))?
@@ -64,11 +71,7 @@ impl Spinner {
         self.frames.get(idx).copied()
     }
 
-    pub fn stop(&mut self) {
+    fn stop(&mut self) {
         self.start = None;
-    }
-
-    pub fn is_stopped(&self) -> bool {
-        self.start.is_none()
     }
 }
