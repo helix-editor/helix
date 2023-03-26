@@ -155,6 +155,8 @@ pub struct LanguageConfiguration {
     /// Hardcoded LSP root directories relative to the workspace root, like `examples` or `tools/fuzz`.
     /// Falling back to the current working directory if none are configured.
     pub workspace_lsp_roots: Option<Vec<PathBuf>>,
+    #[serde(default)]
+    pub persistent_diagnostic_sources: Vec<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]

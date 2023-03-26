@@ -191,6 +191,7 @@ auto-format = true
 comment-token = "//"
 language-servers = [ "rust-analyzer" ]
 indent = { tab-width = 4, unit = "    " }
+persistent-diagnostic-sources = ["rustc", "clippy"]
 
 [language.auto-pairs]
 '(' = ')'

@@ -1706,11 +1706,26 @@ impl Document {
 
     pub fn replace_diagnostics(
         &mut self,
-        mut diagnostics: Vec<Diagnostic>,
+        diagnostics: impl IntoIterator<Item = Diagnostic>,
+        unchanged_sources: &[String],
         language_server_id: usize,
     ) {
-        self.clear_diagnostics(language_server_id);
-        self.diagnostics.append(&mut diagnostics);
+        if unchanged_sources.is_empty() {
+            self.clear_diagnostics(language_server_id);
+        } else {
+            self.diagnostics.retain(|d| {
+                if d.language_server_id != language_server_id {
+                    return true;
+                }
+
+                if let Some(source) = &d.source {
+                    unchanged_sources.contains(source)
+                } else {
+                    false
+                }
+            });
+        }
+        self.diagnostics.extend(diagnostics);
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
     }
