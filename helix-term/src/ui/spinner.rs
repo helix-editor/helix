@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 const FRAMES: &[&str] = &["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
-const INTERVAL: u128 = 80;
+// Using multiples of 2 allow compiling down to simpler instructions
+const INTERVAL: u128 = 128;
 
 #[derive(Default, Debug)]
 pub struct ProgressSpinners {
