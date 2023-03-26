@@ -88,6 +88,7 @@
 | msbuild | ✓ |  | ✓ |  |
 | nasm | ✓ | ✓ |  |  |
 | nickel | ✓ |  | ✓ | `nls` |
+| nim | ✓ | ✓ | ✓ | `nimlangserver` |
 | nix | ✓ |  |  | `nil` |
 | nu | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
