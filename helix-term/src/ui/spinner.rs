@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
+// These two options coupled together makes it just nice for the progress to
+// spin one turn in almost ~1s (1024ms), given that we display 128ms per frame
+// with 8 items in total, we render every 16ms (~60fps), so it renders new
+// progress icon every 8 frames.
 const FRAMES: &[&str] = &["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
 // Using multiples of 2 allow compiling down to simpler instructions
 const INTERVAL: u128 = 128;
