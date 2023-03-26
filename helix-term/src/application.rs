@@ -612,6 +612,11 @@ impl Application {
             }
             EditorEvent::TickFrame => {
                 self.handle_frame_tick().await;
+
+                #[cfg(feature = "integration")]
+                {
+                    return true;
+                }
             }
         }
 
