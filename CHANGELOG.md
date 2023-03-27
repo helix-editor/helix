@@ -1,11 +1,12 @@
 # Next
 
-> Checkpoint: `bd473928ae049dfe956f8966bfde19859c148e81`
+> Checkpoint: `5323020c3f02b178f2b6807f13d89bf7f40d3cce`
 
 Breaking changes:
 
 - Select diagnostic range in `goto_*_diag` commands (#4713, #5164, #6193)
 - Remove jump behavior from `increment`/`decrement` (#4123, #5929)
+- Enable the Kitty keyboard protocol on terminals with support (#4939, #6170, #6194)
 - Select change range in `goto_*_change` commands (#5206)
 - Split file modification indicator from filename statusline elements (#4731, #6036)
 - Jump to symbol ranges in LSP goto commands (#5986)
@@ -13,10 +14,9 @@ Breaking changes:
 Features:
 
 - Dynamic workspace symbol picker (#5055)
-- Soft-wrap (#5420, #5786, #5893)
-- Enable the Kitty keyboard protocol on terminals with support (#4939, #6170, #6194)
-- Initial support for LSP snippet completions (#5864, b1f7528, #6263, bbf4800, 90348b8, f87299f)
-- Add a statusline element for showing the current HEAD (#5682)
+- Soft-wrap (#5420, #5786, #5893, #6440)
+- Initial support for LSP snippet completions (#5864, b1f7528, #6263, bbf4800, 90348b8, f87299f, #6371)
+- Add a statusline element for showing the current version control HEAD (#5682)
 - Display LSP type hints (#5934, #6312)
 
 Commands:
@@ -115,6 +115,9 @@ Usability improvements and fixes:
 - Discard outdated LSP diagnostics (3c9d5d0)
 - Discard outdated LSP workspace edits (b6a4927)
 - Fix workspace edit client capabilities declaration (7bf168d)
+- Fix highlighting in picker results with multiple columns (#6333)
+- Run shell commands asynchronously (#6373)
+- Show diagnostic codes in LSP diagnostic messages (#6378)
 
 Themes:
 
@@ -125,9 +128,9 @@ Themes:
 - Update `gruvbox` themes (#5066, #5333, #5540, #6285, #6295)
 - Update `base16_transparent` (#5105)
 - Update `dark_high_contrast` (#5105)
-- Update `dracula` (#5236, #5627)
+- Update `dracula` (#5236, #5627, #6414)
 - Update `monokai_pro_spectrum` (#5250, #5602)
-- Update `rose_pine` (#5267, #5489)
+- Update `rose_pine` (#5267, #5489, #6384)
 - Update `kanagawa` (#5273, #5571, #6085)
 - Update `emacs` (#5334)
 - Add `github` themes (#5353, efeec12)
@@ -144,7 +147,7 @@ Themes:
 - Update `onedark` (#5755)
 - Add `ayu_evolve` (#5638, #6028, #6225)
 - Add `jellybeans` (#5719)
-- Update `fleet_dark` (#5605, #6266, #6324)
+- Update `fleet_dark` (#5605, #6266, #6324, #6375)
 - Add `darcula-solid` (#5778)
 - Remove text background from monokai themes (#6009)
 - Update `pop_dark` (#5992, #6208, #6227, #6292)
@@ -154,12 +157,18 @@ Themes:
 - Update `onelight` (#6192, #6276)
 - Add `molokai` (#6260)
 - Update `ayu` variants (#6329)
+- Update `tokyonight` variants (#6349)
+- Update `nord` variants (#6376)
 
 LSP configurations:
 
 - Support BibTeX (#5064)
 - Enable HTTP server in `metals` (Scala) config (#5551)
 - Change V-lang language server to `v ls` from `vls` (#5677)
+- Support Smithy (#6370)
+- Support VHDL (#5826)
+- Support Rego (#6415)
+- Support Nim (#6123)
 
 New languages:
 
@@ -182,6 +191,10 @@ New languages:
 - NASM (#6068)
 - PRQL (#6126)
 - reStructuredText (#6180)
+- Smithy (#6370)
+- VHDL (#5826)
+- Rego (OpenPolicy Agent) (#6415)
+- Nim (#6123)
 
 Updated languages and queries:
 
@@ -235,6 +248,14 @@ Updated languages and queries:
 - Improve gdscript highlights (#6311)
 - Improve Vlang highlights (#6279)
 - Improve Makefile highlights (#6339)
+- Remove auto-pair for `'` in OCaml (#6381)
+- Fix indents in switch statements in ECMA languages (#6369)
+- Recognize xlb and storyboard file-types as XML (#6407)
+- Recognize cts and mts file-types as TypeScript (#6424)
+- Recognize SVG file-type as XML (#6431)
+- Add theme scopes for (un)checked list item markup scopes (#6434)
+- Update git commit grammar and add the comment textobject (#6439)
+- Recognize ARB file-type as JSON (#6452)
 
 Packaging:
 
