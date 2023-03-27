@@ -30,7 +30,7 @@ use crate::{
 
 use log::{debug, error, warn};
 use std::{
-    io::{stdin, stdout},
+    io,
     path::Path,
     sync::Arc,
     time::{Duration, Instant},
@@ -96,7 +96,7 @@ fn setup_integration_logging() {
             ))
         })
         .level(level)
-        .chain(std::io::stdout())
+        .chain(io::stdout())
         .apply();
 }
 
@@ -134,7 +134,7 @@ impl Application {
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout(), &config.editor);
+        let backend = CrosstermBackend::new(io::stdout(), &config.editor);
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
@@ -212,7 +212,7 @@ impl Application {
                 let (view, doc) = current!(editor);
                 align_view(doc, view, Align::Center);
             }
-        } else if stdin().is_tty() || cfg!(feature = "integration") {
+        } else if io::stdin().is_tty() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
         } else if cfg!(target_os = "macos") {
             // On Linux and Windows, we allow the output of a command to be piped into the new buffer.
@@ -286,6 +286,7 @@ impl Application {
 
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
         self.terminal.draw(pos, kind).unwrap();
+        self.last_render = Instant::now();
     }
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
@@ -293,7 +294,6 @@ impl Application {
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
         self.render().await;
-        self.last_render = Instant::now();
 
         loop {
             if !self.event_loop_until_idle(input_stream).await {
@@ -505,7 +505,8 @@ impl Application {
             .compositor
             .find::<ui::EditorView>()
             .expect("expected at least one EditorView");
-        if editor_view.spinners_mut().spinning() {
+        let should_render = editor_view.spinners_mut().spinning(self.last_render);
+        if should_render {
             self.render().await;
         }
     }
@@ -592,7 +593,6 @@ impl Application {
 
                 if last || self.last_render.elapsed() > LSP_DEADLINE {
                     self.render().await;
-                    self.last_render = Instant::now();
                 }
             }
             EditorEvent::DebuggerEvent(payload) => {

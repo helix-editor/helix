@@ -9,7 +9,7 @@ const FRAMES: &[&str] = &["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"
 // Using multiples of 2 allow compiling down to simpler instructions
 const INTERVAL: u128 = 128;
 
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 pub struct ProgressSpinners {
     inner: HashMap<usize, Instant>,
 }
@@ -23,14 +23,16 @@ impl ProgressSpinners {
         self.inner.remove(&id);
     }
 
-    pub fn spinning(&self) -> bool {
-        !self.inner.is_empty()
+    /// Check if spinning is needed, only needed to do this check for interval
+    /// but not the usual render to reduce the number of render needed.
+    pub fn spinning(&self, last_render: Instant) -> bool {
+        // only render if spinner should change after last render
+        !self.inner.is_empty() && last_render.elapsed().as_millis() > INTERVAL
     }
 
     pub fn frame(&self, id: usize) -> Option<&str> {
         let start = self.inner.get(&id)?;
-        let idx =
-            (Instant::now().duration_since(*start).as_millis() / INTERVAL) as usize % FRAMES.len();
+        let idx = (start.elapsed().as_millis() / INTERVAL) as usize % FRAMES.len();
 
         Some(FRAMES[idx])
     }
