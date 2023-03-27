@@ -69,6 +69,7 @@
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ |  |  | `julia` |
+| just | ✓ | ✓ |  |  |
 | kdl | ✓ |  |  |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |

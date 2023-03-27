@@ -978,8 +978,8 @@ source = { git = "https://github.com/uyha/tree-sitter-cmake", rev = "6e51463ef30
 [[language]]
 name = "make"
 scope = "source.make"
-file-types = ["Makefile", "makefile", "mk", "Justfile", "justfile", ".justfile"]
-injection-regex = "(make|makefile|Makefile|mk|just)"
+file-types = ["Makefile", "makefile", "mk"]
+injection-regex = "(make|makefile|Makefile|mk)"
 roots = []
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -2421,3 +2421,16 @@ language-server = { command = "nimlangserver" }
 [[grammar]]
 name = "nim"
 source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b232550e431d67de250d1b5856209e7f06" }
+
+[[grammar]]
+name = "just"
+source = { git = "https://github.com/IndianBoy42/tree-sitter-just", rev = "8af0aab79854aaf25b620a52c39485849922f766" }
+
+[[language]]
+name = "just"
+scope = "source.make"
+file-types = ["Justfile", "justfile", ".justfile"]
+injection-regex = "(just)"
+roots = []
+comment-token = "#"
+indent = { tab-width = 4, unit = "\t" }
