@@ -1010,7 +1010,7 @@ mod test_explorer {
             s.replace('/', format!("{}", std::path::MAIN_SEPARATOR).as_str())
         }
         assert_eq!(
-            to_forward_slash(&prompt.prompt()),
+            to_forward_slash(prompt.prompt()),
             " New file or folder (ends with '/'): "
         );
         assert_eq!(to_forward_slash(prompt.line()), "test_explorer/new_folder/");
