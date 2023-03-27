@@ -1058,8 +1058,11 @@ impl Application {
                             .filter_map(|item| {
                                 let mut config = language_server.config()?;
                                 if let Some(section) = item.section.as_ref() {
-                                    for part in section.split('.') {
-                                        config = config.get(part)?;
+                                    // for some reason some lsps send an empty string (observed in 'vscode-eslint-language-server')
+                                    if !section.is_empty() {
+                                        for part in section.split('.') {
+                                            config = config.get(part)?;
+                                        }
                                     }
                                 }
                                 Some(config)
