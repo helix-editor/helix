@@ -1,6 +1,8 @@
-# Next
+# 23.03 (2022-03-31)
 
 > Checkpoint: `5323020c3f02b178f2b6807f13d89bf7f40d3cce`
+
+For the full log, check out the [git log](https://github.com/helix-editor/helix/compare/22.12..23.03).
 
 Breaking changes:
 
