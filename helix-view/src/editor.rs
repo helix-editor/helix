@@ -532,21 +532,16 @@ impl Default for CursorShapeConfig {
 }
 
 /// bufferline render modes
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum BufferLine {
     /// Don't render bufferline
+    #[default]
     Never,
     /// Always render
     Always,
     /// Only if multiple buffers are open
     Multiple,
-}
-
-impl Default for BufferLine {
-    fn default() -> Self {
-        BufferLine::Never
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
