@@ -2428,9 +2428,9 @@ source = { git = "https://github.com/IndianBoy42/tree-sitter-just", rev = "8af0a
 
 [[language]]
 name = "just"
-scope = "source.make"
-file-types = ["Justfile", "justfile", ".justfile"]
-injection-regex = "(just)"
+scope = "source.just"
+file-types = ["justfile", "Justfile", ".justfile"]
+injection-regex = "just"
 roots = []
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
