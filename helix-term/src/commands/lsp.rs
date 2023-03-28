@@ -1121,19 +1121,12 @@ pub fn goto_reference_direction(cx: &mut Context, direction: Direction) {
         move |editor, _compositor, response: Option<Vec<lsp::Location>>| {
             let items = response.unwrap_or_default();
             let (view, doc) = current!(editor);
-            let mut locations: Vec<lsp::Location> = items
+            let locations: Vec<lsp::Location> = items
                 .into_iter()
                 .filter(|loc| loc.uri.path() == doc.identifier().uri.path())
                 .collect();
             let curr_pos = doc.position(view.id, offset_encoding);
 
-            locations.sort_by(|a, b| {
-                a.range
-                    .start
-                    .line
-                    .cmp(&b.range.start.line)
-                    .then_with(|| a.range.start.character.cmp(&b.range.start.character))
-            });
             let new_location = match direction {
                 Direction::Forward => locations
                     .into_iter()
