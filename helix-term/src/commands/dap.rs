@@ -76,7 +76,10 @@ fn thread_picker(
             let picker = FilePicker::new(
                 threads,
                 thread_states,
-                move |cx, thread, _action| callback_fn(cx.editor, thread),
+                move |cx, thread, _action| {
+                    let Some(t) = thread else { return };
+                    callback_fn(cx.editor, t)
+                },
                 move |editor, thread| {
                     let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
                     let frame = frames.get(0)?;
@@ -273,7 +276,8 @@ pub fn dap_launch(cx: &mut Context) {
     cx.push_layer(Box::new(overlayed(Picker::new(
         templates,
         (),
-        |cx, template, _action| {
+        |cx, debug_template, _action| {
+            let Some(template) = debug_template else { return };
             let completions = template.completion.clone();
             let name = template.name.clone();
             let callback = Box::pin(async move {
@@ -731,7 +735,8 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
     let picker = FilePicker::new(
         frames,
         (),
-        move |cx, frame, _action| {
+        move |cx, stack_frame, _action| {
+            let Some(frame) = stack_frame else { return };
             let debugger = debugger!(cx.editor);
             // TODO: this should be simpler to find
             let pos = debugger.stack_frames[&thread_id]

@@ -26,7 +26,7 @@ use std::{collections::HashMap, io::Read, path::PathBuf};
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
     movement::Direction, text_annotations::TextAnnotations,
-    unicode::segmentation::UnicodeSegmentation, Position,
+    unicode::segmentation::UnicodeSegmentation, Position, Rope,
 };
 use helix_view::{
     editor::Action,
@@ -46,6 +46,7 @@ pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 pub enum PathOrId {
     Id(DocumentId),
     Path(PathBuf),
+    Text(Rope),
 }
 
 impl PathOrId {
@@ -54,7 +55,14 @@ impl PathOrId {
         Ok(match self {
             Path(path) => Path(helix_core::path::get_canonicalized_path(&path)?),
             Id(id) => Id(id),
+            Text(rope) => Text(rope),
         })
+    }
+}
+
+impl From<Rope> for PathOrId {
+    fn from(text: Rope) -> Self {
+        Self::Text(text)
     }
 }
 
@@ -97,6 +105,7 @@ pub enum CachedPreview {
 pub enum Preview<'picker, 'editor> {
     Cached(&'picker CachedPreview),
     EditorDocument(&'editor Document),
+    Text(Box<Document>),
 }
 
 impl Preview<'_, '_> {
@@ -104,6 +113,7 @@ impl Preview<'_, '_> {
         match self {
             Preview::EditorDocument(doc) => Some(doc),
             Preview::Cached(CachedPreview::Document(doc)) => Some(doc),
+            Preview::Text(doc) => Some(doc.as_ref()),
             _ => None,
         }
     }
@@ -111,6 +121,7 @@ impl Preview<'_, '_> {
     /// Alternate text to show for the preview.
     fn placeholder(&self) -> &str {
         match *self {
+            Self::Text(_) => "<Text>",
             Self::EditorDocument(_) => "<File preview>",
             Self::Cached(preview) => match preview {
                 CachedPreview::Document(_) => "<File preview>",
@@ -126,7 +137,7 @@ impl<T: Item> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
         editor_data: T::Data,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+        callback_fn: impl Fn(&mut Context, Option<&T>, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         let truncate_start = true;
@@ -204,6 +215,10 @@ impl<T: Item> FilePicker<T> {
                 let doc = editor.documents.get(&id).unwrap();
                 Preview::EditorDocument(doc)
             }
+            PathOrId::Text(rope) => {
+                let doc = Document::from(rope, None, editor.config.clone());
+                Preview::Text(Box::new(doc))
+            }
         }
     }
 
@@ -217,6 +232,7 @@ impl<T: Item> FilePicker<T> {
                     Some(CachedPreview::Document(doc)) => Some(doc),
                     _ => None,
                 },
+                PathOrId::Text(_rope) => None,
             });
 
         // Then attempt to highlight it if it has no language set
@@ -400,7 +416,7 @@ impl Ord for PickerMatch {
     }
 }
 
-type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
+type PickerCallback<T> = Box<dyn Fn(&mut Context, Option<&T>, Action)>;
 
 pub struct Picker<T: Item> {
     options: Vec<T>,
@@ -422,7 +438,6 @@ pub struct Picker<T: Item> {
     show_preview: bool,
     /// Constraints for tabular formatting
     widths: Vec<Constraint>,
-
     callback_fn: PickerCallback<T>,
 }
 
@@ -430,7 +445,7 @@ impl<T: Item> Picker<T> {
     pub fn new(
         options: Vec<T>,
         editor_data: T::Data,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+        callback_fn: impl Fn(&mut Context, Option<&T>, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
@@ -687,29 +702,23 @@ impl<T: Item + 'static> Component for Picker<T> {
                 self.to_end();
             }
             key!(Esc) | ctrl!('c') => {
+                // Action shouldn't matter here because no item was selected
+                (self.callback_fn)(cx, None, Action::Replace);
                 return close_fn;
             }
             alt!(Enter) => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::Load);
-                }
+                (self.callback_fn)(cx, self.selection(), Action::Load);
             }
             key!(Enter) => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::Replace);
-                }
+                (self.callback_fn)(cx, self.selection(), Action::Replace);
                 return close_fn;
             }
             ctrl!('s') => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::HorizontalSplit);
-                }
+                (self.callback_fn)(cx, self.selection(), Action::HorizontalSplit);
                 return close_fn;
             }
             ctrl!('v') => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(cx, option, Action::VerticalSplit);
-                }
+                (self.callback_fn)(cx, self.selection(), Action::VerticalSplit);
                 return close_fn;
             }
             ctrl!('t') => {

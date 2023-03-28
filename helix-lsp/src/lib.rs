@@ -527,6 +527,7 @@ pub enum MethodCall {
     WorkspaceFolders,
     WorkspaceConfiguration(lsp::ConfigurationParams),
     RegisterCapability(lsp::RegistrationParams),
+    ShowMessageRequest(lsp::ShowMessageRequestParams),
 }
 
 impl MethodCall {
@@ -549,6 +550,9 @@ impl MethodCall {
             lsp::request::RegisterCapability::METHOD => {
                 let params: lsp::RegistrationParams = params.parse()?;
                 Self::RegisterCapability(params)
+            }
+            lsp::request::ShowMessageRequest::METHOD => {
+                Self::ShowMessageRequest(params.parse::<lsp::ShowMessageRequestParams>()?)
             }
             _ => {
                 return Err(Error::Unhandled);

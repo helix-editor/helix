@@ -2117,7 +2117,8 @@ fn global_search(cx: &mut Context) {
                 let picker = FilePicker::new(
                     all_matches,
                     current_path,
-                    move |cx, FileResult { path, line_num }, action| {
+                    move |cx, file_result, action| {
+                        let Some(FileResult { path, line_num }) = file_result else { return };
                         match cx.editor.open(path, action) {
                             Ok(_) => {}
                             Err(e) => {
@@ -2497,7 +2498,8 @@ fn buffer_picker(cx: &mut Context) {
             .map(|doc| new_meta(doc))
             .collect(),
         (),
-        |cx, meta, action| {
+        |cx, buffer_meta, action| {
+            let Some(meta) = buffer_meta else { return };
             cx.editor.switch(meta.id, action);
         },
         |editor, meta| {
@@ -2579,7 +2581,8 @@ fn jumplist_picker(cx: &mut Context) {
             })
             .collect(),
         (),
-        |cx, meta, action| {
+        |cx, jump_meta, action| {
+            let Some(meta) = jump_meta else { return };
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
             let (view, doc) = current!(cx.editor);
@@ -2640,7 +2643,8 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+            let picker = Picker::new(commands, keymap, move |cx, mappable_command, _action| {
+                let Some(command) = mappable_command else { return };
                 let mut ctx = Context {
                     register: None,
                     count: std::num::NonZeroUsize::new(1),

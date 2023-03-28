@@ -218,7 +218,8 @@ fn sym_picker(
     FilePicker::new(
         symbols,
         current_path.clone(),
-        move |cx, symbol, action| {
+        move |cx, symbol_information, action| {
+            let Some(symbol) = symbol_information else { return };
             let (view, doc) = current!(cx.editor);
             push_jump(view, doc);
 
@@ -293,7 +294,8 @@ fn diag_picker(
     FilePicker::new(
         flat_diag,
         (styles, format),
-        move |cx, PickerDiagnostic { url, diag }, action| {
+        move |cx, picker_diagnostic, action| {
+            let Some(PickerDiagnostic { url, diag }) = picker_diagnostic else { return };
             if current_path.as_ref() == Some(url) {
                 let (view, doc) = current!(cx.editor);
                 push_jump(view, doc);
@@ -481,6 +483,13 @@ impl ui::menu::Item for lsp::CodeActionOrCommand {
             lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
             lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
         }
+    }
+}
+
+impl ui::menu::Item for lsp::MessageActionItem {
+    type Data = ();
+    fn format(&self, _data: &Self::Data) -> Row {
+        self.title.as_str().into()
     }
 }
 
@@ -951,7 +960,8 @@ fn goto_impl(
                 locations,
                 cwdir,
                 move |cx, location, action| {
-                    jump_to_location(cx.editor, location, offset_encoding, action)
+                    let Some(l) = location else { return };
+                    jump_to_location(cx.editor, l, offset_encoding, action)
                 },
                 move |_editor, location| Some(location_to_file_location(location)),
             );
