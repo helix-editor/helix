@@ -83,16 +83,15 @@ pub fn diagnostic<'doc>(
 
                 let diagnostics_on_line = after.chain(before);
 
-                // This unwrap is safe because the iterator cannot be empty as it contains at least the item found by the binary search.
-                let diagnostic = diagnostics_on_line.max_by_key(|d| d.severity).unwrap();
-
-                write!(out, "●").unwrap();
-                return Some(match diagnostic.severity {
-                    Some(Severity::Error) => error,
-                    Some(Severity::Warning) | None => warning,
-                    Some(Severity::Info) => info,
-                    Some(Severity::Hint) => hint,
-                });
+                if let Some(diagnostic) = diagnostics_on_line.max_by_key(|d| d.severity) {
+                    write!(out, "●").ok();
+                    return Some(match diagnostic.severity {
+                        Some(Severity::Error) => error,
+                        Some(Severity::Warning) | None => warning,
+                        Some(Severity::Info) => info,
+                        Some(Severity::Hint) => hint,
+                    });
+                }
             }
             None
         },
