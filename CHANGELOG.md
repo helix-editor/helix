@@ -19,7 +19,7 @@ Features:
 - Soft-wrap (#5420, #5786, #5893, #6440)
 - Initial support for LSP snippet completions (#5864, b1f7528, #6263, bbf4800, 90348b8, f87299f, #6371)
 - Add a statusline element for showing the current version control HEAD (#5682)
-- Display LSP type hints (#5934, #6312)
+- Display LSP type hints (#5420, #5934, #6312)
 
 Commands:
 
