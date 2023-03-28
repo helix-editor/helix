@@ -39,6 +39,7 @@ signal to the Helix process on Unix operating systems, such as by using the comm
 | `scrolloff` | Number of lines of padding around the edge of the screen when scrolling | `5` |
 | `mouse` | Enable mouse mode | `true` |
 | `middle-click-paste` | Middle click paste support | `true` |
+| `normal-mode-on-click` | Left click changes to normal mode | `false` |
 | `scroll-lines` | Number of lines to scroll per scroll wheel step | `3` |
 | `shell` | Shell to use when running external commands | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers | `absolute` |

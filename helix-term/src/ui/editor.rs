@@ -1074,6 +1074,10 @@ impl EditorView {
                     editor.focus(view_id);
                     editor.ensure_cursor_in_view(view_id);
 
+                    if config.normal_mode_on_click {
+                        editor.enter_normal_mode();
+                    }
+
                     return EventResult::Consumed(None);
                 }
 
