@@ -40,7 +40,7 @@ Usability improvements and fixes:
 - Pass client information on LSP initialization (#4904)
 - Fix behavior of `auto-completion` flag for completion-on-trigger (#5042)
 - Allow specifying environment variables for language servers in language config (#4004)
-- VCS gutter: Properly handle detached git worktrees (#5097)
+- Allow detached git worktrees to be recognized as root paths (#5097)
 - Reset editor mode when changing buffers (#5072)
 - Improve error message handling for theme loading failures (#5073)
 - Print the names of binaries required for LSP/DAP in health-check (#5195)
