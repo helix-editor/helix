@@ -164,16 +164,6 @@ Themes:
 - Update `tokyonight` variants (#6349)
 - Update `nord` variants (#6376)
 
-LSP configurations:
-
-- Support BibTeX (#5064)
-- Enable HTTP server in `metals` (Scala) config (#5551)
-- Change V-lang language server to `v ls` from `vls` (#5677)
-- Support Smithy (#6370)
-- Support VHDL (#5826)
-- Support Rego (#6415)
-- Support Nim (#6123)
-
 New languages:
 
 - BibTeX (#5064)
@@ -208,6 +198,8 @@ Updated languages and queries:
 - Update Scheme (bae890d)
 - Add indent queries for Bash (#5149)
 - Recognize `c++` as a C++ extension (#5183)
+- Enable HTTP server in `metals` (Scala) config (#5551)
+- Change V-lang language server to `v ls` from `vls` (#5677)
 - Inject comment grammar into Nix (#5208)
 - Update Rust highlights (#5238, #5349)
 - Fix HTML injection within Markdown (#5265)
