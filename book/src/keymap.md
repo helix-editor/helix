@@ -315,6 +315,8 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 | `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`     |
 | `]f`     | Go to next function (**TS**)                 | `goto_next_function`  |
 | `[f`     | Go to previous function (**TS**)             | `goto_prev_function`  |
+| `]r`     | Go to next reference (**LSP**)               | `goto_next_reference` |
+| `[r`     | Go to previous reference (**LSP**)           | `goto_prev_reference` |
 | `]t`     | Go to next type definition (**TS**)          | `goto_next_class`     |
 | `[t`     | Go to previous type definition (**TS**)      | `goto_prev_class`     |
 | `]a`     | Go to next argument/parameter (**TS**)       | `goto_next_parameter` |
