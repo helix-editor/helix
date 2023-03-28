@@ -434,6 +434,8 @@ impl MappableCommand {
         select_textobject_inner, "Select inside object",
         goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
+        goto_next_reference, "Goto next reference",
+        goto_prev_reference, "Goto previous reference",
         goto_next_class, "Goto next type definition",
         goto_prev_class, "Goto previous type definition",
         goto_next_parameter, "Goto next parameter",
@@ -4707,6 +4709,14 @@ fn goto_next_function(cx: &mut Context) {
 
 fn goto_prev_function(cx: &mut Context) {
     goto_ts_object_impl(cx, "function", Direction::Backward)
+}
+
+fn goto_next_reference(cx: &mut Context) {
+    goto_reference_direction(cx, Direction::Forward)
+}
+
+fn goto_prev_reference(cx: &mut Context) {
+    goto_reference_direction(cx, Direction::Backward)
 }
 
 fn goto_next_class(cx: &mut Context) {
