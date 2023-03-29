@@ -31,5 +31,3 @@
 ["@" "==" "!=" "+" ":="] @operator
 
 [ "(" ")" "[" "]" "{{" "}}" "{" "}"] @punctuation.bracket
-
-(ERROR) @error
