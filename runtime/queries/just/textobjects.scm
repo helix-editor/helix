@@ -1,19 +1,17 @@
-(body) @block.inner
-(body) @block.outer
-(body) @function.inner
+(body) @function.inside
 (recipe) @function.outer
 (expression 
-    if:(expression) @block.inner 
+    if:(expression) @function.inner 
 ) 
 (expression 
-    else:(expression) @block.inner
+    else:(expression) @function.inner
 ) 
-(interpolation (expression) @block.inner) @block.outer
-(settinglist (stringlist) @block.inner) @block.outer
+(interpolation (expression) @function.inner) @function.outer
+(settinglist (stringlist) @function.inner) @function.outer
 
-(call (NAME) @call.inner) @call.outer
-(dependency (NAME) @call.inner) @call.outer
-(depcall (NAME) @call.inner)
+(call (NAME) @class.inner) @class.outer
+(dependency (NAME) @class.inner) @class.outer
+(depcall (NAME) @class.inner)
 
 (dependency) @parameter.outer
 (depcall) @parameter.inner
@@ -32,17 +30,17 @@
 )
 
 (expression 
-    (condition) @conditional.inner
-) @conditional.outer
+    (condition) @function.inner
+) @functio.outer
 (expression 
-    if:(expression) @conditional.inner 
+    if:(expression) @function.inner 
 )
 (expression 
-    else:(expression) @conditional.inner
+    else:(expression) @function.inner
 )
 
-(item [(alias) (assignment) (export) (setting)]) @statement.outer
-(recipeheader) @statement.outer
-(line) @statement.outer
+(item [(alias) (assignment) (export) (setting)]) @class.outer
+(recipeheader) @class.outer
+(line) @class.outer
 
 (comment) @comment.outer

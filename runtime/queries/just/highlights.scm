@@ -10,15 +10,15 @@
 (depcall (NAME) @function)
 (recipeheader (NAME) @function)
 
-(depcall (expression) @parameter)
-(parameter) @parameter
-(variadic_parameters) @parameter
+(depcall (expression) @variable.parameter)
+(parameter) @variable.parameter
+(variadic_parameters) @variable.parameter
 
-["if" "else"] @conditional
+["if" "else"] @keyword.control.conditional
 
 (string) @string
 
-(boolean ["true" "false"]) @boolean
+(boolean ["true" "false"]) @constant.builtin.boolean
 
 (comment) @comment
 
