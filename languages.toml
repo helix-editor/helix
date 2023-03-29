@@ -2430,3 +2430,4 @@ file-types = ["cl"]
 roots = []
 comment-token = "//"
 language-server = { command = "clangd" }
+grammar = "c"
