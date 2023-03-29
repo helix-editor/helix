@@ -1304,6 +1304,7 @@ impl Document {
         self.language_config()
             .and_then(|config| config.indent.as_ref())
             .map_or(4, |config| config.tab_width) // fallback to 4 columns
+            .clamp(2, 32)
     }
 
     // The width (in spaces) of a level of indentation.

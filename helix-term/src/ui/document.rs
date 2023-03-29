@@ -338,9 +338,16 @@ impl<'a> TextRenderer<'a> {
 
         let tab_width = doc.tab_width();
         let tab = if ws_render.tab() == WhitespaceRenderValue::All {
-            std::iter::once(ws_chars.tab)
-                .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 1))
-                .collect()
+            if editor_config.indent_guides.render {
+                std::iter::once(ws_chars.tabpad)
+                    .chain(std::iter::once(ws_chars.tab))
+                    .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 2))
+                    .collect()
+            } else {
+                std::iter::once(ws_chars.tab)
+                    .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 1))
+                    .collect()
+            }
         } else {
             " ".repeat(tab_width)
         };
