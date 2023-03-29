@@ -2425,7 +2425,7 @@ source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b2325
 [[language]]
 name = "just"
 scope = "source.just"
-file-types = ["justfile", "Justfile", ".justfile", ".just"]
+file-types = ["justfile", "Justfile", "just"]
 injection-regex = "just"
 roots = []
 comment-token = "#"
