@@ -2421,3 +2421,12 @@ language-server = { command = "nimlangserver" }
 [[grammar]]
 name = "nim"
 source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b232550e431d67de250d1b5856209e7f06" }
+
+[[language]]
+name = "opencl"
+scope = "source.cl"
+injection-regex = "(cl|opencl)"
+file-types = ["cl"]
+roots = []
+comment-token = "//"
+language-server = { command = "clangd" }
