@@ -10,6 +10,7 @@ use crate::{
     view::ViewPosition,
     Align, Document, DocumentId, View, ViewId,
 };
+use dap::StackFrame;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -1651,6 +1652,12 @@ impl Editor {
             doc.set_selection(view.id, selection);
             doc.restore_cursor = false;
         }
+    }
+
+    pub fn current_stack_frame(&self) -> Option<&StackFrame> {
+        self.debugger
+            .as_ref()
+            .and_then(|debugger| debugger.current_stack_frame())
     }
 }
 

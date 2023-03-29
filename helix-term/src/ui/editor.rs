@@ -93,46 +93,29 @@ impl EditorView {
         let mut line_decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
         let mut translated_positions: Vec<TranslatedPosition> = Vec::new();
 
-        // DAP: Highlight current stack frame position
-        let stack_frame = editor.debugger.as_ref().and_then(|debugger| {
-            if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id) {
-                debugger
-                    .stack_frames
-                    .get(&thread_id)
-                    .and_then(|bt| bt.get(frame))
-            } else {
-                None
-            }
-        });
-        if let Some(frame) = stack_frame {
-            if doc.path().is_some()
-                && frame
-                    .source
-                    .as_ref()
-                    .and_then(|source| source.path.as_ref())
-                    == doc.path()
-            {
-                let line = frame.line - 1; // convert to 0-indexing
-                let style = theme.get("ui.highlight");
-                let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
-                    if pos.doc_line != line {
-                        return;
-                    }
-                    renderer
-                        .surface
-                        .set_style(Rect::new(area.x, pos.visual_line, area.width, 1), style);
-                };
-
-                line_decorations.push(Box::new(line_decoration));
-            }
-        }
-
         if is_focused && config.cursorline {
             line_decorations.push(Self::cursorline_decorator(doc, view, theme))
         }
 
         if is_focused && config.cursorcolumn {
             Self::highlight_cursorcolumn(doc, view, surface, theme, inner, &text_annotations);
+        }
+
+        // Set DAP highlights, if needed.
+        if let Some(frame) = editor.current_stack_frame() {
+            let dap_line = frame.line.saturating_sub(1) as usize;
+            let style = theme.get("ui.highlight.frameline");
+            let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
+                if pos.doc_line != dap_line {
+                    return;
+                }
+                renderer.surface.set_style(
+                    Rect::new(inner.x, inner.y + pos.visual_line, inner.width, 1),
+                    style,
+                );
+            };
+
+            line_decorations.push(Box::new(line_decoration));
         }
 
         let mut highlights =
@@ -422,6 +405,7 @@ impl EditorView {
         let primary_selection_scope = theme
             .find_scope_index_exact("ui.selection.primary")
             .unwrap_or(selection_scope);
+
         let base_cursor_scope = theme
             .find_scope_index_exact("ui.cursor")
             .unwrap_or(selection_scope);
