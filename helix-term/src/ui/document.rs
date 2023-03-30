@@ -314,6 +314,7 @@ pub struct TextRenderer<'a> {
     pub nbsp: String,
     pub space: String,
     pub tab: String,
+    pub indent_tab: String,
     pub virtual_tab: String,
     pub indent_width: u16,
     pub starting_indent: usize,
@@ -344,6 +345,14 @@ impl<'a> TextRenderer<'a> {
         } else {
             " ".repeat(tab_width)
         };
+        let indent_tab = if editor_config.indent_guides.render && ws_chars.tabpad != ' ' {
+            std::iter::once(ws_chars.tabpad)
+                .chain(std::iter::once(ws_chars.tab))
+                .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 2))
+                .collect()
+        } else {
+            tab.clone()
+        };
         let virtual_tab = " ".repeat(tab_width);
         let newline = if ws_render.newline() == WhitespaceRenderValue::All {
             ws_chars.newline.into()
@@ -373,6 +382,7 @@ impl<'a> TextRenderer<'a> {
             nbsp,
             space,
             tab,
+            indent_tab,
             virtual_tab,
             whitespace_style: theme.get("ui.virtual.whitespace"),
             indent_width,
@@ -414,6 +424,8 @@ impl<'a> TextRenderer<'a> {
         let nbsp = if is_virtual { " " } else { &self.nbsp };
         let tab = if is_virtual {
             &self.virtual_tab
+        } else if *is_in_indent_area {
+            &self.indent_tab
         } else {
             &self.tab
         };
@@ -477,19 +489,6 @@ impl<'a> TextRenderer<'a> {
                 as u16;
             let y = self.viewport.y + row;
             debug_assert!(self.surface.in_bounds(x, y));
-            // move tab index +1
-            if self.surface.get(x + 1, y).is_some() {
-                let str_replace = self.surface.get(x, y).unwrap();
-                let tab_idx = char_to_byte_idx(&self.tab, 1);
-                if Some(str_replace.symbol.as_str()) == self.tab.get(..tab_idx) {
-                    self.surface.set_string(
-                        x + 1,
-                        y,
-                        str_replace.symbol.clone(),
-                        str_replace.style(),
-                    );
-                }
-            }
             self.surface
                 .set_string(x, y, &self.indent_guide_char, self.indent_guide_style);
         }
