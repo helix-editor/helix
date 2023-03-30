@@ -1221,10 +1221,25 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
             contents.set_active_param_range(active_param_range());
 
             let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
-            let popup = Popup::new(SignatureHelp::ID, contents)
+            let mut popup = Popup::new(SignatureHelp::ID, contents)
                 .position(old_popup.and_then(|p| p.get_position()))
                 .position_bias(Open::Above)
                 .ignore_escape_key(true);
+
+            // Don't create a popup if it intersects the auto-complete menu.
+            let size = compositor.size();
+            if compositor
+                .find::<ui::EditorView>()
+                .unwrap()
+                .completion
+                .as_mut()
+                .map(|completion| completion.area(size, editor))
+                .filter(|area| area.intersects(popup.area(size, editor)))
+                .is_some()
+            {
+                return;
+            }
+
             compositor.replace_or_push(SignatureHelp::ID, popup);
         },
     );
