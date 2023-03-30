@@ -338,16 +338,9 @@ impl<'a> TextRenderer<'a> {
 
         let tab_width = doc.tab_width();
         let tab = if ws_render.tab() == WhitespaceRenderValue::All {
-            if editor_config.indent_guides.render {
-                std::iter::once(ws_chars.tabpad)
-                    .chain(std::iter::once(ws_chars.tab))
-                    .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 2))
-                    .collect()
-            } else {
-                std::iter::once(ws_chars.tab)
-                    .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 1))
-                    .collect()
-            }
+            std::iter::once(ws_chars.tab)
+                .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 1))
+                .collect()
         } else {
             " ".repeat(tab_width)
         };
@@ -484,6 +477,19 @@ impl<'a> TextRenderer<'a> {
                 as u16;
             let y = self.viewport.y + row;
             debug_assert!(self.surface.in_bounds(x, y));
+            // move tab index +1
+            if self.surface.get(x + 1, y).is_some() {
+                let str_replace = self.surface.get(x, y).unwrap();
+                let tab_idx = char_to_byte_idx(&self.tab, 1);
+                if Some(str_replace.symbol.as_str()) == self.tab.get(..tab_idx) {
+                    self.surface.set_string(
+                        x + 1,
+                        y,
+                        str_replace.symbol.clone(),
+                        str_replace.style(),
+                    );
+                }
+            }
             self.surface
                 .set_string(x, y, &self.indent_guide_char, self.indent_guide_style);
         }
