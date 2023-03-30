@@ -160,7 +160,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "json"
 scope = "source.json"
 injection-regex = "json"
-file-types = ["json", "jsonc"]
+file-types = ["json", "jsonc", "arb"]
 roots = []
 language-server = { command = "vscode-json-language-server", args = ["--stdio"] }
 auto-format = true
@@ -453,7 +453,7 @@ includeInlayVariableTypeHints = true
 name = "typescript"
 scope = "source.ts"
 injection-regex = "(ts|typescript)"
-file-types = ["ts"]
+file-types = ["ts", "mts", "cts"]
 shebangs = []
 roots = []
 # TODO: highlights-params
@@ -591,7 +591,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nix"
-source = { git = "https://github.com/cstrahan/tree-sitter-nix", rev = "6b71a810c0acd49b980c50fc79092561f7cee307" }
+source = { git = "https://github.com/nix-community/tree-sitter-nix", rev = "6b71a810c0acd49b980c50fc79092561f7cee307" }
 
 [[language]]
 name = "ruby"
@@ -775,6 +775,13 @@ comment-token = "(**)"
 language-server = { command = "ocamllsp" }
 indent = { tab-width = 2, unit = "  " }
 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+
 [[grammar]]
 name = "ocaml"
 source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "23d419ba45789c5a47d31448061557716b02750a", subpath = "ocaml" }
@@ -788,6 +795,13 @@ roots = []
 comment-token = "(**)"
 language-server = { command = "ocamllsp" }
 indent = { tab-width = 2, unit = "  " }
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
 
 [[grammar]]
 name = "ocaml-interface"
@@ -1180,7 +1194,7 @@ text-width = 72
 
 [[grammar]]
 name = "git-commit"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "318dd72abfaa7b8044c1d1fbeabcd06deaaf038f" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "7421fd81840950c0ff4191733cee3b6ac06cb295" }
 
 [[language]]
 name = "diff"
@@ -1317,6 +1331,7 @@ scope = "source.erlang"
 injection-regex = "erl(ang)?"
 file-types = ["erl", "hrl", "app", "rebar.config", "rebar.lock"]
 roots = ["rebar.config"]
+shebangs = ["escript"]
 comment-token = "%%"
 indent = { tab-width = 4, unit = "    " }
 language-server = { command = "erlang_ls" }
@@ -1686,7 +1701,7 @@ source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "c0741320bf
 [[language]]
 name = "v"
 scope = "source.v"
-file-types = ["v", "vv"]
+file-types = ["v", "vv", "vsh"]
 shebangs = ["v run"]
 roots = ["v.mod"]
 language-server = { command = "v", args = ["ls"] }
@@ -1696,7 +1711,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "v"
-source = { git = "https://github.com/vlang/vls", subpath = "tree_sitter_v", rev = "3e8124ea4ab80aa08ec77f03df53f577902a0cdd" }
+source = { git = "https://github.com/vlang/vls", subpath = "tree_sitter_v", rev = "66cf9d3086fb5ecc827cb32c64c5d812ab17d2c6" }
 
 [[language]]
 name = "verilog"
@@ -2053,7 +2068,7 @@ source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d1
 name = "xml"
 scope = "source.xml"
 injection-regex = "xml"
-file-types = ["xml", "mobileconfig", "plist"]
+file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg"]
 indent = { tab-width = 2, unit = "  " }
 roots = []
 
@@ -2327,3 +2342,82 @@ roots = []
 [[grammar]]
 name = "rst"
 source = { git = "https://github.com/stsewd/tree-sitter-rst", rev = "25e6328872ac3a764ba8b926aea12719741103f1" }
+
+[[language]]
+name = "capnp"
+scope = "source.capnp"
+injection-regex = "capnp"
+file-types = ["capnp"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "capnp"
+source = { git = "https://github.com/amaanq/tree-sitter-capnp", rev = "fc6e2addf103861b9b3dffb82c543eb6b71061aa" }
+
+[[language]]
+name = "smithy"
+scope = "source.smithy"
+injection-regex = "smithy"
+file-types = ["smithy"]
+roots = ["smithy-build.json"]
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+language-server = { command = "cs", args = ["launch", "com.disneystreaming.smithy:smithy-language-server:latest.release", "--", "0"] }
+
+[[grammar]]
+name = "smithy"
+source = { git = "https://github.com/indoorvivants/tree-sitter-smithy", rev = "cf8c7eb9faf7c7049839585eac19c94af231e6a0" }
+
+[[language]]
+name = "vhdl"
+scope = "source.vhdl"
+file-types = ["vhd", "vhdl"]
+roots = []
+comment-token = "--"
+language-server = { command = "vhdl_ls", args = [] }
+indent = { tab-width = 2, unit = "  " }
+injection-regex = "vhdl"
+
+[[grammar]]
+name = "vhdl"
+source = { git = "https://github.com/teburd/tree-sitter-vhdl", rev = "c57313adee2231100db0a7880033f6865deeadb2" }
+
+[[language]]
+name = "rego"
+roots = []
+scope = "source.rego"
+injection-regex = "rego"
+file-types = ["rego"]
+auto-format = true
+comment-token = "#"
+language-server = { command = "regols" }
+grammar = "rego"
+
+[[grammar]]
+name = "rego"
+source = { git = "https://github.com/FallenAngel97/tree-sitter-rego", rev = "b2667c975f07b33be3ceb83bea5cfbad88095866" }
+
+[[language]]
+name = "nim"
+scope = "source.nim"
+injection-regex = "nim"
+file-types = ["nim", "nims", "nimble"]
+shebangs = []
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "nimlangserver" }
+
+[language.auto-pairs]
+'(' = ')'
+'[' = ']'
+'"' = '"'
+"'" = "'"
+'{' = '}'
+
+# Nim's tree-sitter grammar is in heavy development.
+[[grammar]]
+name = "nim"
+source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b232550e431d67de250d1b5856209e7f06" }

@@ -10,6 +10,7 @@ use crate::{
     view::ViewPosition,
     Align, Document, DocumentId, View, ViewId,
 };
+use dap::StackFrame;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -263,6 +264,8 @@ pub struct Config {
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
     pub true_color: bool,
+    /// Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative. Defaults to `false`.
+    pub undercurl: bool,
     /// Search configuration.
     #[serde(default)]
     pub search: SearchConfig,
@@ -279,6 +282,8 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
+    /// Workspace specific lsp ceiling dirs
+    pub workspace_lsp_roots: Vec<PathBuf>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -530,21 +535,16 @@ impl Default for CursorShapeConfig {
 }
 
 /// bufferline render modes
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum BufferLine {
     /// Don't render bufferline
+    #[default]
     Never,
     /// Always render
     Always,
     /// Only if multiple buffers are open
     Multiple,
-}
-
-impl Default for BufferLine {
-    fn default() -> Self {
-        BufferLine::Never
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -737,6 +737,7 @@ impl Default for Config {
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
+            undercurl: false,
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
@@ -748,6 +749,7 @@ impl Default for Config {
             soft_wrap: SoftWrap::default(),
             text_width: 80,
             completion_replace: false,
+            workspace_lsp_roots: Vec::new(),
         }
     }
 }
@@ -1088,15 +1090,14 @@ impl Editor {
         }
 
         // if doc doesn't have a URL it's a scratch buffer, ignore it
-        let (lang, path) = {
-            let doc = self.document(doc_id)?;
-            (doc.language.clone(), doc.path().cloned())
-        };
+        let doc = self.document(doc_id)?;
+        let (lang, path) = (doc.language.clone(), doc.path().cloned());
+        let root_dirs = &doc.config.load().workspace_lsp_roots;
 
         // try to find a language server based on the language name
         let language_server = lang.as_ref().and_then(|language| {
             self.language_servers
-                .get(language, path.as_ref())
+                .get(language, path.as_ref(), root_dirs)
                 .map_err(|e| {
                     log::error!(
                         "Failed to initialize the LSP for `{}` {{ {} }}",
@@ -1653,6 +1654,12 @@ impl Editor {
             doc.set_selection(view.id, selection);
             doc.restore_cursor = false;
         }
+    }
+
+    pub fn current_stack_frame(&self) -> Option<&StackFrame> {
+        self.debugger
+            .as_ref()
+            .and_then(|debugger| debugger.current_stack_frame())
     }
 }
 

@@ -14,7 +14,10 @@ use crossterm::{
     terminal::{self, Clear, ClearType},
     Command,
 };
-use helix_view::graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
+use helix_view::{
+    editor::Config as EditorConfig,
+    graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle},
+};
 use once_cell::sync::OnceCell;
 use std::{
     fmt,
@@ -39,14 +42,15 @@ impl Capabilities {
     /// Detect capabilities from the terminfo database located based
     /// on the $TERM environment variable. If detection fails, returns
     /// a default value where no capability is supported.
-    pub fn from_env_or_default() -> Self {
+    pub fn from_env_or_default(config: &EditorConfig) -> Self {
         match termini::TermInfo::from_env() {
             Err(_) => Capabilities::default(),
             Ok(t) => Capabilities {
                 // Smulx, VTE: https://unix.stackexchange.com/a/696253/246284
                 // Su (used by kitty): https://sw.kovidgoyal.net/kitty/underlines
                 // WezTerm supports underlines but a lot of distros don't properly install it's terminfo
-                has_extended_underlines: t.extended_cap("Smulx").is_some()
+                has_extended_underlines: config.undercurl
+                    || t.extended_cap("Smulx").is_some()
                     || t.extended_cap("Su").is_some()
                     || vte_version() >= Some(5102)
                     || matches!(term_program().as_deref(), Some("WezTerm")),
@@ -65,30 +69,29 @@ impl<W> CrosstermBackend<W>
 where
     W: Write,
 {
-    pub fn new(buffer: W) -> CrosstermBackend<W> {
+    pub fn new(buffer: W, config: &EditorConfig) -> CrosstermBackend<W> {
         CrosstermBackend {
             buffer,
-            capabilities: Capabilities::from_env_or_default(),
+            capabilities: Capabilities::from_env_or_default(config),
             supports_keyboard_enhancement_protocol: OnceCell::new(),
         }
     }
 
     #[inline]
-    fn supports_keyboard_enhancement_protocol(&self) -> io::Result<bool> {
-        self.supports_keyboard_enhancement_protocol
-            .get_or_try_init(|| {
+    fn supports_keyboard_enhancement_protocol(&self) -> bool {
+        *self.supports_keyboard_enhancement_protocol
+            .get_or_init(|| {
                 use std::time::Instant;
 
                 let now = Instant::now();
-                let support = terminal::supports_keyboard_enhancement();
+                let supported = matches!(terminal::supports_keyboard_enhancement(), Ok(true));
                 log::debug!(
                     "The keyboard enhancement protocol is {}supported in this terminal (checked in {:?})",
-                    if matches!(support, Ok(true)) { "" } else { "not " },
+                    if supported { "" } else { "not " },
                     Instant::now().duration_since(now)
                 );
-                support
+                supported
             })
-            .copied()
     }
 }
 
@@ -121,7 +124,7 @@ where
         if config.enable_mouse_capture {
             execute!(self.buffer, EnableMouseCapture)?;
         }
-        if self.supports_keyboard_enhancement_protocol()? {
+        if self.supports_keyboard_enhancement_protocol() {
             execute!(
                 self.buffer,
                 PushKeyboardEnhancementFlags(
@@ -139,7 +142,7 @@ where
         if config.enable_mouse_capture {
             execute!(self.buffer, DisableMouseCapture)?;
         }
-        if self.supports_keyboard_enhancement_protocol()? {
+        if self.supports_keyboard_enhancement_protocol() {
             execute!(self.buffer, PopKeyboardEnhancementFlags)?;
         }
         execute!(

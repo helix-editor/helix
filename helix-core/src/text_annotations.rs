@@ -1,5 +1,4 @@
 use std::cell::Cell;
-use std::convert::identity;
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -113,9 +112,7 @@ impl<A, M> Layer<A, M> {
     pub fn reset_pos(&self, char_idx: usize, get_char_idx: impl Fn(&A) -> usize) {
         let new_index = self
             .annotations
-            .binary_search_by_key(&char_idx, get_char_idx)
-            .unwrap_or_else(identity);
-
+            .partition_point(|annot| get_char_idx(annot) < char_idx);
         self.current_index.set(new_index);
     }
 
