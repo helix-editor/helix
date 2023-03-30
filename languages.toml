@@ -2430,4 +2430,7 @@ file-types = ["cl"]
 roots = []
 comment-token = "//"
 language-server = { command = "clangd" }
-grammar = "c"
+
+[[grammar]]
+name = "opencl"
+source = { git = "https://github.com/lefp/tree-sitter-opencl", rev = "8e1d24a57066b3cd1bb9685bbc1ca9de5c1b78fb" }
