@@ -54,8 +54,8 @@ use crate::{
     job::Callback,
     keymap::ReverseKeymap,
     ui::{
-        self, editor::InsertEvent, overlay::overlayed, FilePicker, Picker, Popup, Prompt,
-        PromptEvent,
+        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlayed, FilePicker, Picker,
+        Popup, Prompt, PromptEvent,
     },
 };
 
@@ -4261,7 +4261,7 @@ pub fn completion(cx: &mut Context) {
             }
             let size = compositor.size();
             let ui = compositor.find::<ui::EditorView>().unwrap();
-            ui.set_completion(
+            let completion_area = ui.set_completion(
                 editor,
                 savepoint,
                 items,
@@ -4270,6 +4270,15 @@ pub fn completion(cx: &mut Context) {
                 trigger_offset,
                 size,
             );
+            let size = compositor.size();
+            let signature_help_area = compositor
+                .find_id::<Popup<SignatureHelp>>(SignatureHelp::ID)
+                .map(|signature_help| signature_help.area(size, editor));
+            // Delete the signature help popup if they intersect.
+            if matches!((completion_area, signature_help_area),(Some(a), Some(b)) if a.intersects(b))
+            {
+                compositor.remove(SignatureHelp::ID);
+            }
         },
     );
 }
