@@ -538,8 +538,8 @@ impl Client {
                 }),
                 general: Some(lsp::GeneralClientCapabilities {
                     position_encodings: Some(vec![
-                        PositionEncodingKind::UTF32,
                         PositionEncodingKind::UTF8,
+                        PositionEncodingKind::UTF32,
                         PositionEncodingKind::UTF16,
                     ]),
                     ..Default::default()
