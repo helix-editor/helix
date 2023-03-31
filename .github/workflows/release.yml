@@ -255,7 +255,7 @@ jobs:
                   exe=".exe"
               fi
               pkgname=helix-$GITHUB_REF_NAME-$platform
-              mkdir $pkgname
+              mkdir -p $pkgname
               cp $source/LICENSE $source/README.md $pkgname
               mkdir $pkgname/contrib
               cp -r $source/contrib/completion $pkgname/contrib
