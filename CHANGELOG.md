@@ -12,6 +12,7 @@ Breaking changes:
 - Select change range in `goto_*_change` commands ([#5206](https://github.com/helix-editor/helix/pull/5206))
 - Split file modification indicator from filename statusline elements ([#4731](https://github.com/helix-editor/helix/pull/4731), [#6036](https://github.com/helix-editor/helix/pull/6036))
 - Jump to symbol ranges in LSP goto commands ([#5986](https://github.com/helix-editor/helix/pull/5986))
+- Workspace detection now stops at the first `.helix/` directory (merging multiple `.helix/languages.toml` configurations is no longer supported) ([#5748](https://github.com/helix-editor/helix/pull/5748))
 
 Features:
 
@@ -26,7 +27,8 @@ Features:
 - Support LSP `textDocument/prepareRename` ([#6103](https://github.com/helix-editor/helix/pull/6103))
 - Allow multiple runtime directories with priorities ([#5411](https://github.com/helix-editor/helix/pull/5411))
 - Allow configuring whether to insert or replace completions ([#5728](https://github.com/helix-editor/helix/pull/5728))
-- Add proper support for LSP workspaces ([#5748](https://github.com/helix-editor/helix/pull/5748))
+- Allow per-workspace config file `.helix/config.toml` ([#5748](https://github.com/helix-editor/helix/pull/5748))
+- Add `workspace-lsp-roots` config option to support multiple LSP roots for use with monorepos ([#5748](https://github.com/helix-editor/helix/pull/5748))
 
 Commands:
 
@@ -40,6 +42,7 @@ Commands:
 - `dap_restart` for restarting a debug session in DAP ([#5651](https://github.com/helix-editor/helix/pull/5651))
 - `:lsp-stop` to stop the language server of the current buffer ([#5964](https://github.com/helix-editor/helix/pull/5964))
 - `:reset-diff-change` for resetting a diff hunk to its original text ([#4974](https://github.com/helix-editor/helix/pull/4974))
+- `:config-open-workspace` for opening the config file local to the current workspace ([#5748](https://github.com/helix-editor/helix/pull/5748))
 
 Usability improvements:
 
