@@ -20,7 +20,7 @@ use std::{
     fmt,
     hash::{Hash, Hasher},
     mem::{replace, transmute},
-    path::Path,
+    path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
 };
@@ -127,6 +127,10 @@ pub struct LanguageConfiguration {
     pub auto_pairs: Option<AutoPairs>,
 
     pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
+
+    /// Hardcoded LSP root directories relative to the workspace root, like `examples` or `tools/fuzz`.
+    /// Falling back to the current working directory if none are configured.
+    pub workspace_lsp_roots: Option<Vec<PathBuf>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -1157,6 +1161,7 @@ impl Syntax {
 bitflags! {
     /// Flags that track the status of a layer
     /// in the `Sytaxn::update` function
+    #[derive(Debug)]
     struct LayerUpdateFlags : u32{
         const MODIFIED = 0b001;
         const MOVED = 0b010;

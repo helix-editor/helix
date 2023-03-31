@@ -812,7 +812,10 @@ impl<T: Item + 'static> Component for Picker<T> {
                 for cell in row.cells.iter_mut() {
                     let spans = match cell.content.lines.get(0) {
                         Some(s) => s,
-                        None => continue,
+                        None => {
+                            cell_start_byte_offset += TEMP_CELL_SEP.len();
+                            continue;
+                        }
                     };
 
                     let mut cell_len = 0;
@@ -882,6 +885,7 @@ impl<T: Item + 'static> Component for Picker<T> {
                 offset: 0,
                 selected: Some(cursor),
             },
+            self.truncate_start,
         );
     }
 

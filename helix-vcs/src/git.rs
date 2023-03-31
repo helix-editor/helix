@@ -1,3 +1,4 @@
+use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
 use std::path::Path;
 use std::sync::Arc;
@@ -14,7 +15,7 @@ mod test;
 pub struct Git;
 
 impl Git {
-    fn open_repo(path: &Path, ceiling_dir: Option<&Path>) -> Option<ThreadSafeRepository> {
+    fn open_repo(path: &Path, ceiling_dir: Option<&Path>) -> Result<ThreadSafeRepository> {
         // custom open options
         let mut git_open_opts_map = gix::sec::trust::Mapping::<gix::open::Options>::default();
 
@@ -45,26 +46,31 @@ impl Git {
             open_options.ceiling_dirs = vec![ceiling_dir.to_owned()];
         }
 
-        ThreadSafeRepository::discover_with_environment_overrides_opts(
+        let res = ThreadSafeRepository::discover_with_environment_overrides_opts(
             path,
             open_options,
             git_open_opts_map,
-        )
-        .ok()
+        )?;
+
+        Ok(res)
     }
 }
 
 impl DiffProvider for Git {
-    fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>> {
+    fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
         debug_assert!(!file.exists() || file.is_file());
         debug_assert!(file.is_absolute());
 
         // TODO cache repository lookup
-        let repo = Git::open_repo(file.parent()?, None)?.to_thread_local();
-        let head = repo.head_commit().ok()?;
+
+        let repo_dir = file.parent().context("file has no parent directory")?;
+        let repo = Git::open_repo(repo_dir, None)
+            .context("failed to open git repo")?
+            .to_thread_local();
+        let head = repo.head_commit()?;
         let file_oid = find_file_in_commit(&repo, &head, file)?;
 
-        let file_object = repo.find_object(file_oid).ok()?;
+        let file_object = repo.find_object(file_oid)?;
         let mut data = file_object.detach().data;
         // convert LF to CRLF if configured to avoid showing every line as changed
         if repo
@@ -87,35 +93,42 @@ impl DiffProvider for Git {
             }
             data = normalized_file
         }
-        Some(data)
+        Ok(data)
     }
 
-    fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
+    fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
         debug_assert!(!file.exists() || file.is_file());
         debug_assert!(file.is_absolute());
-        let repo = Git::open_repo(file.parent()?, None)?.to_thread_local();
-        let head_ref = repo.head_ref().ok()?;
-        let head_commit = repo.head_commit().ok()?;
+        let repo_dir = file.parent().context("file has no parent directory")?;
+        let repo = Git::open_repo(repo_dir, None)
+            .context("failed to open git repo")?
+            .to_thread_local();
+        let head_ref = repo.head_ref()?;
+        let head_commit = repo.head_commit()?;
 
         let name = match head_ref {
             Some(reference) => reference.name().shorten().to_string(),
             None => head_commit.id.to_hex_with_len(8).to_string(),
         };
 
-        Some(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
+        Ok(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
     }
 }
 
 /// Finds the object that contains the contents of a file at a specific commit.
-fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Option<ObjectId> {
-    let repo_dir = repo.work_dir()?;
-    let rel_path = file.strip_prefix(repo_dir).ok()?;
-    let tree = commit.tree().ok()?;
-    let tree_entry = tree.lookup_entry_by_path(rel_path).ok()??;
+fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Result<ObjectId> {
+    let repo_dir = repo.work_dir().context("repo has no worktree")?;
+    let rel_path = file.strip_prefix(repo_dir)?;
+    let tree = commit.tree()?;
+    let tree_entry = tree
+        .lookup_entry_by_path(rel_path)?
+        .context("file is untracked")?;
     match tree_entry.mode() {
         // not a file, everything is new, do not show diff
-        EntryMode::Tree | EntryMode::Commit | EntryMode::Link => None,
+        mode @ (EntryMode::Tree | EntryMode::Commit | EntryMode::Link) => {
+            bail!("entry at {} is not a file but a {mode:?}", file.display())
+        }
         // found a file
-        EntryMode::Blob | EntryMode::BlobExecutable => Some(tree_entry.object_id()),
+        EntryMode::Blob | EntryMode::BlobExecutable => Ok(tree_entry.object_id()),
     }
 }

@@ -85,12 +85,13 @@ jobs:
           rust: stable
           target: x86_64-pc-windows-msvc
           cross: false
-        - build: aarch64-macos
-          os: macos-latest
-          rust: stable
-          target: aarch64-apple-darwin
-          cross: false
-          skip_tests: true  # x86_64 host can't run aarch64 code
+        # 23.03: build issues
+        # - build: aarch64-macos
+        #   os: macos-latest
+        #   rust: stable
+        #   target: aarch64-apple-darwin
+        #   cross: false
+        #   skip_tests: true  # x86_64 host can't run aarch64 code
         # - build: x86_64-win-gnu
         #   os: windows-2019
         #   rust: stable-x86_64-gnu
@@ -155,6 +156,10 @@ jobs:
         shell: bash
         if: matrix.build == 'aarch64-linux' || matrix.build == 'x86_64-linux'
         run: |
+          # Required as of 22.x https://github.com/AppImage/AppImageKit/wiki/FUSE
+          sudo add-apt-repository universe
+          sudo apt install libfuse2
+
           mkdir dist
 
           name=dev

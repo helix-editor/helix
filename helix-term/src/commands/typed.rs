@@ -1371,13 +1371,19 @@ fn lsp_restart(
         return Ok(());
     }
 
+    let editor_config = cx.editor.config.load();
     let (_view, doc) = current!(cx.editor);
     let config = doc
         .language_config()
         .context("LSP not defined for the current document")?;
 
     let scope = config.scope.clone();
-    cx.editor.language_servers.restart(config, doc.path())?;
+    cx.editor.language_servers.restart(
+        config,
+        doc.path(),
+        &editor_config.workspace_lsp_roots,
+        editor_config.lsp.snippets,
+    )?;
 
     // This collect is needed because refresh_language_server would need to re-borrow editor.
     let document_ids_to_refresh: Vec<DocumentId> = cx
@@ -1970,6 +1976,20 @@ fn open_config(
     Ok(())
 }
 
+fn open_workspace_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor
+        .open(&helix_loader::workspace_config_file(), Action::Replace)?;
+    Ok(())
+}
+
 fn open_log(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -2060,18 +2080,14 @@ fn run_shell_command(
         return Ok(());
     }
 
-    let shell = &cx.editor.config().shell;
-    let (output, success) = shell_impl(shell, &args.join(" "), None)?;
-    if success {
-        cx.editor.set_status("Command succeeded");
-    } else {
-        cx.editor.set_error("Command failed");
-    }
+    let shell = cx.editor.config().shell.clone();
+    let args = args.join(" ");
 
-    if !output.is_empty() {
-        let callback = async move {
-            let call: job::Callback = Callback::EditorCompositor(Box::new(
-                move |editor: &mut Editor, compositor: &mut Compositor| {
+    let callback = async move {
+        let (output, success) = shell_impl_async(&shell, &args, None).await?;
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                if !output.is_empty() {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output),
                         editor.syn_loader.clone(),
@@ -2080,13 +2096,17 @@ fn run_shell_command(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
                     ));
                     compositor.replace_or_push("shell", popup);
-                },
-            ));
-            Ok(call)
-        };
-
-        cx.jobs.callback(callback);
-    }
+                }
+                if success {
+                    editor.set_status("Command succeeded");
+                } else {
+                    editor.set_error("Command failed");
+                }
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
 
     Ok(())
 }
@@ -2644,6 +2664,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Open the user config.toml file.",
             fun: open_config,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "config-open-workspace",
+            aliases: &[],
+            doc: "Open the workspace config.toml file.",
+            fun: open_workspace_config,
             signature: CommandSignature::none(),
         },
         TypableCommand {

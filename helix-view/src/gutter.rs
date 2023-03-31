@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use crate::{
     editor::GutterType,
-    graphics::{Color, Style, UnderlineStyle},
+    graphics::{Style, UnderlineStyle},
     Document, Editor, Theme, View,
 };
 
@@ -245,9 +245,9 @@ pub fn breakpoints<'doc>(
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
-    let warning = theme.get("warning");
     let error = theme.get("error");
     let info = theme.get("info");
+    let breakpoint_style = theme.get("ui.debug.breakpoint");
 
     let breakpoints = doc.path().and_then(|path| editor.breakpoints.get(path));
 
@@ -265,30 +265,52 @@ pub fn breakpoints<'doc>(
                 .iter()
                 .find(|breakpoint| breakpoint.line == line)?;
 
-            let mut style = if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
+            let style = if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
                 error.underline_style(UnderlineStyle::Line)
             } else if breakpoint.condition.is_some() {
                 error
             } else if breakpoint.log_message.is_some() {
                 info
             } else {
-                warning
+                breakpoint_style
             };
 
-            if !breakpoint.verified {
-                // Faded colors
-                style = if let Some(Color::Rgb(r, g, b)) = style.fg {
-                    style.fg(Color::Rgb(
-                        ((r as f32) * 0.4).floor() as u8,
-                        ((g as f32) * 0.4).floor() as u8,
-                        ((b as f32) * 0.4).floor() as u8,
-                    ))
-                } else {
-                    style.fg(Color::Gray)
-                }
-            };
+            let sym = if breakpoint.verified { "●" } else { "◯" };
+            write!(out, "{}", sym).unwrap();
+            Some(style)
+        },
+    )
+}
 
-            let sym = if breakpoint.verified { "▲" } else { "⊚" };
+fn execution_pause_indicator<'doc>(
+    editor: &'doc Editor,
+    doc: &'doc Document,
+    theme: &Theme,
+    is_focused: bool,
+) -> GutterFn<'doc> {
+    let style = theme.get("ui.debug.active");
+    let current_stack_frame = editor.current_stack_frame();
+    let frame_line = current_stack_frame.map(|frame| frame.line - 1);
+    let frame_source_path = current_stack_frame.map(|frame| {
+        frame
+            .source
+            .as_ref()
+            .and_then(|source| source.path.as_ref())
+    });
+    let should_display_for_current_doc =
+        doc.path().is_some() && frame_source_path.unwrap_or(None) == doc.path();
+
+    Box::new(
+        move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
+            if !first_visual_line
+                || !is_focused
+                || line != frame_line?
+                || !should_display_for_current_doc
+            {
+                return None;
+            }
+
+            let sym = "▶";
             write!(out, "{}", sym).unwrap();
             Some(style)
         },
@@ -304,9 +326,11 @@ pub fn diagnostics_or_breakpoints<'doc>(
 ) -> GutterFn<'doc> {
     let mut diagnostics = diagnostic(editor, doc, view, theme, is_focused);
     let mut breakpoints = breakpoints(editor, doc, view, theme, is_focused);
+    let mut execution_pause_indicator = execution_pause_indicator(editor, doc, theme, is_focused);
 
     Box::new(move |line, selected, first_visual_line: bool, out| {
-        breakpoints(line, selected, first_visual_line, out)
+        execution_pause_indicator(line, selected, first_visual_line, out)
+            .or_else(|| breakpoints(line, selected, first_visual_line, out))
             .or_else(|| diagnostics(line, selected, first_visual_line, out))
     })
 }
