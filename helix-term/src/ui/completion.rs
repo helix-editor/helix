@@ -141,16 +141,12 @@ impl Completion {
                         }
                     };
 
-                    let start_offset =
-                        match util::lsp_pos_to_pos(doc.text(), edit.range.start, offset_encoding) {
-                            Some(start) => start as i128 - primary_cursor as i128,
-                            None => return Transaction::new(doc.text()),
-                        };
-                    let end_offset =
-                        match util::lsp_pos_to_pos(doc.text(), edit.range.end, offset_encoding) {
-                            Some(end) => end as i128 - primary_cursor as i128,
-                            None => return Transaction::new(doc.text()),
-                        };
+                    let Some(range) = util::lsp_range_to_range(doc.text(), edit.range, offset_encoding) else{
+                        return Transaction::new(doc.text());
+                    };
+
+                    let start_offset = range.anchor as i128 - primary_cursor as i128;
+                    let end_offset = range.head as i128 - primary_cursor as i128;
 
                     (Some((start_offset, end_offset)), edit.new_text)
                 } else {
