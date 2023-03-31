@@ -4,7 +4,7 @@ use crate::{
     Call, Error, OffsetEncoding, Result,
 };
 
-use helix_core::{find_workspace, ChangeSet, Rope};
+use helix_core::{find_workspace, path, ChangeSet, Rope};
 use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp::{
     notification::DidChangeWorkspaceFolders, DidChangeWorkspaceFoldersParams, OneOf,
@@ -66,6 +66,7 @@ impl Client {
         may_support_workspace: bool,
     ) -> bool {
         let (workspace, workspace_is_cwd) = find_workspace();
+        let workspace = path::get_normalized_path(&workspace);
         let root = find_lsp_workspace(
             doc_path
                 .and_then(|x| x.parent().and_then(|x| x.to_str()))
@@ -201,6 +202,7 @@ impl Client {
         let (server_rx, server_tx, initialize_notify) =
             Transport::start(reader, writer, stderr, id);
         let (workspace, workspace_is_cwd) = find_workspace();
+        let workspace = path::get_normalized_path(&workspace);
         let root = find_lsp_workspace(
             doc_path
                 .and_then(|x| x.parent().and_then(|x| x.to_str()))

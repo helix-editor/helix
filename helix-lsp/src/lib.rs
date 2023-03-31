@@ -10,7 +10,10 @@ pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::syntax::{LanguageConfiguration, LanguageServerConfiguration};
+use helix_core::{
+    path,
+    syntax::{LanguageConfiguration, LanguageServerConfiguration},
+};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
@@ -888,12 +891,13 @@ pub fn find_lsp_workspace(
     workspace_is_cwd: bool,
 ) -> Option<PathBuf> {
     let file = std::path::Path::new(file);
-    let file = if file.is_absolute() {
+    let mut file = if file.is_absolute() {
         file.to_path_buf()
     } else {
         let current_dir = std::env::current_dir().expect("unable to determine current directory");
         current_dir.join(file)
     };
+    file = path::get_normalized_path(&file);
 
     if !file.starts_with(workspace) {
         return None;
@@ -910,7 +914,7 @@ pub fn find_lsp_workspace(
 
         if root_dirs
             .iter()
-            .any(|root_dir| root_dir == ancestor.strip_prefix(workspace).unwrap())
+            .any(|root_dir| path::get_normalized_path(&workspace.join(root_dir)) == ancestor)
         {
             // if the worskapce is the cwd do not search any higher for workspaces
             // but specify
