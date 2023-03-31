@@ -1378,9 +1378,12 @@ fn lsp_restart(
         .context("LSP not defined for the current document")?;
 
     let scope = config.scope.clone();
-    cx.editor
-        .language_servers
-        .restart(config, doc.path(), &editor_config.workspace_lsp_roots)?;
+    cx.editor.language_servers.restart(
+        config,
+        doc.path(),
+        &editor_config.workspace_lsp_roots,
+        editor_config.lsp.snippets,
+    )?;
 
     // This collect is needed because refresh_language_server would need to re-borrow editor.
     let document_ids_to_refresh: Vec<DocumentId> = cx
