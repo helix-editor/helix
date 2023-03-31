@@ -1,8 +1,9 @@
 # 23.03 (2023-03-31)
 
-> Checkpoint: `5323020c3f02b178f2b6807f13d89bf7f40d3cce`
+23.03 brings some long-awaited and exciting features. Thank you to everyone involved! This release saw changes from 102 contributors.
 
 For the full log, check out the [git log](https://github.com/helix-editor/helix/compare/22.12..23.03).
+Also check out the [release notes](https://helix-editor.com/news/release-23-03-highlights/) for more commentary on larger features.
 
 Breaking changes:
 
@@ -16,15 +17,16 @@ Features:
 
 - Dynamic workspace symbol picker (#5055)
 - Soft-wrap (#5420, #5786, #5893, #6142, #6440)
-- Initial support for LSP snippet completions (#5864, b1f7528, #6263, bbf4800, 90348b8, f87299f, #6371)
+- Initial support for LSP snippet completions (#5864, b1f7528, #6263, bbf4800, 90348b8, f87299f, #6371, 9fe3adc)
 - Add a statusline element for showing the current version control HEAD (#5682)
 - Display LSP type hints (#5420, #5934, #6312)
-- Enable the Kitty keyboard protocol on terminals with support (#4939, #6170, #6194)
+- Enable the Kitty keyboard protocol on terminals with support (#4939, #6170, #6194, #6438)
 - Add a statusline element for the basename of the current file (#5318)
 - Add substring matching syntax for the picker (#5658)
 - Support LSP `textDocument/prepareRename` (#6103)
 - Allow multiple runtime directories with priorities (#5411)
 - Allow configuring whether to insert or replace completions (#5728)
+- Add proper support for LSP workspaces (#5748)
 
 Commands:
 
@@ -63,7 +65,7 @@ Usability improvements:
 - Short-circuit tree-sitter and word object motions (#5851)
 - Add exit code to failed command message (#5898)
 - Make `m` textobject look for pairs enclosing selections (#3344)
-- Negotiate LSP position encoding (#5894)
+- Negotiate LSP position encoding (#5894, a48d1a4)
 - Display deprecated LSP completions with strikethrough (#5932)
 - Add JSONRPC request ID to failed LSP/DAP request log messages (#6010, #6018)
 - Ignore case when filtering LSP completions (#6008)
@@ -76,6 +78,8 @@ Usability improvements:
 - Discard outdated LSP workspace edits (b6a4927)
 - Run shell commands asynchronously (#6373)
 - Show diagnostic codes in LSP diagnostic messages (#6378)
+- Highlight the current line in a DAP debug session (#5957)
+- Hide signature help if it overlaps with the completion menu (#5523, 7a69c40)
 
 Fixes:
 
@@ -122,6 +126,9 @@ Fixes:
 - Send the STOP signal to all processes in the process group (#3546)
 - Fix workspace edit client capabilities declaration (7bf168d)
 - Fix highlighting in picker results with multiple columns (#6333)
+- Canonicalize paths before stripping the current dir as a prefix (#6290)
+- Fix truncation behavior for long path names in the file picker (#6410, 67783dd)
+- Fix theme reloading behavior in `:config-reload` (ab819d8)
 
 Themes:
 
@@ -141,7 +148,7 @@ Themes:
     - Dark themes: `github_dark`, `github_dark_colorblind`, `github_dark_dimmed`, `github_dark_high_contrast`, `github_dark_tritanopia`
     - Light themes: `github_light`, `github_light_colorblind`, `github_light_dimmed`, `github_light_high_contrast`, `github_light_tritanopia`
 - Update `solarized` variants (#5445, #6327)
-- Update `catppuccin` variants (#5404, #6107, #6269)
+- Update `catppuccin` variants (#5404, #6107, #6269, #6464)
 - Use curly underlines in built-in themes (#5419)
 - Update `zenburn` (#5573)
 - Rewrite `snazzy` (#3971)
@@ -250,8 +257,9 @@ Updated languages and queries:
 - Recognize cts and mts file-types as TypeScript (#6424)
 - Recognize SVG file-type as XML (#6431)
 - Add theme scopes for (un)checked list item markup scopes (#6434)
-- Update git commit grammar and add the comment textobject (#6439)
+- Update git commit grammar and add the comment textobject (#6439, #6493)
 - Recognize ARB file-type as JSON (#6452)
+- Inject markdown into markdown strings in Julia (#6489)
 
 Packaging:
 
