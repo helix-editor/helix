@@ -114,6 +114,12 @@ jobs:
           mkdir -p runtime/grammars/sources
           tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
 
+      # The rust-toolchain action ignores rust-toolchain.toml files.
+      # Removing this before building with cargo ensures that the rust-toolchain
+      # is considered the same between installation and usage.
+      - name: Remove the rust-toolchain.toml file
+        run: rm rust-toolchain.toml
+
       - name: Install ${{ matrix.rust }} toolchain
         uses: dtolnay/rust-toolchain@master
         with:
