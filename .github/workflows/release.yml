@@ -86,12 +86,12 @@ jobs:
           target: x86_64-pc-windows-msvc
           cross: false
         # 23.03: build issues
-        # - build: aarch64-macos
-        #   os: macos-latest
-        #   rust: stable
-        #   target: aarch64-apple-darwin
-        #   cross: false
-        #   skip_tests: true  # x86_64 host can't run aarch64 code
+        - build: aarch64-macos
+          os: macos-latest
+          rust: stable
+          target: aarch64-apple-darwin
+          cross: false
+          skip_tests: true  # x86_64 host can't run aarch64 code
         # - build: x86_64-win-gnu
         #   os: windows-2019
         #   rust: stable-x86_64-gnu
