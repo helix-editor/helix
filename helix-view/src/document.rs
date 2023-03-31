@@ -489,8 +489,10 @@ trait ConfigureDocument {
     fn configure_document(doc: &mut Document, settings: Self::Config);
 }
 
+/// Document configuration strategy that uses fallback auto-detection as a first resort.
 #[derive(Clone, Copy, Debug, Default)]
 struct Autodetect;
+/// Document configuration strategy that loads configuration from `.editorconfig` files.
 #[derive(Clone, Copy, Debug, Default)]
 struct EditorConfig;
 
@@ -544,7 +546,16 @@ impl ConfigureDocument for EditorConfig {
                 } else {
                     doc.tab_width
                 };
-                doc.indent_style = IndentStyle::Spaces(spaces.try_into().unwrap_or(u8::MAX));
+                // Constrain spaces to only supported values for IndentStyle::Spaces.
+                let spaces_u8 = if spaces > 8 {
+                    8u8
+                } else if spaces > 0 {
+                    // Shouldn't panic. Overflow cases are covered by the above branch.
+                    spaces as u8
+                } else {
+                    4u8
+                };
+                doc.indent_style = IndentStyle::Spaces(spaces_u8);
             }
             _ => doc.detect_indent(),
         }
