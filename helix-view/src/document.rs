@@ -133,6 +133,42 @@ impl EncodingBom {
             EncodingBom::NoBom(encoding) => encoding,
         }
     }
+
+    fn for_bom(encoding: &'static Encoding) -> Self {
+        if encoding == encoding::UTF_8 {
+            EncodingBom::UTF8
+        } else if encoding == encoding::UTF_16BE {
+            EncodingBom::UTF16BE
+        } else if encoding == encoding::UTF_16LE {
+            EncodingBom::UTF16LE
+        } else {
+            EncodingBom::NoBom(encoding)
+        }
+    }
+
+    fn write_bom(&self, buf: &mut [u8; BUF_SIZE]) -> usize {
+        match self {
+            EncodingBom::UTF8 => {
+                buf[0] = 0xef;
+                buf[1] = 0xbb;
+                buf[2] = 0xbf;
+                3
+            }
+            EncodingBom::UTF16BE => {
+                buf[0] = 0xfe;
+                buf[1] = 0xff;
+                2
+            }
+
+            EncodingBom::UTF16LE => {
+                buf[0] = 0xef;
+                buf[1] = 0xff;
+                2
+            }
+
+            EncodingBom::NoBom(_) => 0,
+        }
+    }
 }
 
 impl From<&'static Encoding> for EncodingBom {
@@ -333,14 +369,17 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
     let (encoding, mut decoder, mut slice, mut is_empty) = {
         let read = reader.read(&mut buf)?;
         let is_empty = read == 0;
-        let encoding: EncodingBom = match encoding {
-            Some(encoding) => encoding,
-            None => {
+        let encoding = encoding
+            .or_else(|| {
+                encoding::Encoding::for_bom(&buf)
+                    .map(|(encoding, _)| EncodingBom::for_bom(encoding))
+            })
+            .unwrap_or_else(|| {
                 let mut encoding_detector = chardetng::EncodingDetector::new();
                 encoding_detector.feed(&buf, is_empty);
                 encoding_detector.guess(None, true).into()
-            }
-        };
+            });
+
         let decoder = encoding.encoding().new_decoder();
 
         // If the amount of bytes read from the reader is less than
@@ -440,7 +479,8 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
         .chain(std::iter::once(""));
     let mut buf = [0u8; BUF_SIZE];
     let mut encoder = encoding.encoding().new_encoder();
-    let mut total_written = 0usize;
+    let mut total_written = encoding.write_bom(&mut buf);
+
     for chunk in iter {
         let is_empty = chunk.is_empty();
         let mut total_read = 0usize;

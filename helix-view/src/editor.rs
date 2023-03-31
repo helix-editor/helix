@@ -1,7 +1,7 @@
 use crate::{
     align_view,
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::{DocumentSavedEventFuture, DocumentSavedEventResult, EncodingBom, Mode},
+    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
