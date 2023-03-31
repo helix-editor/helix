@@ -116,6 +116,7 @@ pub struct SavePoint {
     revert: Mutex<Transaction>,
 }
 
+// An enum representing the encoding and if it contain a byte order mark
 #[derive(Debug, Clone)]
 pub enum EncodingBom {
     UTF8,
@@ -134,6 +135,8 @@ impl EncodingBom {
         }
     }
 
+    // Assume that encoding have a bom, used to convert
+    // `encoding_rs` for_bom result to this enum
     fn for_bom(encoding: &'static Encoding) -> Self {
         if encoding == encoding::UTF_8 {
             EncodingBom::UTF8
@@ -146,6 +149,8 @@ impl EncodingBom {
         }
     }
 
+    // Write in buf the Bom if applicable
+    // return the number of bytes written
     fn write_bom(&self, buf: &mut [u8; BUF_SIZE]) -> usize {
         match self {
             EncodingBom::UTF8 => {
@@ -361,8 +366,9 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
     let mut buf_out = [0u8; BUF_SIZE];
     let mut builder = RopeBuilder::new();
 
-    // By default, the encoding of the text is auto-detected via the
-    // `chardetng` crate which requires sample data from the reader.
+    // By default, the encoding of the text is auto-detected by
+    // `encoding_rs` for_bom, and if it fails, from `chardetng`
+    // crate which requires sample data from the reader.
     // As a manual override to this auto-detection is possible, the
     // same data is read into `buf` to ensure symmetry in the upcoming
     // loop.
