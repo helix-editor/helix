@@ -49,7 +49,7 @@ pub struct Menu<T: Item> {
     options: Vec<T>,
     editor_data: T::Data,
 
-    cursor: Option<usize>,
+    cursor: usize,
 
     matcher: Box<Matcher>,
     /// (index, score)
@@ -81,7 +81,7 @@ impl<T: Item> Menu<T> {
             editor_data,
             matcher: Box::new(Matcher::default().ignore_case()),
             matches,
-            cursor: None,
+            cursor: 0,
             widths: Vec::new(),
             callback_fn: Box::new(callback_fn),
             scroll: 0,
@@ -92,6 +92,8 @@ impl<T: Item> Menu<T> {
     }
 
     pub fn score(&mut self, pattern: &str) {
+        let cursor_item = self.matches[self.cursor].0;
+        let mut cursor_score = None;
         // reuse the matches allocation
         self.matches.clear();
         self.matches.extend(
@@ -101,40 +103,54 @@ impl<T: Item> Menu<T> {
                 .filter_map(|(index, option)| {
                     let text = option.filter_text(&self.editor_data);
                     // TODO: using fuzzy_indices could give us the char idx for match highlighting
-                    self.matcher
-                        .fuzzy_match(&text, pattern)
-                        .map(|score| (index, score))
+                    let score = self.matcher.fuzzy_match(&text, pattern)?;
+                    if index == cursor_item {
+                        cursor_score = Some(score);
+                    }
+                    Some((index, score))
                 }),
         );
-        // Order of equal elements needs to be preserved as LSP preselected items come in order of high to low priority
-        self.matches.sort_by_key(|(_, score)| -score);
-
-        // reset cursor position
-        self.cursor = None;
-        self.scroll = 0;
+        self.matches
+            .sort_unstable_by_key(|&(index, score)| (-score, index));
+        if let Some(cursor_score) = cursor_score {
+            // unwrap is ok here because we know that the cursor is in the list (otehrwise cursor_score is None)
+            self.cursor = self
+                .matches
+                .binary_search_by_key(&(-cursor_score, cursor_item), |&(index, score)| {
+                    (-score, index)
+                })
+                .unwrap();
+            self.adjust_scroll();
+        } else {
+            self.cursor = 0;
+            self.scroll = 0;
+        }
         self.recalculate = true;
+    }
+
+    pub fn reset_cursor(&mut self) {
+        self.cursor = 0;
+        self.scroll = 0;
     }
 
     pub fn clear(&mut self) {
         self.matches.clear();
 
         // reset cursor position
-        self.cursor = None;
+        self.cursor = 0;
         self.scroll = 0;
     }
 
     pub fn move_up(&mut self) {
         let len = self.matches.len();
         let max_index = len.saturating_sub(1);
-        let pos = self.cursor.map_or(max_index, |i| (i + max_index) % len) % len;
-        self.cursor = Some(pos);
+        self.cursor = (self.cursor + max_index) % len;
         self.adjust_scroll();
     }
 
     pub fn move_down(&mut self) {
         let len = self.matches.len();
-        let pos = self.cursor.map_or(0, |i| i + 1) % len;
-        self.cursor = Some(pos);
+        self.cursor = (self.cursor + 1) % len;
         self.adjust_scroll();
     }
 
@@ -184,33 +200,28 @@ impl<T: Item> Menu<T> {
 
     fn adjust_scroll(&mut self) {
         let win_height = self.size.1 as usize;
-        if let Some(cursor) = self.cursor {
-            let mut scroll = self.scroll;
-            if cursor > (win_height + scroll).saturating_sub(1) {
-                // scroll down
-                scroll += cursor - (win_height + scroll).saturating_sub(1)
-            } else if cursor < scroll {
-                // scroll up
-                scroll = cursor
-            }
-            self.scroll = scroll;
+        let mut scroll = self.scroll;
+        let cursor = self.cursor;
+        if cursor > (win_height + scroll).saturating_sub(1) {
+            // scroll down
+            scroll += cursor - (win_height + scroll).saturating_sub(1)
+        } else if cursor < scroll {
+            // scroll up
+            scroll = cursor
         }
+        self.scroll = scroll;
     }
 
     pub fn selection(&self) -> Option<&T> {
-        self.cursor.and_then(|cursor| {
-            self.matches
-                .get(cursor)
-                .map(|(index, _score)| &self.options[*index])
-        })
+        self.matches
+            .get(self.cursor)
+            .map(|(index, _score)| &self.options[*index])
     }
 
     pub fn selection_mut(&mut self) -> Option<&mut T> {
-        self.cursor.and_then(|cursor| {
-            self.matches
-                .get(cursor)
-                .map(|(index, _score)| &mut self.options[*index])
-        })
+        self.matches
+            .get(self.cursor)
+            .map(|(index, _score)| &mut self.options[*index])
     }
 
     pub fn is_empty(&self) -> bool {
@@ -345,13 +356,13 @@ impl<T: Item + 'static> Component for Menu<T> {
             surface,
             &mut TableState {
                 offset: scroll,
-                selected: self.cursor,
+                selected: Some(self.cursor),
             },
             false,
         );
 
-        if let Some(cursor) = self.cursor {
-            let offset_from_top = cursor - scroll;
+        if self.cursor < self.matches.len() {
+            let offset_from_top = self.cursor - scroll;
             let left = &mut surface[(area.left(), area.y + offset_from_top as u16)];
             left.set_style(selected);
             let right = &mut surface[(
