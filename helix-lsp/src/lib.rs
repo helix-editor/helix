@@ -15,6 +15,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
     collections::{hash_map::Entry, HashMap},
+    path::{Path, PathBuf},
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -605,7 +606,7 @@ impl Notification {
 
 #[derive(Debug)]
 pub struct Registry {
-    inner: HashMap<LanguageId, (usize, Arc<Client>)>,
+    inner: HashMap<LanguageId, Vec<(usize, Arc<Client>)>>,
 
     counter: AtomicUsize,
     pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
@@ -629,18 +630,24 @@ impl Registry {
     pub fn get_by_id(&self, id: usize) -> Option<&Client> {
         self.inner
             .values()
+            .flatten()
             .find(|(client_id, _)| client_id == &id)
             .map(|(_, client)| client.as_ref())
     }
 
     pub fn remove_by_id(&mut self, id: usize) {
-        self.inner.retain(|_, (client_id, _)| client_id != &id)
+        self.inner.retain(|_, clients| {
+            clients.retain(|&(client_id, _)| client_id != id);
+            !clients.is_empty()
+        })
     }
 
     pub fn restart(
         &mut self,
         language_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
+        root_dirs: &[PathBuf],
+        enable_snippets: bool,
     ) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
@@ -655,15 +662,23 @@ impl Registry {
                 // initialize a new client
                 let id = self.counter.fetch_add(1, Ordering::Relaxed);
 
-                let NewClientResult(client, incoming) =
-                    start_client(id, language_config, config, doc_path)?;
+                let NewClientResult(client, incoming) = start_client(
+                    id,
+                    language_config,
+                    config,
+                    doc_path,
+                    root_dirs,
+                    enable_snippets,
+                )?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
 
-                let (_, old_client) = entry.insert((id, client.clone()));
+                let old_clients = entry.insert(vec![(id, client.clone())]);
 
-                tokio::spawn(async move {
-                    let _ = old_client.force_shutdown().await;
-                });
+                for (_, old_client) in old_clients {
+                    tokio::spawn(async move {
+                        let _ = old_client.force_shutdown().await;
+                    });
+                }
 
                 Ok(Some(client))
             }
@@ -673,10 +688,12 @@ impl Registry {
     pub fn stop(&mut self, language_config: &LanguageConfiguration) {
         let scope = language_config.scope.clone();
 
-        if let Some((_, client)) = self.inner.remove(&scope) {
-            tokio::spawn(async move {
-                let _ = client.force_shutdown().await;
-            });
+        if let Some(clients) = self.inner.remove(&scope) {
+            for (_, client) in clients {
+                tokio::spawn(async move {
+                    let _ = client.force_shutdown().await;
+                });
+            }
         }
     }
 
@@ -684,30 +701,39 @@ impl Registry {
         &mut self,
         language_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
+        root_dirs: &[PathBuf],
+        enable_snippets: bool,
     ) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
             None => return Ok(None),
         };
 
-        match self.inner.entry(language_config.scope.clone()) {
-            Entry::Occupied(entry) => Ok(Some(entry.get().1.clone())),
-            Entry::Vacant(entry) => {
-                // initialize a new client
-                let id = self.counter.fetch_add(1, Ordering::Relaxed);
-
-                let NewClientResult(client, incoming) =
-                    start_client(id, language_config, config, doc_path)?;
-                self.incoming.push(UnboundedReceiverStream::new(incoming));
-
-                entry.insert((id, client.clone()));
-                Ok(Some(client))
-            }
+        let clients = self.inner.entry(language_config.scope.clone()).or_default();
+        // check if we already have a client for this documents root that we can reuse
+        if let Some((_, client)) = clients.iter_mut().enumerate().find(|(i, (_, client))| {
+            client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
+        }) {
+            return Ok(Some(client.1.clone()));
         }
+        // initialize a new client
+        let id = self.counter.fetch_add(1, Ordering::Relaxed);
+
+        let NewClientResult(client, incoming) = start_client(
+            id,
+            language_config,
+            config,
+            doc_path,
+            root_dirs,
+            enable_snippets,
+        )?;
+        clients.push((id, client.clone()));
+        self.incoming.push(UnboundedReceiverStream::new(incoming));
+        Ok(Some(client))
     }
 
     pub fn iter_clients(&self) -> impl Iterator<Item = &Arc<Client>> {
-        self.inner.values().map(|(_, client)| client)
+        self.inner.values().flatten().map(|(_, client)| client)
     }
 }
 
@@ -798,6 +824,8 @@ fn start_client(
     config: &LanguageConfiguration,
     ls_config: &LanguageServerConfiguration,
     doc_path: Option<&std::path::PathBuf>,
+    root_dirs: &[PathBuf],
+    enable_snippets: bool,
 ) -> Result<NewClientResult> {
     let (client, incoming, initialize_notify) = Client::start(
         &ls_config.command,
@@ -805,6 +833,7 @@ fn start_client(
         config.config.clone(),
         ls_config.environment.clone(),
         &config.roots,
+        config.workspace_lsp_roots.as_deref().unwrap_or(root_dirs),
         id,
         ls_config.timeout,
         doc_path,
@@ -820,7 +849,7 @@ fn start_client(
             .capabilities
             .get_or_try_init(|| {
                 _client
-                    .initialize()
+                    .initialize(enable_snippets)
                     .map_ok(|response| response.capabilities)
             })
             .await;
@@ -840,6 +869,64 @@ fn start_client(
     });
 
     Ok(NewClientResult(client, incoming))
+}
+
+/// Find an LSP workspace of a file using the following mechanism:
+/// * if the file is outside `workspace` return `None`
+/// * start at `file` and search the file tree upward
+/// * stop the search at the first `root_dirs` entry that contains `file`
+/// * if no `root_dirs` matchs `file` stop at workspace
+/// * Returns the top most directory that contains a `root_marker`
+/// * If no root marker and we stopped at a `root_dirs` entry, return the directory we stopped at
+/// * If we stopped at `workspace` instead and `workspace_is_cwd == false` return `None`
+/// * If we stopped at `workspace` instead and `workspace_is_cwd == true` return `workspace`
+pub fn find_lsp_workspace(
+    file: &str,
+    root_markers: &[String],
+    root_dirs: &[PathBuf],
+    workspace: &Path,
+    workspace_is_cwd: bool,
+) -> Option<PathBuf> {
+    let file = std::path::Path::new(file);
+    let file = if file.is_absolute() {
+        file.to_path_buf()
+    } else {
+        let current_dir = std::env::current_dir().expect("unable to determine current directory");
+        current_dir.join(file)
+    };
+
+    if !file.starts_with(workspace) {
+        return None;
+    }
+
+    let mut top_marker = None;
+    for ancestor in file.ancestors() {
+        if root_markers
+            .iter()
+            .any(|marker| ancestor.join(marker).exists())
+        {
+            top_marker = Some(ancestor);
+        }
+
+        if root_dirs
+            .iter()
+            .any(|root_dir| root_dir == ancestor.strip_prefix(workspace).unwrap())
+        {
+            // if the worskapce is the cwd do not search any higher for workspaces
+            // but specify
+            return Some(top_marker.unwrap_or(workspace).to_owned());
+        }
+        if ancestor == workspace {
+            // if the workspace is the CWD, let the LSP decide what the workspace
+            // is
+            return top_marker
+                .or_else(|| (!workspace_is_cwd).then_some(workspace))
+                .map(Path::to_owned);
+        }
+    }
+
+    debug_assert!(false, "workspace must be an ancestor of <file>");
+    None
 }
 
 #[cfg(test)]

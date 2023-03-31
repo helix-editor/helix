@@ -393,20 +393,23 @@ impl Application {
 
     /// Refresh theme after config change
     fn refresh_theme(&mut self, config: &Config) -> Result<(), Error> {
-        if let Some(theme) = config.theme.clone() {
-            let true_color = self.true_color();
-            let theme = self
-                .theme_loader
-                .load(&theme)
-                .map_err(|err| anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err))?;
+        let true_color = config.editor.true_color || crate::true_color();
+        let theme = config
+            .theme
+            .as_ref()
+            .and_then(|theme| {
+                self.theme_loader
+                    .load(theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| (true_color || theme.is_16_color()))
+            })
+            .unwrap_or_else(|| self.theme_loader.default_theme(true_color));
 
-            if true_color || theme.is_16_color() {
-                self.editor.set_theme(theme);
-            } else {
-                anyhow::bail!("theme requires truecolor support, which is not available")
-            }
-        }
-
+        self.editor.set_theme(theme);
         Ok(())
     }
 
@@ -429,10 +432,6 @@ impl Application {
                 self.editor.set_error(err.to_string());
             }
         }
-    }
-
-    fn true_color(&self) -> bool {
-        self.config.load().editor.true_color || crate::true_color()
     }
 
     #[cfg(windows)]
@@ -1018,7 +1017,7 @@ impl Application {
                         let language_server =
                             self.editor.language_servers.get_by_id(server_id).unwrap();
 
-                        Ok(json!(language_server.workspace_folders()))
+                        Ok(json!(&*language_server.workspace_folders().await))
                     }
                     Ok(MethodCall::WorkspaceConfiguration(params)) => {
                         let result: Vec<_> = params

@@ -61,6 +61,8 @@
 "diagnostic.error"= { underline = { color = "red", style="curl"} }
 "ui.bufferline" = { fg = "gray", bg = "background" }
 "ui.bufferline.active" = { fg = "foreground", bg = "dark_gray" }
+"ui.debug" = { fg = "orange", bg = "background" }
+"ui.highlight.frameline" = { bg = "#0067a3" }
 
 "special" = "orange"
 
