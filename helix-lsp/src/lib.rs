@@ -647,6 +647,7 @@ impl Registry {
         language_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
+        enable_snippets: bool,
     ) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
@@ -661,8 +662,14 @@ impl Registry {
                 // initialize a new client
                 let id = self.counter.fetch_add(1, Ordering::Relaxed);
 
-                let NewClientResult(client, incoming) =
-                    start_client(id, language_config, config, doc_path, root_dirs)?;
+                let NewClientResult(client, incoming) = start_client(
+                    id,
+                    language_config,
+                    config,
+                    doc_path,
+                    root_dirs,
+                    enable_snippets,
+                )?;
                 self.incoming.push(UnboundedReceiverStream::new(incoming));
 
                 let old_clients = entry.insert(vec![(id, client.clone())]);
@@ -695,6 +702,7 @@ impl Registry {
         language_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
+        enable_snippets: bool,
     ) -> Result<Option<Arc<Client>>> {
         let config = match &language_config.language_server {
             Some(config) => config,
@@ -711,8 +719,14 @@ impl Registry {
         // initialize a new client
         let id = self.counter.fetch_add(1, Ordering::Relaxed);
 
-        let NewClientResult(client, incoming) =
-            start_client(id, language_config, config, doc_path, root_dirs)?;
+        let NewClientResult(client, incoming) = start_client(
+            id,
+            language_config,
+            config,
+            doc_path,
+            root_dirs,
+            enable_snippets,
+        )?;
         clients.push((id, client.clone()));
         self.incoming.push(UnboundedReceiverStream::new(incoming));
         Ok(Some(client))
@@ -811,6 +825,7 @@ fn start_client(
     ls_config: &LanguageServerConfiguration,
     doc_path: Option<&std::path::PathBuf>,
     root_dirs: &[PathBuf],
+    enable_snippets: bool,
 ) -> Result<NewClientResult> {
     let (client, incoming, initialize_notify) = Client::start(
         &ls_config.command,
@@ -834,7 +849,7 @@ fn start_client(
             .capabilities
             .get_or_try_init(|| {
                 _client
-                    .initialize()
+                    .initialize(enable_snippets)
                     .map_ok(|response| response.capabilities)
             })
             .await;

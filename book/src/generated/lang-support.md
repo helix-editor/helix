@@ -68,7 +68,7 @@
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
-| julia | ✓ |  |  | `julia` |
+| julia | ✓ |  | ✓ | `julia` |
 | kdl | ✓ |  |  |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |

@@ -411,7 +411,7 @@ impl Client {
     // General messages
     // -------------------------------------------------------------------------------------------
 
-    pub(crate) async fn initialize(&self) -> Result<lsp::InitializeResult> {
+    pub(crate) async fn initialize(&self, enable_snippets: bool) -> Result<lsp::InitializeResult> {
         if let Some(config) = &self.config {
             log::info!("Using custom LSP config: {}", config);
         }
@@ -459,7 +459,7 @@ impl Client {
                 text_document: Some(lsp::TextDocumentClientCapabilities {
                     completion: Some(lsp::CompletionClientCapabilities {
                         completion_item: Some(lsp::CompletionItemCapability {
-                            snippet_support: Some(true),
+                            snippet_support: Some(enable_snippets),
                             resolve_support: Some(lsp::CompletionItemCapabilityResolveSupport {
                                 properties: vec![
                                     String::from("documentation"),
@@ -538,8 +538,8 @@ impl Client {
                 }),
                 general: Some(lsp::GeneralClientCapabilities {
                     position_encodings: Some(vec![
-                        PositionEncodingKind::UTF32,
                         PositionEncodingKind::UTF8,
+                        PositionEncodingKind::UTF32,
                         PositionEncodingKind::UTF16,
                     ]),
                     ..Default::default()
