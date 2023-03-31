@@ -213,36 +213,15 @@ impl Completion {
 
             let (view, doc) = current!(editor);
 
-            // if more text was entered, remove it
-            doc.restore(view, &savepoint);
-
             match event {
                 PromptEvent::Abort => {
+                    doc.restore(view, &savepoint);
                     editor.last_completion = None;
                 }
-                PromptEvent::Update => {
-                    // always present here
-                    let item = item.unwrap();
-
-                    let transaction = item_to_transaction(
-                        doc,
-                        view.id,
-                        item,
-                        offset_encoding,
-                        trigger_offset,
-                        true,
-                        replace_mode,
-                    );
-
-                    // initialize a savepoint
-                    doc.apply(&transaction, view.id);
-
-                    editor.last_completion = Some(CompleteAction {
-                        trigger_offset,
-                        changes: completion_changes(&transaction, trigger_offset),
-                    });
-                }
+                PromptEvent::Update => {}
                 PromptEvent::Validate => {
+                    // if more text was entered, remove it
+                    doc.restore(view, &savepoint);
                     // always present here
                     let item = item.unwrap();
 
