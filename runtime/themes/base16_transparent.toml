@@ -9,7 +9,7 @@
 "ui.linenr" = { fg = "light-gray" }
 "ui.linenr.selected" = { fg = "white",  modifiers = ["bold"] }
 "ui.popup" = { fg = "white" }
-"ui.window" = { fg = "white" }
+"ui.window" = { fg = "gray" }
 "ui.selection" = { bg = "gray" }
 "comment" = "light-gray"
 "ui.statusline" = { fg = "white" }
