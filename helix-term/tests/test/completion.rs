@@ -1,5 +1,6 @@
 use super::*;
 use helix_term::application::Application;
+use helix_term::args::Args;
 use helix_view::{doc, editor};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
