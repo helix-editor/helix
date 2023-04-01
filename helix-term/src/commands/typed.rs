@@ -1373,13 +1373,19 @@ fn lsp_restart(
         return Ok(());
     }
 
+    let editor_config = cx.editor.config.load();
     let (_view, doc) = current!(cx.editor);
     let config = doc
         .language_config()
         .context("LSP not defined for the current document")?;
 
     let scope = config.scope.clone();
-    cx.editor.language_servers.restart(config, doc.path())?;
+    cx.editor.language_servers.restart(
+        config,
+        doc.path(),
+        &editor_config.workspace_lsp_roots,
+        editor_config.lsp.snippets,
+    )?;
 
     // This collect is needed because refresh_language_server would need to re-borrow editor.
     let document_ids_to_refresh: Vec<DocumentId> = cx
@@ -1969,6 +1975,20 @@ fn open_config(
 
     cx.editor
         .open(&helix_loader::config_file(), Action::Replace)?;
+    Ok(())
+}
+
+fn open_workspace_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor
+        .open(&helix_loader::workspace_config_file(), Action::Replace)?;
     Ok(())
 }
 
@@ -2646,6 +2666,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Open the user config.toml file.",
             fun: open_config,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "config-open-workspace",
+            aliases: &[],
+            doc: "Open the workspace config.toml file.",
+            fun: open_workspace_config,
             signature: CommandSignature::none(),
         },
         TypableCommand {

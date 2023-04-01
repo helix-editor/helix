@@ -7,9 +7,13 @@ use crate::{
 };
 
 use helix_core::{
-    char_idx_at_visual_offset, doc_formatter::TextFormat, syntax::Highlight,
-    text_annotations::TextAnnotations, visual_offset_from_anchor, visual_offset_from_block,
-    Position, RopeSlice, Selection, Transaction,
+    char_idx_at_visual_offset,
+    doc_formatter::TextFormat,
+    syntax::Highlight,
+    text_annotations::TextAnnotations,
+    visual_offset_from_anchor, visual_offset_from_block, Position, RopeSlice, Selection,
+    Transaction,
+    VisualOffsetError::{PosAfterMaxRow, PosBeforeAnchorRow},
 };
 
 use std::{
@@ -213,46 +217,38 @@ impl View {
         // - 1 so we have at least one gap in the middle.
         // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
         // as we type
-        let scrolloff = scrolloff.min(viewport.height.saturating_sub(1) as usize / 2);
+        let scrolloff = if CENTERING {
+            0
+        } else {
+            scrolloff.min(viewport.height.saturating_sub(1) as usize / 2)
+        };
 
         let cursor = doc.selection(self.id).primary().cursor(doc_text);
         let mut offset = self.offset;
+        let off = visual_offset_from_anchor(
+            doc_text,
+            offset.anchor,
+            cursor,
+            &text_fmt,
+            &annotations,
+            vertical_viewport_end,
+        );
 
-        let (visual_off, mut at_top) = if cursor >= offset.anchor {
-            let off = visual_offset_from_anchor(
-                doc_text,
-                offset.anchor,
-                cursor,
-                &text_fmt,
-                &annotations,
-                vertical_viewport_end,
-            );
-            (off, false)
-        } else if CENTERING {
-            // cursor out of view
-            return None;
-        } else {
-            (None, true)
-        };
-
-        let new_anchor = match visual_off {
-            Some((visual_pos, _)) if visual_pos.row < scrolloff + offset.vertical_offset => {
-                if CENTERING && visual_pos.row < offset.vertical_offset {
+        let (new_anchor, at_top) = match off {
+            Ok((visual_pos, _)) if visual_pos.row < scrolloff + offset.vertical_offset => {
+                if CENTERING {
                     // cursor out of view
                     return None;
                 }
-                at_top = true;
-                true
+                (true, true)
             }
-            Some((visual_pos, _)) if visual_pos.row + scrolloff + 1 >= vertical_viewport_end => {
-                if CENTERING && visual_pos.row >= vertical_viewport_end {
-                    // cursor out of view
-                    return None;
-                }
-                true
+            Ok((visual_pos, _)) if visual_pos.row + scrolloff >= vertical_viewport_end => {
+                (true, false)
             }
-            Some(_) => false,
-            None => true,
+            Ok((_, _)) => (false, false),
+            Err(_) if CENTERING => return None,
+            Err(PosBeforeAnchorRow) => (true, true),
+            Err(PosAfterMaxRow) => (true, false),
         };
 
         if new_anchor {
@@ -269,8 +265,8 @@ impl View {
             offset.horizontal_offset = 0;
         } else {
             // determine the current visual column of the text
-            let col = visual_off
-                .unwrap_or_else(|| {
+            let col = off
+                .unwrap_or_else(|_| {
                     visual_offset_from_block(
                         doc_text,
                         offset.anchor,
@@ -360,8 +356,9 @@ impl View {
         );
 
         match pos {
-            Some((Position { row, .. }, _)) => row.saturating_sub(self.offset.vertical_offset),
-            None => visual_height.saturating_sub(1),
+            Ok((Position { row, .. }, _)) => row.saturating_sub(self.offset.vertical_offset),
+            Err(PosAfterMaxRow) => visual_height.saturating_sub(1),
+            Err(PosBeforeAnchorRow) => 0,
         }
     }
 
@@ -390,7 +387,8 @@ impl View {
             &text_fmt,
             &annotations,
             viewport.height as usize,
-        )?
+        )
+        .ok()?
         .0;
         if pos.row < self.offset.vertical_offset {
             return None;

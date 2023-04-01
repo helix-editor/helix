@@ -40,6 +40,21 @@ pub fn expand_tilde(path: &Path) -> PathBuf {
 /// needs to improve on.
 /// Copied from cargo: <https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81>
 pub fn get_normalized_path(path: &Path) -> PathBuf {
+    // normalization strategy is to canonicalize first ancestor path that exists (i.e., canonicalize as much as possible),
+    // then run handrolled normalization on the non-existent remainder
+    let (base, path) = path
+        .ancestors()
+        .find_map(|base| {
+            let canonicalized_base = dunce::canonicalize(base).ok()?;
+            let remainder = path.strip_prefix(base).ok()?.into();
+            Some((canonicalized_base, remainder))
+        })
+        .unwrap_or_else(|| (PathBuf::new(), PathBuf::from(path)));
+
+    if path.as_os_str().is_empty() {
+        return base;
+    }
+
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();
@@ -63,7 +78,7 @@ pub fn get_normalized_path(path: &Path) -> PathBuf {
             }
         }
     }
-    ret
+    base.join(ret)
 }
 
 /// Returns the canonical, absolute form of a path with all intermediate components normalized.
@@ -82,13 +97,19 @@ pub fn get_canonicalized_path(path: &Path) -> std::io::Result<PathBuf> {
 }
 
 pub fn get_relative_path(path: &Path) -> PathBuf {
+    let path = PathBuf::from(path);
     let path = if path.is_absolute() {
-        let cwdir = std::env::current_dir().expect("couldn't determine current directory");
-        path.strip_prefix(cwdir).unwrap_or(path)
+        let cwdir = std::env::current_dir()
+            .map(|path| get_normalized_path(&path))
+            .expect("couldn't determine current directory");
+        get_normalized_path(&path)
+            .strip_prefix(cwdir)
+            .map(PathBuf::from)
+            .unwrap_or(path)
     } else {
         path
     };
-    fold_home_dir(path)
+    fold_home_dir(&path)
 }
 
 /// Returns a truncated filepath where the basepart of the path is reduced to the first

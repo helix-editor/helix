@@ -160,7 +160,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "json"
 scope = "source.json"
 injection-regex = "json"
-file-types = ["json", "jsonc"]
+file-types = ["json", "jsonc", "arb"]
 roots = []
 language-server = { command = "vscode-json-language-server", args = ["--stdio"] }
 auto-format = true
@@ -1194,7 +1194,7 @@ text-width = 72
 
 [[grammar]]
 name = "git-commit"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "318dd72abfaa7b8044c1d1fbeabcd06deaaf038f" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "bd0ca5a6065f2cada3ac6a82a66db3ceff55fa6b" }
 
 [[language]]
 name = "diff"
@@ -2068,7 +2068,7 @@ source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d1
 name = "xml"
 scope = "source.xml"
 injection-regex = "xml"
-file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard"]
+file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg"]
 indent = { tab-width = 2, unit = "  " }
 roots = []
 
@@ -2369,3 +2369,55 @@ language-server = { command = "cs", args = ["launch", "com.disneystreaming.smith
 [[grammar]]
 name = "smithy"
 source = { git = "https://github.com/indoorvivants/tree-sitter-smithy", rev = "cf8c7eb9faf7c7049839585eac19c94af231e6a0" }
+
+[[language]]
+name = "vhdl"
+scope = "source.vhdl"
+file-types = ["vhd", "vhdl"]
+roots = []
+comment-token = "--"
+language-server = { command = "vhdl_ls", args = [] }
+indent = { tab-width = 2, unit = "  " }
+injection-regex = "vhdl"
+
+[[grammar]]
+name = "vhdl"
+source = { git = "https://github.com/teburd/tree-sitter-vhdl", rev = "c57313adee2231100db0a7880033f6865deeadb2" }
+
+[[language]]
+name = "rego"
+roots = []
+scope = "source.rego"
+injection-regex = "rego"
+file-types = ["rego"]
+auto-format = true
+comment-token = "#"
+language-server = { command = "regols" }
+grammar = "rego"
+
+[[grammar]]
+name = "rego"
+source = { git = "https://github.com/FallenAngel97/tree-sitter-rego", rev = "b2667c975f07b33be3ceb83bea5cfbad88095866" }
+
+[[language]]
+name = "nim"
+scope = "source.nim"
+injection-regex = "nim"
+file-types = ["nim", "nims", "nimble"]
+shebangs = []
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-server = { command = "nimlangserver" }
+
+[language.auto-pairs]
+'(' = ')'
+'[' = ']'
+'"' = '"'
+"'" = "'"
+'{' = '}'
+
+# Nim's tree-sitter grammar is in heavy development.
+[[grammar]]
+name = "nim"
+source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b232550e431d67de250d1b5856209e7f06" }

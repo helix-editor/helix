@@ -2,7 +2,6 @@ pub mod default;
 pub mod macros;
 
 pub use crate::commands::MappableCommand;
-use crate::config::Config;
 use arc_swap::{
     access::{DynAccess, DynGuard},
     ArcSwap,
@@ -16,7 +15,7 @@ use std::{
     sync::Arc,
 };
 
-use default::default;
+pub use default::default;
 use macros::key;
 
 #[derive(Debug, Clone)]
@@ -417,12 +416,10 @@ impl Default for Keymaps {
 }
 
 /// Merge default config keys with user overwritten keys for custom user config.
-pub fn merge_keys(mut config: Config) -> Config {
-    let mut delta = std::mem::replace(&mut config.keys, default());
-    for (mode, keys) in &mut config.keys {
+pub fn merge_keys(dst: &mut HashMap<Mode, Keymap>, mut delta: HashMap<Mode, Keymap>) {
+    for (mode, keys) in dst {
         keys.merge(delta.remove(mode).unwrap_or_default())
     }
-    config
 }
 
 #[cfg(test)]
@@ -449,26 +446,24 @@ mod tests {
 
     #[test]
     fn merge_partial_keys() {
-        let config = Config {
-            keys: hashmap! {
-                Mode::Normal => Keymap::new(
-                    keymap!({ "Normal mode"
-                        "i" => normal_mode,
-                        "无" => insert_mode,
-                        "z" => jump_backward,
-                        "g" => { "Merge into goto mode"
-                            "$" => goto_line_end,
-                            "g" => delete_char_forward,
-                        },
-                    })
-                )
-            },
-            ..Default::default()
+        let keymap = hashmap! {
+            Mode::Normal => Keymap::new(
+                keymap!({ "Normal mode"
+                    "i" => normal_mode,
+                    "无" => insert_mode,
+                    "z" => jump_backward,
+                    "g" => { "Merge into goto mode"
+                        "$" => goto_line_end,
+                        "g" => delete_char_forward,
+                    },
+                })
+            )
         };
-        let mut merged_config = merge_keys(config.clone());
-        assert_ne!(config, merged_config);
+        let mut merged_keyamp = default();
+        merge_keys(&mut merged_keyamp, keymap.clone());
+        assert_ne!(keymap, merged_keyamp);
 
-        let mut keymap = Keymaps::new(Box::new(Constant(merged_config.keys.clone())));
+        let mut keymap = Keymaps::new(Box::new(Constant(merged_keyamp.clone())));
         assert_eq!(
             keymap.get(Mode::Normal, key!('i')),
             KeymapResult::Matched(MappableCommand::normal_mode),
@@ -486,7 +481,7 @@ mod tests {
             "Leaf should replace node"
         );
 
-        let keymap = merged_config.keys.get_mut(&Mode::Normal).unwrap();
+        let keymap = merged_keyamp.get_mut(&Mode::Normal).unwrap();
         // Assumes that `g` is a node in default keymap
         assert_eq!(
             keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
@@ -506,30 +501,28 @@ mod tests {
             "Old leaves in subnode should be present in merged node"
         );
 
-        assert!(merged_config.keys.get(&Mode::Normal).unwrap().len() > 1);
-        assert!(merged_config.keys.get(&Mode::Insert).unwrap().len() > 0);
+        assert!(merged_keyamp.get(&Mode::Normal).unwrap().len() > 1);
+        assert!(merged_keyamp.get(&Mode::Insert).unwrap().len() > 0);
     }
 
     #[test]
     fn order_should_be_set() {
-        let config = Config {
-            keys: hashmap! {
-                Mode::Normal => Keymap::new(
-                    keymap!({ "Normal mode"
-                        "space" => { ""
-                            "s" => { ""
-                                "v" => vsplit,
-                                "c" => hsplit,
-                            },
+        let keymap = hashmap! {
+            Mode::Normal => Keymap::new(
+                keymap!({ "Normal mode"
+                    "space" => { ""
+                        "s" => { ""
+                            "v" => vsplit,
+                            "c" => hsplit,
                         },
-                    })
-                )
-            },
-            ..Default::default()
+                    },
+                })
+            )
         };
-        let mut merged_config = merge_keys(config.clone());
-        assert_ne!(config, merged_config);
-        let keymap = merged_config.keys.get_mut(&Mode::Normal).unwrap();
+        let mut merged_keyamp = default();
+        merge_keys(&mut merged_keyamp, keymap.clone());
+        assert_ne!(keymap, merged_keyamp);
+        let keymap = merged_keyamp.get_mut(&Mode::Normal).unwrap();
         // Make sure mapping works
         assert_eq!(
             keymap

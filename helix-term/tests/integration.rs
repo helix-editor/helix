@@ -2,8 +2,6 @@
 mod test {
     mod helpers;
 
-    use std::path::PathBuf;
-
     use helix_core::{syntax::AutoPairConfig, Selection};
     use helix_term::config::Config;
 

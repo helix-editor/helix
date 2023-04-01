@@ -30,6 +30,9 @@ You can use a custom configuration file by specifying it with the `-c` or
 Additionally, you can reload the configuration file by sending the USR1
 signal to the Helix process on Unix operating systems, such as by using the command `pkill -USR1 hx`.
 
+Finally, you can have a `config.toml` local to a project by putting it under a `.helix` directory in your repository.
+Its settings will be merged with the configuration directory `config.toml` and the built-in configuration.
+
 ## Editor
 
 ### `[editor]` Section
@@ -58,6 +61,7 @@ signal to the Helix process on Unix operating systems, such as by using the comm
 | `bufferline` | Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use) | `never` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
 | `text-width` | Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap_at_text_width` is set | `80` |
+| `workspace-lsp-roots` | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml` | `[]` |
 
 ### `[editor.statusline]` Section
 
@@ -123,6 +127,7 @@ The following statusline elements can be configured:
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
 | `display-inlay-hints` | Display inlay hints[^2]                                     | `false` |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
+| `snippets`      | Enables snippet completions. Requires a server restart (`:lsp-restart`) to take effect after `:config-reload`/`:set`. | `true`  |
 
 [^1]: By default, a progress spinner is shown in the statusline beside the file path.
 [^2]: You may also have to activate them in the LSP config for them to appear, not just in Helix.
