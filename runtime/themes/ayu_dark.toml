@@ -22,7 +22,7 @@
 "namespace" = "blue"
 "markup.heading" = "orange"
 "markup.list" = "yellow"
-"markup.raw.block" = { bg = "gray", fg = "orange" }
+"markup.raw.block" = "orange"
 "markup.link.url" = "blue"
 "markup.link.text" = "yellow"
 "markup.link.label" = "green"
