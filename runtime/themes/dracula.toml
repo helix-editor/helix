@@ -1,6 +1,7 @@
 # Author : Sebastian Zivota <loewenheim@mailbox.org>
 "comment" = { fg = "comment" }
 "constant" = { fg = "purple" }
+"constant.builtin" = { fg = "purple" }
 "constant.character.escape" = { fg = "pink" }
 "function" = { fg = "green" }
 "keyword" = { fg = "pink" }
@@ -11,9 +12,13 @@
 "tag" = { fg = "pink" }
 "type" = { fg = "cyan", modifiers = ["italic"] }
 "type.enum.variant" = { fg = "foreground", modifiers = ["italic"] }
-"variable" = { fg = "foreground" }
-"variable.builtin" = { fg = "cyan", modifiers = ["italic"] }
-"variable.parameter" = { fg ="orange", modifiers = ["italic"] }
+"property" = { fg = "purple" }
+"exception" = { fg = "purple" }
+"structure" = { fg = "purple" }
+"variable" = { fg = "purple" }
+"variable.builtin" = { fg = "orange", modifiers = ["italic"] }
+"variable.parameter" = { fg = "orange", modifiers = ["italic"] }
+"parameter" = { fg = "orange" }
 
 "diff.plus" = { fg = "green" }
 "diff.delta" = { fg = "orange" }
@@ -77,4 +82,3 @@ green = "#50fa7b"
 purple = "#bd93f9"
 cyan = "#8be9fd"
 pink = "#ff79c6"
-
