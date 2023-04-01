@@ -459,34 +459,17 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-struct DocumentConfig<T> {
-    pub config: T,
-    pub encoding: Option<&'static encoding::Encoding>,
-    pub line_ending: Option<LineEnding>,
-}
-
-impl<T> DocumentConfig<T> {
-    pub(self) fn transpose(option: Option<DocumentConfig<T>>) -> DocumentConfig<Option<T>> {
-        if let Some(doc_config) = option {
-            DocumentConfig {
-                config: Some(doc_config.config),
-                encoding: doc_config.encoding,
-                line_ending: doc_config.line_ending,
-            }
-        } else {
-            DocumentConfig::default()
-        }
-    }
-}
-
-/// Trait representing methods of configuring the document as it's being opened.
+/// Trait representing ways of configuring the document as it's being opened.
 trait ConfigureDocument {
     type Config;
     /// Loads document configuration for a file at `path`.
-    fn load(&self, path: &Path) -> Result<DocumentConfig<Self::Config>, Error>;
-    /// Applies document configuration except for the non-`config` fields of `DocumentConfig`.
-    fn configure_document(doc: &mut Document, settings: Self::Config);
+    fn load(&self, path: &Path) -> Result<Self::Config, Error>;
+    /// Retrieves the encoding from a `Config`.
+    fn encoding(config: &Self::Config) -> Option<&'static encoding::Encoding>;
+    /// Retrieves the line ending from a `Config`.
+    fn line_ending(config: &Self::Config) -> Option<LineEnding>;
+    /// Applies any document configuration not handled by one of the other methods.
+    fn configure_document(doc: &mut Document, config: Self::Config);
 }
 
 /// Document configuration strategy that uses fallback auto-detection as a first resort.
@@ -499,8 +482,16 @@ struct EditorConfig;
 impl ConfigureDocument for Autodetect {
     type Config = ();
 
-    fn load(&self, _: &Path) -> Result<DocumentConfig<()>, Error> {
-        Ok(DocumentConfig::default())
+    fn load(&self, _: &Path) -> Result<Self::Config, Error> {
+        Ok(())
+    }
+
+    fn encoding(_: &Self::Config) -> Option<&'static encoding::Encoding> {
+        None
+    }
+
+    fn line_ending(_: &Self::Config) -> Option<LineEnding> {
+        None
     }
 
     fn configure_document(doc: &mut Document, _: Self::Config) {
@@ -511,29 +502,32 @@ impl ConfigureDocument for Autodetect {
 impl ConfigureDocument for EditorConfig {
     type Config = ec4rs::Properties;
 
-    fn load(&self, path: &Path) -> Result<DocumentConfig<Self::Config>, Error> {
-        use ec4rs::property::{Charset, EndOfLine};
-        use encoding::Encoding;
+    fn load(&self, path: &Path) -> Result<Self::Config, Error> {
         let mut config = ec4rs::properties_of(path)?;
         config.use_fallbacks();
-        let encoding = config
+        Ok(config)
+    }
+
+    fn encoding(config: &Self::Config) -> Option<&'static encoding::Encoding> {
+        use ec4rs::property::Charset;
+        use encoding::Encoding;
+        config
             .get_raw::<Charset>()
             .filter_unset()
             .into_result()
             .ok()
-            .and_then(|string| Encoding::for_label(string.to_lowercase().as_bytes()));
-        let line_ending = match config.get::<EndOfLine>() {
+            .and_then(|string| Encoding::for_label(string.to_lowercase().as_bytes()))
+    }
+
+    fn line_ending(config: &Self::Config) -> Option<LineEnding> {
+        use ec4rs::property::EndOfLine;
+        match config.get::<EndOfLine>() {
             Ok(EndOfLine::Lf) => Some(LineEnding::LF),
             Ok(EndOfLine::CrLf) => Some(LineEnding::Crlf),
             #[cfg(feature = "unicode-lines")]
             Ok(EndOfLine::Cr) => Some(LineEnding::CR),
             _ => None,
-        };
-        Ok(DocumentConfig {
-            config,
-            encoding,
-            line_ending,
-        })
+        }
     }
 
     fn configure_document(doc: &mut Document, settings: Self::Config) {
@@ -634,36 +628,39 @@ impl Document {
         config_loader: Option<Arc<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, Error> {
-        let (rope, doc_config) = match std::fs::File::open(path) {
+        let (rope, doc_config, encoding, line_ending) = match std::fs::File::open(path) {
             // Match errors that we should NOT ignore.
             Err(e) if !matches!(e.kind(), std::io::ErrorKind::NotFound) => {
                 return Err(e).context(format!("unable to open {:?}", path));
             }
             result => {
                 // Load doc_config for the file at this path.
-                let mut doc_config = DocumentConfig::transpose(
-                    doc_config_loader
-                        .load(path)
-                        .map_err(|e| {
-                            log::warn!("unable to load document config for {:?}: {}", path, e)
-                        })
-                        .ok(),
-                );
+                let doc_config = doc_config_loader
+                    .load(path)
+                    .map_err(|e| log::warn!("unable to load document config for {:?}: {}", path, e))
+                    .ok();
                 // Override the doc_config encoding.
-                doc_config.encoding = encoding.or(doc_config.encoding);
+                let encoding = encoding.or_else(|| doc_config.as_ref().and_then(C::encoding));
                 if let Ok(mut file) = result {
-                    let (rope, encoding) = from_reader(&mut file, doc_config.encoding)?;
-                    doc_config.encoding = Some(encoding);
-                    (rope, doc_config)
+                    let (rope, encoding) = from_reader(&mut file, encoding)?;
+                    (rope, doc_config, Some(encoding), None)
                 } else {
                     // If we're here, the error can be recovered from.
                     // Treat this as a new file.
-                    let line_ending = doc_config.line_ending.get_or_insert(DEFAULT_LINE_ENDING);
-                    (Rope::from(line_ending.as_str()), doc_config)
+                    let line_ending = doc_config
+                        .as_ref()
+                        .and_then(C::line_ending)
+                        .unwrap_or(DEFAULT_LINE_ENDING);
+                    (
+                        Rope::from(line_ending.as_str()),
+                        doc_config,
+                        encoding,
+                        Some(line_ending),
+                    )
                 }
             }
         };
-        let mut doc = Self::from(rope, doc_config.encoding, config);
+        let mut doc = Self::from(rope, encoding, config);
 
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
@@ -680,13 +677,13 @@ impl Document {
             doc.tab_width = indent.tab_width
         }
 
-        if let Some(doc_config) = doc_config.config {
+        if let Some(doc_config) = doc_config {
             C::configure_document(&mut doc, doc_config);
         } else {
             Autodetect::configure_document(&mut doc, ());
         }
 
-        if let Some(line_ending) = doc_config.line_ending {
+        if let Some(line_ending) = line_ending {
             doc.line_ending = line_ending;
         } else {
             doc.detect_line_ending()
