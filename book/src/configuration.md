@@ -50,7 +50,7 @@ Its settings will be merged with the configuration directory `config.toml` and t
 | `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion | `true` |
 | `auto-format` | Enable automatic formatting on save | `true` |
-| `auto-save` | Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal | `false` |
+| `auto-save` | Enable automatic saving on certain triggers, such as `"unfocused"` (when the terminal looses focus)[^1] or `"normal-mode"` (when entering normal mode) | `[]` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant | `400` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
 | `completion-replace` | Set to `true` to make completions always replace the entire word and not just the part before the cursor | `false` |
@@ -62,6 +62,8 @@ Its settings will be merged with the configuration directory `config.toml` and t
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
 | `text-width` | Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap_at_text_width` is set | `80` |
 | `workspace-lsp-roots` | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml` | `[]` |
+
+[^1]: Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal.
 
 ### `[editor.statusline]` Section
 
