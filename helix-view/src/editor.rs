@@ -1669,7 +1669,11 @@ impl Editor {
         }
 
         // Trigger autosave if configured
-        if self.config().auto_save.contains(&AutoSaveTrigger::NormalMode) {
+        if self
+            .config()
+            .auto_save
+            .contains(&AutoSaveTrigger::NormalMode)
+        {
             match self.save::<PathBuf>(doc!(self).id, None, false) {
                 Err(_) => {
                     // Silently ignore errors.
@@ -1682,7 +1686,7 @@ impl Editor {
                 }
                 Ok(_) => {
                     // TODO: make 'modified' icon in statusline disappear.
-                },
+                }
             }
         }
     }
