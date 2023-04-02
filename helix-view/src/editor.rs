@@ -1674,20 +1674,17 @@ impl Editor {
             .auto_save
             .contains(&AutoSaveTrigger::NormalMode)
         {
-            match self.save::<PathBuf>(doc!(self).id, None, false) {
-                Err(_) => {
-                    // Silently ignore errors.
-                    // Common sources of errors include:
-                    //  - No file path set on focused document
-                    //  - Partent directory doesn't exist.
-                    //
-                    // In either case, autosave freaking out is probably not
-                    // desired.
-                }
-                Ok(_) => {
-                    // TODO: make 'modified' icon in statusline disappear.
-                }
+            if self.save::<PathBuf>(doc!(self).id, None, false).is_ok() {
+                // TODO: make 'modified' icon in statusline disappear.
             }
+
+            // Silently ignore errors.
+            // Common sources of errors include:
+            //  - No file path set on focused document
+            //  - Partent directory doesn't exist.
+            //
+            // In either case, autosave freaking out is probably not
+            // desired.
         }
     }
 
