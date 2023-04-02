@@ -212,6 +212,15 @@ impl Default for FilePickerConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AutoSaveTrigger {
+    /// Auto save when the terminal window looses focus
+    Unfocused,
+    /// Auto save when the editor (re-)enters normal mode.
+    NormalMode,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
@@ -241,7 +250,7 @@ pub struct Config {
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
     /// Automatic save on focus lost. Defaults to false.
-    pub auto_save: bool,
+    pub auto_save: Vec<AutoSaveTrigger>,
     /// Set a global text_width
     pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
@@ -732,7 +741,7 @@ impl Default for Config {
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             auto_format: true,
-            auto_save: false,
+            auto_save: Vec::new(),
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
@@ -1657,6 +1666,24 @@ impl Editor {
 
             doc.set_selection(view.id, selection);
             doc.restore_cursor = false;
+        }
+
+        // Trigger autosave if configured
+        if self.config().auto_save.contains(&AutoSaveTrigger::NormalMode) {
+            match self.save::<PathBuf>(doc!(self).id, None, false) {
+                Err(_) => {
+                    // Silently ignore errors.
+                    // Common sources of errors include:
+                    //  - No file path set on focused document
+                    //  - Partent directory doesn't exist.
+                    //
+                    // In either case, autosave freaking out is probably not
+                    // desired.
+                }
+                Ok(_) => {
+                    // TODO: make 'modified' icon in statusline disappear.
+                },
+            }
         }
     }
 

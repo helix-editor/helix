@@ -23,7 +23,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, CursorShapeConfig, AutoSaveTrigger},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -1346,7 +1346,7 @@ impl Component for EditorView {
             Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
             Event::FocusGained => EventResult::Ignored(None),
             Event::FocusLost => {
-                if context.editor.config().auto_save {
+                if context.editor.config().auto_save.contains(&AutoSaveTrigger::Unfocused) {
                     if let Err(e) = commands::typed::write_all_impl(context, false, false) {
                         context.editor.set_error(format!("{}", e));
                     }
