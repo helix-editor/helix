@@ -691,7 +691,6 @@ impl Registry {
             .language_servers
             .iter()
             .filter_map(|LanguageServerFeatures { name, .. }| {
-                // #[allow(clippy::map_entry)]
                 if self.inner.contains_key(name) {
                     let client = match self.start_client(
                         name.clone(),
@@ -708,7 +707,7 @@ impl Registry {
                         .insert(name.clone(), vec![client.clone()])
                         .unwrap();
 
-                    // TODO what if there are different language servers for different workspaces,
+                    // TODO what if there are multiple instances for different workspaces?
                     // I think the language servers will be stopped without being restarted, which is not intended
                     for old_client in old_clients {
                         tokio::spawn(async move {
@@ -745,15 +744,12 @@ impl Registry {
             .language_servers
             .iter()
             .map(|LanguageServerFeatures { name, .. }| {
-                if let Some(clients) = self.inner.get_mut(name) {
-                    // clients.find(
-
-                    if let Some((_, client)) = clients.iter_mut().enumerate().find(|(i, client)| {
+                if let Some(clients) = self.inner.get(name) {
+                    if let Some((_, client)) = clients.iter().enumerate().find(|(i, client)| {
                         client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
                     }) {
                         return Ok((name.to_owned(), client.clone()));
                     }
-                    // return Ok((name.clone(), clients.clone()));
                 }
                 let client = self.start_client(
                     name.clone(),

@@ -1404,7 +1404,6 @@ fn lsp_restart(
         .language_config()
         .context("LSP not defined for the current document")?;
 
-    let scope = config.scope.clone();
     cx.editor.language_servers.restart(
         config,
         doc.path(),
@@ -1417,7 +1416,16 @@ fn lsp_restart(
         .editor
         .documents()
         .filter_map(|doc| match doc.language_config() {
-            Some(config) if config.scope.eq(&scope) => Some(doc.id()),
+            Some(config)
+                if config.language_servers.iter().any(|ls| {
+                    config
+                        .language_servers
+                        .iter()
+                        .any(|restarted_ls| restarted_ls.name == ls.name)
+                }) =>
+            {
+                Some(doc.id())
+            }
             _ => None,
         })
         .collect();
