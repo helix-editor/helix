@@ -212,12 +212,39 @@ impl Default for FilePickerConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AutoSaveConfig {
+    /// Compatibility with the old `auto-save = true` setting.
+    Unfocused(bool),
+    /// The new way: a list of autosave triggers.
+    TriggerList(Vec<AutoSaveTrigger>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum AutoSaveTrigger {
     /// Auto save when the terminal window looses focus
     Unfocused,
     /// Auto save when the editor (re-)enters normal mode.
     NormalMode,
+}
+
+impl Default for AutoSaveConfig {
+    fn default() -> Self {
+        Self::TriggerList(Vec::new())
+    }
+}
+
+impl AutoSaveConfig {
+    pub fn should_trigger_on(&self, trigger: AutoSaveTrigger) -> bool {
+        match self {
+            // Compatibility with old setting:
+            // false -> false
+            // true -> Unfocused trigger is active
+            AutoSaveConfig::Unfocused(s) => *s && trigger == AutoSaveTrigger::Unfocused,
+            AutoSaveConfig::TriggerList(triggers) => triggers.contains(&trigger),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -250,7 +277,7 @@ pub struct Config {
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
     /// Automatic save on focus lost. Defaults to false.
-    pub auto_save: Vec<AutoSaveTrigger>,
+    pub auto_save: AutoSaveConfig,
     /// Set a global text_width
     pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
@@ -741,7 +768,7 @@ impl Default for Config {
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             auto_format: true,
-            auto_save: Vec::new(),
+            auto_save: AutoSaveConfig::default(),
             idle_timeout: Duration::from_millis(400),
             completion_trigger_len: 2,
             auto_info: true,
@@ -1672,7 +1699,7 @@ impl Editor {
         if self
             .config()
             .auto_save
-            .contains(&AutoSaveTrigger::NormalMode)
+            .should_trigger_on(AutoSaveTrigger::NormalMode)
         {
             if self.save::<PathBuf>(doc!(self).id, None, false).is_ok() {
                 // TODO: make 'modified' icon in statusline disappear.
