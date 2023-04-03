@@ -2125,20 +2125,16 @@ fn reset_diff_change(
     let scrolloff = editor.config().scrolloff;
 
     let (view, doc) = current!(editor);
-    // TODO refactor to use let..else once MSRV is raised to 1.65
-    let handle = match doc.diff_handle() {
-        Some(handle) => handle,
-        None => bail!("Diff is not available in the current buffer"),
+    let Some(handle) = doc.diff_handle() else {
+        bail!("Diff is not available in the current buffer")
     };
 
     let diff = handle.load();
     let doc_text = doc.text().slice(..);
     let line = doc.selection(view.id).primary().cursor_line(doc_text);
 
-    // TODO refactor to use let..else once MSRV is raised to 1.65
-    let hunk_idx = match diff.hunk_at(line as u32, true) {
-        Some(hunk_idx) => hunk_idx,
-        None => bail!("There is no change at the cursor"),
+    let Some(hunk_idx) = diff.hunk_at(line as u32, true) else {
+        bail!("There is no change at the cursor")
     };
     let hunk = diff.nth_hunk(hunk_idx);
     let diff_base = diff.diff_base();
