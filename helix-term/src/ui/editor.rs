@@ -1351,7 +1351,7 @@ impl Component for EditorView {
                     .editor
                     .config()
                     .auto_save
-                    .should_trigger_on(AutoSaveTrigger::Unfocused)
+                    .contains(&AutoSaveTrigger::Unfocused)
                 {
                     if let Err(e) = commands::typed::write_all_impl(context, false, false) {
                         context.editor.set_error(format!("{}", e));
