@@ -132,7 +132,11 @@ pub mod util {
     ) -> Option<usize> {
         let pos_line = pos.line as usize;
         if pos_line > doc.len_lines() - 1 {
-            return None;
+            // If it extends past the end, truncate it to the end. This is because the
+            // way the LSP describes the range including the last newline is by
+            // specifying a line number after what we would call the last line.
+            log::warn!("LSP position {pos:?} out of range assuming EOF");
+            return Some(doc.len_chars());
         }
 
         // We need to be careful here to fully comply ith the LSP spec.
@@ -242,9 +246,20 @@ pub mod util {
 
     pub fn lsp_range_to_range(
         doc: &Rope,
-        range: lsp::Range,
+        mut range: lsp::Range,
         offset_encoding: OffsetEncoding,
     ) -> Option<Range> {
+        // This is sort of an edgecase. It's not clear from the spec how to deal with
+        // ranges where end < start. They don't make much sense but vscode simply caps start to end
+        // and because it's not specified quite a few LS rely on this as a result (for example the TS server)
+        if range.start > range.end {
+            log::error!(
+                "Invalid LSP range start {:?} > end {:?}, using an empty range at the end instead",
+                range.start,
+                range.end
+            );
+            range.start = range.end;
+        }
         let start = lsp_pos_to_pos(doc, range.start, offset_encoding)?;
         let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
 
@@ -951,16 +966,16 @@ mod tests {
 
         test_case!("", (0, 0) => Some(0));
         test_case!("", (0, 1) => Some(0));
-        test_case!("", (1, 0) => None);
+        test_case!("", (1, 0) => Some(0));
         test_case!("\n\n", (0, 0) => Some(0));
         test_case!("\n\n", (1, 0) => Some(1));
         test_case!("\n\n", (1, 1) => Some(1));
         test_case!("\n\n", (2, 0) => Some(2));
-        test_case!("\n\n", (3, 0) => None);
+        test_case!("\n\n", (3, 0) => Some(2));
         test_case!("test\n\n\n\ncase", (4, 3) => Some(11));
         test_case!("test\n\n\n\ncase", (4, 4) => Some(12));
         test_case!("test\n\n\n\ncase", (4, 5) => Some(12));
-        test_case!("", (u32::MAX, u32::MAX) => None);
+        test_case!("", (u32::MAX, u32::MAX) => Some(0));
     }
 
     #[test]
