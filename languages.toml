@@ -1446,7 +1446,7 @@ shebangs = ["r", "R"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-language-server = { command = "R", args = ["--slave", "-e", "languageserver::run()"] }
+language-server = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
 
 [[grammar]]
 name = "r"
