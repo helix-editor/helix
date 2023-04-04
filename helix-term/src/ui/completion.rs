@@ -220,8 +220,6 @@ impl Completion {
                 }
                 PromptEvent::Update => {}
                 PromptEvent::Validate => {
-                    // if more text was entered, remove it
-                    doc.restore(view, &savepoint);
                     // always present here
                     let item = item.unwrap();
 
@@ -235,13 +233,6 @@ impl Completion {
                         replace_mode,
                     );
 
-                    doc.apply(&transaction, view.id);
-
-                    editor.last_completion = Some(CompleteAction {
-                        trigger_offset,
-                        changes: completion_changes(&transaction, trigger_offset),
-                    });
-
                     // apply additional edits, mostly used to auto import unqualified types
                     let resolved_item = if item
                         .additional_text_edits
@@ -254,6 +245,14 @@ impl Completion {
                         Self::resolve_completion_item(doc, item.clone())
                     };
 
+                    // if more text was entered, remove it
+                    doc.restore(view, &savepoint);
+                    doc.apply(&transaction, view.id);
+
+                    editor.last_completion = Some(CompleteAction {
+                        trigger_offset,
+                        changes: completion_changes(&transaction, trigger_offset),
+                    });
                     if let Some(additional_edits) = resolved_item
                         .as_ref()
                         .and_then(|item| item.additional_text_edits.as_ref())
