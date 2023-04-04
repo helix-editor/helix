@@ -12,6 +12,10 @@
 "ui.virtual.whitespace" = "gray"
 "ui.virtual.ruler" = { fg = "white", bg = "gray" }
 "ui.virtual.indent-guide" = "white"
+"ui.virtual.inlay-hint" = { fg = "black", bg = "orange" }
+"ui.virtual.inlay-hint.parameter" = { fg = "black", bg = "orange" }
+"ui.virtual.inlay-hint.type" = { fg = "black", bg = "orange" }
+"ui.virtual.wrap" = "gray"
 
 "ui.statusline" = { fg = "white", bg = "deep_blue" }
 "ui.statusline.inactive" = { fg = "gray", bg = "deep_blue" }
