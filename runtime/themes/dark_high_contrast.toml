@@ -8,6 +8,7 @@
 "ui.text" = "white"
 "ui.text.focus" = { modifiers = ["reversed"] } # file picker selected
 
+"ui.virtual" = "gray"
 "ui.virtual.whitespace" = "gray"
 "ui.virtual.ruler" = { fg = "white", bg = "gray" }
 "ui.virtual.indent-guide" = "white"
