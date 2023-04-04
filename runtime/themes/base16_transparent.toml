@@ -25,6 +25,10 @@
 "ui.virtual.ruler" = { bg = "gray" }
 "ui.virtual.whitespace" = "gray"
 "ui.virtual.indent-guide" = "gray"
+"ui.virtual.inlay-hint" = { fg = "white", bg = "gray" }
+"ui.virtual.inlay-hint.parameter" = { fg = "white", bg = "gray"}
+"ui.virtual.inlay-hint.type" = { fg = "white", bg = "gray"}
+"ui.virtual.wrap" = "gray"
 
 "variable" = "light-red"
 "constant.numeric" = "yellow"
