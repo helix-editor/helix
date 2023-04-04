@@ -1,8 +1,8 @@
 ((comment) @injection.content
  (#set! injection.language "comment"))
 
-((heredoc_beginning) @name 
- (heredoc_body 
+((heredoc_body 
   (heredoc_content) @injection.content
-   (#set! injection.language "sql")) 
- (#eq? @name "<<~SQL"))
+  (heredoc_end) @name
+  (#set! injection.language "sql")) 
+ (#eq? @name "SQL"))
