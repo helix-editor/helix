@@ -4169,16 +4169,23 @@ pub fn completion(cx: &mut Context) {
 
     let (view, doc) = current!(cx.editor);
 
+    let savepoint = if let Some(CompleteAction::Selected { savepoint }) = &cx.editor.last_completion
+    {
+        savepoint.clone()
+    } else {
+        doc.savepoint(view)
+    };
+
     let language_server = match doc.language_server() {
         Some(language_server) => language_server,
         None => return,
     };
 
     let offset_encoding = language_server.offset_encoding();
-    let text = doc.text().slice(..);
-    let cursor = doc.selection(view.id).primary().cursor(text);
+    let text = savepoint.text.clone();
+    let cursor = savepoint.cursor();
 
-    let pos = pos_to_lsp_pos(doc.text(), cursor, offset_encoding);
+    let pos = pos_to_lsp_pos(&text, cursor, offset_encoding);
 
     let future = match language_server.completion(doc.identifier(), pos, None) {
         Some(future) => future,
@@ -4213,12 +4220,6 @@ pub fn completion(cx: &mut Context) {
     iter.reverse();
     let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
     let start_offset = cursor.saturating_sub(offset);
-    let savepoint = if let Some(CompleteAction::Selected { savepoint }) = &cx.editor.last_completion
-    {
-        savepoint.clone()
-    } else {
-        doc.savepoint(view)
-    };
 
     let trigger_doc = doc.id();
     let trigger_view = view.id;
