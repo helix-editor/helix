@@ -1,7 +1,7 @@
 use crate::{
     align_view,
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
+    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
@@ -900,9 +900,14 @@ enum ThemeAction {
 }
 
 #[derive(Debug, Clone)]
-pub struct CompleteAction {
-    pub trigger_offset: usize,
-    pub changes: Vec<Change>,
+pub enum CompleteAction {
+    Applied {
+        trigger_offset: usize,
+        changes: Vec<Change>,
+    },
+    /// A savepoint of the currently active completion. The completion
+    /// MUST be restored before sending any event to the LSP
+    Selected { savepoint: Arc<SavePoint> },
 }
 
 #[derive(Debug, Copy, Clone)]

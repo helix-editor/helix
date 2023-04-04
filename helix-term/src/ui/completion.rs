@@ -209,14 +209,27 @@ impl Completion {
 
             let (view, doc) = current!(editor);
 
-            // if more text was entered, remove it
-            doc.restore(view, &savepoint);
-
             match event {
-                PromptEvent::Abort => {
-                    editor.last_completion = None;
-                }
+                PromptEvent::Abort => {}
                 PromptEvent::Update => {
+                    // Update creates "ghost" transactiosn which are not send to the
+                    // lsp server to avoid messing up rerequesting completions. Once a
+                    // completion has been selected (with) tab it's always accepted whenever anything
+                    // is typed. The only way to avoid that is to explicitly abort the completion
+                    // with esc/c-c. This will remove the "ghost" transaction.
+                    //
+                    // The ghost transaction is modeled with a transaction that is not send to the LS.
+                    // (apply_temporary) and a savepoint. It's extremly important this savepoint is restored
+                    // (also without sending the transaction to the LS) *before any further transaction is applied*.
+                    // Otherwise incremental sync breaks (since the state of the LS doesn't match the state the transaction
+                    // is applied to).
+                    if editor.last_completion.is_none() {
+                        editor.last_completion = Some(CompleteAction::Selected {
+                            savepoint: doc.savepoint(view),
+                        })
+                    }
+                    // if more text was entered, remove it
+                    doc.restore(view, &savepoint, false);
                     // always present here
                     let item = item.unwrap();
 
@@ -229,19 +242,20 @@ impl Completion {
                         true,
                         replace_mode,
                     );
-
-                    // initialize a savepoint
-                    doc.apply(&transaction, view.id);
-
-                    editor.last_completion = Some(CompleteAction {
-                        trigger_offset,
-                        changes: completion_changes(&transaction, trigger_offset),
-                    });
+                    doc.apply_temporary(&transaction, view.id);
                 }
                 PromptEvent::Validate => {
+                    if let Some(CompleteAction::Selected { savepoint }) =
+                        editor.last_completion.take()
+                    {
+                        doc.restore(view, &savepoint, false);
+                    }
                     // always present here
                     let item = item.unwrap();
 
+
+                    // if more text was entered, remove it
+                    doc.restore(view, &savepoint, true);
                     let transaction = item_to_transaction(
                         doc,
                         view.id,
@@ -251,10 +265,9 @@ impl Completion {
                         false,
                         replace_mode,
                     );
-
                     doc.apply(&transaction, view.id);
 
-                    editor.last_completion = Some(CompleteAction {
+                    editor.last_completion = Some(CompleteAction::Applied {
                         trigger_offset,
                         changes: completion_changes(&transaction, trigger_offset),
                     });
@@ -270,7 +283,6 @@ impl Completion {
                     } else {
                         Self::resolve_completion_item(doc, item.clone())
                     };
-
                     if let Some(additional_edits) = resolved_item
                         .as_ref()
                         .and_then(|item| item.additional_text_edits.as_ref())

@@ -19,7 +19,7 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     text_annotations::TextAnnotations,
     unicode::width::UnicodeWidthStr,
-    visual_offset_from_block, Position, Range, Selection, Transaction,
+    visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
 use helix_view::{
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
@@ -48,7 +48,10 @@ pub struct EditorView {
 #[derive(Debug, Clone)]
 pub enum InsertEvent {
     Key(KeyEvent),
-    CompletionApply(CompleteAction),
+    CompletionApply {
+        trigger_offset: usize,
+        changes: Vec<Change>,
+    },
     TriggerCompletion,
     RequestCompletion,
 }
@@ -813,7 +816,7 @@ impl EditorView {
                 }
                 (Mode::Insert, Mode::Normal) => {
                     // if exiting insert mode, remove completion
-                    self.completion = None;
+                    self.clear_completion(cxt.editor);
                     cxt.editor.completion_request_handle = None;
 
                     // TODO: Use an on_mode_change hook to remove signature help
@@ -891,22 +894,25 @@ impl EditorView {
                     for key in self.last_insert.1.clone() {
                         match key {
                             InsertEvent::Key(key) => self.insert_mode(cxt, key),
-                            InsertEvent::CompletionApply(compl) => {
+                            InsertEvent::CompletionApply {
+                                trigger_offset,
+                                changes,
+                            } => {
                                 let (view, doc) = current!(cxt.editor);
 
                                 if let Some(last_savepoint) = last_savepoint.as_deref() {
-                                    doc.restore(view, last_savepoint);
+                                    doc.restore(view, last_savepoint, true);
                                 }
 
                                 let text = doc.text().slice(..);
                                 let cursor = doc.selection(view.id).primary().cursor(text);
 
                                 let shift_position =
-                                    |pos: usize| -> usize { pos + cursor - compl.trigger_offset };
+                                    |pos: usize| -> usize { pos + cursor - trigger_offset };
 
                                 let tx = Transaction::change(
                                     doc.text(),
-                                    compl.changes.iter().cloned().map(|(start, end, t)| {
+                                    changes.iter().cloned().map(|(start, end, t)| {
                                         (shift_position(start), shift_position(end), t)
                                     }),
                                 );
@@ -979,6 +985,21 @@ impl EditorView {
 
     pub fn clear_completion(&mut self, editor: &mut Editor) {
         self.completion = None;
+        if let Some(last_completion) = editor.last_completion.take() {
+            match last_completion {
+                CompleteAction::Applied {
+                    trigger_offset,
+                    changes,
+                } => self.last_insert.1.push(InsertEvent::CompletionApply {
+                    trigger_offset,
+                    changes,
+                }),
+                CompleteAction::Selected { savepoint } => {
+                    let (view, doc) = current!(editor);
+                    doc.restore(view, &savepoint, false);
+                }
+            }
+        }
 
         // Clear any savepoints
         editor.clear_idle_timer(); // don't retrigger
@@ -1265,12 +1286,22 @@ impl Component for EditorView {
                                         jobs: cx.jobs,
                                         scroll: None,
                                     };
-                                    completion.handle_event(event, &mut cx)
+
+                                    if let EventResult::Consumed(callback) =
+                                        completion.handle_event(event, &mut cx)
+                                    {
+                                        consumed = true;
+                                        Some(callback)
+                                    } else if let EventResult::Consumed(callback) =
+                                        completion.handle_event(&Event::Key(key!(Enter)), &mut cx)
+                                    {
+                                        Some(callback)
+                                    } else {
+                                        None
+                                    }
                                 };
 
-                                if let EventResult::Consumed(callback) = res {
-                                    consumed = true;
-
+                                if let Some(callback) = res {
                                     if callback.is_some() {
                                         // assume close_fn
                                         self.clear_completion(cx.editor);
@@ -1286,10 +1317,6 @@ impl Component for EditorView {
 
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
-                                if let Some(compl) = cx.editor.last_completion.take() {
-                                    self.last_insert.1.push(InsertEvent::CompletionApply(compl));
-                                }
-
                                 self.insert_mode(&mut cx, key);
 
                                 // record last_insert key
