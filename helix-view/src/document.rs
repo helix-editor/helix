@@ -114,6 +114,19 @@ pub struct SavePoint {
     /// The view this savepoint is associated with
     pub view: ViewId,
     revert: Mutex<Transaction>,
+    pub text: Rope,
+}
+
+impl SavePoint {
+    pub fn cursor(&self) -> usize {
+        // we always create transactions with selections
+        self.revert
+            .lock()
+            .selection()
+            .unwrap()
+            .primary()
+            .cursor(self.text.slice(..))
+    }
 }
 
 pub struct Document {
@@ -1230,6 +1243,7 @@ impl Document {
         let savepoint = Arc::new(SavePoint {
             view: view.id,
             revert: Mutex::new(revert),
+            text: self.text.clone(),
         });
         self.savepoints.push(Arc::downgrade(&savepoint));
         savepoint
