@@ -253,6 +253,17 @@ impl Completion {
                     // always present here
                     let item = item.unwrap();
 
+                    // apply additional edits, mostly used to auto import unqualified types
+                    let resolved_item = if item
+                        .additional_text_edits
+                        .as_ref()
+                        .map(|edits| !edits.is_empty())
+                        .unwrap_or(false)
+                    {
+                        None
+                    } else {
+                        Self::resolve_completion_item(doc, item.clone())
+                    };
 
                     // if more text was entered, remove it
                     doc.restore(view, &savepoint, true);
@@ -272,17 +283,6 @@ impl Completion {
                         changes: completion_changes(&transaction, trigger_offset),
                     });
 
-                    // apply additional edits, mostly used to auto import unqualified types
-                    let resolved_item = if item
-                        .additional_text_edits
-                        .as_ref()
-                        .map(|edits| !edits.is_empty())
-                        .unwrap_or(false)
-                    {
-                        None
-                    } else {
-                        Self::resolve_completion_item(doc, item.clone())
-                    };
                     if let Some(additional_edits) = resolved_item
                         .as_ref()
                         .and_then(|item| item.additional_text_edits.as_ref())
