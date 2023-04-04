@@ -80,6 +80,7 @@
 
 "ui.virtual" = { fg = "gray02" }
 "ui.virtual.indent-guide" = { fg = "gray02" }
+"ui.virtual.inlay-hint" = { fg = "gray04" }
 
 "ui.selection" = { bg = "gray03" }
 "ui.selection.primary" = { bg = "gray03" }
