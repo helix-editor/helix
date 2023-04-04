@@ -33,7 +33,7 @@ use helix_core::{
 use helix_view::{
     clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, Motion},
+    editor::{Action, CompleteAction, Motion},
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -4254,7 +4254,12 @@ pub fn completion(cx: &mut Context) {
     iter.reverse();
     let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
     let start_offset = cursor.saturating_sub(offset);
-    let savepoint = doc.savepoint(view);
+    let savepoint = if let Some(CompleteAction::Selected { savepoint }) = &cx.editor.last_completion
+    {
+        savepoint.clone()
+    } else {
+        doc.savepoint(view)
+    };
 
     let trigger_doc = doc.id();
     let trigger_view = view.id;
