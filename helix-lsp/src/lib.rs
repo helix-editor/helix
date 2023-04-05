@@ -665,8 +665,8 @@ impl Registry {
             .language_server_configs()
             .get(&name)
             .ok_or_else(|| anyhow::anyhow!("Language server '{name}' not defined"))?;
-        self.counter += 1;
         let id = self.counter;
+        self.counter += 1;
         let NewClient(client, incoming) = start_client(
             id,
             name,
