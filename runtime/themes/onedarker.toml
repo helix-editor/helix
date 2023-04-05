@@ -78,6 +78,8 @@
 "ui.text.focus" = { fg = "white", bg = "light-black", modifiers = ["bold"] }
 
 "ui.help" = { fg = "white", bg = "gray" }
+"ui.debug" = { fg = "red" }
+"ui.highlight.frameline" = { bg = "#97202a" }
 "ui.popup" = { bg = "gray" }
 "ui.window" = { fg = "gray" }
 "ui.menu" = { fg = "white", bg = "gray" }

@@ -1,12 +1,102 @@
 use std::{
-    io::{Read, Write},
+    io::{Read, Seek, Write},
     ops::RangeInclusive,
 };
 
-use helix_core::diagnostic::Severity;
+use helix_core::{diagnostic::Severity, path::get_normalized_path};
 use helix_view::doc;
 
 use super::*;
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_quit_fail() -> anyhow::Result<()> {
+    let file = helpers::new_readonly_tempfile()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ihello<esc>:wq<ret>"),
+        Some(&|app| {
+            let mut docs: Vec<_> = app.editor.documents().collect();
+            assert_eq!(1, docs.len());
+
+            let doc = docs.pop().unwrap();
+            assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
+            assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
+    test_key_sequences(
+        &mut helpers::AppBuilder::new().build()?,
+        vec![
+            (
+                None,
+                Some(&|app| {
+                    assert_eq!(1, app.editor.documents().count());
+                    assert!(!app.editor.is_err());
+                }),
+            ),
+            (
+                Some("ihello<esc>:new<ret>"),
+                Some(&|app| {
+                    assert_eq!(2, app.editor.documents().count());
+                    assert!(!app.editor.is_err());
+                }),
+            ),
+            (
+                Some(":buffer<minus>close<ret>"),
+                Some(&|app| {
+                    assert_eq!(1, app.editor.documents().count());
+                    assert!(!app.editor.is_err());
+                }),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    // verify if writes are queued up, it finishes them before closing the buffer
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut command = String::new();
+    const RANGE: RangeInclusive<i32> = 1..=1000;
+
+    for i in RANGE {
+        let cmd = format!("%c{}<esc>:w!<ret>", i);
+        command.push_str(&cmd);
+    }
+
+    command.push_str(":buffer<minus>close<ret>");
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some(&command),
+        Some(&|app| {
+            assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());
+
+            let doc = app.editor.document_by_path(file.path());
+            assert!(doc.is_none(), "found doc: {:?}", doc);
+        }),
+        false,
+    )
+    .await?;
+
+    helpers::assert_file_has_content(file.as_file_mut(), &RANGE.end().to_string())?;
+
+    Ok(())
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write() -> anyhow::Result<()> {
@@ -31,6 +121,38 @@ async fn test_write() -> anyhow::Result<()> {
 
     assert_eq!(
         helpers::platform_line("the gostak distims the doshes"),
+        file_content
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_overwrite_protection() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    helpers::run_event_loop_until_idle(&mut app).await;
+
+    file.as_file_mut()
+        .write_all(helpers::platform_line("extremely important content").as_bytes())?;
+
+    file.as_file_mut().flush()?;
+    file.as_file_mut().sync_all()?;
+
+    test_key_sequence(&mut app, Some(":x<ret>"), None, false).await?;
+
+    file.as_file_mut().flush()?;
+    file.as_file_mut().sync_all()?;
+
+    file.rewind()?;
+    let mut file_content = String::new();
+    file.as_file_mut().read_to_string(&mut file_content)?;
+
+    assert_eq!(
+        helpers::platform_line("extremely important content"),
         file_content
     );
 
@@ -70,13 +192,13 @@ async fn test_write_quit() -> anyhow::Result<()> {
 async fn test_write_concurrent() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut command = String::new();
-    const RANGE: RangeInclusive<i32> = 1..=5000;
+    const RANGE: RangeInclusive<i32> = 1..=1000;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
         .build()?;
 
     for i in RANGE {
-        let cmd = format!("%c{}<esc>:w<ret>", i);
+        let cmd = format!("%c{}<esc>:w!<ret>", i);
         command.push_str(&cmd);
     }
 
@@ -147,7 +269,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&file.path().to_path_buf()), doc.path());
+            assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
         }),
         false,
     )
@@ -219,7 +341,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
                 Some(&|app| {
                     let doc = doc!(app.editor);
                     assert!(!app.editor.is_err());
-                    assert_eq!(file1.path(), doc.path().unwrap());
+                    assert_eq!(&get_normalized_path(file1.path()), doc.path().unwrap());
                 }),
             ),
             (
@@ -227,7 +349,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
                 Some(&|app| {
                     let doc = doc!(app.editor);
                     assert!(!app.editor.is_err());
-                    assert_eq!(file2.path(), doc.path().unwrap());
+                    assert_eq!(&get_normalized_path(file2.path()), doc.path().unwrap());
                     assert!(app.editor.document_by_path(file1.path()).is_none());
                 }),
             ),

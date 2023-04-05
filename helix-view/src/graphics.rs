@@ -237,8 +237,8 @@ impl Rect {
         Rect {
             x: x1,
             y: y1,
-            width: x2 - x1,
-            height: y2 - y1,
+            width: x2.saturating_sub(x1),
+            height: y2.saturating_sub(y1),
         }
     }
 
@@ -352,6 +352,7 @@ bitflags! {
     ///
     /// let m = Modifier::BOLD | Modifier::ITALIC;
     /// ```
+    #[derive(PartialEq, Eq, Debug, Clone, Copy)]
     pub struct Modifier: u16 {
         const BOLD              = 0b0000_0000_0001;
         const DIM               = 0b0000_0000_0010;

@@ -278,16 +278,15 @@ impl Tree {
         self.try_get(index).unwrap()
     }
 
-    /// Try to get reference to a [View] by index. Returns `None` if node content is not a [Content::View]
-    /// # Panics
+    /// Try to get reference to a [View] by index. Returns `None` if node content is not a [`Content::View`].
     ///
-    /// Panics if `index` is not in self.nodes. This can be checked with [Self::contains]
+    /// Does not panic if the view does not exists anymore.
     pub fn try_get(&self, index: ViewId) -> Option<&View> {
-        match &self.nodes[index] {
-            Node {
+        match self.nodes.get(index) {
+            Some(Node {
                 content: Content::View(view),
                 ..
-            } => Some(view),
+            }) => Some(view),
             _ => None,
         }
     }

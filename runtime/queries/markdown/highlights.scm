@@ -39,7 +39,10 @@
   (list_marker_parenthesis)
 ] @markup.list.numbered
 
-(thematic_break) @punctuation.delimiter
+(task_list_marker_checked) @markup.list.checked
+(task_list_marker_unchecked) @markup.list.unchecked
+
+(thematic_break) @punctuation.special
 
 [
   (block_continuation)
@@ -51,3 +54,9 @@
 ] @string.escape
 
 (block_quote) @markup.quote
+
+(pipe_table_row
+  "|" @punctuation.special)
+(pipe_table_header
+  "|" @punctuation.special)
+(pipe_table_delimiter_row) @punctuation.special

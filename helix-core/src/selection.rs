@@ -21,14 +21,14 @@ use std::borrow::Cow;
 /// can be in any order, or even share the same position.
 ///
 /// The anchor and head positions use gap indexing, meaning
-/// that their indices represent the the gaps *between* `char`s
+/// that their indices represent the gaps *between* `char`s
 /// rather than the `char`s themselves. For example, 1
 /// represents the position between the first and second `char`.
 ///
-/// Below are some example `Range` configurations to better
-/// illustrate.  The anchor and head indices are show as
-/// "(anchor, head)", followed by example text with "[" and "]"
-/// inserted to represent the anchor and head positions:
+/// Below are some examples of `Range` configurations.
+/// The anchor and head indices are shown as "(anchor, head)"
+/// tuples, followed by example text with "[" and "]" symbols
+/// representing the anchor and head positions:
 ///
 /// - (0, 3): `[Som]e text`.
 /// - (3, 0): `]Som[e text`.
@@ -53,7 +53,9 @@ pub struct Range {
     pub anchor: usize,
     /// The head of the range, moved when extending.
     pub head: usize,
-    pub horiz: Option<u32>,
+    /// The previous visual offset (softwrapped lines and columns) from
+    /// the start of the line
+    pub old_visual_position: Option<(u32, u32)>,
 }
 
 impl Range {
@@ -61,7 +63,7 @@ impl Range {
         Self {
             anchor,
             head,
-            horiz: None,
+            old_visual_position: None,
         }
     }
 
@@ -127,7 +129,7 @@ impl Range {
         Self {
             anchor: self.head,
             head: self.anchor,
-            horiz: self.horiz,
+            old_visual_position: self.old_visual_position,
         }
     }
 
@@ -185,7 +187,7 @@ impl Range {
         Self {
             anchor,
             head,
-            horiz: None,
+            old_visual_position: None,
         }
     }
 
@@ -198,13 +200,13 @@ impl Range {
             Self {
                 anchor: self.anchor.min(from),
                 head: self.head.max(to),
-                horiz: None,
+                old_visual_position: None,
             }
         } else {
             Self {
                 anchor: self.anchor.max(to),
                 head: self.head.min(from),
-                horiz: None,
+                old_visual_position: None,
             }
         }
     }
@@ -219,13 +221,13 @@ impl Range {
             Range {
                 anchor: self.anchor.max(other.anchor),
                 head: self.head.min(other.head),
-                horiz: None,
+                old_visual_position: None,
             }
         } else {
             Range {
                 anchor: self.from().min(other.from()),
                 head: self.to().max(other.to()),
-                horiz: None,
+                old_visual_position: None,
             }
         }
     }
@@ -279,8 +281,8 @@ impl Range {
         Range {
             anchor: new_anchor,
             head: new_head,
-            horiz: if new_anchor == self.anchor {
-                self.horiz
+            old_visual_position: if new_anchor == self.anchor {
+                self.old_visual_position
             } else {
                 None
             },
@@ -306,7 +308,7 @@ impl Range {
             Range {
                 anchor: self.anchor,
                 head: next_grapheme_boundary(slice, self.head),
-                horiz: self.horiz,
+                old_visual_position: self.old_visual_position,
             }
         } else {
             *self
@@ -378,7 +380,7 @@ impl From<(usize, usize)> for Range {
         Self {
             anchor,
             head,
-            horiz: None,
+            old_visual_position: None,
         }
     }
 }
@@ -482,7 +484,7 @@ impl Selection {
             ranges: smallvec![Range {
                 anchor,
                 head,
-                horiz: None
+                old_visual_position: None
             }],
             primary_index: 0,
         }
@@ -566,13 +568,23 @@ impl Selection {
     }
 
     /// Takes a closure and maps each `Range` over the closure.
-    pub fn transform<F>(mut self, f: F) -> Self
+    pub fn transform<F>(mut self, mut f: F) -> Self
     where
-        F: Fn(Range) -> Range,
+        F: FnMut(Range) -> Range,
     {
         for range in self.ranges.iter_mut() {
             *range = f(*range)
         }
+        self.normalize()
+    }
+
+    /// Takes a closure and maps each `Range` over the closure to multiple `Range`s.
+    pub fn transform_iter<F, I>(mut self, f: F) -> Self
+    where
+        F: FnMut(Range) -> I,
+        I: Iterator<Item = Range>,
+    {
+        self.ranges = self.ranges.into_iter().flat_map(f).collect();
         self.normalize()
     }
 
@@ -613,11 +625,6 @@ impl Selection {
 
     // returns true if self ⊇ other
     pub fn contains(&self, other: &Selection) -> bool {
-        // can't contain other if it is larger
-        if other.len() > self.len() {
-            return false;
-        }
-
         let (mut iter_self, mut iter_other) = (self.iter(), other.iter());
         let (mut ele_self, mut ele_other) = (iter_self.next(), iter_other.next());
 
@@ -651,6 +658,15 @@ impl<'a> IntoIterator for &'a Selection {
 
     fn into_iter(self) -> std::slice::Iter<'a, Range> {
         self.ranges().iter()
+    }
+}
+
+impl IntoIterator for Selection {
+    type Item = Range;
+    type IntoIter = smallvec::IntoIter<[Range; 1]>;
+
+    fn into_iter(self) -> smallvec::IntoIter<[Range; 1]> {
+        self.ranges.into_iter()
     }
 }
 
@@ -1228,5 +1244,11 @@ mod test {
             vec!((3, 4), (7, 9))
         ));
         assert!(!contains(vec!((1, 1), (5, 6)), vec!((1, 6))));
+
+        // multiple ranges of other are all contained in some ranges of self,
+        assert!(contains(
+            vec!((1, 4), (7, 10)),
+            vec!((1, 2), (3, 4), (7, 9))
+        ));
     }
 }
