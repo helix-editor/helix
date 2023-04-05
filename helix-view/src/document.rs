@@ -1121,6 +1121,22 @@ impl Document {
     /// the state it had when this function was called.
     pub fn savepoint(&mut self, view: &View) -> Arc<SavePoint> {
         let revert = Transaction::new(self.text()).with_selection(self.selection(view.id).clone());
+        // check if there is already an existing (identical) savepoint around
+        if let Some(savepoint) = self
+            .savepoints
+            .iter()
+            .rev()
+            .find_map(|savepoint| savepoint.upgrade())
+        {
+            let transaction = savepoint.revert.lock();
+            if savepoint.view == view.id
+                && transaction.changes().is_empty()
+                && transaction.selection() == revert.selection()
+            {
+                drop(transaction);
+                return savepoint;
+            }
+        }
         let savepoint = Arc::new(SavePoint {
             view: view.id,
             revert: Mutex::new(revert),
