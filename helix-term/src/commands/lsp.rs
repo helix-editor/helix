@@ -1395,7 +1395,7 @@ pub fn rename_symbol(cx: &mut Context) {
 
                 let Some(language_server) = doc
                     .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
-                    .find(|ls| language_server_id.is_none() || Some(ls.id()) == language_server_id)
+                    .find(|ls| language_server_id.map_or(true, |id| id == ls.id()))
                 else {
                     cx.editor.set_error("No configured language server supports symbol renaming");
                     return;

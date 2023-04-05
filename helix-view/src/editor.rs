@@ -1136,8 +1136,9 @@ impl Editor {
 
             let doc_language_servers_not_in_registry =
                 doc.language_servers.iter().filter(|(name, doc_ls)| {
-                    !language_servers.contains_key(*name)
-                        || language_servers[*name].id() != doc_ls.id()
+                    language_servers
+                        .get(*name)
+                        .map_or(true, |ls| ls.id() != doc_ls.id())
                 });
 
             for (_, language_server) in doc_language_servers_not_in_registry {
@@ -1145,8 +1146,9 @@ impl Editor {
             }
 
             let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
-                !doc.language_servers.contains_key(*name)
-                    || doc.language_servers[*name].id() != ls.id()
+                doc.language_servers
+                    .get(*name)
+                    .map_or(true, |doc_ls| ls.id() != doc_ls.id())
             });
 
             for (_, language_server) in language_servers_not_in_doc {
