@@ -680,6 +680,9 @@ impl Registry {
         Ok(client)
     }
 
+    /// If this method is called, all documents that have a reference to language servers used by the language config have to refresh their language servers,
+    /// as it could be that language servers of these documents were stopped by this method.
+    /// See [helix_view::editor::Editor::refresh_language_servers]
     pub fn restart(
         &mut self,
         language_config: &LanguageConfiguration,
@@ -707,8 +710,6 @@ impl Registry {
                         .insert(name.clone(), vec![client.clone()])
                         .unwrap();
 
-                    // TODO what if there are multiple instances for different workspaces?
-                    // I think the language servers will be stopped without being restarted, which is not intended
                     for old_client in old_clients {
                         tokio::spawn(async move {
                             let _ = old_client.force_shutdown().await;
