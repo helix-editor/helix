@@ -276,65 +276,62 @@ impl Client {
             .expect("language server not yet initialized!")
     }
 
-    #[inline] // TODO inline?
+    /// Client has to be initialized otherwise this function panics
+    #[inline]
     pub fn supports_feature(&self, feature: LanguageServerFeature) -> bool {
-        let capabilities = match self.capabilities.get() {
-            Some(capabilities) => capabilities,
-            None => return false, // not initialized, TODO unwrap/expect instead?
-        };
+        let capabilities = self.capabilities();
+
+        use lsp::*;
         match feature {
             LanguageServerFeature::Format => matches!(
                 capabilities.document_formatting_provider,
-                Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
+                Some(OneOf::Left(true) | OneOf::Right(_))
             ),
             LanguageServerFeature::GotoDeclaration => matches!(
                 capabilities.declaration_provider,
                 Some(
-                    lsp::DeclarationCapability::Simple(true)
-                        | lsp::DeclarationCapability::RegistrationOptions(_)
-                        | lsp::DeclarationCapability::Options(_),
+                    DeclarationCapability::Simple(true)
+                        | DeclarationCapability::RegistrationOptions(_)
+                        | DeclarationCapability::Options(_),
                 )
             ),
             LanguageServerFeature::GotoDefinition => matches!(
                 capabilities.definition_provider,
-                Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
+                Some(OneOf::Left(true) | OneOf::Right(_))
             ),
             LanguageServerFeature::GotoTypeDefinition => matches!(
                 capabilities.type_definition_provider,
                 Some(
-                    lsp::TypeDefinitionProviderCapability::Simple(true)
-                        | lsp::TypeDefinitionProviderCapability::Options(_),
+                    TypeDefinitionProviderCapability::Simple(true)
+                        | TypeDefinitionProviderCapability::Options(_),
                 )
             ),
             LanguageServerFeature::GotoReference => matches!(
                 capabilities.references_provider,
-                Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
+                Some(OneOf::Left(true) | OneOf::Right(_))
             ),
             LanguageServerFeature::GotoImplementation => matches!(
                 capabilities.implementation_provider,
                 Some(
-                    lsp::ImplementationProviderCapability::Simple(true)
-                        | lsp::ImplementationProviderCapability::Options(_),
+                    ImplementationProviderCapability::Simple(true)
+                        | ImplementationProviderCapability::Options(_),
                 )
             ),
             LanguageServerFeature::SignatureHelp => capabilities.signature_help_provider.is_some(),
             LanguageServerFeature::Hover => matches!(
                 capabilities.hover_provider,
-                Some(
-                    lsp::HoverProviderCapability::Simple(true)
-                        | lsp::HoverProviderCapability::Options(_),
-                )
+                Some(HoverProviderCapability::Simple(true) | HoverProviderCapability::Options(_),)
             ),
             LanguageServerFeature::DocumentHighlight => matches!(
                 capabilities.document_highlight_provider,
-                Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
+                Some(OneOf::Left(true) | OneOf::Right(_))
             ),
             LanguageServerFeature::Completion => capabilities.completion_provider.is_some(),
             LanguageServerFeature::CodeAction => matches!(
                 capabilities.code_action_provider,
                 Some(
-                    lsp::CodeActionProviderCapability::Simple(true)
-                        | lsp::CodeActionProviderCapability::Options(_),
+                    CodeActionProviderCapability::Simple(true)
+                        | CodeActionProviderCapability::Options(_),
                 )
             ),
             LanguageServerFeature::WorkspaceCommand => {
@@ -342,23 +339,20 @@ impl Client {
             }
             LanguageServerFeature::DocumentSymbols => matches!(
                 capabilities.document_symbol_provider,
-                Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
+                Some(OneOf::Left(true) | OneOf::Right(_))
             ),
             LanguageServerFeature::WorkspaceSymbols => matches!(
                 capabilities.workspace_symbol_provider,
-                Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
+                Some(OneOf::Left(true) | OneOf::Right(_))
             ),
             LanguageServerFeature::Diagnostics => true, // there's no extra server capability
             LanguageServerFeature::RenameSymbol => matches!(
                 capabilities.rename_provider,
-                Some(lsp::OneOf::Left(true)) | Some(lsp::OneOf::Right(_))
+                Some(OneOf::Left(true)) | Some(OneOf::Right(_))
             ),
             LanguageServerFeature::InlayHints => matches!(
                 capabilities.inlay_hint_provider,
-                Some(
-                    lsp::OneOf::Left(true)
-                        | lsp::OneOf::Right(lsp::InlayHintServerCapabilities::Options(_))
-                )
+                Some(OneOf::Left(true) | OneOf::Right(InlayHintServerCapabilities::Options(_)))
             ),
         }
     }
