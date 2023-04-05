@@ -73,6 +73,24 @@ impl KeyEvent {
         }
     }
 
+    /// Translates a `KeyCode` using the `f` function. Only
+    /// `KeyCode::Char(c)` are translated. This method should be used
+    /// whenever a translation for the characters is desired, e.g. when
+    /// remapping a keyboard layout from non-Latin to Latin.
+    pub fn translate<F>(&self, f: F) -> KeyEvent
+    where
+        F: Fn(char) -> char,
+    {
+        if let KeyCode::Char(c) = self.code {
+            KeyEvent {
+                code: KeyCode::Char(f(c)),
+                modifiers: self.modifiers,
+            }
+        } else {
+            *self
+        }
+    }
+
     /// Format the key in such a way that a concatenated sequence
     /// of keys can be read easily.
     ///

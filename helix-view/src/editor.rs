@@ -16,6 +16,7 @@ use helix_vcs::DiffProviderRegistry;
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::Call;
+use log::warn;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -72,6 +73,52 @@ where
             .try_into()
             .map_err(|_| serde::ser::Error::custom("duration value overflowed u64"))?,
     )
+}
+
+#[derive(Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+struct LayoutMap {
+    from: String,
+    into: String,
+}
+
+fn deserialize_layout_remap<'de, D>(deserializer: D) -> Result<HashMap<char, char>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    // Make (from, to) char pairs from `Vec` of `LayoutMap`s filtering
+    // cases where `from == to` which we don't need to translate.
+    let mut pairs = Vec::<LayoutMap>::deserialize(deserializer)?
+        .iter()
+        .flat_map(|layout_map| layout_map.from.chars().zip(layout_map.into.chars()))
+        .filter(|(from, to)| from != to)
+        .collect::<HashMap<char, char>>();
+    pairs
+        .iter()
+        .filter_map(|(_, to)| pairs.contains_key(to).then(|| *to))
+        .collect::<Vec<_>>()
+        .into_iter()
+        .for_each(|c| {
+            warn!(
+                "Key '{}' removed from layout-remap as it would overwrite Latin layout binding",
+                c
+            );
+            pairs.remove(&c);
+        });
+    Ok(pairs)
+}
+
+fn serialize_layout_remap<S>(map: &HashMap<char, char>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut from = String::new();
+    let mut into = String::new();
+    map.iter().for_each(|(f, t)| {
+        from.push(*f);
+        into.push(*t);
+    });
+    vec![LayoutMap { from, into }].serialize(serializer)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -284,6 +331,12 @@ pub struct Config {
     pub soft_wrap: SoftWrap,
     /// Workspace specific lsp ceiling dirs
     pub workspace_lsp_roots: Vec<PathBuf>,
+    /// Translate pressed keys in Normal and Select modes when a keyboard layout different from Latin is chosen in the system.
+    #[serde(
+        serialize_with = "serialize_layout_remap",
+        deserialize_with = "deserialize_layout_remap"
+    )]
+    pub layout_remap: HashMap<char, char>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -753,6 +806,7 @@ impl Default for Config {
             text_width: 80,
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
+            layout_remap: HashMap::new(),
         }
     }
 }
