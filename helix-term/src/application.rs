@@ -665,7 +665,7 @@ impl Application {
 
         macro_rules! language_server {
             () => {
-                match self.editor.language_servers.get_by_id(server_id) {
+                match self.editor.language_server_by_id(server_id) {
                     Some(language_server) => language_server,
                     None => {
                         warn!("can't find language server with id `{}`", server_id);

@@ -212,6 +212,23 @@ impl Completion {
 
             let (view, doc) = current!(editor);
 
+            macro_rules! language_server {
+                ($item:expr) => {
+                    match editor
+                        .language_servers
+                        .get_by_id($item.language_server_id)
+                    {
+                        Some(ls) => ls,
+                        None => {
+                            editor.set_error("language server disappeared between completion request and application");
+                            // TODO close the completion menu somehow,
+                            // currently there is no trivial way to access the EditorView to close the completion menu
+                            return;
+                        }
+                    }
+                };
+            }
+
             match event {
                 PromptEvent::Abort => {}
                 PromptEvent::Update => {
@@ -236,17 +253,11 @@ impl Completion {
                     // always present here
                     let item = item.unwrap();
 
-                    let offset_encoding = editor
-                        .language_servers
-                        .get_by_id(item.language_server_id)
-                        .expect("language server disappeared between completion request and application")
-                        .offset_encoding();
-
                     let transaction = item_to_transaction(
                         doc,
                         view.id,
                         item,
-                        offset_encoding,
+                        language_server!(item).offset_encoding(),
                         trigger_offset,
                         true,
                         replace_mode,
@@ -262,11 +273,8 @@ impl Completion {
                     // always present here
                     let mut item = item.unwrap().clone();
 
-                    let offset_encoding = editor
-                        .language_servers
-                        .get_by_id(item.language_server_id)
-                        .expect("language server disappeared between completion request and application")
-                        .offset_encoding();
+                    let language_server = language_server!(item);
+                    let offset_encoding = language_server.offset_encoding();
 
                     let language_server = editor
                         .language_servers
@@ -401,20 +409,11 @@ impl Completion {
             Some(item) if !item.resolved => item.clone(),
             _ => return false,
         };
-        let language_server = match cx
-            .editor
-            .language_servers
-            .get_by_id(current_item.language_server_id)
-        {
-            Some(language_server) => language_server,
-            None => return false,
-        };
+
+        let Some(language_server) = cx.editor.language_server_by_id(current_item.language_server_id) else { return false; };
 
         // This method should not block the compositor so we handle the response asynchronously.
-        let future = match language_server.resolve_completion_item(current_item.item.clone()) {
-            Some(future) => future,
-            None => return false,
-        };
+        let Some(future) = language_server.resolve_completion_item(current_item.item.clone()) else { return false; };
 
         cx.callback(
             future,

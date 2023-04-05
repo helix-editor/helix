@@ -874,7 +874,7 @@ pub struct Editor {
     /// times during rendering and should not be set by other functions.
     pub cursor_cache: Cell<Option<Option<Position>>>,
     /// When a new completion request is sent to the server old
-    /// unifinished request must be dropped. Each completion
+    /// unfinished request must be dropped. Each completion
     /// request is associated with a channel that cancels
     /// when the channel is dropped. That channel is stored
     /// here. When a new completion request is sent this
@@ -1091,6 +1091,11 @@ impl Editor {
         }
 
         self._refresh();
+    }
+
+    #[inline]
+    pub fn language_server_by_id(&self, language_server_id: usize) -> Option<&helix_lsp::Client> {
+        self.language_servers.get_by_id(language_server_id)
     }
 
     /// Refreshes the language server for a given document
