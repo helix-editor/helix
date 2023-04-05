@@ -1438,6 +1438,20 @@ indent = { tab-width = 4, unit = "    " }
 grammar = "rust"
 
 [[language]]
+name = "robot"
+scope = "source.robot"
+injection-regex = "robot"
+file-types = ["robot", "resource"]
+comment-token = "#"
+roots = []
+indent = { tab-width = 4, unit = " " }
+language-server = { command = "robotframework_ls" }
+
+[[grammar]]
+name = "robot"
+source = { git = "https://github.com/Hubro/tree-sitter-robot", rev = "f1142bfaa6acfce95e25d2c6d18d218f4f533927" }
+
+[[language]]
 name = "r"
 scope = "source.r"
 injection-regex = "(r|R)"
