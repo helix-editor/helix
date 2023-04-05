@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use helix_core::{syntax::LanguageServerFeature, Diagnostic};
+use helix_core::syntax::LanguageServerFeature;
 
 use crate::{
     editor::GutterType,
@@ -65,35 +65,27 @@ pub fn diagnostic<'doc>(
                 return None;
             }
             use helix_core::diagnostic::Severity;
-            if let Ok(index) = diagnostics.binary_search_by_key(&line, |d| d.line) {
-                let on_line_and_is_visible = |d: &&Diagnostic| {
+            let first_diag_idx_maybe_on_line = diagnostics.partition_point(|d| d.line < line);
+            if first_diag_idx_maybe_on_line == diagnostics.len() {
+                return None;
+            }
+            let diagnostics_on_line = diagnostics[first_diag_idx_maybe_on_line..]
+                .iter()
+                .take_while(|d| {
                     d.line == line
                         && doc
                             .language_servers_with_feature(LanguageServerFeature::Diagnostics)
                             .any(|ls| ls.id() == d.language_server_id)
-                };
-                let after = diagnostics[index..]
-                    .iter()
-                    .take_while(on_line_and_is_visible);
-
-                let before = diagnostics[..index]
-                    .iter()
-                    .rev()
-                    .take_while(on_line_and_is_visible);
-
-                let diagnostics_on_line = after.chain(before);
-
-                if let Some(diagnostic) = diagnostics_on_line.max_by_key(|d| d.severity) {
-                    write!(out, "●").ok();
-                    return Some(match diagnostic.severity {
-                        Some(Severity::Error) => error,
-                        Some(Severity::Warning) | None => warning,
-                        Some(Severity::Info) => info,
-                        Some(Severity::Hint) => hint,
-                    });
+                });
+            diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
+                write!(out, "●").ok();
+                match d.severity {
+                    Some(Severity::Error) => error,
+                    Some(Severity::Warning) | None => warning,
+                    Some(Severity::Info) => info,
+                    Some(Severity::Hint) => hint,
                 }
-            }
-            None
+            })
         },
     )
 }
