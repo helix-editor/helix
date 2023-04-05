@@ -32,6 +32,3 @@ inherits = "test"
 package.helix-core.opt-level = 2
 package.helix-tui.opt-level = 2
 package.helix-term.opt-level = 2
-
-[patch.crates-io]
-tree-sitter = { git = "https://github.com/tree-sitter/tree-sitter", rev = "c51896d32dcc11a38e41f36e3deb1a6a9c4f4b14" }
