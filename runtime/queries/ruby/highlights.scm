@@ -56,14 +56,10 @@
 ((identifier) @keyword.control.exception
  (#match? @keyword.control.exception "^(raise|fail)$"))
 
-
-((identifier) @keyword.storage.modifier
- (#match? @keyword.storage.modifier "^(private|protected|public)$"))
-
 ; Function calls
 
 ((identifier) @function.builtin
- (#match? @function.builtin "^(attr|attr_accessor|attr_reader|attr_writer|include|prepend|refine)$"))
+ (#match? @function.builtin "^(attr|attr_accessor|attr_reader|attr_writer|include|prepend|refine|private|protected|public)$"))
 
 "defined?" @function.builtin
 
