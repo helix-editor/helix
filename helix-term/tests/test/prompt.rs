@@ -15,8 +15,16 @@ fn get_prompt(app: &Application) -> &Prompt {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn history_completion() -> anyhow::Result<()> {
+    let config = Config {
+        editor: helix_view::editor::Config {
+            true_color: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
     test_key_sequence(
-        &mut AppBuilder::new().build()?,
+        &mut AppBuilder::new().with_config(config).build()?,
         Some(":asdf<ret>:theme d<C-n><tab>"),
         Some(&|app| {
             assert!(!app.editor.is_err());
