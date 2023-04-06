@@ -2069,7 +2069,7 @@ source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d1
 name = "xml"
 scope = "source.xml"
 injection-regex = "xml"
-file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg"]
+file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg", "xsd"]
 indent = { tab-width = 2, unit = "  " }
 roots = []
 
