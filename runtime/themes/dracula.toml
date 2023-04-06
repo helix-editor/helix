@@ -1,4 +1,5 @@
 # Author : Sebastian Zivota <loewenheim@mailbox.org>
+# Author : Chirikumbrah
 
 "annotation"                = { fg = "white"                           }
 "attribute"                 = { fg = "cyan"                            }
