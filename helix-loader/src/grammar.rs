@@ -84,10 +84,14 @@ pub fn get_language(name: &str) -> Result<Language> {
     Ok(language)
 }
 
-pub fn fetch_grammars() -> Result<()> {
+pub fn fetch_grammars(filter: &[String]) -> Result<()> {
     // We do not need to fetch local grammars.
     let mut grammars = get_grammar_configs()?;
     grammars.retain(|grammar| !matches!(grammar.source, GrammarSource::Local { .. }));
+
+    if !filter.is_empty() {
+        grammars.retain(|grammar| filter.contains(&grammar.grammar_id));
+    }
 
     println!("Fetching {} grammars", grammars.len());
     let results = run_parallel(grammars, fetch_grammar);
@@ -146,8 +150,12 @@ pub fn fetch_grammars() -> Result<()> {
     Ok(())
 }
 
-pub fn build_grammars(target: Option<String>) -> Result<()> {
-    let grammars = get_grammar_configs()?;
+pub fn build_grammars(target: Option<String>, filter: &[String]) -> Result<()> {
+    let mut grammars = get_grammar_configs()?;
+    if !filter.is_empty() {
+        grammars.retain(|grammar| filter.contains(&grammar.grammar_id));
+    }
+
     println!("Building {} grammars", grammars.len());
     let results = run_parallel(grammars, move |grammar| {
         build_grammar(grammar, target.as_deref())
