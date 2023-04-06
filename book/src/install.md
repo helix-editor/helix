@@ -168,16 +168,18 @@ a c++ compiler to be installed, for example `gcc-c++`.
 
 #### Linux and macOS
 
-Either set the `HELIX_RUNTIME` environment variable to point to the runtime files and add it to your `~/.bashrc` or equivalent:
+The **runtime** directory is in the helix repository cloned root, so either
+set the `HELIX_RUNTIME` environment variable to point to the runtime files and
+add it to your `~/.bashrc` or equivalent:
 
 ```sh
-HELIX_RUNTIME=/home/user-name/src/helix/runtime
+HELIX_RUNTIME=<HELIX_REPO_ROOT>/runtime
 ```
 
-Or, create a symlink in `~/.config/helix` that links to the source code directory:
+Or, create a symlink from the Helix repository root runtime directory.
 
 ```sh
-ln -s $PWD/runtime ~/.config/helix/runtime
+ln -s <HELIX_REPO_ROOT>/runtime ~/.config/helix/runtime
 ```
 
 #### Windows
