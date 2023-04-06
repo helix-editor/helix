@@ -220,7 +220,7 @@ impl Completion {
                     {
                         Some(ls) => ls,
                         None => {
-                            editor.set_error("language server disappeared between completion request and application");
+                            editor.set_error("completions are outdated");
                             // TODO close the completion menu somehow,
                             // currently there is no trivial way to access the EditorView to close the completion menu
                             return;

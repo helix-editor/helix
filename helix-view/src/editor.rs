@@ -1353,10 +1353,10 @@ impl Editor {
             }
             doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
-            let doc_id = self.new_document(doc);
-            let _ = self.launch_language_servers(doc_id);
+            let id = self.new_document(doc);
+            let _ = self.launch_language_servers(id);
 
-            doc_id
+            id
         };
 
         self.switch(id, action);

@@ -66,9 +66,6 @@ pub fn diagnostic<'doc>(
             }
             use helix_core::diagnostic::Severity;
             let first_diag_idx_maybe_on_line = diagnostics.partition_point(|d| d.line < line);
-            if first_diag_idx_maybe_on_line == diagnostics.len() {
-                return None;
-            }
             let diagnostics_on_line = diagnostics[first_diag_idx_maybe_on_line..]
                 .iter()
                 .take_while(|d| {
