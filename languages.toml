@@ -2422,3 +2422,17 @@ language-server = { command = "nimlangserver" }
 [[grammar]]
 name = "nim"
 source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b232550e431d67de250d1b5856209e7f06" }
+
+[[language]]
+name = "hurl"
+scope = "source.hurl"
+injection-regex = "hurl"
+file-types = ["hurl"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "hurl"
+source = { git = "https://github.com/pfeiferj/tree-sitter-hurl", rev = "264c42064b61ee21abe88d0061f29a0523352e22" }
+
