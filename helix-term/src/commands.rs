@@ -4,6 +4,7 @@ pub(crate) mod typed;
 
 pub use dap::*;
 use helix_vcs::Hunk;
+use log::warn;
 pub use lsp::*;
 use tokio::sync::oneshot;
 use tui::widgets::Row;
@@ -472,6 +473,7 @@ impl MappableCommand {
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
+        change_current_directory_to_buffer_directory, "Change current directory to current buffer's directory",
     );
 }
 
@@ -5378,4 +5380,46 @@ fn replay_macro(cx: &mut Context) {
         // replaying recursively.
         cx.editor.macro_replaying.pop();
     }));
+}
+
+fn change_current_directory_to_buffer_directory(cx: &mut Context) {
+    let buff_dir = doc!(cx.editor)
+        .path()
+        .and_then(|path| path.parent().map(|path| path.to_path_buf()));
+
+    let buff_dir = match buff_dir {
+        Some(path) => path,
+        None => {
+            cx.editor.set_error("Current buffer has no path or parent");
+
+            return;
+        }
+    };
+
+    match std::env::current_dir() {
+        Ok(cwd) => {
+            if buff_dir.display().to_string() == cwd.display().to_string() {
+                cx.editor.set_status(format!(
+                    "Current working directory is already {}",
+                    cwd.display()
+                ));
+
+                return;
+            }
+        }
+        Err(e) => warn!("Couldn't get the current working directory: {e})"),
+    }
+
+    if let Err(e) = std::env::set_current_dir(&buff_dir) {
+        cx.editor.set_error(format!(
+            "Couldn't change the current working directory: {e}"
+        ));
+
+        return;
+    }
+
+    cx.editor.set_status(format!(
+        "Current working directory is now {}",
+        buff_dir.display()
+    ));
 }
