@@ -256,66 +256,6 @@ async fn history_partial_search() -> anyhow::Result<()> {
                     assert_eq!("", get_prompt(app).line(), "[10,20,100,200] ^^^vvv (reset)");
                 }),
             ),
-            (
-                Some("<esc>:aaa1<ret>:bbb1<ret>:aaa2<ret>:bbb2<ret>:a"),
-                Some(&|app| {
-                    assert_eq!("a", get_prompt(app).line());
-                }),
-            ),
-            (
-                Some("<esc>:a<up>"),
-                Some(&|app| {
-                    assert_eq!("aaa2", get_prompt(app).line());
-                }),
-            ),
-            (
-                Some("<esc>:a<up><up>"),
-                Some(&|app| {
-                    assert_eq!("aaa1", get_prompt(app).line());
-                }),
-            ),
-            (
-                Some("<esc>:a<up><up><up>"),
-                Some(&|app| {
-                    assert_eq!("aaa1", get_prompt(app).line());
-                }),
-            ),
-            (
-                Some("<esc>:a<up><up><up><up>"),
-                Some(&|app| {
-                    assert_eq!("aaa1", get_prompt(app).line());
-                }),
-            ),
-            (
-                Some("<esc>:a<up><up><up><up><down>"),
-                Some(&|app| {
-                    assert_eq!("aaa2", get_prompt(app).line());
-                }),
-            ),
-            (
-                Some("<esc>:a<up><up><up><up><down><down>"),
-                Some(&|app| {
-                    assert_eq!("a", get_prompt(app).line());
-                }),
-            ),
-            (
-                Some("<esc>:a<up><up><up><up><down><down><down>"),
-                Some(&|app| {
-                    assert_eq!("", get_prompt(app).line());
-                }),
-            ),
-            (
-                Some("<esc>:a<up><up><up><up><down><down><down><down>"),
-                Some(&|app| {
-                    assert_eq!("", get_prompt(app).line());
-                }),
-            ),
-            (
-                Some("<esc>:<up><up><up><up><down><down><down><down>"),
-                Some(&|app| {
-                    assert_eq!("", get_prompt(app).line());
-                }),
-            ),
         ],
         false,
     )

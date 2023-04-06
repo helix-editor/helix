@@ -292,50 +292,6 @@ impl Prompt {
         self.recalculate_completion(editor);
     }
 
-    pub fn change_history(
-        &mut self,
-        cx: &mut Context,
-        register: char,
-        direction: CompletionDirection,
-    ) {
-        (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
-        let values = match cx.editor.registers.read(register) {
-            Some(values) if !values.is_empty() => values,
-            _ => return,
-        };
-
-        let len = values.len();
-        let end = len.saturating_sub(1);
-
-        let (line, index) = match direction {
-            CompletionDirection::Forward => {
-                if self.history_pos.is_none() {
-                    return;
-                }
-
-                let index = self.history_pos.map_or(0, |i| i + 1);
-
-                if index > end {
-                    ("".to_string(), end)
-                } else {
-                    (values[index].to_string(), index)
-                }
-            }
-            CompletionDirection::Backward => {
-                let index = self.history_pos.unwrap_or(len).saturating_sub(1);
-
-                (values[index].to_string(), index)
-            }
-        };
-
-        self.line = line;
-        self.history_pos = Some(index);
-
-        self.move_end();
-        (self.callback_fn)(cx, &self.line, PromptEvent::Update);
-        self.recalculate_completion(cx.editor);
-    }
-
     pub fn search_history(
         &mut self,
         cx: &mut Context,
@@ -679,22 +635,12 @@ impl Component for Prompt {
                     return close_fn;
                 }
             }
-            ctrl!('p') => {
-                if let Some(register) = self.history_register {
-                    self.change_history(cx, register, CompletionDirection::Backward);
-                }
-            }
-            ctrl!('n') => {
-                if let Some(register) = self.history_register {
-                    self.change_history(cx, register, CompletionDirection::Forward);
-                }
-            }
-            key!(Up) => {
+            ctrl!('p') | key!(Up) => {
                 if let Some(register) = self.history_register {
                     self.search_history(cx, register, CompletionDirection::Backward);
                 }
             }
-            key!(Down) => {
+            ctrl!('n') | key!(Down) => {
                 if let Some(register) = self.history_register {
                     self.search_history(cx, register, CompletionDirection::Forward);
                 }
