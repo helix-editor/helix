@@ -95,9 +95,11 @@
 "ui.text.focus" = "fg"
 "ui.menu" = { fg = "fg", bg = "bg3" }
 "ui.menu.selected" = { fg = "bg0", bg = "green" }
+"ui.virtual.ruler" = { bg = "bg3" }
 "ui.virtual.whitespace" = { fg = "bg4" }
 "ui.virtual.indent-guide" = { fg = "bg4" }
-"ui.virtual.ruler" = { bg = "bg3" }
+"ui.virtual.inlay-hint" = { fg = "grey0" }
+"ui.virtual.wrap" = { fg = "grey0" }
 
 "hint" = "green"
 "info" = "blue"
