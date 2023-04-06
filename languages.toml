@@ -606,7 +606,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ruby"
-source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "4c600a463d97e36a0ca5ac57e11f3ac8c297a0fa" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "206c7077164372c596ffa8eaadb9435c28941364" }
 
 [[language]]
 name = "bash"
