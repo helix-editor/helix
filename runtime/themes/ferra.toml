@@ -1,3 +1,5 @@
+# Author : Casper Rogild Storm <casper@asynkron.xyz>
+
 "comment" = { fg = "ferra_bark", modifiers = ["italic"] }
 "constant" = { fg = "ferra_sage" }
 "function" = { fg = "ferra_coral" }
