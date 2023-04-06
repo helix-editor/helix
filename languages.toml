@@ -1545,6 +1545,7 @@ file-types = ["gd"]
 shebangs = []
 roots = ["project.godot"]
 auto-format = true
+formatter = { command = "gdformat", args = ["-"] }
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
 
