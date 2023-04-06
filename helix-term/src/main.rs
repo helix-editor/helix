@@ -117,6 +117,7 @@ FLAGS:
     }
 
     let logpath = args.log_file.as_ref().cloned().unwrap_or(logpath);
+    helix_loader::initialize_log_file(logpath.clone());
     setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
 
     let config_dir = helix_loader::config_dir();

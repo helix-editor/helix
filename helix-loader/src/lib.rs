@@ -28,14 +28,9 @@ pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     CONFIG_FILE.set(config_file).ok();
 }
 
-pub fn initialize_log_file(specified_file: Option<PathBuf>) {
-    let log_file = specified_file.unwrap_or_else(|| {
-        let cache_dir = cache_dir();
-        cache_dir.join("helix.log")
-    });
-
+pub fn initialize_log_file(specified_file: PathBuf) {
     // We should only intialize this value once.
-    LOG_FILE.set(log_file).ok();
+    LOG_FILE.set(specified_file).ok();
 }
 
 /// A list of runtime directories from highest to lowest priority
