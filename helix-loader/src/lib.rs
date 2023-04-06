@@ -11,6 +11,8 @@ static RUNTIME_DIRS: once_cell::sync::Lazy<Vec<PathBuf>> =
 
 static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
+static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+
 pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(|| {
         let config_dir = config_dir();
@@ -24,6 +26,16 @@ pub fn initialize_config_file(specified_file: Option<PathBuf>) {
 
     // We should only initialize this value once.
     CONFIG_FILE.set(config_file).ok();
+}
+
+pub fn initialize_log_file(specified_file: Option<PathBuf>) {
+    let log_file = specified_file.unwrap_or_else(|| {
+        let cache_dir = cache_dir();
+        cache_dir.join("helix.log")
+    });
+
+    // We should only intialize this value once.
+    LOG_FILE.set(log_file).ok();
 }
 
 /// A list of runtime directories from highest to lowest priority
