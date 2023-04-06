@@ -152,7 +152,7 @@ pub fn log_file() -> PathBuf {
     LOG_FILE
         .get()
         .map(|path| path.to_path_buf())
-        .unwrap_or_else(|| cache_dir.join("helix.log"))
+        .unwrap_or_else(|| cache_dir().join("helix.log"))
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`
