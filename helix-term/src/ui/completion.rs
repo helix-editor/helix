@@ -226,14 +226,14 @@ impl Completion {
             match event {
                 PromptEvent::Abort => {}
                 PromptEvent::Update => {
-                    // Update creates "ghost" transactiosn which are not send to the
-                    // lsp server to avoid messing up rerequesting completions. Once a
-                    // completion has been selected (with) tab it's always accepted whenever anything
+                    // Update creates "ghost" transactions which are not sent to the
+                    // lsp server to avoid messing up re-requesting completions. Once a
+                    // completion has been selected (with tab, c-n or c-p) it's always accepted whenever anything
                     // is typed. The only way to avoid that is to explicitly abort the completion
-                    // with esc/c-c. This will remove the "ghost" transaction.
+                    // with c-c. This will remove the "ghost" transaction.
                     //
-                    // The ghost transaction is modeled with a transaction that is not send to the LS.
-                    // (apply_temporary) and a savepoint. It's extremly important this savepoint is restored
+                    // The ghost transaction is modeled with a transaction that is not sent to the LS.
+                    // (apply_temporary) and a savepoint. It's extremely important this savepoint is restored
                     // (also without sending the transaction to the LS) *before any further transaction is applied*.
                     // Otherwise incremental sync breaks (since the state of the LS doesn't match the state the transaction
                     // is applied to).
@@ -293,7 +293,7 @@ impl Completion {
                         changes: completion_changes(&transaction, trigger_offset),
                     });
 
-                    // TOOD: add additional _edits to completion_changes?
+                    // TODO: add additional _edits to completion_changes?
                     if let Some(additional_edits) = item.item.additional_text_edits {
                         if !additional_edits.is_empty() {
                             let transaction = util::generate_transaction_from_edits(

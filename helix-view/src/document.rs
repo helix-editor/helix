@@ -1197,7 +1197,7 @@ impl Document {
         self.apply_inner(transaction, view_id, true)
     }
 
-    /// Apply a [`Transaction`] to the [`Document`] to change its text.
+    /// Apply a [`Transaction`] to the [`Document`] to change its text
     /// without notifying the language servers. This is useful for temporary transactions
     /// that must not influence the server.
     pub fn apply_temporary(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {

@@ -911,7 +911,7 @@ pub enum CompleteAction {
         trigger_offset: usize,
         changes: Vec<Change>,
     },
-    /// A savepoint of the currently active completion. The completion
+    /// A savepoint of the currently selected completion. The savepoint
     /// MUST be restored before sending any event to the LSP
     Selected { savepoint: Arc<SavePoint> },
 }
