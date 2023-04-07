@@ -2111,6 +2111,8 @@ roots = []
 [language.auto-pairs]
 '(' = ')'
 '[' = ']'
+'"' = '"'
+"'" = "'"
 '<' = '>'
 
 [[grammar]]
