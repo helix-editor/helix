@@ -134,10 +134,10 @@ pacman -S mingw-w64-ucrt-x86_64-helix
 
 ## Building from source
 
-Clone the repository:
+According to the Unix Filesystem Hierarchy Standard the helix source can be installed in **/usr/local/src**.
 
 ```sh
-git clone https://github.com/helix-editor/helix
+git clone https://github.com/helix-editor/helix /usr/local/src
 cd helix
 ```
 
@@ -150,6 +150,16 @@ cargo install --path helix-term --locked
 This command will create the `hx` executable and construct the tree-sitter
 grammars in the local `runtime` folder. To build the tree-sitter grammars requires
 a c++ compiler to be installed, for example `gcc-c++`.
+
+To test for an installed `gcc-c++` on your Unix distribution try:
+
+```sh
+$ g++ --version
+
+g++ (Debian 10.2.1-6) 10.2.1 20210110
+Copyright (C) 2020 Free Software Foundation, Inc.
+...
+```
 
 > 💡 If you are using the musl-libc instead of glibc the following environment variable must be set during the build
 > to ensure tree-sitter grammars can be loaded correctly:
@@ -173,13 +183,13 @@ set the `HELIX_RUNTIME` environment variable to point to the runtime files and
 add it to your `~/.bashrc` or equivalent:
 
 ```sh
-HELIX_RUNTIME=<HELIX_REPO_ROOT>/runtime
+HELIX_RUNTIME=/usr/local/src/helix/runtime
 ```
 
 Or, create a symlink from the Helix repository root runtime directory.
 
 ```sh
-ln -s <HELIX_REPO_ROOT>/runtime ~/.config/helix/runtime
+ln -s /usr/local/src/helix/runtime ~/.config/helix/runtime
 ```
 
 #### Windows
