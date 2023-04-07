@@ -24,7 +24,7 @@ use crate::{
     compositor::{Compositor, Event},
     config::Config,
     job::Jobs,
-    keymap::Keymaps,
+    keymap::{Keymaps, LayoutRemap},
     ui::{self, overlay::overlayed},
 };
 
@@ -155,7 +155,13 @@ impl Application {
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
         }));
-        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
+        let layout_remap = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
+            &config.editor.layout_remap
+        }));
+        let editor_view = Box::new(ui::EditorView::new(
+            Keymaps::new(keys),
+            LayoutRemap::new(layout_remap),
+        ));
         compositor.push(editor_view);
 
         if args.load_tutor {

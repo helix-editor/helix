@@ -300,6 +300,32 @@ impl Keymap {
         res
     }
 
+    pub fn traverse_map<F>(&self, f: F)
+    where
+        F: Fn(&Vec<KeyEvent>, String),
+    {
+        fn map_node<F>(node: &KeyTrie, keys: &mut Vec<KeyEvent>, f: &F)
+        where
+            F: Fn(&Vec<KeyEvent>, String),
+        {
+            match node {
+                KeyTrie::Leaf(cmd) => match cmd {
+                    MappableCommand::Typable { name, .. } => f(keys, name.into()),
+                    MappableCommand::Static { name, .. } => f(keys, (*name).to_owned()),
+                },
+                KeyTrie::Node(next) => {
+                    for (key, trie) in &next.map {
+                        keys.push(*key);
+                        map_node(trie, keys, f);
+                        keys.pop();
+                    }
+                }
+                KeyTrie::Sequence(_) => {}
+            }
+        }
+        map_node(&self.root, &mut Vec::new(), &f);
+    }
+
     pub fn root(&self) -> &KeyTrie {
         &self.root
     }
@@ -419,6 +445,35 @@ impl Default for Keymaps {
 pub fn merge_keys(dst: &mut HashMap<Mode, Keymap>, mut delta: HashMap<Mode, Keymap>) {
     for (mode, keys) in dst {
         keys.merge(delta.remove(mode).unwrap_or_default())
+    }
+}
+
+pub struct LayoutRemap {
+    pub map: Box<dyn DynAccess<HashMap<char, char>>>,
+}
+
+impl LayoutRemap {
+    pub fn new(map: Box<dyn DynAccess<HashMap<char, char>>>) -> Self {
+        Self { map }
+    }
+
+    pub fn translate(&self, event: &KeyEvent) -> KeyEvent {
+        use helix_view::keyboard::KeyCode;
+        let remap = &*self.map.load();
+        if let KeyCode::Char(c) = event.code {
+            KeyEvent {
+                code: KeyCode::Char(*remap.get(&c).unwrap_or(&c)),
+                modifiers: event.modifiers,
+            }
+        } else {
+            *event
+        }
+    }
+}
+
+impl Default for LayoutRemap {
+    fn default() -> Self {
+        Self::new(Box::new(ArcSwap::new(Arc::new(HashMap::new()))))
     }
 }
 
