@@ -519,8 +519,13 @@ where
         .version_control_head()
         .unwrap_or_default()
         .to_string();
+    if head.is_empty() {
+        return;
+    }
 
-    write(context, head, None);
+    let config = context.editor.config.load();
+    let prefix = &config.statusline.version_control_prefix;
+    write(context, format!("{prefix}{head}"), None);
 }
 
 fn render_register<F>(context: &mut RenderContext, write: F)
