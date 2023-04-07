@@ -134,11 +134,15 @@ pacman -S mingw-w64-ucrt-x86_64-helix
 
 ## Building from source
 
-According to the Unix Filesystem Hierarchy Standard the helix source can be installed in **/usr/local/src**.
+According to the Unix Filesystem Hierarchy Standard the Helix source can be
+installed in **/usr/local/src** or **/opt**, however we would prefer to install
+Helix as a regular user without **sudo** access, so we can create a
+**$HOME/src** directory.
 
 ```sh
-git clone https://github.com/helix-editor/helix /usr/local/src
-cd helix
+mkdir $HOME/src
+git clone https://github.com/helix-editor/helix $HOME/src/helix
+cd $HOME/src/helix
 ```
 
 Compile from source:
@@ -178,18 +182,18 @@ Copyright (C) 2020 Free Software Foundation, Inc.
 
 #### Linux and macOS
 
-The **runtime** directory is in the helix repository cloned root, so either
+The **runtime** directory is in the Helix repository cloned root, so either
 set the `HELIX_RUNTIME` environment variable to point to the runtime files and
 add it to your `~/.bashrc` or equivalent:
 
 ```sh
-HELIX_RUNTIME=/usr/local/src/helix/runtime
+HELIX_RUNTIME=$HOME/src/helix/runtime
 ```
 
 Or, create a symlink from the Helix repository root runtime directory.
 
 ```sh
-ln -s /usr/local/src/helix/runtime ~/.config/helix/runtime
+ln -s $HOME/src/helix/runtime ~/.config/helix/runtime
 ```
 
 #### Windows
