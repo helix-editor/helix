@@ -38,7 +38,7 @@ use std::borrow::Cow;
 /// Ranges are considered to be inclusive on the left and
 /// exclusive on the right, regardless of anchor-head ordering.
 /// This means, for example, that non-zero-width ranges that
-/// are directly adjecent, sharing an edge, do not overlap.
+/// are directly adjacent, sharing an edge, do not overlap.
 /// However, a zero-width range will overlap with the shared
 /// left-edge of another range.
 ///

@@ -152,10 +152,10 @@ pub mod util {
         // > ‘\n’, ‘\r\n’ and ‘\r’. Positions are line end character agnostic.
         // > So you can not specify a position that denotes \r|\n or \n| where | represents the character offset.
         //
-        // This means that while the line must be in bounds the `charater`
+        // This means that while the line must be in bounds the `character`
         // must be capped to the end of the line.
         // Note that the end of the line here is **before** the line terminator
-        // so we must use `line_end_char_index` istead of `doc.line_to_char(pos_line + 1)`
+        // so we must use `line_end_char_index` instead of `doc.line_to_char(pos_line + 1)`
         //
         // FIXME: Helix does not fully comply with the LSP spec for line terminators.
         // The LSP standard requires that line terminators are ['\n', '\r\n', '\r'].
@@ -893,7 +893,7 @@ fn start_client(
 /// * if the file is outside `workspace` return `None`
 /// * start at `file` and search the file tree upward
 /// * stop the search at the first `root_dirs` entry that contains `file`
-/// * if no `root_dirs` matchs `file` stop at workspace
+/// * if no `root_dirs` matches `file` stop at workspace
 /// * Returns the top most directory that contains a `root_marker`
 /// * If no root marker and we stopped at a `root_dirs` entry, return the directory we stopped at
 /// * If we stopped at `workspace` instead and `workspace_is_cwd == false` return `None`
