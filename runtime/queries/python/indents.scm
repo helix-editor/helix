@@ -72,4 +72,6 @@
   "elif" @outdent)
 (else_clause
   "else" @outdent)
-
+(ERROR
+  (_) @outdent ":" . 
+  (#match? @outdent "^(else|elif)"))
