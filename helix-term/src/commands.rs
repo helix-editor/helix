@@ -54,7 +54,7 @@ use crate::{
     job::Callback,
     keymap::ReverseKeymap,
     ui::{
-        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlayed, FilePicker, Picker,
+        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, FilePicker, Picker,
         Popup, Prompt, PromptEvent,
     },
 };
@@ -1619,7 +1619,7 @@ fn half_page_down(cx: &mut Context) {
 }
 
 #[allow(deprecated)]
-// currently uses the deprected `visual_coords_at_pos`/`pos_at_visual_coords` functions
+// currently uses the deprecated `visual_coords_at_pos`/`pos_at_visual_coords` functions
 // as this function ignores softwrapping (and virtual text) and instead only cares
 // about "text visual position"
 //
@@ -2205,7 +2205,7 @@ fn global_search(cx: &mut Context) {
                         Some((path.clone().into(), Some((*line_num, *line_num))))
                     },
                 );
-                compositor.push(Box::new(overlayed(picker)));
+                compositor.push(Box::new(overlaid(picker)));
             },
         ));
         Ok(call)
@@ -2479,7 +2479,7 @@ fn append_mode(cx: &mut Context) {
 fn file_picker(cx: &mut Context) {
     let root = find_workspace().0;
     let picker = ui::file_picker(root, &cx.editor.config());
-    cx.push_layer(Box::new(overlayed(picker)));
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 fn file_picker_in_current_buffer_directory(cx: &mut Context) {
@@ -2496,12 +2496,12 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
     };
 
     let picker = ui::file_picker(path, &cx.editor.config());
-    cx.push_layer(Box::new(overlayed(picker)));
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
     let picker = ui::file_picker(cwd, &cx.editor.config());
-    cx.push_layer(Box::new(overlayed(picker)));
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 fn buffer_picker(cx: &mut Context) {
@@ -2566,7 +2566,7 @@ fn buffer_picker(cx: &mut Context) {
             Some((meta.id.into(), Some((line, line))))
         },
     );
-    cx.push_layer(Box::new(overlayed(picker)));
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 fn jumplist_picker(cx: &mut Context) {
@@ -2648,7 +2648,7 @@ fn jumplist_picker(cx: &mut Context) {
             Some((meta.path.clone()?.into(), Some((line, line))))
         },
     );
-    cx.push_layer(Box::new(overlayed(picker)));
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 impl ui::menu::Item for MappableCommand {
@@ -2722,7 +2722,7 @@ pub fn command_palette(cx: &mut Context) {
                     }
                 }
             });
-            compositor.push(Box::new(overlayed(picker)));
+            compositor.push(Box::new(overlaid(picker)));
         },
     ));
 }
@@ -4359,7 +4359,7 @@ pub fn completion(cx: &mut Context) {
         None => return,
     };
 
-    // setup a chanel that allows the request to be canceled
+    // setup a channel that allows the request to be canceled
     let (tx, rx) = oneshot::channel();
     // set completion_request so that this request can be canceled
     // by setting completion_request, the old channel stored there is dropped
@@ -4422,7 +4422,7 @@ pub fn completion(cx: &mut Context) {
             let (view, doc) = current_ref!(editor);
             // check if the completion request is stale.
             //
-            // Completions are completed asynchrounsly and therefore the user could
+            // Completions are completed asynchronously and therefore the user could
             //switch document/view or leave insert mode. In all of thoise cases the
             // completion should be discarded
             if editor.mode != Mode::Insert || view.id != trigger_view || doc.id() != trigger_doc {

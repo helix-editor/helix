@@ -794,7 +794,7 @@ impl<T: Item + 'static> Component for Picker<T> {
                 // might be inconsistencies. This is the best we can do since only the
                 // text in Row is displayed to the end user.
                 let (_score, highlights) = FuzzyQuery::new(self.prompt.line())
-                    .fuzzy_indicies(&line, &self.matcher)
+                    .fuzzy_indices(&line, &self.matcher)
                     .unwrap_or_default();
 
                 let highlight_byte_ranges: Vec<_> = line

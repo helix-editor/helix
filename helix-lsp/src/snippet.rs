@@ -61,7 +61,7 @@ fn render_elements(
     offset: &mut usize,
     tabstops: &mut Vec<(usize, (usize, usize))>,
     newline_with_offset: &str,
-    include_placeholer: bool,
+    include_placeholder: bool,
 ) {
     use SnippetElement::*;
 
@@ -89,7 +89,7 @@ fn render_elements(
                     offset,
                     tabstops,
                     newline_with_offset,
-                    include_placeholer,
+                    include_placeholder,
                 );
             }
             &Tabstop { tabstop } => {
@@ -100,14 +100,14 @@ fn render_elements(
                 value: inner_snippet_elements,
             } => {
                 let start_offset = *offset;
-                if include_placeholer {
+                if include_placeholder {
                     render_elements(
                         inner_snippet_elements,
                         insert,
                         offset,
                         tabstops,
                         newline_with_offset,
-                        include_placeholer,
+                        include_placeholder,
                     );
                 }
                 tabstops.push((*tabstop, (start_offset, *offset)));
@@ -127,7 +127,7 @@ fn render_elements(
 pub fn render(
     snippet: &Snippet<'_>,
     newline_with_offset: &str,
-    include_placeholer: bool,
+    include_placeholder: bool,
 ) -> (Tendril, Vec<SmallVec<[(usize, usize); 1]>>) {
     let mut insert = Tendril::new();
     let mut tabstops = Vec::new();
@@ -139,7 +139,7 @@ pub fn render(
         &mut offset,
         &mut tabstops,
         newline_with_offset,
-        include_placeholer,
+        include_placeholder,
     );
 
     // sort in ascending order (except for 0, which should always be the last one (per lsp doc))
