@@ -555,7 +555,7 @@ impl LanguageConfiguration {
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SoftWrap {
     /// Soft wrap lines that exceed viewport width. Default to off
-    pub enable: Option<bool>,
+    pub enable: bool,
     /// Maximum space left free at the end of the line.
     /// This space is used to wrap text at word boundaries. If that is not possible within this limit
     /// the word is simply split at the end of the line.
