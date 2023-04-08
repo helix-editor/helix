@@ -1444,8 +1444,9 @@ impl Document {
             .as_ref()
             .and_then(|config| config.soft_wrap.as_ref());
         let enable_soft_wrap = language_soft_wrap
-            .map(|soft_wrap| soft_wrap.enable)
-            .unwrap_or_else(|| editor_soft_wrap.enable);
+            .and_then(|soft_wrap| soft_wrap.enable)
+            .or(editor_soft_wrap.enable)
+            .unwrap_or(false);
         let max_wrap = language_soft_wrap
             .and_then(|soft_wrap| soft_wrap.max_wrap)
             .or(config.soft_wrap.max_wrap)
