@@ -643,7 +643,7 @@ use helix_lsp::{lsp, Client, LanguageServerId, LanguageServerName};
 use url::Url;
 
 impl Document {
-    pub fn from(
+    fn from0(
         text: Rope,
         encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
@@ -653,7 +653,7 @@ impl Document {
         let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
 
-        let mut doc = Self {
+        Self {
             id: DocumentId::default(),
             path: None,
             encoding,
@@ -684,7 +684,15 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
-        };
+        }
+    }
+
+    pub fn from(
+        text: Rope,
+        encoding_with_bom_info: Option<(&'static Encoding, bool)>,
+        config: Arc<dyn DynAccess<Config>>,
+    ) -> Self {
+        let mut doc = Self::from0(text, encoding_with_bom_info, config);
         doc.detect_indent_and_line_ending();
         doc
     }
@@ -722,7 +730,7 @@ impl Document {
             (Rope::from(line_ending.as_str()), encoding, false)
         };
 
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
+        let mut doc = Self::from0(rope, Some((encoding, has_bom)), config);
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
