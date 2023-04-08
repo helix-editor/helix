@@ -16,39 +16,27 @@ use helix_core::{
     VisualOffsetError::{PosAfterMaxRow, PosBeforeAnchorRow},
 };
 
-use std::{
-    collections::{HashMap, VecDeque},
-    fmt,
-    rc::Rc,
-};
-
-const JUMP_LIST_CAPACITY: usize = 30;
+use std::{collections::HashMap, fmt, rc::Rc};
 
 type Jump = (DocumentId, Selection);
 
 #[derive(Debug, Clone)]
 pub struct JumpList {
-    jumps: VecDeque<Jump>,
+    jumps: Vec<Jump>,
     current: usize,
 }
 
 impl JumpList {
     pub fn new(initial: Jump) -> Self {
-        let mut jumps = VecDeque::with_capacity(JUMP_LIST_CAPACITY);
-        jumps.push_back(initial);
+        let jumps = vec![initial];
         Self { jumps, current: 0 }
     }
 
     pub fn push(&mut self, jump: Jump) {
         self.jumps.truncate(self.current);
         // don't push duplicates
-        if self.jumps.back() != Some(&jump) {
-            // If the jumplist is full, drop the oldest item.
-            while self.jumps.len() >= JUMP_LIST_CAPACITY {
-                self.jumps.pop_front();
-            }
-
-            self.jumps.push_back(jump);
+        if self.jumps.last() != Some(&jump) {
+            self.jumps.push(jump);
             self.current = self.jumps.len();
         }
     }
