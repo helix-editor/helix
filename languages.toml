@@ -1194,7 +1194,7 @@ text-width = 72
 
 [[grammar]]
 name = "git-commit"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "bd0ca5a6065f2cada3ac6a82a66db3ceff55fa6b" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "db88cffa3952dd2328b741af5d0fc69bdb76704f" }
 
 [[language]]
 name = "diff"
