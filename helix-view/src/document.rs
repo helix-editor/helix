@@ -166,8 +166,8 @@ impl EncodingBom {
             }
 
             EncodingBom::UTF16LE => {
-                buf[0] = 0xef;
                 buf[1] = 0xff;
+                buf[0] = 0xfe;
                 2
             }
 
@@ -479,54 +479,75 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     // determined by filtering the iterator to remove all empty chunks and then
     // appending an empty chunk to it. This is valuable for detecting when all
     // chunks in the `Rope` have been iterated over in the subsequent loop.
+
     let iter = rope
         .chunks()
         .filter(|c| !c.is_empty())
         .chain(std::iter::once(""));
     let mut buf = [0u8; BUF_SIZE];
-    let mut encoder = encoding.encoding().new_encoder();
+
     let mut total_written = encoding.write_bom(&mut buf);
 
-    for chunk in iter {
-        let is_empty = chunk.is_empty();
-        let mut total_read = 0usize;
+    let encoding = encoding.encoding();
+    let mut encoder = encoding.new_encoder();
 
-        // An inner loop is necessary as it is possible that the input buffer
-        // may not be completely encoded on the first `encode_from_utf8()` call
-        // which would happen in cases where the output buffer is filled to
-        // capacity.
-        loop {
-            let (result, read, written, ..) =
-                encoder.encode_from_utf8(&chunk[total_read..], &mut buf[total_written..], is_empty);
+    const UTF_16_BOM: u16 = 0xfeff;
+    if encoding == encoding::UTF_16BE {
+        writer.write_u16(UTF_16_BOM).await?;
+        for ch in rope.chunks().flat_map(|chunk| chunk.encode_utf16()) {
+            writer.write_u16(ch).await?;
+        }
+    } else if encoding == encoding::UTF_16LE {
+        writer.write_u16_le(UTF_16_BOM).await?;
+        for ch in rope.chunks().flat_map(|chunk| chunk.encode_utf16()) {
+            writer.write_u16_le(ch).await?;
+        }
+    } else {
+        for chunk in iter {
+            let is_empty = chunk.is_empty();
+            let mut total_read = 0usize;
 
-            // These variables act as the read and write cursors of `chunk` and `buf` respectively.
-            // They are necessary in case the output buffer fills before encoding of the entire input
-            // loop is complete. Otherwise, the loop would endlessly iterate over the same `chunk` and
-            // the data inside the output buffer would be overwritten.
-            total_read += read;
-            total_written += written;
-            match result {
-                encoding::CoderResult::InputEmpty => {
-                    debug_assert_eq!(chunk.len(), total_read);
-                    debug_assert!(buf.len() >= total_written);
-                    break;
-                }
-                encoding::CoderResult::OutputFull => {
-                    debug_assert!(chunk.len() > total_read);
-                    writer.write_all(&buf[..total_written]).await?;
-                    total_written = 0;
+            // An inner loop is necessary as it is possible that the input buffer
+            // may not be completely encoded on the first `encode_from_utf8()` call
+            // which would happen in cases where the output buffer is filled to
+            // capacity.
+            loop {
+                let (result, read, written, ..) = encoder.encode_from_utf8(
+                    &chunk[total_read..],
+                    &mut buf[total_written..],
+                    is_empty,
+                );
+
+                // These variables act as the read and write cursors of `chunk` and `buf` respectively.
+                // They are necessary in case the output buffer fills before encoding of the entire input
+                // loop is complete. Otherwise, the loop would endlessly iterate over the same `chunk` and
+                // the data inside the output buffer would be overwritten.
+                total_read += read;
+                total_written += written;
+                match result {
+                    encoding::CoderResult::InputEmpty => {
+                        debug_assert_eq!(chunk.len(), total_read);
+                        debug_assert!(buf.len() >= total_written);
+                        break;
+                    }
+                    encoding::CoderResult::OutputFull => {
+                        debug_assert!(chunk.len() > total_read);
+                        writer.write_all(&buf[..total_written]).await?;
+                        total_written = 0;
+                    }
                 }
             }
-        }
 
-        // Once the end of the iterator is reached, the output buffer is
-        // flushed and the outer loop terminates.
-        if is_empty {
-            writer.write_all(&buf[..total_written]).await?;
-            writer.flush().await?;
-            break;
+            // Once the end of the iterator is reached, the output buffer is
+            // flushed and the outer loop terminates.
+            if is_empty {
+                writer.write_all(&buf[..total_written]).await?;
+                writer.flush().await?;
+                break;
+            }
         }
     }
+
     Ok(())
 }
 
