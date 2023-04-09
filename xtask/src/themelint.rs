@@ -1,10 +1,9 @@
-use std::path::PathBuf;
-
 use crate::path;
 use crate::DynError;
 use helix_view::theme::Loader;
 use helix_view::theme::Modifier;
 use helix_view::Theme;
+use std::path::PathBuf;
 
 struct Rule {
     fg: Option<&'static str>,
@@ -159,9 +158,13 @@ pub fn lint(file: String) -> Result<(), DynError> {
         println!("Skipping base16: {}", file);
         return Ok(());
     }
-    
+
     let path = PathBuf::from(file.clone());
-    let path = if path.is_file() { path } else { path::themes().join(file.clone() + ".toml") };
+    let path = if path.is_file() {
+        path
+    } else {
+        path::themes().join(file.clone() + ".toml")
+    };
     let theme = std::fs::read_to_string(path).unwrap();
     let theme: Theme = toml::from_str(&theme).expect("Failed to parse theme");
 
