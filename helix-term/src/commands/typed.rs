@@ -106,33 +106,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     }
 
     ensure!(!args.is_empty(), "wrong argument count");
-    for arg in args {
-        let (path, pos) = args::parse_file(arg);
-        let path = helix_core::path::expand_tilde(&path);
-        // If the path is a directory, open a file picker on that directory and update the status
-        // message
-        if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
-            let callback = async move {
-                let call: job::Callback = job::Callback::EditorCompositor(Box::new(
-                    move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(path, &editor.config());
-                        compositor.push(Box::new(overlayed(picker)));
-                    },
-                ));
-                Ok(call)
-            };
-            cx.jobs.callback(callback);
-        } else {
-            // Otherwise, just open the file
-            let _ = cx.editor.open(&path, Action::Replace)?;
-            let (view, doc) = current!(cx.editor);
-            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-            doc.set_selection(view.id, pos);
-            // does not affect opening a buffer without pos
-            align_view(doc, view, Align::Center);
-        }
-    }
-    Ok(())
+    open_and_new(cx, args)
 }
 
 fn buffer_close_by_ids_impl(
@@ -384,15 +358,47 @@ fn force_write(
 
 fn new_file(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    cx.editor.new_file(Action::Replace);
+    match args.len() {
+        0 => {
+            cx.editor.new_file(Action::Replace);
+        }
+        _ => {
+            open_and_new(cx, args)?;
+        }
+    }
+    Ok(())
+}
 
+fn open_and_new(cx: &mut compositor::Context, args: &[Cow<str>]) -> anyhow::Result<()> {
+    for arg in args {
+        let (path, pos) = args::parse_file(arg);
+        let path = helix_core::path::expand_tilde(&path);
+        if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
+            let callback = async move {
+                let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+                    move |editor: &mut Editor, compositor: &mut Compositor| {
+                        let picker = ui::file_picker(path, &editor.config());
+                        compositor.push(Box::new(overlayed(picker)));
+                    },
+                ));
+                Ok(call)
+            };
+            cx.jobs.callback(callback);
+        } else {
+            let _ = cx.editor.open(&path, Action::Replace)?;
+            let (view, doc) = current!(cx.editor);
+            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+            doc.set_selection(view.id, pos);
+            align_view(doc, view, Align::Center);
+        }
+    }
     Ok(())
 }
 
