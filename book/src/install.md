@@ -14,7 +14,6 @@
 - [Windows](#windows)
   - [Winget](#winget)
   - [Scoop](#scoop)
-  - [Chocolatey](#chocolatey)
   - [MSYS2](#msys2)
 - [Building from source](#building-from-source)
   - [Configuring Helix's runtime files](#configuring-helixs-runtime-files)
@@ -110,7 +109,7 @@ brew install helix
 
 ## Windows
 
-Install on Windows using [Winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/), [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
+Install on Windows using [Winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/), [Scoop](https://scoop.sh/),
 or [MSYS2](https://msys2.org/).
 
 ### Winget
@@ -125,12 +124,6 @@ winget install Helix.Helix
 
 ```sh
 scoop install helix
-```
-
-### Chocolatey
-
-```sh
-choco install helix
 ```
 
 ### MSYS2
