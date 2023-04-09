@@ -276,6 +276,94 @@ impl fmt::Debug for DocumentInlayHintsId {
     }
 }
 
+enum Encoder {
+    Utf16Be,
+    Utf16Le,
+    EncodingRs(encoding::Encoder),
+}
+
+impl Encoder {
+    fn from_encoding(encoding: &'static encoding::Encoding) -> Self {
+        if encoding == encoding::UTF_16BE {
+            Self::Utf16Be
+        } else if encoding == encoding::UTF_16LE {
+            Self::Utf16Le
+        } else {
+            Self::EncodingRs(encoding.new_encoder())
+        }
+    }
+
+    fn encode_from_utf8(
+        &mut self,
+        src: &str,
+        dst: &mut [u8],
+        is_empty: bool,
+    ) -> (encoding::CoderResult, usize, usize) {
+        if src.is_empty() {
+            return (encoding::CoderResult::InputEmpty, 0, 0);
+        }
+        let mut write_to_buf = |convert: fn(u16) -> [u8; 2]| {
+            let to_write = src.char_indices().map(|(indice, char)| {
+                let mut encoded: [u16; 2] = [0, 0];
+                (
+                    indice,
+                    char.encode_utf16(&mut encoded)
+                        .iter_mut()
+                        .flat_map(|char| convert(*char))
+                        .collect::<Vec<u8>>(),
+                )
+            });
+
+            let mut total_written = 0usize;
+
+            for (indice, utf16_bytes) in to_write {
+                let character_size = utf16_bytes.len();
+
+                if dst.len() <= (total_written + character_size) {
+                    return (encoding::CoderResult::OutputFull, indice, total_written);
+                }
+
+                for character in utf16_bytes {
+                    dst[total_written] = character;
+                    total_written += 1;
+                }
+            }
+
+            (encoding::CoderResult::InputEmpty, src.len(), total_written)
+        };
+
+        match self {
+            Self::Utf16Be => write_to_buf(u16::to_be_bytes),
+            Self::Utf16Le => write_to_buf(u16::to_le_bytes),
+            Self::EncodingRs(encoder) => {
+                let (code_result, read, written, ..) = encoder.encode_from_utf8(src, dst, is_empty);
+
+                (code_result, read, written)
+            }
+        }
+    }
+}
+
+// Apply BOM if encoding permit it, return the number of bytes written at the start of buf
+fn apply_bom(encoding: &'static encoding::Encoding, buf: &mut [u8; BUF_SIZE]) -> usize {
+    if encoding == encoding::UTF_8 {
+        buf[0] = 0xef;
+        buf[1] = 0xbb;
+        buf[2] = 0xbf;
+        3
+    } else if encoding == encoding::UTF_16BE {
+        buf[0] = 0xfe;
+        buf[1] = 0xff;
+        2
+    } else if encoding == encoding::UTF_16LE {
+        buf[0] = 0xff;
+        buf[1] = 0xfe;
+        2
+    } else {
+        0
+    }
+}
+
 // The documentation and implementation of this function should be up-to-date with
 // its sibling function, `to_writer()`.
 //
@@ -416,74 +504,52 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
         .chain(std::iter::once(""));
     let mut buf = [0u8; BUF_SIZE];
 
-    let mut total_written = 0usize;
-    let mut encoder = encoding.new_encoder();
-
-    const UTF_16_BOM: u16 = 0xfeff;
-    if encoding == encoding::UTF_16BE {
-        if has_bom {
-            writer.write_u16(UTF_16_BOM).await?;
-        }
-        for ch in rope.chunks().flat_map(|chunk| chunk.encode_utf16()) {
-            writer.write_u16(ch).await?;
-        }
-    } else if encoding == encoding::UTF_16LE {
-        if has_bom {
-            writer.write_u16_le(UTF_16_BOM).await?;
-        }
-        for ch in rope.chunks().flat_map(|chunk| chunk.encode_utf16()) {
-            writer.write_u16_le(ch).await?;
-        }
+    let mut total_written = if has_bom {
+        apply_bom(encoding, &mut buf)
     } else {
-        if encoding == encoding::UTF_8 && has_bom {
-            buf[0] = 0xef;
-            buf[1] = 0xbb;
-            buf[2] = 0xbf;
-            total_written = 3;
-        }
+        0
+    };
 
-        for chunk in iter {
-            let is_empty = chunk.is_empty();
-            let mut total_read = 0usize;
+    let mut encoder = Encoder::from_encoding(encoding);
 
-            // An inner loop is necessary as it is possible that the input buffer
-            // may not be completely encoded on the first `encode_from_utf8()` call
-            // which would happen in cases where the output buffer is filled to
-            // capacity.
-            loop {
-                let (result, read, written, ..) = encoder.encode_from_utf8(
-                    &chunk[total_read..],
-                    &mut buf[total_written..],
-                    is_empty,
-                );
+    for chunk in iter {
+        let is_empty = chunk.is_empty();
+        let mut total_read = 0usize;
 
-                // These variables act as the read and write cursors of `chunk` and `buf` respectively.
-                // They are necessary in case the output buffer fills before encoding of the entire input
-                // loop is complete. Otherwise, the loop would endlessly iterate over the same `chunk` and
-                // the data inside the output buffer would be overwritten.
-                total_read += read;
-                total_written += written;
-                match result {
-                    encoding::CoderResult::InputEmpty => {
-                        debug_assert_eq!(chunk.len(), total_read);
-                        debug_assert!(buf.len() >= total_written);
-                        break;
-                    }
-                    encoding::CoderResult::OutputFull => {
-                        debug_assert!(chunk.len() > total_read);
-                        writer.write_all(&buf[..total_written]).await?;
-                        total_written = 0;
-                    }
+        // An inner loop is necessary as it is possible that the input buffer
+        // may not be completely encoded on the first `encode_from_utf8()` call
+        // which would happen in cases where the output buffer is filled to
+        // capacity.
+        loop {
+            let (result, read, written, ..) =
+                encoder.encode_from_utf8(&chunk[total_read..], &mut buf[total_written..], is_empty);
+
+            // These variables act as the read and write cursors of `chunk` and `buf` respectively.
+            // They are necessary in case the output buffer fills before encoding of the entire input
+            // loop is complete. Otherwise, the loop would endlessly iterate over the same `chunk` and
+            // the data inside the output buffer would be overwritten.
+            total_read += read;
+            total_written += written;
+            match result {
+                encoding::CoderResult::InputEmpty => {
+                    debug_assert_eq!(chunk.len(), total_read);
+                    debug_assert!(buf.len() >= total_written);
+                    break;
+                }
+                encoding::CoderResult::OutputFull => {
+                    debug_assert!(chunk.len() > total_read);
+                    writer.write_all(&buf[..total_written]).await?;
+                    total_written = 0;
                 }
             }
+        }
 
-            // Once the end of the iterator is reached, the output buffer is
-            // flushed and the outer loop terminates.
-            if is_empty {
-                writer.write_all(&buf[..total_written]).await?;
-                writer.flush().await?;
-                break;
-            }
+        // Once the end of the iterator is reached, the output buffer is
+        // flushed and the outer loop terminates.
+        if is_empty {
+            writer.write_all(&buf[..total_written]).await?;
+            writer.flush().await?;
+            break;
         }
     }
 
