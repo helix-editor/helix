@@ -344,9 +344,9 @@ impl ModifierDiff {
     }
 }
 
-/// Crossterm uses semicolon as a seperator for colors
-/// this is actually not spec compliant (altough commonly supported)
-/// However the correct approach is to use colons as a seperator.
+/// Crossterm uses semicolon as a separator for colors
+/// this is actually not spec compliant (although commonly supported)
+/// However the correct approach is to use colons as a separator.
 /// This usually doesn't make a difference for emulators that do support colored underlines.
 /// However terminals that do not support colored underlines will ignore underlines colors with colons
 /// while escape sequences with semicolons are always processed which leads to weird visual artifacts.

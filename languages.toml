@@ -212,7 +212,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-c", rev = "7175a6dd
 name = "cpp"
 scope = "source.cpp"
 injection-regex = "cpp"
-file-types = ["cc", "hh", "c++", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino", "C", "H"]
+file-types = ["cc", "hh", "c++", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino", "C", "H", "cu", "cuh"]
 roots = []
 comment-token = "//"
 language-server = { command = "clangd" }
@@ -606,7 +606,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ruby"
-source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "4c600a463d97e36a0ca5ac57e11f3ac8c297a0fa" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "206c7077164372c596ffa8eaadb9435c28941364" }
 
 [[language]]
 name = "bash"
@@ -1438,6 +1438,20 @@ indent = { tab-width = 4, unit = "    " }
 grammar = "rust"
 
 [[language]]
+name = "robot"
+scope = "source.robot"
+injection-regex = "robot"
+file-types = ["robot", "resource"]
+comment-token = "#"
+roots = []
+indent = { tab-width = 4, unit = " " }
+language-server = { command = "robotframework_ls" }
+
+[[grammar]]
+name = "robot"
+source = { git = "https://github.com/Hubro/tree-sitter-robot", rev = "f1142bfaa6acfce95e25d2c6d18d218f4f533927" }
+
+[[language]]
 name = "r"
 scope = "source.r"
 injection-regex = "(r|R)"
@@ -1446,7 +1460,7 @@ shebangs = ["r", "R"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-language-server = { command = "R", args = ["--slave", "-e", "languageserver::run()"] }
+language-server = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
 
 [[grammar]]
 name = "r"
@@ -1545,6 +1559,7 @@ file-types = ["gd"]
 shebangs = []
 roots = ["project.godot"]
 auto-format = true
+formatter = { command = "gdformat", args = ["-"] }
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
 
@@ -2068,7 +2083,7 @@ source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d1
 name = "xml"
 scope = "source.xml"
 injection-regex = "xml"
-file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg"]
+file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg", "xsd"]
 indent = { tab-width = 2, unit = "  " }
 roots = []
 
@@ -2421,3 +2436,17 @@ language-server = { command = "nimlangserver" }
 [[grammar]]
 name = "nim"
 source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b232550e431d67de250d1b5856209e7f06" }
+
+[[language]]
+name = "hurl"
+scope = "source.hurl"
+injection-regex = "hurl"
+file-types = ["hurl"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "hurl"
+source = { git = "https://github.com/pfeiferj/tree-sitter-hurl", rev = "264c42064b61ee21abe88d0061f29a0523352e22" }
+

@@ -54,7 +54,7 @@ impl QueryAtom {
     }
 
     fn indices(&self, matcher: &Matcher, item: &str, indices: &mut Vec<usize>) -> bool {
-        // for inverse there are no indicies to return
+        // for inverse there are no indices to return
         // just return whether we matched
         if self.inverse {
             return self.matches(matcher, item);
@@ -120,7 +120,7 @@ enum QueryAtomKind {
     ///
     /// Usage: `foo`
     Fuzzy,
-    /// Item contains query atom as a continous substring
+    /// Item contains query atom as a continuous substring
     ///
     /// Usage `'foo`
     Substring,
@@ -213,7 +213,7 @@ impl FuzzyQuery {
         Some(score)
     }
 
-    pub fn fuzzy_indicies(&self, item: &str, matcher: &Matcher) -> Option<(i64, Vec<usize>)> {
+    pub fn fuzzy_indices(&self, item: &str, matcher: &Matcher) -> Option<(i64, Vec<usize>)> {
         let (score, mut indices) = self.first_fuzzy_atom.as_ref().map_or_else(
             || Some((0, Vec::new())),
             |atom| matcher.fuzzy_indices(item, atom),
