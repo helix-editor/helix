@@ -2546,7 +2546,7 @@ fn jumplist_picker(cx: &mut Context) {
             format!("{} {}{} {}", self.id, path, flag, self.text).into()
         }
     }
-
+    cx.editor.sync_views();
     let new_meta = |view: &View, doc_id: DocumentId, selection: Selection| {
         let doc = &cx.editor.documents.get(&doc_id);
         let text = doc.map_or("".into(), |d| {
