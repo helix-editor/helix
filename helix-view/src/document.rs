@@ -116,78 +116,6 @@ pub struct SavePoint {
     revert: Mutex<Transaction>,
 }
 
-// An enum representing the encoding and if it contain a byte order mark
-#[derive(Debug, Clone)]
-pub enum EncodingBom {
-    UTF8,
-    UTF16BE,
-    UTF16LE,
-    NoBom(&'static Encoding),
-}
-
-impl EncodingBom {
-    fn encoding(&self) -> &'static Encoding {
-        match self {
-            EncodingBom::UTF8 => encoding::UTF_8,
-            EncodingBom::UTF16BE => encoding::UTF_16BE,
-            EncodingBom::UTF16LE => encoding::UTF_16LE,
-            EncodingBom::NoBom(encoding) => encoding,
-        }
-    }
-
-    // Assume that encoding have a bom, used to convert
-    // `encoding_rs` for_bom result to this enum
-    fn for_bom(encoding: &'static Encoding) -> Self {
-        if encoding == encoding::UTF_8 {
-            EncodingBom::UTF8
-        } else if encoding == encoding::UTF_16BE {
-            EncodingBom::UTF16BE
-        } else if encoding == encoding::UTF_16LE {
-            EncodingBom::UTF16LE
-        } else {
-            EncodingBom::NoBom(encoding)
-        }
-    }
-
-    // Write in buf the Bom if applicable
-    // return the number of bytes written
-    fn write_bom(&self, buf: &mut [u8; BUF_SIZE]) -> usize {
-        match self {
-            EncodingBom::UTF8 => {
-                buf[0] = 0xef;
-                buf[1] = 0xbb;
-                buf[2] = 0xbf;
-                3
-            }
-            EncodingBom::UTF16BE => {
-                buf[0] = 0xfe;
-                buf[1] = 0xff;
-                2
-            }
-
-            EncodingBom::UTF16LE => {
-                buf[1] = 0xff;
-                buf[0] = 0xfe;
-                2
-            }
-
-            EncodingBom::NoBom(_) => 0,
-        }
-    }
-}
-
-impl From<&'static Encoding> for EncodingBom {
-    fn from(value: &'static Encoding) -> Self {
-        EncodingBom::NoBom(value)
-    }
-}
-
-impl Default for EncodingBom {
-    fn default() -> Self {
-        EncodingBom::NoBom(encoding::UTF_8)
-    }
-}
-
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
@@ -202,7 +130,8 @@ pub struct Document {
     pub inlay_hints_oudated: bool,
 
     path: Option<PathBuf>,
-    encoding: EncodingBom,
+    encoding: &'static encoding::Encoding,
+    has_bom: bool,
 
     pub restore_cursor: bool,
 
@@ -351,12 +280,12 @@ impl fmt::Debug for DocumentInlayHintsId {
 // its sibling function, `to_writer()`.
 //
 /// Decodes a stream of bytes into UTF-8, returning a `Rope` and the
-/// encoding it was decoded as. The optional `encoding` parameter can
-/// be used to override encoding auto-detection.
+/// encoding it was decoded as with BOM information. The optional `encoding`
+/// parameter can be used to override encoding auto-detection.
 pub fn from_reader<R: std::io::Read + ?Sized>(
     reader: &mut R,
-    encoding: Option<EncodingBom>,
-) -> Result<(Rope, EncodingBom), Error> {
+    encoding: Option<&'static Encoding>,
+) -> Result<(Rope, &'static Encoding, bool), Error> {
     // These two buffers are 8192 bytes in size each and are used as
     // intermediaries during the decoding process. Text read into `buf`
     // from `reader` is decoded into `buf_out` as UTF-8. Once either
@@ -372,26 +301,26 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
     // As a manual override to this auto-detection is possible, the
     // same data is read into `buf` to ensure symmetry in the upcoming
     // loop.
-    let (encoding, mut decoder, mut slice, mut is_empty) = {
+    let (encoding, has_bom, mut decoder, mut slice, mut is_empty) = {
         let read = reader.read(&mut buf)?;
         let is_empty = read == 0;
-        let encoding = encoding
+        let (encoding, has_bom) = encoding
+            .map(|encoding| (encoding, false))
             .or_else(|| {
-                encoding::Encoding::for_bom(&buf)
-                    .map(|(encoding, _)| EncodingBom::for_bom(encoding))
+                encoding::Encoding::for_bom(&buf).map(|(encoding, _bom_size)| (encoding, true))
             })
             .unwrap_or_else(|| {
                 let mut encoding_detector = chardetng::EncodingDetector::new();
                 encoding_detector.feed(&buf, is_empty);
-                encoding_detector.guess(None, true).into()
+                (encoding_detector.guess(None, true), false)
             });
 
-        let decoder = encoding.encoding().new_decoder();
+        let decoder = encoding.new_decoder();
 
         // If the amount of bytes read from the reader is less than
         // `buf.len()`, it is undesirable to read the bytes afterwards.
         let slice = &buf[..read];
-        (encoding, decoder, slice, is_empty)
+        (encoding, has_bom, decoder, slice, is_empty)
     };
 
     // `RopeBuilder::append()` expects a `&str`, so this is the "real"
@@ -459,7 +388,7 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
         is_empty = read == 0;
     }
     let rope = builder.finish();
-    Ok((rope, encoding))
+    Ok((rope, encoding, has_bom))
 }
 
 // The documentation and implementation of this function should be up-to-date with
@@ -470,7 +399,7 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
 /// replacement characters may appear in the encoded text.
 pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     writer: &'a mut W,
-    encoding: EncodingBom,
+    encoding_with_bom_info: (&'static Encoding, bool),
     rope: &'a Rope,
 ) -> Result<(), Error> {
     // Text inside a `Rope` is stored as non-contiguous blocks of data called
@@ -479,6 +408,7 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     // determined by filtering the iterator to remove all empty chunks and then
     // appending an empty chunk to it. This is valuable for detecting when all
     // chunks in the `Rope` have been iterated over in the subsequent loop.
+    let (encoding, has_bom) = encoding_with_bom_info;
 
     let iter = rope
         .chunks()
@@ -486,23 +416,32 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
         .chain(std::iter::once(""));
     let mut buf = [0u8; BUF_SIZE];
 
-    let mut total_written = encoding.write_bom(&mut buf);
-
-    let encoding = encoding.encoding();
+    let mut total_written = 0usize;
     let mut encoder = encoding.new_encoder();
 
     const UTF_16_BOM: u16 = 0xfeff;
     if encoding == encoding::UTF_16BE {
-        writer.write_u16(UTF_16_BOM).await?;
+        if has_bom {
+            writer.write_u16(UTF_16_BOM).await?;
+        }
         for ch in rope.chunks().flat_map(|chunk| chunk.encode_utf16()) {
             writer.write_u16(ch).await?;
         }
     } else if encoding == encoding::UTF_16LE {
-        writer.write_u16_le(UTF_16_BOM).await?;
+        if has_bom {
+            writer.write_u16_le(UTF_16_BOM).await?;
+        }
         for ch in rope.chunks().flat_map(|chunk| chunk.encode_utf16()) {
             writer.write_u16_le(ch).await?;
         }
     } else {
+        if encoding == encoding::UTF_8 && has_bom {
+            buf[0] = 0xef;
+            buf[1] = 0xbb;
+            buf[2] = 0xbf;
+            total_written = 3;
+        }
+
         for chunk in iter {
             let is_empty = chunk.is_empty();
             let mut total_read = 0usize;
@@ -565,10 +504,10 @@ use url::Url;
 impl Document {
     pub fn from(
         text: Rope,
-        encoding: Option<EncodingBom>,
+        encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
-        let encoding = encoding.unwrap_or_default();
+        let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
         let changes = ChangeSet::new(&text);
         let old_state = None;
 
@@ -576,6 +515,7 @@ impl Document {
             id: DocumentId::default(),
             path: None,
             encoding,
+            has_bom,
             text,
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
@@ -609,21 +549,21 @@ impl Document {
     /// overwritten with the `encoding` parameter.
     pub fn open(
         path: &Path,
-        encoding: Option<EncodingBom>,
+        encoding: Option<&'static Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
-        let (rope, encoding) = if path.exists() {
+        let (rope, encoding, has_bom) = if path.exists() {
             let mut file =
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
             from_reader(&mut file, encoding)?
         } else {
-            let encoding = encoding.unwrap_or_default();
-            (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
+            let encoding = encoding.unwrap_or(encoding::UTF_8);
+            (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding, false)
         };
 
-        let mut doc = Self::from(rope, Some(encoding), config);
+        let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
 
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
@@ -674,7 +614,7 @@ impl Document {
                     })?;
                 {
                     let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
-                    to_writer(&mut stdin, EncodingBom::default(), &text)
+                    to_writer(&mut stdin, (encoding::UTF_8, false), &text)
                         .await
                         .map_err(|_| FormatterError::BrokenStdin)?;
                 }
@@ -786,8 +726,7 @@ impl Document {
         let current_rev = self.get_current_revision();
         let doc_id = self.id();
 
-        let encoding = self.encoding.clone();
-
+        let encoding_with_bom_info = (self.encoding, self.has_bom);
         let last_saved_time = self.last_saved_time;
 
         // We encode the file according to the `Document`'s encoding.
@@ -816,7 +755,7 @@ impl Document {
             }
 
             let mut file = File::create(&path).await?;
-            to_writer(&mut file, encoding, &text).await?;
+            to_writer(&mut file, encoding_with_bom_info, &text).await?;
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
@@ -874,7 +813,7 @@ impl Document {
         provider_registry: &DiffProviderRegistry,
         redraw_handle: RedrawHandle,
     ) -> Result<(), Error> {
-        let encoding = self.encoding.clone();
+        let encoding = self.encoding;
         let path = self
             .path()
             .filter(|path| path.exists())
@@ -911,14 +850,14 @@ impl Document {
         let encoding =
             Encoding::for_label(label.as_bytes()).ok_or_else(|| anyhow!("unknown encoding"))?;
 
-        self.encoding = encoding.into();
+        self.encoding = encoding;
 
         Ok(())
     }
 
     /// Returns the [`Document`]'s current encoding.
     pub fn encoding(&self) -> &'static Encoding {
-        self.encoding.encoding()
+        self.encoding
     }
 
     pub fn set_path(&mut self, path: Option<&Path>) -> Result<(), std::io::Error> {
@@ -1376,9 +1315,7 @@ impl Document {
 
     /// Intialize/updates the differ for this document with a new base.
     pub fn set_diff_base(&mut self, diff_base: Vec<u8>, redraw_handle: RedrawHandle) {
-        if let Ok((diff_base, _)) =
-            from_reader(&mut diff_base.as_slice(), Some(self.encoding.clone()))
-        {
+        if let Ok((diff_base, ..)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
             if let Some(differ) = &self.diff_handle {
                 differ.update_diff_base(diff_base);
                 return;
@@ -1848,7 +1785,7 @@ mod test {
 
                 let text = Rope::from_str(&std::fs::read_to_string(path).unwrap());
                 let mut buf: Vec<u8> = Vec::new();
-                helix_lsp::block_on(to_writer(&mut buf, encoding.into(), &text)).unwrap();
+                helix_lsp::block_on(to_writer(&mut buf, (encoding, false), &text)).unwrap();
 
                 let expectation = std::fs::read(ref_path).unwrap();
                 assert_eq!(buf, expectation);

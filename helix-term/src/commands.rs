@@ -12,7 +12,7 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset, comment,
     doc_formatter::TextFormat,
-    find_first_non_whitespace_char, find_workspace, graphemes,
+    encoding, find_first_non_whitespace_char, find_workspace, graphemes,
     history::UndoKind,
     increment, indent,
     indent::IndentStyle,
@@ -32,7 +32,7 @@ use helix_core::{
 };
 use helix_view::{
     clipboard::ClipboardType,
-    document::{EncodingBom, FormatterError, Mode, SCRATCH_BUFFER_NAME},
+    document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
     info::Info,
     input::KeyEvent,
@@ -5084,7 +5084,8 @@ async fn shell_impl_async(
     let output = if let Some(mut stdin) = process.stdin.take() {
         let input_task = tokio::spawn(async move {
             if let Some(input) = input {
-                helix_view::document::to_writer(&mut stdin, EncodingBom::default(), &input).await?;
+                helix_view::document::to_writer(&mut stdin, (encoding::UTF_8, false), &input)
+                    .await?;
             }
             Ok::<_, anyhow::Error>(())
         });
