@@ -168,6 +168,7 @@
 </li>
 <li><a href="#windows">Windows</a>
 <ul>
+<li><a href="#winget">Winget</a></li>
 <li><a href="#scoop">Scoop</a></li>
 <li><a href="#chocolatey">Chocolatey</a></li>
 <li><a href="#msys2">MSYS2</a></li>
@@ -242,8 +243,13 @@ Download Helix AppImage from the <a href="https://github.com/helix-editor/helix/
 <pre><code class="language-sh">brew install helix
 </code></pre>
 <h2 id="windows"><a class="header" href="#windows">Windows</a></h2>
-<p>Install on Windows using <a href="https://scoop.sh/">Scoop</a>, <a href="https://chocolatey.org/">Chocolatey</a>
+<p>Install on Windows using <a href="https://learn.microsoft.com/en-us/windows/package-manager/winget/">Winget</a>, <a href="https://scoop.sh/">Scoop</a>, <a href="https://chocolatey.org/">Chocolatey</a>
 or <a href="https://msys2.org/">MSYS2</a>.</p>
+<h3 id="winget"><a class="header" href="#winget">Winget</a></h3>
+<p>Windows Package Manager winget command-line tool is by default available on Windows 11 and modern versions of Windows 10 as a part of the App Installer.
+You can get <a href="https://www.microsoft.com/p/app-installer/9nblggh4nns1#activetab=pivot:overviewtab">App Installer from the Microsoft Store</a>. If it's already installed, make sure it is updated with the latest version.</p>
+<pre><code class="language-sh">winget install Helix.Helix
+</code></pre>
 <h3 id="scoop"><a class="header" href="#scoop">Scoop</a></h3>
 <pre><code class="language-sh">scoop install helix
 </code></pre>
