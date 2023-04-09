@@ -45,6 +45,9 @@
 "ui.virtual.whitespace" = { fg = "subtle" }
 "ui.virtual.wrap" = { fg = "subtle" }
 "ui.virtual.ruler" = { bg = "background_dark"}
+"ui.virtual.inlay-hint" = { fg = "comment" }
+"ui.virtual.inlay-hint.parameter" = { fg = "comment", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.type" = { fg = "comment", modifiers = ["italic"] }
 
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }
