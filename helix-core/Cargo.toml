@@ -29,7 +29,7 @@ tree-sitter = "0.20"
 once_cell = "1.17"
 arc-swap = "1"
 regex = "1"
-bitflags = "2.0"
+bitflags = "2.1"
 ahash = "0.8.3"
 hashbrown = { version = "0.13.2", features = ["raw"] }
 dunce = "1.0"
