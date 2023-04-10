@@ -1491,7 +1491,13 @@ impl Editor {
         for (view, _focused) in self.tree.views_mut() {
             let doc = doc_mut!(self, &view.doc);
             view.sync_changes(doc);
-            for (doc_id, _selection) in view.jumps.clone().iter() {
+            for doc_id in view
+                .jumps
+                .iter()
+                .map(|e| e.0)
+                .collect::<Vec<DocumentId>>()
+                .iter()
+            {
                 let doc = doc_mut!(self, doc_id);
                 view.sync_changes(doc);
             }
