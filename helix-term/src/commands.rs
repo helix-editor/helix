@@ -2576,7 +2576,7 @@ fn jumplist_picker(cx: &mut Context) {
     let picker = FilePicker::new(
         cx.editor
             .tree
-            .views_mut()
+            .views()
             .flat_map(|(view, _)| {
                 view.jumps
                     .iter()
