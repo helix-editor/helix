@@ -2546,7 +2546,14 @@ fn jumplist_picker(cx: &mut Context) {
             format!("{} {}{} {}", self.id, path, flag, self.text).into()
         }
     }
-    cx.editor.sync_views();
+
+    for (view, _) in cx.editor.tree.views_mut() {
+        for doc_id in view.jumps.iter().map(|e| e.0).collect::<Vec<_>>().iter() {
+            let doc = doc_mut!(cx.editor, doc_id);
+            view.sync_changes(doc);
+        }
+    }
+
     let new_meta = |view: &View, doc_id: DocumentId, selection: Selection| {
         let doc = &cx.editor.documents.get(&doc_id);
         let text = doc.map_or("".into(), |d| {
@@ -2569,7 +2576,7 @@ fn jumplist_picker(cx: &mut Context) {
     let picker = FilePicker::new(
         cx.editor
             .tree
-            .views()
+            .views_mut()
             .flat_map(|(view, _)| {
                 view.jumps
                     .iter()

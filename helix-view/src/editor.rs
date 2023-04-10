@@ -1460,7 +1460,10 @@ impl Editor {
             self.ensure_cursor_in_view(view_id);
 
             // Update jumplist selections with new document changes.
-            self.sync_views();
+            for (view, _focused) in self.tree.views_mut() {
+                let doc = doc_mut!(self, &view.doc);
+                view.sync_changes(doc);
+            }
         }
     }
 
@@ -1485,23 +1488,6 @@ impl Editor {
 
     pub fn transpose_view(&mut self) {
         self.tree.transpose();
-    }
-
-    pub fn sync_views(&mut self) {
-        for (view, _focused) in self.tree.views_mut() {
-            let doc = doc_mut!(self, &view.doc);
-            view.sync_changes(doc);
-            for doc_id in view
-                .jumps
-                .iter()
-                .map(|e| e.0)
-                .collect::<Vec<DocumentId>>()
-                .iter()
-            {
-                let doc = doc_mut!(self, doc_id);
-                view.sync_changes(doc);
-            }
-        }
     }
 
     pub fn should_close(&self) -> bool {
