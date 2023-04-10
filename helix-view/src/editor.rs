@@ -1491,6 +1491,10 @@ impl Editor {
         for (view, _focused) in self.tree.views_mut() {
             let doc = doc_mut!(self, &view.doc);
             view.sync_changes(doc);
+            for (doc_id, _selection) in view.jumps.clone().iter() {
+                let doc = doc_mut!(self, doc_id);
+                view.sync_changes(doc);
+            }
         }
     }
 
