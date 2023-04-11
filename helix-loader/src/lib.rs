@@ -130,7 +130,7 @@ pub fn config_dir() -> PathBuf {
 }
 
 /// Determines the path to the configuration directory
-/// if the env var `HELIX_CONFIG_DIR` is set, that will override it
+/// if the env var `HELIX_CACHE_DIR` is set, that will override it
 /// if the dest of either the path or the env var is a symlink
 /// it will attempt to follow it (though not recursively).
 pub fn cache_dir() -> PathBuf {
