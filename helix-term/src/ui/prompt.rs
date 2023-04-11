@@ -514,9 +514,18 @@ impl Component for Prompt {
                 self.delete_word_backwards(cx.editor);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
-            alt!('d') | alt!(Delete) | ctrl!(Delete) => self.delete_word_forwards(cx.editor),
-            ctrl!('k') => self.kill_to_end_of_line(cx.editor),
-            ctrl!('u') => self.kill_to_start_of_line(cx.editor),
+            alt!('d') | alt!(Delete) | ctrl!(Delete) => {
+                self.delete_word_forwards(cx.editor);
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+            }
+            ctrl!('k') => {
+                self.kill_to_end_of_line(cx.editor);
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+            }
+            ctrl!('u') => {
+                self.kill_to_start_of_line(cx.editor);
+                (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+            }
             ctrl!('h') | key!(Backspace) | shift!(Backspace) => {
                 self.delete_char_backwards(cx.editor);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
