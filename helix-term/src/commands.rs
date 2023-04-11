@@ -336,8 +336,8 @@ impl MappableCommand {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
-        goto_next_error, "Goto next error diagnostic",
-        goto_prev_error, "Goto prev error diagnostic",
+        goto_next_error, "Goto next error",
+        goto_prev_error, "Goto prev error",
         goto_next_change, "Goto next change",
         goto_prev_change, "Goto previous change",
         goto_first_change, "Goto first change",
@@ -2988,6 +2988,8 @@ fn goto_diagnostic_impl(cx: &mut Context, min_severity: Severity, direction: Dir
         .iter()
         .filter(|diag| diag.severity.unwrap_or(Severity::Hint) >= min_severity);
 
+    // Find the next diagnostic or start again at the first one.
+    // The `iter.clone()` is required as find exhausts the iterator, and we reuse iter in the `or_else`
     let diag = match direction {
         Direction::Forward => iter
             .clone()
@@ -3001,11 +3003,8 @@ fn goto_diagnostic_impl(cx: &mut Context, min_severity: Severity, direction: Dir
         }
     };
 
-    let selection = match diag {
-        Some(diag) => Selection::single(diag.range.start, diag.range.end),
-        None => return,
-    };
-    doc.set_selection(view.id, selection);
+    let Some(diag) = diag else {return};
+    doc.set_selection(view.id, Selection::single(diag.range.start, diag.range.end));
 }
 
 fn goto_next_diag(cx: &mut Context) {
