@@ -3,6 +3,8 @@
 
 "ui.background" = { fg = "white"}
 "ui.background.separator" = { fg = "gray" }
+"ui.text" = { fg = "light-gray" }
+"ui.text.focus" = { fg = "white" }
 "ui.menu" = { fg = "white" }
 "ui.menu.selected" = { modifiers = ["reversed"] }
 "ui.menu.scroll" = { fg = "light-gray" }
