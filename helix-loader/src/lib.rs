@@ -2,6 +2,7 @@ pub mod config;
 pub mod grammar;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
+use std::fs::{create_dir_all, metadata};
 use std::path::{Path, PathBuf};
 
 pub const VERSION_AND_GIT_HASH: &str = env!("VERSION_AND_GIT_HASH");
@@ -14,9 +15,8 @@ static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCe
 pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(|| {
         let config_dir = config_dir();
-
         if !config_dir.exists() {
-            std::fs::create_dir_all(&config_dir).ok();
+            create_dir_all(&config_dir).ok();
         }
 
         config_dir.join("config.toml")
@@ -105,19 +105,50 @@ pub fn runtime_file(rel_path: &Path) -> PathBuf {
     })
 }
 
+/// Determines the path to the configuration directory
+/// if the env var `HELIX_CONFIG_DIR` is set, that will override it
+/// if the dest of either the path or the env var is a symlink
+/// it will attempt to follow it (though not recursively).
 pub fn config_dir() -> PathBuf {
-    // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
-    let mut path = strategy.config_dir();
-    path.push("helix");
+    let mut path: PathBuf = match std::env::var("HELIX_CONFIG_DIR") {
+        Ok(val) => PathBuf::from(val),
+        Err(_) => strategy.config_dir(),
+    };
+    if let Ok(meta_data) = metadata(&path) {
+        if meta_data.is_symlink() {
+            path = path
+                .read_link()
+                .expect("Config dir is a symlink but could not read it's destination");
+        }
+    }
+
+    if Some(Path::new("helix")) != path.parent() {
+        path.push("helix");
+    }
     path
 }
 
+/// Determines the path to the configuration directory
+/// if the env var `HELIX_CONFIG_DIR` is set, that will override it
+/// if the dest of either the path or the env var is a symlink
+/// it will attempt to follow it (though not recursively).
 pub fn cache_dir() -> PathBuf {
-    // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
-    let mut path = strategy.cache_dir();
-    path.push("helix");
+    let mut path: PathBuf = match std::env::var("HELIX_CACHE_DIR") {
+        Ok(val) => PathBuf::from(val),
+        Err(_) => strategy.cache_dir(),
+    };
+    if let Ok(meta_data) = metadata(&path) {
+        if meta_data.is_symlink() {
+            path = path
+                .read_link()
+                .expect("Config dir is a symlink but could not read it's destination");
+        }
+    }
+    if Some(Path::new("helix")) != path.parent() {
+        path.push("helix");
+    }
     path
 }
 
