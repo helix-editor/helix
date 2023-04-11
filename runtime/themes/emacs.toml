@@ -70,6 +70,7 @@
 "ui.selection.primary" = { bg = "lightgoldenrod2" }
 "ui.virtual.whitespace" = "highlight"
 "ui.virtual.ruler" = { bg = "gray95" }
+"ui.virtual.inlay-hint" = { fg = "gray75" }
 "ui.cursorline.primary" = { bg = "darkseagreen2" }
 "ui.cursorline.secondary" = { bg = "darkseagreen2" }
 

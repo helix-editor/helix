@@ -22,7 +22,10 @@
 "namespace" = "blue"
 "markup.heading" = "orange"
 "markup.list" = "yellow"
-"markup.raw.block" = { bg = "gray", fg = "orange" }
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "orange", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.raw.block" = "orange"
 "markup.link.url" = "blue"
 "markup.link.text" = "yellow"
 "markup.link.label" = "green"

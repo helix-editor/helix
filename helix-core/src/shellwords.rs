@@ -294,14 +294,14 @@ mod test {
     #[test]
     fn test_lists() {
         let input =
-            r#":set statusline.center ["file-type","file-encoding"] '["list", "in", "qoutes"]'"#;
+            r#":set statusline.center ["file-type","file-encoding"] '["list", "in", "quotes"]'"#;
         let shellwords = Shellwords::from(input);
         let result = shellwords.words().to_vec();
         let expected = vec![
             Cow::from(":set"),
             Cow::from("statusline.center"),
             Cow::from(r#"["file-type","file-encoding"]"#),
-            Cow::from(r#"["list", "in", "qoutes"]"#),
+            Cow::from(r#"["list", "in", "quotes"]"#),
         ];
         assert_eq!(expected, result);
     }

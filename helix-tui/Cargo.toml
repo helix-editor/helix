@@ -16,7 +16,7 @@ include = ["src/**/*", "README.md"]
 default = ["crossterm"]
 
 [dependencies]
-bitflags = "2.0"
+bitflags = "2.1"
 cassowary = "0.3"
 unicode-segmentation = "1.10"
 crossterm = { version = "0.26", optional = true }

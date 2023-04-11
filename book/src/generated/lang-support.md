@@ -60,6 +60,7 @@
 | heex | ✓ | ✓ |  | `elixir-ls` |
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
+| hurl | ✓ |  | ✓ |  |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | ini | ✓ |  |  |  |
@@ -69,7 +70,7 @@
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
-| julia | ✓ |  |  | `julia` |
+| julia | ✓ | ✓ | ✓ | `julia` |
 | kdl | ✓ |  |  |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |
@@ -117,6 +118,7 @@
 | rego | ✓ |  |  | `regols` |
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
 | rmarkdown | ✓ |  | ✓ | `R` |
+| robot | ✓ |  |  | `robotframework_ls` |
 | ron | ✓ |  | ✓ |  |
 | rst | ✓ |  |  |  |
 | ruby | ✓ | ✓ | ✓ | `solargraph` |
