@@ -2441,7 +2441,7 @@ source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b2325
 name = "cabal"
 scope = "source.cabal"
 file-types = [ "cabal" ]
-roots = [ "cabal.project", "Setup.hs", "*.cabal" ]
+roots = ["cabal.project", "Setup.hs"]
 indent = { tab-width = 2, unit = "  " }
 comment-token = "--"
 
