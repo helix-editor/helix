@@ -25,7 +25,7 @@ use crate::{
     config::Config,
     job::Jobs,
     keymap::Keymaps,
-    ui::{self, overlay::overlayed},
+    ui::{self, overlay::overlaid},
 };
 
 use log::{debug, error, warn};
@@ -169,7 +169,7 @@ impl Application {
                 std::env::set_current_dir(first).context("set current dir")?;
                 editor.new_file(Action::VerticalSplit);
                 let picker = ui::file_picker(".".into(), &config.load().editor);
-                compositor.push(Box::new(overlayed(picker)));
+                compositor.push(Box::new(overlaid(picker)));
             } else {
                 let nr_of_files = args.files.len();
                 for (i, (file, pos)) in args.files.into_iter().enumerate() {
@@ -393,20 +393,23 @@ impl Application {
 
     /// Refresh theme after config change
     fn refresh_theme(&mut self, config: &Config) -> Result<(), Error> {
-        if let Some(theme) = config.theme.clone() {
-            let true_color = self.true_color();
-            let theme = self
-                .theme_loader
-                .load(&theme)
-                .map_err(|err| anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err))?;
+        let true_color = config.editor.true_color || crate::true_color();
+        let theme = config
+            .theme
+            .as_ref()
+            .and_then(|theme| {
+                self.theme_loader
+                    .load(theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| (true_color || theme.is_16_color()))
+            })
+            .unwrap_or_else(|| self.theme_loader.default_theme(true_color));
 
-            if true_color || theme.is_16_color() {
-                self.editor.set_theme(theme);
-            } else {
-                anyhow::bail!("theme requires truecolor support, which is not available")
-            }
-        }
-
+        self.editor.set_theme(theme);
         Ok(())
     }
 
@@ -429,10 +432,6 @@ impl Application {
                 self.editor.set_error(err.to_string());
             }
         }
-    }
-
-    fn true_color(&self) -> bool {
-        self.config.load().editor.true_color || crate::true_color()
     }
 
     #[cfg(windows)]
@@ -1034,8 +1033,7 @@ impl Application {
                                     None => self
                                         .editor
                                         .language_servers
-                                        .get_by_id(server_id)
-                                        .unwrap()
+                                        .get_by_id(server_id)?
                                         .config()?,
                                 };
                                 if let Some(section) = item.section.as_ref() {
