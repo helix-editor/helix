@@ -586,7 +586,8 @@ file-types = ["nix"]
 shebangs = []
 roots = []
 comment-token = "#"
-language-server = { command = "nil" }
+language-server = { command = "rnix-lsp" }
+formatter = { command = "nixpkgs-fmt" }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
