@@ -109,7 +109,7 @@ pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Po
 /// softwrapping positions are estimated with an O(1) algorithm
 /// to ensure consistent performance for large lines (currently unimplemented)
 ///
-/// Usualy you want to use `visual_offset_from_anchor` instead but this function
+/// Usually you want to use `visual_offset_from_anchor` instead but this function
 /// can be useful (and faster) if
 /// * You already know the visual position of the block
 /// * You only care about the horizontal offset (column) and not the vertical offset (row)
@@ -291,7 +291,7 @@ pub fn pos_at_visual_coords(text: RopeSlice, coords: Position, tab_width: usize)
 ///
 /// If no (text) grapheme starts at exactly at the specified column the
 /// start of the grapheme to the left is returned. If there is no grapheme
-/// to the left (for example if the line starts with virtual text) then the positiong
+/// to the left (for example if the line starts with virtual text) then the positioning
 /// of the next grapheme to the right is returned.
 ///
 /// If the `line` coordinate is beyond the end of the file, the EOF

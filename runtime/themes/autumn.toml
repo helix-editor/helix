@@ -26,6 +26,8 @@
 "ui.cursor.primary" = { fg = "my_white", modifiers = ["reversed"] }
 "ui.cursorline.primary" = { bg = "my_black" }
 "ui.cursorline.secondary" = { bg = "my_black" }
+"ui.highlight.frameline" = { bg = "#8b6904" }
+"ui.debug" = { fg = "my_yellow1", bg = "my_gray0" }
 "ui.text" = "my_white"
 "operator" = "my_white"
 "ui.text.focus" = "my_white"

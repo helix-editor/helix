@@ -512,4 +512,10 @@ impl Client {
 
         self.call::<requests::SetExceptionBreakpoints>(args)
     }
+
+    pub fn current_stack_frame(&self) -> Option<&StackFrame> {
+        self.stack_frames
+            .get(&self.thread_id?)?
+            .get(self.active_frame?)
+    }
 }

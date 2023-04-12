@@ -107,6 +107,7 @@
 (null) @constant
 (number_literal) @constant.numeric
 (char_literal) @constant.character
+(escape_sequence) @constant.character.escape
 
 (call_expression
   function: (identifier) @function)
