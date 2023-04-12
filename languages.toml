@@ -2472,3 +2472,16 @@ language-server = { command = "markdoc-ls", args = ["--stdio"] }
 [[grammar]]
 name = "markdoc"
 source = { git = "https://github.com/markdoc-extra/tree-sitter-markdoc", rev = "5ffe71b29e8a3f94823913ea9cea51fcfa7e3bf8" }
+
+[[language]]
+name = "opencl"
+scope = "source.cl"
+injection-regex = "(cl|opencl)"
+file-types = ["cl"]
+roots = []
+comment-token = "//"
+language-server = { command = "clangd" }
+
+[[grammar]]
+name = "opencl"
+source = { git = "https://github.com/lefp/tree-sitter-opencl", rev = "8e1d24a57066b3cd1bb9685bbc1ca9de5c1b78fb" }
