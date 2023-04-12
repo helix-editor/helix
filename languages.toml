@@ -2461,3 +2461,14 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "hurl"
 source = { git = "https://github.com/pfeiferj/tree-sitter-hurl", rev = "264c42064b61ee21abe88d0061f29a0523352e22" }
+
+[[language]]
+name = "markdoc"
+scope = "text.markdoc"
+roots = []
+file-types = ["mdoc"]
+language-server = { command = "markdoc-ls", args = ["--stdio"] }
+
+[[grammar]]
+name = "markdoc"
+source = { git = "https://github.com/markdoc-extra/tree-sitter-markdoc", rev = "5ffe71b29e8a3f94823913ea9cea51fcfa7e3bf8" }

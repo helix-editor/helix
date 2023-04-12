@@ -81,6 +81,7 @@
 | llvm-mir-yaml | ✓ |  | ✓ |  |
 | lua | ✓ | ✓ | ✓ | `lua-language-server` |
 | make | ✓ |  |  |  |
+| markdoc | ✓ |  |  | `markdoc-ls` |
 | markdown | ✓ |  |  | `marksman` |
 | markdown.inline | ✓ |  |  |  |
 | matlab | ✓ |  |  |  |
