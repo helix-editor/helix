@@ -2438,6 +2438,18 @@ name = "nim"
 source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b232550e431d67de250d1b5856209e7f06" }
 
 [[language]]
+name = "cabal"
+scope = "source.cabal"
+file-types = [ "cabal" ]
+roots = ["cabal.project", "Setup.hs"]
+indent = { tab-width = 2, unit = "  " }
+comment-token = "--"
+
+[[grammar]]
+name = "cabal"
+source = { git = "https://gitlab.com/magus/tree-sitter-cabal/", rev = "7d5fa6887ae05a0b06d046f1e754c197c8ad869b" }
+
+[[language]]
 name = "hurl"
 scope = "source.hurl"
 injection-regex = "hurl"
@@ -2449,4 +2461,3 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "hurl"
 source = { git = "https://github.com/pfeiferj/tree-sitter-hurl", rev = "264c42064b61ee21abe88d0061f29a0523352e22" }
-
