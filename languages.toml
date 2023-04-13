@@ -3,101 +3,79 @@
 
 [language-server]
 
-taplo = { command = "taplo", args = ["lsp", "stdio"] }
-elixir-ls = { command = "elixir-ls", config = { elixirLS.dialyzerEnabled = false } }
-mint = { command = "mint", args = ["ls"] }
-vscode-json-language-server =  { command = "vscode-json-language-server", args = ["--stdio"], config = { provideFormatter = true } }
-clangd = { command = "clangd" }
-crystalline = { command = "crystalline", args = ["--stdio"] }
-omnisharp = { command = "OmniSharp", args = [ "--languageserver" ] }
-vscode-css-language-server = { command = "vscode-css-language-server", args = ["--stdio"], config = { "provideFormatter" = true }}
-vscode-html-language-server = { command = "vscode-html-language-server", args = ["--stdio"], config = { provideFormatter = true } }
-pylsp = { command = "pylsp" }
-nls = { command = "nls" }
-nil = { command = "nil" }
-solargraph = { command = "solargraph", args = ["stdio"] }
+awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
-intelephense = { command = "intelephense", args = ["--stdio"] }
-texlab = { command = "texlab" }
-lean = { command = "lean", args = [ "--server" ] }
-julia = { command = "julia", timeout = 60, args = [
-    "--startup-file=no",
-    "--history-file=no",
-    "--quiet",
-    "-e",
-    "using LanguageServer; runserver()",
-] }
-jdtls = { command = "jdtls" }
-ocamllsp = { command = "ocamllsp" }
-
-svelteserver = { command = "svelteserver", args = ["--stdio"] }
-vuels = { command = "vls" }
-yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
-haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
-zls = { command = "zls" }
-swipl = { command = "swipl", args = [
-    "-g", "use_module(library(lsp_server))",
-    "-g", "lsp_server:main",
-    "-t", "halt", "--", "stdio"
-] }
-cmake-language-server = { command = "cmake-language-server" }
-racket = { command = "racket", args = ["-l", "racket-langserver"] }
-dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
-metals = { command = "metals", config = { "isHttpEnabled" = true } }
-docker-langserver = { command = "docker-langserver", args = ["--stdio"] }
-elm-language-server = { command = "elm-language-server" }
-rescript-language-server = { command = "rescript-language-server", args = ["--stdio"] }
-robotframework_ls = { command = "robotframework_ls" }
-erlang-ls = { command = "erlang_ls" }
-kotlin-language-server = { command = "kotlin-language-server" }
-terraform-ls = { command = "terraform-ls", args = ["serve"] }
-solc = { command = "solc", args = ["--lsp"] }
-R = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
-sourcekit-lsp = { command = "sourcekit-lsp" }
-vala-language-server = { command = "vala-language-server" }
-svlangserver = { command = "svlangserver", args = [] }
-vlang-language-server = { command = "v", args = ["ls"] }
-openscad-lsp = { command = "openscad-lsp", args = ["--stdio"] }
-perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
-prisma-language-server = { command = "prisma-language-server", args = ["--stdio"] }
+bass = { command = "bass", args = ["--lsp"] }
+bicep-langserver = { command = "bicep-langserver" }
+cl-lsp = { command = "cl-lsp", args = [ "stdio" ] }
+clangd = { command = "clangd" }
 clojure-lsp = { command = "clojure-lsp" }
-wgsl_analyzer = { command = "wgsl_analyzer" }
+cmake-language-server = { command = "cmake-language-server" }
+crystalline = { command = "crystalline", args = ["--stdio"] }
+cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
+cuelsp = { command = "cuelsp" }
+dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
+dhall-lsp-server = { command = "dhall-lsp-server" }
+docker-langserver = { command = "docker-langserver", args = ["--stdio"] }
+dot-language-server = { command = "dot-language-server", args = ["--stdio"] }
+elixir-ls = { command = "elixir-ls", config = { elixirLS.dialyzerEnabled = false } }
+elm-language-server = { command = "elm-language-server" }
 elvish = { command = "elvish", args = ["-lsp"] }
-idris2-lsp = { command = "idris2-lsp" }
+erlang-ls = { command = "erlang_ls" }
+forc = { command = "forc", args = ["lsp"] }
 fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
 gleam = { command = "gleam", args = ["lsp"] }
-ols = { command = "ols", args = [] }
-dot-language-server = { command = "dot-language-server", args = ["--stdio"] }
-cuelsp = { command = "cuelsp" }
-slint-lsp = { command = "slint-lsp", args = [] }
-awk-language-server = { command = "awk-language-server" }
-pasls = { command = "pasls", args = [] }
+haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
+idris2-lsp = { command = "idris2-lsp" }
+intelephense = { command = "intelephense", args = ["--stdio"] }
+jdtls = { command = "jdtls" }
 jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
-marksman = { command = "marksman", args = ["server"] }
+julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
+kotlin-language-server = { command = "kotlin-language-server" }
+lean = { command = "lean", args = [ "--server" ] }
 markdoc-ls = { command = "markdoc-ls", args = ["--stdio"] }
-bass = { command = "bass", args = ["--lsp"] }
-purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
-serve-d = { command = "serve-d" }
-bicep-langserver = { command = "bicep-langserver" }
-qmlls = { command = "qmlls" }
-cl-lsp = { command = "cl-lsp", args = [ "stdio" ] }
-dhall-lsp-server = { command = "dhall-lsp-server" }
-forc = { command = "forc", args = ["lsp"] }
-cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
-vhdl_ls = { command = "vhdl_ls", args = [] }
-regols = { command = "regols" }
+marksman = { command = "marksman", args = ["server"] }
+metals = { command = "metals", config = { "isHttpEnabled" = true } }
+mint = { command = "mint", args = ["ls"] }
+nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
-
-[language-server.rust-analyzer]
-command = "rust-analyzer"
-
-[language-server.rust-analyzer.config]
-inlayHints.bindingModeHints.enable = false
-inlayHints.closingBraceHints.minLines = 10
-inlayHints.closureReturnTypeHints.enable = "with_block"
-inlayHints.discriminantHints.enable = "fieldless"
-inlayHints.lifetimeElisionHints.enable = "skip_trivial"
-inlayHints.typeHints.hideClosureInitialization = false
+nls = { command = "nls" }
+ocamllsp = { command = "ocamllsp" }
+ols = { command = "ols", args = [] }
+omnisharp = { command = "OmniSharp", args = [ "--languageserver" ] }
+openscad-lsp = { command = "openscad-lsp", args = ["--stdio"] }
+pasls = { command = "pasls", args = [] }
+perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
+prisma-language-server = { command = "prisma-language-server", args = ["--stdio"] }
+purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
+pylsp = { command = "pylsp" }
+qmlls = { command = "qmlls" }
+r = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
+racket = { command = "racket", args = ["-l", "racket-langserver"] }
+regols = { command = "regols" }
+rescript-language-server = { command = "rescript-language-server", args = ["--stdio"] }
+robotframework_ls = { command = "robotframework_ls" }
+serve-d = { command = "serve-d" }
+slint-lsp = { command = "slint-lsp", args = [] }
+solargraph = { command = "solargraph", args = ["stdio"] }
+solc = { command = "solc", args = ["--lsp"] }
+sourcekit-lsp = { command = "sourcekit-lsp" }
+svelteserver = { command = "svelteserver", args = ["--stdio"] }
+svlangserver = { command = "svlangserver", args = [] }
+swipl = { command = "swipl", args = [ "-g", "use_module(library(lsp_server))", "-g", "lsp_server:main", "-t", "halt", "--", "stdio" ] }
+taplo = { command = "taplo", args = ["lsp", "stdio"] }
+terraform-ls = { command = "terraform-ls", args = ["serve"] }
+texlab = { command = "texlab" }
+vala-language-server = { command = "vala-language-server" }
+vhdl_ls = { command = "vhdl_ls", args = [] }
+vlang-language-server = { command = "v", args = ["ls"] }
+vscode-css-language-server = { command = "vscode-css-language-server", args = ["--stdio"], config = { "provideFormatter" = true }}
+vscode-html-language-server = { command = "vscode-html-language-server", args = ["--stdio"], config = { provideFormatter = true } }
+vscode-json-language-server =  { command = "vscode-json-language-server", args = ["--stdio"], config = { provideFormatter = true } }
+vuels = { command = "vls" }
+wgsl_analyzer = { command = "wgsl_analyzer" }
+yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
+zls = { command = "zls" }
 
 
 [language-server.lua-language-server]
@@ -122,6 +100,18 @@ constantValues = true
 functionTypeParameters = true
 parameterNames = true
 rangeVariableTypes = true
+
+
+[language-server.rust-analyzer]
+command = "rust-analyzer"
+
+[language-server.rust-analyzer.config]
+inlayHints.bindingModeHints.enable = false
+inlayHints.closingBraceHints.minLines = 10
+inlayHints.closureReturnTypeHints.enable = "with_block"
+inlayHints.discriminantHints.enable = "fieldless"
+inlayHints.lifetimeElisionHints.enable = "skip_trivial"
+inlayHints.typeHints.hideClosureInitialization = false
 
 
 [language-server.typescript-language-server]
@@ -1528,7 +1518,7 @@ shebangs = ["r", "R"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-language-servers = [ "R" ]
+language-servers = [ "r" ]
 
 [[grammar]]
 name = "r"
@@ -1542,7 +1532,7 @@ file-types = ["rmd", "Rmd"]
 roots = []
 indent = { tab-width = 2, unit = "  " }
 grammar = "markdown"
-language-servers = [ "R" ]
+language-servers = [ "r" ]
 
 [[language]]
 name = "swift"
