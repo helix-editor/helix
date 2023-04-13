@@ -31,7 +31,7 @@
 
 (expression 
     (condition) @function.inside
-) @functio.around
+) @function.around
 (expression 
     if:(expression) @function.inside 
 )
