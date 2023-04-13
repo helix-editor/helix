@@ -1,46 +1,46 @@
 (body) @function.inside
-(recipe) @function.outer
+(recipe) @function.around
 (expression 
-    if:(expression) @function.inner 
+    if:(expression) @function.inside 
 ) 
 (expression 
-    else:(expression) @function.inner
+    else:(expression) @function.inside
 ) 
-(interpolation (expression) @function.inner) @function.outer
-(settinglist (stringlist) @function.inner) @function.outer
+(interpolation (expression) @function.inside) @function.around
+(settinglist (stringlist) @function.inside) @function.around
 
-(call (NAME) @class.inner) @class.outer
-(dependency (NAME) @class.inner) @class.outer
-(depcall (NAME) @class.inner)
+(call (NAME) @class.inside) @class.around
+(dependency (NAME) @class.inside) @class.around
+(depcall (NAME) @class.inside)
 
-(dependency) @parameter.outer
-(depcall) @parameter.inner
-(depcall (expression) @parameter.inner) 
+(dependency) @parameter.around
+(depcall) @parameter.inside
+(depcall (expression) @parameter.inside) 
 
 (stringlist 
-    (string) @parameter.inner
+    (string) @parameter.inside
     . ","? @_end
-    (#make-range! "parameter.outer" @parameter.inner @_end)
+    (#make-range! "parameter.around" @parameter.inside @_end)
 )
 (parameters 
     [(parameter) 
-    (variadic_parameters)] @parameter.inner
+    (variadic_parameters)] @parameter.inside
     . " "? @_end
-    (#make-range! "parameter.outer" @parameter.inner @_end)
+    (#make-range! "parameter.around" @parameter.inside @_end)
 )
 
 (expression 
-    (condition) @function.inner
-) @functio.outer
+    (condition) @function.inside
+) @functio.around
 (expression 
-    if:(expression) @function.inner 
+    if:(expression) @function.inside 
 )
 (expression 
-    else:(expression) @function.inner
+    else:(expression) @function.inside
 )
 
-(item [(alias) (assignment) (export) (setting)]) @class.outer
-(recipeheader) @class.outer
-(line) @class.outer
+(item [(alias) (assignment) (export) (setting)]) @class.around
+(recipeheader) @class.around
+(line) @class.around
 
-(comment) @comment.outer
+(comment) @comment.around
