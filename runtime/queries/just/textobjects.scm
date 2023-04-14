@@ -20,13 +20,15 @@
 (stringlist 
     (string) @parameter.inside
     . ","? @_end
-    (#make-range! "parameter.around" @parameter.inside @_end)
+    ; Commented out since we don't support `#make-range!` at the moment
+    ; (#make-range! "parameter.around" @parameter.inside @_end)
 )
 (parameters 
     [(parameter) 
     (variadic_parameters)] @parameter.inside
     . " "? @_end
-    (#make-range! "parameter.around" @parameter.inside @_end)
+    ; Commented out since we don't support `#make-range!` at the moment
+    ; (#make-range! "parameter.around" @parameter.inside @_end)
 )
 
 (expression 
