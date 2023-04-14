@@ -12,7 +12,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer};
 use toml::{map::Map, Value};
 
-use crate::graphics::UnderlineStyle;
+use crate::graphics::{BorderStyle, UnderlineStyle};
 pub use crate::graphics::{Color, Modifier, Style};
 
 pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
@@ -313,6 +313,16 @@ impl Theme {
             .find_map(|s| self.styles.get(s).copied())
     }
 
+    /// Extract a value from a style in a scope, falling back to dot seperated
+    /// broader scopes.
+    pub fn try_extract<R, F>(&self, scope: &str, f: F) -> Option<R>
+    where
+        F: Fn(&Style) -> Option<R>,
+    {
+        std::iter::successors(Some(scope), |s| Some(s.rsplit_once('.')?.0))
+            .find_map(|s| f(self.styles.get(s)?))
+    }
+
     /// Get the style of a scope, without falling back to dot separated broader
     /// scopes. For example if `ui.text.focus` is not defined in the theme, it
     /// will return `None`, even if `ui.text` is.
@@ -427,6 +437,13 @@ impl ThemePalette {
             .ok_or(format!("Theme: invalid modifier: {}", value))
     }
 
+    pub fn parse_border_style(value: &Value) -> Result<BorderStyle, String> {
+        value
+            .as_str()
+            .and_then(|s| s.parse().ok())
+            .ok_or(format!("Theme: invalid border style: {}", value))
+    }
+
     pub fn parse_underline_style(value: &Value) -> Result<UnderlineStyle, String> {
         value
             .as_str()
@@ -471,6 +488,7 @@ impl ThemePalette {
                             }
                         }
                     }
+                    "border" => *style = style.border_style(Self::parse_border_style(&value)?),
                     _ => return Err(format!("Theme: invalid style attribute: {}", name)),
                 }
             }

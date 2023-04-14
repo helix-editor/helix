@@ -303,6 +303,30 @@ impl From<Color> for crossterm::style::Color {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BorderStyle {
+    None,
+    Plain,
+    Rounded,
+    Double,
+    Thick,
+}
+
+impl FromStr for BorderStyle {
+    type Err = &'static str;
+
+    fn from_str(style: &str) -> Result<Self, Self::Err> {
+        match style {
+            "none" => Ok(Self::None),
+            "plain" => Ok(Self::Plain),
+            "rounded" => Ok(Self::Rounded),
+            "double" => Ok(Self::Double),
+            "thick" => Ok(Self::Thick),
+            _ => Err("Invalid underline style"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnderlineStyle {
     Reset,
     Line,
@@ -456,6 +480,7 @@ pub struct Style {
     pub underline_style: Option<UnderlineStyle>,
     pub add_modifier: Modifier,
     pub sub_modifier: Modifier,
+    pub border_style: Option<BorderStyle>,
 }
 
 impl Default for Style {
@@ -467,6 +492,7 @@ impl Default for Style {
             underline_style: None,
             add_modifier: Modifier::empty(),
             sub_modifier: Modifier::empty(),
+            border_style: None,
         }
     }
 }
@@ -481,6 +507,7 @@ impl Style {
             underline_style: None,
             add_modifier: Modifier::empty(),
             sub_modifier: Modifier::all(),
+            border_style: None,
         }
     }
 
@@ -581,6 +608,11 @@ impl Style {
     pub fn remove_modifier(mut self, modifier: Modifier) -> Style {
         self.add_modifier.remove(modifier);
         self.sub_modifier.insert(modifier);
+        self
+    }
+
+    pub fn border_style(mut self, border_style: BorderStyle) -> Style {
+        self.border_style = Some(border_style);
         self
     }
 

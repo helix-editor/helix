@@ -1,8 +1,8 @@
 use crate::compositor::{Component, Context};
-use helix_view::graphics::{Margin, Rect};
+use helix_view::graphics::{BorderStyle, Margin, Rect};
 use helix_view::info::Info;
 use tui::buffer::Buffer as Surface;
-use tui::widgets::{Block, Borders, Paragraph, Widget};
+use tui::widgets::{Block, BorderType, Borders, Paragraph, Widget};
 
 impl Component for Info {
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
@@ -22,10 +22,25 @@ impl Component for Info {
         ));
         surface.clear_with(area, popup_style);
 
-        let block = Block::default()
-            .title(self.title.as_str())
-            .borders(Borders::ALL)
-            .border_style(popup_style);
+        let border_style = popup_style.border_style.unwrap_or(BorderStyle::Plain);
+
+        let block = if let BorderStyle::None = border_style {
+            Block::default().title(self.title.as_str())
+        } else {
+            let border_type = match border_style {
+                BorderStyle::Plain => BorderType::Plain,
+                BorderStyle::Rounded => BorderType::Rounded,
+                BorderStyle::Double => BorderType::Double,
+                BorderStyle::Thick => BorderType::Thick,
+                _ => unreachable!(),
+            };
+
+            Block::default()
+                .title(self.title.as_str())
+                .borders(Borders::ALL)
+                .border_style(popup_style)
+                .border_type(border_type)
+        };
 
         let margin = Margin::horizontal(1);
         let inner = block.inner(area).inner(&margin);
