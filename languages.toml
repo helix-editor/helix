@@ -2399,7 +2399,7 @@ file-types = ["smithy"]
 roots = ["smithy-build.json"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
-language-server = { command = "cs", args = ["launch", "com.disneystreaming.smithy:smithy-language-server:latest.release", "--", "0"] }
+language-server = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
 
 [[grammar]]
 name = "smithy"
