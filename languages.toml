@@ -1711,17 +1711,9 @@ comment-token = "%%"
 indent = { tab-width = 4, unit = "    " }
 language-servers = [ "erlang-ls" ]
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-"'" = "'"
-'`' = "'"
-
 [[grammar]]
 name = "erlang"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "731e50555a51f0d8635992b0e60dc98cc47a58d7" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "9d4b36a76d5519e3dbf1ec4f4b61bb1a293f584c" }
 
 [[language]]
 name = "kotlin"
