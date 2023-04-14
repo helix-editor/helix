@@ -978,8 +978,8 @@ source = { git = "https://github.com/uyha/tree-sitter-cmake", rev = "6e51463ef30
 [[language]]
 name = "make"
 scope = "source.make"
-file-types = ["Makefile", "makefile", "mk", "Justfile", "justfile", ".justfile"]
-injection-regex = "(make|makefile|Makefile|mk|just)"
+file-types = ["Makefile", "makefile", "mk"]
+injection-regex = "(make|makefile|Makefile|mk)"
 roots = []
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -2505,3 +2505,16 @@ language-server = { command = "clangd" }
 [[grammar]]
 name = "opencl"
 source = { git = "https://github.com/lefp/tree-sitter-opencl", rev = "8e1d24a57066b3cd1bb9685bbc1ca9de5c1b78fb" }
+
+[[language]]
+name = "just"
+scope = "source.just"
+file-types = ["justfile", "Justfile", "just"]
+injection-regex = "just"
+roots = []
+comment-token = "#"
+indent = { tab-width = 4, unit = "\t" }
+
+[[grammar]]
+name = "just"
+source = { git = "https://github.com/IndianBoy42/tree-sitter-just", rev = "8af0aab79854aaf25b620a52c39485849922f766" }
