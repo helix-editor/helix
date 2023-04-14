@@ -22,7 +22,14 @@ impl Component for Info {
         ));
         surface.clear_with(area, popup_style);
 
-        let border_style = popup_style.border_style.unwrap_or(BorderStyle::Plain);
+        // try to extract a border style from the ui.popup.info scope
+        let border_style = cx
+            .editor
+            .theme
+            .try_extract("ui.popup.info", |s| s.border_style);
+
+        // fallback to our default border style
+        let border_style = border_style.unwrap_or(BorderStyle::Plain);
 
         let block = if let BorderStyle::None = border_style {
             Block::default().title(self.title.as_str())
