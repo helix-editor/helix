@@ -1,83 +1,142 @@
 # Author : Sebastian Zivota <loewenheim@mailbox.org>
-"comment" = { fg = "comment" }
-"constant" = { fg = "purple" }
-"constant.character.escape" = { fg = "pink" }
-"function" = { fg = "green" }
-"keyword" = { fg = "pink" }
-"operator" = { fg = "pink" }
-"punctuation" = { fg = "foreground" }
-"string" = { fg = "yellow" }
-"string.regexp" = { fg = "red" }
-"tag" = { fg = "pink" }
-"type" = { fg = "cyan", modifiers = ["italic"] }
-"type.enum.variant" = { fg = "foreground", modifiers = ["italic"] }
-"variable" = { fg = "foreground" }
-"variable.builtin" = { fg = "cyan", modifiers = ["italic"] }
-"variable.parameter" = { fg ="orange", modifiers = ["italic"] }
+# Author : Chirikumbrah
 
-"diff.plus" = { fg = "green" }
-"diff.delta" = { fg = "orange" }
-"diff.minus" = { fg = "red" }
+"annotation"                = { fg = "white"                           }
+"attribute"                 = { fg = "cyan"                            }
+"comment"                   = { fg = "comment"                         }
+"constant"                  = { fg = "purple"                          }
+"constant.numeric"          = { fg = "orange"                          }
+"constant.builtin"          = { fg = "orange"                          }
+"constant.character.escape" = { fg = "pink"                            }
+"constant.macro"            = { fg = "purple"                          }
+"constructor"               = { fg = "cyan"                            }
+"conditional"               = { fg = "pink"                            }
+"character"                 = { fg = "purple"                          }
+"definition".underline      = { sp = "cyan"                            }
+"field.key"                 = { fg = "purple"                          }
+"field"                     = { fg = "purple"                          }
+"function"                  = { fg = "green"                           }
+"function.builtin"          = { fg = "green"                           }
+"function.method"           = { fg = "green"                           }
+"function.macro"            = { fg = "purple"                          }
+"function.call"             = { fg = "green"                           }
+"keyword"                   = { fg = "pink"                            }
+"keyword.operator"          = { fg = "pink"                            }
+"keyword.function"          = { fg = "pink"                            }
+"keyword.return"            = { fg = "pink"                            }
+"keyword.control.import"    = { fg = "green"                           }
+"keyword.directive"         = { fg = "green"                           }
+"keyword.control.repeat"    = { fg = "cyan"                            }
+"keyword.control.exception" = { fg = "purple"                          }
+"keyword.storage.type"      = { fg = "cyan"                            }
+"keyword.storage.modifier"  = { fg = "cyan"                            }
+"method.call"               = { fg = "green"                           }
+"reference"                 = { fg = "grey"                            }
+"special"                   = { fg = "orange"                          }
+"symbol"                    = { fg = "yellow"                          }
+"tag.attribute"             = { fg = "purple"                          }
+"tag.delimiter"             = { fg = "white"                           }
+"operator"                  = { fg = "pink"                            }
+"label"                     = { fg = "cyan"                            }
+"punctuation"               = { fg = "white"                           }
+"punctuation.bracket"       = { fg = "white"                           }
+"punctuation.delimiter"     = { fg = "white"                           }
+"punctuation.special"       = { fg = "purple"                          }
+"string"                    = { fg = "yellow"                          }
+"string.regexp"             = { fg = "cyan"                            }
+"string.escape"             = { fg = "cyan"                            }
+"string.special"            = { fg = "cyan"                            }
+"tag"                       = { fg = "pink"                            }
+"text"                      = { fg = "grey"                            }
+"text.strong"               = {                modifiers = "bold"      }
+"text.emphasis"             = { fg = "orange"                          }
+"text.strike"               = { fg = "white"                           }
+"text.literal"              = { fg = "orange"                          }
+"text.uri".underline        = { fg = "orange"                          }
+"type.builtin"              = { fg = "cyan",   modifiers = ["italic"]  }
+"type"                      = { fg = "cyan",   modifiers = ["italic"]  }
+"type.enum.variant"         = { fg = "white",  modifiers = ["italic"]  }
+"property"                  = { fg = "purple"                          }
+"structure"                 = { fg = "purple"                          }
+"scope"                     = {                modifiers = "bold"      }
+"variable"                  = { fg = "purple"                          }
+"variable.builtin"          = { fg = "orange", modifiers = ["italic"]  }
+"variable.parameter"        = { fg = "purple", modifiers = ["italic"]  }
+"parameter"                 = { fg = "orange"                          }
 
-"ui.background" = { fg = "foreground", bg = "background" }
-"ui.cursor" =  { fg = "background", bg = "orange", modifiers = ["dim"] }
-"ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
-"ui.cursor.primary" = { fg = "background", bg = "cyan", modifiers = ["dim"] }
-"ui.cursorline.primary" = { bg = "background_dark" }
-"ui.help" = { fg = "foreground", bg = "background_dark" }
-"ui.debug" = { fg = "red" }
-"ui.highlight.frameline" = { fg = "black", bg = "red" }
-"ui.linenr" = { fg = "comment" }
-"ui.linenr.selected" = { fg = "foreground" }
-"ui.menu" = { fg = "foreground", bg = "background_dark" }
-"ui.menu.selected" = { fg = "cyan", bg = "background_dark" }
-"ui.popup" = { fg = "foreground", bg = "background_dark" }
-"ui.selection" = { bg = "secondary_highlight" }
-"ui.selection.primary" = { bg = "primary_highlight" }
-"ui.statusline" = { fg = "foreground", bg = "background_dark" }
-"ui.statusline.inactive" = { fg = "comment", bg = "background_dark" }
-"ui.statusline.normal" = { fg = "background_dark", bg = "cyan" }
-"ui.statusline.insert" = { fg = "background_dark", bg = "green" }
-"ui.statusline.select" = { fg = "background_dark", bg = "purple" }
-"ui.text" = { fg = "foreground" }
-"ui.text.focus" = { fg = "cyan" }
-"ui.window" = { fg = "foreground" }
-"ui.virtual.whitespace" = { fg = "subtle" }
-"ui.virtual.wrap" = { fg = "subtle" }
-"ui.virtual.ruler" = { bg = "background_dark"}
-"ui.virtual.inlay-hint" = { fg = "comment" }
-"ui.virtual.inlay-hint.parameter" = { fg = "comment", modifiers = ["italic"] }
-"ui.virtual.inlay-hint.type" = { fg = "comment", modifiers = ["italic"] }
 
-"error" = { fg = "red" }
-"warning" = { fg = "cyan" }
+"diff.plus"                       = { fg    = "green"                                                       }
+"diff.delta"                      = { fg    = "orange"                                                      }
+"diff.minus"                      = { fg    = "red"                                                         }
+"ui.background"                   = { fg    = "white",           bg = "background"                          }
+"ui.cursor.match"                 = { fg    = "white",           bg = "grey"                                }
+"ui.cursor"                       = { fg    = "background",      bg = "purple",         modifiers = ["dim"] }
+"ui.cursor.normal"                = { fg    = "background",      bg = "purple",         modifiers = ["dim"] }	
+"ui.cursor.insert"                = { fg    = "background",      bg = "green",          modifiers = ["dim"] }	
+"ui.cursor.select"                = { fg    = "background",      bg = "cyan",           modifiers = ["dim"] }
+"ui.cursor.primary.normal"        = { fg    = "background",      bg = "purple"                              }	
+"ui.cursor.primary.insert"        = { fg    = "background",      bg = "green"                               }	
+"ui.cursor.primary.select"        = { fg    = "background",      bg = "cyan"                                }
+"ui.cursorline.primary"           = {                            bg = "cursorline"                          }
+"ui.help"                         = { fg    = "white",           bg = "black"                               }
+"ui.debug"                        = { fg    = "red"                                                         }
+"ui.highlight.frameline"          = { fg    = "background",      bg = "red"                                 }
+"ui.linenr"                       = { fg    = "comment"                                                     }
+"ui.linenr.selected"              = { fg    = "white"                                                       }
+"ui.menu"                         = { fg    = "white",           bg = "black"                               }
+"ui.menu.selected"                = { fg    = "cyan",            bg = "black"                               }
+"ui.popup"                        = { fg    = "white",           bg = "black"                               }
+"ui.selection.primary"            = {                            bg = "selection_primary"                   }
+"ui.selection"                    = {                            bg = "selection"                           }
+"ui.statusline"                   = { fg    = "white",           bg = "darker"                              }
+"ui.statusline.inactive"          = { fg    = "comment",         bg = "darker"                              }
+"ui.statusline.normal"            = { fg    = "black",           bg = "purple"                              }
+"ui.statusline.insert"            = { fg    = "black",           bg = "green"                               }
+"ui.statusline.select"            = { fg    = "black",           bg = "cyan"                                }
+"ui.text"                         = { fg    = "white"                                                       }
+"ui.text.focus"                   = { fg    = "cyan"                                                        }
+"ui.window"                       = { fg    = "white"                                                       }
+"ui.virtual.whitespace"           = { fg    = "subtle"                                                      }
+"ui.virtual.wrap"                 = { fg    = "subtle"                                                      }
+"ui.virtual.ruler"                = { bg    = "black"                                                       }
+"ui.virtual.inlay-hint"           = { fg    = "cyan"                                                        }
+"ui.virtual.inlay-hint.parameter" = { fg    = "cyan",            modifiers = ["italic", "dim"]              }
+"ui.virtual.inlay-hint.type"      = { fg    = "cyan",            modifiers = ["italic", "dim"]              }
+"hint"                            = { fg    = "purple"                                                      }
+"error"                           = { fg    = "red"                                                         }
+"warning"                         = { fg    = "yellow"                                                      }
+"info"                            = { fg    = "cyan"                                                        }
+"markup.heading"                  = { fg    = "purple",          modifiers = ["bold"]                       }
+"markup.list"                     = { fg    = "cyan"                                                        }
+"markup.bold"                     = { fg    = "orange",          modifiers = ["bold"]                       }
+"markup.italic"                   = { fg    = "yellow",          modifiers = ["italic"]                     }
+"markup.strikethrough"            = {                            modifiers = ["crossed_out"]                }
+"markup.link.url"                 = { fg    = "cyan"                                                        }
+"markup.link.text"                = { fg    = "pink"                                                        }
+"markup.quote"                    = { fg    = "yellow",          modifiers = ["italic"]                     }
+"markup.raw"                      = { fg    = "white"                                                       }
+"diagnostic"                      = { underline = { color = "orange",          style = "curl"             } }
+"diagnostic.hint"                 = { underline = { color = "purple",          style = "curl"             } }
+"diagnostic.warning"              = { underline = { color = "yellow",          style = "curl"             } }
+"diagnostic.error"                = { underline = { color = "red",             style = "curl"             } }
+"diagnostic.info"                 = { underline = { color = "cyan",            style = "curl"             } }
 
-"markup.heading" = { fg = "purple", modifiers = ["bold"] }
-"markup.list" = "cyan"
-"markup.bold" = { fg = "orange", modifiers = ["bold"] }
-"markup.italic" = { fg = "yellow", modifiers = ["italic"] }
-"markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.link.url" = "cyan"
-"markup.link.text" = "pink"
-"markup.quote" = { fg = "yellow", modifiers = ["italic"] }
-"markup.raw" = { fg = "foreground" }
-
-"diagnostic".underline = { color = "orange", style = "curl" }
-"diagnostic.error".underline = { color = "red", style = "curl" }
 
 [palette]
-background = "#282a36"
-background_dark = "#21222c"
-primary_highlight = "#800049"
-secondary_highlight = "#4d4f66"
-subtle = "#424450"
-foreground = "#f8f8f2"
-comment = "#6272a4"
-red = "#ff5555"
-orange = "#ffb86c"
-yellow = "#f1fa8c"
-green = "#50fa7b"
-purple = "#bd93f9"
-cyan = "#8be9fd"
-pink = "#ff79c6"
-
+background          = "#282A36"
+cursorline          = "#2d303e"
+darker              = "#222430"
+black               = "#191A21"
+grey                = "#666771"
+comment             = "#6272A4"
+selection_primary   = "#44475a"
+selection           = "#363848"
+subtle              = "#424450"
+white               = "#f8f8f2"
+red                 = "#ff5555"
+orange              = "#ffb86c" 
+yellow              = "#f1fa8c" 
+green               = "#50fa7b" 
+purple              = "#BD93F9" 
+cyan                = "#8be9fd"
+pink                = "#ff79c6" 

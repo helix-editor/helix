@@ -9,6 +9,7 @@
 | bicep | ✓ |  |  | `bicep-langserver` |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
+| cabal | ✓ |  |  |  |
 | cairo | ✓ |  |  |  |
 | capnp | ✓ |  | ✓ |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
@@ -27,6 +28,7 @@
 | diff | ✓ |  |  |  |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | dot | ✓ |  |  | `dot-language-server` |
+| dtd | ✓ |  |  |  |
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
@@ -80,6 +82,7 @@
 | llvm-mir-yaml | ✓ |  | ✓ |  |
 | lua | ✓ | ✓ | ✓ | `lua-language-server` |
 | make | ✓ |  |  |  |
+| markdoc | ✓ |  |  | `markdoc-ls` |
 | markdown | ✓ |  |  | `marksman` |
 | markdown.inline | ✓ |  |  |  |
 | matlab | ✓ |  |  |  |
@@ -95,6 +98,7 @@
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
 | odin | ✓ |  |  | `ols` |
+| opencl | ✓ | ✓ | ✓ | `clangd` |
 | openscad | ✓ |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |
 | pascal | ✓ | ✓ |  | `pasls` |
