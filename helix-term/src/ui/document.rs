@@ -118,7 +118,7 @@ pub fn render_document(
 
 fn translate_positions(
     char_pos: usize,
-    first_visisble_char_idx: usize,
+    first_visible_char_idx: usize,
     translated_positions: &mut [TranslatedPosition],
     text_fmt: &TextFormat,
     renderer: &mut TextRenderer,
@@ -126,7 +126,7 @@ fn translate_positions(
 ) {
     // check if any positions translated on the fly (like cursor) has been reached
     for (char_idx, callback) in &mut *translated_positions {
-        if *char_idx < char_pos && *char_idx >= first_visisble_char_idx {
+        if *char_idx < char_pos && *char_idx >= first_visible_char_idx {
             // by replacing the char_index with usize::MAX large number we ensure
             // that the same position is only translated once
             // text will never reach usize::MAX as rust memory allocations are limited
@@ -259,7 +259,7 @@ pub fn render_text<'t>(
             }
         }
 
-        // aquire the correct grapheme style
+        // acquire the correct grapheme style
         if char_pos >= style_span.1 {
             style_span = styles.next().unwrap_or((Style::default(), usize::MAX));
         }
@@ -404,7 +404,7 @@ impl<'a> TextRenderer<'a> {
         let cut_off_start = self.col_offset.saturating_sub(position.col);
         let is_whitespace = grapheme.is_whitespace();
 
-        // TODO is it correct to apply the whitspace style to all unicode white spaces?
+        // TODO is it correct to apply the whitespace style to all unicode white spaces?
         if is_whitespace {
             style = style.patch(self.whitespace_style);
         }

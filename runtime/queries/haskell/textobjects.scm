@@ -2,7 +2,7 @@
 
 [
   (adt)
-  (decl_type)
+  (type_alias)
   (newtype)
 ] @class.around
 

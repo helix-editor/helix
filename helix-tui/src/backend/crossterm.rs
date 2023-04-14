@@ -78,21 +78,20 @@ where
     }
 
     #[inline]
-    fn supports_keyboard_enhancement_protocol(&self) -> io::Result<bool> {
-        self.supports_keyboard_enhancement_protocol
-            .get_or_try_init(|| {
+    fn supports_keyboard_enhancement_protocol(&self) -> bool {
+        *self.supports_keyboard_enhancement_protocol
+            .get_or_init(|| {
                 use std::time::Instant;
 
                 let now = Instant::now();
-                let support = terminal::supports_keyboard_enhancement();
+                let supported = matches!(terminal::supports_keyboard_enhancement(), Ok(true));
                 log::debug!(
                     "The keyboard enhancement protocol is {}supported in this terminal (checked in {:?})",
-                    if matches!(support, Ok(true)) { "" } else { "not " },
+                    if supported { "" } else { "not " },
                     Instant::now().duration_since(now)
                 );
-                support
+                supported
             })
-            .copied()
     }
 }
 
@@ -125,7 +124,7 @@ where
         if config.enable_mouse_capture {
             execute!(self.buffer, EnableMouseCapture)?;
         }
-        if self.supports_keyboard_enhancement_protocol()? {
+        if self.supports_keyboard_enhancement_protocol() {
             execute!(
                 self.buffer,
                 PushKeyboardEnhancementFlags(
@@ -143,7 +142,7 @@ where
         if config.enable_mouse_capture {
             execute!(self.buffer, DisableMouseCapture)?;
         }
-        if self.supports_keyboard_enhancement_protocol()? {
+        if self.supports_keyboard_enhancement_protocol() {
             execute!(self.buffer, PopKeyboardEnhancementFlags)?;
         }
         execute!(
@@ -345,9 +344,9 @@ impl ModifierDiff {
     }
 }
 
-/// Crossterm uses semicolon as a seperator for colors
-/// this is actually not spec compliant (altough commonly supported)
-/// However the correct approach is to use colons as a seperator.
+/// Crossterm uses semicolon as a separator for colors
+/// this is actually not spec compliant (although commonly supported)
+/// However the correct approach is to use colons as a separator.
 /// This usually doesn't make a difference for emulators that do support colored underlines.
 /// However terminals that do not support colored underlines will ignore underlines colors with colons
 /// while escape sequences with semicolons are always processed which leads to weird visual artifacts.

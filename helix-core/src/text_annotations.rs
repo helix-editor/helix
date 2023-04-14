@@ -172,7 +172,7 @@ impl TextAnnotations {
         for char_idx in char_range {
             if let Some((_, Some(highlight))) = self.overlay_at(char_idx) {
                 // we don't know the number of chars the original grapheme takes
-                // however it doesn't matter as highlight bounderies are automatically
+                // however it doesn't matter as highlight boundaries are automatically
                 // aligned to grapheme boundaries in the rendering code
                 highlights.push((highlight.0, char_idx..char_idx + 1))
             }
@@ -203,7 +203,7 @@ impl TextAnnotations {
 
     /// Add new grapheme overlays.
     ///
-    /// The overlayed grapheme will be rendered with `highlight`
+    /// The overlaid grapheme will be rendered with `highlight`
     /// patched on top of `ui.text`.
     ///
     /// The overlays **must be sorted** by their `char_idx`.

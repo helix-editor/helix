@@ -42,7 +42,7 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     let mut rt_dirs = Vec::new();
     if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
         // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
-        let path = std::path::PathBuf::from(dir).parent().unwrap().join(RT_DIR);
+        let path = PathBuf::from(dir).parent().unwrap().join(RT_DIR);
         log::debug!("runtime dir: {}", path.to_string_lossy());
         rt_dirs.push(path);
     }
@@ -113,15 +113,6 @@ pub fn config_dir() -> PathBuf {
     path
 }
 
-pub fn local_config_dirs() -> Vec<PathBuf> {
-    let directories = find_local_config_dirs()
-        .into_iter()
-        .map(|path| path.join(".helix"))
-        .collect();
-    log::debug!("Located configuration folders: {:?}", directories);
-    directories
-}
-
 pub fn cache_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
@@ -137,28 +128,16 @@ pub fn config_file() -> PathBuf {
         .unwrap_or_else(|| config_dir().join("config.toml"))
 }
 
+pub fn workspace_config_file() -> PathBuf {
+    find_workspace().0.join(".helix").join("config.toml")
+}
+
 pub fn lang_config_file() -> PathBuf {
     config_dir().join("languages.toml")
 }
 
 pub fn log_file() -> PathBuf {
     cache_dir().join("helix.log")
-}
-
-pub fn find_local_config_dirs() -> Vec<PathBuf> {
-    let current_dir = std::env::current_dir().expect("unable to determine current directory");
-    let mut directories = Vec::new();
-
-    for ancestor in current_dir.ancestors() {
-        if ancestor.join(".git").exists() {
-            directories.push(ancestor.to_path_buf());
-            // Don't go higher than repo if we're in one
-            break;
-        } else if ancestor.join(".helix").is_dir() {
-            directories.push(ancestor.to_path_buf());
-        }
-    }
-    directories
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`
@@ -301,4 +280,22 @@ mod merge_toml_tests {
             &vec![Value::String("lsp".into())]
         )
     }
+}
+
+/// Finds the current workspace folder.
+/// Used as a ceiling dir for LSP root resolution, the filepicker and potentially as a future filewatching root
+///
+/// This function starts searching the FS upward from the CWD
+/// and returns the first directory that contains either `.git` or `.helix`.
+/// If no workspace was found returns (CWD, true).
+/// Otherwise (workspace, false) is returned
+pub fn find_workspace() -> (PathBuf, bool) {
+    let current_dir = std::env::current_dir().expect("unable to determine current directory");
+    for ancestor in current_dir.ancestors() {
+        if ancestor.join(".git").exists() || ancestor.join(".helix").exists() {
+            return (ancestor.to_owned(), false);
+        }
+    }
+
+    (current_dir, true)
 }

@@ -116,7 +116,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
                         let picker = ui::file_picker(path, &editor.config());
-                        compositor.push(Box::new(overlayed(picker)));
+                        compositor.push(Box::new(overlaid(picker)));
                     },
                 ));
                 Ok(call)
@@ -1335,7 +1335,7 @@ fn lsp_workspace_command(
                     let picker = ui::Picker::new(commands, (), |cx, command, _action| {
                         execute_lsp_command(cx.editor, command.clone());
                     });
-                    compositor.push(Box::new(overlayed(picker)))
+                    compositor.push(Box::new(overlaid(picker)))
                 },
             ));
             Ok(call)
@@ -1371,13 +1371,19 @@ fn lsp_restart(
         return Ok(());
     }
 
+    let editor_config = cx.editor.config.load();
     let (_view, doc) = current!(cx.editor);
     let config = doc
         .language_config()
         .context("LSP not defined for the current document")?;
 
     let scope = config.scope.clone();
-    cx.editor.language_servers.restart(config, doc.path())?;
+    cx.editor.language_servers.restart(
+        config,
+        doc.path(),
+        &editor_config.workspace_lsp_roots,
+        editor_config.lsp.snippets,
+    )?;
 
     // This collect is needed because refresh_language_server would need to re-borrow editor.
     let document_ids_to_refresh: Vec<DocumentId> = cx
@@ -1970,6 +1976,20 @@ fn open_config(
     Ok(())
 }
 
+fn open_workspace_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor
+        .open(&helix_loader::workspace_config_file(), Action::Replace)?;
+    Ok(())
+}
+
 fn open_log(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -2105,20 +2125,16 @@ fn reset_diff_change(
     let scrolloff = editor.config().scrolloff;
 
     let (view, doc) = current!(editor);
-    // TODO refactor to use let..else once MSRV is raised to 1.65
-    let handle = match doc.diff_handle() {
-        Some(handle) => handle,
-        None => bail!("Diff is not available in the current buffer"),
+    let Some(handle) = doc.diff_handle() else {
+        bail!("Diff is not available in the current buffer")
     };
 
     let diff = handle.load();
     let doc_text = doc.text().slice(..);
     let line = doc.selection(view.id).primary().cursor_line(doc_text);
 
-    // TODO refactor to use let..else once MSRV is raised to 1.65
-    let hunk_idx = match diff.hunk_at(line as u32, true) {
-        Some(hunk_idx) => hunk_idx,
-        None => bail!("There is no change at the cursor"),
+    let Some(hunk_idx) = diff.hunk_at(line as u32, true) else {
+        bail!("There is no change at the cursor")
     };
     let hunk = diff.nth_hunk(hunk_idx);
     let diff_base = diff.diff_base();
@@ -2644,6 +2660,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Open the user config.toml file.",
             fun: open_config,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "config-open-workspace",
+            aliases: &[],
+            doc: "Open the workspace config.toml file.",
+            fun: open_workspace_config,
             signature: CommandSignature::none(),
         },
         TypableCommand {
