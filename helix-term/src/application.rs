@@ -473,11 +473,9 @@ impl Application {
             signal::SIGCONT => {
                 // Copy/Paste from same issue from neovim:
                 // https://github.com/neovim/neovim/issues/12322
-                let mut retry_count = 10;
-                while retry_count > 0 {
-                    match self.claim_term().await {
-                        Ok(_) => break,
-                        Err(_) => retry_count -= 1,
+                for _ in 1..10 {
+                    if self.claim_term().await.is_ok() {
+                        break;
                     }
                 }
 
