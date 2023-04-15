@@ -1,75 +1,65 @@
 # Author : Sebastian Zivota <loewenheim@mailbox.org>
 # Author : Chirikumbrah
 
-"annotation"                = { fg = "white"                           }
-"attribute"                 = { fg = "cyan"                            }
-"comment"                   = { fg = "comment"                         }
-"constant"                  = { fg = "purple"                          }
-"constant.numeric"          = { fg = "orange"                          }
-"constant.builtin"          = { fg = "orange"                          }
-"constant.character.escape" = { fg = "pink"                            }
-"constant.macro"            = { fg = "purple"                          }
-"constructor"               = { fg = "cyan"                            }
-"conditional"               = { fg = "pink"                            }
-"character"                 = { fg = "purple"                          }
-"definition".underline      = { sp = "cyan"                            }
-"field.key"                 = { fg = "purple"                          }
-"field"                     = { fg = "purple"                          }
-"function"                  = { fg = "green"                           }
-"function.builtin"          = { fg = "green"                           }
-"function.method"           = { fg = "green"                           }
-"function.macro"            = { fg = "purple"                          }
-"function.call"             = { fg = "green"                           }
-"keyword"                   = { fg = "pink"                            }
-"keyword.operator"          = { fg = "pink"                            }
-"keyword.function"          = { fg = "pink"                            }
-"keyword.return"            = { fg = "pink"                            }
-"keyword.control.import"    = { fg = "green"                           }
-"keyword.directive"         = { fg = "green"                           }
-"keyword.control.repeat"    = { fg = "cyan"                            }
-"keyword.control.exception" = { fg = "purple"                          }
-"keyword.storage.type"      = { fg = "cyan"                            }
-"keyword.storage.modifier"  = { fg = "cyan"                            }
-"method.call"               = { fg = "green"                           }
-"reference"                 = { fg = "grey"                            }
-"special"                   = { fg = "orange"                          }
-"symbol"                    = { fg = "yellow"                          }
-"tag.attribute"             = { fg = "purple"                          }
-"tag.delimiter"             = { fg = "white"                           }
-"operator"                  = { fg = "pink"                            }
-"label"                     = { fg = "cyan"                            }
-"punctuation"               = { fg = "white"                           }
-"punctuation.bracket"       = { fg = "white"                           }
-"punctuation.delimiter"     = { fg = "white"                           }
-"punctuation.special"       = { fg = "purple"                          }
-"string"                    = { fg = "yellow"                          }
-"string.regexp"             = { fg = "cyan"                            }
-"string.escape"             = { fg = "cyan"                            }
-"string.special"            = { fg = "cyan"                            }
-"tag"                       = { fg = "pink"                            }
-"text"                      = { fg = "grey"                            }
-"text.strong"               = {                modifiers = "bold"      }
-"text.emphasis"             = { fg = "orange"                          }
-"text.strike"               = { fg = "white"                           }
-"text.literal"              = { fg = "orange"                          }
-"text.uri".underline        = { fg = "orange"                          }
-"type.builtin"              = { fg = "cyan",   modifiers = ["italic"]  }
-"type"                      = { fg = "cyan",   modifiers = ["italic"]  }
-"type.enum.variant"         = { fg = "white",  modifiers = ["italic"]  }
-"property"                  = { fg = "purple"                          }
-"structure"                 = { fg = "purple"                          }
-"scope"                     = {                modifiers = "bold"      }
-"variable"                  = { fg = "purple"                          }
-"variable.builtin"          = { fg = "orange", modifiers = ["italic"]  }
-"variable.parameter"        = { fg = "purple", modifiers = ["italic"]  }
-"parameter"                 = { fg = "orange"                          }
+"annotation"                      = { fg = "foreground"                                                     }
+"attribute"                       = { fg = "green",              modifiers = ["italic"]                     }
+"comment"                         = { fg = "comment"                                                        }
+"comment.block.documentation"     = { fg = "comment"                                                        }
+"comment.block"                   = { fg = "comment"                                                        }
+"comment.line"                    = { fg = "comment"                                                        }
+"constant"                        = { fg = "purple"                                                         }
+"constant.numeric"                = { fg = "purple"                                                         }
+"constant.builtin"                = { fg = "purple"                                                         }
+"constant.builtin.boolean"        = { fg = "purple"                                                         }
+"constant.character"              = { fg = "cyan"                                                           }
+"constant.character.escape"       = { fg = "pink"                                                           }
+"constant.macro"                  = { fg = "purple"                                                         }
+"constructor"                     = { fg = "purple"                                                         }
+"function"                        = { fg = "green"                                                          }
+"function.builtin"                = { fg = "green"                                                          }
+"function.method"                 = { fg = "green"                                                          }
+"function.macro"                  = { fg = "purple"                                                         }
+"function.call"                   = { fg = "green"                                                          }
+"keyword"                         = { fg = "pink"                                                           }
+"keyword.operator"                = { fg = "pink"                                                           }
+"keyword.function"                = { fg = "pink"                                                           }
+"keyword.return"                  = { fg = "pink"                                                           }
+"keyword.control.import"          = { fg = "pink"                                                           }
+"keyword.directive"               = { fg = "green"                                                          }
+"keyword.control.repeat"          = { fg = "pink"                                                           }
+"keyword.control.conditional"     = { fg = "pink"                                                           }
+"keyword.control.exception"       = { fg = "purple"                                                         }
+"keyword.storage"                 = { fg = "pink"                                                           }
+"keyword.storage.type"            = { fg = "cyan",               modifiers = ["italic"]                     }
+"keyword.storage.modifier"        = { fg = "pink"                                                           }
+"tag"                             = { fg = "pink"                                                           }
+"tag.attribute"                   = { fg = "purple"                                                         }
+"tag.delimiter"                   = { fg = "foreground"                                                     }
+"label"                           = { fg = "cyan"                                                           }
+"punctuation"                     = { fg = "foreground"                                                     }
+"punctuation.bracket"             = { fg = "foreground"                                                     }
+"punctuation.delimiter"           = { fg = "foreground"                                                     }
+"punctuation.special"             = { fg = "pink"                                                           }
+"special"                         = { fg = "pink"                                                           }
+"string"                          = { fg = "yellow"                                                         }
+"string.special"                  = { fg = "orange"                                                         }
+"string.symbol"                   = { fg = "yellow"                                                         }
+"string.regexp"                   = { fg = "red"                                                            }
+"type.builtin"                    = { fg = "cyan"                                                           }
+"type"                            = { fg = "cyan",               modifiers = ["italic"]                     }
+"type.enum.variant"               = { fg = "foreground",         modifiers = ["italic"]                     }
+"variable"                        = { fg = "foreground"                                                     }
+"variable.builtin"                = { fg = "purple",             modifiers = ["italic"]                     }
+"variable.parameter"              = { fg = "orange",             modifiers = ["italic"]                     }
+"variable.other"                  = { fg = "cyan"                                                           }
+"variable.other.member"           = { fg = "purple"                                                         }
 
 
 "diff.plus"                       = { fg    = "green"                                                       }
 "diff.delta"                      = { fg    = "orange"                                                      }
 "diff.minus"                      = { fg    = "red"                                                         }
-"ui.background"                   = { fg    = "white",           bg = "background"                          }
-"ui.cursor.match"                 = { fg    = "white",           bg = "grey"                                }
+"ui.background"                   = { fg    = "foreground",      bg = "background"                          }
+"ui.cursor.match"                 = { fg    = "foreground",      bg = "grey"                                }
 "ui.cursor"                       = { fg    = "background",      bg = "purple",         modifiers = ["dim"] }
 "ui.cursor.normal"                = { fg    = "background",      bg = "purple",         modifiers = ["dim"] }	
 "ui.cursor.insert"                = { fg    = "background",      bg = "green",          modifiers = ["dim"] }	
@@ -78,24 +68,24 @@
 "ui.cursor.primary.insert"        = { fg    = "background",      bg = "green"                               }	
 "ui.cursor.primary.select"        = { fg    = "background",      bg = "cyan"                                }
 "ui.cursorline.primary"           = {                            bg = "cursorline"                          }
-"ui.help"                         = { fg    = "white",           bg = "black"                               }
+"ui.help"                         = { fg    = "foreground",      bg = "black"                               }
 "ui.debug"                        = { fg    = "red"                                                         }
 "ui.highlight.frameline"          = { fg    = "background",      bg = "red"                                 }
 "ui.linenr"                       = { fg    = "comment"                                                     }
-"ui.linenr.selected"              = { fg    = "white"                                                       }
-"ui.menu"                         = { fg    = "white",           bg = "black"                               }
+"ui.linenr.selected"              = { fg    = "foreground"                                                  }
+"ui.menu"                         = { fg    = "foreground",      bg = "black"                               }
 "ui.menu.selected"                = { fg    = "cyan",            bg = "black"                               }
-"ui.popup"                        = { fg    = "white",           bg = "black"                               }
+"ui.popup"                        = { fg    = "foreground",      bg = "black"                               }
 "ui.selection.primary"            = {                            bg = "selection_primary"                   }
 "ui.selection"                    = {                            bg = "selection"                           }
-"ui.statusline"                   = { fg    = "white",           bg = "darker"                              }
+"ui.statusline"                   = { fg    = "foreground",      bg = "darker"                              }
 "ui.statusline.inactive"          = { fg    = "comment",         bg = "darker"                              }
 "ui.statusline.normal"            = { fg    = "black",           bg = "purple"                              }
 "ui.statusline.insert"            = { fg    = "black",           bg = "green"                               }
 "ui.statusline.select"            = { fg    = "black",           bg = "cyan"                                }
-"ui.text"                         = { fg    = "white"                                                       }
+"ui.text"                         = { fg    = "foreground"                                                  }
 "ui.text.focus"                   = { fg    = "cyan"                                                        }
-"ui.window"                       = { fg    = "white"                                                       }
+"ui.window"                       = { fg    = "foreground"                                                  }
 "ui.virtual.whitespace"           = { fg    = "subtle"                                                      }
 "ui.virtual.wrap"                 = { fg    = "subtle"                                                      }
 "ui.virtual.ruler"                = { bg    = "black"                                                       }
@@ -114,29 +104,30 @@
 "markup.link.url"                 = { fg    = "cyan"                                                        }
 "markup.link.text"                = { fg    = "pink"                                                        }
 "markup.quote"                    = { fg    = "yellow",          modifiers = ["italic"]                     }
-"markup.raw"                      = { fg    = "white"                                                       }
+"markup.raw"                      = { fg    = "foreground"                                                  }
 "diagnostic"                      = { underline = { color = "orange",          style = "curl"             } }
 "diagnostic.hint"                 = { underline = { color = "purple",          style = "curl"             } }
 "diagnostic.warning"              = { underline = { color = "yellow",          style = "curl"             } }
 "diagnostic.error"                = { underline = { color = "red",             style = "curl"             } }
 "diagnostic.info"                 = { underline = { color = "cyan",            style = "curl"             } }
+"definition"                      = { underline = { color = "cyan"                                        } }
 
 
 [palette]
-background          = "#282A36"
-cursorline          = "#2d303e"
-darker              = "#222430"
-black               = "#191A21"
-grey                = "#666771"
-comment             = "#6272A4"
-selection_primary   = "#44475a"
-selection           = "#363848"
-subtle              = "#424450"
-white               = "#f8f8f2"
-red                 = "#ff5555"
-orange              = "#ffb86c" 
-yellow              = "#f1fa8c" 
-green               = "#50fa7b" 
-purple              = "#BD93F9" 
-cyan                = "#8be9fd"
-pink                = "#ff79c6" 
+foreground        = "#f8f8f2"
+background        = "#282A36"
+cursorline        = "#2d303e"
+darker            = "#222430"
+black             = "#191A21"
+grey              = "#666771"
+comment           = "#6272A4"
+selection_primary = "#44475a"
+selection         = "#363848"
+subtle            = "#424450"
+red               = "#ff5555"
+orange            = "#ffb86c" 
+yellow            = "#f1fa8c" 
+green             = "#50fa7b" 
+purple            = "#BD93F9" 
+cyan              = "#8be9fd"
+pink              = "#ff79c6" 
