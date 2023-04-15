@@ -1,4 +1,9 @@
-"sizeof" @keyword
+[
+  "sizeof"
+  ; @todo why does "uniform" break highlighting?
+  ; "uniform" ; OpenCL C 3.0.13 reserves this as a keyword, but doesn't seem to use it for anything
+  (function_qualifier)
+] @keyword
 
 [
   "enum"
@@ -11,7 +16,9 @@
   "extern"
   "register"
   (type_qualifier)
+  (access_qualifier)
   (storage_class_specifier)
+  (address_space_qualifier)
 ] @keyword.storage.modifier
 
 [
@@ -107,7 +114,6 @@
 (null) @constant
 (number_literal) @constant.numeric
 (char_literal) @constant.character
-(escape_sequence) @constant.character.escape
 
 (call_expression
   function: (identifier) @function)
@@ -131,8 +137,10 @@
 (field_identifier) @variable.other.member
 (statement_identifier) @label
 (type_identifier) @type
-(primitive_type) @type.builtin
+(scalar_type) @type.builtin
 (sized_type_specifier) @type.builtin
+(vector_type) @type.builtin
+(other_builtin_type) @type.builtin
 
 ((identifier) @constant
   (#match? @constant "^[A-Z][A-Z\\d_]*$"))

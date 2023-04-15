@@ -750,7 +750,10 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
-            soft_wrap: SoftWrap::default(),
+            soft_wrap: SoftWrap {
+                enable: Some(false),
+                ..SoftWrap::default()
+            },
             text_width: 80,
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
