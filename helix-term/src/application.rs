@@ -440,6 +440,8 @@ impl Application {
 
     #[cfg(not(windows))]
     pub async fn handle_signals(&mut self, signal: i32) {
+        use core::panic;
+
         match signal {
             signal::SIGTSTP => {
                 self.restore_term().unwrap();
@@ -473,10 +475,16 @@ impl Application {
             signal::SIGCONT => {
                 // Copy/Paste from same issue from neovim:
                 // https://github.com/neovim/neovim/issues/12322
-                for _ in 1..10 {
+                // https://github.com/neovim/neovim/pull/13084
+                let mut retry_count = 10;
+                while retry_count > 0 {
                     if self.claim_term().await.is_ok() {
                         break;
                     }
+                    retry_count -= 1;
+                }
+                if retry_count == 0 {
+                    panic!("couldn't set terminal raw mode");
                 }
 
                 // redraw the terminal
