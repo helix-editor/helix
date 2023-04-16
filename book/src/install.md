@@ -12,6 +12,7 @@
 - [macOS](#macos)
   - [Homebrew Core](#homebrew-core)
 - [Windows](#windows)
+  - [Winget](#winget)
   - [Scoop](#scoop)
   - [Chocolatey](#chocolatey)
   - [MSYS2](#msys2)
@@ -109,8 +110,16 @@ brew install helix
 
 ## Windows
 
-Install on Windows using [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
+Install on Windows using [Winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/), [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
 or [MSYS2](https://msys2.org/).
+
+### Winget
+Windows Package Manager winget command-line tool is by default available on Windows 11 and modern versions of Windows 10 as a part of the App Installer.
+You can get [App Installer from the Microsoft Store](https://www.microsoft.com/p/app-installer/9nblggh4nns1#activetab=pivot:overviewtab). If it's already installed, make sure it is updated with the latest version.
+
+```sh
+winget install Helix.Helix
+```
 
 ### Scoop
 

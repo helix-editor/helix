@@ -882,7 +882,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "haskell"
-source = { git = "https://github.com/tree-sitter/tree-sitter-haskell", rev = "b6ec26f181dd059eedd506fa5fbeae1b8e5556c8" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-haskell", rev = "98fc7f59049aeb713ab9b72a8ff25dcaaef81087" }
 
 [[language]]
 name = "purescript"
@@ -978,8 +978,8 @@ source = { git = "https://github.com/uyha/tree-sitter-cmake", rev = "6e51463ef30
 [[language]]
 name = "make"
 scope = "source.make"
-file-types = ["Makefile", "makefile", "mk", "Justfile", "justfile", ".justfile"]
-injection-regex = "(make|makefile|Makefile|mk|just)"
+file-types = ["Makefile", "makefile", "mk"]
+injection-regex = "(make|makefile|Makefile|mk)"
 roots = []
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
@@ -1194,7 +1194,7 @@ text-width = 72
 
 [[grammar]]
 name = "git-commit"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "bd0ca5a6065f2cada3ac6a82a66db3ceff55fa6b" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "db88cffa3952dd2328b741af5d0fc69bdb76704f" }
 
 [[language]]
 name = "diff"
@@ -1425,7 +1425,7 @@ language-server = { command = "gleam", args = ["lsp"] }
 
 [[grammar]]
 name = "gleam"
-source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "d6cbdf3477fcdb0b4d811518a356f9b5cd1795ed" }
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "ae79782c00656945db69641378e688cdb78d52c1" }
 
 [[language]]
 name = "ron"
@@ -2099,6 +2099,26 @@ roots = []
 name = "xml"
 source = { git = "https://github.com/RenjiSann/tree-sitter-xml", rev = "48a7c2b6fb9d515577e115e6788937e837815651" }
 
+
+[[language]]
+name = "dtd"
+scope = "source.dtd"
+injection-regex = "dtd"
+file-types = ["dtd", "ent"]
+indent = {tab-width = 2, unit = "  "}
+roots = []
+
+[language.auto-pairs]
+'(' = ')'
+'[' = ']'
+'"' = '"'
+"'" = "'"
+'<' = '>'
+
+[[grammar]]
+name = "dtd"
+source = { git = "https://github.com/KMikeeU/tree-sitter-dtd", rev = "6116becb02a6b8e9588ef73d300a9ba4622e156f"}
+
 [[language]]
 name = "wit"
 scope = "source.wit"
@@ -2379,7 +2399,7 @@ file-types = ["smithy"]
 roots = ["smithy-build.json"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
-language-server = { command = "cs", args = ["launch", "com.disneystreaming.smithy:smithy-language-server:latest.release", "--", "0"] }
+language-server = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
 
 [[grammar]]
 name = "smithy"
@@ -2438,6 +2458,18 @@ name = "nim"
 source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b232550e431d67de250d1b5856209e7f06" }
 
 [[language]]
+name = "cabal"
+scope = "source.cabal"
+file-types = [ "cabal" ]
+roots = ["cabal.project", "Setup.hs"]
+indent = { tab-width = 2, unit = "  " }
+comment-token = "--"
+
+[[grammar]]
+name = "cabal"
+source = { git = "https://gitlab.com/magus/tree-sitter-cabal/", rev = "7d5fa6887ae05a0b06d046f1e754c197c8ad869b" }
+
+[[language]]
 name = "hurl"
 scope = "source.hurl"
 injection-regex = "hurl"
@@ -2450,3 +2482,39 @@ indent = { tab-width = 2, unit = "  " }
 name = "hurl"
 source = { git = "https://github.com/pfeiferj/tree-sitter-hurl", rev = "264c42064b61ee21abe88d0061f29a0523352e22" }
 
+[[language]]
+name = "markdoc"
+scope = "text.markdoc"
+roots = []
+file-types = ["mdoc"]
+language-server = { command = "markdoc-ls", args = ["--stdio"] }
+
+[[grammar]]
+name = "markdoc"
+source = { git = "https://github.com/markdoc-extra/tree-sitter-markdoc", rev = "5ffe71b29e8a3f94823913ea9cea51fcfa7e3bf8" }
+
+[[language]]
+name = "opencl"
+scope = "source.cl"
+injection-regex = "(cl|opencl)"
+file-types = ["cl"]
+roots = []
+comment-token = "//"
+language-server = { command = "clangd" }
+
+[[grammar]]
+name = "opencl"
+source = { git = "https://github.com/lefp/tree-sitter-opencl", rev = "8e1d24a57066b3cd1bb9685bbc1ca9de5c1b78fb" }
+
+[[language]]
+name = "just"
+scope = "source.just"
+file-types = ["justfile", "Justfile", "just"]
+injection-regex = "just"
+roots = []
+comment-token = "#"
+indent = { tab-width = 4, unit = "\t" }
+
+[[grammar]]
+name = "just"
+source = { git = "https://github.com/IndianBoy42/tree-sitter-just", rev = "8af0aab79854aaf25b620a52c39485849922f766" }

@@ -413,6 +413,18 @@ fn build_tree_sitter_library(
     let mut library_path = parser_lib_path.join(&grammar.grammar_id);
     library_path.set_extension(DYLIB_EXTENSION);
 
+    // if we are running inside a buildscript emit cargo metadata
+    // to detect if we are running from a buildscript check some env variables
+    // that cargo only sets for build scripts
+    if std::env::var("OUT_DIR").is_ok() && std::env::var("CARGO").is_ok() {
+        if let Some(scanner_path) = scanner_path.as_ref().and_then(|path| path.to_str()) {
+            println!("cargo:rerun-if-changed={scanner_path}");
+        }
+        if let Some(parser_path) = parser_path.to_str() {
+            println!("cargo:rerun-if-changed={parser_path}");
+        }
+    }
+
     let recompile = needs_recompile(&library_path, &parser_path, &scanner_path)
         .context("Failed to compare source and binary timestamps")?;
 

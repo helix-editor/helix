@@ -52,7 +52,7 @@
 "ui.selection.primary" = { bg = "ferra_night", fg = "ferra_umber" }
 "ui.virtual" = { fg = "ferra_bark" }
 "ui.virtual.whitespace" = { fg = "ferra_bark" }
-"ui.virtual.ruler" = { fg = "ferra_night", bg = "ferra_ash" }
+"ui.virtual.ruler" = { bg = "ferra_ash" }
 "ui.virtual.indent-guide" = { fg = "ferra_ash" }
 "ui.virtual.inlay-hint" = { fg = "ferra_bark" }
 
