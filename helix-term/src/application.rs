@@ -440,8 +440,6 @@ impl Application {
 
     #[cfg(not(windows))]
     pub async fn handle_signals(&mut self, signal: i32) {
-        use core::panic;
-
         match signal {
             signal::SIGTSTP => {
                 self.restore_term().unwrap();
