@@ -12,6 +12,7 @@ use std::{
     borrow::Cow,
     collections::{BTreeSet, HashMap},
     ops::{Deref, DerefMut},
+    str::FromStr,
     sync::Arc,
 };
 
@@ -144,6 +145,49 @@ impl DerefMut for KeyTrieNode {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+enum KeyTrieNodeMap {
+    Map,
+    Name,
+    Bare(KeyEvent),
+}
+
+impl<'de> Deserialize<'de> for KeyTrieNodeMap {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(KeyTrieMapVisitor)
+    }
+}
+
+struct KeyTrieMapVisitor;
+
+impl<'de> serde::de::Visitor<'de> for KeyTrieMapVisitor {
+    type Value = KeyTrieNodeMap;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            formatter,
+            "a sub-keymap or explicit map with 'name' and 'map'"
+        )
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        match v {
+            "map" => Ok(KeyTrieNodeMap::Map),
+            "name" => Ok(KeyTrieNodeMap::Name),
+            _ => match KeyEvent::from_str(v) {
+                Ok(ke) => Ok(KeyTrieNodeMap::Bare(ke)),
+                Err(_) => Err(E::custom("expected `key event` type")),
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum KeyTrie {
     Leaf(MappableCommand),
     Sequence(Vec<MappableCommand>),
@@ -199,11 +243,44 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
     {
         let mut mapping = HashMap::new();
         let mut order = Vec::new();
-        while let Some((key, value)) = map.next_entry::<KeyEvent, KeyTrie>()? {
-            mapping.insert(key, value);
-            order.push(key);
+        let mut name = None;
+        let mut map_prop: Option<KeyTrie> = None;
+        while let Some(key) = map.next_key()? {
+            match key {
+                KeyTrieNodeMap::Map => {
+                    if map_prop.is_some() {
+                        return Err(serde::de::Error::duplicate_field("map"));
+                    }
+                    map_prop = Some(map.next_value::<KeyTrie>()?);
+                }
+                KeyTrieNodeMap::Name => {
+                    if name.is_some() {
+                        return Err(serde::de::Error::duplicate_field("name"));
+                    }
+                    name = Some(map.next_value::<String>()?);
+                }
+                KeyTrieNodeMap::Bare(ke) => {
+                    mapping.insert(ke, map.next_value::<KeyTrie>()?);
+                    order.push(ke);
+                }
+            }
         }
-        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping, order)))
+        if let Some(mp) = map_prop {
+            match mp {
+                KeyTrie::Node(node) => Ok(KeyTrie::Node(KeyTrieNode::new(
+                    &name.unwrap_or("".to_string()),
+                    node.map,
+                    node.order,
+                ))),
+                _ => Err(serde::de::Error::custom("only expecting a node")),
+            }
+        } else {
+            Ok(KeyTrie::Node(KeyTrieNode::new(
+                &name.unwrap_or("".to_string()),
+                mapping,
+                order,
+            )))
+        }
     }
 }
 

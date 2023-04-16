@@ -46,6 +46,11 @@ k = "scroll_down"
 m = ":run-shell-command make"
 c = ":run-shell-command cargo build"
 t = ":run-shell-command cargo test"
+
+# create a sub-menu with a name
+[keys.normal."space"]
+F.name = "Directory File Pickers"
+F.map = {f = "file_picker_in_current_buffer_directory", F = "file_picker_in_current_directory"}
 ```
 
 ## Special keys and modifiers
