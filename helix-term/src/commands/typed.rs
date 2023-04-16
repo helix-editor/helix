@@ -1784,7 +1784,8 @@ fn toggle_option(
         .config_events
         .0
         .send(ConfigEvent::Update(config))?;
-    cx.editor.set_status(format!("{} = {}", key, new_value));
+    cx.editor
+        .set_status(format!("Option `{}` is now set to `{}`", key, new_value));
     Ok(())
 }
 
