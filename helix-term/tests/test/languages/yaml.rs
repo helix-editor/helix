@@ -293,6 +293,22 @@ async fn auto_indent() -> anyhow::Result<()> {
                 fook:
             "}),
         ),
+        (
+            helpers::platform_line(indoc! {"\
+              - top:
+                  baz: foo
+                  bax: foox#[\n|]#
+                fook:
+            "}),
+            "o",
+            helpers::platform_line(indoc! {"\
+              - top:
+                  baz: foo
+                  bax: foox
+                  #[\n|]#
+                fook:
+            "}),
+        ),
     ];
 
     for test in below_tests {
