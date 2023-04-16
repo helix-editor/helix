@@ -474,15 +474,12 @@ impl Application {
                 // Copy/Paste from same issue from neovim:
                 // https://github.com/neovim/neovim/issues/12322
                 // https://github.com/neovim/neovim/pull/13084
-                let mut retry_count = 10;
-                while retry_count > 0 {
-                    if self.claim_term().await.is_ok() {
-                        break;
+                for retries in 1..=10 {
+                    match self.claim_term().await {
+                        Ok(()) => break,
+                        Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
+                        Err(_) => continue,
                     }
-                    retry_count -= 1;
-                }
-                if retry_count == 0 {
-                    panic!("couldn't set terminal raw mode");
                 }
 
                 // redraw the terminal
