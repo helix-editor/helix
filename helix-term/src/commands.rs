@@ -1533,6 +1533,7 @@ fn select_all(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let end = doc.text().len_chars();
+    push_jump(view, doc);
     doc.set_selection(view.id, Selection::single(0, end))
 }
 
