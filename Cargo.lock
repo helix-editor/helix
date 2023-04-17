@@ -384,12 +384,12 @@ dependencies = [
 
 [[package]]
 name = "etcetera"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d017fce18e4e9bfa75e1db51f49f4487bd3f8a7df509b24a46474a956ee962fd"
+checksum = "870a9fdff9c99141df9277dece5ec8021434eca50f05cbac41a5eb07c9659e7d"
 dependencies = [
  "cfg-if",
- "dirs-next",
+ "home",
  "thiserror",
 ]
 
