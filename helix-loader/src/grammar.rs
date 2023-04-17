@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::time::SystemTime;
@@ -179,10 +179,10 @@ pub fn build_grammars(target: Option<String>) -> Result<()> {
 
     if !errors.is_empty() {
         let len = errors.len();
-        println!("{} grammars failed to build", len);
         for (i, error) in errors.into_iter().enumerate() {
-            println!("\tFailure {}/{}: {}", i, len, error);
+            println!("Failure {}/{}: {}", i, len, error);
         }
+        bail!("{} grammars failed to build", len);
     }
 
     Ok(())
