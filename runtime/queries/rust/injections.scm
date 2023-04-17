@@ -52,6 +52,18 @@
   )
   (#set! injection.language "sql"))
 
+; Highlight SQL in `sqlx::query_scalar!()`
+(macro_invocation
+  macro: (scoped_identifier
+    path: (identifier) @_sqlx (#eq? @_sqlx "sqlx")
+    name: (identifier) @_query (#eq? @_query "query_scalar"))
+  (token_tree
+    ; Only the first argument is SQL
+    .
+    [(string_literal) (raw_string_literal)] @injection.content
+  )
+  (#set! injection.language "sql"))
+
 ; Highlight SQL in `sqlx::query_unchecked!()`
 (macro_invocation
   macro: (scoped_identifier
@@ -75,6 +87,18 @@
     ; Allow anything as the first argument in case the user has lower case type
     ; names for some reason
     (_)
+    [(string_literal) (raw_string_literal)] @injection.content
+  )
+  (#set! injection.language "sql"))
+
+; Highlight SQL in `sqlx::query_scalar_unchecked!()`
+(macro_invocation
+  macro: (scoped_identifier
+    path: (identifier) @_sqlx (#eq? @_sqlx "sqlx")
+    name: (identifier) @_query (#eq? @_query "query_scalar_unchecked"))
+  (token_tree
+    ; Only the first argument is SQL
+    .
     [(string_literal) (raw_string_literal)] @injection.content
   )
   (#set! injection.language "sql"))
