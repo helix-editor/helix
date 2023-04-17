@@ -295,6 +295,38 @@ async fn auto_indent() -> anyhow::Result<()> {
         ),
         (
             helpers::platform_line(indoc! {"\
+              - top:#[\n|]#
+                  baz: foo
+                  bax: foox
+                fook:
+            "}),
+            "o",
+            helpers::platform_line(indoc! {"\
+              - top:
+                  #[\n|]#
+                  baz: foo
+                  bax: foox
+                fook:
+            "}),
+        ),
+        (
+            helpers::platform_line(indoc! {"\
+              - top:
+                  baz: foo#[\n|]#
+                  bax: foox
+                fook:
+            "}),
+            "o",
+            helpers::platform_line(indoc! {"\
+              - top:
+                  baz: foo
+                  #[\n|]#
+                  bax: foox
+                fook:
+            "}),
+        ),
+        (
+            helpers::platform_line(indoc! {"\
               - top:
                   baz: foo
                   bax: foox#[\n|]#
@@ -601,6 +633,38 @@ async fn auto_indent() -> anyhow::Result<()> {
                   baz: foo
                   bax: >
                     #[\n|]#
+                fook:
+            "}),
+        ),
+        (
+            helpers::platform_line(indoc! {"\
+              - top:
+                  baz: foo#[\n|]#
+                  bax: foox
+                fook:
+            "}),
+            "O",
+            helpers::platform_line(indoc! {"\
+              - top:
+                  #[\n|]#
+                  baz: foo
+                  bax: foox
+                fook:
+            "}),
+        ),
+        (
+            helpers::platform_line(indoc! {"\
+              - top:
+                  baz: foo
+                  bax: foox
+                fook:#[\n|]#
+            "}),
+            "O",
+            helpers::platform_line(indoc! {"\
+              - top:
+                  baz: foo
+                  bax: foox
+                  #[\n|]#
                 fook:
             "}),
         ),
