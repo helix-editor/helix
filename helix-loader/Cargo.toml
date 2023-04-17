@@ -29,4 +29,4 @@ cc = { version = "1" }
 threadpool = { version = "1.0" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-libloading = "0.7"
+libloading = "0.8"
