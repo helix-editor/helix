@@ -4,21 +4,18 @@ use crate::{
     text::{Span, Spans},
     widgets::{Borders, Widget},
 };
+
+pub use helix_view::graphics::BorderType;
 use helix_view::graphics::{Rect, Style};
 
-/// Border render type. Defaults to [`BorderType::Plain`].
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub enum BorderType {
-    #[default]
-    Plain,
-    Rounded,
-    Double,
-    Thick,
+pub trait BorderLines {
+    fn line_symbols(self: Self) -> line::Set;
 }
 
-impl BorderType {
-    pub fn line_symbols(border_type: Self) -> line::Set {
-        match border_type {
+impl BorderLines for BorderType {
+    fn line_symbols(self: Self) -> line::Set {
+        match self {
+            Self::None => line::NORMAL, // TODO: lines made from spaces, just in case?
             Self::Plain => line::NORMAL,
             Self::Rounded => line::ROUNDED,
             Self::Double => line::DOUBLE,
@@ -125,7 +122,7 @@ impl<'a> Widget for Block<'a> {
             return;
         }
         buf.set_style(area, self.style);
-        let symbols = BorderType::line_symbols(self.border_type);
+        let symbols = BorderLines::line_symbols(self.border_type);
 
         // Sides
         if self.borders.intersects(Borders::LEFT) {

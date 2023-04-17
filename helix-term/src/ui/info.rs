@@ -1,5 +1,5 @@
 use crate::compositor::{Component, Context};
-use helix_view::graphics::{BorderStyle, Margin, Rect};
+use helix_view::graphics::{Margin, Rect};
 use helix_view::info::Info;
 use tui::buffer::Buffer as Surface;
 use tui::widgets::{Block, BorderType, Borders, Paragraph, Widget};
@@ -23,30 +23,20 @@ impl Component for Info {
         surface.clear_with(area, popup_style);
 
         // try to extract a border style from the ui.popup.info scope
-        let border_style = cx
+        // or fallback tot he default style used by this widget.
+        let border_type = cx
             .editor
             .theme
-            .try_extract("ui.popup.info", |s| s.border_style);
+            .find_map("ui.popup.info", |s| s.border_type)
+            .unwrap_or(BorderType::Plain);
 
-        // fallback to our default border style
-        let border_style = border_style.unwrap_or(BorderStyle::Plain);
+        let mut block = Block::default().title(self.title.as_str());
 
-        let block = if let BorderStyle::None = border_style {
-            Block::default().title(self.title.as_str())
-        } else {
-            let border_type = match border_style {
-                BorderStyle::Plain => BorderType::Plain,
-                BorderStyle::Rounded => BorderType::Rounded,
-                BorderStyle::Double => BorderType::Double,
-                BorderStyle::Thick => BorderType::Thick,
-                _ => unreachable!(),
-            };
-
-            Block::default()
-                .title(self.title.as_str())
+        if border_type != BorderType::None {
+            block = block
                 .borders(Borders::ALL)
                 .border_style(popup_style)
-                .border_type(border_type)
+                .border_type(border_type);
         };
 
         let margin = Margin::horizontal(1);

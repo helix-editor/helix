@@ -302,16 +302,17 @@ impl From<Color> for crossterm::style::Color {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BorderStyle {
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BorderType {
     None,
+    #[default]
     Plain,
     Rounded,
     Double,
     Thick,
 }
 
-impl FromStr for BorderStyle {
+impl FromStr for BorderType {
     type Err = &'static str;
 
     fn from_str(style: &str) -> Result<Self, Self::Err> {
@@ -480,7 +481,7 @@ pub struct Style {
     pub underline_style: Option<UnderlineStyle>,
     pub add_modifier: Modifier,
     pub sub_modifier: Modifier,
-    pub border_style: Option<BorderStyle>,
+    pub border_type: Option<BorderType>,
 }
 
 impl Default for Style {
@@ -492,7 +493,7 @@ impl Default for Style {
             underline_style: None,
             add_modifier: Modifier::empty(),
             sub_modifier: Modifier::empty(),
-            border_style: None,
+            border_type: None,
         }
     }
 }
@@ -507,7 +508,7 @@ impl Style {
             underline_style: None,
             add_modifier: Modifier::empty(),
             sub_modifier: Modifier::all(),
-            border_style: None,
+            border_type: None,
         }
     }
 
@@ -611,8 +612,8 @@ impl Style {
         self
     }
 
-    pub fn border_style(mut self, border_style: BorderStyle) -> Style {
-        self.border_style = Some(border_style);
+    pub fn border_style(mut self, border_style: BorderType) -> Style {
+        self.border_type = Some(border_style);
         self
     }
 

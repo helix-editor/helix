@@ -12,7 +12,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer};
 use toml::{map::Map, Value};
 
-use crate::graphics::{BorderStyle, UnderlineStyle};
+use crate::graphics::{BorderType, UnderlineStyle};
 pub use crate::graphics::{Color, Modifier, Style};
 
 pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
@@ -315,7 +315,7 @@ impl Theme {
 
     /// Extract a value from a style in a scope, falling back to dot seperated
     /// broader scopes.
-    pub fn try_extract<R, F>(&self, scope: &str, f: F) -> Option<R>
+    pub fn find_map<R, F>(&self, scope: &str, f: F) -> Option<R>
     where
         F: Fn(&Style) -> Option<R>,
     {
@@ -437,7 +437,7 @@ impl ThemePalette {
             .ok_or(format!("Theme: invalid modifier: {}", value))
     }
 
-    pub fn parse_border_style(value: &Value) -> Result<BorderStyle, String> {
+    pub fn parse_border_style(value: &Value) -> Result<BorderType, String> {
         value
             .as_str()
             .and_then(|s| s.parse().ok())

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use helix_core::syntax;
 use helix_view::graphics::{Margin, Rect, Style};
 use tui::buffer::Buffer;
-use tui::widgets::{BorderType, Paragraph, Widget, Wrap};
+use tui::widgets::{BorderLines, BorderType, Paragraph, Widget, Wrap};
 
 use crate::compositor::{Component, Compositor, Context};
 
@@ -80,7 +80,7 @@ impl Component for SignatureHelp {
         }
 
         let sep_style = Style::default();
-        let borders = BorderType::line_symbols(BorderType::Plain);
+        let borders = BorderLines::line_symbols(BorderType::Plain);
         for x in sig_text_area.left()..sig_text_area.right() {
             if let Some(cell) = surface.get_mut(x, sig_text_area.bottom()) {
                 cell.set_symbol(borders.horizontal).set_style(sep_style);

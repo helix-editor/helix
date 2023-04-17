@@ -14,7 +14,7 @@ use tui::{
     buffer::Buffer as Surface,
     layout::Constraint,
     text::{Span, Spans},
-    widgets::{Block, BorderType, Borders, Cell, Table},
+    widgets::{Block, BorderLines, BorderType, Borders, Cell, Table},
 };
 
 use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
@@ -758,7 +758,7 @@ impl<T: Item + 'static> Component for Picker<T> {
 
         // -- Separator
         let sep_style = cx.editor.theme.get("ui.background.separator");
-        let borders = BorderType::line_symbols(BorderType::Plain);
+        let borders = BorderLines::line_symbols(BorderType::Plain);
         for x in inner.left()..inner.right() {
             if let Some(cell) = surface.get_mut(x, inner.y + 1) {
                 cell.set_symbol(borders.horizontal).set_style(sep_style);
