@@ -612,7 +612,18 @@ impl Style {
         self
     }
 
-    pub fn border_style(mut self, border_style: BorderType) -> Style {
+    /// Changes the border type.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// # use helix_view::graphics::{BorderType, Style};
+    /// let style = Style::default().border_type(BorderType::None);
+    /// let diff = Style::default().border_type(BorderType::Plain);
+    /// let patched = style.patch(diff);
+    /// assert_eq!(patched.border_type, BorderType::Plain);
+    /// ```
+    pub fn border_type(mut self, border_style: BorderType) -> Style {
         self.border_type = Some(border_style);
         self
     }
@@ -635,6 +646,7 @@ impl Style {
         self.bg = other.bg.or(self.bg);
         self.underline_color = other.underline_color.or(self.underline_color);
         self.underline_style = other.underline_style.or(self.underline_style);
+        self.border_type = other.border_type.or(self.border_type);
 
         self.add_modifier.remove(other.sub_modifier);
         self.add_modifier.insert(other.add_modifier);

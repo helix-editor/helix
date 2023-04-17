@@ -488,7 +488,7 @@ impl ThemePalette {
                             }
                         }
                     }
-                    "border" => *style = style.border_style(Self::parse_border_style(&value)?),
+                    "border" => *style = style.border_type(Self::parse_border_style(&value)?),
                     _ => return Err(format!("Theme: invalid style attribute: {}", name)),
                 }
             }
