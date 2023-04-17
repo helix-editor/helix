@@ -230,38 +230,48 @@ impl Transport {
         }
     }
 
-    async fn recv(
+    async fn recv_inner(
         transport: Arc<Self>,
         mut server_stdout: Box<dyn AsyncBufRead + Unpin + Send>,
         client_tx: UnboundedSender<Payload>,
-    ) {
+    ) -> Result<()> {
         let mut recv_buffer = String::new();
         loop {
-            match Self::recv_server_message(&mut server_stdout, &mut recv_buffer).await {
-                Ok(msg) => {
-                    transport
-                        .process_server_message(&client_tx, msg)
-                        .await
-                        .unwrap();
-                }
-                Err(err) => {
-                    error!("err: <- {:?}", err);
-                    break;
-                }
-            }
+            let msg = Self::recv_server_message(&mut server_stdout, &mut recv_buffer).await?;
+            transport.process_server_message(&client_tx, msg).await?;
         }
+    }
+
+    async fn recv(
+        transport: Arc<Self>,
+        server_stdout: Box<dyn AsyncBufRead + Unpin + Send>,
+        client_tx: UnboundedSender<Payload>,
+    ) {
+        if let Err(err) = Self::recv_inner(transport, server_stdout, client_tx).await {
+            error!("err: <- {:?}", err);
+        }
+    }
+
+    async fn send_inner(
+        transport: Arc<Self>,
+        mut server_stdin: Box<dyn AsyncWrite + Unpin + Send>,
+        mut client_rx: UnboundedReceiver<Payload>,
+    ) -> Result<()> {
+        while let Some(payload) = client_rx.recv().await {
+            transport
+                .send_payload_to_server(&mut server_stdin, payload)
+                .await?;
+        }
+        Ok(())
     }
 
     async fn send(
         transport: Arc<Self>,
-        mut server_stdin: Box<dyn AsyncWrite + Unpin + Send>,
-        mut client_rx: UnboundedReceiver<Payload>,
+        server_stdin: Box<dyn AsyncWrite + Unpin + Send>,
+        client_rx: UnboundedReceiver<Payload>,
     ) {
-        while let Some(payload) = client_rx.recv().await {
-            transport
-                .send_payload_to_server(&mut server_stdin, payload)
-                .await
-                .unwrap()
+        if let Err(err) = Self::send_inner(transport, server_stdin, client_rx).await {
+            error!("err: <- {:?}", err);
         }
     }
 
