@@ -12,5 +12,5 @@
 [
  ")"
  "}"
-] @indent_end @branch
+] @outdent
 

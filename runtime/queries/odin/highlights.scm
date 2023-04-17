@@ -1,14 +1,14 @@
 (keyword) @keyword
 (operator) @operator
 
-(int_literal)   @number
-(float_literal) @number
-(rune_literal)  @number
-(bool_literal) @boolean
+(int_literal)   @constant.numeric
+(float_literal) @constant.numeric
+(rune_literal)  @string.character
+(bool_literal) @constant.builtin.boolean
 (nil) @constant.builtin
 
 
-(ERROR) @error
+(ERROR) @special
 
 (type_identifier)    @type
 (package_identifier) @namespace
@@ -16,14 +16,14 @@
 
 (interpreted_string_literal) @string
 (raw_string_literal) @string
-(escape_sequence) @string.escape
+(escape_sequence) @constant.character.escape
 
 (comment) @comment
 (const_identifier) @constant
 
 
-(compiler_directive) @attribute
-(calling_convention) @attribute
+(compiler_directive) @keyword.directive
+(calling_convention) @string.special.symbol
 
 (identifier) @variable
-(pragma_identifier) @attribute
+(pragma_identifier) @keyword.directive
