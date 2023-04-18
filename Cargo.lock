@@ -1134,6 +1134,7 @@ dependencies = [
  "log",
  "once_cell",
  "serde",
+ "tempfile",
  "threadpool",
  "toml",
  "tree-sitter",

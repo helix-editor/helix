@@ -8,6 +8,7 @@ use std::{
     process::Command,
     sync::mpsc::channel,
 };
+use tempfile::TempPath;
 use tree_sitter::Language;
 
 #[cfg(unix)]
@@ -446,13 +447,17 @@ fn build_tree_sitter_library(
         command.env(key, value);
     }
     command.args(compiler.args());
+    // used to delay dropping the temporary object file until after the compilation is complete
+    let _path_guard;
 
     if cfg!(all(windows, target_env = "msvc")) {
         command
             .args(["/nologo", "/LD", "/I"])
             .arg(header_path)
             .arg("/Od")
-            .arg("/utf-8");
+            .arg("/utf-8")
+            .arg("/std:c++14")
+            .arg("/std:c11");
         if let Some(scanner_path) = scanner_path.as_ref() {
             command.arg(scanner_path);
         }
@@ -466,20 +471,49 @@ fn build_tree_sitter_library(
             .arg("-shared")
             .arg("-fPIC")
             .arg("-fno-exceptions")
-            .arg("-g")
             .arg("-I")
             .arg(header_path)
             .arg("-o")
-            .arg(&library_path)
-            .arg("-O3");
+            .arg(&library_path);
+
         if let Some(scanner_path) = scanner_path.as_ref() {
             if scanner_path.extension() == Some("c".as_ref()) {
-                command.arg("-xc").arg("-std=c99").arg(scanner_path);
+                command.arg("-xc").arg("-std=c11").arg(scanner_path);
             } else {
-                command.arg(scanner_path);
+                let mut cpp_command = Command::new(compiler.path());
+                cpp_command.current_dir(src_path);
+                for (key, value) in compiler.env() {
+                    cpp_command.env(key, value);
+                }
+                cpp_command.args(compiler.args());
+                let object_file =
+                    library_path.with_file_name(format!("{}_scanner.o", &grammar.grammar_id));
+                cpp_command
+                    .arg("-fPIC")
+                    .arg("-fno-exceptions")
+                    .arg("-I")
+                    .arg(header_path)
+                    .arg("-o")
+                    .arg(&object_file)
+                    .arg("-std=c++14")
+                    .arg("-c")
+                    .arg(scanner_path);
+                let output = cpp_command
+                    .output()
+                    .context("Failed to execute C++ compiler")?;
+                if !output.status.success() {
+                    return Err(anyhow!(
+                        "Parser compilation failed.\nStdout: {}\nStderr: {}",
+                        String::from_utf8_lossy(&output.stdout),
+                        String::from_utf8_lossy(&output.stderr)
+                    ));
+                }
+
+                command.arg(&object_file);
+                _path_guard = TempPath::from_path(object_file);
             }
         }
-        command.arg("-xc").arg(parser_path);
+        command.arg("-xc").arg("-std=c11").arg(parser_path);
         if cfg!(all(
             unix,
             not(any(target_os = "macos", target_os = "illumos"))
