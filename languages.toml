@@ -2000,7 +2000,7 @@ language-server = { command = "bass", args = ["--lsp"] }
 
 [[grammar]]
 name = "bass"
-source = { git = "https://github.com/vito/tree-sitter-bass", rev = "8799f28aa873c14ae133fe2e9240a0d4e78e9502" }
+source = { git = "https://github.com/vito/tree-sitter-bass", rev = "c9ba4568af24cd3403029730687c0a43d1350a43" }
 
 [[language]]
 name = "wat"
