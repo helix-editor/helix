@@ -1,0 +1,108 @@
+# Author : nelson-111 <devpurposes1@gmail.com>
+
+# A personal high contrast theme
+# made for being easy to distinguish
+# between keywords, types, variables, etc,
+# without reading
+
+"warning" = {fg = "my_yellow", bg = "black"}
+"error" = {fg = "my_red", bg = "black"}
+"info" = {fg = "my_green", bg = "black"}
+"hint" = {fg = "my_cyan", bg = "black"}
+"diagnostic" = {modifiers = ["underlined"]}
+
+"ui.background" = {bg = "dark-purple"}
+"ui.window" = {fg = "white"}
+"ui.gutter" = {}
+"ui.linenr" = {bg = "dark-purple", fg = "my_gray"}
+"ui.linenr.selected" = {bg = "purple", fg = "my_green"}
+"ui.menu" = {fg = "white", bg = "dark-purple"}
+"ui.menu.selected" = {fg = "my_green", bg = "purple"}
+"ui.text" = {fg = "white"}
+"ui.text.focus" = {fg = "my_green", bg = "black"}
+"ui.text.info" = {fg = "white"}
+"ui.cursor" = {fg = "my_cyan", modifiers = ["reversed"]}
+"ui.cursor.primary" = {fg = "my_green", modifiers = ["reversed"]}
+"ui.cursor.insert" = {fg = "white", modifiers = ["reversed"]}
+"ui.cursor.select" = {fg = "my_yellow", modifiers = ["reversed"]}
+"ui.cursor.match" = {fg = "my_red", modifiers = ["reversed"]}
+"ui.selection" = {bg = "purple"}
+"ui.selection.primary" = {fg = "white", modifiers = ["reversed"]}
+"ui.cursorline.primary" = {bg = "purple"}
+"ui.virtual" = {fg = "dark-purple"}
+"ui.virtual.ruler" = {bg = "purple"}
+"ui.virtual.whitespace" = {fg = "my_gray"}
+"ui.virtual.indent-guide" = {fg = "my_gray"}
+"ui.statusline" = {fg = "my_cyan", bg = "purple"}
+"ui.statusline.inactive" = {fg = "my_gray", bg = "dark-purple"}
+"ui.statusline.normal" = {fg = "my_cyan", modifiers = ["reversed"]}
+"ui.statusline.insert" = {fg = "my_green", modifiers = ["reversed"]}
+"ui.statusline.select" = {fg = "my_yellow", modifiers = ["reversed"]}
+"ui.help" = {fg = "white", bg = "dark-purple"}
+"ui.highlight" = {bg = "purple"}
+"ui.popup" = {bg = "purple"}
+
+"special" = {fg = "my_red", modifiers = ["italic"]}
+"attribute" = {fg = "my_yellow"}
+"type" = {fg = "my_red"}
+"constructor" = {fg = "my_cyan", modifiers = ["italic"]}
+"constant" = {fg = "my_magenta"}
+"constant.builtin" = {fg = "my_magenta", modifiers = ["italic"]}
+"constant.builtin.boolean" = {fg = "my_magenta", modifiers = ["italic"]}
+"constant.character" = {fg = "my_red", modifiers = ["italic"]}
+"constant.numeric" = {fg = "white"}
+"string" = {fg = "my_green"}
+"string.regexp" = {fg = "my_yellow"}
+"string.special.path" = {fg = "my_yellow"}
+"string.special.url" = {fg = "my_red"}
+"string.special.symbol" = {fg = "my_magenta"}
+"comments" = {fg = "my_gray", modifiers = ["italic"]}
+"comments.block.documentation" = {fg = "white", modifiers = ["italic"]}
+"variable" = {fg = "my_cyan"}
+"variable.builtin" = {fg = "my_cyan", modifiers = ["italic"]}
+"variable.other.member" = {fg = "my_orange"}
+"variable.function" = {fg = "my_cyan", modifiers = ["italic"]}
+"label" = {fg = "my_yellow"}
+"punctuation" = {fg = "white"}
+"punctuation.bracket" = {fg = "my_yellow"}
+"keyword" = {fg = "my_yellow"}
+"keyword.directive" = {fg = "my_red"}
+"keyword.function" = {fg = "lemon-green"}
+"operator" = {fg = "white"}
+"function" = {fg = "light-purple"}
+"function.method" = {fg = "light-purple", modifiers = ["italic"]}
+"function.macro" = {fg = "my_magenta", modifiers = ["italic"]}
+"function.special" = {fg = "my_yellow", modifiers = ["italic"]}
+"tag" = {fg = "my_yellow"}
+"namespace" = {fg = "my_cyan"}
+"storage" = {fg = "lemon-green"}
+
+"markup.heading" = {fg = "my_yellow"}
+"markup.heading.marker" = {fg = "white"}
+"markup.list" = {fg = "my_red"}
+"markup.list.numbered" = {fg = "white"}
+"markup.bold" = {fg = "my_cyan", modifiers = ["bold"]}
+"markup.italic" = {fg = "my_magenta", modifiers = ["italic"]}
+"markup.link" = {fg = "my_red", underline.style = "dot"}
+"markup.link.label" = {fg = "my_yellow", underline.style = "dot"}
+"markup.link.text" = {fg = "white"}
+"markup.quote" = {fg = "my_green"}
+
+"diff.plus" = "my_green"
+"diff.minus" = "my_red"
+"diff.delta" = "my_yellow"
+"diff.delta.moved" = "my_cyan"
+
+[palette]
+my_green = "#00ff00"
+my_yellow = "#ffff00"
+my_cyan = "#00ffff"
+my_red = "#ff6666"
+my_orange = "#fc8405"
+white = "#ffffff"
+my_magenta = "#ff00ff"
+my_gray = "#999999"
+black = "#000000"
+dark-purple = "#110066"
+light-purple = "#ccccff"
+purple = "#5500dd"
