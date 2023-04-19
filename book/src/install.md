@@ -133,8 +133,10 @@ pacman -S mingw-w64-ucrt-x86_64-helix
 ```
 
 ## Building from source
-Clone the Helix GitHub repository into a directory of your choice:
-We will refer to this directory as `repository_directory`.
+
+Clone the Helix GitHub repository into a directory of your choice. The
+examples in this documentation assume installation into either `~/src/` on
+Linux and macOS, or `%userprofile%\src\helix\runtime` on Windows.
 
 ```sh
 git clone https://github.com/helix-editor/helix
@@ -168,18 +170,18 @@ a c++ compiler to be installed, for example `gcc-c++` or `clang`.
 
 #### Linux and macOS
 
-The **runtime** directory is in the root of the `repository_directory`, so either
-set the `HELIX_RUNTIME` environment variable to point to the runtime files and
-add it to your `~/.bashrc` or equivalent:
+The **runtime** directory is one below the Helix source, so either set a
+`HELIX_RUNTIME` environment variable to point to that directory and add it to
+your `~/.bashrc` or equivalent:
 
 ```sh
-HELIX_RUNTIME=repository_directory/helix/runtime
+HELIX_RUNTIME=/home/user-name/src/helix/runtime
 ```
 
 Or, create a symbolic link:
 
 ```sh
-ln -s repository_directory/helix/runtime ~/.config/helix/runtime
+ln -s  /home/user-name/src/helix/runtime ~/.config/helix/runtime
 ```
 
 #### Windows
