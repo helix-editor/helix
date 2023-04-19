@@ -202,18 +202,17 @@ for instructions.</p>
 <a href="https://github.com/helix-editor/helix/releases">GitHub Releases page</a>. Add the binary to your system's <code>$PATH</code> to use it from the command
 line.</p>
 <h2 id="linux-macos-windows-and-openbsd-packaging-status"><a class="header" href="#linux-macos-windows-and-openbsd-packaging-status">Linux, macOS, Windows and OpenBSD packaging status</a></h2>
-<p>Helix is available for Linux, macOS and Windows via the official repositories listed below.</p>
 <p><a href="https://repology.org/project/helix/versions"><img src="https://repology.org/badge/vertical-allrepos/helix.svg" alt="Packaging status" /></a></p>
 <h2 id="linux"><a class="header" href="#linux">Linux</a></h2>
 <p>The following third party repositories are available:</p>
 <h3 id="ubuntu"><a class="header" href="#ubuntu">Ubuntu</a></h3>
-<p>Helix is available via <a href="https://launchpad.net/~maveonair/+archive/ubuntu/helix-editor">Maveonair's PPA</a>:</p>
+<p>Add the <code>PPA</code> for Helix:</p>
 <pre><code class="language-sh">sudo add-apt-repository ppa:maveonair/helix-editor
 sudo apt update
 sudo apt install helix
 </code></pre>
 <h3 id="fedorarhel"><a class="header" href="#fedorarhel">Fedora/RHEL</a></h3>
-<p>Helix is available via <code>copr</code>:</p>
+<p>Enable the <code>COPR</code> repository for Helix:</p>
 <pre><code class="language-sh">sudo dnf copr enable varlad/helix
 sudo dnf install helix
 </code></pre>
@@ -233,8 +232,8 @@ accepts the new settings on first use.</p>
 <a href="https://docs.cachix.org/installation">install Cachix CLI</a> and use
 <code>cachix use helix</code> to configure Nix to use cached outputs when possible.</p>
 <h3 id="appimage"><a class="header" href="#appimage">AppImage</a></h3>
-<p>Install Helix using <a href="https://appimage.org/">AppImage</a>.
-Download Helix AppImage from the <a href="https://github.com/helix-editor/helix/releases/latest">latest releases</a> page.</p>
+<p>Install Helix using the Linux <a href="https://appimage.org/">AppImage</a> format.
+Download the official Helix AppImage from the <a href="https://github.com/helix-editor/helix/releases/latest">latest releases</a> page.</p>
 <pre><code class="language-sh">chmod +x helix-*.AppImage # change permission for executable mode
 ./helix-*.AppImage # run helix
 </code></pre>
@@ -261,26 +260,32 @@ You can get <a href="https://www.microsoft.com/p/app-installer/9nblggh4nns1#acti
 <pre><code class="language-sh">pacman -S mingw-w64-ucrt-x86_64-helix
 </code></pre>
 <h2 id="building-from-source"><a class="header" href="#building-from-source">Building from source</a></h2>
-<p>Clone the repository:</p>
+<p>Requirements:</p>
+<ul>
+<li>The <a href="https://www.rust-lang.org/tools/install">Rust toolchain</a></li>
+<li>The <a href="https://git-scm.com/">Git version control system</a></li>
+<li>A c++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang</li>
+</ul>
+<p>If you are using the <code>musl-libc</code> standard library instead of <code>glibc</code> the following environment variable must be set during the build to ensure tree-sitter grammars can be loaded correctly:</p>
+<pre><code class="language-sh">RUSTFLAGS=&quot;-C target-feature=-crt-static&quot;
+</code></pre>
+<ol>
+<li>Clone the repository:</li>
+</ol>
 <pre><code class="language-sh">git clone https://github.com/helix-editor/helix
 cd helix
 </code></pre>
-<p>Compile from source:</p>
+<ol start="2">
+<li>Compile from source:</li>
+</ol>
 <pre><code class="language-sh">cargo install --path helix-term --locked
 </code></pre>
 <p>This command will create the <code>hx</code> executable and construct the tree-sitter
-grammars in the local <code>runtime</code> folder. To build the tree-sitter grammars requires
-a c++ compiler to be installed, for example <code>gcc-c++</code>.</p>
-<blockquote>
-<p>💡 If you are using the musl-libc instead of glibc the following environment variable must be set during the build
-to ensure tree-sitter grammars can be loaded correctly:</p>
-<pre><code class="language-sh">RUSTFLAGS=&quot;-C target-feature=-crt-static&quot;
-</code></pre>
-</blockquote>
+grammars in the local <code>runtime</code> folder.</p>
 <blockquote>
 <p>💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
-grammars with <code>hx --grammar fetch</code> (requires <code>git</code>) and compile them with
-<code>hx --grammar build</code> (requires a C++ compiler). This will install them in
+grammars with <code>hx --grammar fetch</code> and compile them with
+<code>hx --grammar build</code>. This will install them in
 the <code>runtime</code> directory within the user's helix config directory (more
 <a href="#multiple-runtime-directories">details below</a>).</p>
 </blockquote>
