@@ -1936,7 +1936,7 @@ fn search_selection(cx: &mut Context) {
         .join("|");
 
     let msg = format!("register '{}' set to '{}'", '/', &regex);
-    cx.editor.registers.push('/', regex);
+    cx.editor.registers.write('/', vec![regex]);
     cx.editor.set_status(msg);
 }
 
@@ -1965,7 +1965,7 @@ fn make_search_word_bounded(cx: &mut Context) {
     }
 
     let msg = format!("register '{}' set to '{}'", '/', &new_regex);
-    cx.editor.registers.push('/', new_regex);
+    cx.editor.registers.write('/', vec![new_regex]);
     cx.editor.set_status(msg);
 }
 

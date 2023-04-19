@@ -569,7 +569,7 @@ impl Component for Prompt {
                         if last_item != self.line {
                             // store in history
                             if let Some(register) = self.history_register {
-                                cx.editor.registers.push(register, self.line.clone());
+                                cx.editor.registers.write(register, vec![self.line.clone()]);
                             };
                         }
 

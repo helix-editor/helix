@@ -43,6 +43,7 @@ pub use helix_core::diagnostic::Severity;
 pub use helix_core::register::Registers;
 use helix_core::{
     auto_pairs::AutoPairs,
+    register::{BlackHoleRegister, HistoryRegister},
     syntax::{self, AutoPairConfig, SoftWrap},
     Change,
 };
@@ -936,6 +937,12 @@ impl Editor {
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
 
+        let mut registers = Registers::default();
+        registers.set_register('/', Box::new(HistoryRegister::default()));
+        registers.set_register('"', Box::new(HistoryRegister::default()));
+        registers.set_register(':', Box::new(HistoryRegister::default()));
+        registers.set_register('_', Box::new(BlackHoleRegister::default()));
+
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
 
@@ -962,7 +969,7 @@ impl Editor {
             theme_loader,
             last_theme: None,
             last_selection: None,
-            registers: Registers::default(),
+            registers,
             clipboard_provider: get_clipboard_provider(),
             status_msg: None,
             autoinfo: None,

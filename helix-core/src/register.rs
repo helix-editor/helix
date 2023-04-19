@@ -1,48 +1,95 @@
+use core::fmt::Debug;
 use std::collections::HashMap;
 
-#[derive(Debug)]
-pub struct Register {
-    name: char,
+pub trait Register: Debug {
+    fn read(&self) -> &[String];
+    fn write(&mut self, values: Vec<String>);
+}
+
+#[derive(Debug, Default)]
+pub struct SimpleRegister {
     values: Vec<String>,
 }
 
-impl Register {
-    pub const fn new(name: char) -> Self {
-        Self {
-            name,
-            values: Vec::new(),
-        }
-    }
-
-    pub fn new_with_values(name: char, values: Vec<String>) -> Self {
-        Self { name, values }
-    }
-
-    pub const fn name(&self) -> char {
-        self.name
-    }
-
-    pub fn read(&self) -> &[String] {
+impl Register for SimpleRegister {
+    fn read(&self) -> &[String] {
         &self.values
     }
 
-    pub fn write(&mut self, values: Vec<String>) {
+    fn write(&mut self, values: Vec<String>) {
         self.values = values;
-    }
-
-    pub fn push(&mut self, value: String) {
-        self.values.push(value);
     }
 }
 
-/// Currently just wraps a `HashMap` of `Register`s
+#[derive(Debug, Default)]
+pub struct HistoryRegister {
+    values: Vec<String>,
+}
+
+impl Register for HistoryRegister {
+    fn read(&self) -> &[String] {
+        &self.values
+    }
+
+    fn write(&mut self, values: Vec<String>) {
+        self.values.extend(values.into_iter());
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct BlackHoleRegister {
+    values: [String; 0],
+}
+
+impl Register for BlackHoleRegister {
+    fn read(&self) -> &[String] {
+        &self.values
+    }
+
+    fn write(&mut self, _values: Vec<String>) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    const TEST_STRING: [&str; 2] = ["Hello World!", "BuzzFuzz"];
+
+    fn create_and_assign<T: Register + Default>(mut register: T) -> T {
+        assert_eq!(register.read().len(), 0);
+        register.write(TEST_STRING.into_iter().map(str::to_string).collect());
+        register
+    }
+
+    #[test]
+    fn test_simple_register() {
+        let register = create_and_assign(SimpleRegister::default());
+        assert_eq!(register.read(), TEST_STRING);
+    }
+    #[test]
+    fn test_history_register() {
+        let mut register = create_and_assign(HistoryRegister::default());
+        assert_eq!(register.read(), TEST_STRING);
+        register.write(vec!["history".to_string()]);
+        assert_eq!(register.read().last().unwrap(), "history");
+    }
+    #[test]
+    fn test_black_hole_register() {
+        let register = create_and_assign(BlackHoleRegister::default());
+        assert_eq!(register.read().len(), 0);
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Registers {
-    inner: HashMap<char, Register>,
+    inner: HashMap<char, Box<dyn Register>>,
 }
 
 impl Registers {
-    pub fn get(&self, name: char) -> Option<&Register> {
+    pub fn set_register(&mut self, name: char, register: Box<dyn Register>) {
+        self.inner.insert(name, register);
+    }
+
+    pub fn get(&self, name: char) -> Option<&Box<dyn Register>> {
         self.inner.get(&name)
     }
 
@@ -51,20 +98,11 @@ impl Registers {
     }
 
     pub fn write(&mut self, name: char, values: Vec<String>) {
-        if name != '_' {
-            self.inner
-                .insert(name, Register::new_with_values(name, values));
-        }
-    }
-
-    pub fn push(&mut self, name: char, value: String) {
-        if name != '_' {
-            if let Some(r) = self.inner.get_mut(&name) {
-                r.push(value);
-            } else {
-                self.write(name, vec![value]);
-            }
-        }
+        let entry = self
+            .inner
+            .entry(name)
+            .or_insert(Box::new(SimpleRegister::default()));
+        entry.write(values);
     }
 
     pub fn first(&self, name: char) -> Option<&String> {
@@ -75,7 +113,7 @@ impl Registers {
         self.read(name).and_then(|entries| entries.last())
     }
 
-    pub fn inner(&self) -> &HashMap<char, Register> {
+    pub fn inner(&self) -> &HashMap<char, Box<dyn Register>> {
         &self.inner
     }
 }
