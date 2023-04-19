@@ -41,7 +41,7 @@
 (macro_invocation
   macro: (scoped_identifier
     path: (identifier) @_sqlx (#eq? @_sqlx "sqlx")
-    name: (identifier) @_query_as (#match? @_query "^query_as(_unchecked)?$"))
+    name: (identifier) @_query_as (#match? @_query_as "^query_as(_unchecked)?$"))
   (token_tree
     ; Only the second argument is SQL
     .
