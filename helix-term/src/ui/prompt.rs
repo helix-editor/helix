@@ -610,6 +610,7 @@ impl Component for Prompt {
                     .registers
                     .inner()
                     .iter()
+                    .filter(|(_, reg)| !reg.read().is_empty())
                     .map(|(ch, reg)| {
                         let content = reg
                             .read()

@@ -71,6 +71,7 @@ impl Info {
         let body: Vec<_> = registers
             .inner()
             .iter()
+            .filter(|(_, reg)| !reg.read().is_empty())
             .map(|(ch, reg)| {
                 let content = reg
                     .read()
