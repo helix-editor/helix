@@ -144,8 +144,10 @@ pacman -S mingw-w64-ucrt-x86_64-helix
 Requirements:
 
 - The [Rust toolchain](https://www.rust-lang.org/tools/install)
-- A c++14 compatible compiler to build the tree-sitter grammars, for example `gcc-c++`
-- If you are using the `musl-libc` standard library instead of `glibc` the following environment variable must be set during the build to ensure tree-sitter grammars can be loaded correctly:
+- The [Git version control system](https://git-scm.com/)
+- A c++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang
+
+If you are using the `musl-libc` standard library instead of `glibc` the following environment variable must be set during the build to ensure tree-sitter grammars can be loaded correctly:
 
 ```sh
 RUSTFLAGS="-C target-feature=-crt-static"
@@ -168,7 +170,7 @@ This command will create the `hx` executable and construct the tree-sitter
 grammars in the local `runtime` folder.
 
 > 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
-> grammars with `hx --grammar fetch` (requires `git`) and compile them with
+> grammars with `hx --grammar fetch` and compile them with
 > `hx --grammar build`. This will install them in
 > the `runtime` directory within the user's helix config directory (more
 > [details below](#multiple-runtime-directories)).
