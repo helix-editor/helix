@@ -443,10 +443,42 @@ fn build_tree_sitter_library(
             .arg(header_path)
             .arg("/Od")
             .arg("/utf-8")
-            .arg("/std:c++14")
             .arg("/std:c11");
         if let Some(scanner_path) = scanner_path.as_ref() {
-            command.arg(scanner_path);
+            if scanner_path.extension() == Some("c".as_ref()) {
+                command.arg(scanner_path);
+            } else {
+                let mut cpp_command = Command::new(compiler.path());
+                cpp_command.current_dir(src_path);
+                for (key, value) in compiler.env() {
+                    cpp_command.env(key, value);
+                }
+                cpp_command.args(compiler.args());
+                let object_file =
+                    library_path.with_file_name(format!("{}_scanner.o", &grammar.grammar_id));
+                cpp_command
+                    .args(["/nologo", "/LD", "/I"])
+                    .arg(header_path)
+                    .arg("/Od")
+                    .arg("/utf-8")
+                    .arg("/std:c++14")
+                    .arg("/o")
+                    .arg(&object_file)
+                    .arg("/c")
+                    .arg(scanner_path);
+                let output = cpp_command
+                    .output()
+                    .context("Failed to execute C++ compiler")?;
+                if !output.status.success() {
+                    return Err(anyhow!(
+                        "Parser compilation failed.\nStdout: {}\nStderr: {}",
+                        String::from_utf8_lossy(&output.stdout),
+                        String::from_utf8_lossy(&output.stderr)
+                    ));
+                }
+                command.arg(&object_file);
+                _path_guard = TempPath::from_path(object_file);
+            }
         }
 
         command
