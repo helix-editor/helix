@@ -193,10 +193,10 @@ pub struct FilePickerConfig {
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
     /// Enables user to define a list of dotfiles to be included when hidden is set to true
-    pub include_hidden: Option<Vec<String>>
+    pub include_hidden: Option<Vec<String>>,
 }
 
-impl Default for FilePickerConfig{
+impl Default for FilePickerConfig {
     fn default() -> Self {
         Self {
             hidden: true,
