@@ -116,6 +116,10 @@ where
         self.backend.claim(config)
     }
 
+    pub fn reconfigure(&mut self, config: Config) -> io::Result<()> {
+        self.backend.reconfigure(config)
+    }
+
     pub fn restore(&mut self, config: Config) -> io::Result<()> {
         self.backend.restore(config)
     }

@@ -361,6 +361,9 @@ impl Application {
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = *editor_config;
+                if let Err(err) = self.terminal.reconfigure(app_config.editor.clone().into()) {
+                    self.editor.set_error(err.to_string());
+                };
                 self.config.store(Arc::new(app_config));
             }
         }
@@ -419,6 +422,8 @@ impl Application {
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
             self.refresh_theme(&default_config)?;
+            self.terminal
+                .reconfigure(default_config.editor.clone().into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())
