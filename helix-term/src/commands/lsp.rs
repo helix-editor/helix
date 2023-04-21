@@ -205,7 +205,9 @@ fn jump_to_location(
             log::warn!("lsp position out of bounds - {:?}", location.range);
             return;
         };
-    doc.set_selection(view.id, Selection::single(new_range.anchor, new_range.head));
+    // we flip the range so that the cursor sits on the start of the symbol
+    // (for example start of the function).
+    doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
     align_view(doc, view, Align::Center);
 }
 
