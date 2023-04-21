@@ -875,7 +875,7 @@ name = "haskell"
 scope = "source.haskell"
 injection-regex = "haskell"
 file-types = ["hs", "hs-boot"]
-roots = ["Setup.hs", "stack.yaml", "*.cabal"]
+roots = ["Setup.hs", "stack.yaml", "cabal.project"]
 comment-token = "--"
 language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 indent = { tab-width = 2, unit = "  " }
