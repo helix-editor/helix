@@ -605,32 +605,38 @@ impl Document {
             return Some(formatting_future.boxed());
         };
 
-        let language_server = self.language_server()?;
-        let text = self.text.clone();
-        let offset_encoding = language_server.offset_encoding();
+        match self.language_server() {
+            Some(language_server) => {
+                let text = self.text.clone();
+                let offset_encoding = language_server.offset_encoding();
 
-        let request = language_server.text_document_formatting(
-            self.identifier(),
-            lsp::FormattingOptions {
-                tab_size: self.tab_width() as u32,
-                insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
-                ..Default::default()
+                let request = language_server.text_document_formatting(
+                    self.identifier(),
+                    lsp::FormattingOptions {
+                        tab_size: self.tab_width() as u32,
+                        insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
+                        ..Default::default()
+                    },
+                    None,
+                )?;
+
+                let fut = async move {
+                    let edits = request.await.unwrap_or_else(|e| {
+                        log::warn!("LSP formatting failed: {}", e);
+                        Default::default()
+                    });
+                    Ok(helix_lsp::util::generate_transaction_from_edits(
+                        &text,
+                        edits,
+                        offset_encoding,
+                    ))
+                };
+                    Some(fut.boxed())
             },
-            None,
-        )?;
-
-        let fut = async move {
-            let edits = request.await.unwrap_or_else(|e| {
-                log::warn!("LSP formatting failed: {}", e);
-                Default::default()
-            });
-            Ok(helix_lsp::util::generate_transaction_from_edits(
-                &text,
-                edits,
-                offset_encoding,
-            ))
-        };
-        Some(fut.boxed())
+            None => {
+                Some(async move { return Err(FormatterError::LanguageServerNotInitialized) }.boxed())
+            }
+        }
     }
 
     pub fn save<P: Into<PathBuf>>(
@@ -1509,6 +1515,7 @@ pub enum FormatterError {
     InvalidUtf8Output,
     DiskReloadError(String),
     NonZeroExitStatus(Option<String>),
+    LanguageServerNotInitialized,
 }
 
 impl std::error::Error for FormatterError {}
@@ -1527,6 +1534,7 @@ impl Display for FormatterError {
             Self::NonZeroExitStatus(None) => {
                 write!(f, "Formatter exited with non zero exit status")
             }
+            Self::LanguageServerNotInitialized => write!(f, "Language server is not initialized"),
         }
     }
 }
