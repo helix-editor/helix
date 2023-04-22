@@ -433,11 +433,12 @@ fn build_tree_sitter_library(
     for (key, value) in compiler.env() {
         command.env(key, value);
     }
+
     command.args(compiler.args());
     // used to delay dropping the temporary object file until after the compilation is complete
     let _path_guard;
 
-    if cfg!(all(windows, target_env = "msvc")) {
+    if compiler.is_like_msvc() {
         command
             .args(["/nologo", "/LD", "/I"])
             .arg(header_path)
@@ -455,20 +456,20 @@ fn build_tree_sitter_library(
                 }
                 cpp_command.args(compiler.args());
                 let object_file =
-                    library_path.with_file_name(format!("{}_scanner.o", &grammar.grammar_id));
+                    library_path.with_file_name(format!("{}_scanner.obj", &grammar.grammar_id));
                 cpp_command
                     .args(["/nologo", "/LD", "/I"])
                     .arg(header_path)
                     .arg("/Od")
                     .arg("/utf-8")
                     .arg("/std:c++14")
-                    .arg("/o")
-                    .arg(&object_file)
+                    .arg(format!("/Fo{}", object_file.display()))
                     .arg("/c")
                     .arg(scanner_path);
                 let output = cpp_command
                     .output()
                     .context("Failed to execute C++ compiler")?;
+
                 if !output.status.success() {
                     return Err(anyhow!(
                         "Parser compilation failed.\nStdout: {}\nStderr: {}",
