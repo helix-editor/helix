@@ -11,6 +11,7 @@ pub use typed::*;
 
 use helix_core::{
     char_idx_at_visual_offset, comment,
+    diagnostic::{Diagnostic, Severity::*},
     doc_formatter::TextFormat,
     encoding, find_first_non_whitespace_char, find_workspace, graphemes,
     history::UndoKind,
@@ -2454,12 +2455,13 @@ fn buffer_picker(cx: &mut Context) {
         path: Option<PathBuf>,
         is_modified: bool,
         is_current: bool,
+        diagnostics: Vec<Diagnostic>,
     }
 
     impl ui::menu::Item for BufferMeta {
-        type Data = ();
+        type Data = (helix_view::graphics::Style, helix_view::graphics::Style);
 
-        fn format(&self, _data: &Self::Data) -> Row {
+        fn format(&self, data: &Self::Data) -> Row {
             let path = self
                 .path
                 .as_deref()
@@ -2469,7 +2471,28 @@ fn buffer_picker(cx: &mut Context) {
                 None => SCRATCH_BUFFER_NAME,
             };
 
-            let mut flags = String::new();
+            let mut flags = Vec::new();
+
+            let diagnostics = &self.diagnostics;
+
+            let (hint, info, warning, error) =
+                diagnostics
+                    .iter()
+                    .filter_map(|d| d.severity)
+                    .fold((0, 0, 0, 0), |mut acc, s| {
+                        match s {
+                            Hint => acc.0 += 1,
+                            Info => acc.1 += 1,
+                            Warning => acc.2 += 1,
+                            Error => acc.3 += 1,
+                        }
+
+                        acc
+                    });
+
+            if !diagnostics.is_empty() {
+                flags.push("!");
+            }
             if self.is_modified {
                 flags.push('+');
             }
@@ -2477,7 +2500,32 @@ fn buffer_picker(cx: &mut Context) {
                 flags.push('*');
             }
 
-            Row::new([self.id.to_string(), flags, path.to_string()])
+            let flag = if flags.is_empty() {
+                "".into()
+            } else {
+                format!(" ({})", flags.join(""))
+            };
+
+            let (diag, text) = data;
+
+            Row::new(vec![
+                self.id.to_string(),
+                path.to_string(),
+                flag,
+                if !diagnostics.is_empty() {
+                    format!(
+                        " | {} error(s), {} warning(s), {} info, {} hint(s)",
+                        error, warning, info, hint
+                    )
+                } else {
+                    String::new()
+                },
+            ])
+            .style(if !diagnostics.is_empty() {
+                *diag
+            } else {
+                *text
+            })
         }
     }
 
@@ -2486,6 +2534,7 @@ fn buffer_picker(cx: &mut Context) {
         path: doc.path().cloned(),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
+        diagnostics: doc.diagnostics().to_vec(),
     };
 
     let picker = FilePicker::new(
@@ -2494,7 +2543,7 @@ fn buffer_picker(cx: &mut Context) {
             .values()
             .map(|doc| new_meta(doc))
             .collect(),
-        (),
+        (cx.editor.theme.get("error"), cx.editor.theme.get("text")),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
         },
