@@ -1204,8 +1204,7 @@ fn get_character_info(
     Ok(())
 }
 
-/// Reload the [`Document`] from its source file.
-fn reload(
+fn force_reload(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
     event: PromptEvent,
@@ -1223,7 +1222,31 @@ fn reload(
         })
 }
 
-fn reload_all(
+/// Reload the [`Document`] from its source file.
+fn reload(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let scrolloff = cx.editor.config().scrolloff;
+    let redraw_handle = cx.editor.redraw_handle.clone();
+    let (view, doc) = current!(cx.editor);
+
+    if doc.is_modified() {
+        bail!("Cannot reload unsaved buffer");
+    }
+
+    doc.reload(view, &cx.editor.diff_providers, redraw_handle)
+        .map(|_| {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        })
+}
+
+fn force_reload_all(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
     event: PromptEvent,
@@ -1268,6 +1291,70 @@ fn reload_all(
                 view.ensure_cursor_in_view(doc, scrolloff);
             }
         }
+    }
+
+    Ok(())
+}
+
+fn reload_all(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let mut unsaved_buffer_count = 0;
+
+    let scrolloff = cx.editor.config().scrolloff;
+    let view_id = view!(cx.editor).id;
+
+    let docs_view_ids: Vec<(DocumentId, Vec<ViewId>)> = cx
+        .editor
+        .documents_mut()
+        .map(|doc| {
+            let mut view_ids: Vec<_> = doc.selections().keys().cloned().collect();
+
+            if view_ids.is_empty() {
+                doc.ensure_view_init(view_id);
+                view_ids.push(view_id);
+            };
+
+            (doc.id(), view_ids)
+        })
+        .collect();
+
+    for (doc_id, view_ids) in docs_view_ids {
+        let doc = doc_mut!(cx.editor, &doc_id);
+
+        if doc.is_modified() {
+            unsaved_buffer_count += 1;
+            continue;
+        }
+
+        // Every doc is guaranteed to have at least 1 view at this point.
+        let view = view_mut!(cx.editor, view_ids[0]);
+
+        // Ensure that the view is synced with the document's history.
+        view.sync_changes(doc);
+
+        let redraw_handle = cx.editor.redraw_handle.clone();
+        doc.reload(view, &cx.editor.diff_providers, redraw_handle)?;
+
+        for view_id in view_ids {
+            let view = view_mut!(cx.editor, view_id);
+            if view.doc.eq(&doc_id) {
+                view.ensure_cursor_in_view(doc, scrolloff);
+            }
+        }
+    }
+
+    if unsaved_buffer_count > 0 {
+        bail!(
+            "{}, unsaved buffer(s) remaining, all saved buffers reloaded",
+            unsaved_buffer_count
+        );
     }
 
     Ok(())
@@ -2481,17 +2568,31 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             fun: get_character_info,
             signature: CommandSignature::none(),
         },
+        TypableCommand{
+            name: "reload!",
+            aliases: &[],
+            doc: "Discard changes and reload from the source file",
+            fun: force_reload,
+            completer: None,
+        },
         TypableCommand {
             name: "reload",
             aliases: &[],
-            doc: "Discard changes and reload from the source file.",
+            doc: "Reload from the source file, if no changes were made.",
             fun: reload,
             signature: CommandSignature::none(),
         },
         TypableCommand {
-            name: "reload-all",
+            name: "reload-all!",
             aliases: &[],
             doc: "Discard changes and reload all documents from the source files.",
+            fun: force_reload_all,
+            completer: None,
+        },
+        TypableCommand {
+            name: "reload-all",
+            aliases: &[],
+            doc: "Reload all documents from the source files, if no changes were made.",
             fun: reload_all,
             signature: CommandSignature::none(),
         },
