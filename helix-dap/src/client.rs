@@ -62,12 +62,10 @@ impl Client {
         if command.is_empty() {
             return Result::Err(Error::Other(anyhow!("Command not provided")));
         }
-        if transport == "tcp" && port_arg.is_some() {
-            Self::tcp_process(command, args, port_arg.unwrap(), id).await
-        } else if transport == "stdio" {
-            Self::stdio(command, args, id)
-        } else {
-            Result::Err(Error::Other(anyhow!("Incorrect transport {}", transport)))
+        match (transport, port_arg) {
+            ("tcp", Some(port_arg)) => Self::tcp_process(command, args, port_arg, id).await,
+            ("stdio", _) => Self::stdio(command, args, id),
+            _ => Result::Err(Error::Other(anyhow!("Incorrect transport {}", transport))),
         }
     }
 
