@@ -2497,7 +2497,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
         TypableCommand {
             name: "update",
-            aliases: &[],
+            aliases: &["u"],
             doc: "Write changes only if the file has been modified.",
             fun: update,
             signature: CommandSignature::none(),
