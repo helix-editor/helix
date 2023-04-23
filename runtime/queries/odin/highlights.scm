@@ -1,8 +1,8 @@
 (keyword) @keyword
 (operator) @operator
 
-(int_literal)   @constant.numeric
-(float_literal) @constant.numeric
+(int_literal)   @constant.numeric.integer
+(float_literal) @constant.numeric.float
 (rune_literal)  @string.character
 (bool_literal) @constant.builtin.boolean
 (nil) @constant.builtin
