@@ -7,9 +7,6 @@
 (bool_literal) @constant.builtin.boolean
 (nil) @constant.builtin
 
-
-(ERROR) @special
-
 (type_identifier)    @type
 (package_identifier) @namespace
 (label_identifier)   @label
