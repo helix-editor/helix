@@ -407,3 +407,41 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_utf_bom_file() -> anyhow::Result<()> {
+    // "ABC" with utf8 bom
+    const UTF8_FILE: [u8; 6] = [0xef, 0xbb, 0xbf, b'A', b'B', b'C'];
+
+    // "ABC" in UTF16 with bom
+    const UTF16LE_FILE: [u8; 8] = [0xff, 0xfe, b'A', 0x00, b'B', 0x00, b'C', 0x00];
+    const UTF16BE_FILE: [u8; 8] = [0xfe, 0xff, 0x00, b'A', 0x00, b'B', 0x00, b'C'];
+
+    edit_file_with_content(&UTF8_FILE).await?;
+    edit_file_with_content(&UTF16LE_FILE).await?;
+    edit_file_with_content(&UTF16BE_FILE).await?;
+
+    Ok(())
+}
+
+async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+
+    file.as_file_mut().write_all(&file_content)?;
+
+    helpers::test_key_sequence(
+        &mut helpers::AppBuilder::new().build()?,
+        Some(&format!(":o {}<ret>:x<ret>", file.path().to_string_lossy())),
+        None,
+        true,
+    )
+    .await?;
+
+    file.rewind()?;
+    let mut new_file_content: Vec<u8> = Vec::new();
+    file.read_to_end(&mut new_file_content)?;
+
+    assert_eq!(file_content, new_file_content);
+
+    Ok(())
+}
