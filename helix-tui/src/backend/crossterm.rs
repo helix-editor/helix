@@ -63,6 +63,7 @@ pub struct CrosstermBackend<W: Write> {
     buffer: W,
     capabilities: Capabilities,
     supports_keyboard_enhancement_protocol: OnceCell<bool>,
+    mouse_capture_enabled: bool,
 }
 
 impl<W> CrosstermBackend<W>
@@ -74,6 +75,7 @@ where
             buffer,
             capabilities: Capabilities::from_env_or_default(config),
             supports_keyboard_enhancement_protocol: OnceCell::new(),
+            mouse_capture_enabled: false,
         }
     }
 
@@ -123,6 +125,7 @@ where
         execute!(self.buffer, terminal::Clear(terminal::ClearType::All))?;
         if config.enable_mouse_capture {
             execute!(self.buffer, EnableMouseCapture)?;
+            self.mouse_capture_enabled = true;
         }
         if self.supports_keyboard_enhancement_protocol() {
             execute!(
@@ -133,6 +136,19 @@ where
                 )
             )?;
         }
+        Ok(())
+    }
+
+    fn reconfigure(&mut self, config: Config) -> io::Result<()> {
+        if self.mouse_capture_enabled != config.enable_mouse_capture {
+            if config.enable_mouse_capture {
+                execute!(self.buffer, EnableMouseCapture)?;
+            } else {
+                execute!(self.buffer, DisableMouseCapture)?;
+            }
+            self.mouse_capture_enabled = config.enable_mouse_capture;
+        }
+
         Ok(())
     }
 

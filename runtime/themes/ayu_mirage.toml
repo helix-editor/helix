@@ -36,11 +36,15 @@
 
 # Interface
 "ui.background"= { bg = "background" }
-"ui.cursor" = { fg = "dark_gray", bg = "orange" }
+"ui.cursor" = { fg = "dark_gray", bg = "yellow" }
+"ui.cursor.primary" = { fg = "dark_gray", bg = "orange" }
 "ui.cursor.match" = "orange"
 "ui.linenr" = "dark_gray"
 "ui.linenr.selected" = "gray"
 "ui.statusline" = { fg = "foreground", bg = "black" }
+"ui.statusline.normal" = { fg = "black", bg = "blue" }
+"ui.statusline.insert" = { fg = "black", bg = "orange" }
+"ui.statusline.select" = { fg = "black", bg = "magenta" }
 "ui.cursorline" = { bg = "black" }
 "ui.popup" = { fg = "#7B91b3", bg = "black" }
 "ui.window" = "dark_gray"

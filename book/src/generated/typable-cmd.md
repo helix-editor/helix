@@ -46,7 +46,7 @@
 | `:character-info`, `:char` | Get info about the character under the primary cursor. |
 | `:reload` | Discard changes and reload from the source file. |
 | `:reload-all` | Discard changes and reload all documents from the source files. |
-| `:update` | Write changes only if the file has been modified. |
+| `:update`, `:u` | Write changes only if the file has been modified. |
 | `:lsp-workspace-command` | Open workspace command picker |
 | `:lsp-restart` | Restarts the Language Server that is in use by the current doc |
 | `:lsp-stop` | Stops the Language Server that is in use by the current doc |
