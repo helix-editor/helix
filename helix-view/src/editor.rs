@@ -282,6 +282,7 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
+    /// Whether or not the word under the cursor shall be highlighted
     pub cursor_word: bool,
     /// Workspace specific lsp ceiling dirs
     pub workspace_lsp_roots: Vec<PathBuf>,
@@ -754,6 +755,7 @@ impl Default for Config {
                 enable: Some(false),
                 ..SoftWrap::default()
             },
+            cursor_word: false,
             text_width: 80,
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),

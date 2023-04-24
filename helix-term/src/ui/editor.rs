@@ -257,6 +257,7 @@ impl EditorView {
             .for_each(|area| surface.set_style(area, ruler_theme))
     }
 
+    /// Gets the word under the cursor
     pub fn cursor_word(doc: &Document, view: &View) -> Option<String> {
         let text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
@@ -289,7 +290,6 @@ impl EditorView {
         };
 
         let row = text.char_to_line(view.offset.anchor.min(text.len_chars()));
-
         let line_range = {
             // Calculate the lines in view
             let last_line = text.len_lines().saturating_sub(1);
