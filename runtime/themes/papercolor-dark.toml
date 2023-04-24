@@ -7,6 +7,7 @@
 "ui.text.focus" = { fg = "selection_background", modifiers = ["bold"]}
 "ui.selection" = {bg="selection_background", fg="selection_foreground"}
 "ui.cursorline" = {bg="cursorline_background"}
+"ui.highlight" = {bg="cursorline_background"}
 "ui.statusline" = {bg="paper_bar_bg", fg="regular0"}
 "ui.statusline.select" = {bg="background", fg="bright7"}
 "ui.statusline.normal" = {bg="background", fg="bright3"}
@@ -31,6 +32,7 @@
 "markup.list" = "bright3"
 "markup.bold" = { fg = "foreground", modifiers = ["bold"] }
 "markup.italic" = { fg = "bright0", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "bright6", modifiers = ["underlined"] }
 "markup.link.text" = "bright2"
 "markup.link.label" = { fg = "regular2", modifiers = ["bold"] }
@@ -73,7 +75,11 @@
 "warning" = "bright4"
 "error" = "regular1"
 "info" = "bright4"
-diagnostic = { modifiers = ["bold", "underlined"]}
+
+"diagnostic.warning".underline = { color = "bright4", style = "curl" } 
+"diagnostic.error".underline = { color = "regular1", style = "curl" } 
+"diagnostic.info".underline = { color = "bright4", style = "curl" } 
+"diagnostic.hint".underline = { color = "bright4", style = "curl" } 
 
 
 [palette]

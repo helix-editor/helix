@@ -1,17 +1,17 @@
 # Syntax highlighting
 # -------------------
 "type" = "yellow"
-"type.enum.variant" = "peach"
 
 "constructor" = "sapphire"
 
 "constant" = "peach"
+"constant.builtin" = "peach"
 "constant.character" = "teal"
 "constant.character.escape" = "pink"
 
 "string" = "green"
 "string.regexp" = "peach"
-"string.special" = "pink"
+"string.special" = "blue"
 
 "comment" = { fg = "overlay1", modifiers = ["italic"] }
 
@@ -23,17 +23,19 @@
 "label" = "sapphire" # used for lifetimes
 
 "punctuation" = "overlay2"
+"punctuation.special" = "sky"
 
 "keyword" = "mauve"
+"keyword.storage.modifier.ref" = "teal"
 "keyword.control.conditional" = { fg = "mauve", modifiers = ["italic"] }
 
 "operator" = "sky"
 
 "function" = "blue"
-"function.builtin" = "peach"
-"function.macro" = "teal"
+"function.macro" = "mauve"
 
 "tag" = "mauve"
+"attribute" = "blue"
 
 "namespace" = { fg = "blue", modifiers = ["italic"] }
 
@@ -49,13 +51,14 @@
 "markup.list" = "mauve"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
-"markup.link.url" = { fg = "peach", modifiers = ["underlined"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "rosewater", modifiers = ["underlined"] }
 "markup.link.text" = "blue"
 "markup.raw" = "flamingo"
 
 "diff.plus" = "green"
 "diff.minus" = "red"
-"diff.delta" = "yellow"
+"diff.delta" = "blue"
 
 # User Interface
 # --------------
@@ -64,25 +67,27 @@
 "ui.linenr" = { fg = "surface1" }
 "ui.linenr.selected" = { fg = "lavender" }
 
-"ui.statusline" = { fg = "overlay1", bg = "surface0" }
-"ui.statusline.inactive" = { fg = "overlay1", bg = "mantle" }
-"ui.statusline.normal" = { fg = "surface0", bg = "lavender", modifiers = ["bold"] }
-"ui.statusline.insert" = { fg = "surface0", bg = "green", modifiers = ["bold"]  }
-"ui.statusline.select" = { fg = "surface0", bg = "flamingo", modifiers = ["bold"]  }
-
-"ui.bufferline.active" = { fg = "text", bg = "base", modifiers = ["bold"] }
-"ui.bufferline" = { fg = "overlay1", bg = "mantle" }
+"ui.statusline" = { fg = "subtext1", bg = "mantle" }
+"ui.statusline.inactive" = { fg = "surface2", bg = "mantle" }
+"ui.statusline.normal" = { fg = "base", bg = "lavender", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "base", bg = "green", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "base", bg = "flamingo", modifiers = ["bold"] }
 
 "ui.popup" = { fg = "text", bg = "surface0" }
 "ui.window" = { fg = "crust" }
 "ui.help" = { fg = "overlay2", bg = "surface0" }
 
-"ui.text" = "text" 
+"ui.bufferline" = { fg = "subtext0", bg = "mantle" }
+"ui.bufferline.active" = { fg = "mauve", bg = "base", underline = { color = "mauve", style = "line" } }
+"ui.bufferline.background" = { bg = "crust" }
+
+"ui.text" = "text"
 "ui.text.focus" = { fg = "text", bg = "surface0", modifiers = ["bold"] }
 
 "ui.virtual" = "overlay0"
 "ui.virtual.ruler" = { bg = "surface0" }
 "ui.virtual.indent-guide" = "surface0"
+"ui.virtual.inlay-hint" = { fg = "surface1", bg = "mantle" }
 
 "ui.selection" = { bg = "surface1" }
 
@@ -92,12 +97,15 @@
 
 "ui.cursorline.primary" = { bg = "cursorline" }
 
-"ui.highlight" = { bg = "surface1" }
+"ui.highlight" = { bg = "surface1", modifiers = ["bold"] }
 
 "ui.menu" = { fg = "overlay2", bg = "surface0" }
 "ui.menu.selected" = { fg = "text", bg = "surface1", modifiers = ["bold"] }
 
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.info" = { underline = { color = "sky", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "teal", style = "curl" } }
 
 error = "red"
 warning = "yellow"

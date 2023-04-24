@@ -32,7 +32,7 @@ body:
     id: helix-log
     attributes:
       label: Helix log
-      description: See `hx -h` for log file path
+      description: See `hx -h` for log file path. If you can reproduce the issue run `RUST_BACKTRACE=1 hx -vv` to generate a more detailed log file.
       value: |
         <details><summary>~/.cache/helix/helix.log</summary>
 
@@ -61,7 +61,8 @@ body:
       label: Helix Version
       description: >
         Helix version (`hx -V` if using a release, `git describe` if building
-        from master)
-      placeholder: "helix 0.6.0 (c0dbd6dc)"
+        from master).
+        **Make sure that you are using the [latest helix release](https://github.com/helix-editor/helix/releases) or a newer master build**
+      placeholder: "helix 22.12 (5eaa6d97)"
     validations:
       required: true

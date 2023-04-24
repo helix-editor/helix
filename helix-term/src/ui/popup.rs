@@ -6,7 +6,10 @@ use crate::{
 use tui::buffer::Buffer as Surface;
 
 use helix_core::Position;
-use helix_view::graphics::{Margin, Rect};
+use helix_view::{
+    graphics::{Margin, Rect},
+    Editor,
+};
 
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)
@@ -42,6 +45,10 @@ impl<T: Component> Popup<T> {
         }
     }
 
+    /// Set the anchor position next to which the popup should be drawn.
+    ///
+    /// Note that this is not the position of the top-left corner of the rendered popup itself,
+    /// but rather the screen-space position of the information to which the popup refers.
     pub fn position(mut self, pos: Option<Position>) -> Self {
         self.position = pos;
         self
@@ -51,6 +58,10 @@ impl<T: Component> Popup<T> {
         self.position
     }
 
+    /// Set the popup to prefer to render above or below the anchor position.
+    ///
+    /// This preference will be ignored if the viewport doesn't have enough space in the
+    /// chosen direction.
     pub fn position_bias(mut self, bias: Open) -> Self {
         self.position_bias = bias;
         self
@@ -78,10 +89,12 @@ impl<T: Component> Popup<T> {
         self
     }
 
-    pub fn get_rel_position(&mut self, viewport: Rect, cx: &Context) -> (u16, u16) {
+    /// Calculate the position where the popup should be rendered and return the coordinates of the
+    /// top left corner.
+    pub fn get_rel_position(&mut self, viewport: Rect, editor: &Editor) -> (u16, u16) {
         let position = self
             .position
-            .get_or_insert_with(|| cx.editor.cursor().0.unwrap_or_default());
+            .get_or_insert_with(|| editor.cursor().0.unwrap_or_default());
 
         let (width, height) = self.size;
 
@@ -144,6 +157,16 @@ impl<T: Component> Popup<T> {
 
     pub fn contents_mut(&mut self) -> &mut T {
         &mut self.contents
+    }
+
+    pub fn area(&mut self, viewport: Rect, editor: &Editor) -> Rect {
+        // trigger required_size so we recalculate if the child changed
+        self.required_size((viewport.width, viewport.height));
+
+        let (rel_x, rel_y) = self.get_rel_position(viewport, editor);
+
+        // clip to viewport
+        viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1))
     }
 }
 
@@ -222,15 +245,8 @@ impl<T: Component> Component for Popup<T> {
     }
 
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
-        // trigger required_size so we recalculate if the child changed
-        self.required_size((viewport.width, viewport.height));
-
+        let area = self.area(viewport, cx.editor);
         cx.scroll = Some(self.scroll);
-
-        let (rel_x, rel_y) = self.get_rel_position(viewport, cx);
-
-        // clip to viewport
-        let area = viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1));
 
         // clear area
         let background = cx.editor.theme.get("ui.popup");

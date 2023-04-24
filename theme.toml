@@ -31,6 +31,7 @@ label = "honey"
 "markup.heading" = "lilac"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "silver", modifiers = ["underlined"] }
 "markup.link.text" = "almond"
 "markup.raw" = "almond"
@@ -54,6 +55,7 @@ label = "honey"
 
 "ui.text" = { fg = "lavender" }
 "ui.text.focus" = { fg = "white" }
+"ui.text.inactive" = "sirocco"
 "ui.virtual" = { fg = "comet" }
 
 "ui.virtual.indent-guide" = { fg = "comet" }
@@ -67,7 +69,9 @@ label = "honey"
 "ui.cursor" = { modifiers = ["reversed"] }
 "ui.cursorline.primary" = { bg = "bossanova" }
 "ui.highlight" = { bg = "bossanova" }
-
+"ui.highlight.frameline" = { bg = "#634450" }
+"ui.debug" = { fg = "#634450" }
+"ui.debug.breakpoint" = { fg = "apricot" }
 "ui.menu" = { fg = "lavender", bg = "revolver" }
 "ui.menu.selected" = { fg = "revolver", bg = "white" }
 "ui.menu.scroll" = { fg = "lavender", bg = "comet" }

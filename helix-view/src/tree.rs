@@ -278,16 +278,15 @@ impl Tree {
         self.try_get(index).unwrap()
     }
 
-    /// Try to get reference to a [View] by index. Returns `None` if node content is not a [Content::View]
-    /// # Panics
+    /// Try to get reference to a [View] by index. Returns `None` if node content is not a [`Content::View`].
     ///
-    /// Panics if `index` is not in self.nodes. This can be checked with [Self::contains]
+    /// Does not panic if the view does not exists anymore.
     pub fn try_get(&self, index: ViewId) -> Option<&View> {
-        match &self.nodes[index] {
-            Node {
+        match self.nodes.get(index) {
+            Some(Node {
                 content: Content::View(view),
                 ..
-            } => Some(view),
+            }) => Some(view),
             _ => None,
         }
     }
@@ -701,7 +700,7 @@ impl<'a> DoubleEndedIterator for Traverse<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::editor::GutterType;
+    use crate::editor::GutterConfig;
     use crate::DocumentId;
 
     #[test]
@@ -712,34 +711,22 @@ mod test {
             width: 180,
             height: 80,
         });
-        let mut view = View::new(
-            DocumentId::default(),
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-        );
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
 
         let l0 = tree.focus;
-        let view = View::new(
-            DocumentId::default(),
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-        );
+        let view = View::new(DocumentId::default(), GutterConfig::default());
         tree.split(view, Layout::Vertical);
         let r0 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(
-            DocumentId::default(),
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-        );
+        let view = View::new(DocumentId::default(), GutterConfig::default());
         tree.split(view, Layout::Horizontal);
         let l1 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(
-            DocumentId::default(),
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-        );
+        let view = View::new(DocumentId::default(), GutterConfig::default());
         tree.split(view, Layout::Vertical);
         let l2 = tree.focus;
 
@@ -781,40 +768,28 @@ mod test {
         });
 
         let doc_l0 = DocumentId::default();
-        let mut view = View::new(
-            doc_l0,
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-        );
+        let mut view = View::new(doc_l0, GutterConfig::default());
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
 
         let l0 = tree.focus;
 
         let doc_r0 = DocumentId::default();
-        let view = View::new(
-            doc_r0,
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-        );
+        let view = View::new(doc_r0, GutterConfig::default());
         tree.split(view, Layout::Vertical);
         let r0 = tree.focus;
 
         tree.focus = l0;
 
         let doc_l1 = DocumentId::default();
-        let view = View::new(
-            doc_l1,
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-        );
+        let view = View::new(doc_l1, GutterConfig::default());
         tree.split(view, Layout::Horizontal);
         let l1 = tree.focus;
 
         tree.focus = l0;
 
         let doc_l2 = DocumentId::default();
-        let view = View::new(
-            doc_l2,
-            vec![GutterType::Diagnostics, GutterType::LineNumbers],
-        );
+        let view = View::new(doc_l2, GutterConfig::default());
         tree.split(view, Layout::Vertical);
         let l2 = tree.focus;
 

@@ -1,6 +1,7 @@
 use std::{
     fs::File,
     io::{Read, Write},
+    mem::replace,
     path::PathBuf,
     time::Duration,
 };
@@ -8,8 +9,8 @@ use std::{
 use anyhow::bail;
 use crossterm::event::{Event, KeyEvent};
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
-use helix_term::{application::Application, args::Args, config::Config};
-use helix_view::{doc, input::parse_macro, Editor};
+use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
+use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -22,8 +23,13 @@ pub struct TestCase {
     pub out_selection: Selection,
 }
 
-impl<S: Into<String>> From<(S, S, S)> for TestCase {
-    fn from((input, keys, output): (S, S, S)) -> Self {
+impl<S, R, V> From<(S, R, V)> for TestCase
+where
+    S: Into<String>,
+    R: Into<String>,
+    V: Into<String>,
+{
+    fn from((input, keys, output): (S, R, V)) -> Self {
         let (in_text, in_selection) = test::print(&input.into());
         let (out_text, out_selection) = test::print(&output.into());
 
@@ -59,6 +65,11 @@ pub async fn test_key_sequences(
     let num_inputs = inputs.len();
 
     for (i, (in_keys, test_fn)) in inputs.into_iter().enumerate() {
+        let (view, doc) = current_ref!(app.editor);
+        let state = test::plain(doc.text().slice(..), doc.selection(view.id));
+
+        log::debug!("executing test with document state:\n\n-----\n\n{}", state);
+
         if let Some(in_keys) = in_keys {
             for key_event in parse_macro(in_keys)?.into_iter() {
                 let key = Event::Key(KeyEvent::from(key_event));
@@ -68,6 +79,16 @@ pub async fn test_key_sequences(
         }
 
         let app_exited = !app.event_loop_until_idle(&mut rx_stream).await;
+
+        if !app_exited {
+            let (view, doc) = current_ref!(app.editor);
+            let state = test::plain(doc.text().slice(..), doc.selection(view.id));
+
+            log::debug!(
+                "finished running test with document state:\n\n-----\n\n{}",
+                state
+            );
+        }
 
         // the app should not exit from any test until the last one
         if i < num_inputs - 1 && app_exited {
@@ -118,7 +139,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     let test_case = test_case.into();
     let mut app = match app {
         Some(app) => app,
-        None => Application::new(Args::default(), Config::default(), test_syntax_conf(None))?,
+        None => Application::new(Args::default(), test_config(), test_syntax_conf(None))?,
     };
 
     let (view, doc) = helix_view::current!(app.editor);
@@ -130,7 +151,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     })
     .with_selection(test_case.in_selection.clone());
 
-    helix_view::apply_transaction(&transaction, doc, view);
+    doc.apply(&transaction, view.id);
 
     test_key_sequence(
         &mut app,
@@ -143,26 +164,8 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 
 /// Generates language configs that merge in overrides, like a user language
 /// config. The argument string must be a raw TOML document.
-///
-/// By default, language server configuration is dropped from the languages.toml
-/// document. If a language-server is necessary for a test, it must be explicitly
-/// added in `overrides`.
 pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Configuration {
     let mut lang = helix_loader::config::default_lang_config();
-
-    for lang_config in lang
-        .as_table_mut()
-        .expect("Expected languages.toml to be a table")
-        .get_mut("language")
-        .expect("Expected languages.toml to have \"language\" keys")
-        .as_array_mut()
-        .expect("Expected an array of language configurations")
-    {
-        lang_config
-            .as_table_mut()
-            .expect("Expected language config to be a TOML table")
-            .remove("language-server");
-    }
 
     if let Some(overrides) = overrides {
         let override_toml = toml::from_str(&overrides).unwrap();
@@ -176,13 +179,11 @@ pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Config
 /// document, selection, and sequence of key presses, and you just
 /// want to verify the resulting document and selection.
 pub async fn test_with_config<T: Into<TestCase>>(
-    args: Args,
-    config: Config,
-    syn_conf: helix_core::syntax::Configuration,
+    app_builder: AppBuilder,
     test_case: T,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
-    let app = Application::new(args, config, syn_conf)?;
+    let app = app_builder.build()?;
 
     test_key_sequence_with_input_text(
         Some(app),
@@ -203,13 +204,7 @@ pub async fn test_with_config<T: Into<TestCase>>(
 }
 
 pub async fn test<T: Into<TestCase>>(test_case: T) -> anyhow::Result<()> {
-    test_with_config(
-        Args::default(),
-        Config::default(),
-        test_syntax_conf(None),
-        test_case,
-    )
-    .await
+    test_with_config(AppBuilder::default(), test_case).await
 }
 
 pub fn temp_file_with_contents<S: AsRef<str>>(
@@ -224,6 +219,25 @@ pub fn temp_file_with_contents<S: AsRef<str>>(
     temp_file.flush()?;
     temp_file.as_file_mut().sync_all()?;
     Ok(temp_file)
+}
+
+/// Generates a config with defaults more suitable for integration tests
+pub fn test_config() -> Config {
+    Config {
+        editor: test_editor_config(),
+        keys: helix_term::keymap::default(),
+        ..Default::default()
+    }
+}
+
+pub fn test_editor_config() -> helix_view::editor::Config {
+    helix_view::editor::Config {
+        lsp: LspConfig {
+            enable: false,
+            ..Default::default()
+        },
+        ..Default::default()
+    }
 }
 
 /// Replaces all LF chars with the system's appropriate line feed
@@ -265,7 +279,7 @@ impl Default for AppBuilder {
     fn default() -> Self {
         Self {
             args: Args::default(),
-            config: Config::default(),
+            config: test_config(),
             syn_conf: test_syntax_conf(None),
             input: None,
         }
@@ -288,7 +302,9 @@ impl AppBuilder {
 
     // Remove this attribute once `with_config` is used in a test:
     #[allow(dead_code)]
-    pub fn with_config(mut self, config: Config) -> Self {
+    pub fn with_config(mut self, mut config: Config) -> Self {
+        let keys = replace(&mut config.keys, helix_term::keymap::default());
+        merge_keys(&mut config.keys, keys);
         self.config = config;
         self
     }
@@ -315,11 +331,17 @@ impl AppBuilder {
             .with_selection(selection);
 
             // replace the initial text with the input text
-            helix_view::apply_transaction(&trans, doc, view);
+            doc.apply(&trans, view.id);
         }
 
         Ok(app)
     }
+}
+
+pub async fn run_event_loop_until_idle(app: &mut Application) {
+    let (_, rx) = tokio::sync::mpsc::unbounded_channel();
+    let mut rx_stream = UnboundedReceiverStream::new(rx);
+    app.event_loop_until_idle(&mut rx_stream).await;
 }
 
 pub fn assert_file_has_content(file: &mut File, content: &str) -> anyhow::Result<()> {

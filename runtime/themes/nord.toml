@@ -19,6 +19,7 @@
 "ui.statusline.insert" = { fg = "nord0", bg = "nord13" }
 "ui.statusline.select" = { fg = "nord0", bg = "nord15" }
 
+
 # nord1 - status bars, panels, modals, autocompletion
 "ui.statusline" = { fg = "nord4", bg = "nord1" }
 "ui.popup" = { bg = "nord1" }
@@ -33,6 +34,8 @@
 "comment" = { fg = "nord3_bright", modifiers = ["italic"] }
 "ui.linenr" = "nord3_bright"
 "ui.virtual.whitespace" = "nord3_bright"
+"ui.virtual.inlay-hint" = { fg = "nord3_bright" }
+
 
 # Snow Storm
 # nord4 - cursor, variables, constants, attributes, fields
@@ -95,8 +98,15 @@
 "markup.list" = "nord9"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.text" = "nord8"
 "markup.raw" = "nord7"
+
+# lsp diagnostics
+"diagnostic.error" = { underline = { color = "nord11", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "nord13", style = "curl" } }
+"diagnostic.info" = { underline = { color = "nord8", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "nord8", style = "curl" } }
 
 # vcs
 "diff.plus" = "nord14"

@@ -44,6 +44,7 @@
 "markup.list" = "blue3"
 "markup.bold" = { fg = "blue2", modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { modifiers = ["underlined"] }
 "markup.link.text" = "orange"
 "markup.quote" = "dark_green"
@@ -88,6 +89,7 @@
 "ui.virtual.whitespace" = { fg = "dark_gray" }
 "ui.virtual.ruler" = { bg = "borders" }
 "ui.virtual.indent-guide" = { fg = "dark_gray4" }
+"ui.virtual.inlay-hint" = { fg = "white", bg = "#444444" }
 
 "warning" = { fg = "gold2" }
 "error" = { fg = "red" }

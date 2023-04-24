@@ -33,6 +33,7 @@
 "ui.virtual.ruler" = { bg = "bg3" } # Vertical rulers (colored columns in editing area).
 "ui.virtual.whitespace" = { fg = "bg3" } # Whitespace markers in editing area.
 "ui.virtual.indent-guide" = { fg = "black" } # Vertical indent width guides
+"ui.virtual.inlay-hint" = { fg = "comment", bg = "bg2" } # Default style for inlay hints of all kinds
 
 "ui.statusline" = { fg = "fg2", bg = "bg0" } # Status line.
 "ui.statusline.inactive" = { fg = "fg3", bg = "bg0" } # Status line in unfocused windows.
@@ -55,20 +56,21 @@
 "markup.list" = { fg = "magenta", modifiers = ["bold"] }
 "markup.bold" = { fg = "orange", modifiers = ["bold"] }
 "markup.italic" = { fg = "pink" }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link" = { fg = "yellow-bright", modifiers = ["bold"] }
 "markup.quote" = { fg = "blue" }
 
 
 # DIAGNOSTICS
-"warning" = { fg ="yellow", bg = "bg1" } # Diagnostics warning (gutter)
+"warning" = { fg = "yellow", bg = "bg1" } # Diagnostics warning (gutter)
 "error" = { fg = "red", bg = "bg1" } # Diagnostics error (gutter)
 "info" = { fg = "blue", bg = "bg1" } # Diagnostics info (gutter)
 "hint" = { fg = "green", bg = "bg1" } # Diagnostics hint (gutter)
-"diagnostic" = { modifiers = ["underlined"] } # Diagnostics fallback style (editing area)
-"diagnostic.error" = { fg = "red" } #	Diagnostics error (editing area)
-"diagnostic.warning" = { fg = "yellow" } #	Diagnostics warning (editing area)
-"diagnostic.info" = { fg = "blue" } #	Diagnostics info (editing area)
-"diagnostic.hint" = { fg = "green" } #	Diagnostics hint (editing area)
+
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } } #	Diagnostics warning (editing area)
+"diagnostic.error" = { underline = { color = "red", style = "curl" } } #	Diagnostics error (editing area)
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } } #	Diagnostics info (editing area)
+"diagnostic.hint" = { underline = { color = "green", style = "curl" } } #	Diagnostics hint (editing area)
 
 
 # SYNTAX HIGHLIGHTING

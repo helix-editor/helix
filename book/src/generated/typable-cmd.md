@@ -43,11 +43,13 @@
 | `:change-current-directory`, `:cd` | Change the current working directory. |
 | `:show-directory`, `:pwd` | Show the current working directory. |
 | `:encoding` | Set encoding. Based on `https://encoding.spec.whatwg.org`. |
+| `:character-info`, `:char` | Get info about the character under the primary cursor. |
 | `:reload` | Discard changes and reload from the source file. |
 | `:reload-all` | Discard changes and reload all documents from the source files. |
-| `:update` | Write changes only if the file has been modified. |
+| `:update`, `:u` | Write changes only if the file has been modified. |
 | `:lsp-workspace-command` | Open workspace command picker |
 | `:lsp-restart` | Restarts the Language Server that is in use by the current doc |
+| `:lsp-stop` | Stops the Language Server that is in use by the current doc |
 | `:tree-sitter-scopes` | Display tree sitter scopes, primarily for theming and development. |
 | `:debug-start`, `:dbg` | Start a debug session from a given template with given parameters. |
 | `:debug-remote`, `:dbg-tcp` | Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters. |
@@ -58,8 +60,9 @@
 | `:hsplit-new`, `:hnew` | Open a scratch buffer in a horizontal split. |
 | `:tutor` | Open the tutorial. |
 | `:goto`, `:g` | Goto line number. |
-| `:set-language`, `:lang` | Set the language of current buffer. |
+| `:set-language`, `:lang` | Set the language of current buffer (show current language if no value specified). |
 | `:set-option`, `:set` | Set a config option at runtime.<br>For example to disable smart case search, use `:set search.smart-case false`. |
+| `:toggle-option`, `:toggle` | Toggle a boolean config option at runtime.<br>For example to toggle smart case search, use `:toggle search.smart-case`. |
 | `:get-option`, `:get` | Get the current value of a config option. |
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |
@@ -67,8 +70,11 @@
 | `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
 | `:config-reload` | Refresh user config. |
 | `:config-open` | Open the user config.toml file. |
+| `:config-open-workspace` | Open the workspace config.toml file. |
 | `:log-open` | Open the helix log file. |
 | `:insert-output` | Run shell command, inserting output before each selection. |
 | `:append-output` | Run shell command, appending output after each selection. |
 | `:pipe` | Pipe each selection to the shell command. |
+| `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh` | Run a shell command |
+| `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |

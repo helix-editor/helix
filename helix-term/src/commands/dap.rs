@@ -2,7 +2,7 @@ use super::{Context, Editor};
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, Jobs},
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
+    ui::{self, overlay::overlaid, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
 };
 use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
@@ -12,7 +12,7 @@ use helix_view::editor::Breakpoint;
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tui::text::Spans;
+use tui::{text::Spans, widgets::Row};
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -25,7 +25,7 @@ use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select
 impl ui::menu::Item for StackFrame {
     type Data = ();
 
-    fn label(&self, _data: &Self::Data) -> Spans {
+    fn format(&self, _data: &Self::Data) -> Row {
         self.name.as_str().into() // TODO: include thread_states in the label
     }
 }
@@ -33,7 +33,7 @@ impl ui::menu::Item for StackFrame {
 impl ui::menu::Item for DebugTemplate {
     type Data = ();
 
-    fn label(&self, _data: &Self::Data) -> Spans {
+    fn format(&self, _data: &Self::Data) -> Row {
         self.name.as_str().into()
     }
 }
@@ -41,7 +41,7 @@ impl ui::menu::Item for DebugTemplate {
 impl ui::menu::Item for Thread {
     type Data = ThreadStates;
 
-    fn label(&self, thread_states: &Self::Data) -> Spans {
+    fn format(&self, thread_states: &Self::Data) -> Row {
         format!(
             "{} ({})",
             self.name,
@@ -270,7 +270,7 @@ pub fn dap_launch(cx: &mut Context) {
 
     let templates = config.templates.clone();
 
-    cx.push_layer(Box::new(overlayed(Picker::new(
+    cx.push_layer(Box::new(overlaid(Picker::new(
         templates,
         (),
         |cx, template, _action| {
@@ -287,6 +287,36 @@ pub fn dap_launch(cx: &mut Context) {
             cx.jobs.callback(callback);
         },
     ))));
+}
+
+pub fn dap_restart(cx: &mut Context) {
+    let debugger = match &cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => {
+            cx.editor.set_error("Debugger is not running");
+            return;
+        }
+    };
+    if !debugger
+        .capabilities()
+        .supports_restart_request
+        .unwrap_or(false)
+    {
+        cx.editor
+            .set_error("Debugger does not support session restarts");
+        return;
+    }
+    if debugger.starting_request_args().is_none() {
+        cx.editor
+            .set_error("No arguments found with which to restart the sessions");
+        return;
+    }
+
+    dap_callback(
+        cx.jobs,
+        debugger.restart(),
+        |editor, _compositor, _resp: ()| editor.set_status("Debugging session restarted"),
+    );
 }
 
 fn debug_parameter_prompt(
@@ -475,19 +505,36 @@ pub fn dap_variables(cx: &mut Context) {
 
     if debugger.thread_id.is_none() {
         cx.editor
-            .set_status("Cannot access variables while target is running");
+            .set_status("Cannot access variables while target is running.");
         return;
     }
     let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
         (Some(frame), Some(thread_id)) => (frame, thread_id),
         _ => {
             cx.editor
-                .set_status("Cannot find current stack frame to access variables");
+                .set_status("Cannot find current stack frame to access variables.");
             return;
         }
     };
 
-    let frame_id = debugger.stack_frames[&thread_id][frame].id;
+    let thread_frame = match debugger.stack_frames.get(&thread_id) {
+        Some(thread_frame) => thread_frame,
+        None => {
+            cx.editor
+                .set_error("Failed to get stack frame for thread: {thread_id}");
+            return;
+        }
+    };
+    let stack_frame = match thread_frame.get(frame) {
+        Some(stack_frame) => stack_frame,
+        None => {
+            cx.editor
+                .set_error("Failed to get stack frame for thread {thread_id} and frame {frame}.");
+            return;
+        }
+    };
+
+    let frame_id = stack_frame.id;
     let scopes = match block_on(debugger.scopes(frame_id)) {
         Ok(s) => s,
         Err(e) => {
@@ -539,7 +586,7 @@ pub fn dap_variables(cx: &mut Context) {
 pub fn dap_terminate(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    let request = debugger.disconnect();
+    let request = debugger.disconnect(None);
     dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
         // editor.set_error(format!("Failed to disconnect: {}", e));
         editor.debugger = None;

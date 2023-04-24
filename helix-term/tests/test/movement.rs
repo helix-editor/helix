@@ -64,6 +64,307 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn surround_by_character() -> anyhow::Result<()> {
+    // Only pairs matching the passed character count
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "mi{",
+        "(so [many {#[good|]#} text] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "mi[",
+        "(so [#[many {good} text|]#] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "mi(",
+        "(#[so [many {good} text] here|]#)",
+    ))
+    .await?;
+
+    // Works with characters that aren't pairs too
+    test((
+        "'so 'many 'go#[o|]#d' text' here'",
+        "mi'",
+        "'so 'many '#[good|]#' text' here'",
+    ))
+    .await?;
+    test((
+        "'so 'many 'go#[o|]#d' text' here'",
+        "2mi'",
+        "'so '#[many 'good' text|]#' here'",
+    ))
+    .await?;
+    test((
+        "'so \"many 'go#[o|]#d' text\" here'",
+        "mi\"",
+        "'so \"#[many 'good' text|]#\" here'",
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn surround_inside_pair() -> anyhow::Result<()> {
+    // Works at first character of buffer
+    // TODO: Adjust test when opening pair failure is fixed
+    test(("#[(|]#something)", "mim", "#[(|]#something)")).await?;
+
+    // Inside a valid pair selects pair
+    test(("some (#[t|]#ext) here", "mim", "some (#[text|]#) here")).await?;
+
+    // On pair character selects pair
+    // TODO: Opening pair character is a known failure case that needs addressing
+    // test(("some #[(|]#text) here", "mim", "some (#[text|]#) here")).await?;
+    test(("some (text#[)|]# here", "mim", "some (#[text|]#) here")).await?;
+
+    // No valid pair does nothing
+    test(("so#[m|]#e (text) here", "mim", "so#[m|]#e (text) here")).await?;
+
+    // Count skips to outer pairs
+    test((
+        "(so (many (go#[o|]#d) text) here)",
+        "1mim",
+        "(so (many (#[good|]#) text) here)",
+    ))
+    .await?;
+    test((
+        "(so (many (go#[o|]#d) text) here)",
+        "2mim",
+        "(so (#[many (good) text|]#) here)",
+    ))
+    .await?;
+    test((
+        "(so (many (go#[o|]#d) text) here)",
+        "3mim",
+        "(#[so (many (good) text) here|]#)",
+    ))
+    .await?;
+
+    // Matching pairs outside selection don't match
+    test((
+        "((so)((many) go#[o|]#d (text))(here))",
+        "mim",
+        "((so)(#[(many) good (text)|]#)(here))",
+    ))
+    .await?;
+    test((
+        "((so)((many) go#[o|]#d (text))(here))",
+        "2mim",
+        "(#[(so)((many) good (text))(here)|]#)",
+    ))
+    .await?;
+
+    // Works with mixed braces
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "mim",
+        "(so [many {#[good|]#} text] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "2mim",
+        "(so [#[many {good} text|]#] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "3mim",
+        "(#[so [many {good} text] here|]#)",
+    ))
+    .await?;
+
+    // Selection direction is preserved
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "mim",
+        "(so [many {#[|good]#} text] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "2mim",
+        "(so [#[|many {good} text]#] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "3mim",
+        "(#[|so [many {good} text] here]#)",
+    ))
+    .await?;
+
+    // Only pairs outside of full selection range are considered
+    test((
+        "(so (many (go#[od) |]#text) here)",
+        "mim",
+        "(so (#[many (good) text|]#) here)",
+    ))
+    .await?;
+    test((
+        "(so (many#[ (go|]#od) text) here)",
+        "mim",
+        "(so (#[many (good) text|]#) here)",
+    ))
+    .await?;
+    test((
+        "(so#[ (many (go|]#od) text) here)",
+        "mim",
+        "(#[so (many (good) text) here|]#)",
+    ))
+    .await?;
+    test((
+        "(so (many (go#[od) text) |]#here)",
+        "mim",
+        "(#[so (many (good) text) here|]#)",
+    ))
+    .await?;
+
+    // Works with multiple cursors
+    test((
+        "(so (many (good) text) #[he|]#re\nso (many (good) text) #(|he)#re)",
+        "mim",
+        "(#[so (many (good) text) here\nso (many (good) text) here|]#)",
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn surround_around_pair() -> anyhow::Result<()> {
+    // Works at first character of buffer
+    // TODO: Adjust test when opening pair failure is fixed
+    test(("#[(|]#something)", "mam", "#[(|]#something)")).await?;
+
+    // Inside a valid pair selects pair
+    test(("some (#[t|]#ext) here", "mam", "some #[(text)|]# here")).await?;
+
+    // On pair character selects pair
+    // TODO: Opening pair character is a known failure case that needs addressing
+    // test(("some #[(|]#text) here", "mam", "some #[(text)|]# here")).await?;
+    test(("some (text#[)|]# here", "mam", "some #[(text)|]# here")).await?;
+
+    // No valid pair does nothing
+    test(("so#[m|]#e (text) here", "mam", "so#[m|]#e (text) here")).await?;
+
+    // Count skips to outer pairs
+    test((
+        "(so (many (go#[o|]#d) text) here)",
+        "1mam",
+        "(so (many #[(good)|]# text) here)",
+    ))
+    .await?;
+    test((
+        "(so (many (go#[o|]#d) text) here)",
+        "2mam",
+        "(so #[(many (good) text)|]# here)",
+    ))
+    .await?;
+    test((
+        "(so (many (go#[o|]#d) text) here)",
+        "3mam",
+        "#[(so (many (good) text) here)|]#",
+    ))
+    .await?;
+
+    // Matching pairs outside selection don't match
+    test((
+        "((so)((many) go#[o|]#d (text))(here))",
+        "mam",
+        "((so)#[((many) good (text))|]#(here))",
+    ))
+    .await?;
+    test((
+        "((so)((many) go#[o|]#d (text))(here))",
+        "2mam",
+        "#[((so)((many) good (text))(here))|]#",
+    ))
+    .await?;
+
+    // Works with mixed braces
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "mam",
+        "(so [many #[{good}|]# text] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "2mam",
+        "(so #[[many {good} text]|]# here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[o|]#d} text] here)",
+        "3mam",
+        "#[(so [many {good} text] here)|]#",
+    ))
+    .await?;
+
+    // Selection direction is preserved
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "mam",
+        "(so [many #[|{good}]# text] here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "2mam",
+        "(so #[|[many {good} text]]# here)",
+    ))
+    .await?;
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "3mam",
+        "#[|(so [many {good} text] here)]#",
+    ))
+    .await?;
+
+    // Only pairs outside of full selection range are considered
+    test((
+        "(so (many (go#[od) |]#text) here)",
+        "mam",
+        "(so #[(many (good) text)|]# here)",
+    ))
+    .await?;
+    test((
+        "(so (many#[ (go|]#od) text) here)",
+        "mam",
+        "(so #[(many (good) text)|]# here)",
+    ))
+    .await?;
+    test((
+        "(so#[ (many (go|]#od) text) here)",
+        "mam",
+        "#[(so (many (good) text) here)|]#",
+    ))
+    .await?;
+    test((
+        "(so (many (go#[od) text) |]#here)",
+        "mam",
+        "#[(so (many (good) text) here)|]#",
+    ))
+    .await?;
+
+    // Works with multiple cursors
+    test((
+        "(so (many (good) text) #[he|]#re\nso (many (good) text) #(|he)#re)",
+        "mam",
+        "#[(so (many (good) text) here\nso (many (good) text) here)|]#",
+    ))
+    .await?;
+
+    Ok(())
+}
+
 /// Ensure the very initial cursor in an opened file is the width of
 /// the first grapheme
 #[tokio::test(flavor = "multi_thread")]
@@ -90,11 +391,11 @@ async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn cursor_position_append_eof() -> anyhow::Result<()> {
-    // Selection is fowards
+    // Selection is forwards
     test((
         "#[foo|]#",
         "abar<esc>",
-        helpers::platform_line("#[foobar|]#\n").as_ref(),
+        helpers::platform_line("#[foobar|]#\n"),
     ))
     .await?;
 
@@ -102,7 +403,7 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
     test((
         "#[|foo]#",
         "abar<esc>",
-        helpers::platform_line("#[foobar|]#\n").as_ref(),
+        helpers::platform_line("#[foobar|]#\n"),
     ))
     .await?;
 
@@ -112,28 +413,21 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::Result<()> {
     test_with_config(
-        Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-        helpers::test_syntax_conf(None),
+        AppBuilder::new().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 #[/|]#// Increments
                 fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }
-            "})
-            .as_ref(),
+            "}),
             "]fv]f",
             helpers::platform_line(indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }|]#
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;
@@ -144,28 +438,21 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Result<()> {
     test_with_config(
-        Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-        helpers::test_syntax_conf(None),
+        AppBuilder::new().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }|]#
-            "})
-            .as_ref(),
+            "}),
             "v[f",
             helpers::platform_line(indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }|]#
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;
@@ -177,12 +464,7 @@ async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Res
 async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> anyhow::Result<()> {
     // Note: the anchor stays put and the head moves back.
     test_with_config(
-        Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-        helpers::test_syntax_conf(None),
+        AppBuilder::new().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -191,8 +473,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 #[fn ident(x: usize) -> usize { x }|]#
-            "})
-            .as_ref(),
+            "}),
             "v[f",
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -201,19 +482,13 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 #[|fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 ]#fn ident(x: usize) -> usize { x }
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;
 
     test_with_config(
-        Args {
-            files: vec![(PathBuf::from("foo.rs"), Position::default())],
-            ..Default::default()
-        },
-        Config::default(),
-        helpers::test_syntax_conf(None),
+        AppBuilder::new().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -222,8 +497,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 #[fn ident(x: usize) -> usize { x }|]#
-            "})
-            .as_ref(),
+            "}),
             "v[f[f",
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -232,8 +506,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 ]#fn ident(x: usize) -> usize { x }
-            "})
-            .as_ref(),
+            "}),
         ),
     )
     .await?;

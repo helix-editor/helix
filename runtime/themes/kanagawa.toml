@@ -7,46 +7,72 @@
 # because of some theming differences, it's not an exact copy of the original.
 
 ## User interface
-"ui.selection" = { bg = "waveBlue1" }
+"ui.selection" = { bg = "waveBlue2" }
+"ui.selection.primary" = { bg = "waveBlue1" }
 "ui.background" = { fg = "fujiWhite", bg = "sumiInk1" }
 
 "ui.linenr" = { fg = "sumiInk4" }
+"ui.linenr.selected" = { fg = "roninYellow" }
+
+"ui.virtual" = "sumiInk4"
+"ui.virtual.ruler" = { bg = "sumiInk2" }
+"ui.virtual.inlay-hint" = "fujiGray"
+"ui.virtual.inlay-hint.parameter" = { fg = "carpYellow", modifiers = ["dim"] }
+"ui.virtual.inlay-hint.type" = { fg = "waveAqua2", modifiers = ["dim"] }
 
 "ui.statusline" = { fg = "oldWhite", bg = "sumiInk0" }
 "ui.statusline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }
 "ui.statusline.normal" = { fg = "sumiInk0", bg = "crystalBlue", modifiers = ["bold"] }
-"ui.statusline.insert" = { fg = "sumiInk0", bg = "autumnGreen"  }
-"ui.statusline.select" = { fg = "sumiInk0", bg = "oniViolet" }
+"ui.statusline.insert" = { fg = "sumiInk0", bg = "autumnGreen", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "sumiInk0", bg = "oniViolet", modifiers = ["bold"] }
 
-"ui.bufferline" = { fg = "oldWhite", bg = "sumiInk0" }
-"ui.bufferline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }
+"ui.bufferline" = { fg = "fujiGray", bg = "sumiInk0" }
+"ui.bufferline.active" = { fg = "oldWhite", bg = "sumiInk0" }
+"ui.bufferline.background" = { bg = "sumiInk0" }
 
 "ui.popup" = { fg = "fujiWhite", bg = "sumiInk0" }
-"ui.window" = { fg = "fujiWhite" }
-"ui.help" = { fg = "fujiWhite", bg = "waveBlue1" }
+"ui.window" = { fg = "sumiInk0" }
+"ui.help" = { fg = "fujiWhite", bg = "sumiInk0" }
 "ui.text" = "fujiWhite"
 "ui.text.focus" = { fg = "fujiWhite", bg = "waveBlue1", modifiers = ["bold"] }
-"ui.virtual" = "waveBlue1"
 
-"ui.cursor" = { fg = "fujiWhite", bg = "waveBlue1"}
-"ui.cursor.primary" = { fg = "seaFoam", bg = "waveBlue1" }
-"ui.cursor.match" = { fg = "seaFoam", modifiers = ["bold"] }
+"ui.cursor" = { fg = "waveBlue1", bg = "waveAqua2"}
+"ui.cursor.primary" = { fg = "waveBlue1", bg = "fujiWhite" }
+"ui.cursor.match" = { fg = "waveRed", modifiers = ["bold"] }
 "ui.highlight" = { fg = "fujiWhite", bg = "waveBlue2" }
+"ui.menu" = { fg = "fujiWhite", bg = "waveBlue1" }
+"ui.menu.selected" = { fg = "fujiWhite", bg = "waveBlue2", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "oldWhite", bg = "waveBlue1" }
 
-diagnostic = { modifiers = ["underlined"] }
+"ui.cursorline.primary" = { bg = "sumiInk3"}
+"ui.cursorcolumn.primary" = { bg = "sumiInk3" }
+
+"diagnostic.error" = { underline = { color = "samuraiRed", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "roninYellow", style = "curl" } }
+"diagnostic.info" = { underline = { color = "waveAqua1", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "dragonBlue", style = "curl" } }
 
 error = "samuraiRed"
 warning = "roninYellow"
 info = "waveAqua1"
 hint = "dragonBlue"
 
+## Git gutter
+"diff.plus" = "autumnGreen"
+"diff.minus" = "autumnRed"
+"diff.delta" = "autumnYellow"
+
 ## Syntax highlighting
+"attribute" = "waveRed"
 "type" = "waveAqua2"
+"constructor" = "springBlue"
 "constant" = "surimiOrange"
 "constant.numeric" = "sakuraPink"
 "constant.character.escape" = "springBlue"
 "string" = "springGreen"
 "string.regexp" = "boatYellow2"
+"string.special.url" = "springBlue"
+"string.special.symbol" = "oniViolet"
 "comment" = "fujiGray"
 "variable" = "fujiWhite"
 "variable.builtin" = "waveRed"
@@ -54,36 +80,36 @@ hint = "dragonBlue"
 "variable.other.member" = "carpYellow"
 "label" = "springBlue"
 "punctuation" = "springViolet2"
-"punctuation.delimiter" = "springViolet2" 
-"punctuation.bracket" = "springViolet2" 
 "keyword" = "oniViolet"
+"keyword.control.return" = "peachRed"
+"keyword.control.exception" = "peachRed"
 "keyword.directive" = "peachRed"
 "operator" = "boatYellow2"
 "function" = "crystalBlue"
-"function.builtin" = "peachRed"
+"function.builtin" = "springBlue"
 "function.macro" = "waveRed"
-"tag" = "springBlue"
+"tag" = "waveAqua2"
 "namespace" = "surimiOrange"
-"attribute" = "peachRed"
-"constructor" = "springBlue"
-"module" = "waveAqua2"
 "special" = "peachRed"
 
 ## Markup modifiers
-"markup.heading.marker" = "fujiGray"
+"markup.heading.marker" = "springViolet2"
 "markup.heading.1" = { fg = "surimiOrange", modifiers = ["bold"] }
 "markup.heading.2" = { fg = "carpYellow", modifiers = ["bold"] }
 "markup.heading.3" = { fg = "waveAqua2", modifiers = ["bold"] }
-"markup.heading.4" = { fg = "springGreen", modifiers = ["bold"] }
-"markup.heading.5" = { fg = "waveRed", modifiers = ["bold"] }
-"markup.heading.6" = { fg = "autumnRed", modifiers = ["bold"] }
-"markup.list" = "oniViolet"
+"markup.heading.4" = { fg = "lightBlue", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "oniViolet", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "springViolet1", modifiers = ["bold"] }
+"markup.list.numbered" = "sakuraPink"
+"markup.list.unnumbered" = "waveRed"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
-"markup.link.url" = { fg = "springBlue", modifiers = ["underlined"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.text" = "crystalBlue"
-"markup.quote" = "seaFoam"
-"markup.raw" = "seaFoam"
+"markup.link.url" = { fg = "springBlue", underline.style = "line" }
+"markup.link.label" = "surimiOrange"
+"markup.quote" = "springViolet1"
+"markup.raw" = "springGreen"
 
 [palette]
 seaFoam       = "#C7CCD1" # custom lighter foreground
@@ -91,7 +117,8 @@ fujiWhite     = "#DCD7BA" # default foreground
 oldWhite      = "#C8C093" # dark foreground, e.g. statuslines
 sumiInk0      = "#16161D" # dark background, e.g. statuslines, floating windows
 sumiInk1      = "#1F1F28" # default background
-sumiInk3      = "#363646" # lighter background, e.g. colorcolumns and folds
+sumiInk2      = "#2A2A37" # lighter background, e.g. colorcolumns, folds
+sumiInk3      = "#363646" # lighter background, e.g. cursorline
 sumiInk4      = "#54546D" # darker foreground, e.g. linenumbers, fold column
 waveBlue1     = "#223249" # popup background, visual selection background
 waveBlue2     = "#2D4F67" # popup selection background, search background

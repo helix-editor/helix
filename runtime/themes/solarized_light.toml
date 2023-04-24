@@ -27,6 +27,7 @@
 "markup.list" = "red"
 "markup.bold" = { fg = "yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
 "markup.link.text" = "red"
 "markup.quote" = "cyan"
@@ -41,6 +42,7 @@
 "ui.background" = { bg = "base03" }
 
 "ui.virtual.whitespace" = { fg = "base01" }
+"ui.virtual.inlay-hint" = { fg = "base01", modifiers = ["italic"] }
 
 # 行号栏
 # line number column
@@ -118,7 +120,12 @@
 "error" = { fg = "red", modifiers= ["bold", "underlined"] }
 "info" = { fg = "blue", modifiers= ["bold", "underlined"] }
 "hint" = { fg = "base01", modifiers= ["bold", "underlined"] }
-"diagnostic" = { modifiers = ["underlined"] }
+
+"diagnostic.warning" = { underline = { style = "curl", color = "orange" } }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.info" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "base01" } }
+
 
 [palette]
 red      = '#dc322f'

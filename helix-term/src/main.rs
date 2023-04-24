@@ -1,8 +1,9 @@
 use anyhow::{Context, Error, Result};
 use crossterm::event::EventStream;
+use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
-use helix_term::config::Config;
+use helix_term::config::{Config, ConfigLoadError};
 use std::path::PathBuf;
 
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
@@ -74,7 +75,7 @@ FLAGS:
     --hsplit                       Splits all given files horizontally into different windows
 ",
         env!("CARGO_PKG_NAME"),
-        env!("VERSION_AND_GIT_HASH"),
+        VERSION_AND_GIT_HASH,
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
         logpath.display(),
@@ -89,7 +90,7 @@ FLAGS:
     }
 
     if args.display_version {
-        println!("helix {}", env!("VERSION_AND_GIT_HASH"));
+        println!("helix {}", VERSION_AND_GIT_HASH);
         std::process::exit(0);
     }
 
@@ -125,18 +126,19 @@ FLAGS:
 
     helix_loader::initialize_config_file(args.config_file.clone());
 
-    let config = match std::fs::read_to_string(helix_loader::config_file()) {
-        Ok(config) => toml::from_str(&config)
-            .map(helix_term::keymap::merge_keys)
-            .unwrap_or_else(|err| {
-                eprintln!("Bad config: {}", err);
-                eprintln!("Press <ENTER> to continue with default config");
-                use std::io::Read;
-                let _ = std::io::stdin().read(&mut []);
-                Config::default()
-            }),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
-        Err(err) => return Err(Error::new(err)),
+    let config = match Config::load_default() {
+        Ok(config) => config,
+        Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
+            Config::default()
+        }
+        Err(ConfigLoadError::Error(err)) => return Err(Error::new(err)),
+        Err(ConfigLoadError::BadConfig(err)) => {
+            eprintln!("Bad config: {}", err);
+            eprintln!("Press <ENTER> to continue with default config");
+            use std::io::Read;
+            let _ = std::io::stdin().read(&mut []);
+            Config::default()
+        }
     };
 
     let syn_loader_conf = helix_core::config::user_syntax_loader().unwrap_or_else(|err| {
