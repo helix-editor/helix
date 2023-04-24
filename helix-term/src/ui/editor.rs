@@ -11,6 +11,7 @@ use crate::{
 };
 
 use helix_core::{
+    chars::char_is_word,
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
@@ -273,24 +274,17 @@ impl EditorView {
     }
 
     pub fn cursor_word(doc: &Document, view: &View) -> Option<String> {
-        let is_word = |c: char| -> bool { c.is_ascii_alphanumeric() || c == '-' || c == '_' };
-
         let text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
-        let cursor_char = text.byte_to_char(cursor);
-        let char_under_cursor = text.get_char(cursor_char);
-        if !is_word(char_under_cursor?) {
+        let char_under_cursor = text.get_char(cursor);
+        if !char_under_cursor.map_or(false, char_is_word) {
             return None;
         }
 
-        let start = (0..=cursor_char)
-            .rev()
-            .find(|&i| !is_word(text.char(i)))
-            .map(|i| i + 1)
-            .unwrap_or(0);
-        let end = (cursor_char..text.len_chars())
-            .find(|&i| !is_word(text.char(i)))
-            .unwrap_or_else(|| text.len_chars());
+        let chars_at_cursor = text.chars_at(cursor);
+        let reversed_chars = chars_at_cursor.clone().reversed();
+        let start = cursor.saturating_sub(reversed_chars.take_while(|c| char_is_word(*c)).count());
+        let end = cursor + chars_at_cursor.take_while(|c| char_is_word(*c)).count();
 
         Some(text.slice(start..end).to_string())
     }
@@ -310,14 +304,6 @@ impl EditorView {
             None => return result,
         };
 
-        let is_word_char = |c: Option<char>| -> bool {
-            if let Some(c) = c {
-                c.is_ascii_alphanumeric() || c == '-' || c == '_'
-            } else {
-                false
-            }
-        };
-
         let row = text.char_to_line(view.offset.anchor.min(text.len_chars()));
 
         let line_range = {
@@ -329,28 +315,22 @@ impl EditorView {
             first_visible_line..last_visible_line
         };
 
-        for line in line_range {
-            let current_line = text.line(line);
-            let current_line = match current_line.as_str() {
-                Some(l) => l,
-                None => continue,
-            };
+        let relevent_lines = text
+            .slice(text.line_to_char(line_range.start)..text.line_to_char(line_range.end))
+            .chunks();
 
-            let line_offset = text.line_to_char(line);
-
+        for (line, line_number) in relevent_lines.zip(line_range) {
             result.extend(
-                current_line
-                    .match_indices(&cursor_word)
+                line.match_indices(&cursor_word)
                     .map(|(i, _)| i)
+                    .filter(|i| line[..*i].chars().next_back().map_or(false, char_is_word))
                     .filter(|i| {
-                        if *i != 0 {
-                            !is_word_char(current_line.chars().nth(i - 1))
-                        } else {
-                            true
-                        }
+                        !line
+                            .chars()
+                            .nth(i + cursor_word.len())
+                            .map_or(false, char_is_word)
                     })
-                    .filter(|i| !is_word_char(current_line.chars().nth(i + cursor_word.len())))
-                    .map(|i| line_offset + i)
+                    .map(|i| line_number + i)
                     .map(|start| (scope_index, { start..start + cursor_word.len() })),
             );
         }
@@ -368,8 +348,11 @@ impl EditorView {
     ) -> Option<Vec<(usize, std::ops::Range<usize>)>> {
         let scope_index = theme.find_scope_index("ui.wordmatch")?;
         let mut result: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
-        let is_lsp_ready = doc.language_server().is_some() && !editor.cursor_highlights.is_empty();
-        match is_lsp_ready {
+        let lsp_supports_highlights = doc.language_server().map_or(false, |cl| {
+            cl.capabilities().document_highlight_provider.is_some()
+        });
+
+        match lsp_supports_highlights {
             true => result.extend(
                 editor
                     .cursor_highlights
