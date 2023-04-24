@@ -14,7 +14,7 @@ default = []
 term = ["crossterm"]
 
 [dependencies]
-bitflags = "2.1"
+bitflags = "2.2"
 anyhow = "1"
 helix-core = { version = "0.6", path = "../helix-core" }
 helix-loader = { version = "0.6", path = "../helix-loader" }
