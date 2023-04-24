@@ -166,6 +166,35 @@ mod tests {
     }
 
     #[test]
+    fn parsing_list_of_typable_commands() {
+        use crate::keymap;
+        use helix_view::document::Mode;
+        use helix_view::input::KeyEvent;
+        use std::str::FromStr;
+
+        let sample_keymaps = r#"
+            [keys.normal]
+            l = { label = "Select till end of line", command = ["select_mode", "goto_line_end", "exit_select_mode"] }
+        "#;
+
+        let config = toml::from_str::<Config>(sample_keymaps).unwrap();
+
+        let tree = config.keys.get(&Mode::Normal).unwrap().root();
+
+        if let keymap::KeyTrie::Node(node) = tree {
+            let open_node = node.get(&KeyEvent::from_str("l").unwrap()).unwrap();
+
+            if let keymap::KeyTrie::Sequence(name, _) = open_node {
+                assert_eq!(name, "Select till end of line");
+            } else {
+                panic!("Edit Config did not parse to typable command");
+            }
+        } else {
+            panic!("Config did not parse to trie");
+        }
+    }
+
+    #[test]
     fn keys_resolve_to_correct_defaults() {
         // From serde default
         let default_keys = toml::from_str::<Config>("").unwrap().keys;

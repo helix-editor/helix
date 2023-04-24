@@ -88,7 +88,8 @@ impl KeyTrieNode {
                     cmd.doc()
                 }
                 KeyTrie::Node(n) => n.name(),
-                KeyTrie::Sequence(_) => "[Multiple commands]",
+                KeyTrie::Sequence(name, _) if !name.is_empty() => name,
+                KeyTrie::Sequence(_, _) => "[Multiple commands]",
             };
             match body.iter().position(|(d, _)| d == &desc) {
                 Some(pos) => {
@@ -147,7 +148,7 @@ impl DerefMut for KeyTrieNode {
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeyTrie {
     Leaf(MappableCommand),
-    Sequence(Vec<MappableCommand>),
+    Sequence(String, Vec<MappableCommand>),
     Node(KeyTrieNode),
 }
 
@@ -191,7 +192,7 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
                     .map_err(serde::de::Error::custom)?,
             )
         }
-        Ok(KeyTrie::Sequence(commands))
+        Ok(KeyTrie::Sequence(String::new(), commands))
     }
 
     fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
@@ -206,7 +207,7 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
         while let Some(key) = map.next_key::<&str>()? {
             match key {
                 "label" => label = map.next_value::<&str>()?,
-                "command" => command = Some(map.next_value::<MappableCommand>()?),
+                "command" => command = Some(map.next_value::<KeyTrie>()?),
                 _ => {
                     let key_event = key.parse::<KeyEvent>().map_err(serde::de::Error::custom)?;
                     let key_trie = map.next_value::<KeyTrie>()?;
@@ -221,17 +222,20 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
             Some(_command) if !order.is_empty() => {
                 Err(serde::de::Error::custom("ambiguous mapping: 'command' is only valid with 'label', but I found other keys"))
             }
-            Some(MappableCommand::Static { .. }) if !label.is_empty() => {
+            Some(KeyTrie::Leaf(MappableCommand::Static { .. })) if !label.is_empty() => {
                 Err(serde::de::Error::custom("custom labels are only available for typable commands (the ones starting with ':')"))
             }
-            Some(MappableCommand::Typable { name, args, .. }) if !label.is_empty() => {
+            Some(KeyTrie::Leaf(MappableCommand::Typable { name, args, .. })) if !label.is_empty() => {
                 Ok(KeyTrie::Leaf(MappableCommand::Typable {
                     name,
                     args,
                     doc: label.to_string(),
                 }))
             }
-            Some(command) => Ok(KeyTrie::Leaf(command)),
+            Some(KeyTrie::Sequence(_, seq)) => {
+                Ok(KeyTrie::Sequence(label.to_owned(), seq))
+            }
+            Some(command) => Ok(command),
         }
     }
 }
@@ -240,14 +244,14 @@ impl KeyTrie {
     pub fn node(&self) -> Option<&KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref node) => Some(node),
-            KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
+            KeyTrie::Leaf(_) | KeyTrie::Sequence(_, _) => None,
         }
     }
 
     pub fn node_mut(&mut self) -> Option<&mut KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref mut node) => Some(node),
-            KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
+            KeyTrie::Leaf(_) | KeyTrie::Sequence(_, _) => None,
         }
     }
 
@@ -264,7 +268,7 @@ impl KeyTrie {
             trie = match trie {
                 KeyTrie::Node(map) => map.get(key),
                 // leaf encountered while keys left to process
-                KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
+                KeyTrie::Leaf(_) | KeyTrie::Sequence(_, _) => None,
             }?
         }
         Some(trie)
@@ -320,7 +324,7 @@ impl Keymap {
                         keys.pop();
                     }
                 }
-                KeyTrie::Sequence(_) => {}
+                KeyTrie::Sequence(_, _) => {}
             };
         }
 
@@ -409,7 +413,7 @@ impl Keymaps {
             Some(KeyTrie::Leaf(ref cmd)) => {
                 return KeymapResult::Matched(cmd.clone());
             }
-            Some(KeyTrie::Sequence(ref cmds)) => {
+            Some(KeyTrie::Sequence(_, ref cmds)) => {
                 return KeymapResult::MatchedSequence(cmds.clone());
             }
             None => return KeymapResult::NotFound,
@@ -429,7 +433,7 @@ impl Keymaps {
                 self.state.clear();
                 KeymapResult::Matched(cmd.clone())
             }
-            Some(KeyTrie::Sequence(cmds)) => {
+            Some(KeyTrie::Sequence(_, cmds)) => {
                 self.state.clear();
                 KeymapResult::MatchedSequence(cmds.clone())
             }
