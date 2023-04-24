@@ -994,7 +994,7 @@ lines.
 
  * Type * to set the search register to the primary selection.
 
- * Type n / N in Visual mode to add selections on each search
+ * Type n / N in Select mode to add selections on each search
    match.
 
  * Press Ctrl-s to save position to the jumplist.

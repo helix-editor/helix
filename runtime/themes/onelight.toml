@@ -80,9 +80,11 @@
 "markup.list" = { fg = "light-blue" }
 "markup.list.unnumbered" = { fg = "light-blue" }
 "markup.list.numbered" = { fg = "light-blue" }
+"markup.list.checked" = { fg = "green" }
+"markup.list.unchecked" = { fg = "blue" }
 "markup.bold" = { fg = "yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "purple", modifiers = ["italic"] }
-"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.strikethrough" = { fg = "red", modifiers = ["crossed_out"] }
 "markup.link" = { fg = "light-blue" }
 "markup.link.url" = { fg = "cyan", modifiers = ["underlined"] }
 "markup.link.text" = { fg = "light-blue" }

@@ -29,7 +29,7 @@ use helix_view::{
 use crate::{
     compositor::{self, Compositor},
     ui::{
-        self, lsp::SignatureHelp, overlay::overlayed, DynamicPicker, FileLocation, FilePicker,
+        self, lsp::SignatureHelp, overlay::overlaid, DynamicPicker, FileLocation, FilePicker,
         Popup, PromptEvent,
     },
 };
@@ -84,7 +84,7 @@ impl ui::menu::Item for lsp::Location {
 
         // Most commonly, this will not allocate, especially on Unix systems where the root prefix
         // is a simple `/` and not `C:\` (with whatever drive letter)
-        write!(&mut res, ":{}", self.range.start.line)
+        write!(&mut res, ":{}", self.range.start.line + 1)
             .expect("Will only failed if allocating fail");
         res.into()
     }
@@ -208,7 +208,9 @@ fn jump_to_location(
             log::warn!("lsp position out of bounds - {:?}", location.range);
             return;
         };
-    doc.set_selection(view.id, Selection::single(new_range.anchor, new_range.head));
+    // we flip the range so that the cursor sits on the start of the symbol
+    // (for example start of the function).
+    doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
     align_view(doc, view, Align::Center);
 }
 
@@ -375,7 +377,7 @@ pub fn symbol_picker(cx: &mut Context) {
                 };
 
                 let picker = sym_picker(symbols, current_url, offset_encoding);
-                compositor.push(Box::new(overlayed(picker)))
+                compositor.push(Box::new(overlaid(picker)))
             }
         },
     )
@@ -434,7 +436,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
                 future.boxed()
             };
             let dyn_picker = DynamicPicker::new(picker, Box::new(get_symbols));
-            compositor.push(Box::new(overlayed(dyn_picker)))
+            compositor.push(Box::new(overlaid(dyn_picker)))
         },
     )
 }
@@ -457,7 +459,7 @@ pub fn diagnostics_picker(cx: &mut Context) {
             DiagnosticsFormat::HideSourcePath,
             offset_encoding,
         );
-        cx.push_layer(Box::new(overlayed(picker)));
+        cx.push_layer(Box::new(overlaid(picker)));
     }
 }
 
@@ -474,7 +476,7 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
         DiagnosticsFormat::ShowSourcePath,
         offset_encoding,
     );
-    cx.push_layer(Box::new(overlayed(picker)));
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 impl ui::menu::Item for lsp::CodeActionOrCommand {
@@ -494,7 +496,7 @@ impl ui::menu::Item for lsp::CodeActionOrCommand {
 ///
 /// While the `kind` field is defined as open ended in the LSP spec (any value may be used)
 /// in practice a closed set of common values (mostly suggested in the LSP spec) are used.
-/// VSCode displays each of these categories seperatly (seperated by a heading in the codeactions picker)
+/// VSCode displays each of these categories separately (separated by a heading in the codeactions picker)
 /// to make them easier to navigate. Helix does not display these  headings to the user.
 /// However it does sort code actions by their categories to achieve the same order as the VScode picker,
 /// just without the headings.
@@ -524,7 +526,7 @@ fn action_category(action: &CodeActionOrCommand) -> u32 {
     }
 }
 
-fn action_prefered(action: &CodeActionOrCommand) -> bool {
+fn action_preferred(action: &CodeActionOrCommand) -> bool {
     matches!(
         action,
         CodeActionOrCommand::CodeAction(CodeAction {
@@ -603,12 +605,12 @@ pub fn code_action(cx: &mut Context) {
             }
 
             // Sort codeactions into a useful order. This behaviour is only partially described in the LSP spec.
-            // Many details are modeled after vscode because langauge servers are usually tested against it.
+            // Many details are modeled after vscode because language servers are usually tested against it.
             // VScode sorts the codeaction two times:
             //
             // First the codeactions that fix some diagnostics are moved to the front.
             // If both codeactions fix some diagnostics (or both fix none) the codeaction
-            // that is marked with `is_preffered` is shown first. The codeactions are then shown in seperate
+            // that is marked with `is_preferred` is shown first. The codeactions are then shown in separate
             // submenus that only contain a certain category (see `action_category`) of actions.
             //
             // Below this done in in a single sorting step
@@ -630,10 +632,10 @@ pub fn code_action(cx: &mut Context) {
                     return order;
                 }
 
-                // if one of the codeactions is marked as prefered show it first
+                // if one of the codeactions is marked as preferred show it first
                 // otherwise keep the original LSP sorting
-                action_prefered(action1)
-                    .cmp(&action_prefered(action2))
+                action_preferred(action1)
+                    .cmp(&action_preferred(action2))
                     .reverse()
             });
 
@@ -654,7 +656,7 @@ pub fn code_action(cx: &mut Context) {
                         log::debug!("code action: {:?}", code_action);
                         if let Some(ref workspace_edit) = code_action.edit {
                             log::debug!("edit: {:?}", workspace_edit);
-                            apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                            let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
                         }
 
                         // if code action provides both edit and command first the edit
@@ -760,19 +762,50 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
     }
 }
 
+#[derive(Debug)]
+pub struct ApplyEditError {
+    pub kind: ApplyEditErrorKind,
+    pub failed_change_idx: usize,
+}
+
+#[derive(Debug)]
+pub enum ApplyEditErrorKind {
+    DocumentChanged,
+    FileNotFound,
+    UnknownURISchema,
+    IoError(std::io::Error),
+    // TODO: check edits before applying and propagate failure
+    // InvalidEdit,
+}
+
+impl ToString for ApplyEditErrorKind {
+    fn to_string(&self) -> String {
+        match self {
+            ApplyEditErrorKind::DocumentChanged => "document has changed".to_string(),
+            ApplyEditErrorKind::FileNotFound => "file not found".to_string(),
+            ApplyEditErrorKind::UnknownURISchema => "URI schema not supported".to_string(),
+            ApplyEditErrorKind::IoError(err) => err.to_string(),
+        }
+    }
+}
+
+///TODO make this transactional (and set failureMode to transactional)
 pub fn apply_workspace_edit(
     editor: &mut Editor,
     offset_encoding: OffsetEncoding,
     workspace_edit: &lsp::WorkspaceEdit,
-) {
-    let mut apply_edits = |uri: &helix_lsp::Url, text_edits: Vec<lsp::TextEdit>| {
+) -> Result<(), ApplyEditError> {
+    let mut apply_edits = |uri: &helix_lsp::Url,
+                           version: Option<i32>,
+                           text_edits: Vec<lsp::TextEdit>|
+     -> Result<(), ApplyEditErrorKind> {
         let path = match uri.to_file_path() {
             Ok(path) => path,
             Err(_) => {
                 let err = format!("unable to convert URI to filepath: {}", uri);
                 log::error!("{}", err);
                 editor.set_error(err);
-                return;
+                return Err(ApplyEditErrorKind::UnknownURISchema);
             }
         };
 
@@ -783,11 +816,19 @@ pub fn apply_workspace_edit(
                 let err = format!("failed to open document: {}: {}", uri, err);
                 log::error!("{}", err);
                 editor.set_error(err);
-                return;
+                return Err(ApplyEditErrorKind::FileNotFound);
             }
         };
 
         let doc = doc_mut!(editor, &doc_id);
+        if let Some(version) = version {
+            if version != doc.version() {
+                let err = format!("outdated workspace edit for {path:?}");
+                log::error!("{err}, expected {} but got {version}", doc.version());
+                editor.set_error(err);
+                return Err(ApplyEditErrorKind::DocumentChanged);
+            }
+        }
 
         // Need to determine a view for apply/append_changes_to_history
         let selections = doc.selections();
@@ -811,31 +852,13 @@ pub fn apply_workspace_edit(
         let view = view_mut!(editor, view_id);
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view);
+        Ok(())
     };
-
-    if let Some(ref changes) = workspace_edit.changes {
-        log::debug!("workspace changes: {:?}", changes);
-        for (uri, text_edits) in changes {
-            let text_edits = text_edits.to_vec();
-            apply_edits(uri, text_edits)
-        }
-        return;
-        // Not sure if it works properly, it'll be safer to just panic here to avoid breaking some parts of code on which code actions will be used
-        // TODO: find some example that uses workspace changes, and test it
-        // for (url, edits) in changes.iter() {
-        //     let file_path = url.origin().ascii_serialization();
-        //     let file_path = std::path::PathBuf::from(file_path);
-        //     let file = std::fs::File::open(file_path).unwrap();
-        //     let mut text = Rope::from_reader(file).unwrap();
-        //     let transaction = edits_to_changes(&text, edits);
-        //     transaction.apply(&mut text);
-        // }
-    }
 
     if let Some(ref document_changes) = workspace_edit.document_changes {
         match document_changes {
             lsp::DocumentChanges::Edits(document_edits) => {
-                for document_edit in document_edits {
+                for (i, document_edit) in document_edits.iter().enumerate() {
                     let edits = document_edit
                         .edits
                         .iter()
@@ -847,15 +870,26 @@ pub fn apply_workspace_edit(
                         })
                         .cloned()
                         .collect();
-                    apply_edits(&document_edit.text_document.uri, edits);
+                    apply_edits(
+                        &document_edit.text_document.uri,
+                        document_edit.text_document.version,
+                        edits,
+                    )
+                    .map_err(|kind| ApplyEditError {
+                        kind,
+                        failed_change_idx: i,
+                    })?;
                 }
             }
             lsp::DocumentChanges::Operations(operations) => {
                 log::debug!("document changes - operations: {:?}", operations);
-                for operation in operations {
+                for (i, operation) in operations.iter().enumerate() {
                     match operation {
                         lsp::DocumentChangeOperation::Op(op) => {
-                            apply_document_resource_op(op).unwrap();
+                            apply_document_resource_op(op).map_err(|io| ApplyEditError {
+                                kind: ApplyEditErrorKind::IoError(io),
+                                failed_change_idx: i,
+                            })?;
                         }
 
                         lsp::DocumentChangeOperation::Edit(document_edit) => {
@@ -870,13 +904,36 @@ pub fn apply_workspace_edit(
                                 })
                                 .cloned()
                                 .collect();
-                            apply_edits(&document_edit.text_document.uri, edits);
+                            apply_edits(
+                                &document_edit.text_document.uri,
+                                document_edit.text_document.version,
+                                edits,
+                            )
+                            .map_err(|kind| ApplyEditError {
+                                kind,
+                                failed_change_idx: i,
+                            })?;
                         }
                     }
                 }
             }
         }
+
+        return Ok(());
     }
+
+    if let Some(ref changes) = workspace_edit.changes {
+        log::debug!("workspace changes: {:?}", changes);
+        for (i, (uri, text_edits)) in changes.iter().enumerate() {
+            let text_edits = text_edits.to_vec();
+            apply_edits(uri, None, text_edits).map_err(|kind| ApplyEditError {
+                kind,
+                failed_change_idx: i,
+            })?;
+        }
+    }
+
+    Ok(())
 }
 
 fn goto_impl(
@@ -903,7 +960,7 @@ fn goto_impl(
                 },
                 move |_editor, location| Some(location_to_file_location(location)),
             );
-            compositor.push(Box::new(overlayed(picker)));
+            compositor.push(Box::new(overlaid(picker)));
         }
     }
 }
@@ -1169,10 +1226,25 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
             contents.set_active_param_range(active_param_range());
 
             let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
-            let popup = Popup::new(SignatureHelp::ID, contents)
+            let mut popup = Popup::new(SignatureHelp::ID, contents)
                 .position(old_popup.and_then(|p| p.get_position()))
                 .position_bias(Open::Above)
                 .ignore_escape_key(true);
+
+            // Don't create a popup if it intersects the auto-complete menu.
+            let size = compositor.size();
+            if compositor
+                .find::<ui::EditorView>()
+                .unwrap()
+                .completion
+                .as_mut()
+                .map(|completion| completion.area(size, editor))
+                .filter(|area| area.intersects(popup.area(size, editor)))
+                .is_some()
+            {
+                return;
+            }
+
             compositor.replace_or_push(SignatureHelp::ID, popup);
         },
     );
@@ -1300,7 +1372,9 @@ pub fn rename_symbol(cx: &mut Context) {
                         }
                     };
                 match block_on(future) {
-                    Ok(edits) => apply_workspace_edit(cx.editor, offset_encoding, &edits),
+                    Ok(edits) => {
+                        let _ = apply_workspace_edit(cx.editor, offset_encoding, &edits);
+                    }
                     Err(err) => cx.editor.set_error(err.to_string()),
                 }
             },

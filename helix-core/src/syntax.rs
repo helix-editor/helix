@@ -20,7 +20,7 @@ use std::{
     fmt,
     hash::{Hash, Hasher},
     mem::{replace, transmute},
-    path::Path,
+    path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
 };
@@ -127,6 +127,10 @@ pub struct LanguageConfiguration {
     pub auto_pairs: Option<AutoPairs>,
 
     pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
+
+    /// Hardcoded LSP root directories relative to the workspace root, like `examples` or `tools/fuzz`.
+    /// Falling back to the current working directory if none are configured.
+    pub workspace_lsp_roots: Option<Vec<PathBuf>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -551,6 +555,8 @@ impl LanguageConfiguration {
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SoftWrap {
     /// Soft wrap lines that exceed viewport width. Default to off
+    // NOTE: Option on purpose because the struct is shared between language config and global config.
+    // By default the option is None so that the language config falls back to the global config unless explicitly set.
     pub enable: Option<bool>,
     /// Maximum space left free at the end of the line.
     /// This space is used to wrap text at word boundaries. If that is not possible within this limit
@@ -1157,6 +1163,7 @@ impl Syntax {
 bitflags! {
     /// Flags that track the status of a layer
     /// in the `Sytaxn::update` function
+    #[derive(Debug)]
     struct LayerUpdateFlags : u32{
         const MODIFIED = 0b001;
         const MOVED = 0b010;

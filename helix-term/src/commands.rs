@@ -12,7 +12,7 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset, comment,
     doc_formatter::TextFormat,
-    encoding, find_first_non_whitespace_char, find_root, graphemes,
+    encoding, find_first_non_whitespace_char, find_workspace, graphemes,
     history::UndoKind,
     increment, indent,
     indent::IndentStyle,
@@ -54,8 +54,8 @@ use crate::{
     job::Callback,
     keymap::ReverseKeymap,
     ui::{
-        self, editor::InsertEvent, overlay::overlayed, FilePicker, Picker, Popup, Prompt,
-        PromptEvent,
+        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, FilePicker, Picker,
+        Popup, Prompt, PromptEvent,
     },
 };
 
@@ -501,7 +501,7 @@ impl std::str::FromStr for MappableCommand {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(suffix) = s.strip_prefix(':') {
-            let mut typable_command = suffix.split(' ').into_iter().map(|arg| arg.trim());
+            let mut typable_command = suffix.split(' ').map(|arg| arg.trim());
             let name = typable_command
                 .next()
                 .ok_or_else(|| anyhow!("Expected typable command name"))?;
@@ -1470,7 +1470,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     let cursor = range.cursor(text);
     let height = view.inner_height();
 
-    let scrolloff = config.scrolloff.min(height / 2);
+    let scrolloff = config.scrolloff.min(height.saturating_sub(1) / 2);
     let offset = match direction {
         Forward => offset as isize,
         Backward => -(offset as isize),
@@ -1489,18 +1489,19 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         &annotations,
     );
 
-    let head;
+    let mut head;
     match direction {
         Forward => {
-            head = char_idx_at_visual_offset(
+            let off;
+            (head, off) = char_idx_at_visual_offset(
                 doc_text,
                 view.offset.anchor,
                 (view.offset.vertical_offset + scrolloff) as isize,
                 0,
                 &text_fmt,
                 &annotations,
-            )
-            .0;
+            );
+            head += (off != 0) as usize;
             if head <= cursor {
                 return;
             }
@@ -1509,7 +1510,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
             head = char_idx_at_visual_offset(
                 doc_text,
                 view.offset.anchor,
-                (view.offset.vertical_offset + height - scrolloff) as isize,
+                (view.offset.vertical_offset + height - scrolloff - 1) as isize,
                 0,
                 &text_fmt,
                 &annotations,
@@ -1560,7 +1561,7 @@ fn half_page_down(cx: &mut Context) {
 }
 
 #[allow(deprecated)]
-// currently uses the deprected `visual_coords_at_pos`/`pos_at_visual_coords` functions
+// currently uses the deprecated `visual_coords_at_pos`/`pos_at_visual_coords` functions
 // as this function ignores softwrapping (and virtual text) and instead only cares
 // about "text visual position"
 //
@@ -2146,7 +2147,7 @@ fn global_search(cx: &mut Context) {
                         Some((path.clone().into(), Some((*line_num, *line_num))))
                     },
                 );
-                compositor.push(Box::new(overlayed(picker)));
+                compositor.push(Box::new(overlaid(picker)));
             },
         ));
         Ok(call)
@@ -2418,11 +2419,9 @@ fn append_mode(cx: &mut Context) {
 }
 
 fn file_picker(cx: &mut Context) {
-    // We don't specify language markers, root will be the root of the current
-    // git repo or the current dir if we're not in a repo
-    let root = find_root(None, &[]);
+    let root = find_workspace().0;
     let picker = ui::file_picker(root, &cx.editor.config());
-    cx.push_layer(Box::new(overlayed(picker)));
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 fn file_picker_in_current_buffer_directory(cx: &mut Context) {
@@ -2439,12 +2438,12 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
     };
 
     let picker = ui::file_picker(path, &cx.editor.config());
-    cx.push_layer(Box::new(overlayed(picker)));
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
     let picker = ui::file_picker(cwd, &cx.editor.config());
-    cx.push_layer(Box::new(overlayed(picker)));
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 fn buffer_picker(cx: &mut Context) {
@@ -2509,7 +2508,7 @@ fn buffer_picker(cx: &mut Context) {
             Some((meta.id.into(), Some((line, line))))
         },
     );
-    cx.push_layer(Box::new(overlayed(picker)));
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 fn jumplist_picker(cx: &mut Context) {
@@ -2545,6 +2544,13 @@ fn jumplist_picker(cx: &mut Context) {
                 format!(" ({})", flags.join(""))
             };
             format!("{} {}{} {}", self.id, path, flag, self.text).into()
+        }
+    }
+
+    for (view, _) in cx.editor.tree.views_mut() {
+        for doc_id in view.jumps.iter().map(|e| e.0).collect::<Vec<_>>().iter() {
+            let doc = doc_mut!(cx.editor, doc_id);
+            view.sync_changes(doc);
         }
     }
 
@@ -2591,7 +2597,7 @@ fn jumplist_picker(cx: &mut Context) {
             Some((meta.path.clone()?.into(), Some((line, line))))
         },
     );
-    cx.push_layer(Box::new(overlayed(picker)));
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 impl ui::menu::Item for MappableCommand {
@@ -2665,7 +2671,7 @@ pub fn command_palette(cx: &mut Context) {
                     }
                 }
             });
-            compositor.push(Box::new(overlayed(picker)));
+            compositor.push(Box::new(overlaid(picker)));
         },
     ));
 }
@@ -4186,7 +4192,7 @@ pub fn completion(cx: &mut Context) {
         None => return,
     };
 
-    // setup a chanel that allows the request to be canceled
+    // setup a channel that allows the request to be canceled
     let (tx, rx) = oneshot::channel();
     // set completion_request so that this request can be canceled
     // by setting completion_request, the old channel stored there is dropped
@@ -4239,7 +4245,7 @@ pub fn completion(cx: &mut Context) {
             let (view, doc) = current_ref!(editor);
             // check if the completion request is stale.
             //
-            // Completions are completed asynchrounsly and therefore the user could
+            // Completions are completed asynchronously and therefore the user could
             //switch document/view or leave insert mode. In all of thoise cases the
             // completion should be discarded
             if editor.mode != Mode::Insert || view.id != trigger_view || doc.id() != trigger_doc {
@@ -4262,7 +4268,7 @@ pub fn completion(cx: &mut Context) {
             }
             let size = compositor.size();
             let ui = compositor.find::<ui::EditorView>().unwrap();
-            ui.set_completion(
+            let completion_area = ui.set_completion(
                 editor,
                 savepoint,
                 items,
@@ -4271,6 +4277,15 @@ pub fn completion(cx: &mut Context) {
                 trigger_offset,
                 size,
             );
+            let size = compositor.size();
+            let signature_help_area = compositor
+                .find_id::<Popup<SignatureHelp>>(SignatureHelp::ID)
+                .map(|signature_help| signature_help.area(size, editor));
+            // Delete the signature help popup if they intersect.
+            if matches!((completion_area, signature_help_area),(Some(a), Some(b)) if a.intersects(b))
+            {
+                compositor.remove(SignatureHelp::ID);
+            }
         },
     );
 }
