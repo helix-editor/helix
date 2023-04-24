@@ -1008,6 +1008,7 @@ file-types = ["pl", "pm", "t"]
 shebangs = ["perl"]
 roots = []
 comment-token = "#"
+language-server = { command = "perlnavigator", args= ["--stdio"] }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
