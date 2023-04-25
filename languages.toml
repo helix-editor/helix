@@ -500,7 +500,7 @@ includeInlayVariableTypeHints = true
 
 [[grammar]]
 name = "tsx"
-source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "6aac031ad88dd6317f02ac0bb27d099a553a7d8c", subpath = "tsx" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "5d20856f34315b068c41edaee2ac8a100081d259", subpath = "tsx" }
 
 [[language]]
 name = "css"
