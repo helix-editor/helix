@@ -75,9 +75,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.1.0"
+version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c70beb79cbb5ce9c4f8e20849978f34225931f665bb49efa6982875a4d5facb3"
+checksum = "24a6904aef64d73cf10ab17ebace7befb918b82164785cb89907993be7f83813"
 
 [[package]]
 name = "bstr"
@@ -1081,7 +1081,7 @@ version = "0.6.0"
 dependencies = [
  "ahash 0.8.3",
  "arc-swap",
- "bitflags 2.1.0",
+ "bitflags 2.2.1",
  "chrono",
  "dunce",
  "encoding_rs",
@@ -1208,7 +1208,7 @@ dependencies = [
 name = "helix-tui"
 version = "0.6.0"
 dependencies = [
- "bitflags 2.1.0",
+ "bitflags 2.2.1",
  "cassowary",
  "crossterm",
  "helix-core",
@@ -1241,7 +1241,7 @@ version = "0.6.0"
 dependencies = [
  "anyhow",
  "arc-swap",
- "bitflags 2.1.0",
+ "bitflags 2.2.1",
  "chardetng",
  "clipboard-win",
  "crossterm",
