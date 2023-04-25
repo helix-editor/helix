@@ -347,6 +347,7 @@ impl MappableCommand {
         goto_first_nonwhitespace, "Goto first non-blank in line",
         trim_selections, "Trim whitespace from selections",
         extend_to_line_start, "Extend to line start",
+        extend_to_first_nonwhitespace, "Extend to first non-blank in line",
         extend_to_line_end, "Extend to line end",
         extend_to_line_end_newline, "Extend to line end",
         signature_help, "Show signature help",
@@ -839,6 +840,24 @@ fn kill_to_line_end(cx: &mut Context) {
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
+
+    goto_first_nonwhitespace_impl(
+        view,
+        doc,
+        if cx.editor.mode == Mode::Select {
+            Movement::Extend
+        } else {
+            Movement::Move
+        },
+    )
+}
+
+fn extend_to_first_nonwhitespace(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    goto_first_nonwhitespace_impl(view, doc, Movement::Extend)
+}
+
+fn goto_first_nonwhitespace_impl(view: &mut View, doc: &mut Document, movement: Movement) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
@@ -846,7 +865,7 @@ fn goto_first_nonwhitespace(cx: &mut Context) {
 
         if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
             let pos = pos + text.line_to_char(line);
-            range.put_cursor(text, pos, cx.editor.mode == Mode::Select)
+            range.put_cursor(text, pos, movement == Movement::Extend)
         } else {
             range
         }
