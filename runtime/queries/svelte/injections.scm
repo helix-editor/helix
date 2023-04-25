@@ -5,10 +5,14 @@
   (#set! injection.language "css"))
 
 ((style_element
-  (start_tag
-    (attribute
-      (quoted_attribute_value (attribute_value))))
-  (raw_text) @css))
+    (start_tag
+      (attribute
+        (attribute_name) @_attr
+        (quoted_attribute_value (attribute_value) @_lang)))
+    (raw_text) @injection.content)
+  (#eq? @_attr "lang")
+  (#match? @_lang "scss")
+  (#set! injection.language "scss"))
 
 ((attribute
    (attribute_name) @_attr
