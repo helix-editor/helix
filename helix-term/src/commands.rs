@@ -339,6 +339,8 @@ impl MappableCommand {
         goto_prev_change, "Goto previous change",
         goto_first_change, "Goto first change",
         goto_last_change, "Goto last change",
+        goto_next_misspell, "Goto next misspell",
+        goto_prev_misspell, "Goto previous misspell",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
         goto_next_buffer, "Goto next buffer",
@@ -3119,6 +3121,49 @@ fn hunk_range(hunk: Hunk, text: RopeSlice) -> Range {
     };
 
     Range::new(anchor, head)
+}
+
+fn goto_next_misspell(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let cursor_pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
+
+    let diag = doc
+        .spell_diagnostics()
+        .iter()
+        .find(|diag| diag.range.start > cursor_pos)
+        .or_else(|| doc.diagnostics().first());
+
+    let selection = match diag {
+        Some(diag) => Selection::single(diag.range.start, diag.range.end),
+        None => return,
+    };
+    doc.set_selection(view.id, selection);
+}
+
+fn goto_prev_misspell(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let cursor_pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
+
+    let diag = doc
+        .spell_diagnostics()
+        .iter()
+        .rev()
+        .find(|diag| diag.range.start < cursor_pos)
+        .or_else(|| doc.spell_diagnostics().last());
+
+    let selection = match diag {
+        Some(diag) => Selection::single(diag.range.start, diag.range.end),
+        None => return,
+    };
+    doc.set_selection(view.id, selection);
 }
 
 pub mod insert {

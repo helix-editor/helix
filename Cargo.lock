@@ -1174,6 +1174,13 @@ name = "helix-parsec"
 version = "0.6.0"
 
 [[package]]
+name = "helix-spell"
+version = "0.6.0"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "helix-term"
 version = "0.6.0"
 dependencies = [
@@ -1191,6 +1198,7 @@ dependencies = [
  "helix-dap",
  "helix-loader",
  "helix-lsp",
+ "helix-spell",
  "helix-tui",
  "helix-vcs",
  "helix-view",
@@ -1258,6 +1266,7 @@ dependencies = [
  "helix-dap",
  "helix-loader",
  "helix-lsp",
+ "helix-spell",
  "helix-tui",
  "helix-vcs",
  "libc",

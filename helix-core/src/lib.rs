@@ -22,6 +22,7 @@ pub mod register;
 pub mod search;
 pub mod selection;
 pub mod shellwords;
+pub mod spellcheck;
 pub mod surround;
 pub mod syntax;
 pub mod test;

@@ -55,7 +55,7 @@ pub fn diagnostic<'doc>(
     let error = theme.get("error");
     let info = theme.get("info");
     let hint = theme.get("hint");
-    let diagnostics = doc.diagnostics();
+    let diagnostics = doc.all_diagnostics();
 
     Box::new(
         move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {

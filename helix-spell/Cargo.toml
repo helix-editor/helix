@@ -1,0 +1,11 @@
+[package]
+name = "helix-spell"
+version = "0.6.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# i can't have it compile on my machine yet
+#hunspell-rs = "0.4.0"
+log = "0.4"

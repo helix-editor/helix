@@ -330,9 +330,14 @@ fn write_impl(
     force: bool,
 ) -> anyhow::Result<()> {
     let editor_auto_fmt = cx.editor.config().auto_format;
+    let editor_auto_spellcheck = cx.editor.config().auto_spellcheck;
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
+
+    if editor_auto_spellcheck {
+        jobs.callback(make_spell_check_callback(doc.id()));
+    };
 
     let fmt = if editor_auto_fmt {
         doc.auto_format().map(|fmt| {
@@ -413,6 +418,31 @@ fn format(
 
     Ok(())
 }
+
+fn spell_check(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let doc = doc!(cx.editor);
+    cx.jobs.callback(make_spell_check_callback(doc.id()));
+    Ok(())
+}
+
+async fn make_spell_check_callback(doc_id: DocumentId) -> anyhow::Result<job::Callback> {
+    let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+        move |editor: &mut Editor, _: &mut Compositor| {
+            if let Some(doc) = editor.document_mut(doc_id) {
+                doc.spell_check();
+            };
+        },
+    ));
+    Ok(call)
+}
+
 fn set_indent_style(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -628,6 +658,7 @@ pub fn write_all_impl(
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
     let auto_format = cx.editor.config().auto_format;
+    let auto_spellcheck = cx.editor.config().auto_spellcheck;
     let jobs = &mut cx.jobs;
     let current_view = view!(cx.editor);
 
@@ -660,6 +691,10 @@ pub fn write_all_impl(
             } else {
                 doc.ensure_view_init(current_view.id);
                 current_view.id
+            };
+
+            if auto_spellcheck {
+                jobs.callback(make_spell_check_callback(doc.id()));
             };
 
             let fmt = if auto_format {
@@ -2273,6 +2308,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["fmt"],
             doc: "Format the file using the LSP formatter.",
             fun: format,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "spell-check",
+            aliases: &["sc"],
+            doc: "Check spelling using tree-sitter and hunspell.",
+            fun: spell_check,
             signature: CommandSignature::none(),
         },
         TypableCommand {

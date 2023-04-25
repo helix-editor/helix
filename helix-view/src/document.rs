@@ -5,6 +5,7 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
+use helix_core::regex::Regex;
 use helix_core::syntax::Highlight;
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
 use helix_core::Range;
@@ -165,10 +166,13 @@ pub struct Document {
     pub(crate) modified_since_accessed: bool,
 
     diagnostics: Vec<Diagnostic>,
+    spell_diagnostics: Vec<Diagnostic>,
     language_server: Option<Arc<helix_lsp::Client>>,
 
     diff_handle: Option<DiffHandle>,
     version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
+
+    spell_checker: Option<Arc<Mutex<helix_spell::client::Client>>>,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -486,6 +490,7 @@ impl Document {
             changes,
             old_state,
             diagnostics: Vec::new(),
+            spell_diagnostics: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
             savepoints: Vec::new(),
@@ -496,6 +501,7 @@ impl Document {
             diff_handle: None,
             config,
             version_control_head: None,
+            spell_checker: None,
         }
     }
     pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
@@ -532,6 +538,52 @@ impl Document {
         doc.detect_indent_and_line_ending();
 
         Ok(doc)
+    }
+
+    pub fn spell_check(&mut self) {
+        let mut diagnostics = Vec::new();
+        let spell_checker = self.spell_checker.clone().unwrap();
+        if let Some(node) = self.syntax() {
+            let doc_slice = self.text().slice(..);
+            if let Some(ranges) = helix_core::spellcheck::spellcheck_treesitter(
+                node.tree().root_node(),
+                doc_slice,
+                self.language_config().unwrap(),
+            ) {
+                let mut client = spell_checker.lock();
+                let regex = Regex::new(r"[[:alpha:]']+").unwrap();
+                for range in ranges {
+                    let (start_line, _) = range.line_range(doc_slice);
+                    let mut position = range.from();
+                    for (i, line_slice) in range.slice(doc_slice).lines().enumerate() {
+                        let line = String::from(line_slice);
+                        for capture in regex.captures_iter(line.as_str()) {
+                            let capture_match = capture.get(0).unwrap();
+                            let word = capture_match.as_str();
+                            let start = capture_match.start();
+                            let end = capture_match.end();
+                            if let Err(suggestions) = client.check(word) {
+                                diagnostics.push(Diagnostic {
+                                    severity: Some(helix_core::diagnostic::Severity::Warning),
+                                    code: None,
+                                    tags: Vec::new(),
+                                    source: None,
+                                    message: suggestions.join("\n"),
+                                    line: start_line + i,
+                                    range: helix_core::diagnostic::Range {
+                                        start: position + start,
+                                        end: position + end,
+                                    },
+                                    data: None,
+                                });
+                            }
+                        }
+                        position += line_slice.len_chars();
+                    }
+                }
+            };
+        };
+        self.set_spell_diagnostics(diagnostics);
     }
 
     /// The same as [`format`], but only returns formatting changes if auto-formatting
@@ -873,6 +925,14 @@ impl Document {
     /// Set the LSP.
     pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {
         self.language_server = language_server;
+    }
+
+    /// Set the spell checker.
+    pub fn set_spell_checker(
+        &mut self,
+        spell_checker: Option<Arc<Mutex<helix_spell::client::Client>>>,
+    ) {
+        self.spell_checker = spell_checker;
     }
 
     /// Select text within the [`Document`].
@@ -1380,6 +1440,13 @@ impl Document {
         )
     }
 
+    pub fn all_diagnostics(&self) -> Vec<&Diagnostic> {
+        self.diagnostics
+            .iter()
+            .chain(self.spell_diagnostics.iter())
+            .collect()
+    }
+
     #[inline]
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
@@ -1388,6 +1455,17 @@ impl Document {
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = diagnostics;
         self.diagnostics
+            .sort_unstable_by_key(|diagnostic| diagnostic.range);
+    }
+
+    #[inline]
+    pub fn spell_diagnostics(&self) -> &[Diagnostic] {
+        &self.spell_diagnostics
+    }
+
+    pub fn set_spell_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
+        self.spell_diagnostics = diagnostics;
+        self.spell_diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
     }
 
