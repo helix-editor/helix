@@ -19,7 +19,7 @@ impl Git {
         let git_dir = path
             .ancestors()
             .find(|ancestor| ancestor.join(".git").exists())
-            .ok_or_else(|| anyhow!("No repostiory found at {path:?}"))?
+            .ok_or_else(|| anyhow!("No repository found at {path:?}"))?
             .join(".git");
 
         // custom open options
