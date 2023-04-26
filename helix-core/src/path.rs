@@ -101,7 +101,7 @@ pub fn get_relative_path(path: &Path) -> PathBuf {
     let path = if path.is_absolute() {
         let cwdir = std::env::current_dir()
             .map(|path| get_normalized_path(&path))
-            .expect("couldn't determine current directory");
+            .unwrap_or_default();
         get_normalized_path(&path)
             .strip_prefix(cwdir)
             .map(PathBuf::from)
