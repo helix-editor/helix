@@ -354,6 +354,8 @@ pub struct LspConfig {
     pub display_inlay_hints: bool,
     /// Whether to enable snippet support
     pub snippets: bool,
+    /// Whether to include declaration in the goto reference query
+    pub goto_reference_include_declaration: bool,
 }
 
 impl Default for LspConfig {
@@ -365,6 +367,7 @@ impl Default for LspConfig {
             display_signature_help_docs: true,
             display_inlay_hints: false,
             snippets: true,
+            goto_reference_include_declaration: true,
         }
     }
 }
