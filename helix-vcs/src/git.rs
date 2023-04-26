@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use arc_swap::ArcSwap;
 use std::path::Path;
 use std::sync::Arc;
@@ -15,7 +15,13 @@ mod test;
 pub struct Git;
 
 impl Git {
-    fn open_repo(path: &Path, ceiling_dir: Option<&Path>) -> Result<ThreadSafeRepository> {
+    fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
+        let git_dir = path
+            .ancestors()
+            .find(|ancestor| ancestor.join(".git").exists())
+            .ok_or_else(|| anyhow!("No repostiory found at {path:?}"))?
+            .join(".git");
+
         // custom open options
         let mut git_open_opts_map = gix::sec::trust::Mapping::<gix::open::Options>::default();
 
@@ -31,6 +37,7 @@ impl Git {
             includes: true,
             git_binary: cfg!(windows),
         };
+
         // change options for config permissions without touching anything else
         git_open_opts_map.reduced = git_open_opts_map.reduced.permissions(gix::Permissions {
             config,
@@ -41,16 +48,8 @@ impl Git {
             ..gix::Permissions::default_for_level(gix::sec::Trust::Full)
         });
 
-        let mut open_options = gix::discover::upwards::Options::default();
-        if let Some(ceiling_dir) = ceiling_dir {
-            open_options.ceiling_dirs = vec![ceiling_dir.to_owned()];
-        }
-
-        let res = ThreadSafeRepository::discover_with_environment_overrides_opts(
-            path,
-            open_options,
-            git_open_opts_map,
-        )?;
+        let res =
+            ThreadSafeRepository::open_with_environment_overrides(git_dir, git_open_opts_map)?;
 
         Ok(res)
     }
@@ -64,7 +63,7 @@ impl DiffProvider for Git {
         // TODO cache repository lookup
 
         let repo_dir = file.parent().context("file has no parent directory")?;
-        let repo = Git::open_repo(repo_dir, None)
+        let repo = Git::open_repo(repo_dir)
             .context("failed to open git repo")?
             .to_thread_local();
         let head = repo.head_commit()?;
@@ -100,7 +99,7 @@ impl DiffProvider for Git {
         debug_assert!(!file.exists() || file.is_file());
         debug_assert!(file.is_absolute());
         let repo_dir = file.parent().context("file has no parent directory")?;
-        let repo = Git::open_repo(repo_dir, None)
+        let repo = Git::open_repo(repo_dir)
             .context("failed to open git repo")?
             .to_thread_local();
         let head_ref = repo.head_ref()?;
