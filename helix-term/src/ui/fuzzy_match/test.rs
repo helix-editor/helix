@@ -7,8 +7,8 @@ fn run_test<'a>(query: &str, items: &'a [&'a str]) -> Vec<String> {
     items
         .iter()
         .filter_map(|item| {
-            let (_, indicies) = query.fuzzy_indicies(item, &matcher)?;
-            let matched_string = indicies
+            let (_, indices) = query.fuzzy_indices(item, &matcher)?;
+            let matched_string = indices
                 .iter()
                 .map(|&pos| item.chars().nth(pos).unwrap())
                 .collect();

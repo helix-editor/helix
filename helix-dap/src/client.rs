@@ -62,12 +62,10 @@ impl Client {
         if command.is_empty() {
             return Result::Err(Error::Other(anyhow!("Command not provided")));
         }
-        if transport == "tcp" && port_arg.is_some() {
-            Self::tcp_process(command, args, port_arg.unwrap(), id).await
-        } else if transport == "stdio" {
-            Self::stdio(command, args, id)
-        } else {
-            Result::Err(Error::Other(anyhow!("Incorrect transport {}", transport)))
+        match (transport, port_arg) {
+            ("tcp", Some(port_arg)) => Self::tcp_process(command, args, port_arg, id).await,
+            ("stdio", _) => Self::stdio(command, args, id),
+            _ => Result::Err(Error::Other(anyhow!("Incorrect transport {}", transport))),
         }
     }
 
@@ -511,5 +509,11 @@ impl Client {
         let args = requests::SetExceptionBreakpointsArguments { filters };
 
         self.call::<requests::SetExceptionBreakpoints>(args)
+    }
+
+    pub fn current_stack_frame(&self) -> Option<&StackFrame> {
+        self.stack_frames
+            .get(&self.thread_id?)?
+            .get(self.active_frame?)
     }
 }

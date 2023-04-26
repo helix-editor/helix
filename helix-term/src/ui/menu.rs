@@ -347,6 +347,7 @@ impl<T: Item + 'static> Component for Menu<T> {
                 offset: scroll,
                 selected: self.cursor,
             },
+            false,
         );
 
         if let Some(cursor) = self.cursor {

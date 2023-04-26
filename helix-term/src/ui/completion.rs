@@ -141,16 +141,12 @@ impl Completion {
                         }
                     };
 
-                    let start_offset =
-                        match util::lsp_pos_to_pos(doc.text(), edit.range.start, offset_encoding) {
-                            Some(start) => start as i128 - primary_cursor as i128,
-                            None => return Transaction::new(doc.text()),
-                        };
-                    let end_offset =
-                        match util::lsp_pos_to_pos(doc.text(), edit.range.end, offset_encoding) {
-                            Some(end) => end as i128 - primary_cursor as i128,
-                            None => return Transaction::new(doc.text()),
-                        };
+                    let Some(range) = util::lsp_range_to_range(doc.text(), edit.range, offset_encoding) else{
+                        return Transaction::new(doc.text());
+                    };
+
+                    let start_offset = range.anchor as i128 - primary_cursor as i128;
+                    let end_offset = range.head as i128 - primary_cursor as i128;
 
                     (Some((start_offset, end_offset)), edit.new_text)
                 } else {
@@ -414,6 +410,10 @@ impl Completion {
 
         true
     }
+
+    pub fn area(&mut self, viewport: Rect, editor: &Editor) -> Rect {
+        self.popup.area(viewport, editor)
+    }
 }
 
 impl Component for Completion {
@@ -481,7 +481,7 @@ impl Component for Completion {
         };
 
         let popup_area = {
-            let (popup_x, popup_y) = self.popup.get_rel_position(area, cx);
+            let (popup_x, popup_y) = self.popup.get_rel_position(area, cx.editor);
             let (popup_width, popup_height) = self.popup.get_size();
             Rect::new(popup_x, popup_y, popup_width, popup_height)
         };
