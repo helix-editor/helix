@@ -292,7 +292,7 @@ name = "go"
 scope = "source.go"
 injection-regex = "go"
 file-types = ["go"]
-roots = ["Gopkg.toml", "go.mod"]
+roots = ["go.work", "go.mod"]
 auto-format = true
 comment-token = "//"
 language-server = { command = "gopls" }
