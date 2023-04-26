@@ -60,7 +60,7 @@
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  | `elixir-ls` |
 | hosts | ✓ |  |  |  |
-| html | ✓ |  |  | `vscode-html-language-server` |
+| html | ✓ | ✓ |  | `vscode-html-language-server` |
 | hurl | ✓ |  | ✓ |  |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |

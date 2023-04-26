@@ -442,6 +442,8 @@ impl MappableCommand {
         goto_prev_comment, "Goto previous comment",
         goto_next_test, "Goto next test",
         goto_prev_test, "Goto previous test",
+        goto_next_xml_element, "Goto next xml element",
+        goto_prev_xml_element, "Goto previous xml element",
         goto_next_paragraph, "Goto next paragraph",
         goto_prev_paragraph, "Goto previous paragraph",
         dap_launch, "Launch debug target",
@@ -4755,6 +4757,14 @@ fn goto_prev_test(cx: &mut Context) {
     goto_ts_object_impl(cx, "test", Direction::Backward)
 }
 
+fn goto_next_xml_element(cx: &mut Context) {
+    goto_ts_object_impl(cx, "xml_element", Direction::Forward)
+}
+
+fn goto_prev_xml_element(cx: &mut Context) {
+    goto_ts_object_impl(cx, "xml_element", Direction::Backward)
+}
+
 fn select_textobject_around(cx: &mut Context) {
     select_textobject(cx, textobject::TextObject::Around);
 }
@@ -4819,6 +4829,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'a' => textobject_treesitter("parameter", range),
                         'c' => textobject_treesitter("comment", range),
                         'T' => textobject_treesitter("test", range),
+                        'e' => textobject_treesitter("xml_element", range),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
                         'm' => textobject::textobject_pair_surround_closest(
                             text, range, objtype, count,
@@ -4852,6 +4863,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("a", "Argument/parameter (tree-sitter)"),
         ("c", "Comment (tree-sitter)"),
         ("T", "Test (tree-sitter)"),
+        ("e", "XML Element(tree-sitter)"),
         ("m", "Closest surrounding pair"),
         (" ", "... or any character acting as a pair"),
     ];
