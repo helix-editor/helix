@@ -794,12 +794,6 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
-#[derive(Debug, Default)]
-pub struct ClipboardContent {
-    pub contents: Vec<String>,
-    pub hash: Option<u64>,
-}
-
 use futures_util::stream::{Flatten, Once};
 
 pub struct Editor {
@@ -829,7 +823,7 @@ pub struct Editor {
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
     pub clipboard_provider: Box<dyn ClipboardProvider>,
-    pub last_clipboard: [ClipboardContent; 2],
+    pub last_clipboard: [Vec<String>; 2],
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
     /// last_theme is used for theme previews. We store the current theme here,

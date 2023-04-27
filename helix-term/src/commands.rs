@@ -61,13 +61,11 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use futures_util::StreamExt;
+use std::{collections::HashMap, fmt, future::Future};
+use std::{collections::HashSet, num::NonZeroUsize};
+
 use std::{
     borrow::Cow,
-    collections::{hash_map::DefaultHasher, HashMap, HashSet},
-    fmt,
-    future::Future,
-    hash::{Hash, Hasher},
-    num::NonZeroUsize,
     path::{Path, PathBuf},
 };
 
@@ -3599,12 +3597,6 @@ fn yank(cx: &mut Context) {
     exit_select_mode(cx);
 }
 
-fn compute_hash<T: Hash>(item: &T) -> u64 {
-    let mut hasher = DefaultHasher::default();
-    item.hash(&mut hasher);
-    hasher.finish()
-}
-
 fn yank_joined_to_clipboard_impl(
     editor: &mut Editor,
     separator: &str,
@@ -3631,8 +3623,7 @@ fn yank_joined_to_clipboard_impl(
     );
 
     let joined = values.join(separator);
-    editor.last_clipboard[clipboard_type as usize].contents = values;
-    editor.last_clipboard[clipboard_type as usize].hash = Some(compute_hash(&joined));
+    editor.last_clipboard[clipboard_type as usize] = values;
 
     editor
         .clipboard_provider
@@ -3796,11 +3787,12 @@ fn paste_clipboard_impl(
     let (view, doc) = current!(editor);
     match editor.clipboard_provider.get_contents(clipboard_type) {
         Ok(contents) => {
-            let hash = compute_hash(&contents);
+            let has_equal_contents = editor.last_clipboard[clipboard_type as usize]
+                .join(doc.line_ending.as_str())
+                .eq(&contents);
             let contents_slice = [contents];
-            let is_hash_equal = Some(hash) == editor.last_clipboard[clipboard_type as usize].hash;
-            let paste_contents: &[String] = if is_hash_equal {
-                &editor.last_clipboard[clipboard_type as usize].contents[..]
+            let paste_contents = if has_equal_contents {
+                &editor.last_clipboard[clipboard_type as usize][..]
             } else {
                 &contents_slice
             };
