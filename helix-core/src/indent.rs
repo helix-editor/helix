@@ -240,7 +240,7 @@ fn get_first_in_line(mut node: Node, new_line_byte_pos: Option<usize>) -> Vec<bo
 /// This is usually constructed in one of 2 ways:
 /// - Successively add indent captures to get the (added) indent from a single line
 /// - Successively add the indent results for each line
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Indentation {
     /// The total indent (the number of indent levels) is defined as max(0, indent-outdent).
     /// The string that this results in depends on the indent style (spaces or tabs, etc.)
@@ -281,11 +281,12 @@ impl Indentation {
 }
 
 /// An indent definition which corresponds to a capture from the indent query
+#[derive(Debug)]
 struct IndentCapture {
     capture_type: IndentCaptureType,
     scope: IndentScope,
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum IndentCaptureType {
     Indent,
     Outdent,
@@ -301,7 +302,7 @@ impl IndentCaptureType {
 /// This defines which part of a node an [IndentCapture] applies to.
 /// Each [IndentCaptureType] has a default scope, but the scope can be changed
 /// with `#set!` property declarations.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum IndentScope {
     /// The indent applies to the whole node
     All,
@@ -311,6 +312,7 @@ enum IndentScope {
 
 /// A capture from the indent query which does not define an indent but extends
 /// the range of a node. This is used before the indent is calculated.
+#[derive(Debug)]
 enum ExtendCapture {
     Extend,
     PreventOnce,
@@ -319,6 +321,7 @@ enum ExtendCapture {
 /// The result of running a tree-sitter indent query. This stores for
 /// each node (identified by its ID) the relevant captures (already filtered
 /// by predicates).
+#[derive(Debug)]
 struct IndentQueryResult {
     indent_captures: HashMap<usize, Vec<IndentCapture>>,
     extend_captures: HashMap<usize, Vec<ExtendCapture>>,
@@ -337,8 +340,39 @@ fn query_indents(
     let mut indent_captures: HashMap<usize, Vec<IndentCapture>> = HashMap::new();
     let mut extend_captures: HashMap<usize, Vec<ExtendCapture>> = HashMap::new();
     cursor.set_byte_range(range);
+
+    enum End {
+        Start,
+        End,
+    }
+
+    let get_line_num = |node: Node, end: End| {
+        let get_position = match end {
+            End::Start => Node::start_position,
+            End::End => Node::end_position,
+        };
+
+        let get_byte = match end {
+            End::Start => Node::start_byte,
+            End::End => Node::end_byte,
+        };
+
+        let mut node_line = get_position(&node).row;
+
+        // Adjust for the new line that will be inserted
+        if let Some((line, byte)) = new_line_break {
+            if node_line == line && get_byte(&node) >= byte {
+                node_line += 1;
+            }
+        }
+
+        node_line
+    };
+
     // Iterate over all captures from the query
     for m in cursor.matches(query, syntax.tree().root_node(), RopeProvider(text)) {
+        log::debug!("{:?}", m);
+
         // Skip matches where not all custom predicates are fulfilled
         if !query.general_predicates(m.pattern_index).iter().all(|pred| {
             match pred.operator.as_ref() {
@@ -363,21 +397,14 @@ fn query_indents(
                             Some(QueryPredicateArg::Capture(capt1)),
                             Some(QueryPredicateArg::Capture(capt2))
                         ) => {
-                            let get_line_num = |node: Node| {
-                                let mut node_line = node.start_position().row;
-                                // Adjust for the new line that will be inserted
-                                if let Some((line, byte)) = new_line_break {
-                                    if node_line==line && node.start_byte()>=byte {
-                                        node_line += 1;
-                                    }
-                                }
-                                node_line
-                            };
                             let n1 = m.nodes_for_capture_index(*capt1).next();
                             let n2 = m.nodes_for_capture_index(*capt2).next();
                             match (n1, n2) {
                                 (Some(n1), Some(n2)) => {
-                                    let same_line = get_line_num(n1)==get_line_num(n2);
+                                    let n1_line = get_line_num(n1, End::Start);
+                                    let n2_line = get_line_num(n2, End::Start);
+                                    log::debug!("n1 line: {}, n2 line: {}", n1_line, n2_line);
+                                    let same_line = n1_line == n2_line;
                                     same_line==(pred.operator.as_ref()=="same-line?")
                                 }
                                 _ => true,
@@ -388,6 +415,46 @@ fn query_indents(
                         }
                     }
                 }
+                "same-lines?" | "not-same-lines?" => {
+                    match (pred.args.get(0), pred.args.get(1)) {
+                        (
+                            Some(QueryPredicateArg::Capture(capt1)),
+                            Some(QueryPredicateArg::Capture(capt2))
+                        ) => {
+                            let n1 = m.nodes_for_capture_index(*capt1).next();
+                            let n2 = m.nodes_for_capture_index(*capt2).next();
+                            match (n1, n2) {
+                                (Some(n1), Some(n2)) => {
+                                    let n1_line_span = (get_line_num(n1, End::Start), get_line_num(n1, End::End));
+                                    let n2_line_span = (get_line_num(n2, End::Start), get_line_num(n2, End::End));
+                                    let same_lines = n1_line_span == n2_line_span;
+                                    same_lines == (pred.operator.as_ref() == "same-lines?")
+                                }
+                                _ => true,
+                            }
+                        }
+                        _ => {
+                            panic!("Invalid indent query: Arguments to \"{}\" must be 2 captures", pred.operator);
+                        }
+                    }
+                }
+                "one-line?" | "not-one-line?" => match pred.args.get(0) {
+                    Some(QueryPredicateArg::Capture(capture_idx)) => {
+                        let node = m.nodes_for_capture_index(*capture_idx).next();
+
+                        match node {
+                            Some(node) => {
+                                let (start_line, end_line) = (get_line_num(node, End::Start), get_line_num(node, End::End));
+                                let one_line = end_line - start_line == 1;
+                                one_line == (pred.operator.as_ref() == "one-line?")
+                            },
+                            _ => true,
+                        }
+                    }
+                    _ => {
+                        panic!("Invalid indent query: Arguments to \"not-kind-eq?\" must be a capture and a string");
+                    }
+                },
                 _ => {
                     panic!(
                         "Invalid indent query: Unknown predicate (\"{}\")",
@@ -398,6 +465,9 @@ fn query_indents(
         }) {
             continue;
         }
+
+        log::debug!("passed predicates");
+
         for capture in m.captures {
             let capture_name = query.capture_names()[capture.index as usize].as_str();
             let capture_type = match capture_name {
@@ -459,10 +529,15 @@ fn query_indents(
                 .push(indent_capture);
         }
     }
-    IndentQueryResult {
+
+    let result = IndentQueryResult {
         indent_captures,
         extend_captures,
-    }
+    };
+
+    log::debug!("{:?}", result);
+
+    result
 }
 
 /// Handle extend queries. deepest_preceding is the deepest descendant of node that directly precedes the cursor position.
@@ -651,6 +726,7 @@ pub fn treesitter_indent_for_pos(
         let is_first = *first_in_line.last().unwrap();
         // Apply all indent definitions for this node
         if let Some(definitions) = indent_captures.get(&node.id()) {
+            log::debug!("found def: {:?}", definitions);
             for definition in definitions {
                 match definition.scope {
                     IndentScope::All => {
@@ -667,9 +743,13 @@ pub fn treesitter_indent_for_pos(
             }
         }
 
+        log::debug!("indent for line: {:?}", indent_for_line);
+        log::debug!("indent for line below: {:?}", indent_for_line_below);
+
         if let Some(parent) = node.parent() {
             let mut node_line = node.start_position().row;
             let mut parent_line = parent.start_position().row;
+
             if node_line == line && new_line {
                 // Also consider the line that will be inserted
                 if node.start_byte() >= byte_pos {
@@ -679,17 +759,26 @@ pub fn treesitter_indent_for_pos(
                     parent_line += 1;
                 }
             };
+
+            log::debug!("node line: {:?}", node_line);
+            log::debug!("found parent line: {:?}", parent_line);
+
             if node_line != parent_line {
                 if node_line < line + (new_line as usize) {
                     // Don't add indent for the line below the line of the query
                     result.add_line(&indent_for_line_below);
+                    log::debug!("added indent for line below: {:?}", result);
                 }
+
                 if node_line == parent_line + 1 {
                     indent_for_line_below = indent_for_line;
+                    log::debug!("moved up a line");
                 } else {
                     result.add_line(&indent_for_line);
                     indent_for_line_below = Indentation::default();
+                    log::debug!("added indent for current line: {:?}", result);
                 }
+
                 indent_for_line = Indentation::default();
             }
 
@@ -707,6 +796,9 @@ pub fn treesitter_indent_for_pos(
             break;
         }
     }
+
+    log::debug!("{:?}", result);
+
     Some(result.as_string(indent_style))
 }
 
