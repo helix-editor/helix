@@ -1675,7 +1675,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "odin"
-source = { git = "https://github.com/MineBill/tree-sitter-odin", rev = "da885f4a387f169b9b69fe0968259ee257a8f69a" }
+source = { git = "https://github.com/ap29600/tree-sitter-odin", rev = "b219207e49ffca2952529d33e94ed63b1b75c4f1" }
 
 [[language]]
 name = "meson"
