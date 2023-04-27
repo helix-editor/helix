@@ -1513,7 +1513,8 @@ fn compute_inlay_hints_for_view(
             // than computing all the hints for the full file (which could be dozens of time
             // longer than the view is).
             let view_height = view.inner_height();
-            let first_visible_line = doc_text.char_to_line(view.offset.anchor);
+            let first_visible_line =
+                doc_text.char_to_line(view.offset.anchor.min(doc_text.len_chars()));
             let first_line = first_visible_line.saturating_sub(view_height);
             let last_line = first_visible_line
                 .saturating_add(view_height.saturating_mul(2))
