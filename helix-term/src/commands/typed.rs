@@ -2167,6 +2167,38 @@ fn reset_diff_change(
     Ok(())
 }
 
+fn clear_register(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(args.len() <= 1, ":clear-register takes at most 1 argument");
+    if args.is_empty() {
+        cx.editor.registers.clear();
+        cx.editor.set_status("All registers cleared");
+        return Ok(());
+    }
+
+    ensure!(
+        args[0].chars().count() == 1,
+        format!("Invalid register {}", args[0])
+    );
+    let register = args[0].chars().next().unwrap_or_default();
+    match cx.editor.registers.remove(register) {
+        Some(_) => cx
+            .editor
+            .set_status(format!("Register {} cleared", register)),
+        None => cx
+            .editor
+            .set_error(format!("Register {} not found", register)),
+    }
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2718,6 +2750,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["diffget", "diffg"],
             doc: "Reset the diff change at the cursor position.",
             fun: reset_diff_change,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "clear-register",
+            aliases: &[],
+            doc: "Clear given register. If no argument is provided, clear all registers.",
+            fun: clear_register,
             signature: CommandSignature::none(),
         },
     ];

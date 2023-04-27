@@ -78,4 +78,12 @@ impl Registers {
     pub fn inner(&self) -> &HashMap<char, Register> {
         &self.inner
     }
+
+    pub fn clear(&mut self) {
+        self.inner.clear();
+    }
+
+    pub fn remove(&mut self, name: char) -> Option<Register> {
+        self.inner.remove(&name)
+    }
 }
