@@ -1078,13 +1078,19 @@ pub fn goto_implementation(cx: &mut Context) {
 }
 
 pub fn goto_reference(cx: &mut Context) {
+    let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = match language_server.goto_reference(doc.identifier(), pos, None) {
+    let future = match language_server.goto_reference(
+        doc.identifier(),
+        pos,
+        config.lsp.goto_reference_include_declaration,
+        None,
+    ) {
         Some(future) => future,
         None => {
             cx.editor
