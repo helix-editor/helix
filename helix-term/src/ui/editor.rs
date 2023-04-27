@@ -533,13 +533,19 @@ impl EditorView {
         let current_doc = view!(editor).doc;
 
         for doc in editor.documents() {
-            let fname = doc
-                .path()
-                .unwrap_or(&scratch)
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
+            let fname = match &doc.document_type {
+                helix_view::document::DocumentType::File => doc
+                    .path()
+                    .unwrap_or(&scratch)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default(),
+                helix_view::document::DocumentType::Refactor {
+                    matches: _,
+                    line_map: _,
+                } => helix_view::document::REFACTOR_BUFFER_NAME,
+            };
 
             let style = if current_doc == doc.id() {
                 bufferline_active

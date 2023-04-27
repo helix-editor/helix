@@ -2167,6 +2167,7 @@ fn reset_diff_change(
     Ok(())
 }
 
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
