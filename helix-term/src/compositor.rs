@@ -1,6 +1,7 @@
 // Each component declares its own size constraints and gets fitted based on its parent.
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
+use helix_core::diagnostic::Severity;
 use helix_core::Position;
 use helix_view::graphics::{CursorKind, Rect};
 
@@ -15,7 +16,7 @@ pub enum EventResult {
     Consumed(Option<Callback>),
 }
 
-use crate::job::Jobs;
+use crate::job::{BlockingJob, Jobs};
 use helix_view::Editor;
 
 pub use helix_view::input::Event;
@@ -27,6 +28,10 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
+    pub fn blocking_job(&mut self, blocking_callback: BlockingJob) {
+        self.editor.status_msg = Some((blocking_callback.msg.into(), Severity::Error));
+        self.jobs.blocking_job = Some(blocking_callback);
+    }
     /// Waits on all pending jobs, and then tries to flush all pending write
     /// operations for all documents.
     pub fn block_try_flush_writes(&mut self) -> anyhow::Result<()> {

@@ -1009,22 +1009,19 @@ pub fn goto_definition(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = match language_server.goto_definition(doc.identifier(), pos, None) {
-        Some(future) => future,
-        None => {
-            cx.editor
-                .set_error("Language server does not support goto-definition");
-            return;
-        }
-    };
-
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
-            let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
-        },
-    );
+    if let Some(future) = language_server.goto_definition(doc.identifier(), pos, None) {
+        cx.callback_blocking(
+            "goto_definition: Waiting on LSP...",
+            future,
+            move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
+                let items = to_locations(response);
+                goto_impl(editor, compositor, items, offset_encoding);
+            },
+        );
+    } else {
+        cx.editor
+            .set_error("Language server does not support goto-definition");
+    }
 }
 
 pub fn goto_type_definition(cx: &mut Context) {
@@ -1084,22 +1081,19 @@ pub fn goto_reference(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = match language_server.goto_reference(doc.identifier(), pos, None) {
-        Some(future) => future,
-        None => {
-            cx.editor
-                .set_error("Language server does not support goto-reference");
-            return;
-        }
-    };
-
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<Vec<lsp::Location>>| {
-            let items = response.unwrap_or_default();
-            goto_impl(editor, compositor, items, offset_encoding);
-        },
-    );
+    if let Some(future) = language_server.goto_reference(doc.identifier(), pos, None) {
+        cx.callback_blocking(
+            "goto_reference: Waiting on LSP...",
+            future,
+            move |editor, compositor, response: Option<Vec<lsp::Location>>| {
+                let items = response.unwrap_or_default();
+                goto_impl(editor, compositor, items, offset_encoding);
+            },
+        );
+    } else {
+        cx.editor
+            .set_error("Language server does not support goto-reference");
+    }
 }
 
 #[derive(PartialEq, Eq)]

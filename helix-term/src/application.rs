@@ -1,5 +1,5 @@
 use arc_swap::{access::Map, ArcSwap};
-use futures_util::Stream;
+use futures_util::{future::OptionFuture, Stream};
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
@@ -11,7 +11,7 @@ use helix_view::{
     document::DocumentSavedEventResult,
     editor::{ConfigEvent, EditorEvent},
     graphics::Rect,
-    theme,
+    theme::{self, Modifier, Style},
     tree::Layout,
     Align, Editor,
 };
@@ -23,6 +23,7 @@ use crate::{
     commands::apply_workspace_edit,
     compositor::{Compositor, Event},
     config::Config,
+    ctrl,
     job::Jobs,
     keymap::Keymaps,
     ui::{self, overlay::overlaid},
@@ -284,6 +285,13 @@ impl Application {
         // reset cursor cache
         self.editor.cursor_cache.set(None);
 
+        if self.jobs.blocking_job.is_some() {
+            surface.set_style(
+                area.clip_bottom(1),
+                Style::default().add_modifier(Modifier::DIM),
+            );
+        }
+
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
         self.terminal.draw(pos, kind).unwrap();
     }
@@ -315,6 +323,13 @@ impl Application {
 
             tokio::select! {
                 biased;
+
+                Some(callback) = OptionFuture::from(self.jobs.blocking_job.as_mut()), if self.jobs.blocking_job.is_some() => {
+                    self.jobs.blocking_job = None;
+                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                    self.editor.clear_status();
+                    self.render().await;
+                }
 
                 Some(signal) = self.signals.next() => {
                     self.handle_signals(signal).await;
@@ -647,7 +662,24 @@ impl Application {
                 kind: crossterm::event::KeyEventKind::Release,
                 ..
             }) => false,
-            event => self.compositor.handle_event(&event.into(), &mut cx),
+
+            CrosstermEvent::Key(event)
+                if cx.jobs.blocking_job.is_some()
+                    && helix_view::input::KeyEvent::from(event) == ctrl!('c') =>
+            {
+                cx.editor.clear_status();
+                cx.jobs.blocking_job = None;
+
+                true
+            }
+
+            event => {
+                if cx.jobs.blocking_job.is_some() {
+                    false
+                } else {
+                    self.compositor.handle_event(&event.into(), &mut cx)
+                }
+            }
         };
 
         if should_redraw && !self.editor.should_close() {
@@ -888,7 +920,9 @@ impl Application {
                                     if !self.lsp_progress.is_progressing(server_id) {
                                         editor_view.spinners_mut().get_or_create(server_id).stop();
                                     }
-                                    self.editor.clear_status();
+                                    if self.config.load().editor.lsp.display_messages {
+                                        self.editor.clear_status();
+                                    }
 
                                     // we want to render to clear any leftover spinners or messages
                                     return;

@@ -51,7 +51,7 @@ use crate::{
     args,
     compositor::{self, Component, Compositor},
     filter_picker_entry,
-    job::Callback,
+    job::{cancelation, BlockingJob, Callback, CancelSender},
     keymap::ReverseKeymap,
     ui::{
         self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, FilePicker, Picker,
@@ -85,6 +85,7 @@ pub struct Context<'a> {
     pub editor: &'a mut Editor,
 
     pub callback: Option<crate::compositor::Callback>,
+    pub blocking_callback: Option<BlockingJob>,
     pub on_next_key_callback: Option<OnKeyCallback>,
     pub jobs: &'a mut Jobs,
 }
@@ -95,6 +96,15 @@ impl<'a> Context<'a> {
         self.callback = Some(Box::new(|compositor: &mut Compositor, _| {
             compositor.push(component)
         }));
+    }
+
+    pub fn push_layer_blocking(
+        &mut self,
+        layer: impl Future<Output = anyhow::Result<Box<dyn Component>>> + 'static,
+        cancel: CancelSender,
+        msg: &'static str,
+    ) {
+        self.blocking_callback = Some(BlockingJob::push_layer(layer, cancel, msg))
     }
 
     #[inline]
@@ -115,6 +125,27 @@ impl<'a> Context<'a> {
         F: FnOnce(&mut Editor, &mut Compositor, T) + Send + 'static,
     {
         self.jobs.callback(make_job_callback(call, callback));
+    }
+
+    pub fn callback_blocking<T, F>(
+        &mut self,
+        // The editor status message while awaiting the callback.
+        msg: &'static str,
+        call: impl Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
+        callback: F,
+    ) where
+        T: for<'de> serde::Deserialize<'de> + Send + 'static,
+        F: FnOnce(&mut Editor, &mut Compositor, T) + Send + 'static,
+    {
+        // No cancelation subscribers -- the only cleanup we need to do is to clear the
+        // status message, which is handled by BlockingJob's integration into the UI
+        // thread.
+        let (sender, _) = cancelation();
+        self.blocking_callback = Some(BlockingJob::new(
+            make_job_callback(call, callback),
+            sender,
+            msg,
+        ))
     }
 
     /// Returns 1 if no explicit count was provided
@@ -2672,6 +2703,7 @@ pub fn command_palette(cx: &mut Context) {
                     callback: None,
                     on_next_key_callback: None,
                     jobs: cx.jobs,
+                    blocking_callback: None,
                 };
                 let focus = view!(ctx.editor).id;
 
