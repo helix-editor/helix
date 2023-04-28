@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Adding indent queries</title>
+        <title>Adding injection queries</title>
 
 
         <!-- Custom HTML head -->
@@ -83,7 +83,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="../install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="../commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="../lang-support.html"><strong aria-hidden="true">2.3.</strong> Language support</a></li></ol></li><li class="chapter-item expanded "><a href="../from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="../configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="../remapping.html"><strong aria-hidden="true">4.2.</strong> Key remapping</a></li><li class="chapter-item expanded "><a href="../languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="../guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding languages</a></li><li class="chapter-item expanded "><a href="../guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding textobject queries</a></li><li class="chapter-item expanded "><a href="../guides/indent.html" class="active"><strong aria-hidden="true">5.3.</strong> Adding indent queries</a></li><li class="chapter-item expanded "><a href="../guides/injection.html"><strong aria-hidden="true">5.4.</strong> Adding injection queries</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="../install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../keymap.html"><strong aria-hidden="true">2.1.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="../commands.html"><strong aria-hidden="true">2.2.</strong> Commands</a></li><li class="chapter-item expanded "><a href="../lang-support.html"><strong aria-hidden="true">2.3.</strong> Language support</a></li></ol></li><li class="chapter-item expanded "><a href="../from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="../configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../themes.html"><strong aria-hidden="true">4.1.</strong> Themes</a></li><li class="chapter-item expanded "><a href="../remapping.html"><strong aria-hidden="true">4.2.</strong> Key remapping</a></li><li class="chapter-item expanded "><a href="../languages.html"><strong aria-hidden="true">4.3.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="../guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding languages</a></li><li class="chapter-item expanded "><a href="../guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding textobject queries</a></li><li class="chapter-item expanded "><a href="../guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding indent queries</a></li><li class="chapter-item expanded "><a href="../guides/injection.html" class="active"><strong aria-hidden="true">5.4.</strong> Adding injection queries</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -147,103 +147,69 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="adding-indent-queries"><a class="header" href="#adding-indent-queries">Adding indent queries</a></h1>
-<p>Helix uses tree-sitter to correctly indent new lines. This requires
-a tree-sitter grammar and an <code>indent.scm</code> query file placed in
-<code>runtime/queries/{language}/indents.scm</code>. The indentation for a line
-is calculated by traversing the syntax tree from the lowest node at the
-beginning of the new line. Each of these nodes contributes to the total
-indent when it is captured by the query (in what way depends on the name
-of the capture).</p>
-<p>Note that it matters where these added indents begin. For example,
-multiple indent level increases that start on the same line only increase
-the total indent level by 1.</p>
-<h2 id="scopes"><a class="header" href="#scopes">Scopes</a></h2>
-<p>Added indents don't always apply to the whole node. For example, in most
-cases when a node should be indented, we actually only want everything
-except for its first line to be indented. For this, there are several
-scopes (more scopes may be added in the future if required):</p>
+                        <h1 id="adding-injection-queries"><a class="header" href="#adding-injection-queries">Adding Injection Queries</a></h1>
+<p>Writing language injection queries allows one to highlight a specific node as a different language.
+In addition to the <a href="upstream-docs">standard</a> language injection options used by tree-sitter, there
+are a few Helix specific extensions that allow for more control.</p>
+<p>And example of a simple query that would highlight all strings as bash in Nix:</p>
+<pre><code class="language-scm">((string_expression (string_fragment) @injection.content)
+  (#set! injection.language &quot;bash&quot;))
+</code></pre>
+<h2 id="capture-types"><a class="header" href="#capture-types">Capture Types</a></h2>
 <ul>
 <li>
-<p><code>all</code>:
-This scope applies to the whole captured node. This is only different from
-<code>tail</code> when the captured node is the first node on its line.</p>
+<p><code>@injection.language</code> (standard):
+The captured node may contain the language name used to highlight the node captured by
+<code>@injection.content</code>.</p>
 </li>
 <li>
-<p><code>tail</code>:
-This scope applies to everything except for the first line of the
-captured node.</p>
+<p><code>@injection.content</code> (standard):
+Marks the content to be highlighted as the language captured with <code>@injection.language</code> <em>et al</em>.</p>
+</li>
+<li>
+<p><code>@injection.filename</code> (extension):
+The captured node may contain a filename with a file-extension known to Helix,
+highlighting <code>@injection.content</code> as that language. This uses the language extensions defined in
+both the default languages.toml distributed with Helix, as well as user defined languages.</p>
+</li>
+<li>
+<p><code>@injection.shebang</code> (extension):
+The captured node may contain a shebang used to choose a language to highlight as. This also uses
+the shebangs defined in the default and user <code>languages.toml</code>.</p>
 </li>
 </ul>
-<p>Every capture type has a default scope which should do the right thing
-in most situations. When a different scope is required, this can be
-changed by using a <code>#set!</code> declaration anywhere in the pattern:</p>
-<pre><code class="language-scm">(assignment_expression
-  right: (_) @indent
-  (#set! &quot;scope&quot; &quot;all&quot;))
-</code></pre>
-<h2 id="capture-types"><a class="header" href="#capture-types">Capture types</a></h2>
+<h2 id="settings"><a class="header" href="#settings">Settings</a></h2>
 <ul>
 <li>
-<p><code>@indent</code> (default scope <code>tail</code>):
-Increase the indent level by 1. Multiple occurrences in the same line
-don't stack. If there is at least one <code>@indent</code> and one <code>@outdent</code>
-capture on the same line, the indent level isn't changed at all.</p>
+<p><code>injection.combined</code> (standard):
+Indicates that all the matching nodes in the tree should have their content parsed as one
+nested document.</p>
 </li>
 <li>
-<p><code>@outdent</code> (default scope <code>all</code>):
-Decrease the indent level by 1. The same rules as for <code>@indent</code> apply.</p>
+<p><code>injection.language</code> (standard):
+Forces the captured content to be highlighted as the given language</p>
 </li>
 <li>
-<p><code>@extend</code>:
-Extend the range of this node to the end of the line and to lines that
-are indented more than the line that this node starts on. This is useful
-for languages like Python, where for the purpose of indentation some nodes
-(like functions or classes) should also contain indented lines that follow them.</p>
+<p><code>injection.include-children</code> (standard):
+Indicates that the content node’s entire text should be re-parsed, including the text of its child
+nodes. By default, child nodes’ text will be excluded from the injected document.</p>
 </li>
 <li>
-<p><code>@extend.prevent-once</code>:
-Prevents the first extension of an ancestor of this node. For example, in Python
-a return expression always ends the block that it is in. Note that this only stops the
-extension of the next <code>@extend</code> capture. If multiple ancestors are captured,
-only the extension of the innermost one is prevented. All other ancestors are unaffected
-(regardless of whether the innermost ancestor would actually have been extended).</p>
+<p><code>injection.include-unnamed-children</code> (extension):
+Same as <code>injection.include-children</code> but only for unnamed child nodes.</p>
 </li>
 </ul>
 <h2 id="predicates"><a class="header" href="#predicates">Predicates</a></h2>
-<p>In some cases, an S-expression cannot express exactly what pattern should be matched.
-For that, tree-sitter allows for predicates to appear anywhere within a pattern,
-similar to how <code>#set!</code> declarations work:</p>
-<pre><code class="language-scm">(some_kind
-  (child_kind) @indent
-  (#predicate? arg1 arg2 ...)
-)
-</code></pre>
-<p>The number of arguments depends on the predicate that's used.
-Each argument is either a capture (<code>@name</code>) or a string (<code>&quot;some string&quot;</code>).
-The following predicates are supported by tree-sitter:</p>
 <ul>
 <li>
-<p><code>#eq?</code>/<code>#not-eq?</code>:
-The first argument (a capture) must/must not be equal to the second argument
+<p><code>#eq?</code> (standard):
+The first argument (a capture) must be equal to the second argument
 (a capture or a string).</p>
 </li>
 <li>
-<p><code>#match?</code>/<code>#not-match?</code>:
-The first argument (a capture) must/must not match the regex given in the
+<p><code>#match?</code> (standard):
+The first argument (a capture) must match the regex given in the
 second argument (a string).</p>
-</li>
-</ul>
-<p>Additionally, we support some custom predicates for indent queries:</p>
-<ul>
-<li>
-<p><code>#not-kind-eq?</code>:
-The kind of the first argument (a capture) must not be equal to the second
-argument (a string).</p>
-</li>
-<li>
-<p><code>#same-line?</code>/<code>#not-same-line?</code>:
-The captures given by the 2 arguments must/must not start on the same line.</p>
 </li>
 </ul>
 
@@ -251,13 +217,10 @@ The captures given by the 2 arguments must/must not start on the same line.</p>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../guides/textobject.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../guides/indent.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next" href="../guides/injection.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                                <i class="fa fa-angle-right"></i>
-                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -265,13 +228,10 @@ The captures given by the 2 arguments must/must not start on the same line.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../guides/textobject.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../guides/indent.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next" href="../guides/injection.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                        <i class="fa fa-angle-right"></i>
-                    </a>
             </nav>
 
         </div>
