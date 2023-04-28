@@ -1373,20 +1373,6 @@ mod test {
     #[test]
     fn test_behaviour_when_moving_to_end_of_next_long_words() {
         let tests = [
-            // todo: add tests for `move_prev_long_word_end`
-       ];
-
-        for (sample, scenario) in tests {
-            for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_next_long_word_end(Rope::from(sample).slice(..), begin, count);
-                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
-            }
-        }
-    }
-
-    #[test]
-    fn test_behaviour_when_moving_to_end_of_prev_long_words() {
-        let tests = [
             ("Basic forward motion from the start of a word to the end of it",
                 vec![(1, Range::new(0, 0), Range::new(0, 5))]),
             ("Basic forward motion from the end of a word to the end of the next",
@@ -1451,6 +1437,20 @@ mod test {
                 vec![
                     (1, Range::new(0, 0), Range::new(0, 7)),
                 ]),
+        ];
+
+        for (sample, scenario) in tests {
+            for (count, begin, expected_end) in scenario.into_iter() {
+                let range = move_next_long_word_end(Rope::from(sample).slice(..), begin, count);
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
+        }
+    }
+
+    #[test]
+    fn test_behaviour_when_moving_to_end_of_prev_long_words() {
+        let tests = [
+            // todo: add tests for `move_prev_long_word_end`
         ];
 
         for (sample, scenario) in tests {
