@@ -177,6 +177,10 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
     word_move(slice, range, count, WordMotionTarget::PrevWordStart)
 }
 
+pub fn move_prev_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevWordEnd)
+}
+
 pub fn move_next_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
     word_move(slice, range, count, WordMotionTarget::NextLongWordStart)
 }
@@ -189,8 +193,8 @@ pub fn move_prev_long_word_start(slice: RopeSlice, range: Range, count: usize) -
     word_move(slice, range, count, WordMotionTarget::PrevLongWordStart)
 }
 
-pub fn move_prev_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::PrevWordEnd)
+pub fn move_prev_long_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevLongWordEnd)
 }
 
 fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTarget) -> Range {
@@ -199,6 +203,7 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
         WordMotionTarget::PrevWordStart
             | WordMotionTarget::PrevLongWordStart
             | WordMotionTarget::PrevWordEnd
+            | WordMotionTarget::PrevLongWordEnd
     );
 
     // Special-case early-out.
@@ -377,6 +382,7 @@ pub enum WordMotionTarget {
     NextLongWordStart,
     NextLongWordEnd,
     PrevLongWordStart,
+    PrevLongWordEnd,
 }
 
 pub trait CharHelpers {
@@ -393,6 +399,7 @@ impl CharHelpers for Chars<'_> {
             WordMotionTarget::PrevWordStart
                 | WordMotionTarget::PrevLongWordStart
                 | WordMotionTarget::PrevWordEnd
+                | WordMotionTarget::PrevLongWordEnd
         );
 
         // Reverse the iterator if needed for the motion direction.
@@ -479,7 +486,7 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
             is_word_boundary(prev_ch, next_ch)
                 && (!prev_ch.is_whitespace() || char_is_line_ending(next_ch))
         }
-        WordMotionTarget::NextLongWordStart => {
+        WordMotionTarget::NextLongWordStart | WordMotionTarget::PrevLongWordEnd => {
             is_long_word_boundary(prev_ch, next_ch)
                 && (char_is_line_ending(next_ch) || !next_ch.is_whitespace())
         }
@@ -1366,6 +1373,20 @@ mod test {
     #[test]
     fn test_behaviour_when_moving_to_end_of_next_long_words() {
         let tests = [
+            // todo: add tests for `move_prev_long_word_end`
+       ];
+
+        for (sample, scenario) in tests {
+            for (count, begin, expected_end) in scenario.into_iter() {
+                let range = move_next_long_word_end(Rope::from(sample).slice(..), begin, count);
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
+        }
+    }
+
+    #[test]
+    fn test_behaviour_when_moving_to_end_of_prev_long_words() {
+        let tests = [
             ("Basic forward motion from the start of a word to the end of it",
                 vec![(1, Range::new(0, 0), Range::new(0, 5))]),
             ("Basic forward motion from the end of a word to the end of the next",
@@ -1374,11 +1395,6 @@ mod test {
                 vec![(1, Range::new(2, 2), Range::new(2, 5))]),
             ("    Jumping to end of a word preceded by whitespace",
                 vec![(1, Range::new(0, 0), Range::new(0, 11))]),
-
-            // // Why do we want this behavior?  The current behavior fails this
-            // // test, but seems better and more consistent.
-            // (" Starting from a boundary advances the anchor",
-            //     vec![(1, Range::new(0, 0), Range::new(1, 9))]),
 
             ("Previous anchor is irrelevant for end of word motion",
                 vec![(1, Range::new(12, 2), Range::new(2, 8))]),
