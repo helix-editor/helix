@@ -21,4 +21,5 @@ mod test {
     mod movement;
     mod prompt;
     mod splits;
+    mod surround;
 }
