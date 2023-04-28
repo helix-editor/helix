@@ -1455,12 +1455,92 @@ mod test {
     #[test]
     fn test_behaviour_when_moving_to_end_of_prev_long_words() {
         let tests = [
-            // todo: add tests for `move_prev_long_word_end`
+            (
+                "Basic backward motion from the middle of a word",
+                vec![(1, Range::new(3, 3), Range::new(4, 0))],
+            ),
+            ("Starting from after boundary retreats the anchor",
+                vec![(1, Range::new(0, 9), Range::new(8, 0))],
+            ),
+            (
+                "Jump    to end of a word succeeded by whitespace",
+                vec![(1, Range::new(10, 10), Range::new(10, 4))],
+            ),
+            (
+                "    Jump to start of line from end of word preceded by whitespace",
+                vec![(1, Range::new(3, 4), Range::new(4, 0))],
+            ),
+            ("Previous anchor is irrelevant for backward motions",
+                vec![(1, Range::new(12, 5), Range::new(6, 0))]),
+            (
+                "    Starting from whitespace moves to first space in sequence",
+                vec![(1, Range::new(0, 4), Range::new(4, 0))],
+            ),
+            ("Identifiers_with_underscores are considered a single word",
+                vec![(1, Range::new(0, 20), Range::new(20, 0))]),
+            (
+                "Jumping\n    \nback through a newline selects whitespace",
+                vec![(1, Range::new(0, 13), Range::new(12, 8))],
+            ),
+            (
+                "Jumping to start of word from the end selects the word",
+                vec![(1, Range::new(6, 7), Range::new(7, 0))],
+            ),
+            (
+                "alphanumeric.!,and.?=punctuation are treated exactly the same",
+                vec![(1, Range::new(29, 30), Range::new(30, 0))],
+            ),
+            (
+                "...   ... punctuation and spaces behave as expected",
+                vec![
+                    (1, Range::new(0, 10), Range::new(9, 3)),
+                    (1, Range::new(10, 6), Range::new(7, 3)),
+                ],
+            ),
+            (".._.._ punctuation is joined by underscores into a single block",
+                vec![(1, Range::new(0, 6), Range::new(6, 0))]),
+            (
+                "Newlines\n\nare bridged seamlessly.",
+                vec![(1, Range::new(0, 10), Range::new(8, 0))],
+            ),
+            (
+                "Jumping    \n\n\n\n\nback from within a newline group selects previous block",
+                vec![(1, Range::new(0, 13), Range::new(11, 7))],
+            ),
+            (
+                "Failed motions do not modify the range",
+                vec![(0, Range::new(3, 0), Range::new(3, 0))],
+            ),
+            (
+                "Multiple motions at once resolve correctly",
+                vec![(3, Range::new(19, 19), Range::new(8, 0))],
+            ),
+            (
+                "Excessive motions are performed partially",
+                vec![(999, Range::new(40, 40), Range::new(9, 0))],
+            ),
+            (
+                "", // Edge case of moving backwards in empty string
+                vec![(1, Range::new(0, 0), Range::new(0, 0))],
+            ),
+            (
+                "\n\n\n\n\n", // Edge case of moving backwards in all newlines
+                vec![(1, Range::new(5, 5), Range::new(0, 0))],
+            ),
+            ("   \n   \nJumping back through alternated space blocks and newlines selects the space blocks",
+                vec![
+                    (1, Range::new(0, 8), Range::new(7, 4)),
+                    (1, Range::new(7, 4), Range::new(3, 0)),
+                ]),
+            ("ヒーリ..クス multibyte characters behave as normal characters, including when interacting with punctuation",
+                vec![
+                    (1, Range::new(0, 8), Range::new(7, 0)),
+                ]),
         ];
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_next_long_word_end(Rope::from(sample).slice(..), begin, count);
+                let range = move_prev_long_word_end(Rope::from(sample).slice(..), begin, count);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
