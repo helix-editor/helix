@@ -1382,6 +1382,11 @@ mod test {
             ("    Jumping to end of a word preceded by whitespace",
                 vec![(1, Range::new(0, 0), Range::new(0, 11))]),
 
+            // // Why do we want this behavior?  The current behavior fails this
+            // // test, but seems better and more consistent.
+            // (" Starting from a boundary advances the anchor",
+            //     vec![(1, Range::new(0, 0), Range::new(1, 9))]),
+
             ("Previous anchor is irrelevant for end of word motion",
                 vec![(1, Range::new(12, 2), Range::new(2, 8))]),
             ("Identifiers_with_underscores are considered a single word",
