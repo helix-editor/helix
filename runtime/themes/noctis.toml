@@ -45,8 +45,8 @@
 
 'ui.virtual' = { fg = "mid-green" } # Namespace for additions to the editing area.
 'ui.virtual.ruler' = { bg = "mid-green" } # Vertical rulers (colored columns in editing area).
-'ui.virtual.whitespace' = { fg = "gray"} # Whitespace markers in editing area.
-'ui.virtual.indent-guide' = { fg = "gray" } # Indentation guides.
+'ui.virtual.whitespace' = { fg = "light-gray"} # Whitespace markers in editing area.
+'ui.virtual.indent-guide' = { fg = "light-gray" } # Indentation guides.
 
 'ui.statusline' = { fg = "light-green", bg = "autocomp-green"} # Status line.
 'ui.statusline.inactive' = { fg = "white", bg = "mid-green"} # Status line in unfocused windows.
@@ -198,6 +198,7 @@ purple = "#918cff"
 white = "#b1cace"
 orange = "#ffa864"
 gray = "#5b858b" # mainly for comments/background text
+light-gray = "#354e51" # used when whitespace rendering is enabled and for indent-guides
 red = "#e34e1b"
 
 dark-blue = "#19a2b7"
