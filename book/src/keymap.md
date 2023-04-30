@@ -218,6 +218,8 @@ Jumps to various locations.
 | `n`   | Go to next buffer                                | `goto_next_buffer`         |
 | `p`   | Go to previous buffer                            | `goto_previous_buffer`     |
 | `.`   | Go to last modification in current file          | `goto_last_modification`   |
+| `j`   | Go down file/logical (vs visual) line            | `move_line_down`           |
+| `k`   | Go up file/logical (vs visual) line              | `move_line_up`             |
 
 #### Match mode
 
