@@ -98,14 +98,14 @@
 | nu | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
-| odin | ✓ |  |  | `ols` |
+| odin | ✓ |  | ✓ | `ols` |
 | opencl | ✓ | ✓ | ✓ | `clangd` |
 | openscad | ✓ |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |
 | pascal | ✓ | ✓ |  | `pasls` |
 | passwd | ✓ |  |  |  |
 | pem | ✓ |  |  |  |
-| perl | ✓ | ✓ | ✓ |  |
+| perl | ✓ | ✓ | ✓ | `perlnavigator` |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | po | ✓ | ✓ |  |  |
 | ponylang | ✓ | ✓ | ✓ |  |

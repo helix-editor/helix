@@ -1078,13 +1078,19 @@ pub fn goto_implementation(cx: &mut Context) {
 }
 
 pub fn goto_reference(cx: &mut Context) {
+    let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let language_server = language_server!(cx.editor, doc);
     let offset_encoding = language_server.offset_encoding();
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = match language_server.goto_reference(doc.identifier(), pos, None) {
+    let future = match language_server.goto_reference(
+        doc.identifier(),
+        pos,
+        config.lsp.goto_reference_include_declaration,
+        None,
+    ) {
         Some(future) => future,
         None => {
             cx.editor
@@ -1513,7 +1519,8 @@ fn compute_inlay_hints_for_view(
             // than computing all the hints for the full file (which could be dozens of time
             // longer than the view is).
             let view_height = view.inner_height();
-            let first_visible_line = doc_text.char_to_line(view.offset.anchor);
+            let first_visible_line =
+                doc_text.char_to_line(view.offset.anchor.min(doc_text.len_chars()));
             let first_line = first_visible_line.saturating_sub(view_height);
             let last_line = first_visible_line
                 .saturating_add(view_height.saturating_mul(2))
