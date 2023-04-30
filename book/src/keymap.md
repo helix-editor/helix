@@ -32,8 +32,8 @@
 | Key                   | Description                                        | Command                     |
 | -----                 | -----------                                        | -------                     |
 | `h`, `Left`           | Move left                                          | `move_char_left`            |
-| `j`, `Down`           | Move down                                          | `move_visual_line_down`            |
-| `k`, `Up`             | Move up                                            | `move_visual_line_up`              |
+| `j`, `Down`           | Move down                                          | `move_visual_line_down`     |
+| `k`, `Up`             | Move up                                            | `move_visual_line_up`       |
 | `l`, `Right`          | Move right                                         | `move_char_right`           |
 | `w`                   | Move next word start                               | `move_next_word_start`      |
 | `b`                   | Move previous word start                           | `move_prev_word_start`      |
