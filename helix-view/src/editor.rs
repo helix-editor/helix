@@ -282,6 +282,9 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
+    /// Whether to import settings from [EditorConfig](https://editorconfig.org/).
+    /// Defaults to `true`.
+    pub editorconfig: bool,
     /// Workspace specific lsp ceiling dirs
     pub workspace_lsp_roots: Vec<PathBuf>,
 }
@@ -758,6 +761,7 @@ impl Default for Config {
             },
             text_width: 80,
             completion_replace: false,
+            editorconfig: true,
             workspace_lsp_roots: Vec::new(),
         }
     }
