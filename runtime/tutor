@@ -941,7 +941,7 @@ lines.
  --> A horse is a horse, of course, of course,
  --> And no one can talk to a horse of course.
 
- Note: * is like a shorthand for "/ y as all it really does is
+ Note: * is like a shorthand for "/y as all it really does is
        copy the selection into the / register.
 
 =================================================================
