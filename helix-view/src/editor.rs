@@ -1305,10 +1305,10 @@ impl Editor {
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
-        let (rope, encoding) = crate::document::from_reader(&mut stdin(), None)?;
+        let (rope, encoding, has_bom) = crate::document::from_reader(&mut stdin(), None)?;
         Ok(self.new_file_from_document(
             action,
-            Document::from(rope, Some(encoding), self.config.clone()),
+            Document::from(rope, Some((encoding, has_bom)), self.config.clone()),
         ))
     }
 

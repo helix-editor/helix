@@ -5111,7 +5111,8 @@ async fn shell_impl_async(
     let output = if let Some(mut stdin) = process.stdin.take() {
         let input_task = tokio::spawn(async move {
             if let Some(input) = input {
-                helix_view::document::to_writer(&mut stdin, encoding::UTF_8, &input).await?;
+                helix_view::document::to_writer(&mut stdin, (encoding::UTF_8, false), &input)
+                    .await?;
             }
             Ok::<_, anyhow::Error>(())
         });
