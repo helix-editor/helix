@@ -193,8 +193,8 @@
 </blockquote>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>h</code>, <code>Left</code></td><td>Move left</td><td><code>move_char_left</code></td></tr>
-<tr><td><code>j</code>, <code>Down</code></td><td>Move down</td><td><code>move_line_down</code></td></tr>
-<tr><td><code>k</code>, <code>Up</code></td><td>Move up</td><td><code>move_line_up</code></td></tr>
+<tr><td><code>j</code>, <code>Down</code></td><td>Move down</td><td><code>move_visual_line_down</code></td></tr>
+<tr><td><code>k</code>, <code>Up</code></td><td>Move up</td><td><code>move_visual_line_up</code></td></tr>
 <tr><td><code>l</code>, <code>Right</code></td><td>Move right</td><td><code>move_char_right</code></td></tr>
 <tr><td><code>w</code></td><td>Move next word start</td><td><code>move_next_word_start</code></td></tr>
 <tr><td><code>b</code></td><td>Move previous word start</td><td><code>move_prev_word_start</code></td></tr>
@@ -363,6 +363,8 @@ useful when you're simply looking over text and not actively editing it.</p>
 <tr><td><code>n</code></td><td>Go to next buffer</td><td><code>goto_next_buffer</code></td></tr>
 <tr><td><code>p</code></td><td>Go to previous buffer</td><td><code>goto_previous_buffer</code></td></tr>
 <tr><td><code>.</code></td><td>Go to last modification in current file</td><td><code>goto_last_modification</code></td></tr>
+<tr><td><code>j</code></td><td>Move down textual (instead of visual) line</td><td><code>move_line_down</code></td></tr>
+<tr><td><code>k</code></td><td>Move up textual (instead of visual) line</td><td><code>move_line_up</code></td></tr>
 </tbody></table>
 </div>
 <h4 id="match-mode"><a class="header" href="#match-mode">Match mode</a></h4>
