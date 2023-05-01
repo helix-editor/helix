@@ -190,7 +190,7 @@ pub struct FilePickerConfig {
     /// Enables reading `.git/info/exclude` files.
     /// Whether to hide files listed in .git/info/exclude in file picker and global search results. Defaults to true.
     pub git_exclude: bool,
-    /// Enables use of local and global .gitignore files even if not in a git directory
+    /// Only use (local and global) .gitignore if inside a git repository/worktree
     /// Whether to require that the workspace is in a git repository for .gitignore parsing. Defaults to true.
     pub require_git: bool,
     /// WalkBuilder options

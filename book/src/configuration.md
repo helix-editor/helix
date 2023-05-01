@@ -169,7 +169,7 @@ All git related options are only enabled in a git repository.
 |`git-ignore` | Enables reading `.gitignore` files | true
 |`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludefile` option | true
 |`git-exclude` | Enables reading `.git/info/exclude` files | true
-|`require-git` | Enables use of local and global .gitignore files even if not in a git directory (if set to `false`) | true
+|`require-git` | Only use (local and global) .gitignore if inside a git repository/worktree | true
 |`max-depth` | Set with an integer value for maximum depth to recurse | Defaults to `None`.
 
 ### `[editor.auto-pairs]` Section
