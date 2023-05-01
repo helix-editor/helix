@@ -190,6 +190,9 @@ pub struct FilePickerConfig {
     /// Enables reading `.git/info/exclude` files.
     /// Whether to hide files listed in .git/info/exclude in file picker and global search results. Defaults to true.
     pub git_exclude: bool,
+    /// Enables use of local and global .gitignore files even if not in a git directory
+    /// Whether to require that the workspace is in a git repository for .gitignore parsing. Defaults to true.
+    pub require_git: bool,
     /// WalkBuilder options
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
@@ -206,6 +209,7 @@ impl Default for FilePickerConfig {
             git_ignore: true,
             git_global: true,
             git_exclude: true,
+            require_git: true,
             max_depth: None,
         }
     }
