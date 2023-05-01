@@ -4783,21 +4783,23 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 let (view, doc) = current!(editor);
                 let text = doc.text().slice(..);
 
-                let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
-                    let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
-                        Some(t) => t,
-                        None => return range,
+                let textobject_treesitter =
+                    |obj_name: &str, range: Range, better_capture: bool| -> Range {
+                        let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
+                            Some(t) => t,
+                            None => return range,
+                        };
+                        textobject::textobject_treesitter(
+                            text,
+                            range,
+                            objtype,
+                            obj_name,
+                            syntax.tree().root_node(),
+                            lang_config,
+                            better_capture,
+                            count,
+                        )
                     };
-                    textobject::textobject_treesitter(
-                        text,
-                        range,
-                        objtype,
-                        obj_name,
-                        syntax.tree().root_node(),
-                        lang_config,
-                        count,
-                    )
-                };
 
                 if ch == 'g' && doc.diff_handle().is_none() {
                     editor.set_status("Diff is not available in current buffer");
@@ -4824,12 +4826,12 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                     match ch {
                         'w' => textobject::textobject_word(text, range, objtype, count, false),
                         'W' => textobject::textobject_word(text, range, objtype, count, true),
-                        't' => textobject_treesitter("class", range),
-                        'f' => textobject_treesitter("function", range),
-                        'a' => textobject_treesitter("parameter", range),
-                        'c' => textobject_treesitter("comment", range),
-                        'T' => textobject_treesitter("test", range),
-                        'e' => textobject_treesitter("xml_element", range),
+                        't' => textobject_treesitter("class", range, false),
+                        'f' => textobject_treesitter("function", range, false),
+                        'a' => textobject_treesitter("parameter", range, false),
+                        'c' => textobject_treesitter("comment", range, false),
+                        'T' => textobject_treesitter("test", range, false),
+                        'e' => textobject_treesitter("xml_element", range, true),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
                         'm' => textobject::textobject_pair_surround_closest(
                             text, range, objtype, count,

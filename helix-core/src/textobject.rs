@@ -8,7 +8,7 @@ use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
 use crate::movement::Direction;
 use crate::surround;
-use crate::syntax::LanguageConfiguration;
+use crate::syntax::{CapturedNode, LanguageConfiguration};
 use crate::Range;
 
 fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
@@ -260,18 +260,47 @@ pub fn textobject_treesitter(
     object_name: &str,
     slice_tree: Node,
     lang_config: &LanguageConfiguration,
+    better_capture: bool,
     _count: usize,
 ) -> Range {
     let get_range = move || -> Option<Range> {
         let byte_pos = slice.char_to_byte(range.cursor(slice));
 
-        let capture_name = format!("{}.{}", object_name, textobject); // eg. function.inner
         let mut cursor = QueryCursor::new();
-        let node = lang_config
-            .textobject_query()?
-            .capture_nodes(&capture_name, slice_tree, slice, &mut cursor)?
-            .filter(|node| node.byte_range().contains(&byte_pos))
-            .min_by_key(|node| node.byte_range().len())?;
+        let mut second_cursor = QueryCursor::new();
+
+        // // This is helpful in capturing inner nodes in html, jsx and other xml like
+        // // languages where it's diffucult to capture the *.inner textobjects.
+        // // e.g.: <p[CURSOR] att="val">this is a <a>link</a></p>
+        // // because of how treesitter s-exp work, when trying to capture the p inside of element
+        // // we capture the whole p element instead.
+        // // So, Here we Take the p element as the root node and then capture our inner element
+        let node = if better_capture && textobject == TextObject::Inside {
+            let capture_name = format!("{}.{}", object_name, TextObject::Around); // eg. function.inner
+            let outer_node = lang_config
+                .textobject_query()?
+                .capture_nodes(&capture_name, slice_tree, slice, &mut cursor)?
+                .filter(|node| node.byte_range().contains(&byte_pos))
+                .min_by_key(|node| node.byte_range().len())?;
+
+            match outer_node {
+                CapturedNode::Single(outer_node) => {
+                    let capture_name = format!("{}.{}", object_name, TextObject::Inside); // eg. function.inner
+                    lang_config
+                        .textobject_query()?
+                        .capture_nodes(&capture_name, outer_node, slice, &mut second_cursor)?
+                        .next()?
+                }
+                _ => outer_node,
+            }
+        } else {
+            let capture_name = format!("{}.{}", object_name, textobject); // eg. function.inner
+            lang_config
+                .textobject_query()?
+                .capture_nodes(&capture_name, slice_tree, slice, &mut cursor)?
+                .filter(|node| node.byte_range().contains(&byte_pos))
+                .min_by_key(|node| node.byte_range().len())?
+        };
 
         let len = slice.len_bytes();
         let start_byte = node.start_byte();
