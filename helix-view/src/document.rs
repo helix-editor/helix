@@ -1130,10 +1130,6 @@ impl Document {
         self.savepoints.push(savepoint_ref)
     }
 
-    pub fn register_insert_mode_movement(&mut self) {
-        self.moved_since_changed = true;
-    }
-
     fn earlier_later_impl(&mut self, view: &mut View, uk: UndoKind, earlier: bool) -> bool {
         let txns = if earlier {
             self.history.get_mut().earlier(uk)
