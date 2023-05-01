@@ -51,4 +51,4 @@
 [
 	(param)
 	(mount_param)
-] @variable.parameter
+] @constant
