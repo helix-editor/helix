@@ -76,6 +76,7 @@
 "ui.text.focus" = { fg = "fg" }
 
 "ui.virtual" = { fg = "gray02" }
+"ui.virtual.ruler" = {bg="gray02"}
 "ui.virtual.indent-guide" = { fg = "gray02" }
 
 "ui.selection" = { bg = "gray03" }
