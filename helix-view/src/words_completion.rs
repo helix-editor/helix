@@ -332,23 +332,23 @@ mod test {
 
         let doc_id = DocumentId::default();
 
-        let _ = rt.block_on(async move {
+        assert!(rt.block_on(async move {
             let instance = WordsCompletion::new(2);
 
             // buffer with text
-            let _ = instance.extract_words(doc_id, "Hello".to_string());
+            instance.extract_words(doc_id, "Hello".to_string());
 
             let items = instance.completion("H".to_string()).await;
             assert_eq!(items, Some(vec!["Hello".to_string()]));
 
             // add text to the same line
-            let _ = instance.extract_line_words(doc_id, vec![(0, Some("Hello world".to_string()))]);
+            instance.extract_line_words(doc_id, vec![(0, Some("Hello world".to_string()))]);
 
             let items = instance.completion("w".to_string()).await;
             assert_eq!(items, Some(vec!["world".to_string()]));
 
             // reload buffer with text
-            let _ = instance.extract_words(doc_id, "Hello".to_string());
+            instance.extract_words(doc_id, "Hello".to_string());
 
             let items = instance.completion("w".to_string()).await;
             assert_eq!(items, None);
@@ -356,7 +356,7 @@ mod test {
             drop(instance);
 
             true
-        });
+        }));
     }
 
     #[test]
