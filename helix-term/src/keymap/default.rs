@@ -338,7 +338,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "n" => extend_search_next,
         "N" => extend_search_prev,
 
-        "t" => extend_till_char,
+        "t" => extend_till_next_char,
         "f" => extend_next_char,
         "T" => extend_till_prev_char,
         "F" => extend_prev_char,

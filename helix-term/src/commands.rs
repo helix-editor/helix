@@ -250,7 +250,9 @@ impl MappableCommand {
         // TODO: remove `find_till_char` with version 23.03 + X
         find_till_char, "Move till next occurrence of char [DEPRECATED]",
         find_next_char, "Move to next occurrence of char",
-        extend_till_char, "Extend till next occurrence of char",
+        extend_till_next_char, "Extend till next occurrence of char",
+        // TODO: remove `extend_till_char` with version 23.03 + X
+        extend_till_char, "Extend till next occurrence of char [DEPRECATED]",
         extend_next_char, "Extend to next occurrence of char",
         find_till_prev_char, "Move till previous occurrence of char",
         // TODO: remove `till_prev_char` with version 23.03 + X
@@ -1357,8 +1359,13 @@ fn find_next_char(cx: &mut Context) {
     will_find_char(cx, find_next_char_impl, true, false)
 }
 
-fn extend_till_char(cx: &mut Context) {
+fn extend_till_next_char(cx: &mut Context) {
     will_find_char(cx, find_next_char_impl, false, true)
+}
+
+// todo: remove `extend_till_char` with version 23.03 + X
+fn extend_till_char(cx: &mut Context) {
+    extend_till_next_char(cx)
 }
 
 fn extend_next_char(cx: &mut Context) {
