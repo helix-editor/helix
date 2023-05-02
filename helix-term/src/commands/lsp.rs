@@ -1483,33 +1483,31 @@ pub fn highlight_symbol_under_cursor(cx: &mut Context) {
 
     let pos = doc.position(view.id, offset_encoding);
 
-    let future = match language_server.text_document_document_highlight(doc.identifier(), pos, None)
-    {
-        Some(future) => future,
-        None => return,
+    let Some(future) = language_server.text_document_document_highlight(doc.identifier(), pos, None) else {
+        return;
     };
 
     cx.callback(
         future,
         move |editor, _compositor, response: Option<Vec<lsp::DocumentHighlight>>| {
-            if let Some(highlights) = response {
-                let (_, doc) = current!(editor);
-                let language_server = language_server!(editor, doc);
-                let offset_encoding = language_server.offset_encoding();
-                let text = doc.text();
-
-                editor.cursor_highlights = Arc::new(
-                    highlights
-                        .iter()
-                        .filter_map(|highlight| {
-                            lsp_range_to_ops_range(text, highlight.range, offset_encoding)
-                        })
-                        .collect(),
-                );
-            } else {
+            if let Some(highlights) = response else {
                 // Reset the cursor_word
                 editor.cursor_highlights = Arc::new(Vec::new());
-            }
+                return;
+            };
+            let (_, doc) = current!(editor);
+            let language_server = language_server!(editor, doc);
+            let offset_encoding = language_server.offset_encoding();
+            let text = doc.text();
+
+            editor.cursor_highlights = Arc::new(
+                highlights
+                    .iter()
+                    .filter_map(|highlight| {
+                        lsp_range_to_ops_range(text, highlight.range, offset_encoding)
+                    })
+                    .collect(),
+            );
         },
     );
 }
