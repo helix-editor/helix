@@ -1496,7 +1496,7 @@ pub fn highlight_symbol_under_cursor(cx: &mut Context) {
     cx.callback(
         future,
         move |editor, _compositor, response: Option<Vec<lsp::DocumentHighlight>>| {
-            if let Some(highlights) = response else {
+            let Some(highlights) = response else {
                 // Reset the cursor_word
                 editor.cursor_highlights = Arc::new(Vec::new());
                 return;

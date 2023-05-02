@@ -258,7 +258,7 @@ impl EditorView {
     }
 
     /// Gets the word under the cursor
-    pub fn cursor_word(doc: &Document, view: &View) -> Option<String> {
+    pub fn cursor_word<'a>(doc: &'a Document, view: &View) -> Option<&'a str> {
         let text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
         let char_under_cursor = text.get_char(cursor);
@@ -271,7 +271,7 @@ impl EditorView {
         let start = cursor.saturating_sub(reversed_chars.take_while(|c| char_is_word(*c)).count());
         let end = cursor + chars_at_cursor.take_while(|c| char_is_word(*c)).count();
 
-        Some(text.slice(start..end).to_string())
+        text.slice(start..end).as_str()
     }
 
     /// Calculates the ranges of the word under the cursor and returns the result
@@ -284,9 +284,8 @@ impl EditorView {
         let text = doc.text().slice(..);
         let mut result = Vec::new();
 
-        let cursor_word = match Self::cursor_word(doc, view) {
-            Some(cw) => cw,
-            None => return result,
+        let Some(cursor_word) = Self::cursor_word(doc, view) else {
+            return result;
         };
 
         let row = text.char_to_line(view.offset.anchor.min(text.len_chars()));
@@ -299,13 +298,13 @@ impl EditorView {
             first_visible_line..last_visible_line
         };
 
-        let relevent_lines = text
+        let relevant_lines = text
             .slice(text.line_to_char(line_range.start)..text.line_to_char(line_range.end))
             .chunks();
 
-        for (line, line_number) in relevent_lines.zip(line_range) {
+        for (line, line_number) in relevant_lines.zip(line_range) {
             result.extend(
-                line.match_indices(&cursor_word)
+                line.match_indices(cursor_word)
                     .map(|(i, _)| i)
                     .filter(|i| line[..*i].chars().next_back().map_or(false, char_is_word))
                     .filter(|i| {
