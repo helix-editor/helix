@@ -9,7 +9,7 @@ use std::sync::Arc;
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag};
 
 use helix_core::{
-    syntax::{self, HighlightEvent, Syntax},
+    syntax::{self, HighlightEvent, InjectionLanguageMarker, Syntax},
     Rope,
 };
 use helix_view::{
@@ -47,7 +47,9 @@ pub fn highlighted_code_block<'a>(
 
     let rope = Rope::from(text.as_ref());
     let syntax = config_loader
-        .language_configuration_for_injection_string(language)
+        .language_configuration_for_injection_string(&InjectionLanguageMarker::Name(
+            language.into(),
+        ))
         .and_then(|config| config.highlight_config(theme.scopes()))
         .map(|config| Syntax::new(&rope, config, Arc::clone(&config_loader)));
 

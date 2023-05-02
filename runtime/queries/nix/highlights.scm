@@ -47,8 +47,10 @@
 (float_expression) @constant.numeric.float
 
 (escape_sequence) @constant.character.escape
+(dollar_escape) @constant.character.escape
 
 (function_expression
+  "@"? @punctuation.delimiter
   universal: (identifier) @variable.parameter
   "@"? @punctuation.delimiter
 )
@@ -82,7 +84,8 @@
 (binding
   attrpath: (attrpath attr: (identifier)) @variable.other.member)
 
-(inherit_from attrs: (inherited_attrs attr: (identifier) @variable))
+(inherit_from attrs: (inherited_attrs attr: (identifier) @variable.other.member))
+(inherited_attrs attr: (identifier) @variable)
 
 (has_attr_expression
   expression: (_)
