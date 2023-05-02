@@ -43,7 +43,7 @@
 | `E`                   | Move next WORD end                                 | `move_next_long_word_end`   |
 | `t`                   | Find 'till next char                               | `find_till_char`            |
 | `f`                   | Find next char                                     | `find_next_char`            |
-| `T`                   | Find 'till previous char                           | `till_prev_char`            |
+| `T`                   | Find 'till previous char                           | `find_till_prev_char`       |
 | `F`                   | Find previous char                                 | `find_prev_char`            |
 | `G`                   | Go to line number `<n>`                            | `goto_line`                 |
 | `Alt-.`               | Repeat last motion (`f`, `t` or `m`)               | `repeat_last_motion`        |

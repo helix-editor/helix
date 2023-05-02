@@ -13,7 +13,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "t" => find_till_char,
         "f" => find_next_char,
-        "T" => till_prev_char,
+        "T" => find_till_prev_char,
         "F" => find_prev_char,
         "r" => replace,
         "R" => replace_with_yanked,
