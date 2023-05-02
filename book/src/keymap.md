@@ -41,7 +41,7 @@
 | `W`                   | Move next WORD start                               | `move_next_long_word_start` |
 | `B`                   | Move previous WORD start                           | `move_prev_long_word_start` |
 | `E`                   | Move next WORD end                                 | `move_next_long_word_end`   |
-| `t`                   | Find 'till next char                               | `find_till_char`            |
+| `t`                   | Find 'till next char                               | `find_till_next_char`       |
 | `f`                   | Find next char                                     | `find_next_char`            |
 | `T`                   | Find 'till previous char                           | `find_till_prev_char`       |
 | `F`                   | Find previous char                                 | `find_prev_char`            |
