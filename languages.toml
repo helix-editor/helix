@@ -253,6 +253,7 @@ roots = ["shard.yml", "shard.lock"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 grammar = "ruby"
+language-server = { command = "crystalline", args = ["--stdio"] }
 
 [[language]]
 name = "c-sharp"
