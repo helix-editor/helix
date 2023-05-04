@@ -49,6 +49,7 @@
 | git-rebase | ✓ |  |  |  |
 | gleam | ✓ | ✓ |  | `gleam` |
 | glsl | ✓ | ✓ | ✓ |  |
+| gn | ✓ |  |  |  |
 | go | ✓ | ✓ | ✓ | `gopls` |
 | godot-resource | ✓ |  |  |  |
 | gomod | ✓ |  |  | `gopls` |
