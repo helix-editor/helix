@@ -230,8 +230,13 @@ impl Application {
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
-        let signals = Signals::new([signal::SIGTSTP, signal::SIGCONT, signal::SIGUSR1])
-            .context("build signal handler")?;
+        let signals = Signals::new([
+            signal::SIGTSTP,
+            signal::SIGCONT,
+            signal::SIGUSR1,
+            signal::SIGTERM,
+        ])
+        .context("build signal handler")?;
 
         let app = Self {
             compositor,
@@ -446,7 +451,7 @@ impl Application {
     #[cfg(not(windows))]
     pub async fn handle_signals(&mut self, signal: i32) {
         match signal {
-            signal::SIGTSTP => {
+            signal::SIGTSTP | signal::SIGTERM => {
                 self.restore_term().unwrap();
 
                 // SAFETY:
