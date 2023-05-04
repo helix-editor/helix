@@ -1,6 +1,11 @@
+use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::{self, BufReader, Read, Write};
+use std::path::Path;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Register {
     name: char,
     values: Vec<String>,
@@ -36,7 +41,7 @@ impl Register {
 }
 
 /// Currently just wraps a `HashMap` of `Register`s
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Registers {
     inner: HashMap<char, Register>,
 }
@@ -54,6 +59,61 @@ impl Registers {
         if name != '_' {
             self.inner
                 .insert(name, Register::new_with_values(name, values));
+        }
+    }
+
+    pub fn load(&mut self, name: char) -> Result<(), String> {
+        fn _read_data(name: char) -> Result<String, io::Error> {
+            let file_name = format!("{}.macro", &name);
+            let file = File::open(&file_name)?;
+            let mut reader = BufReader::new(file);
+            let mut content = String::new();
+
+            reader.read_to_string(&mut content)?;
+
+            return Ok(content);
+        }
+
+        fn _string_to_register(str: String) -> Result<Register, serde_json::Error> {
+            let deserialized: Register = serde_json::from_str(&str)?;
+
+            return Ok(deserialized);
+        }
+
+        match _read_data(name) {
+            Ok(content) => match _string_to_register(content) {
+                Ok(register) => match self.inner.insert(name, register) {
+                    Some(_) => Ok(()),
+                    None => Err(format!("Could not insert loaded register.")),
+                },
+                Err(error) => Err(format!("Insertion failed: {}", error)),
+            },
+            Err(error) => Err(format!("Deserialization failed: {}", error)),
+        }
+    }
+
+    pub fn save(&mut self, name: char) -> Result<(), String> {
+        fn _write(file_name: &Path, content: String) -> Result<(), io::Error> {
+            let mut file = File::create(&file_name)?;
+            file.write_all(&content.as_bytes())
+        }
+
+        fn _serialize(register: &Register) -> Result<String, serde_json::Error> {
+            serde_json::to_string(&register)
+        }
+
+        let file_name = format!("{}.macro", &name);
+        let file_name = Path::new(&file_name);
+
+        match self.get(name) {
+            Some(register) => match _serialize(register) {
+                Ok(content) => match _write(file_name, content) {
+                    Ok(()) => Ok(()),
+                    Err(error) => Err(format!("Error on write: {}", error)),
+                },
+                Err(error) => Err(format!("Serialization failed: {}", error)),
+            },
+            None => Err(String::from("Register not found.")),
         }
     }
 

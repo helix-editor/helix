@@ -17,7 +17,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "F" => find_prev_char,
         "r" => replace,
         "R" => replace_with_yanked,
-        "A-." =>  repeat_last_motion,
+        "A-." => repeat_last_motion,
 
         "~" => switch_case,
         "`" => switch_to_lowercase,
@@ -145,8 +145,12 @@ pub fn default() -> HashMap<Mode, Keymap> {
         // paste_all
         "P" => paste_before,
 
-        "Q" => record_macro,
-        "q" => replay_macro,
+        "q" => { "Macro"
+            "r" => record_macro,
+            "p" => replay_macro,
+            "s" => save_macro,
+            "l" => load_macro,
+        },
 
         ">" => indent,
         "<" => unindent,
@@ -158,9 +162,6 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "," => keep_primary_selection,
         "A-," => remove_primary_selection,
-
-        // "q" => record_macro,
-        // "Q" => replay_macro,
 
         "&" => align_selections,
         "_" => trim_selections,

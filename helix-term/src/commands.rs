@@ -472,6 +472,8 @@ impl MappableCommand {
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        save_macro, "Save macro",
+        load_macro, "Load macro",
         command_palette, "Open command palette",
     );
 }
@@ -5370,6 +5372,46 @@ fn record_macro(cx: &mut Context) {
         cx.editor.macro_recording = Some((reg, Vec::new()));
         cx.editor
             .set_status(format!("Recording to register [{}]", reg));
+    }
+}
+
+fn save_macro(cx: &mut Context) {
+    let reg = cx.register.unwrap_or('@');
+
+    match &cx.editor.macro_recording {
+        Some(val) => {
+            if val.0 == reg {
+                cx.editor.set_error(format!(
+                    "Cannot save from register [{}] because currently recording at the same register",
+                reg
+                ));
+                return;
+            }
+        }
+        None => (),
+    }
+
+    match cx.editor.registers.save(reg) {
+        Ok(_) => cx
+            .editor
+            .set_status(format!("Saved macro in register [{}]", reg)),
+        Err(error) => cx.editor.set_error(format!(
+            "Saving macro in register [{}] failed: {}",
+            reg, error
+        )),
+    }
+}
+
+fn load_macro(cx: &mut Context) {
+    let reg = '@';
+    match cx.editor.registers.load(reg) {
+        Ok(()) => cx
+            .editor
+            .set_status(format!("Loaded macro in register [{}]", reg)),
+        Err(error) => cx.editor.set_error(format!(
+            "Loading macro in register [{}] failed: {}",
+            reg, error
+        )),
     }
 }
 
