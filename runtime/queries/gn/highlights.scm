@@ -46,5 +46,3 @@
 
 (comment) @comment
 ((comment) @todo (#match? @todo "TODO")) ; This doesn't work
-
-(ERROR) @error
