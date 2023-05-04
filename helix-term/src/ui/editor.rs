@@ -830,17 +830,23 @@ impl EditorView {
             last_mode = current_mode;
         };
 
-        match &key_result {
+        match key_result {
             KeymapResult::Matched(command) => {
-                execute_command(command);
+                execute_command(&command);
             }
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
-                    execute_command(command);
+                    execute_command(&command);
                 }
             }
-            KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
+            KeymapResult::NotFound => return Some(key_result),
+            KeymapResult::Cancelled(mut pending) => {
+                if !matches!(self.keymaps.get(mode, event), KeymapResult::NotFound) {
+                    pending.pop();
+                }
+                return Some(KeymapResult::Cancelled(pending));
+            }
         }
         None
     }
@@ -853,8 +859,7 @@ impl EditorView {
                         commands::insert::insert_char(cx, ch)
                     }
                 }
-                KeymapResult::Cancelled(mut pending) => {
-                    let last_evt = pending.pop().unwrap();
+                KeymapResult::Cancelled(pending) => {
                     for ev in pending {
                         match ev.char() {
                             Some(ch) => commands::insert::insert_char(cx, ch),
@@ -866,14 +871,6 @@ impl EditorView {
                                 }
                             }
                         }
-                    }
-                    match self.handle_keymap_event(Mode::Insert, cx, last_evt) {
-                        Some(KeymapResult::NotFound) => {
-                            if let Some(ch) = last_evt.char() {
-                                commands::insert::insert_char(cx, ch)
-                            }
-                        }
-                        _ => (),
                     }
                 }
                 _ => unreachable!(),
