@@ -12,5 +12,5 @@
 ; See the License for the specific language governing permissions and
 ; limitations under the License.
 
-(source_file) @scope
-(assignment target: (identifier) @definition.var)
+(source_file) @local.scope
+(assignment target: (identifier) @local.definition.var)
