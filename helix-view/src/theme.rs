@@ -128,7 +128,7 @@ impl Loader {
         let parent_palette = parent_theme_toml.get("palette");
         let palette = theme_toml.get("palette");
 
-        // handle the table seperately since it needs a `merge_depth` of 2
+        // handle the table separately since it needs a `merge_depth` of 2
         // this would conflict with the rest of the theme merge strategy
         let palette_values = match (parent_palette, palette) {
             (Some(parent_palette), Some(palette)) => {

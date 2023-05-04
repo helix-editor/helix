@@ -16,6 +16,9 @@
 
 "ui.virtual" = "sumiInk4"
 "ui.virtual.ruler" = { bg = "sumiInk2" }
+"ui.virtual.inlay-hint" = "fujiGray"
+"ui.virtual.inlay-hint.parameter" = { fg = "carpYellow", modifiers = ["dim"] }
+"ui.virtual.inlay-hint.type" = { fg = "waveAqua2", modifiers = ["dim"] }
 
 "ui.statusline" = { fg = "oldWhite", bg = "sumiInk0" }
 "ui.statusline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }

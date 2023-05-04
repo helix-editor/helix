@@ -794,7 +794,7 @@ impl<T: Item + 'static> Component for Picker<T> {
                 // might be inconsistencies. This is the best we can do since only the
                 // text in Row is displayed to the end user.
                 let (_score, highlights) = FuzzyQuery::new(self.prompt.line())
-                    .fuzzy_indicies(&line, &self.matcher)
+                    .fuzzy_indices(&line, &self.matcher)
                     .unwrap_or_default();
 
                 let highlight_byte_ranges: Vec<_> = line
@@ -812,7 +812,10 @@ impl<T: Item + 'static> Component for Picker<T> {
                 for cell in row.cells.iter_mut() {
                     let spans = match cell.content.lines.get(0) {
                         Some(s) => s,
-                        None => continue,
+                        None => {
+                            cell_start_byte_offset += TEMP_CELL_SEP.len();
+                            continue;
+                        }
                     };
 
                     let mut cell_len = 0;
@@ -882,6 +885,7 @@ impl<T: Item + 'static> Component for Picker<T> {
                 offset: 0,
                 selected: Some(cursor),
             },
+            self.truncate_start,
         );
     }
 

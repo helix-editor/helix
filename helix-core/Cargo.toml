@@ -29,9 +29,10 @@ tree-sitter = "0.20"
 once_cell = "1.17"
 arc-swap = "1"
 regex = "1"
-bitflags = "1.3"
+bitflags = "2.2"
 ahash = "0.8.3"
 hashbrown = { version = "0.13.2", features = ["raw"] }
+dunce = "1.0"
 
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
@@ -44,8 +45,9 @@ encoding_rs = "0.8"
 
 chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
 
-etcetera = "0.4"
+etcetera = "0.8"
 textwrap = "0.16.0"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
+indoc = "2.0.1"

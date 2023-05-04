@@ -116,7 +116,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
                         let picker = ui::file_picker(path, &editor.config());
-                        compositor.push(Box::new(overlayed(picker)));
+                        compositor.push(Box::new(overlaid(picker)));
                     },
                 ));
                 Ok(call)
@@ -1335,7 +1335,7 @@ fn lsp_workspace_command(
                     let picker = ui::Picker::new(commands, (), |cx, command, _action| {
                         execute_lsp_command(cx.editor, command.clone());
                     });
-                    compositor.push(Box::new(overlayed(picker)))
+                    compositor.push(Box::new(overlaid(picker)))
                 },
             ));
             Ok(call)
@@ -1371,13 +1371,19 @@ fn lsp_restart(
         return Ok(());
     }
 
+    let editor_config = cx.editor.config.load();
     let (_view, doc) = current!(cx.editor);
     let config = doc
         .language_config()
         .context("LSP not defined for the current document")?;
 
     let scope = config.scope.clone();
-    cx.editor.language_servers.restart(config, doc.path())?;
+    cx.editor.language_servers.restart(
+        config,
+        doc.path(),
+        &editor_config.workspace_lsp_roots,
+        editor_config.lsp.snippets,
+    )?;
 
     // This collect is needed because refresh_language_server would need to re-borrow editor.
     let document_ids_to_refresh: Vec<DocumentId> = cx
@@ -1764,12 +1770,12 @@ fn toggle_option(
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
-    if let Value::Bool(b) = *value {
-        *value = Value::Bool(!b);
-    } else {
+    let Value::Bool(old_value) = *value else {
         anyhow::bail!("Key `{}` is not toggle-able", key)
-    }
+    };
 
+    let new_value = !old_value;
+    *value = Value::Bool(new_value);
     // This unwrap should never fail because we only replace one boolean value
     // with another, maintaining a valid json config
     let config = serde_json::from_value(config).unwrap();
@@ -1778,6 +1784,8 @@ fn toggle_option(
         .config_events
         .0
         .send(ConfigEvent::Update(config))?;
+    cx.editor
+        .set_status(format!("Option `{}` is now set to `{}`", key, new_value));
     Ok(())
 }
 
@@ -1970,6 +1978,20 @@ fn open_config(
     Ok(())
 }
 
+fn open_workspace_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor
+        .open(&helix_loader::workspace_config_file(), Action::Replace)?;
+    Ok(())
+}
+
 fn open_log(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -2060,18 +2082,14 @@ fn run_shell_command(
         return Ok(());
     }
 
-    let shell = &cx.editor.config().shell;
-    let (output, success) = shell_impl(shell, &args.join(" "), None)?;
-    if success {
-        cx.editor.set_status("Command succeeded");
-    } else {
-        cx.editor.set_error("Command failed");
-    }
+    let shell = cx.editor.config().shell.clone();
+    let args = args.join(" ");
 
-    if !output.is_empty() {
-        let callback = async move {
-            let call: job::Callback = Callback::EditorCompositor(Box::new(
-                move |editor: &mut Editor, compositor: &mut Compositor| {
+    let callback = async move {
+        let (output, success) = shell_impl_async(&shell, &args, None).await?;
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                if !output.is_empty() {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output),
                         editor.syn_loader.clone(),
@@ -2080,13 +2098,17 @@ fn run_shell_command(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
                     ));
                     compositor.replace_or_push("shell", popup);
-                },
-            ));
-            Ok(call)
-        };
-
-        cx.jobs.callback(callback);
-    }
+                }
+                if success {
+                    editor.set_status("Command succeeded");
+                } else {
+                    editor.set_error("Command failed");
+                }
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
 
     Ok(())
 }
@@ -2105,20 +2127,16 @@ fn reset_diff_change(
     let scrolloff = editor.config().scrolloff;
 
     let (view, doc) = current!(editor);
-    // TODO refactor to use let..else once MSRV is raised to 1.65
-    let handle = match doc.diff_handle() {
-        Some(handle) => handle,
-        None => bail!("Diff is not available in the current buffer"),
+    let Some(handle) = doc.diff_handle() else {
+        bail!("Diff is not available in the current buffer")
     };
 
     let diff = handle.load();
     let doc_text = doc.text().slice(..);
     let line = doc.selection(view.id).primary().cursor_line(doc_text);
 
-    // TODO refactor to use let..else once MSRV is raised to 1.65
-    let hunk_idx = match diff.hunk_at(line as u32, true) {
-        Some(hunk_idx) => hunk_idx,
-        None => bail!("There is no change at the cursor"),
+    let Some(hunk_idx) = diff.hunk_at(line as u32, true) else {
+        bail!("There is no change at the cursor")
     };
     let hunk = diff.nth_hunk(hunk_idx);
     let diff_base = diff.diff_base();
@@ -2146,6 +2164,38 @@ fn reset_diff_change(
     doc.set_selection(view.id, Selection::single(anchor, anchor + text_len));
     doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
+    Ok(())
+}
+
+fn clear_register(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(args.len() <= 1, ":clear-register takes at most 1 argument");
+    if args.is_empty() {
+        cx.editor.registers.clear();
+        cx.editor.set_status("All registers cleared");
+        return Ok(());
+    }
+
+    ensure!(
+        args[0].chars().count() == 1,
+        format!("Invalid register {}", args[0])
+    );
+    let register = args[0].chars().next().unwrap_or_default();
+    match cx.editor.registers.remove(register) {
+        Some(_) => cx
+            .editor
+            .set_status(format!("Register {} cleared", register)),
+        None => cx
+            .editor
+            .set_error(format!("Register {} not found", register)),
+    }
     Ok(())
 }
 
@@ -2479,7 +2529,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
         TypableCommand {
             name: "update",
-            aliases: &[],
+            aliases: &["u"],
             doc: "Write changes only if the file has been modified.",
             fun: update,
             signature: CommandSignature::none(),
@@ -2647,6 +2697,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             signature: CommandSignature::none(),
         },
         TypableCommand {
+            name: "config-open-workspace",
+            aliases: &[],
+            doc: "Open the workspace config.toml file.",
+            fun: open_workspace_config,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
             name: "log-open",
             aliases: &[],
             doc: "Open the helix log file.",
@@ -2693,6 +2750,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["diffget", "diffg"],
             doc: "Reset the diff change at the cursor position.",
             fun: reset_diff_change,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "clear-register",
+            aliases: &[],
+            doc: "Clear given register. If no argument is provided, clear all registers.",
+            fun: clear_register,
             signature: CommandSignature::none(),
         },
     ];

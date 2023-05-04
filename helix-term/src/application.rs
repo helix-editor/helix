@@ -25,7 +25,7 @@ use crate::{
     config::Config,
     job::Jobs,
     keymap::Keymaps,
-    ui::{self, overlay::overlayed},
+    ui::{self, overlay::overlaid},
 };
 
 use log::{debug, error, warn};
@@ -169,7 +169,7 @@ impl Application {
                 std::env::set_current_dir(first).context("set current dir")?;
                 editor.new_file(Action::VerticalSplit);
                 let picker = ui::file_picker(".".into(), &config.load().editor);
-                compositor.push(Box::new(overlayed(picker)));
+                compositor.push(Box::new(overlaid(picker)));
             } else {
                 let nr_of_files = args.files.len();
                 for (i, (file, pos)) in args.files.into_iter().enumerate() {
@@ -361,6 +361,9 @@ impl Application {
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = *editor_config;
+                if let Err(err) = self.terminal.reconfigure(app_config.editor.clone().into()) {
+                    self.editor.set_error(err.to_string());
+                };
                 self.config.store(Arc::new(app_config));
             }
         }
@@ -393,20 +396,23 @@ impl Application {
 
     /// Refresh theme after config change
     fn refresh_theme(&mut self, config: &Config) -> Result<(), Error> {
-        if let Some(theme) = config.theme.clone() {
-            let true_color = self.true_color();
-            let theme = self
-                .theme_loader
-                .load(&theme)
-                .map_err(|err| anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err))?;
+        let true_color = config.editor.true_color || crate::true_color();
+        let theme = config
+            .theme
+            .as_ref()
+            .and_then(|theme| {
+                self.theme_loader
+                    .load(theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| (true_color || theme.is_16_color()))
+            })
+            .unwrap_or_else(|| self.theme_loader.default_theme(true_color));
 
-            if true_color || theme.is_16_color() {
-                self.editor.set_theme(theme);
-            } else {
-                anyhow::bail!("theme requires truecolor support, which is not available")
-            }
-        }
-
+        self.editor.set_theme(theme);
         Ok(())
     }
 
@@ -416,6 +422,8 @@ impl Application {
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
             self.refresh_theme(&default_config)?;
+            self.terminal
+                .reconfigure(default_config.editor.clone().into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())
@@ -429,10 +437,6 @@ impl Application {
                 self.editor.set_error(err.to_string());
             }
         }
-    }
-
-    fn true_color(&self) -> bool {
-        self.config.load().editor.true_color || crate::true_color()
     }
 
     #[cfg(windows)]
@@ -472,7 +476,17 @@ impl Application {
                 }
             }
             signal::SIGCONT => {
-                self.claim_term().await.unwrap();
+                // Copy/Paste from same issue from neovim:
+                // https://github.com/neovim/neovim/issues/12322
+                // https://github.com/neovim/neovim/pull/13084
+                for retries in 1..=10 {
+                    match self.claim_term().await {
+                        Ok(()) => break,
+                        Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
+                        Err(_) => continue,
+                    }
+                }
+
                 // redraw the terminal
                 let area = self.terminal.size().expect("couldn't get terminal size");
                 self.compositor.resize(area);
@@ -709,7 +723,16 @@ impl Application {
                                 return;
                             }
                         };
-                        let doc = self.editor.document_by_path_mut(&path);
+                        let doc = self.editor.document_by_path_mut(&path).filter(|doc| {
+                            if let Some(version) = params.version {
+                                if version != doc.version() {
+                                    log::info!("Version ({version}) is out of date for {path:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
+                                    return false;
+                                }
+                            }
+
+                            true
+                        });
 
                         if let Some(doc) = doc {
                             let lang_conf = doc.language_config();
@@ -990,23 +1013,26 @@ impl Application {
                         Ok(serde_json::Value::Null)
                     }
                     Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
-                        apply_workspace_edit(
+                        let res = apply_workspace_edit(
                             &mut self.editor,
                             helix_lsp::OffsetEncoding::Utf8,
                             &params.edit,
                         );
 
                         Ok(json!(lsp::ApplyWorkspaceEditResponse {
-                            applied: true,
-                            failure_reason: None,
-                            failed_change: None,
+                            applied: res.is_ok(),
+                            failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
+                            failed_change: res
+                                .as_ref()
+                                .err()
+                                .map(|err| err.failed_change_idx as u32),
                         }))
                     }
                     Ok(MethodCall::WorkspaceFolders) => {
                         let language_server =
                             self.editor.language_servers.get_by_id(server_id).unwrap();
 
-                        Ok(json!(language_server.workspace_folders()))
+                        Ok(json!(&*language_server.workspace_folders().await))
                     }
                     Ok(MethodCall::WorkspaceConfiguration(params)) => {
                         let result: Vec<_> = params
@@ -1022,8 +1048,7 @@ impl Application {
                                     None => self
                                         .editor
                                         .language_servers
-                                        .get_by_id(server_id)
-                                        .unwrap()
+                                        .get_by_id(server_id)?
                                         .config()?,
                                 };
                                 if let Some(section) = item.section.as_ref() {
