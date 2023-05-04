@@ -360,7 +360,10 @@ impl Keymaps {
     pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
         // TODO: remove the sticky part and look up manually
         let keymaps = &*self.map();
-        let keymap = &keymaps[&mode];
+        let keymap = match keymaps.get(&mode) {
+            Some(keymap) => keymap,
+            None => return KeymapResult::NotFound,
+        };
 
         if key!(Esc) == key {
             if !self.state.is_empty() {
@@ -415,10 +418,10 @@ impl Default for Keymaps {
     }
 }
 
-/// Merge default config keys with user overwritten keys for custom user config.
+/// Merge existing config keys with user overwritten keys.
 pub fn merge_keys(dst: &mut HashMap<Mode, Keymap>, mut delta: HashMap<Mode, Keymap>) {
-    for (mode, keys) in dst {
-        keys.merge(delta.remove(mode).unwrap_or_default())
+    for (mode, keys) in delta.drain() {
+        dst.entry(mode).or_default().merge(keys);
     }
 }
 
