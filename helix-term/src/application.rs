@@ -235,6 +235,7 @@ impl Application {
             signal::SIGCONT,
             signal::SIGUSR1,
             signal::SIGTERM,
+            signal::SIGINT,
         ])
         .context("build signal handler")?;
 
@@ -451,7 +452,7 @@ impl Application {
     #[cfg(not(windows))]
     pub async fn handle_signals(&mut self, signal: i32) {
         match signal {
-            signal::SIGTSTP | signal::SIGTERM => {
+            signal::SIGTSTP | signal::SIGTERM | signal::SIGINT => {
                 self.restore_term().unwrap();
 
                 // SAFETY:
