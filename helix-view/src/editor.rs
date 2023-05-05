@@ -823,6 +823,9 @@ pub struct Editor {
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
     pub clipboard_provider: Box<dyn ClipboardProvider>,
+    /// The last selection contents yanked to the system and primary clipboards.
+    /// These values are saved so that pasting from the system clipboard may
+    /// retain multiple selections.
     pub last_clipboard: [Vec<String>; 2],
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
