@@ -2668,7 +2668,7 @@ source = { git = "https://github.com/yuja/tree-sitter-qmljs", rev = "0b2b25bcaa7
 name = "mermaid"
 scope = "source.mermaid"
 injection-regex = "mermaid"
-file-types = ["mermaid"]
+file-types = ["mermaid", "mmd"]
 comment-token = "%%"
 indent = { tab-width = 4, unit = "    " }
 
