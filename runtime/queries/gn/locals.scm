@@ -13,4 +13,4 @@
 ; limitations under the License.
 
 (source_file) @local.scope
-(assignment target: (identifier) @local.definition.var)
+(assignment target: (identifier) @local.definition)
