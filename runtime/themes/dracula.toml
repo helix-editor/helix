@@ -51,8 +51,8 @@
 "variable"                        = { fg = "foreground"                                                     }
 "variable.builtin"                = { fg = "purple",             modifiers = ["italic"]                     }
 "variable.parameter"              = { fg = "orange",             modifiers = ["italic"]                     }
-"variable.other"                  = { fg = "cyan"                                                           }
-"variable.other.member"           = { fg = "purple"                                                         }
+"variable.other"                  = { fg = "foreground"                                                     }
+"variable.other.member"           = { fg = "foreground"                                                     }
 
 
 "diff.plus"                       = { fg    = "green"                                                       }
@@ -73,8 +73,9 @@
 "ui.highlight.frameline"          = { fg    = "background",      bg = "red"                                 }
 "ui.linenr"                       = { fg    = "comment"                                                     }
 "ui.linenr.selected"              = { fg    = "foreground"                                                  }
-"ui.menu"                         = { fg    = "foreground",      bg = "black"                               }
-"ui.menu.selected"                = { fg    = "cyan",            bg = "black"                               }
+"ui.menu"                         = { fg    = "background",      bg = "purple"                              }
+"ui.menu.selected"                = { fg    = "background",      bg = "green",          modifiers = ["dim"] }
+"ui.menu.scroll"                  = { fg    = "background",      bg = "purple"                              }
 "ui.popup"                        = { fg    = "foreground",      bg = "black"                               }
 "ui.selection.primary"            = {                            bg = "selection_primary"                   }
 "ui.selection"                    = {                            bg = "selection"                           }
