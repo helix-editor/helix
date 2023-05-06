@@ -2476,16 +2476,10 @@ pub fn process_cmd(
     input: &str,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    let input: String = if event == PromptEvent::Validate {
-        match expand_args(cx.editor, input) {
-            Ok(expanded) => expanded,
-            Err(e) => {
-                cx.editor.set_error(format!("{e}"));
-                return Err(e);
-            }
-        }
+    let input: Cow<str> = if event == PromptEvent::Validate {
+        expand_args(cx.editor, input)?
     } else {
-        input.to_owned()
+        Cow::Borrowed(input)
     };
 
     let parts = input.split_whitespace().collect::<Vec<&str>>();
@@ -3211,25 +3205,24 @@ pub(super) fn command_mode(cx: &mut Context) {
     cx.push_layer(Box::new(prompt));
 }
 
-fn expand_args(editor: &Editor, args: &str) -> anyhow::Result<String> {
-    let regexp = regex::Regex::new(r"%(\w+)\s*\{([^{}]*(\{[^{}]*\}[^{}]*)*)\}").unwrap();
+static EXPAND_ARGS_REGEXP: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"%(\w+)\{([^{}]*(\{[^{}]*\}[^{}]*)*)\}").unwrap());
 
+pub fn expand_args<'a>(editor: &Editor, args: &'a str) -> anyhow::Result<Cow<'a, str>> {
     let view = editor.tree.get(editor.tree.focus);
     let doc = editor.documents.get(&view.doc).unwrap();
     let shell = &editor.config().shell;
 
-    replace_all(&regexp, args, move |captures| {
-        let keyword = captures.get(1).unwrap().as_str();
-        let body = captures.get(2).unwrap().as_str();
-
-        match keyword.trim() {
+    replace_all(
+        Lazy::force(&EXPAND_ARGS_REGEXP),
+        Cow::Borrowed(args),
+        move |keyword, body| match keyword.trim() {
             "val" => match body.trim() {
-                "filename" => doc
-                    .path()
-                    .and_then(|p| p.to_str())
-                    .map_or(Err(anyhow::anyhow!("Current buffer has no path")), |v| {
-                        Ok(v.to_owned())
-                    }),
+                "filename" => Ok((match doc.path() {
+                    Some(p) => p.to_str().unwrap(),
+                    None => SCRATCH_BUFFER_NAME,
+                })
+                .to_owned()),
                 "filedir" => doc
                     .path()
                     .and_then(|p| p.parent())
@@ -3252,20 +3245,20 @@ fn expand_args(editor: &Editor, args: &str) -> anyhow::Result<String> {
                 Ok(result.0.trim().to_string())
             }
             _ => anyhow::bail!("Unknown keyword {keyword}"),
-        }
-    })
+        },
+    )
 }
 
 // Copy of regex::Regex::replace_all to allow using result in the replacer function
-fn replace_all(
+fn replace_all<'a>(
     regex: &regex::Regex,
-    text: &str,
-    matcher: impl Fn(&regex::Captures) -> anyhow::Result<String>,
-) -> anyhow::Result<String> {
-    let mut it = regex.captures_iter(text).peekable();
+    text: Cow<'a, str>,
+    matcher: impl Fn(&str, &str) -> anyhow::Result<String>,
+) -> anyhow::Result<Cow<'a, str>> {
+    let mut it = regex.captures_iter(&text).peekable();
 
     if it.peek().is_none() {
-        return Ok(String::from(text));
+        return Ok(text);
     }
 
     let mut new = String::with_capacity(text.len());
@@ -3275,7 +3268,7 @@ fn replace_all(
         let m = cap.get(0).unwrap();
         new.push_str(&text[last_match..m.start()]);
 
-        let replace = matcher(&cap)?;
+        let replace = matcher(cap.get(1).unwrap().as_str(), cap.get(2).unwrap().as_str())?;
 
         new.push_str(&replace);
 
@@ -3284,7 +3277,7 @@ fn replace_all(
 
     new.push_str(&text[last_match..]);
 
-    replace_all(regex, &new, matcher)
+    replace_all(regex, Cow::Owned(new), matcher)
 }
 
 fn argument_number_of(shellwords: &Shellwords) -> usize {
