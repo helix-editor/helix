@@ -2471,6 +2471,53 @@ fn move_buffer(
     Ok(())
 }
 
+pub fn process_cmd(
+    cx: &mut compositor::Context,
+    input: &str,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    let input: String = if event == PromptEvent::Validate {
+        match expand_args(cx.editor, input) {
+            Ok(expanded) => expanded,
+            Err(e) => {
+                cx.editor.set_error(format!("{e}"));
+                return Err(e);
+            }
+        }
+    } else {
+        input.to_owned()
+    };
+
+    let parts = input.split_whitespace().collect::<Vec<&str>>();
+    if parts.is_empty() {
+        return Ok(());
+    }
+
+    // If command is numeric, interpret as line number and go there.
+    if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
+        if let Err(e) = typed::goto_line_number(cx, &[Cow::from(parts[0])], event) {
+            cx.editor.set_error(format!("{}", e));
+            return Err(e);
+        }
+        return Ok(());
+    }
+
+    // Handle typable commands
+    if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
+        let shellwords = shellwords::Shellwords::from(input.as_ref());
+        let args = shellwords.words();
+
+        if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
+            cx.editor.set_error(format!("{}", e));
+            return Err(e);
+        }
+    } else if event == PromptEvent::Validate {
+        cx.editor
+            .set_error(format!("no such command: '{}'", parts[0]));
+    }
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -3141,31 +3188,7 @@ pub(super) fn command_mode(cx: &mut Context) {
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            let parts = input.split_whitespace().collect::<Vec<&str>>();
-            if parts.is_empty() {
-                return;
-            }
-
-            // If command is numeric, interpret as line number and go there.
-            if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
-                if let Err(e) = typed::goto_line_number(cx, &[Cow::from(parts[0])], event) {
-                    cx.editor.set_error(format!("{}", e));
-                }
-                return;
-            }
-
-            // Handle typable commands
-            if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let shellwords = Shellwords::from(input);
-                let args = shellwords.words();
-
-                if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
-                    cx.editor.set_error(format!("{}", e));
-                }
-            } else if event == PromptEvent::Validate {
-                cx.editor
-                    .set_error(format!("no such command: '{}'", parts[0]));
-            }
+            let _ = process_cmd(cx, input, event);
         },
     );
     prompt.doc_fn = Box::new(|input: &str| {
@@ -3186,6 +3209,82 @@ pub(super) fn command_mode(cx: &mut Context) {
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
     cx.push_layer(Box::new(prompt));
+}
+
+fn expand_args(editor: &Editor, args: &str) -> anyhow::Result<String> {
+    let regexp = regex::Regex::new(r"%(\w+)\s*\{([^{}]*(\{[^{}]*\}[^{}]*)*)\}").unwrap();
+
+    let view = editor.tree.get(editor.tree.focus);
+    let doc = editor.documents.get(&view.doc).unwrap();
+    let shell = &editor.config().shell;
+
+    replace_all(&regexp, args, move |captures| {
+        let keyword = captures.get(1).unwrap().as_str();
+        let body = captures.get(2).unwrap().as_str();
+
+        match keyword.trim() {
+            "val" => match body.trim() {
+                "filename" => doc
+                    .path()
+                    .and_then(|p| p.to_str())
+                    .map_or(Err(anyhow::anyhow!("Current buffer has no path")), |v| {
+                        Ok(v.to_owned())
+                    }),
+                "filedir" => doc
+                    .path()
+                    .and_then(|p| p.parent())
+                    .and_then(|p| p.to_str())
+                    .map_or(
+                        Err(anyhow::anyhow!("Current buffer has no path or parent")),
+                        |v| Ok(v.to_owned()),
+                    ),
+                "line_number" => Ok((doc
+                    .selection(view.id)
+                    .primary()
+                    .cursor_line(doc.text().slice(..))
+                    + 1)
+                .to_string()),
+                _ => anyhow::bail!("Unknown variable: {body}"),
+            },
+            "sh" => {
+                let result = shell_impl(shell, &expand_args(editor, body)?, None)?;
+
+                Ok(result.0.trim().to_string())
+            }
+            _ => anyhow::bail!("Unknown keyword {keyword}"),
+        }
+    })
+}
+
+// Copy of regex::Regex::replace_all to allow using result in the replacer function
+fn replace_all(
+    regex: &regex::Regex,
+    text: &str,
+    matcher: impl Fn(&regex::Captures) -> anyhow::Result<String>,
+) -> anyhow::Result<String> {
+    let mut it = regex.captures_iter(text).peekable();
+
+    if it.peek().is_none() {
+        return Ok(String::from(text));
+    }
+
+    let mut new = String::with_capacity(text.len());
+    let mut last_match = 0;
+
+    for cap in it {
+        let m = cap.get(0).unwrap();
+        new.push_str(&text[last_match..m.start()]);
+
+        let replace = matcher(&cap)?;
+
+        new.push_str(&replace);
+
+        last_match = m.end();
+    }
+
+    new.push_str(&text[last_match..]);
+
+    replace_all(regex, &new, matcher)
 }
 
 fn argument_number_of(shellwords: &Shellwords) -> usize {
