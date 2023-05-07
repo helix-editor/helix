@@ -3778,6 +3778,35 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
     paste_impl(&[contents], doc, view, paste, count, cx.editor.mode);
 }
 
+fn is_clipboard_contents_equal(last_clipboard: &[String], seprator: &str, contents: &str) -> bool {
+    let mut contents_view = contents;
+    let seprator = seprator.to_string();
+
+    // create a intersperse iter, should be much simpler using `std::iter::Intersperse`, but it is an unstable feature.
+    let intersperse_iter = {
+        let mut flipflop = false;
+        let mut iter = last_clipboard.iter();
+        let mut sep = std::iter::repeat(&seprator).take(last_clipboard.len() - 1);
+
+        std::iter::from_fn(move || {
+            flipflop = !flipflop;
+            if flipflop {
+                iter.next()
+            } else {
+                sep.next()
+            }
+        })
+    };
+
+    for item in intersperse_iter {
+        if !contents_view.starts_with(item) {
+            return false;
+        }
+        contents_view = &contents_view[item.len()..];
+    }
+    contents_view.is_empty()
+}
+
 fn paste_clipboard_impl(
     editor: &mut Editor,
     action: Paste,
@@ -3787,9 +3816,11 @@ fn paste_clipboard_impl(
     let (view, doc) = current!(editor);
     match editor.clipboard_provider.get_contents(clipboard_type) {
         Ok(contents) => {
-            let has_equal_contents = editor.last_clipboard[clipboard_type as usize]
-                .join(doc.line_ending.as_str())
-                .eq(&contents);
+            let has_equal_contents = is_clipboard_contents_equal(
+                &editor.last_clipboard[clipboard_type as usize],
+                doc.line_ending.as_str(),
+                &contents,
+            );
             let contents_slice = [contents];
             let paste_contents = if has_equal_contents {
                 &editor.last_clipboard[clipboard_type as usize][..]
