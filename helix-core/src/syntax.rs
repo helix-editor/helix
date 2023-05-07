@@ -295,6 +295,7 @@ pub struct IndentationConfiguration {
 /// Configuration for auto pairs
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields, untagged)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum AutoPairConfig {
     /// Enables or disables auto pairing. False means disabled. True means to use the default pairs.
     Enable(bool),
@@ -556,6 +557,7 @@ impl LanguageConfiguration {
 }
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct SoftWrap {
     /// Soft wrap lines that exceed viewport width. Default to off
     // NOTE: Option on purpose because the struct is shared between language config and global config.

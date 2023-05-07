@@ -10,6 +10,7 @@ use std::io::Error as IOError;
 use toml::de::Error as TomlError;
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Config {
     pub theme: Option<String>,
     pub keys: HashMap<Mode, Keymap>,

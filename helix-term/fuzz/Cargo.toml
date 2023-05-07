@@ -1,0 +1,45 @@
+[package]
+name = "helix-term-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+crossterm = "0.26.1"
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
+arbitrary = "1.0"
+anyhow = "1"
+log = "0.4"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
+toml = "0.7"
+
+[dependencies.helix-term]
+path = ".."
+features = ["arbitrary"]
+
+[dependencies.helix-view]
+path = "../../helix-view"
+features = ["arbitrary"]
+
+[dependencies.helix-loader]
+path = "../../helix-loader"
+
+[dependencies.helix-core]
+path = "../../helix-core"
+features = ["arbitrary"]
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "fuzz_keyboard_input"
+path = "fuzz_targets/fuzz_keyboard_input.rs"
+test = false
+doc = false
