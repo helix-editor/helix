@@ -842,7 +842,10 @@ impl EditorView {
             }
             KeymapResult::NotFound => return Some(key_result),
             KeymapResult::Cancelled(mut pending) => {
-                if !matches!(self.keymaps.get(mode, event), KeymapResult::NotFound) {
+                if !matches!(
+                    self.handle_keymap_event(mode, cxt, event),
+                    Some(KeymapResult::NotFound)
+                ) {
                     pending.pop();
                 }
                 return Some(KeymapResult::Cancelled(pending));
