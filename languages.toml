@@ -654,7 +654,7 @@ source = { git = "https://github.com/gbprod/tree-sitter-twig", rev = "807b293fec
 name = "latex"
 scope = "source.tex"
 injection-regex = "tex"
-file-types = ["tex"]
+file-types = ["tex", "sty", "cls"]
 roots = []
 comment-token = "%"
 language-server = { command = "texlab" }
