@@ -562,6 +562,9 @@ pub enum LineNumber {
     /// If focused and in normal/select mode, show relative line number to the primary cursor.
     /// If unfocused or in insert mode, show absolute line number.
     Relative,
+
+    /// Always show relative line number to the primary cursor.
+    AlwaysRelative,
 }
 
 impl std::str::FromStr for LineNumber {
@@ -571,7 +574,10 @@ impl std::str::FromStr for LineNumber {
         match s.to_lowercase().as_str() {
             "absolute" | "abs" => Ok(Self::Absolute),
             "relative" | "rel" => Ok(Self::Relative),
-            _ => anyhow::bail!("Line number can only be `absolute` or `relative`."),
+            "always-relative" | "arel" => Ok(Self::AlwaysRelative),
+            _ => anyhow::bail!(
+                "Line number can only be `absolute`, `relative`, or `always-relative`."
+            ),
         }
     }
 }

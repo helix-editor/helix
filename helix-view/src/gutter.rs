@@ -175,9 +175,8 @@ pub fn line_numbers<'doc>(
             } else {
                 use crate::{document::Mode, editor::LineNumber};
 
-                let relative = line_number == LineNumber::Relative
-                    && mode != Mode::Insert
-                    && is_focused
+                let relative = (line_number == LineNumber::AlwaysRelative
+                    || (line_number == LineNumber::Relative && mode != Mode::Insert && is_focused))
                     && current_line != line;
 
                 let display_num = if relative {
