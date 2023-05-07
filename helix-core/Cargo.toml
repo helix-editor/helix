@@ -29,7 +29,7 @@ tree-sitter = "0.20"
 once_cell = "1.17"
 arc-swap = "1"
 regex = "1"
-bitflags = "2.1"
+bitflags = "2.2"
 ahash = "0.8.3"
 hashbrown = { version = "0.13.2", features = ["raw"] }
 dunce = "1.0"
@@ -45,7 +45,7 @@ encoding_rs = "0.8"
 
 chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
 
-etcetera = "0.5"
+etcetera = "0.8"
 textwrap = "0.16.0"
 
 [dev-dependencies]

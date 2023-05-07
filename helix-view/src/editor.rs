@@ -354,6 +354,8 @@ pub struct LspConfig {
     pub display_inlay_hints: bool,
     /// Whether to enable snippet support
     pub snippets: bool,
+    /// Whether to include declaration in the goto reference query
+    pub goto_reference_include_declaration: bool,
 }
 
 impl Default for LspConfig {
@@ -365,6 +367,7 @@ impl Default for LspConfig {
             display_signature_help_docs: true,
             display_inlay_hints: false,
             snippets: true,
+            goto_reference_include_declaration: true,
         }
     }
 }
@@ -1173,6 +1176,7 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
         view.sync_changes(doc);
+        doc.mark_as_focused();
 
         align_view(doc, view, Align::Center);
     }
@@ -1243,6 +1247,7 @@ impl Editor {
                 let view_id = view!(self).id;
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
+                doc.mark_as_focused();
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
@@ -1264,6 +1269,7 @@ impl Editor {
                 // initialize selection for view
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
+                doc.mark_as_focused();
             }
         }
 
@@ -1299,10 +1305,10 @@ impl Editor {
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
-        let (rope, encoding) = crate::document::from_reader(&mut stdin(), None)?;
+        let (rope, encoding, has_bom) = crate::document::from_reader(&mut stdin(), None)?;
         Ok(self.new_file_from_document(
             action,
-            Document::from(rope, Some(encoding), self.config.clone()),
+            Document::from(rope, Some((encoding, has_bom)), self.config.clone()),
         ))
     }
 
@@ -1414,6 +1420,7 @@ impl Editor {
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);
+            doc.mark_as_focused();
         }
 
         self._refresh();
@@ -1468,6 +1475,10 @@ impl Editor {
                 view.sync_changes(doc);
             }
         }
+
+        let view = view!(self, view_id);
+        let doc = doc_mut!(self, &view.doc);
+        doc.mark_as_focused();
     }
 
     pub fn focus_next(&mut self) {

@@ -17,7 +17,7 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "p
 parking_lot = "0.12"
 arc-swap = { version = "1.6.0" }
 
-gix = { version = "0.43.0", default-features = false , optional = true }
+gix = { version = "0.44.1", default-features = false , optional = true }
 imara-diff = "0.1.5"
 anyhow = "1"
 

@@ -5,6 +5,7 @@
 
 ## GENERAL ==============================
 
+'property' = { fg = "red" } # Regex group names.
 "warning" = { fg ="yellow", modifiers = ["bold"] } # Editor warnings.
 "error" = { bg = "mid-green", fg = "red", modifiers = ["bold"] } # Editor errors, like mis-typing a command.
 "info" = { fg = "mid-blue", bg = "mid-green" } # Code diagnostic info in gutter (LSP).
@@ -29,11 +30,11 @@
 'ui.text.focus' = { fg = "white", bg = "mid-green", modifiers = ["bold"] } # Selection highlight in buffer-picker or file-picker.
 'ui.text.info' = { } # Info popup contents (space mode menu).
 
-'ui.cursor' = { fg = "light-blue", modifiers = ["reversed"] } # Fallback cursor colour, non-primary cursors when there are multiple (shift-c).
-'ui.cursor.primary' = { fg = "light-blue", modifiers = ["reversed"] } # The primary cursor when there are multiple (shift-c).
-'ui.cursor.insert' = { fg = "light-blue" } # The cursor in insert mode (i).
-'ui.cursor.select' = { fg = "light-blue" } # The cursor in select mode (v).
-'ui.cursor.match' = { fg = "red", modifiers = ["bold", "reversed"] } # The matching parentheses of that under the cursor.
+'ui.cursor' = { fg = "dark-green", bg = "white" } # Fallback cursor colour, non-primary cursors when there are multiple (shift-c).
+'ui.cursor.primary' = { fg = "dark-green", bg = "light-blue" } # The primary cursor when there are multiple (shift-c).
+'ui.cursor.insert' = { fg = "dark-green", bg = "light-blue" } # The cursor in insert mode (i).
+'ui.cursor.select' = { fg = "dark-green", bg = "light-blue" } # The cursor in select mode (v).
+'ui.cursor.match' = { fg = "dark-green", bg = "red", modifiers = ["bold"] } # The matching parentheses of that under the cursor.
 
 'ui.selection' = { bg = "autocomp-green" } # All currently selected text.
 'ui.selection.primary' = { bg = "autocomp-green" } # The primary selection when there are multiple.
@@ -44,8 +45,8 @@
 
 'ui.virtual' = { fg = "mid-green" } # Namespace for additions to the editing area.
 'ui.virtual.ruler' = { bg = "mid-green" } # Vertical rulers (colored columns in editing area).
-'ui.virtual.whitespace' = { fg = "gray"} # Whitespace markers in editing area.
-'ui.virtual.indent-guide' = { fg = "gray" } # Indentation guides.
+'ui.virtual.whitespace' = { fg = "light-gray"} # Whitespace markers in editing area.
+'ui.virtual.indent-guide' = { fg = "light-gray" } # Indentation guides.
 
 'ui.statusline' = { fg = "light-green", bg = "autocomp-green"} # Status line.
 'ui.statusline.inactive' = { fg = "white", bg = "mid-green"} # Status line in unfocused windows.
@@ -197,6 +198,7 @@ purple = "#918cff"
 white = "#b1cace"
 orange = "#ffa864"
 gray = "#5b858b" # mainly for comments/background text
+light-gray = "#354e51" # used when whitespace rendering is enabled and for indent-guides
 red = "#e34e1b"
 
 dark-blue = "#19a2b7"

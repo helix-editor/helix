@@ -645,7 +645,11 @@ impl Client {
         // Calculation is therefore a bunch trickier.
 
         use helix_core::RopeSlice;
-        fn traverse(pos: lsp::Position, text: RopeSlice) -> lsp::Position {
+        fn traverse(
+            pos: lsp::Position,
+            text: RopeSlice,
+            offset_encoding: OffsetEncoding,
+        ) -> lsp::Position {
             let lsp::Position {
                 mut line,
                 mut character,
@@ -662,7 +666,11 @@ impl Client {
                     line += 1;
                     character = 0;
                 } else {
-                    character += ch.len_utf16() as u32;
+                    character += match offset_encoding {
+                        OffsetEncoding::Utf8 => ch.len_utf8() as u32,
+                        OffsetEncoding::Utf16 => ch.len_utf16() as u32,
+                        OffsetEncoding::Utf32 => 1,
+                    };
                 }
             }
             lsp::Position { line, character }
@@ -683,7 +691,7 @@ impl Client {
                 }
                 Delete(_) => {
                     let start = pos_to_lsp_pos(new_text, new_pos, offset_encoding);
-                    let end = traverse(start, old_text.slice(old_pos..old_end));
+                    let end = traverse(start, old_text.slice(old_pos..old_end), offset_encoding);
 
                     // deletion
                     changes.push(lsp::TextDocumentContentChangeEvent {
@@ -700,7 +708,8 @@ impl Client {
                     // a subsequent delete means a replace, consume it
                     let end = if let Some(Delete(len)) = iter.peek() {
                         old_end = old_pos + len;
-                        let end = traverse(start, old_text.slice(old_pos..old_end));
+                        let end =
+                            traverse(start, old_text.slice(old_pos..old_end), offset_encoding);
 
                         iter.next();
 
@@ -1167,6 +1176,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        include_declaration: bool,
         work_done_token: Option<lsp::ProgressToken>,
     ) -> Option<impl Future<Output = Result<Value>>> {
         let capabilities = self.capabilities.get().unwrap();
@@ -1183,7 +1193,7 @@ impl Client {
                 position,
             },
             context: lsp::ReferenceContext {
-                include_declaration: true,
+                include_declaration,
             },
             work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             partial_result_params: lsp::PartialResultParams {
