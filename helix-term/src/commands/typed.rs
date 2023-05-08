@@ -3223,7 +3223,7 @@ pub fn expand_args<'a>(editor: &Editor, args: &'a str) -> anyhow::Result<Cow<'a,
                     None => SCRATCH_BUFFER_NAME,
                 })
                 .to_owned()),
-                "filedir" => doc
+                "dirname" => doc
                     .path()
                     .and_then(|p| p.parent())
                     .and_then(|p| p.to_str())
