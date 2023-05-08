@@ -1,5 +1,7 @@
 use super::*;
 
+use helix_core::path::get_normalized_path;
+
 #[tokio::test(flavor = "multi_thread")]
 async fn test_split_write_quit_all() -> anyhow::Result<()> {
     let mut file1 = tempfile::NamedTempFile::new()?;
@@ -25,21 +27,21 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
 
                     let doc1 = docs
                         .iter()
-                        .find(|doc| doc.path().unwrap() == file1.path())
+                        .find(|doc| doc.path().unwrap() == &get_normalized_path(file1.path()))
                         .unwrap();
 
                     assert_eq!("hello1", doc1.text().to_string());
 
                     let doc2 = docs
                         .iter()
-                        .find(|doc| doc.path().unwrap() == file2.path())
+                        .find(|doc| doc.path().unwrap() == &get_normalized_path(file2.path()))
                         .unwrap();
 
                     assert_eq!("hello2", doc2.text().to_string());
 
                     let doc3 = docs
                         .iter()
-                        .find(|doc| doc.path().unwrap() == file3.path())
+                        .find(|doc| doc.path().unwrap() == &get_normalized_path(file3.path()))
                         .unwrap();
 
                     assert_eq!("hello3", doc3.text().to_string());

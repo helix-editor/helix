@@ -10,5 +10,9 @@
 (change kind: "modified" @diff.delta)
 (change kind: "renamed" @diff.delta.moved)
 
-[":" "->" (scissors)] @punctuation.delimiter
+(trailer
+  key: (trailer_key) @variable.other.member
+  value: (trailer_value) @string)
+
+[":" "=" "->" (scissors)] @punctuation.delimiter
 (comment) @comment

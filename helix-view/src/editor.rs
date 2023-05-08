@@ -10,6 +10,7 @@ use crate::{
     view::ViewPosition,
     Align, Document, DocumentId, View, ViewId,
 };
+use dap::StackFrame;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -281,6 +282,8 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
+    /// Workspace specific lsp ceiling dirs
+    pub workspace_lsp_roots: Vec<PathBuf>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -349,6 +352,10 @@ pub struct LspConfig {
     pub display_signature_help_docs: bool,
     /// Display inlay hints
     pub display_inlay_hints: bool,
+    /// Whether to enable snippet support
+    pub snippets: bool,
+    /// Whether to include declaration in the goto reference query
+    pub goto_reference_include_declaration: bool,
 }
 
 impl Default for LspConfig {
@@ -359,6 +366,8 @@ impl Default for LspConfig {
             auto_signature_help: true,
             display_signature_help_docs: true,
             display_inlay_hints: false,
+            snippets: true,
+            goto_reference_include_declaration: true,
         }
     }
 }
@@ -532,21 +541,16 @@ impl Default for CursorShapeConfig {
 }
 
 /// bufferline render modes
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum BufferLine {
     /// Don't render bufferline
+    #[default]
     Never,
     /// Always render
     Always,
     /// Only if multiple buffers are open
     Multiple,
-}
-
-impl Default for BufferLine {
-    fn default() -> Self {
-        BufferLine::Never
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -748,9 +752,13 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
-            soft_wrap: SoftWrap::default(),
+            soft_wrap: SoftWrap {
+                enable: Some(false),
+                ..SoftWrap::default()
+            },
             text_width: 80,
             completion_replace: false,
+            workspace_lsp_roots: Vec::new(),
         }
     }
 }
@@ -849,7 +857,7 @@ pub struct Editor {
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
     /// Allows asynchronous tasks to control the rendering
     /// The `Notify` allows asynchronous tasks to request the editor to perform a redraw
-    /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be aquired
+    /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be acquired
     pub redraw_handle: RedrawHandle,
     pub needs_redraw: bool,
     /// Cached position of the cursor calculated during rendering.
@@ -1091,15 +1099,15 @@ impl Editor {
         }
 
         // if doc doesn't have a URL it's a scratch buffer, ignore it
-        let (lang, path) = {
-            let doc = self.document(doc_id)?;
-            (doc.language.clone(), doc.path().cloned())
-        };
+        let doc = self.document(doc_id)?;
+        let (lang, path) = (doc.language.clone(), doc.path().cloned());
+        let config = doc.config.load();
+        let root_dirs = &config.workspace_lsp_roots;
 
         // try to find a language server based on the language name
         let language_server = lang.as_ref().and_then(|language| {
             self.language_servers
-                .get(language, path.as_ref())
+                .get(language, path.as_ref(), root_dirs, config.lsp.snippets)
                 .map_err(|e| {
                     log::error!(
                         "Failed to initialize the LSP for `{}` {{ {} }}",
@@ -1168,6 +1176,7 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
         view.sync_changes(doc);
+        doc.mark_as_focused();
 
         align_view(doc, view, Align::Center);
     }
@@ -1238,6 +1247,7 @@ impl Editor {
                 let view_id = view!(self).id;
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
+                doc.mark_as_focused();
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
@@ -1259,6 +1269,7 @@ impl Editor {
                 // initialize selection for view
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
+                doc.mark_as_focused();
             }
         }
 
@@ -1294,10 +1305,10 @@ impl Editor {
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
-        let (rope, encoding) = crate::document::from_reader(&mut stdin(), None)?;
+        let (rope, encoding, has_bom) = crate::document::from_reader(&mut stdin(), None)?;
         Ok(self.new_file_from_document(
             action,
-            Document::from(rope, Some(encoding), self.config.clone()),
+            Document::from(rope, Some((encoding, has_bom)), self.config.clone()),
         ))
     }
 
@@ -1409,6 +1420,7 @@ impl Editor {
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);
+            doc.mark_as_focused();
         }
 
         self._refresh();
@@ -1463,6 +1475,10 @@ impl Editor {
                 view.sync_changes(doc);
             }
         }
+
+        let view = view!(self, view_id);
+        let doc = doc_mut!(self, &view.doc);
+        doc.mark_as_focused();
     }
 
     pub fn focus_next(&mut self) {
@@ -1656,6 +1672,12 @@ impl Editor {
             doc.set_selection(view.id, selection);
             doc.restore_cursor = false;
         }
+    }
+
+    pub fn current_stack_frame(&self) -> Option<&StackFrame> {
+        self.debugger
+            .as_ref()
+            .and_then(|debugger| debugger.current_stack_frame())
     }
 }
 

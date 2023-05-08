@@ -12,6 +12,7 @@
 - [macOS](#macos)
   - [Homebrew Core](#homebrew-core)
 - [Windows](#windows)
+  - [Winget](#winget)
   - [Scoop](#scoop)
   - [Chocolatey](#chocolatey)
   - [MSYS2](#msys2)
@@ -40,8 +41,6 @@ line.
 
 ## Linux, macOS, Windows and OpenBSD packaging status
 
-Helix is available for Linux, macOS and Windows via the official repositories listed below.
-
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
 ## Linux
@@ -50,7 +49,7 @@ The following third party repositories are available:
 
 ### Ubuntu
 
-Helix is available via [Maveonair's PPA](https://launchpad.net/~maveonair/+archive/ubuntu/helix-editor):
+Add the `PPA` for Helix:
 
 ```sh
 sudo add-apt-repository ppa:maveonair/helix-editor
@@ -60,7 +59,7 @@ sudo apt install helix
 
 ### Fedora/RHEL
 
-Helix is available via `copr`:
+Enable the `COPR` repository for Helix:
 
 ```sh
 sudo dnf copr enable varlad/helix
@@ -91,8 +90,8 @@ If you are using a version of Nix without flakes enabled,
 
 ### AppImage
 
-Install Helix using [AppImage](https://appimage.org/).
-Download Helix AppImage from the [latest releases](https://github.com/helix-editor/helix/releases/latest) page.
+Install Helix using the Linux [AppImage](https://appimage.org/) format.
+Download the official Helix AppImage from the [latest releases](https://github.com/helix-editor/helix/releases/latest) page.
 
 ```sh
 chmod +x helix-*.AppImage # change permission for executable mode
@@ -109,8 +108,16 @@ brew install helix
 
 ## Windows
 
-Install on Windows using [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
+Install on Windows using [Winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/), [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
 or [MSYS2](https://msys2.org/).
+
+### Winget
+Windows Package Manager winget command-line tool is by default available on Windows 11 and modern versions of Windows 10 as a part of the App Installer.
+You can get [App Installer from the Microsoft Store](https://www.microsoft.com/p/app-installer/9nblggh4nns1#activetab=pivot:overviewtab). If it's already installed, make sure it is updated with the latest version.
+
+```sh
+winget install Helix.Helix
+```
 
 ### Scoop
 
@@ -134,33 +141,37 @@ pacman -S mingw-w64-ucrt-x86_64-helix
 
 ## Building from source
 
-Clone the repository:
+Requirements:
+
+- The [Rust toolchain](https://www.rust-lang.org/tools/install)
+- The [Git version control system](https://git-scm.com/)
+- A c++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang
+
+If you are using the `musl-libc` standard library instead of `glibc` the following environment variable must be set during the build to ensure tree-sitter grammars can be loaded correctly:
+
+```sh
+RUSTFLAGS="-C target-feature=-crt-static"
+```
+
+1. Clone the repository:
 
 ```sh
 git clone https://github.com/helix-editor/helix
 cd helix
 ```
 
-Compile from source:
+2. Compile from source:
 
 ```sh
 cargo install --path helix-term --locked
 ```
 
 This command will create the `hx` executable and construct the tree-sitter
-grammars in the local `runtime` folder. To build the tree-sitter grammars requires
-a c++ compiler to be installed, for example `gcc-c++`.
-
-> 💡 If you are using the musl-libc instead of glibc the following environment variable must be set during the build
-> to ensure tree-sitter grammars can be loaded correctly:
->
-> ```sh
-> RUSTFLAGS="-C target-feature=-crt-static"
-> ```
+grammars in the local `runtime` folder.
 
 > 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
-> grammars with `hx --grammar fetch` (requires `git`) and compile them with
-> `hx --grammar build` (requires a C++ compiler). This will install them in
+> grammars with `hx --grammar fetch` and compile them with
+> `hx --grammar build`. This will install them in
 > the `runtime` directory within the user's helix config directory (more
 > [details below](#multiple-runtime-directories)).
 

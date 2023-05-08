@@ -46,7 +46,7 @@
 | `:character-info`, `:char` | Get info about the character under the primary cursor. |
 | `:reload` | Discard changes and reload from the source file. |
 | `:reload-all` | Discard changes and reload all documents from the source files. |
-| `:update` | Write changes only if the file has been modified. |
+| `:update`, `:u` | Write changes only if the file has been modified. |
 | `:lsp-workspace-command` | Open workspace command picker |
 | `:lsp-restart` | Restarts the Language Server that is in use by the current doc |
 | `:lsp-stop` | Stops the Language Server that is in use by the current doc |
@@ -70,6 +70,7 @@
 | `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
 | `:config-reload` | Refresh user config. |
 | `:config-open` | Open the user config.toml file. |
+| `:config-open-workspace` | Open the workspace config.toml file. |
 | `:log-open` | Open the helix log file. |
 | `:insert-output` | Run shell command, inserting output before each selection. |
 | `:append-output` | Run shell command, appending output after each selection. |
@@ -78,3 +79,4 @@
 | `:run-shell-command`, `:sh` | Run a shell command |
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
 | `:rename`, `:rnm` | Rename the currently selected buffer |
+| `:clear-register` | Clear given register. If no argument is provided, clear all registers. |

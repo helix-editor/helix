@@ -1,6 +1,7 @@
 use std::{
     fs::File,
     io::{Read, Write},
+    mem::replace,
     path::PathBuf,
     time::Duration,
 };
@@ -222,10 +223,11 @@ pub fn temp_file_with_contents<S: AsRef<str>>(
 
 /// Generates a config with defaults more suitable for integration tests
 pub fn test_config() -> Config {
-    merge_keys(Config {
+    Config {
         editor: test_editor_config(),
+        keys: helix_term::keymap::default(),
         ..Default::default()
-    })
+    }
 }
 
 pub fn test_editor_config() -> helix_view::editor::Config {
@@ -300,8 +302,10 @@ impl AppBuilder {
 
     // Remove this attribute once `with_config` is used in a test:
     #[allow(dead_code)]
-    pub fn with_config(mut self, config: Config) -> Self {
-        self.config = helix_term::keymap::merge_keys(config);
+    pub fn with_config(mut self, mut config: Config) -> Self {
+        let keys = replace(&mut config.keys, helix_term::keymap::default());
+        merge_keys(&mut config.keys, keys);
+        self.config = config;
         self
     }
 

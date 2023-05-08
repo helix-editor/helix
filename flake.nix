@@ -123,8 +123,6 @@
           then ''$RUSTFLAGS -C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment''
           else "$RUSTFLAGS";
       in {
-        # by default NCI adds rust-analyzer component, but helix toolchain doesn't have rust-analyzer
-        nci.toolchains.shell.components = ["rust-src" "rustfmt" "clippy"];
         nci.projects."helix-project".relPath = "";
         nci.crates."helix-term" = {
           overrides = {

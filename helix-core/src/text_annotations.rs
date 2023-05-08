@@ -1,5 +1,4 @@
 use std::cell::Cell;
-use std::convert::identity;
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -113,9 +112,7 @@ impl<A, M> Layer<A, M> {
     pub fn reset_pos(&self, char_idx: usize, get_char_idx: impl Fn(&A) -> usize) {
         let new_index = self
             .annotations
-            .binary_search_by_key(&char_idx, get_char_idx)
-            .unwrap_or_else(identity);
-
+            .partition_point(|annot| get_char_idx(annot) < char_idx);
         self.current_index.set(new_index);
     }
 
@@ -175,7 +172,7 @@ impl TextAnnotations {
         for char_idx in char_range {
             if let Some((_, Some(highlight))) = self.overlay_at(char_idx) {
                 // we don't know the number of chars the original grapheme takes
-                // however it doesn't matter as highlight bounderies are automatically
+                // however it doesn't matter as highlight boundaries are automatically
                 // aligned to grapheme boundaries in the rendering code
                 highlights.push((highlight.0, char_idx..char_idx + 1))
             }
@@ -206,7 +203,7 @@ impl TextAnnotations {
 
     /// Add new grapheme overlays.
     ///
-    /// The overlayed grapheme will be rendered with `highlight`
+    /// The overlaid grapheme will be rendered with `highlight`
     /// patched on top of `ui.text`.
     ///
     /// The overlays **must be sorted** by their `char_idx`.
