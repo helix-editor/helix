@@ -1,4 +1,3 @@
-use std::fmt::Write;
 use std::ops::Deref;
 
 use crate::job::Job;
@@ -10,6 +9,8 @@ use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
 use ui::completers::{self, Completer};
+
+use std::fmt::Write;
 
 #[derive(Clone)]
 pub struct TypableCommand {
@@ -2745,7 +2746,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             fun: run_shell_command,
             signature: CommandSignature::all(completers::filename)
         },
-       TypableCommand {
+        TypableCommand {
             name: "reset-diff-change",
             aliases: &["diffget", "diffg"],
             doc: "Reset the diff change at the cursor position.",
@@ -2785,14 +2786,23 @@ pub(super) fn command_mode(cx: &mut Context) {
             let words = shellwords.words();
 
             if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
+                let globals = crate::commands::engine::ExportedIdentifiers::fuzzy_match(
+                    &FUZZY_MATCHER,
+                    input,
+                )
+                .into_iter()
+                .map(|x| (Cow::from(x.0), x.1))
+                .collect::<Vec<_>>();
+
                 // If the command has not been finished yet, complete commands.
                 let mut matches: Vec<_> = typed::TYPABLE_COMMAND_LIST
                     .iter()
                     .filter_map(|command| {
                         FUZZY_MATCHER
                             .fuzzy_match(command.name, input)
-                            .map(|score| (command.name, score))
+                            .map(|score| (Cow::from(command.name), score))
                     })
+                    .chain(globals)
                     .collect();
 
                 matches.sort_unstable_by_key(|(_file, score)| std::cmp::Reverse(*score));
@@ -2848,13 +2858,59 @@ pub(super) fn command_mode(cx: &mut Context) {
                 return;
             }
 
+            // TODO: @Matt - Add completion for added scripting commands here
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
                 let shellwords = Shellwords::from(input);
                 let args = shellwords.words();
 
+                log::warn!("calling builtin: {}...", parts[0]);
+
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
+                }
+            } else if ENGINE.with(|x| x.borrow().global_exists(parts[0])) {
+                let shellwords = Shellwords::from(input);
+                let args = shellwords.words();
+
+                // We're finalizing the event - we actually want to call the function
+                if event == PromptEvent::Validate {
+                    if let Err(e) = ENGINE.with(|x| {
+                        let args = steel::List::from(
+                            args[1..]
+                                .iter()
+                                .map(|x| x.clone().into_steelval().unwrap())
+                                .collect::<Vec<_>>(),
+                        );
+
+                        let mut guard = x.borrow_mut();
+
+                        let mut cx = Context {
+                            register: None,
+                            count: std::num::NonZeroUsize::new(1),
+                            editor: cx.editor,
+                            callback: None,
+                            on_next_key_callback: None,
+                            jobs: cx.jobs,
+                        };
+
+                        {
+                            guard
+                                .register_value("_helix_args", steel::rvals::SteelVal::ListV(args));
+
+                            let res = guard.run_with_reference::<Context, Context>(
+                                &mut cx,
+                                "*context*",
+                                &format!("(apply {} (cons *context* _helix_args))", parts[0]),
+                            );
+
+                            guard.register_value("_helix_args", steel::rvals::SteelVal::Void);
+
+                            res
+                        }
+                    }) {
+                        cx.editor.set_error(format!("{}", e));
+                    };
                 }
             } else if event == PromptEvent::Validate {
                 cx.editor
@@ -2872,6 +2928,18 @@ pub(super) fn command_mode(cx: &mut Context) {
                 return Some((*doc).into());
             }
             return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
+        } else if ENGINE.with(|x| x.borrow().global_exists(part)) {
+            if let Some(v) = super::engine::ExportedIdentifiers::engine_get_doc(part) {
+                return Some(v.into());
+            }
+
+            // if let Ok(v) = ENGINE.with(|x| x.borrow().extract_value(&format!("{part}__doc__"))) {
+            //     if let steel::rvals::SteelVal::StringV(s) = v {
+            //         return Some(s.to_string().into());
+            //     }
+            // }
+
+            return Some("Run this plugin command!".into());
         }
 
         None

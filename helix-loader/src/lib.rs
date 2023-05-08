@@ -128,6 +128,10 @@ pub fn config_file() -> PathBuf {
         .unwrap_or_else(|| config_dir().join("config.toml"))
 }
 
+pub fn helix_module_file() -> PathBuf {
+    config_dir().join("helix.scm")
+}
+
 pub fn workspace_config_file() -> PathBuf {
     find_workspace().0.join(".helix").join("config.toml")
 }

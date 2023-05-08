@@ -126,6 +126,9 @@ FLAGS:
 
     helix_loader::initialize_config_file(args.config_file.clone());
 
+    // Initialize the engine before we boot up!
+    let _ = helix_term::commands::initialize_engine();
+
     let config = match Config::load_default() {
         Ok(config) => config,
         Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {

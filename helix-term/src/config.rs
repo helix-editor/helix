@@ -59,11 +59,13 @@ impl Config {
     pub fn load(
         global: Result<String, ConfigLoadError>,
         local: Result<String, ConfigLoadError>,
+        engine_overlay: Option<HashMap<Mode, Keymap>>,
     ) -> Result<Config, ConfigLoadError> {
         let global_config: Result<ConfigRaw, ConfigLoadError> =
             global.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
         let local_config: Result<ConfigRaw, ConfigLoadError> =
             local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
+
         let res = match (global_config, local_config) {
             (Ok(global), Ok(local)) => {
                 let mut keys = keymap::default();
@@ -72,6 +74,10 @@ impl Config {
                 }
                 if let Some(local_keys) = local.keys {
                     merge_keys(&mut keys, local_keys)
+                }
+
+                if let Some(overlay) = engine_overlay {
+                    merge_keys(&mut keys, overlay);
                 }
 
                 let editor = match (global.editor, local.editor) {
@@ -100,6 +106,11 @@ impl Config {
                 if let Some(keymap) = config.keys {
                     merge_keys(&mut keys, keymap);
                 }
+
+                if let Some(overlay) = engine_overlay {
+                    merge_keys(&mut keys, overlay);
+                }
+
                 Config {
                     theme: config.theme,
                     keys,
@@ -116,12 +127,27 @@ impl Config {
         Ok(res)
     }
 
+    // TODO: @Matt -> Add key binding here by reading value from steel engine
     pub fn load_default() -> Result<Config, ConfigLoadError> {
         let global_config =
             fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error);
         let local_config = fs::read_to_string(helix_loader::workspace_config_file())
             .map_err(ConfigLoadError::Error);
-        Config::load(global_config, local_config)
+
+        // let binding = crate::commands::ENGINE.with(|x| {
+        //     x.borrow_mut()
+        //         .run("(value->jsexpr-string *KEYBINDINGS*)")
+        //         .unwrap()
+        // });
+        // let keybindings_as_str = binding[0]
+        //     .string_or_else(|| panic!("Should always be a string"))
+        //     .unwrap();
+
+        // let bindings: HashMap<Mode, Keymap> = serde_json::from_str(&keybindings_as_str).unwrap();
+
+        let bindings = crate::commands::engine::SharedKeyBindingsEventQueue::get();
+
+        Config::load(global_config, local_config, bindings)
     }
 }
 
@@ -131,7 +157,7 @@ mod tests {
 
     impl Config {
         fn load_test(config: &str) -> Config {
-            Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default())).unwrap()
+            Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default()), None).unwrap()
         }
     }
 

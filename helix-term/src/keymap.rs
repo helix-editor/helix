@@ -143,6 +143,9 @@ impl DerefMut for KeyTrieNode {
     }
 }
 
+// TODO: impl FromSteelVal and IntoSteelVal for this - or expose methods
+// that allow Steel to integrate with the keybindings on the editor
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeyTrie {
     Leaf(MappableCommand),

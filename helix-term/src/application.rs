@@ -249,6 +249,11 @@ impl Application {
             last_render: Instant::now(),
         };
 
+        // // Initialize the engine before we boot up!
+        // crate::commands::ENGINE.with(|x| {
+        //     let _ = x.borrow().globals();
+        // });
+
         Ok(app)
     }
 
@@ -416,6 +421,7 @@ impl Application {
         Ok(())
     }
 
+    // TODO: @Matt - consider querying the engine for keybindings
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()

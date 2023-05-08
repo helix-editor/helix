@@ -1,10 +1,14 @@
 pub(crate) mod dap;
+pub(crate) mod engine;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
+
+pub use engine::initialize_engine;
+use steel::rvals::IntoSteelVal;
 use tokio::sync::oneshot;
 use tui::widgets::Row;
 pub use typed::*;
@@ -184,6 +188,7 @@ macro_rules! static_commands {
 impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
+            // TODO: @Matt - Add delegating to the engine to run scripts here
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
@@ -193,6 +198,33 @@ impl MappableCommand {
                         scroll: None,
                     };
                     if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
+                        cx.editor.set_error(format!("{}", e));
+                    }
+                } else if ENGINE.with(|x| x.borrow().global_exists(name)) {
+                    let args = steel::List::from(
+                        args.iter()
+                            .map(|x| x.clone().into_steelval().unwrap())
+                            .collect::<Vec<_>>(),
+                    );
+
+                    if let Err(e) = ENGINE.with(|x| {
+                        let mut guard = x.borrow_mut();
+
+                        {
+                            guard
+                                .register_value("_helix_args", steel::rvals::SteelVal::ListV(args));
+
+                            let res = guard.run_with_reference::<Context, Context>(
+                                cx,
+                                "*context*",
+                                &format!("(apply {} (cons *context* _helix_args))", name),
+                            );
+
+                            guard.register_value("_helix_args", steel::rvals::SteelVal::Void);
+
+                            res
+                        }
+                    }) {
                         cx.editor.set_error(format!("{}", e));
                     }
                 }
@@ -514,7 +546,24 @@ impl std::str::FromStr for MappableCommand {
                 .map(|cmd| MappableCommand::Typable {
                     name: cmd.name.to_owned(),
                     doc: format!(":{} {:?}", cmd.name, args),
-                    args,
+                    args: args.clone(),
+                })
+                .or_else(|| {
+                    if let Some(doc) = self::engine::ExportedIdentifiers::engine_get_doc(name) {
+                        Some(MappableCommand::Typable {
+                            name: name.to_owned(),
+                            args,
+                            doc,
+                        })
+                    } else if self::engine::ExportedIdentifiers::is_exported(name) {
+                        Some(MappableCommand::Typable {
+                            name: name.to_owned(),
+                            args,
+                            doc: "plugin function".to_string(),
+                        })
+                    } else {
+                        None
+                    }
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
         } else {
@@ -592,6 +641,8 @@ fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movem
 }
 
 use helix_core::movement::{move_horizontally, move_vertically};
+
+use self::engine::ENGINE;
 
 fn move_char_left(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Move)
@@ -3285,6 +3336,18 @@ pub mod insert {
         for hook in &[language_server_completion, signature_help] {
             hook(cx, c);
         }
+    }
+
+    pub fn insert_string(cx: &mut Context, string: String) {
+        let (view, doc) = current!(cx.editor);
+
+        let indent = Tendril::from(string);
+        let transaction = Transaction::insert(
+            doc.text(),
+            &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
+            indent,
+        );
+        doc.apply(&transaction, view.id);
     }
 
     pub fn insert_tab(cx: &mut Context) {

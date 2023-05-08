@@ -66,6 +66,9 @@ serde = { version = "1.0", features = ["derive"] }
 grep-regex = "0.1.11"
 grep-searcher = "0.1.11"
 
+# plugin support
+steel-core = { path = "../../../steel/crates/steel-core", version = "0.2.0", features = ["modules", "anyhow"] }
+
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 libc = "0.2.142"
