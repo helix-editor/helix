@@ -9,7 +9,7 @@
 | bicep | ✓ |  |  | `bicep-langserver` |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
-| cabal | ✓ |  |  |  |
+| cabal |  |  |  |  |
 | cairo | ✓ |  |  |  |
 | capnp | ✓ |  | ✓ |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
