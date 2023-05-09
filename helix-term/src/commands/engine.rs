@@ -91,11 +91,26 @@ impl Custom for PromptEvent {}
 
 impl<'a> CustomReference for Context<'a> {}
 
+fn get_editor<'a>(cx: &'a mut Context<'a>) -> &'a mut Editor {
+    cx.editor
+}
+
 fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> {
     let mut engine = steel::steel_vm::engine::Engine::new();
 
     let mut module = BuiltInModule::new("helix/core/keybindings".to_string());
     module.register_fn("set-keybindings!", SharedKeyBindingsEventQueue::merge);
+
+    RegisterFn::<
+        _,
+        steel::steel_vm::register_fn::MarkerWrapper7<(
+            Context<'_>,
+            helix_view::Editor,
+            helix_view::Editor,
+            Context<'static>,
+        )>,
+        helix_view::Editor,
+    >::register_fn(&mut engine, "cx-editor!", get_editor);
 
     engine.register_module(module);
 
@@ -163,6 +178,10 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     let helix_path =
         "__module-mangler".to_string() + helix_module_path.as_os_str().to_str().unwrap();
 
+    // mangler/home/matt/Documents/steel/cogs/logging/log.scmlog/warn!__doc__
+
+    let module_prefix = "mangler".to_string() + helix_module_path.as_os_str().to_str().unwrap();
+
     let module = engine.extract_value(&helix_path).unwrap();
 
     if let steel::rvals::SteelVal::HashMapV(m) = module {
@@ -178,26 +197,20 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
             })
             .collect::<HashSet<_>>();
 
-        *EXPORTED_IDENTIFIERS.identifiers.write().unwrap() = exported;
-
-        let docs = m
+        let docs = exported
             .iter()
-            .filter_map(|(k, v)| {
-                if let steel::rvals::SteelVal::SymbolV(s) = k {
-                    if s.ends_with("__doc__") {
-                        if let steel::rvals::SteelVal::StringV(d) = v {
-                            return Some((
-                                s.strip_suffix("__doc__").unwrap().to_string(),
-                                d.to_string(),
-                            ));
-                        }
-                    }
+            .filter_map(|x| {
+                if let Ok(steel::rvals::SteelVal::StringV(d)) =
+                    engine.extract_value(&(module_prefix.to_string() + x.as_str() + "__doc__"))
+                {
+                    Some((x.to_string(), d.to_string()))
+                } else {
+                    None
                 }
-
-                None
             })
             .collect::<HashMap<_, _>>();
 
+        *EXPORTED_IDENTIFIERS.identifiers.write().unwrap() = exported;
         *EXPORTED_IDENTIFIERS.docs.write().unwrap() = docs;
     } else {
         panic!("Unable to parse exported identifiers from helix module!")

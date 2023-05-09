@@ -45,6 +45,9 @@ log = "~0.4"
 which = "4.4"
 parking_lot = "0.12.1"
 
+# plugin support
+steel-core = { path = "../../../steel/crates/steel-core", version = "0.2.0", features = ["modules", "anyhow"] }
+
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "4.5", features = ["std"] }

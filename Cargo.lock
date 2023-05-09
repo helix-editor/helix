@@ -1557,6 +1557,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slotmap",
+ "steel-core",
  "tokio",
  "tokio-stream",
  "toml",
