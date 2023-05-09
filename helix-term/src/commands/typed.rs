@@ -382,6 +382,36 @@ fn force_write(
     write_impl(cx, args.first(), true)
 }
 
+fn write_buffer_close(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(cx, args.first(), false)?;
+
+    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    buffer_close_by_ids_impl(cx, &document_ids, false)
+}
+
+fn force_write_buffer_close(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(cx, args.first(), true)?;
+
+    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    buffer_close_by_ids_impl(cx, &document_ids, false)
+}
+
 fn new_file(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -2287,8 +2317,22 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "write!",
             aliases: &["w!"],
-            doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write some/path.txt)",
+            doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)",
             fun: force_write,
+            signature: CommandSignature::positional(&[completers::filename]),
+        },
+        TypableCommand {
+            name: "write-buffer-close",
+            aliases: &["wbc"],
+            doc: "Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)",
+            fun: write_buffer_close,
+            signature: CommandSignature::positional(&[completers::filename]),
+        },
+        TypableCommand {
+            name: "write-buffer-close!",
+            aliases: &["wbc!"],
+            doc: "Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)",
+            fun: force_write_buffer_close,
             signature: CommandSignature::positional(&[completers::filename]),
         },
         TypableCommand {
