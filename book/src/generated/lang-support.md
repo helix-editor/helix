@@ -9,6 +9,7 @@
 | bicep | ✓ |  |  | `bicep-langserver` |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
+| cabal | ✓ |  |  |  |
 | cairo | ✓ |  |  |  |
 | capnp | ✓ |  | ✓ |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
@@ -17,7 +18,7 @@
 | common-lisp | ✓ |  |  | `cl-lsp` |
 | cpon | ✓ |  | ✓ |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
-| crystal | ✓ | ✓ |  |  |
+| crystal | ✓ | ✓ |  | `crystalline` |
 | css | ✓ |  |  | `vscode-css-language-server` |
 | cue | ✓ |  |  | `cuelsp` |
 | d | ✓ | ✓ | ✓ | `serve-d` |
@@ -27,6 +28,7 @@
 | diff | ✓ |  |  |  |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | dot | ✓ |  |  | `dot-language-server` |
+| dtd | ✓ |  |  |  |
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
@@ -59,6 +61,7 @@
 | heex | ✓ | ✓ |  | `elixir-ls` |
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
+| hurl | ✓ |  | ✓ |  |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | ini | ✓ |  |  |  |
@@ -68,7 +71,8 @@
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
-| julia | ✓ |  | ✓ | `julia` |
+| julia | ✓ | ✓ | ✓ | `julia` |
+| just | ✓ | ✓ | ✓ |  |
 | kdl | ✓ |  |  |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |
@@ -79,6 +83,7 @@
 | llvm-mir-yaml | ✓ |  | ✓ |  |
 | lua | ✓ | ✓ | ✓ | `lua-language-server` |
 | make | ✓ |  |  |  |
+| markdoc | ✓ |  |  | `markdoc-ls` |
 | markdown | ✓ |  |  | `marksman` |
 | markdown.inline | ✓ |  |  |  |
 | matlab | ✓ |  |  |  |
@@ -93,13 +98,14 @@
 | nu | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
-| odin | ✓ |  |  | `ols` |
+| odin | ✓ |  | ✓ | `ols` |
+| opencl | ✓ | ✓ | ✓ | `clangd` |
 | openscad | ✓ |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |
 | pascal | ✓ | ✓ |  | `pasls` |
 | passwd | ✓ |  |  |  |
 | pem | ✓ |  |  |  |
-| perl | ✓ | ✓ | ✓ |  |
+| perl | ✓ | ✓ | ✓ | `perlnavigator` |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | po | ✓ | ✓ |  |  |
 | ponylang | ✓ | ✓ | ✓ |  |
@@ -116,6 +122,7 @@
 | rego | ✓ |  |  | `regols` |
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
 | rmarkdown | ✓ |  | ✓ | `R` |
+| robot | ✓ |  |  | `robotframework_ls` |
 | ron | ✓ |  | ✓ |  |
 | rst | ✓ |  |  |  |
 | ruby | ✓ | ✓ | ✓ | `solargraph` |

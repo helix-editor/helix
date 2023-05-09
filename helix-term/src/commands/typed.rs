@@ -116,7 +116,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
                         let picker = ui::file_picker(path, &editor.config());
-                        compositor.push(Box::new(overlayed(picker)));
+                        compositor.push(Box::new(overlaid(picker)));
                     },
                 ));
                 Ok(call)
@@ -1335,7 +1335,7 @@ fn lsp_workspace_command(
                     let picker = ui::Picker::new(commands, (), |cx, command, _action| {
                         execute_lsp_command(cx.editor, command.clone());
                     });
-                    compositor.push(Box::new(overlayed(picker)))
+                    compositor.push(Box::new(overlaid(picker)))
                 },
             ));
             Ok(call)
@@ -1770,12 +1770,12 @@ fn toggle_option(
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
-    if let Value::Bool(b) = *value {
-        *value = Value::Bool(!b);
-    } else {
+    let Value::Bool(old_value) = *value else {
         anyhow::bail!("Key `{}` is not toggle-able", key)
-    }
+    };
 
+    let new_value = !old_value;
+    *value = Value::Bool(new_value);
     // This unwrap should never fail because we only replace one boolean value
     // with another, maintaining a valid json config
     let config = serde_json::from_value(config).unwrap();
@@ -1784,6 +1784,8 @@ fn toggle_option(
         .config_events
         .0
         .send(ConfigEvent::Update(config))?;
+    cx.editor
+        .set_status(format!("Option `{}` is now set to `{}`", key, new_value));
     Ok(())
 }
 
@@ -2165,6 +2167,38 @@ fn reset_diff_change(
     Ok(())
 }
 
+fn clear_register(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(args.len() <= 1, ":clear-register takes at most 1 argument");
+    if args.is_empty() {
+        cx.editor.registers.clear();
+        cx.editor.set_status("All registers cleared");
+        return Ok(());
+    }
+
+    ensure!(
+        args[0].chars().count() == 1,
+        format!("Invalid register {}", args[0])
+    );
+    let register = args[0].chars().next().unwrap_or_default();
+    match cx.editor.registers.remove(register) {
+        Some(_) => cx
+            .editor
+            .set_status(format!("Register {} cleared", register)),
+        None => cx
+            .editor
+            .set_error(format!("Register {} not found", register)),
+    }
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2495,7 +2529,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
         TypableCommand {
             name: "update",
-            aliases: &[],
+            aliases: &["u"],
             doc: "Write changes only if the file has been modified.",
             fun: update,
             signature: CommandSignature::none(),
@@ -2716,6 +2750,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["diffget", "diffg"],
             doc: "Reset the diff change at the cursor position.",
             fun: reset_diff_change,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "clear-register",
+            aliases: &[],
+            doc: "Clear given register. If no argument is provided, clear all registers.",
+            fun: clear_register,
             signature: CommandSignature::none(),
         },
     ];

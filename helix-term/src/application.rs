@@ -25,7 +25,7 @@ use crate::{
     config::Config,
     job::Jobs,
     keymap::Keymaps,
-    ui::{self, overlay::overlayed},
+    ui::{self, overlay::overlaid},
 };
 
 use log::{debug, error, warn};
@@ -169,7 +169,7 @@ impl Application {
                 std::env::set_current_dir(first).context("set current dir")?;
                 editor.new_file(Action::VerticalSplit);
                 let picker = ui::file_picker(".".into(), &config.load().editor);
-                compositor.push(Box::new(overlayed(picker)));
+                compositor.push(Box::new(overlaid(picker)));
             } else {
                 let nr_of_files = args.files.len();
                 for (i, (file, pos)) in args.files.into_iter().enumerate() {
@@ -361,6 +361,9 @@ impl Application {
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = *editor_config;
+                if let Err(err) = self.terminal.reconfigure(app_config.editor.clone().into()) {
+                    self.editor.set_error(err.to_string());
+                };
                 self.config.store(Arc::new(app_config));
             }
         }
@@ -419,6 +422,8 @@ impl Application {
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
             self.refresh_theme(&default_config)?;
+            self.terminal
+                .reconfigure(default_config.editor.clone().into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())
@@ -471,7 +476,17 @@ impl Application {
                 }
             }
             signal::SIGCONT => {
-                self.claim_term().await.unwrap();
+                // Copy/Paste from same issue from neovim:
+                // https://github.com/neovim/neovim/issues/12322
+                // https://github.com/neovim/neovim/pull/13084
+                for retries in 1..=10 {
+                    match self.claim_term().await {
+                        Ok(()) => break,
+                        Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
+                        Err(_) => continue,
+                    }
+                }
+
                 // redraw the terminal
                 let area = self.terminal.size().expect("couldn't get terminal size");
                 self.compositor.resize(area);
@@ -1033,8 +1048,7 @@ impl Application {
                                     None => self
                                         .editor
                                         .language_servers
-                                        .get_by_id(server_id)
-                                        .unwrap()
+                                        .get_by_id(server_id)?
                                         .config()?,
                                 };
                                 if let Some(section) = item.section.as_ref() {

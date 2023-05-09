@@ -52,8 +52,8 @@ pub struct Client {
     root_path: std::path::PathBuf,
     root_uri: Option<lsp::Url>,
     workspace_folders: Mutex<Vec<lsp::WorkspaceFolder>>,
-    initalize_notify: Arc<Notify>,
-    /// workspace folders added while the server is still initalizing
+    initialize_notify: Arc<Notify>,
+    /// workspace folders added while the server is still initializing
     req_timeout: u64,
 }
 
@@ -92,14 +92,14 @@ impl Client {
             return true;
         }
 
-        // this server definitly doesn't support multiple workspace, no need to check capabilities
+        // this server definitely doesn't support multiple workspace, no need to check capabilities
         if !may_support_workspace {
             return false;
         }
 
         let Some(capabilities) = self.capabilities.get() else {
             let client = Arc::clone(self);
-            // initalization hasn't finished yet, deal with this new root later
+            // initialization hasn't finished yet, deal with this new root later
             // TODO: In the edgecase that a **new root** is added
             // for an LSP that **doesn't support workspace_folders** before initaliation is finished
             // the new roots are ignored.
@@ -108,7 +108,7 @@ impl Client {
             // documents LSP client handle. It's doable but a pretty weird edgecase so let's
             // wait and see if anyone ever runs into it.
             tokio::spawn(async move {
-                client.initalize_notify.notified().await;
+                client.initialize_notify.notified().await;
                 if let Some(workspace_folders_caps) = client
                     .capabilities()
                     .workspace
@@ -234,7 +234,7 @@ impl Client {
             root_path,
             root_uri,
             workspace_folders: Mutex::new(workspace_folders),
-            initalize_notify: initialize_notify.clone(),
+            initialize_notify: initialize_notify.clone(),
         };
 
         Ok((client, server_rx, initialize_notify))
@@ -279,7 +279,7 @@ impl Client {
                 "utf-16" => Some(OffsetEncoding::Utf16),
                 "utf-32" => Some(OffsetEncoding::Utf32),
                 encoding => {
-                    log::error!("Server provided invalid position encording {encoding}, defaulting to utf-16");
+                    log::error!("Server provided invalid position encoding {encoding}, defaulting to utf-16");
                     None
                 },
             })
@@ -645,7 +645,11 @@ impl Client {
         // Calculation is therefore a bunch trickier.
 
         use helix_core::RopeSlice;
-        fn traverse(pos: lsp::Position, text: RopeSlice) -> lsp::Position {
+        fn traverse(
+            pos: lsp::Position,
+            text: RopeSlice,
+            offset_encoding: OffsetEncoding,
+        ) -> lsp::Position {
             let lsp::Position {
                 mut line,
                 mut character,
@@ -662,7 +666,11 @@ impl Client {
                     line += 1;
                     character = 0;
                 } else {
-                    character += ch.len_utf16() as u32;
+                    character += match offset_encoding {
+                        OffsetEncoding::Utf8 => ch.len_utf8() as u32,
+                        OffsetEncoding::Utf16 => ch.len_utf16() as u32,
+                        OffsetEncoding::Utf32 => 1,
+                    };
                 }
             }
             lsp::Position { line, character }
@@ -683,7 +691,7 @@ impl Client {
                 }
                 Delete(_) => {
                     let start = pos_to_lsp_pos(new_text, new_pos, offset_encoding);
-                    let end = traverse(start, old_text.slice(old_pos..old_end));
+                    let end = traverse(start, old_text.slice(old_pos..old_end), offset_encoding);
 
                     // deletion
                     changes.push(lsp::TextDocumentContentChangeEvent {
@@ -700,7 +708,8 @@ impl Client {
                     // a subsequent delete means a replace, consume it
                     let end = if let Some(Delete(len)) = iter.peek() {
                         old_end = old_pos + len;
-                        let end = traverse(start, old_text.slice(old_pos..old_end));
+                        let end =
+                            traverse(start, old_text.slice(old_pos..old_end), offset_encoding);
 
                         iter.next();
 
@@ -1167,6 +1176,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
+        include_declaration: bool,
         work_done_token: Option<lsp::ProgressToken>,
     ) -> Option<impl Future<Output = Result<Value>>> {
         let capabilities = self.capabilities.get().unwrap();
@@ -1183,7 +1193,7 @@ impl Client {
                 position,
             },
             context: lsp::ReferenceContext {
-                include_declaration: true,
+                include_declaration,
             },
             work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             partial_result_params: lsp::PartialResultParams {
