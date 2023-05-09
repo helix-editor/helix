@@ -158,6 +158,7 @@
 <li><a href="#fedorarhel">Fedora/RHEL</a></li>
 <li><a href="#arch-linux-community">Arch Linux community</a></li>
 <li><a href="#nixos">NixOS</a></li>
+<li><a href="#flatpak">Flatpak</a></li>
 <li><a href="#appimage">AppImage</a></li>
 </ul>
 </li>
@@ -176,7 +177,13 @@
 </li>
 <li><a href="#building-from-source">Building from source</a>
 <ul>
-<li><a href="#configuring-helixs-runtime-files">Configuring Helix's runtime files</a></li>
+<li><a href="#configuring-helixs-runtime-files">Configuring Helix's runtime files</a>
+<ul>
+<li><a href="#linux-and-macos">Linux and macOS</a></li>
+<li><a href="#windows">Windows</a></li>
+<li><a href="#multiple-runtime-directories">Multiple runtime directories</a></li>
+</ul>
+</li>
 <li><a href="#validating-the-installation">Validating the installation</a></li>
 <li><a href="#configure-the-desktop-shortcut">Configure the desktop shortcut</a></li>
 </ul>
@@ -231,6 +238,11 @@ accepts the new settings on first use.</p>
 <p>If you are using a version of Nix without flakes enabled,
 <a href="https://docs.cachix.org/installation">install Cachix CLI</a> and use
 <code>cachix use helix</code> to configure Nix to use cached outputs when possible.</p>
+<h3 id="flatpak"><a class="header" href="#flatpak">Flatpak</a></h3>
+<p>Helix is available on <a href="https://flathub.org/en-GB/apps/com.helix_editor.Helix">Flathub</a>:</p>
+<pre><code class="language-sh">flatpak install flathub com.helix_editor.Helix
+flatpak run com.helix_editor.Helix
+</code></pre>
 <h3 id="appimage"><a class="header" href="#appimage">AppImage</a></h3>
 <p>Install Helix using the Linux <a href="https://appimage.org/">AppImage</a> format.
 Download the official Helix AppImage from the <a href="https://github.com/helix-editor/helix/releases/latest">latest releases</a> page.</p>
