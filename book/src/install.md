@@ -152,7 +152,7 @@ For 64-bit Windows 8.1 or above:
 pacman -S mingw-w64-ucrt-x86_64-helix
 ```
 
-## building from source
+## Building from source
 
 Requirements:
 
