@@ -158,7 +158,7 @@ pub(crate) mod keys {
 impl fmt::Display for KeyEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "{}{}{}",
+            "{}{}{}{}",
             if self.modifiers.contains(KeyModifiers::SHIFT) {
                 "S-"
             } else {
@@ -171,6 +171,11 @@ impl fmt::Display for KeyEvent {
             },
             if self.modifiers.contains(KeyModifiers::CONTROL) {
                 "C-"
+            } else {
+                ""
+            },
+            if self.modifiers.contains(KeyModifiers::SUPER) {
+                "X-"
             } else {
                 ""
             },
@@ -392,6 +397,7 @@ impl std::str::FromStr for KeyEvent {
                 "S" => KeyModifiers::SHIFT,
                 "A" => KeyModifiers::ALT,
                 "C" => KeyModifiers::CONTROL,
+                "X" => KeyModifiers::SUPER,
                 _ => return Err(anyhow!("Invalid key modifier '{}-'", token)),
             };
 
@@ -489,6 +495,8 @@ impl From<crossterm::event::KeyEvent> for KeyEvent {
                 modifiers,
             }
         } else {
+            log::debug!("Received KeyEvent: code = {:?}, modifiers = {:?}", code, modifiers);
+
             Self {
                 code: code.into(),
                 modifiers: modifiers.into(),
