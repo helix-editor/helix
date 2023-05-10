@@ -188,7 +188,7 @@ impl<'de> Deserialize<'de> for FileType {
             {
                 match map.next_entry::<String, String>()? {
                     Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix(
-                        suffix.replace('/', &std::path::MAIN_SEPARATOR.to_string()),
+                        suffix.replace('/', std::path::MAIN_SEPARATOR_STR),
                     )),
                     Some((key, _value)) => Err(serde::de::Error::custom(format!(
                         "unknown key in `file-types` list: {}",
