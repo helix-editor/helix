@@ -203,10 +203,10 @@ impl MappableCommand {
                 };
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let args = args.join(" ");
-                    let args = match typed::expand_args(cx.editor, &args) {
+                    let args = match helix_view::editor::expand_args(cx.editor, &args) {
                         Ok(a) => a,
                         Err(e) => {
-                            cx.editor.set_error(format!("{}", e));
+                            cx.editor.set_error(format!("{e}"));
                             return;
                         }
                     };
@@ -214,7 +214,7 @@ impl MappableCommand {
                     let args: Vec<Cow<str>> = args.split_whitespace().map(Cow::from).collect();
 
                     if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
-                        cx.editor.set_error(format!("{}", e));
+                        cx.editor.set_error(format!("{e}"));
                     }
                 }
             }
