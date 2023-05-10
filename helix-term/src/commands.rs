@@ -7,7 +7,7 @@ pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
 
-pub use engine::initialize_engine;
+pub use engine::{initialize_engine, run_initialization_script};
 use steel::rvals::IntoSteelVal;
 use tokio::sync::oneshot;
 use tui::widgets::Row;

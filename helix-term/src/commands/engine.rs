@@ -40,11 +40,56 @@ pub fn initialize_engine() {
     ENGINE.with(|x| x.borrow().globals().first().copied());
 }
 
+/// Run the initialization script located at `$helix_config/init.scm`
+/// This runs the script in the global environment, and does _not_ load it as a module directly
+pub fn run_initialization_script(cx: &mut Context) {
+    log::info!("Loading init.scm...");
+
+    let helix_module_path = helix_loader::steel_init_file();
+
+    if let Ok(contents) = std::fs::read_to_string(&helix_module_path) {
+        ENGINE.with(|x| {
+            x.borrow_mut()
+                .run_with_reference::<Context, Context>(cx, "*helix.cx*", &contents)
+                .unwrap()
+        });
+
+        log::info!("Finished loading init.scm!")
+    } else {
+        log::info!("No init.scm found, skipping loading.")
+    }
+
+    // Start the worker thread - i.e. message passing to the workers
+    configure_background_thread()
+}
+
 pub static KEYBINDING_QUEUE: Lazy<SharedKeyBindingsEventQueue> =
     Lazy::new(|| SharedKeyBindingsEventQueue::new());
 
 pub static EXPORTED_IDENTIFIERS: Lazy<ExportedIdentifiers> =
     Lazy::new(|| ExportedIdentifiers::default());
+
+pub static STATUS_LINE_MESSAGE: Lazy<StatusLineMessage> = Lazy::new(|| StatusLineMessage::new());
+
+pub struct StatusLineMessage {
+    message: Arc<RwLock<Option<String>>>,
+}
+
+impl StatusLineMessage {
+    pub fn new() -> Self {
+        Self {
+            message: std::sync::Arc::new(std::sync::RwLock::new(None)),
+        }
+    }
+
+    pub fn set(message: String) {
+        *STATUS_LINE_MESSAGE.message.write().unwrap() = Some(message);
+    }
+
+    pub fn get() -> Option<String> {
+        STATUS_LINE_MESSAGE.message.read().unwrap().clone()
+    }
+}
 
 /// In order to send events from the engine back to the configuration, we can created a shared
 /// queue that the engine and the config push and pull from. Alternatively, we could use a channel
@@ -95,6 +140,27 @@ fn get_editor<'a>(cx: &'a mut Context<'a>) -> &'a mut Editor {
     cx.editor
 }
 
+fn get_themes(cx: &mut Context) -> Vec<String> {
+    ui::completers::theme(cx.editor, "")
+        .into_iter()
+        .map(|x| x.1.to_string())
+        .collect()
+}
+
+fn configure_background_thread() {
+    std::thread::spawn(move || {
+        let mut engine = steel::steel_vm::engine::Engine::new();
+
+        engine.register_fn("set-status-line!", StatusLineMessage::set);
+
+        let helix_module_path = helix_loader::config_dir().join("background.scm");
+
+        if let Ok(contents) = std::fs::read_to_string(&helix_module_path) {
+            engine.run(&contents).ok();
+        }
+    });
+}
+
 fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> {
     let mut engine = steel::steel_vm::engine::Engine::new();
 
@@ -111,6 +177,9 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
         )>,
         helix_view::Editor,
     >::register_fn(&mut engine, "cx-editor!", get_editor);
+
+    engine.register_fn("cx->themes", get_themes);
+    engine.register_fn("set-status-line!", StatusLineMessage::set);
 
     engine.register_module(module);
 
@@ -154,6 +223,7 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     module.register_fn("current-highlighted-text!", get_highlighted_text);
     module.register_fn("run-in-engine!", run_in_engine);
     module.register_fn("get-helix-scm-path", get_helix_scm_path);
+    module.register_fn("get-init-scm-path", get_init_scm_path);
 
     engine.register_module(module);
 
@@ -334,6 +404,13 @@ fn run_in_engine(cx: &mut Context, arg: String) -> anyhow::Result<()> {
 
 fn get_helix_scm_path() -> String {
     helix_loader::helix_module_file()
+        .to_str()
+        .unwrap()
+        .to_string()
+}
+
+fn get_init_scm_path() -> String {
+    helix_loader::steel_init_file()
         .to_str()
         .unwrap()
         .to_string()

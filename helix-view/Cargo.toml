@@ -46,7 +46,7 @@ which = "4.4"
 parking_lot = "0.12.1"
 
 # plugin support
-steel-core = { path = "../../../steel/crates/steel-core", version = "0.2.0", features = ["modules", "anyhow"] }
+steel-core = { path = "../../../steel/crates/steel-core", version = "0.2.0", features = ["modules", "anyhow", "blocking_requests"] }
 
 
 [target.'cfg(windows)'.dependencies]

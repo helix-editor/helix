@@ -484,6 +484,9 @@ pub enum StatusLineElement {
 
     /// Current version control information
     VersionControl,
+
+    /// Custom
+    Custom,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs

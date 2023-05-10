@@ -233,7 +233,7 @@ impl Application {
         let signals = Signals::new([signal::SIGTSTP, signal::SIGCONT, signal::SIGUSR1])
             .context("build signal handler")?;
 
-        let app = Self {
+        let mut app = Self {
             compositor,
             terminal,
             editor,
@@ -249,10 +249,18 @@ impl Application {
             last_render: Instant::now(),
         };
 
-        // // Initialize the engine before we boot up!
-        // crate::commands::ENGINE.with(|x| {
-        //     let _ = x.borrow().globals();
-        // });
+        {
+            let mut cx = crate::commands::Context {
+                register: None,
+                count: std::num::NonZeroUsize::new(1),
+                editor: &mut app.editor,
+                callback: None,
+                on_next_key_callback: None,
+                jobs: &mut app.jobs,
+            };
+
+            crate::commands::run_initialization_script(&mut cx);
+        }
 
         Ok(app)
     }
