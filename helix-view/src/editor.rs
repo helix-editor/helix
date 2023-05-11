@@ -284,6 +284,9 @@ pub struct Config {
     pub soft_wrap: SoftWrap,
     /// Workspace specific lsp ceiling dirs
     pub workspace_lsp_roots: Vec<PathBuf>,
+    /// Whether to force enabling or disabling support for the enhanced keyboard protocol.
+    /// Set to `None` to automatically detect support by querying the host terminal.
+    pub enhanced_keyboard_protocol: Option<bool>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -759,6 +762,7 @@ impl Default for Config {
             text_width: 80,
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
+            enhanced_keyboard_protocol: None,
         }
     }
 }

@@ -18,14 +18,29 @@ pub struct Viewport {
 }
 
 #[derive(Debug)]
+pub enum FeatureToggle {
+    Enable,
+    Disable,
+    Detect,
+}
+
+#[derive(Debug)]
 pub struct Config {
     pub enable_mouse_capture: bool,
+    pub enable_enhanced_keyboard_protocol: FeatureToggle,
 }
 
 impl From<EditorConfig> for Config {
     fn from(config: EditorConfig) -> Self {
+        let enable_enhanced_keyboard_protocol = match config.enhanced_keyboard_protocol {
+            Some(true) => FeatureToggle::Enable,
+            Some(false) => FeatureToggle::Disable,
+            None => FeatureToggle::Detect,
+        };
+
         Self {
             enable_mouse_capture: config.mouse,
+            enable_enhanced_keyboard_protocol,
         }
     }
 }

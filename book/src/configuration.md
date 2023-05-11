@@ -62,6 +62,7 @@ Its settings will be merged with the configuration directory `config.toml` and t
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
 | `text-width` | Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap-at-text-width` is set | `80` |
 | `workspace-lsp-roots` | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml` | `[]` |
+| `enhanced-keyboard-protocol` | Set to `true` to force enabling the enhanced keyboard protocol or `false` to disable. When omitted, the host terminal is queried to detect support | none |
 
 ### `[editor.statusline]` Section
 
