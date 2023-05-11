@@ -8,7 +8,7 @@ use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
-use helix_view::editor::Breakpoint;
+use helix_view::{editor::Breakpoint, Theme};
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -25,7 +25,7 @@ use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select
 impl ui::menu::Item for StackFrame {
     type Data = ();
 
-    fn format(&self, _data: &Self::Data) -> Row {
+    fn format(&self, _data: &Self::Data, _theme: Option<&Theme>) -> Row {
         self.name.as_str().into() // TODO: include thread_states in the label
     }
 }
@@ -33,7 +33,7 @@ impl ui::menu::Item for StackFrame {
 impl ui::menu::Item for DebugTemplate {
     type Data = ();
 
-    fn format(&self, _data: &Self::Data) -> Row {
+    fn format(&self, _data: &Self::Data, _theme: Option<&Theme>) -> Row {
         self.name.as_str().into()
     }
 }
@@ -41,7 +41,7 @@ impl ui::menu::Item for DebugTemplate {
 impl ui::menu::Item for Thread {
     type Data = ThreadStates;
 
-    fn format(&self, thread_states: &Self::Data) -> Row {
+    fn format(&self, thread_states: &Self::Data, _theme: Option<&Theme>) -> Row {
         format!(
             "{} ({})",
             self.name,

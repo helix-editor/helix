@@ -20,7 +20,7 @@ use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
     editor::Action,
     theme::Style,
-    Document, View,
+    Document, Theme, View,
 };
 
 use crate::{
@@ -57,7 +57,7 @@ impl ui::menu::Item for lsp::Location {
     /// Current working directory.
     type Data = PathBuf;
 
-    fn format(&self, cwdir: &Self::Data) -> Row {
+    fn format(&self, cwdir: &Self::Data, _theme: Option<&Theme>) -> Row {
         // The preallocation here will overallocate a few characters since it will account for the
         // URL's scheme, which is not used most of the time since that scheme will be "file://".
         // Those extra chars will be used to avoid allocating when writing the line number (in the
@@ -91,7 +91,7 @@ impl ui::menu::Item for lsp::SymbolInformation {
     /// Path to currently focussed document
     type Data = Option<lsp::Url>;
 
-    fn format(&self, current_doc_path: &Self::Data) -> Row {
+    fn format(&self, current_doc_path: &Self::Data, _theme: Option<&Theme>) -> Row {
         if current_doc_path.as_ref() == Some(&self.location.uri) {
             self.name.as_str().into()
         } else {
@@ -121,7 +121,7 @@ struct PickerDiagnostic {
 impl ui::menu::Item for PickerDiagnostic {
     type Data = (DiagnosticStyles, DiagnosticsFormat);
 
-    fn format(&self, (styles, format): &Self::Data) -> Row {
+    fn format(&self, (styles, format): &Self::Data, _theme: Option<&Theme>) -> Row {
         let mut style = self
             .diag
             .severity
@@ -478,7 +478,7 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
 
 impl ui::menu::Item for lsp::CodeActionOrCommand {
     type Data = ();
-    fn format(&self, _data: &Self::Data) -> Row {
+    fn format(&self, _data: &Self::Data, _theme: Option<&Theme>) -> Row {
         match self {
             lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
             lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
@@ -674,7 +674,7 @@ pub fn code_action(cx: &mut Context) {
 
 impl ui::menu::Item for lsp::Command {
     type Data = ();
-    fn format(&self, _data: &Self::Data) -> Row {
+    fn format(&self, _data: &Self::Data, _theme: Option<&Theme>) -> Row {
         self.title.as_str().into()
     }
 }
