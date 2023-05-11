@@ -442,7 +442,7 @@ impl Buffer {
         let mut x_offset = x as usize;
         let max_offset = min(self.area.right(), width.saturating_add(x));
         let mut start_index = self.index_of(x, y);
-        let mut index = self.index_of(max_offset as u16, y);
+        let mut index = self.index_of(max_offset, y);
 
         let content_width = spans.width();
         let truncated = content_width > width as usize;
