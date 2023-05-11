@@ -3,7 +3,7 @@
 To override global configuration parameters, create a `config.toml` file located in your config directory:
 
 - Linux and Mac: `~/.config/helix/config.toml`
-- Windows: `%AppData%\helix\config.toml`
+- Windows: `%AppData%\Roaming\helix\config.toml`
 
 > 💡 You can easily open the config file by typing `:config-open` within Helix normal mode.
 
