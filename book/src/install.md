@@ -182,7 +182,9 @@ cd helix
 ```sh
 cargo install --path helix-term --locked
 ```
-This command will create the `hx` executable and construct the tree-sitter grammars in the local `runtime` folder. 
+
+This command will create the `hx` executable and construct the tree-sitter grammars in the 
+local `runtime` folder.
 
 > 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
 > grammars with `hx --grammar fetch` and compile them with
@@ -199,13 +201,13 @@ The **runtime** directory is one below the Helix source, so either set a
 your `~/.bashrc` or equivalent:
 
 ```sh
-helix_runtime=~/src/helix/runtime
+HELIX_RUNTIME=~/src/helix/runtime
 ```
 
 Or, create a symbolic link:
 
 ```sh
-ln -s  ~/src/helix/runtime ~/.config/helix/runtime
+ln -s ~/src/helix/runtime ~/.config/helix/runtime
 ```
 
 #### Windows
