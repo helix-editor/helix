@@ -196,25 +196,29 @@ impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
             Self::Typable { name, args, doc: _ } => {
-                let mut cx = compositor::Context {
-                    editor: cx.editor,
-                    jobs: cx.jobs,
-                    scroll: None,
-                };
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
-                    let args = args.join(" ");
-                    let args = match helix_view::editor::expand_args(cx.editor, &args) {
-                        Ok(a) => a,
-                        Err(e) => {
-                            cx.editor.set_error(format!("{e}"));
+                    let mut cx = compositor::Context {
+                        editor: cx.editor,
+                        jobs: cx.jobs,
+                        scroll: None,
+                    };
+
+                    let args: Vec<Cow<str>> = match args
+                        .iter()
+                        .map(|arg| {
+                            helix_view::editor::expand_variables(cx.editor, arg).map(Cow::from)
+                        })
+                        .collect()
+                    {
+                        Ok(expanded_args) => expanded_args,
+                        Err(err) => {
+                            cx.editor.set_error(err.to_string());
                             return;
                         }
                     };
 
-                    let args: Vec<Cow<str>> = args.split_whitespace().map(Cow::from).collect();
-
                     if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
-                        cx.editor.set_error(format!("{e}"));
+                        cx.editor.set_error(format!("{}", e));
                     }
                 }
             }

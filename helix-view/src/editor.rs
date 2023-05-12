@@ -1971,18 +1971,18 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
     }
 }
 
-static EXPAND_ARGS_REGEXP: once_cell::sync::Lazy<helix_core::regex::Regex> =
+static EXPAND_VARIABLES_REGEX: once_cell::sync::Lazy<helix_core::regex::Regex> =
     once_cell::sync::Lazy::new(|| {
         helix_core::regex::Regex::new(r"%(\w+)\{([^{}]*(\{[^{}]*\}[^{}]*)*)\}").unwrap()
     });
 
-pub fn expand_args<'a>(editor: &Editor, args: &'a str) -> anyhow::Result<Cow<'a, str>> {
+pub fn expand_variables<'a>(editor: &Editor, input: &'a str) -> anyhow::Result<Cow<'a, str>> {
     let (view, doc) = current_ref!(editor);
     let shell = &editor.config().shell;
 
     replace_all(
-        once_cell::sync::Lazy::force(&EXPAND_ARGS_REGEXP),
-        Cow::Borrowed(args),
+        &EXPAND_VARIABLES_REGEX,
+        Cow::Borrowed(input),
         move |keyword, body| match keyword.trim() {
             "val" => match body.trim() {
                 "filename" => Ok(doc
@@ -2006,38 +2006,30 @@ pub fn expand_args<'a>(editor: &Editor, args: &'a str) -> anyhow::Result<Cow<'a,
                 .to_string()),
                 _ => anyhow::bail!("Unknown variable: {body}"),
             },
-            "sh" => {
-                let result = tokio::task::block_in_place(move || {
-                    helix_lsp::block_on(async move {
-                        let args = &expand_args(editor, body)?[..];
+            "sh" => tokio::task::block_in_place(move || {
+                helix_lsp::block_on(async move {
+                    let args = &expand_variables(editor, body)?[..];
 
-                        let mut command = tokio::process::Command::new(&shell[0]);
-                        command.args(&shell[1..]).arg(args);
+                    let mut command = tokio::process::Command::new(&shell[0]);
+                    command.args(&shell[1..]).arg(args);
 
-                        let output = command
-                            .output()
-                            .await
-                            .map_err(|_| anyhow::anyhow!("Shell command failed: {args}"))?;
+                    let output = command
+                        .output()
+                        .await
+                        .map_err(|_| anyhow::anyhow!("Shell command failed: {args}"))?;
 
-                        if output.status.success() {
-                            String::from_utf8(output.stdout)
-                                .map_err(|_| anyhow::anyhow!("Process did not output valid UTF-8"))
-                        } else if output.stderr.is_empty() {
-                            Err(anyhow::anyhow!("Shell command failed: {args}"))
-                        } else {
-                            let stderr = String::from_utf8_lossy(&output.stderr);
+                    if output.status.success() {
+                        String::from_utf8(output.stdout)
+                            .map_err(|_| anyhow::anyhow!("Process did not output valid UTF-8"))
+                    } else if output.stderr.is_empty() {
+                        Err(anyhow::anyhow!("Shell command failed: {args}"))
+                    } else {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
 
-                            Err(anyhow::anyhow!("{stderr}"))
-                        }
-                    })
-                });
-
-                result.map_err(|it| {
-                    log::error!("{}", it.to_string());
-
-                    it
+                        Err(anyhow::anyhow!("{stderr}"))
+                    }
                 })
-            }
+            }),
             _ => anyhow::bail!("Unknown keyword {keyword}"),
         },
     )

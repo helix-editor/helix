@@ -3182,7 +3182,38 @@ pub(super) fn command_mode(cx: &mut Context) {
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            let _ = process_cmd(cx, input, event);
+            let input: Cow<str> = if event == PromptEvent::Validate {
+                helix_view::editor::expand_variables(cx.editor, input)
+                    .map_or_else(|_| Cow::Borrowed(input), |args| args)
+            } else {
+                Cow::Borrowed(input)
+            };
+
+            let parts = input.split_whitespace().collect::<Vec<&str>>();
+            if parts.is_empty() {
+                return;
+            }
+
+            // If command is numeric, interpret as line number and go there.
+            if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
+                if let Err(e) = typed::goto_line_number(cx, &[Cow::from(parts[0])], event) {
+                    cx.editor.set_error(format!("{}", e));
+                }
+                return;
+            }
+
+            // Handle typable commands
+            if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
+                let shellwords = Shellwords::from(input.as_ref());
+                let args = shellwords.words();
+
+                if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
+                    cx.editor.set_error(format!("{}", e));
+                }
+            } else if event == PromptEvent::Validate {
+                cx.editor
+                    .set_error(format!("no such command: '{}'", parts[0]));
+            }
         },
     );
     prompt.doc_fn = Box::new(|input: &str| {
