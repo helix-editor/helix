@@ -765,7 +765,11 @@ fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<st
 }
 
 impl Syntax {
-    pub fn new(source: &Rope, config: Arc<HighlightConfiguration>, loader: Arc<Loader>) -> Self {
+    pub fn new(
+        source: &Rope,
+        config: Arc<HighlightConfiguration>,
+        loader: Arc<Loader>,
+    ) -> Option<Self> {
         let root_layer = LanguageLayer {
             tree: None,
             config,
@@ -790,11 +794,13 @@ impl Syntax {
             loader,
         };
 
-        syntax
-            .update(source, source, &ChangeSet::new(source))
-            .unwrap();
+        let res = syntax.update(source, source, &ChangeSet::new(source));
 
-        syntax
+        if res.is_err() {
+            log::error!("TS parser failed, disabeling TS for the current buffer: {res:?}");
+            return None;
+        }
+        Some(syntax)
     }
 
     pub fn update(
@@ -922,6 +928,7 @@ impl Syntax {
 
         PARSER.with(|ts_parser| {
             let ts_parser = &mut ts_parser.borrow_mut();
+            ts_parser.parser.set_timeout_micros(1000 * 500); // half a second is pretty generours
             let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
             // TODO: might need to set cursor range
             cursor.set_byte_range(0..usize::MAX);
@@ -2368,7 +2375,7 @@ mod test {
         let mut cursor = QueryCursor::new();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
 
         let root = syntax.tree().root_node();
         let mut test = |capture, range| {
@@ -2439,7 +2446,7 @@ mod test {
             fn main() {}
         ",
         );
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
         let tree = syntax.tree();
         let root = tree.root_node();
         assert_eq!(root.kind(), "source_file");
@@ -2526,7 +2533,7 @@ mod test {
         let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
 
         let root = syntax
             .tree()

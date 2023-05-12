@@ -959,8 +959,7 @@ impl Document {
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
             if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
-                let syntax = Syntax::new(&self.text, highlight_config, loader);
-                self.syntax = Some(syntax);
+                self.syntax = Syntax::new(&self.text, highlight_config, loader);
             }
 
             self.language = Some(language_config);
@@ -1095,9 +1094,11 @@ impl Document {
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
                 // TODO: no unwrap
-                syntax
-                    .update(&old_doc, &self.text, transaction.changes())
-                    .unwrap();
+                let res = syntax.update(&old_doc, &self.text, transaction.changes());
+                if res.is_err() {
+                    log::error!("TS parser failed, disabeling TS for the current buffer: {res:?}");
+                    self.syntax = None;
+                }
             }
 
             let changes = transaction.changes();
