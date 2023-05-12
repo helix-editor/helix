@@ -44,7 +44,7 @@ impl FileInfo {
 
     fn get_text(&self) -> Cow<'static, str> {
         let text = match self.file_type {
-            FileType::Root => format!("{}", self.path.display()),
+            FileType::Root => self.path.display().to_string(),
             FileType::File | FileType::Folder => self
                 .path
                 .file_name()
