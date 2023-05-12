@@ -758,7 +758,7 @@ mod test_explorer {
 
     /// This code should create the following file tree:
     ///
-    ///   test_explorer/<name>
+    ///   <temp_path>
     ///   ├── index.html
     ///   ├── .gitignore
     ///   ├── scripts
@@ -768,8 +768,8 @@ mod test_explorer {
     ///      └── public
     ///          └── file
     ///
-    fn dummy_file_tree(name: &str) -> PathBuf {
-        let path: PathBuf = format!("test_explorer{}{}", std::path::MAIN_SEPARATOR, name).into();
+    fn dummy_file_tree() -> PathBuf {
+        let path = tempfile::tempdir().unwrap().path().to_path_buf();
         if path.exists() {
             fs::remove_dir_all(path.clone()).unwrap();
         }
@@ -790,28 +790,32 @@ mod test_explorer {
     }
 
     fn render(explorer: &mut Explorer) -> String {
-        explorer.tree.render_to_string(Rect::new(0, 0, 50, 10))
+        explorer.tree.render_to_string(Rect::new(0, 0, 100, 10))
     }
 
-    fn new_explorer(name: &str) -> (PathBuf, Explorer) {
-        let path = dummy_file_tree(name);
-        (path.clone(), Explorer::from_path(path, 30).unwrap())
+    fn new_explorer() -> (PathBuf, Explorer) {
+        let path = dummy_file_tree();
+        (path.clone(), Explorer::from_path(path, 100).unwrap())
     }
 
     #[test]
     fn test_reveal_file() {
-        let (path, mut explorer) = new_explorer("reveal_file");
+        let (path, mut explorer) = new_explorer();
+
+        let path_str = path.display().to_string();
 
         // 0a. Expect the "scripts" folder is not opened
         assert_eq!(
             render(&mut explorer),
-            "
-(test_explorer/reveal_file)
+            format!(
+                "
+({path_str})
 ⏵ scripts
 ⏵ styles
   .gitignore
   index.html
 "
+            )
             .trim()
         );
 
@@ -821,14 +825,16 @@ mod test_explorer {
         // 1a. Expect the "scripts" folder is opened, and "main.js" is focused
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/reveal_file]
+            format!(
+                "
+[{path_str}]
 ⏷ [scripts]
     (main.js)
 ⏵ styles
   .gitignore
   index.html
 "
+            )
             .trim()
         );
 
@@ -839,10 +845,12 @@ mod test_explorer {
         // 2a. Expect the current root is "scripts"
         assert_eq!(
             render(&mut explorer),
-            "
-(test_explorer/reveal_file/scripts)
+            format!(
+                "
+({path_str}/scripts)
   main.js
 "
+            )
             .trim()
         );
 
@@ -854,28 +862,33 @@ mod test_explorer {
         // 3a. Expect the current root is "public", and "file" is focused
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/reveal_file/styles/public]
+            format!(
+                "
+[{path_str}/styles/public]
   (file)
 "
+            )
             .trim()
         );
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_rename() {
-        let (path, mut explorer) = new_explorer("rename");
+        let (path, mut explorer) = new_explorer();
+        let path_str = path.display().to_string();
 
         explorer.handle_events("jjj").unwrap();
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/rename]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏵ styles
   (.gitignore)
   index.html
 "
+            )
             .trim()
         );
 
@@ -887,7 +900,7 @@ mod test_explorer {
         assert_eq!(prompt.prompt(), " Rename to ");
         assert_eq!(
             prompt.line().replace(std::path::MAIN_SEPARATOR, "/"),
-            "test_explorer/rename/.gitignore"
+            format!("{path_str}/.gitignore")
         );
 
         // 1. Rename the current file to a name that is lexicographically greater than "index.html"
@@ -896,13 +909,15 @@ mod test_explorer {
         // 1a. Expect the file is renamed, and is focused
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/rename]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏵ styles
   index.html
   (who.is)
 "
+            )
             .trim()
         );
 
@@ -919,8 +934,9 @@ mod test_explorer {
         // 2a. Expect the file is moved to the folder, and is focused
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/rename]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏷ [styles]
   ⏵ public
@@ -928,6 +944,7 @@ mod test_explorer {
     style.css
   index.html
 "
+            )
             .trim()
         );
 
@@ -946,8 +963,9 @@ mod test_explorer {
         //     and the renamed file is focused
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/rename]
+            format!(
+                "
+[{path_str}]
 ⏷ [new_folder]
   ⏷ [sponge]
       (bob)
@@ -957,6 +975,7 @@ mod test_explorer {
     style.css
   index.html
 "
+            )
             .trim()
         );
 
@@ -968,10 +987,12 @@ mod test_explorer {
         // 4a. Expect the current root to be "sponge"
         assert_eq!(
             render(&mut explorer),
-            "
-(test_explorer/rename/new_folder/sponge)
+            format!(
+                "
+({path_str}/new_folder/sponge)
   bob
 "
+            )
             .trim()
         );
 
@@ -987,18 +1008,21 @@ mod test_explorer {
         // 5a. Expect the current root to be "scripts"
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/rename/scripts]
+            format!(
+                "
+[{path_str}/scripts]
   (bob)
   main.js
 "
+            )
             .trim()
         );
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_new_folder() {
-        let (path, mut explorer) = new_explorer("new_folder");
+        let (path, mut explorer) = new_explorer();
+        let path_str = path.display().to_string();
 
         // 0. Open the add file/folder prompt
         explorer.handle_events("a").unwrap();
@@ -1013,7 +1037,7 @@ mod test_explorer {
             to_forward_slash(prompt.prompt()),
             " New file or folder (ends with '/'): "
         );
-        assert_eq!(to_forward_slash(prompt.line()), "test_explorer/new_folder/");
+        assert_eq!(to_forward_slash(prompt.line()), format!("{path_str}/"));
 
         // 1. Add a new folder at the root
         explorer
@@ -1023,14 +1047,16 @@ mod test_explorer {
         // 1a. Expect the new folder is added, and is focused
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/new_folder]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏵ styles
 ⏷ (yoyo)
   .gitignore
   index.html
 "
+            )
             .trim()
         );
 
@@ -1047,8 +1073,9 @@ mod test_explorer {
         // 3a. Expect the new folder is added under "styles", although "styles" is not opened
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/new_folder]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏷ [styles]
   ⏵ public
@@ -1058,6 +1085,7 @@ mod test_explorer {
   .gitignore
   index.html
 "
+            )
             .trim()
         );
 
@@ -1073,8 +1101,9 @@ mod test_explorer {
         //     and is focused
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/new_folder]
+            format!(
+                "
+[{path_str}]
 ⏷ [styles]
   ⏷ [sus.sass]
     ⏷ [a]
@@ -1085,6 +1114,7 @@ mod test_explorer {
   .gitignore
   index.html
 "
+            )
             .trim()
         );
 
@@ -1102,8 +1132,9 @@ mod test_explorer {
         //     because the folder of the current item, "style.css" is "styles/"
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/new_folder]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏷ [styles]
   ⏷ (foobar)
@@ -1114,6 +1145,7 @@ mod test_explorer {
         ⏷ c
     style.css
 "
+            )
             .trim()
         );
 
@@ -1122,7 +1154,8 @@ mod test_explorer {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_new_file() {
-        let (path, mut explorer) = new_explorer("new_file");
+        let (path, mut explorer) = new_explorer();
+        let path_str = path.display().to_string();
 
         // 1. Add a new file at the root
         explorer.handle_events("ayoyo<ret>").unwrap();
@@ -1130,14 +1163,16 @@ mod test_explorer {
         // 1a. Expect the new file is added, and is focused
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/new_file]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏵ styles
   .gitignore
   index.html
   (yoyo)
 "
+            )
             .trim()
         );
 
@@ -1152,8 +1187,9 @@ mod test_explorer {
         // 3a. Expect the new file is added under "styles", although "styles" is not opened
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/new_file]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏷ [styles]
   ⏵ public
@@ -1163,6 +1199,7 @@ mod test_explorer {
   index.html
   yoyo
 "
+            )
             .trim()
         );
 
@@ -1176,8 +1213,9 @@ mod test_explorer {
         //     and is focused
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/new_file]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏷ [styles]
   ⏷ [a]
@@ -1188,6 +1226,7 @@ mod test_explorer {
     sus.sass
   .gitignore
 "
+            )
             .trim()
         );
 
@@ -1203,8 +1242,9 @@ mod test_explorer {
         //     because the folder of the current item, "style.css" is "styles/"
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/new_file]
+            format!(
+                "
+[{path_str}]
 ⏷ [styles]
     ⏷ b
         c
@@ -1215,6 +1255,7 @@ mod test_explorer {
   .gitignore
   index.html
 "
+            )
             .trim()
         );
 
@@ -1223,7 +1264,8 @@ mod test_explorer {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_remove_file() {
-        let (path, mut explorer) = new_explorer("remove_file");
+        let (path, mut explorer) = new_explorer();
+        let path_str = path.display().to_string();
 
         // 1. Move to ".gitignore"
         explorer.handle_events("/.gitignore<ret>").unwrap();
@@ -1231,13 +1273,15 @@ mod test_explorer {
         // 1a. Expect the cursor is at ".gitignore"
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/remove_file]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏵ styles
   (.gitignore)
   index.html
 "
+            )
             .trim()
         );
 
@@ -1249,12 +1293,14 @@ mod test_explorer {
         // 3. Expect ".gitignore" is deleted, and the cursor moved down
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/remove_file]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏵ styles
   (index.html)
 "
+            )
             .trim()
         );
 
@@ -1269,11 +1315,13 @@ mod test_explorer {
         // 4a. Expect "index.html" is deleted, at the cursor moved up
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/remove_file]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏵ (styles)
 "
+            )
             .trim()
         );
 
@@ -1282,7 +1330,8 @@ mod test_explorer {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_remove_folder() {
-        let (path, mut explorer) = new_explorer("remove_folder");
+        let (path, mut explorer) = new_explorer();
+        let path_str = path.display().to_string();
 
         // 1. Move to "styles/"
         explorer.handle_events("/styles<ret>o").unwrap();
@@ -1290,8 +1339,9 @@ mod test_explorer {
         // 1a. Expect the cursor is at "styles"
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/remove_folder]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏷ (styles)
   ⏵ public
@@ -1299,6 +1349,7 @@ mod test_explorer {
   .gitignore
   index.html
 "
+            )
             .trim()
         );
 
@@ -1310,12 +1361,14 @@ mod test_explorer {
         // 3. Expect "styles" is deleted, and the cursor moved down
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/remove_folder]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
   (.gitignore)
   index.html
 "
+            )
             .trim()
         );
 
@@ -1324,7 +1377,8 @@ mod test_explorer {
 
     #[test]
     fn test_change_root() {
-        let (path, mut explorer) = new_explorer("change_root");
+        let (path, mut explorer) = new_explorer();
+        let path_str = path.display().to_string();
 
         // 1. Move cursor to "styles"
         explorer.reveal_file(path.join("styles")).unwrap();
@@ -1336,11 +1390,13 @@ mod test_explorer {
         // 2a. Expect the current root to be "styles", and the cursor is at "public"
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/change_root/styles]
+            format!(
+                "
+[{path_str}/styles]
 ⏵ (public)
   style.css
 "
+            )
             .trim()
         );
 
@@ -1352,13 +1408,15 @@ mod test_explorer {
         // 3a. Expect the current root to be "change_root"
         assert_eq!(
             render(&mut explorer),
-            "
-(test_explorer/change_root)
+            format!(
+                "
+({path_str})
 ⏵ scripts
 ⏵ styles
   .gitignore
   index.html
 "
+            )
             .trim()
         );
 
@@ -1368,11 +1426,13 @@ mod test_explorer {
         // 4a. Expect the root te become "styles", and the cursor position is not forgotten
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/change_root/styles]
+            format!(
+                "
+[{path_str}/styles]
 ⏵ (public)
   style.css
 "
+            )
             .trim()
         );
         assert_eq!(explorer.state.current_root, current_root);
@@ -1385,8 +1445,9 @@ mod test_explorer {
         //     because it was opened before any change of root
         assert_eq!(
             render(&mut explorer),
-            "
-[test_explorer/change_root]
+            format!(
+                "
+[{path_str}]
 ⏵ scripts
 ⏷ (styles)
   ⏵ public
@@ -1394,6 +1455,7 @@ mod test_explorer {
   .gitignore
   index.html
 "
+            )
             .trim()
         );
     }
