@@ -867,6 +867,9 @@ indent = { tab-width = 2, unit = "  " }
 language-server = { command = "yaml-language-server", args = ["--stdio"] }
 injection-regex = "yml|yaml"
 
+[[language.config.yaml.schemas]]
+"https://json.schemastore.org/github-workflow.json" = ".github/workflows/*.{yml,yaml}"
+
 [[grammar]]
 name = "yaml"
 source = { git = "https://github.com/ikatyang/tree-sitter-yaml", rev = "0e36bed171768908f331ff7dff9d956bae016efb" }
