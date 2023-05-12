@@ -141,9 +141,9 @@ pub struct Document {
     /// The document's default line ending.
     pub line_ending: LineEnding,
 
-    syntax: Option<Syntax>,
+    pub syntax: Option<Syntax>,
     /// Corresponding language scope name. Usually `source.<lang>`.
-    pub(crate) language: Option<Arc<LanguageConfiguration>>,
+    pub language: Option<Arc<LanguageConfiguration>>,
 
     /// Pending changes since last history commit.
     changes: ChangeSet,
@@ -856,12 +856,20 @@ impl Document {
 
     /// Detect the programming language based on the file type.
     pub fn detect_language(&mut self, config_loader: Arc<syntax::Loader>) {
-        if let Some(path) = &self.path {
-            let language_config = config_loader
-                .language_config_for_file_name(path)
-                .or_else(|| config_loader.language_config_for_shebang(self.text()));
-            self.set_language(language_config, Some(config_loader));
-        }
+        self.set_language(
+            self.detect_language_config(&config_loader),
+            Some(config_loader),
+        );
+    }
+
+    /// Detect the programming language based on the file type.
+    pub fn detect_language_config(
+        &self,
+        config_loader: &syntax::Loader,
+    ) -> Option<Arc<helix_core::syntax::LanguageConfiguration>> {
+        config_loader
+            .language_config_for_file_name(self.path.as_ref()?)
+            .or_else(|| config_loader.language_config_for_shebang(self.text()))
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
