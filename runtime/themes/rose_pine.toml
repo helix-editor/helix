@@ -32,11 +32,11 @@
 "ui.help" = { fg = "subtle", bg = "overlay" }
 
 "ui.text" = { fg = "text" }
-# "ui.text.focus" = {}
+"ui.text.focus" = { bg = "overlay" }
 "ui.text.info" = { fg = "subtle" }
 
 "ui.virtual.ruler" = { bg = "overlay" }
-"ui.virtual.whitespace" = { fg = "highlight_low" }
+"ui.virtual.whitespace" = { fg = "highlight_high" }
 "ui.virtual.indent-guide" = { fg = "muted" }
 "ui.virtual.inlay-hint" = { fg = "subtle" }
 
@@ -61,6 +61,7 @@
 "diagnostic.info" = { underline = { color = "foam", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "gold", style = "curl" } }
 "diagnostic.error" = { underline = { color = "love", style = "curl" } }
+"special" = "rose"
 
 "attribute" = "iris"
 

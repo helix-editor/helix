@@ -111,6 +111,10 @@ impl Backend for TestBackend {
         Ok(())
     }
 
+    fn reconfigure(&mut self, _config: Config) -> Result<(), io::Error> {
+        Ok(())
+    }
+
     fn restore(&mut self, _config: Config) -> Result<(), io::Error> {
         Ok(())
     }

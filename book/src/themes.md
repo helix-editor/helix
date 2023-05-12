@@ -228,6 +228,8 @@ We use a similar set of scopes as
   - `list`
     - `unnumbered`
     - `numbered`
+    - `checked`
+    - `unchecked`
   - `bold`
   - `italic`
   - `strikethrough`
@@ -276,8 +278,11 @@ These scopes are used for theming the editor interface:
 | `ui.cursor.primary.normal`        |                                                                                                |
 | `ui.cursor.primary.insert`        |                                                                                                |
 | `ui.cursor.primary.select`        |                                                                                                |
+| `ui.debug.breakpoint`             | Breakpoint indicator, found in the gutter                                                      |
+| `ui.debug.active`                 | Indicator for the line at which debugging execution is paused at, found in the gutter          |
 | `ui.gutter`                       | Gutter                                                                                         |
 | `ui.gutter.selected`              | Gutter for the line the cursor is on                                                           |
+| `ui.highlight.frameline`          | Line at which debugging execution is paused at                                                 |
 | `ui.linenr`                       | Line numbers                                                                                   |
 | `ui.linenr.selected`              | Line number for the line the cursor is on                                                      |
 | `ui.statusline`                   | Statusline                                                                                     |

@@ -16,7 +16,7 @@ pub struct Overlay<T> {
 }
 
 /// Surrounds the component with a margin of 5% on each side, and an additional 2 rows at the bottom
-pub fn overlayed<T>(content: T) -> Overlay<T> {
+pub fn overlaid<T>(content: T) -> Overlay<T> {
     Overlay {
         content,
         calc_child_size: Box::new(|rect: Rect| rect.overlayed()),

@@ -3,7 +3,7 @@ use std::{
     ops::RangeInclusive,
 };
 
-use helix_core::diagnostic::Severity;
+use helix_core::{diagnostic::Severity, path::get_normalized_path};
 use helix_view::doc;
 
 use super::*;
@@ -23,7 +23,7 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(file.path()), doc.path().map(PathBuf::as_path));
+            assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
         false,
@@ -269,7 +269,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&file.path().to_path_buf()), doc.path());
+            assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
         }),
         false,
     )
@@ -341,7 +341,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
                 Some(&|app| {
                     let doc = doc!(app.editor);
                     assert!(!app.editor.is_err());
-                    assert_eq!(file1.path(), doc.path().unwrap());
+                    assert_eq!(&get_normalized_path(file1.path()), doc.path().unwrap());
                 }),
             ),
             (
@@ -349,7 +349,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
                 Some(&|app| {
                     let doc = doc!(app.editor);
                     assert!(!app.editor.is_err());
-                    assert_eq!(file2.path(), doc.path().unwrap());
+                    assert_eq!(&get_normalized_path(file2.path()), doc.path().unwrap());
                     assert!(app.editor.document_by_path(file1.path()).is_none());
                 }),
             ),
@@ -404,6 +404,44 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
         false,
     )
     .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_utf_bom_file() -> anyhow::Result<()> {
+    // "ABC" with utf8 bom
+    const UTF8_FILE: [u8; 6] = [0xef, 0xbb, 0xbf, b'A', b'B', b'C'];
+
+    // "ABC" in UTF16 with bom
+    const UTF16LE_FILE: [u8; 8] = [0xff, 0xfe, b'A', 0x00, b'B', 0x00, b'C', 0x00];
+    const UTF16BE_FILE: [u8; 8] = [0xfe, 0xff, 0x00, b'A', 0x00, b'B', 0x00, b'C'];
+
+    edit_file_with_content(&UTF8_FILE).await?;
+    edit_file_with_content(&UTF16LE_FILE).await?;
+    edit_file_with_content(&UTF16BE_FILE).await?;
+
+    Ok(())
+}
+
+async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+
+    file.as_file_mut().write_all(&file_content)?;
+
+    helpers::test_key_sequence(
+        &mut helpers::AppBuilder::new().build()?,
+        Some(&format!(":o {}<ret>:x<ret>", file.path().to_string_lossy())),
+        None,
+        true,
+    )
+    .await?;
+
+    file.rewind()?;
+    let mut new_file_content: Vec<u8> = Vec::new();
+    file.read_to_end(&mut new_file_content)?;
+
+    assert_eq!(file_content, new_file_content);
 
     Ok(())
 }
