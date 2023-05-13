@@ -183,8 +183,8 @@ cd helix
 cargo install --path helix-term --locked
 ```
 
-This command will create the `hx` executable and construct the tree-sitter grammars in the 
-local `runtime` folder.
+This command will create the `hx` executable and construct the tree-sitter
+grammars in the local `runtime` folder.
 
 > 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
 > grammars with `hx --grammar fetch` and compile them with
