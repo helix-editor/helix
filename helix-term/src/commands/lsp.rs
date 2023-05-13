@@ -3,7 +3,7 @@ use helix_lsp::{
     block_on,
     lsp::{
         self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
-        NumberOrString,
+        NumberOrString, SymbolKind,
     },
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
     OffsetEncoding,
@@ -92,13 +92,43 @@ impl ui::menu::Item for lsp::SymbolInformation {
     type Data = Option<lsp::Url>;
 
     fn format(&self, current_doc_path: &Self::Data) -> Row {
+        let kind_code = match self.kind {
+            SymbolKind::FILE => "file",
+            SymbolKind::MODULE => "mod",
+            SymbolKind::NAMESPACE => "ns",
+            SymbolKind::PACKAGE => "pkg",
+            SymbolKind::CLASS => "class",
+            SymbolKind::METHOD => "met",
+            SymbolKind::PROPERTY => "prop",
+            SymbolKind::FIELD => "field",
+            SymbolKind::CONSTRUCTOR => "ctor",
+            SymbolKind::ENUM => "enum",
+            SymbolKind::INTERFACE => "intfc",
+            SymbolKind::FUNCTION => "func",
+            SymbolKind::VARIABLE => "var",
+            SymbolKind::CONSTANT => "const",
+            SymbolKind::STRING => " str",
+            SymbolKind::NUMBER => " num",
+            SymbolKind::BOOLEAN => "bool",
+            SymbolKind::ARRAY => "array",
+            SymbolKind::OBJECT => "obj",
+            SymbolKind::KEY => " key",
+            SymbolKind::NULL => "null",
+            SymbolKind::ENUM_MEMBER => "item",
+            SymbolKind::STRUCT => "struc",
+            SymbolKind::EVENT => "event",
+            SymbolKind::OPERATOR => "op",
+            SymbolKind::TYPE_PARAMETER => "type",
+            _ => ""
+        };
+
         if current_doc_path.as_ref() == Some(&self.location.uri) {
-            self.name.as_str().into()
+            format!("{:>5}: {}", kind_code, self.name).into()
         } else {
             match self.location.uri.to_file_path() {
                 Ok(path) => {
                     let get_relative_path = path::get_relative_path(path.as_path());
-                    format!("{} ({})", &self.name, get_relative_path.to_string_lossy()).into()
+                    format!("{:>5}: {} ({})", kind_code, &self.name, get_relative_path.to_string_lossy()).into()
                 }
                 Err(_) => format!("{} ({})", &self.name, &self.location.uri).into(),
             }
