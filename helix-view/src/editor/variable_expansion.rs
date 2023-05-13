@@ -96,3 +96,88 @@ fn replace_all<'a>(
 
     replace_all(regex, Cow::Owned(new), matcher)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn matcher(keyword: &str, body: &str) -> anyhow::Result<String> {
+        match keyword {
+            "val" => match body {
+                "filename" => Ok(String::from("[scratch]")),
+                "dirname" => Ok(String::from("[parent_dir]")),
+                _ => Err(anyhow::anyhow!("Unknown variable")),
+            },
+            "sh" => Ok(format!(
+                "|{}|",
+                replace_all(&EXPAND_VARIABLES_REGEX, Cow::Borrowed(body), matcher)?
+            )),
+            _ => Err(anyhow::anyhow!("Unknown keyword")),
+        }
+    }
+
+    // Doesn't allocate for non-matching input
+    #[test]
+    fn variable_expansion_does_not_allocate() {
+        let input = "cd dir";
+        let cow: Cow<str> = Cow::Borrowed(input);
+
+        assert!(matches!(
+            replace_all(&EXPAND_VARIABLES_REGEX, cow, matcher).unwrap(),
+            Cow::Borrowed(_)
+        ));
+    }
+
+    // Does allocate for matching input
+    #[test]
+    fn variable_expansion_does_allocate() {
+        let input = "cd %val{dirname}";
+        let cow: Cow<str> = Cow::Borrowed(input);
+
+        assert!(matches!(
+            replace_all(&EXPAND_VARIABLES_REGEX, cow, matcher).unwrap(),
+            Cow::Owned(_)
+        ));
+    }
+
+    #[test]
+    fn variable_expansion_fails() {
+        assert!(replace_all(
+            &EXPAND_VARIABLES_REGEX,
+            Cow::Owned(String::from("%key{dirname}")),
+            matcher
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn variable_expansion_succeeds() {
+        let list: Vec<(Cow<str>, String)> = vec![
+            (
+                Cow::Owned(String::from("%val{filename}")),
+                String::from("[scratch]"),
+            ),
+            (
+                Cow::Owned(String::from("%sh{body}")),
+                String::from("|body|"),
+            ),
+            (
+                Cow::Owned(String::from("%sh{cp %val{filename} %val{dirname}/../copy}")),
+                String::from("|cp [scratch] [parent_dir]/../copy|"),
+            ),
+            (
+                Cow::Owned(String::from(
+                    "%sh{%sh{cat %val{filename}} | grep test >> %val{dirname}/copy}",
+                )),
+                String::from("||cat [scratch]| | grep test >> [parent_dir]/copy|"),
+            ),
+        ];
+
+        for item in list {
+            assert_eq!(
+                replace_all(&EXPAND_VARIABLES_REGEX, item.0, matcher).unwrap(),
+                item.1
+            );
+        }
+    }
+}
