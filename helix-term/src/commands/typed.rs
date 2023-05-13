@@ -3183,8 +3183,13 @@ pub(super) fn command_mode(cx: &mut Context) {
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             let input: Cow<str> = if event == PromptEvent::Validate {
-                helix_view::editor::expand_variables(cx.editor, input)
-                    .map_or_else(|_| Cow::Borrowed(input), |args| args)
+                match helix_view::editor::expand_variables(cx.editor, input) {
+                    Ok(args) => args,
+                    Err(e) => {
+                        cx.editor.set_error(format!("{}", e));
+                        return;
+                    }
+                }
             } else {
                 Cow::Borrowed(input)
             };
