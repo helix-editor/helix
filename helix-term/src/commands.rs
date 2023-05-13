@@ -3855,6 +3855,7 @@ fn paste_impl(
     action: Paste,
     count: usize,
     mode: Mode,
+    linewise: bool,
 ) {
     if values.is_empty() {
         return;
@@ -3869,9 +3870,10 @@ fn paste_impl(
     );
 
     // if any of values ends with a line ending, it's linewise paste
-    let linewise = values
-        .iter()
-        .any(|value| get_line_ending_of_str(value).is_some());
+    let linewise = linewise
+        && values
+            .iter()
+            .any(|value| get_line_ending_of_str(value).is_some());
 
     // Only compiled once.
     static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());
@@ -3928,13 +3930,22 @@ fn paste_impl(
 }
 
 pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
+    let config = cx.editor.config();
     let count = cx.count();
     let paste = match cx.editor.mode {
         Mode::Insert | Mode::Select => Paste::Cursor,
         Mode::Normal => Paste::Before,
     };
     let (view, doc) = current!(cx.editor);
-    paste_impl(&[contents], doc, view, paste, count, cx.editor.mode);
+    paste_impl(
+        &[contents],
+        doc,
+        view,
+        paste,
+        count,
+        cx.editor.mode,
+        config.linewise_paste,
+    );
 }
 
 fn paste_clipboard_impl(
@@ -3943,10 +3954,19 @@ fn paste_clipboard_impl(
     clipboard_type: ClipboardType,
     count: usize,
 ) -> anyhow::Result<()> {
+    let config = editor.config();
     let (view, doc) = current!(editor);
     match editor.clipboard_provider.get_contents(clipboard_type) {
         Ok(contents) => {
-            paste_impl(&[contents], doc, view, action, count, editor.mode);
+            paste_impl(
+                &[contents],
+                doc,
+                view,
+                action,
+                count,
+                editor.mode,
+                config.linewise_paste,
+            );
             Ok(())
         }
         Err(e) => Err(e.context("Couldn't get system clipboard contents")),
@@ -4060,12 +4080,21 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
 
 fn paste(cx: &mut Context, pos: Paste) {
     let count = cx.count();
+    let config = cx.editor.config();
     let reg_name = cx.register.unwrap_or('"');
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
     if let Some(values) = registers.read(reg_name) {
-        paste_impl(values, doc, view, pos, count, cx.editor.mode);
+        paste_impl(
+            values,
+            doc,
+            view,
+            pos,
+            count,
+            cx.editor.mode,
+            config.linewise_paste,
+        );
     }
 }
 

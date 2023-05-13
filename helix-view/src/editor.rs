@@ -232,6 +232,8 @@ pub struct Config {
     pub gutters: GutterConfig,
     /// Middle click paste support. Defaults to true.
     pub middle_click_paste: bool,
+    /// Linewise paste support. Defaults to true.
+    pub linewise_paste: bool,
     /// Automatic insertion of pairs to parentheses, brackets,
     /// etc. Optionally, this can be a list of 2-tuples to specify a
     /// global list of characters to pair. Defaults to true.
@@ -790,6 +792,7 @@ impl Default for Config {
             cursorcolumn: false,
             gutters: GutterConfig::default(),
             middle_click_paste: true,
+            linewise_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             auto_format: true,
