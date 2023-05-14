@@ -833,7 +833,7 @@ impl Document {
                     if force {
                         std::fs::DirBuilder::new().recursive(true).create(parent)?;
                     } else {
-                        bail!("can't save file, parent directory does not exist");
+                        bail!("can't save file, parent directory does not exist (use :w! to create it)");
                     }
                 }
             }

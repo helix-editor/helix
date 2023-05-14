@@ -118,6 +118,13 @@ impl<'a> Context<'a> {
         }));
     }
 
+    /// Call `replace_or_push` on the Compositor
+    pub fn replace_or_push_layer<T: Component>(&mut self, id: &'static str, component: T) {
+        self.callback = Some(Box::new(move |compositor: &mut Compositor, _| {
+            compositor.replace_or_push(id, component);
+        }));
+    }
+
     #[inline]
     pub fn on_next_key(
         &mut self,

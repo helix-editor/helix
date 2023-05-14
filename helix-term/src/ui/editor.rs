@@ -103,7 +103,7 @@ impl EditorView {
 
         // Set DAP highlights, if needed.
         if let Some(frame) = editor.current_stack_frame() {
-            let dap_line = frame.line.saturating_sub(1) as usize;
+            let dap_line = frame.line.saturating_sub(1);
             let style = theme.get("ui.highlight.frameline");
             let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
                 if pos.doc_line != dap_line {
