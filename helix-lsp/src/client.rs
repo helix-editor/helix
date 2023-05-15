@@ -546,6 +546,7 @@ impl Client {
                     ]),
                     ..Default::default()
                 }),
+                experimental: Some(experimental::capabilities()),
                 ..Default::default()
             },
             trace: None,
@@ -1348,5 +1349,73 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::ExecuteCommand>(params))
+    }
+
+    pub fn supports_parent_module(&self) -> bool {
+        let capabilities = self.capabilities.get().unwrap();
+        experimental::has_capability(capabilities, experimental::Capability::ParentModule)
+    }
+
+    pub fn parent_module(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        // Return early if the language server does not support parent module experimental feature
+        if !self.supports_parent_module() {
+            return None;
+        }
+
+        let params = lsp::TextDocumentPositionParams {
+            text_document,
+            position,
+        };
+
+        Some(self.call::<experimental::ParentModule>(params))
+    }
+}
+
+mod experimental {
+    use lsp::request::Request;
+    use lsp_types as lsp;
+    use serde_json::Value;
+
+    #[derive(Debug, Clone, Copy)]
+    pub enum Capability {
+        ParentModule,
+    }
+
+    impl Capability {
+        fn key(&self) -> &'static str {
+            match self {
+                Self::ParentModule => "parentModule",
+            }
+        }
+    }
+
+    pub fn capabilities() -> Value {
+        Value::Object(
+            [(Capability::ParentModule.key().into(), Value::Bool(true))]
+                .into_iter()
+                .collect(),
+        )
+    }
+
+    pub fn has_capability(capabilities: &lsp::ServerCapabilities, capability: Capability) -> bool {
+        match &capabilities.experimental {
+            Some(Value::Object(experimental)) => match experimental.get(capability.key()) {
+                Some(Value::Null) | None => false,
+                Some(_) => true,
+            },
+            _ => false,
+        }
+    }
+
+    pub enum ParentModule {}
+
+    impl Request for ParentModule {
+        type Params = lsp::TextDocumentPositionParams;
+        type Result = Option<lsp::GotoDefinitionResponse>;
+        const METHOD: &'static str = "experimental/parentModule";
     }
 }
