@@ -24,8 +24,7 @@
     run-highlight
     make-minor-mode!
     git-status
-    reload-helix-scm
-)
+    reload-helix-scm)
 
 
 ;;@doc

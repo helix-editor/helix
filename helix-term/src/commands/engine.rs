@@ -29,7 +29,7 @@ use crate::{
 
 use super::{
     insert::{insert_char, insert_string},
-    Context, MappableCommand, TYPABLE_COMMAND_LIST,
+    shell_impl, Context, MappableCommand, TYPABLE_COMMAND_LIST,
 };
 
 thread_local! {
@@ -164,6 +164,9 @@ fn configure_background_thread() {
 fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> {
     let mut engine = steel::steel_vm::engine::Engine::new();
 
+    // Get the current OS
+    engine.register_fn("current-os!", || std::env::consts::OS);
+
     let mut module = BuiltInModule::new("helix/core/keybindings".to_string());
     module.register_fn("set-keybindings!", SharedKeyBindingsEventQueue::merge);
 
@@ -224,6 +227,7 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     module.register_fn("run-in-engine!", run_in_engine);
     module.register_fn("get-helix-scm-path", get_helix_scm_path);
     module.register_fn("get-init-scm-path", get_init_scm_path);
+    module.register_fn("block-on-shell-command", run_shell_command_text);
 
     engine.register_module(module);
 
@@ -414,4 +418,21 @@ fn get_init_scm_path() -> String {
         .to_str()
         .unwrap()
         .to_string()
+}
+
+fn run_shell_command_text(
+    cx: &mut Context,
+    args: &[Cow<str>],
+    _event: PromptEvent,
+) -> anyhow::Result<String> {
+    let shell = cx.editor.config().shell.clone();
+    let args = args.join(" ");
+
+    let (output, success) = shell_impl(&shell, &args, None)?;
+
+    if success {
+        Ok(output.to_string())
+    } else {
+        anyhow::bail!("Command failed!: {}", output.to_string())
+    }
 }
