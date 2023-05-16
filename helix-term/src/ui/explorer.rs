@@ -572,12 +572,14 @@ impl Explorer {
         }
         let mut fd = std::fs::OpenOptions::new();
         fd.create_new(true).write(true).open(&path)?;
+        self.tree.refresh()?;
         self.reveal_file(path)
     }
 
     fn new_folder(&mut self, path: &str) -> Result<()> {
         let path = helix_core::path::get_normalized_path(&PathBuf::from(path));
         std::fs::create_dir_all(&path)?;
+        self.tree.refresh()?;
         self.reveal_file(path)
     }
 

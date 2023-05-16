@@ -358,8 +358,6 @@ impl<T: TreeViewItem> TreeView<T> {
     ///    vec!["helix-term", "src", "ui", "tree.rs"]
     ///
     pub fn reveal_item(&mut self, segments: Vec<String>) -> Result<()> {
-        self.refresh()?;
-
         // Expand the tree
         let root = self.tree.item.name();
         segments.iter().fold(
