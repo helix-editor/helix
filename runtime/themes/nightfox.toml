@@ -41,6 +41,10 @@
 "ui.statusline.insert" = { bg = "green", fg = "bg0", modifiers = ["bold"] } # Statusline mode during insert mode (only if editor.color-modes is enabled)
 "ui.statusline.select" = { bg = "magenta", fg = "bg0", modifiers = ["bold"] } # Statusline mode during select mode (only if editor.color-modes is enabled)
 
+"ui.bufferline" = { fg = "fg3", bg = "bg2", underline = { style = "line" } }
+"ui.bufferline.active" = { fg = "fg2", bg = "bg4" }
+"ui.bufferline.background" = { bg = "bg0" }
+
 "ui.help" = { bg = "sel0", fg = "fg1" } # Description box for commands.
 
 "ui.menu" = { bg = "sel0", fg = "fg1" } # Code and command completion menus.
