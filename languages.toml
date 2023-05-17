@@ -575,6 +575,12 @@ comment-token = "#"
 language-server = { command = "nls" }
 indent = { tab-width = 2, unit = "  " }
 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+
 [[grammar]]
 name = "nickel"
 source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "3a794388773f2424a97b2186828aa3fac4c66ce6" }
