@@ -4242,7 +4242,7 @@ pub fn completion(cx: &mut Context) {
         .map(|language_server| {
             let language_server_id = language_server.id();
             let offset_encoding = language_server.offset_encoding();
-            let pos = pos_to_lsp_pos(doc.text(), cursor, offset_encoding);
+            let pos = pos_to_lsp_pos(&text, cursor, offset_encoding);
             let doc_id = doc.identifier();
             let completion_request = language_server.completion(doc_id, pos, None).unwrap();
 

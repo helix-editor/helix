@@ -682,7 +682,7 @@ impl Registry {
 
     /// If this method is called, all documents that have a reference to language servers used by the language config have to refresh their language servers,
     /// as it could be that language servers of these documents were stopped by this method.
-    /// See [helix_view::editor::Editor::refresh_language_servers]
+    /// See helix_view::editor::Editor::refresh_language_servers
     pub fn restart(
         &mut self,
         language_config: &LanguageConfiguration,

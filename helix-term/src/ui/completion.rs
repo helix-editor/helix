@@ -119,7 +119,7 @@ impl Completion {
             fn item_to_transaction(
                 doc: &Document,
                 view_id: ViewId,
-                item: &CompletionItem,
+                item: &lsp::CompletionItem,
                 offset_encoding: OffsetEncoding,
                 trigger_offset: usize,
                 include_placeholder: bool,
@@ -130,7 +130,7 @@ impl Completion {
                 let text = doc.text().slice(..);
                 let primary_cursor = selection.primary().cursor(text);
 
-                let (edit_offset, new_text) = if let Some(edit) = &item.item.text_edit {
+                let (edit_offset, new_text) = if let Some(edit) = &item.text_edit {
                     let edit = match edit {
                         lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
                         lsp::CompletionTextEdit::InsertAndReplace(item) => {
@@ -153,10 +153,9 @@ impl Completion {
                     (Some((start_offset, end_offset)), edit.new_text)
                 } else {
                     let new_text = item
-                        .item
                         .insert_text
                         .clone()
-                        .unwrap_or_else(|| item.item.label.clone());
+                        .unwrap_or_else(|| item.label.clone());
                     // check that we are still at the correct savepoint
                     // we can still generate a transaction regardless but if the
                     // document changed (and not just the selection) then we will
@@ -165,9 +164,9 @@ impl Completion {
                     (None, new_text)
                 };
 
-                if matches!(item.item.kind, Some(lsp::CompletionItemKind::SNIPPET))
+                if matches!(item.kind, Some(lsp::CompletionItemKind::SNIPPET))
                     || matches!(
-                        item.item.insert_text_format,
+                        item.insert_text_format,
                         Some(lsp::InsertTextFormat::SNIPPET)
                     )
                 {
@@ -256,7 +255,7 @@ impl Completion {
                     let transaction = item_to_transaction(
                         doc,
                         view.id,
-                        item,
+                        &item.item,
                         language_server!(item).offset_encoding(),
                         trigger_offset,
                         true,
@@ -294,7 +293,7 @@ impl Completion {
                     let transaction = item_to_transaction(
                         doc,
                         view.id,
-                        &item,
+                        &item.item,
                         offset_encoding,
                         trigger_offset,
                         false,
