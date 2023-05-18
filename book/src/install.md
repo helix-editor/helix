@@ -82,7 +82,10 @@ in the AUR, which builds the master branch.
 
 ### NixOS
 
-Helix is available as a [flake](https://nixos.wiki/wiki/Flakes) in the project
+Helix is available in [nixpkgs](https://github.com/nixos/nixpkgs) through the `helix` attribute,
+the unstable channel usually carries the latest release.
+
+Helix is also available as a [flake](https://nixos.wiki/wiki/Flakes) in the project
 root. Use `nix develop` to spin up a reproducible development shell. Outputs are
 cached for each push to master using [Cachix](https://www.cachix.org/). The
 flake is configured to automatically make use of this cache assuming the user
