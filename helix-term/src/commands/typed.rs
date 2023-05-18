@@ -2847,13 +2847,10 @@ pub(super) fn command_mode(cx: &mut Context) {
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.
-                let (part, part_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {
+                let (word, word_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {
                     (&Cow::Borrowed(""), 0)
                 } else {
-                    (
-                        words.last().unwrap(),
-                        shellwords.parts().last().unwrap().len(),
-                    )
+                    (words.last().unwrap(), words.last().unwrap().len())
                 };
 
                 let argument_number = argument_number_of(&shellwords);
@@ -2862,13 +2859,13 @@ pub(super) fn command_mode(cx: &mut Context) {
                     .get(&words[0] as &str)
                     .map(|tc| tc.completer_for_argument_number(argument_number))
                 {
-                    completer(editor, part)
+                    completer(editor, word)
                         .into_iter()
                         .map(|(range, file)| {
                             let file = shellwords::escape(file);
 
                             // offset ranges to input
-                            let offset = input.len() - part_len;
+                            let offset = input.len() - word_len;
                             let range = (range.start + offset)..;
                             (range, file)
                         })
