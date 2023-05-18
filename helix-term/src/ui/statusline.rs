@@ -206,12 +206,7 @@ where
         context
             .doc
             .language_server()
-            .and_then(|srv| {
-                context
-                    .spinners
-                    .get(srv.id())
-                    .and_then(|spinner| spinner.frame())
-            })
+            .and_then(|srv| context.spinners.frame(srv.id()))
             // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
             .unwrap_or(" ")
             .to_string(),

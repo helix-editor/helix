@@ -34,8 +34,9 @@ use tokio::{
         mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
         oneshot, Notify, RwLock,
     },
-    time::{sleep, Duration, Instant, Sleep},
+    time::{interval, sleep, Duration, Instant, Sleep},
 };
+use tokio_stream::wrappers::IntervalStream;
 
 use anyhow::{anyhow, bail, Error};
 
@@ -848,6 +849,7 @@ pub struct Editor {
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
+    pub tick_frame: IntervalStream,
     pub last_motion: Option<Motion>,
 
     pub last_completion: Option<CompleteAction>,
@@ -892,6 +894,7 @@ pub enum EditorEvent {
     LanguageServerMessage((usize, Call)),
     DebuggerEvent(dap::Payload),
     IdleTimer,
+    TickFrame,
 }
 
 #[derive(Debug, Clone)]
@@ -975,6 +978,7 @@ impl Editor {
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
+            tick_frame: IntervalStream::new(interval(Duration::from_millis(1000 / 60))), // 60 fps
             last_motion: None,
             last_completion: None,
             config,
@@ -1614,17 +1618,21 @@ impl Editor {
                 }
 
                 _ = self.redraw_handle.0.notified() => {
-                    if  !self.needs_redraw{
+                    if !self.needs_redraw {
                         self.needs_redraw = true;
                         let timeout = Instant::now() + Duration::from_millis(96);
-                        if timeout < self.idle_timer.deadline(){
-                            self.idle_timer.as_mut().reset(timeout)
+                        if timeout < self.idle_timer.deadline() {
+                            self.idle_timer.as_mut().reset(timeout);
                         }
                     }
                 }
 
-                _ = &mut self.idle_timer  => {
+                _ = &mut self.idle_timer => {
                     return EditorEvent::IdleTimer
+                }
+
+                _ = &mut self.tick_frame.next() => {
+                    return EditorEvent::TickFrame
                 }
             }
         }

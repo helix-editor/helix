@@ -30,7 +30,7 @@ use crate::{
 
 use log::{debug, error, warn};
 use std::{
-    io::{stdin, stdout},
+    io,
     path::Path,
     sync::Arc,
     time::{Duration, Instant},
@@ -96,7 +96,7 @@ fn setup_integration_logging() {
             ))
         })
         .level(level)
-        .chain(std::io::stdout())
+        .chain(io::stdout())
         .apply();
 }
 
@@ -134,7 +134,7 @@ impl Application {
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout(), &config.editor);
+        let backend = CrosstermBackend::new(io::stdout(), &config.editor);
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
@@ -212,7 +212,7 @@ impl Application {
                 let (view, doc) = current!(editor);
                 align_view(doc, view, Align::Center);
             }
-        } else if stdin().is_tty() || cfg!(feature = "integration") {
+        } else if io::stdin().is_tty() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
         } else if cfg!(target_os = "macos") {
             // On Linux and Windows, we allow the output of a command to be piped into the new buffer.
@@ -286,6 +286,7 @@ impl Application {
 
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
         self.terminal.draw(pos, kind).unwrap();
+        self.last_render = Instant::now();
     }
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
@@ -293,7 +294,6 @@ impl Application {
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
         self.render().await;
-        self.last_render = Instant::now();
 
         loop {
             if !self.event_loop_until_idle(input_stream).await {
@@ -514,6 +514,17 @@ impl Application {
         }
     }
 
+    pub async fn handle_frame_tick(&mut self) {
+        let editor_view = self
+            .compositor
+            .find::<ui::EditorView>()
+            .expect("expected at least one EditorView");
+        let should_render = editor_view.spinners_mut().spinning(self.last_render);
+        if should_render {
+            self.render().await;
+        }
+    }
+
     pub fn handle_document_write(&mut self, doc_save_event: DocumentSavedEventResult) {
         let doc_save_event = match doc_save_event {
             Ok(event) => event,
@@ -596,7 +607,6 @@ impl Application {
 
                 if last || self.last_render.elapsed() > LSP_DEADLINE {
                     self.render().await;
-                    self.last_render = Instant::now();
                 }
             }
             EditorEvent::DebuggerEvent(payload) => {
@@ -608,6 +618,14 @@ impl Application {
             EditorEvent::IdleTimer => {
                 self.editor.clear_idle_timer();
                 self.handle_idle_timeout().await;
+
+                #[cfg(feature = "integration")]
+                {
+                    return true;
+                }
+            }
+            EditorEvent::TickFrame => {
+                self.handle_frame_tick().await;
 
                 #[cfg(feature = "integration")]
                 {
@@ -886,7 +904,7 @@ impl Application {
                                 } else {
                                     self.lsp_progress.end_progress(server_id, &token);
                                     if !self.lsp_progress.is_progressing(server_id) {
-                                        editor_view.spinners_mut().get_or_create(server_id).stop();
+                                        editor_view.spinners_mut().stop(server_id);
                                     }
                                     self.editor.clear_status();
 
@@ -929,7 +947,7 @@ impl Application {
                         if let lsp::WorkDoneProgress::End(_) = work {
                             self.lsp_progress.end_progress(server_id, &token);
                             if !self.lsp_progress.is_progressing(server_id) {
-                                editor_view.spinners_mut().get_or_create(server_id).stop();
+                                editor_view.spinners_mut().stop(server_id);
                             }
                         } else {
                             self.lsp_progress.update(server_id, token, work);
@@ -1005,10 +1023,7 @@ impl Application {
                             .compositor
                             .find::<ui::EditorView>()
                             .expect("expected at least one EditorView");
-                        let spinner = editor_view.spinners_mut().get_or_create(server_id);
-                        if spinner.is_stopped() {
-                            spinner.start();
-                        }
+                        editor_view.spinners_mut().start(server_id);
 
                         Ok(serde_json::Value::Null)
                     }

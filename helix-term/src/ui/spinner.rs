@@ -1,74 +1,39 @@
-use std::{collections::HashMap, time::Instant};
+use std::collections::HashMap;
+use std::time::Instant;
 
-#[derive(Default, Debug)]
+// These two options coupled together makes it just nice for the progress to
+// spin one turn in almost ~1s (1024ms), given that we display 128ms per frame
+// with 8 items in total, we render every 16ms (~60fps), so it renders new
+// progress icon every 8 frames.
+const FRAMES: &[&str] = &["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
+// Using multiples of 2 allow compiling down to simpler instructions
+const INTERVAL: u128 = 128;
+
+#[derive(Debug, Default)]
 pub struct ProgressSpinners {
-    inner: HashMap<usize, Spinner>,
+    inner: HashMap<usize, Instant>,
 }
 
 impl ProgressSpinners {
-    pub fn get(&self, id: usize) -> Option<&Spinner> {
-        self.inner.get(&id)
+    pub fn start(&mut self, id: usize) {
+        self.inner.entry(id).or_insert_with(Instant::now);
     }
 
-    pub fn get_or_create(&mut self, id: usize) -> &mut Spinner {
-        self.inner.entry(id).or_insert_with(Spinner::default)
-    }
-}
-
-impl Default for Spinner {
-    fn default() -> Self {
-        Self::dots(80)
-    }
-}
-
-#[derive(Debug)]
-pub struct Spinner {
-    frames: Vec<&'static str>,
-    count: usize,
-    start: Option<Instant>,
-    interval: u64,
-}
-
-impl Spinner {
-    /// Creates a new spinner with `frames` and `interval`.
-    /// Expects the frames count and interval to be greater than 0.
-    pub fn new(frames: Vec<&'static str>, interval: u64) -> Self {
-        let count = frames.len();
-        assert!(count > 0);
-        assert!(interval > 0);
-
-        Self {
-            frames,
-            count,
-            interval,
-            start: None,
-        }
+    pub fn stop(&mut self, id: usize) {
+        self.inner.remove(&id);
     }
 
-    pub fn dots(interval: u64) -> Self {
-        Self::new(vec!["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"], interval)
+    /// Check if spinning is needed, only needed to do this check for interval
+    /// but not the usual render to reduce the number of render needed.
+    pub fn spinning(&self, last_render: Instant) -> bool {
+        // only render if spinner should change after last render
+        !self.inner.is_empty() && last_render.elapsed().as_millis() > INTERVAL
     }
 
-    pub fn start(&mut self) {
-        self.start = Some(Instant::now());
-    }
+    pub fn frame(&self, id: usize) -> Option<&str> {
+        let start = self.inner.get(&id)?;
+        let idx = (start.elapsed().as_millis() / INTERVAL) as usize % FRAMES.len();
 
-    pub fn frame(&self) -> Option<&str> {
-        let idx = (self
-            .start
-            .map(|time| Instant::now().duration_since(time))?
-            .as_millis()
-            / self.interval as u128) as usize
-            % self.count;
-
-        self.frames.get(idx).copied()
-    }
-
-    pub fn stop(&mut self) {
-        self.start = None;
-    }
-
-    pub fn is_stopped(&self) -> bool {
-        self.start.is_none()
+        Some(FRAMES[idx])
     }
 }
