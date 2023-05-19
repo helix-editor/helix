@@ -522,14 +522,14 @@ impl Selection {
         self
     }
 
-    // Replaces ranges with one spanning from leftmost to rightmost selection
+    /// Replaces ranges with one spanning from first to last range.
     pub fn merge_ranges(self) -> Self {
         let first = self.ranges.first().unwrap();
         let last = self.ranges.last().unwrap();
         Selection::new(smallvec![first.merge(*last)], 0)
     }
 
-    // Merges all ranges that are consecutive
+    /// Merges all ranges that are consecutive.
     pub fn merge_consecutive_ranges(mut self) -> Self {
         let mut primary = self.ranges[self.primary_index];
 
