@@ -523,13 +523,10 @@ impl Selection {
     }
 
     // Replaces ranges with one spanning from leftmost to rightmost selection
-    pub fn merge_ranges(mut self) -> Self {
-        if !self.ranges.is_empty() {
-            let merged_range = self.ranges.iter().fold(self.ranges[0], |a, b| a.merge(*b));
-            self.ranges = smallvec![merged_range];
-            self.primary_index = 0;
-        }
-        self
+    pub fn merge_ranges(self) -> Self {
+        let first = self.ranges.first().unwrap();
+        let last = self.ranges.last().unwrap();
+        Selection::new(smallvec![first.merge(*last)], 0)
     }
 
     // Merges all ranges that are consecutive
