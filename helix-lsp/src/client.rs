@@ -4,7 +4,7 @@ use crate::{
     Call, Error, OffsetEncoding, Result,
 };
 
-use helix_core::{find_workspace, path, ChangeSet, Rope};
+use helix_core::{find_workspace, path, syntax::LanguageServerFeature, ChangeSet, Rope};
 use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp::{
     notification::DidChangeWorkspaceFolders, DidChangeWorkspaceFoldersParams, OneOf,
@@ -44,6 +44,7 @@ fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
 #[derive(Debug)]
 pub struct Client {
     id: usize,
+    name: String,
     _process: Child,
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
@@ -166,8 +167,7 @@ impl Client {
         tokio::spawn(self.did_change_workspace(vec![workspace_for_uri(root_uri)], Vec::new()));
     }
 
-    #[allow(clippy::type_complexity)]
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity, clippy::too_many_arguments)]
     pub fn start(
         cmd: &str,
         args: &[String],
@@ -176,6 +176,7 @@ impl Client {
         root_markers: &[String],
         manual_roots: &[PathBuf],
         id: usize,
+        name: String,
         req_timeout: u64,
         doc_path: Option<&std::path::PathBuf>,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
@@ -200,7 +201,7 @@ impl Client {
         let stderr = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
         let (server_rx, server_tx, initialize_notify) =
-            Transport::start(reader, writer, stderr, id);
+            Transport::start(reader, writer, stderr, id, name.clone());
         let (workspace, workspace_is_cwd) = find_workspace();
         let workspace = path::get_normalized_path(&workspace);
         let root = find_lsp_workspace(
@@ -225,6 +226,7 @@ impl Client {
 
         let client = Self {
             id,
+            name,
             _process: process,
             server_tx,
             request_counter: AtomicU64::new(0),
@@ -238,6 +240,10 @@ impl Client {
         };
 
         Ok((client, server_rx, initialize_notify))
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn id(&self) -> usize {
@@ -268,6 +274,87 @@ impl Client {
         self.capabilities
             .get()
             .expect("language server not yet initialized!")
+    }
+
+    /// Client has to be initialized otherwise this function panics
+    #[inline]
+    pub fn supports_feature(&self, feature: LanguageServerFeature) -> bool {
+        let capabilities = self.capabilities();
+
+        use lsp::*;
+        match feature {
+            LanguageServerFeature::Format => matches!(
+                capabilities.document_formatting_provider,
+                Some(OneOf::Left(true) | OneOf::Right(_))
+            ),
+            LanguageServerFeature::GotoDeclaration => matches!(
+                capabilities.declaration_provider,
+                Some(
+                    DeclarationCapability::Simple(true)
+                        | DeclarationCapability::RegistrationOptions(_)
+                        | DeclarationCapability::Options(_),
+                )
+            ),
+            LanguageServerFeature::GotoDefinition => matches!(
+                capabilities.definition_provider,
+                Some(OneOf::Left(true) | OneOf::Right(_))
+            ),
+            LanguageServerFeature::GotoTypeDefinition => matches!(
+                capabilities.type_definition_provider,
+                Some(
+                    TypeDefinitionProviderCapability::Simple(true)
+                        | TypeDefinitionProviderCapability::Options(_),
+                )
+            ),
+            LanguageServerFeature::GotoReference => matches!(
+                capabilities.references_provider,
+                Some(OneOf::Left(true) | OneOf::Right(_))
+            ),
+            LanguageServerFeature::GotoImplementation => matches!(
+                capabilities.implementation_provider,
+                Some(
+                    ImplementationProviderCapability::Simple(true)
+                        | ImplementationProviderCapability::Options(_),
+                )
+            ),
+            LanguageServerFeature::SignatureHelp => capabilities.signature_help_provider.is_some(),
+            LanguageServerFeature::Hover => matches!(
+                capabilities.hover_provider,
+                Some(HoverProviderCapability::Simple(true) | HoverProviderCapability::Options(_),)
+            ),
+            LanguageServerFeature::DocumentHighlight => matches!(
+                capabilities.document_highlight_provider,
+                Some(OneOf::Left(true) | OneOf::Right(_))
+            ),
+            LanguageServerFeature::Completion => capabilities.completion_provider.is_some(),
+            LanguageServerFeature::CodeAction => matches!(
+                capabilities.code_action_provider,
+                Some(
+                    CodeActionProviderCapability::Simple(true)
+                        | CodeActionProviderCapability::Options(_),
+                )
+            ),
+            LanguageServerFeature::WorkspaceCommand => {
+                capabilities.execute_command_provider.is_some()
+            }
+            LanguageServerFeature::DocumentSymbols => matches!(
+                capabilities.document_symbol_provider,
+                Some(OneOf::Left(true) | OneOf::Right(_))
+            ),
+            LanguageServerFeature::WorkspaceSymbols => matches!(
+                capabilities.workspace_symbol_provider,
+                Some(OneOf::Left(true) | OneOf::Right(_))
+            ),
+            LanguageServerFeature::Diagnostics => true, // there's no extra server capability
+            LanguageServerFeature::RenameSymbol => matches!(
+                capabilities.rename_provider,
+                Some(OneOf::Left(true)) | Some(OneOf::Right(_))
+            ),
+            LanguageServerFeature::InlayHints => matches!(
+                capabilities.inlay_hint_provider,
+                Some(OneOf::Left(true) | OneOf::Right(InlayHintServerCapabilities::Options(_)))
+            ),
+        }
     }
 
     pub fn offset_encoding(&self) -> OffsetEncoding {
@@ -1295,21 +1382,13 @@ impl Client {
         Some(self.call::<lsp::request::CodeActionRequest>(params))
     }
 
-    pub fn supports_rename(&self) -> bool {
-        let capabilities = self.capabilities.get().unwrap();
-        matches!(
-            capabilities.rename_provider,
-            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
-        )
-    }
-
     pub fn rename_symbol(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         new_name: String,
     ) -> Option<impl Future<Output = Result<lsp::WorkspaceEdit>>> {
-        if !self.supports_rename() {
+        if !self.supports_feature(LanguageServerFeature::RenameSymbol) {
             return None;
         }
 

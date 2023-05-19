@@ -6,7 +6,7 @@ use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
-use helix_core::syntax::Highlight;
+use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
 use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
@@ -114,6 +114,19 @@ pub struct SavePoint {
     /// The view this savepoint is associated with
     pub view: ViewId,
     revert: Mutex<Transaction>,
+    pub text: Rope,
+}
+
+impl SavePoint {
+    pub fn cursor(&self) -> usize {
+        // we always create transactions with selections
+        self.revert
+            .lock()
+            .selection()
+            .unwrap()
+            .primary()
+            .cursor(self.text.slice(..))
+    }
 }
 
 pub struct Document {
@@ -141,9 +154,9 @@ pub struct Document {
     /// The document's default line ending.
     pub line_ending: LineEnding,
 
-    syntax: Option<Syntax>,
+    pub syntax: Option<Syntax>,
     /// Corresponding language scope name. Usually `source.<lang>`.
-    pub(crate) language: Option<Arc<LanguageConfiguration>>,
+    pub language: Option<Arc<LanguageConfiguration>>,
 
     /// Pending changes since last history commit.
     changes: ChangeSet,
@@ -166,8 +179,8 @@ pub struct Document {
     version: i32, // should be usize?
     pub(crate) modified_since_accessed: bool,
 
-    diagnostics: Vec<Diagnostic>,
-    language_server: Option<Arc<helix_lsp::Client>>,
+    pub(crate) diagnostics: Vec<Diagnostic>,
+    pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
 
     diff_handle: Option<DiffHandle>,
     version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
@@ -567,7 +580,7 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
-use helix_lsp::lsp;
+use helix_lsp::{lsp, Client, LanguageServerName};
 use url::Url;
 
 impl Document {
@@ -603,7 +616,7 @@ impl Document {
             last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
             modified_since_accessed: false,
-            language_server: None,
+            language_servers: HashMap::new(),
             diff_handle: None,
             config,
             version_control_head: None,
@@ -717,10 +730,12 @@ impl Document {
             return Some(formatting_future.boxed());
         };
 
-        let language_server = self.language_server()?;
         let text = self.text.clone();
+        // finds first language server that supports formatting and then formats
+        let language_server = self
+            .language_servers_with_feature(LanguageServerFeature::Format)
+            .next()?;
         let offset_encoding = language_server.offset_encoding();
-
         let request = language_server.text_document_formatting(
             self.identifier(),
             lsp::FormattingOptions {
@@ -784,13 +799,12 @@ impl Document {
                 if self.path.is_none() {
                     bail!("Can't save with no path set!");
                 }
-
                 self.path.as_ref().unwrap().clone()
             }
         };
 
         let identifier = self.path().map(|_| self.identifier());
-        let language_server = self.language_server.clone();
+        let language_servers = self.language_servers.clone();
 
         // mark changes up to now as saved
         let current_rev = self.get_current_revision();
@@ -834,14 +848,13 @@ impl Document {
                 text: text.clone(),
             };
 
-            if let Some(language_server) = language_server {
+            for (_, language_server) in language_servers {
                 if !language_server.is_initialized() {
                     return Ok(event);
                 }
-
-                if let Some(identifier) = identifier {
+                if let Some(identifier) = &identifier {
                     if let Some(notification) =
-                        language_server.text_document_did_save(identifier, &text)
+                        language_server.text_document_did_save(identifier.clone(), &text)
                     {
                         notification.await?;
                     }
@@ -856,12 +869,20 @@ impl Document {
 
     /// Detect the programming language based on the file type.
     pub fn detect_language(&mut self, config_loader: Arc<syntax::Loader>) {
-        if let Some(path) = &self.path {
-            let language_config = config_loader
-                .language_config_for_file_name(path)
-                .or_else(|| config_loader.language_config_for_shebang(self.text()));
-            self.set_language(language_config, Some(config_loader));
-        }
+        self.set_language(
+            self.detect_language_config(&config_loader),
+            Some(config_loader),
+        );
+    }
+
+    /// Detect the programming language based on the file type.
+    pub fn detect_language_config(
+        &self,
+        config_loader: &syntax::Loader,
+    ) -> Option<Arc<helix_core::syntax::LanguageConfiguration>> {
+        config_loader
+            .language_config_for_file_name(self.path.as_ref()?)
+            .or_else(|| config_loader.language_config_for_shebang(self.text()))
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
@@ -951,8 +972,7 @@ impl Document {
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
             if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
-                let syntax = Syntax::new(&self.text, highlight_config, loader);
-                self.syntax = Some(syntax);
+                self.syntax = Syntax::new(&self.text, highlight_config, loader);
             }
 
             self.language = Some(language_config);
@@ -982,11 +1002,6 @@ impl Document {
             .ok_or_else(|| anyhow!("invalid language id: {}", language_id))?;
         self.set_language(Some(language_config), Some(config_loader));
         Ok(())
-    }
-
-    /// Set the LSP.
-    pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {
-        self.language_server = language_server;
     }
 
     /// Select text within the [`Document`].
@@ -1034,7 +1049,12 @@ impl Document {
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
-    fn apply_impl(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+    fn apply_impl(
+        &mut self,
+        transaction: &Transaction,
+        view_id: ViewId,
+        emit_lsp_notification: bool,
+    ) -> bool {
         use helix_core::Assoc;
 
         let old_doc = self.text().clone();
@@ -1087,9 +1107,11 @@ impl Document {
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
                 // TODO: no unwrap
-                syntax
-                    .update(&old_doc, &self.text, transaction.changes())
-                    .unwrap();
+                let res = syntax.update(&old_doc, &self.text, transaction.changes());
+                if res.is_err() {
+                    log::error!("TS parser failed, disabeling TS for the current buffer: {res:?}");
+                    self.syntax = None;
+                }
             }
 
             let changes = transaction.changes();
@@ -1130,25 +1152,31 @@ impl Document {
                 apply_inlay_hint_changes(padding_after_inlay_hints);
             }
 
-            // emit lsp notification
-            if let Some(language_server) = self.language_server() {
-                let notify = language_server.text_document_did_change(
-                    self.versioned_identifier(),
-                    &old_doc,
-                    self.text(),
-                    changes,
-                );
+            if emit_lsp_notification {
+                // emit lsp notification
+                for language_server in self.language_servers() {
+                    let notify = language_server.text_document_did_change(
+                        self.versioned_identifier(),
+                        &old_doc,
+                        self.text(),
+                        changes,
+                    );
 
-                if let Some(notify) = notify {
-                    tokio::spawn(notify);
+                    if let Some(notify) = notify {
+                        tokio::spawn(notify);
+                    }
                 }
             }
         }
         success
     }
 
-    /// Apply a [`Transaction`] to the [`Document`] to change its text.
-    pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+    fn apply_inner(
+        &mut self,
+        transaction: &Transaction,
+        view_id: ViewId,
+        emit_lsp_notification: bool,
+    ) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
         if self.changes.is_empty() && !transaction.changes().is_empty() {
@@ -1158,7 +1186,7 @@ impl Document {
             });
         }
 
-        let success = self.apply_impl(transaction, view_id);
+        let success = self.apply_impl(transaction, view_id, emit_lsp_notification);
 
         if !transaction.changes().is_empty() {
             // Compose this transaction with the previous one
@@ -1168,12 +1196,23 @@ impl Document {
         }
         success
     }
+    /// Apply a [`Transaction`] to the [`Document`] to change its text.
+    pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+        self.apply_inner(transaction, view_id, true)
+    }
+
+    /// Apply a [`Transaction`] to the [`Document`] to change its text
+    /// without notifying the language servers. This is useful for temporary transactions
+    /// that must not influence the server.
+    pub fn apply_temporary(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+        self.apply_inner(transaction, view_id, false)
+    }
 
     fn undo_redo_impl(&mut self, view: &mut View, undo: bool) -> bool {
         let mut history = self.history.take();
         let txn = if undo { history.undo() } else { history.redo() };
         let success = if let Some(txn) = txn {
-            self.apply_impl(txn, view.id)
+            self.apply_impl(txn, view.id, true)
         } else {
             false
         };
@@ -1205,15 +1244,32 @@ impl Document {
     /// the state it had when this function was called.
     pub fn savepoint(&mut self, view: &View) -> Arc<SavePoint> {
         let revert = Transaction::new(self.text()).with_selection(self.selection(view.id).clone());
+        // check if there is already an existing (identical) savepoint around
+        if let Some(savepoint) = self
+            .savepoints
+            .iter()
+            .rev()
+            .find_map(|savepoint| savepoint.upgrade())
+        {
+            let transaction = savepoint.revert.lock();
+            if savepoint.view == view.id
+                && transaction.changes().is_empty()
+                && transaction.selection() == revert.selection()
+            {
+                drop(transaction);
+                return savepoint;
+            }
+        }
         let savepoint = Arc::new(SavePoint {
             view: view.id,
             revert: Mutex::new(revert),
+            text: self.text.clone(),
         });
         self.savepoints.push(Arc::downgrade(&savepoint));
         savepoint
     }
 
-    pub fn restore(&mut self, view: &mut View, savepoint: &SavePoint) {
+    pub fn restore(&mut self, view: &mut View, savepoint: &SavePoint, emit_lsp_notification: bool) {
         assert_eq!(
             savepoint.view, view.id,
             "Savepoint must not be used with a different view!"
@@ -1228,7 +1284,7 @@ impl Document {
 
         let savepoint_ref = self.savepoints.remove(savepoint_idx);
         let mut revert = savepoint.revert.lock();
-        self.apply(&revert, view.id);
+        self.apply_inner(&revert, view.id, emit_lsp_notification);
         *revert = Transaction::new(self.text()).with_selection(self.selection(view.id).clone());
         self.savepoints.push(savepoint_ref)
     }
@@ -1241,7 +1297,7 @@ impl Document {
         };
         let mut success = false;
         for txn in txns {
-            if self.apply_impl(&txn, view.id) {
+            if self.apply_impl(&txn, view.id, true) {
                 success = true;
             }
         }
@@ -1354,18 +1410,13 @@ impl Document {
             .map(|language| language.language_id.as_str())
     }
 
-    /// Language ID for the document. Either the `language-id` from the
-    /// `language-server` configuration, or the document language if no
-    /// `language-id` has been specified.
+    /// Language ID for the document. Either the `language-id`,
+    /// or the document language name if no `language-id` has been specified.
     pub fn language_id(&self) -> Option<&str> {
-        let language_config = self.language.as_deref()?;
-
-        language_config
-            .language_server
-            .as_ref()?
-            .language_id
+        self.language_config()?
+            .language_server_language_id
             .as_deref()
-            .or(Some(language_config.language_id.as_str()))
+            .or_else(|| self.language_name())
     }
 
     /// Corresponding [`LanguageConfiguration`].
@@ -1378,10 +1429,45 @@ impl Document {
         self.version
     }
 
-    /// Language server if it has been initialized.
-    pub fn language_server(&self) -> Option<&helix_lsp::Client> {
-        let server = self.language_server.as_deref()?;
-        server.is_initialized().then_some(server)
+    /// maintains the order as configured in the language_servers TOML array
+    pub fn language_servers(&self) -> impl Iterator<Item = &helix_lsp::Client> {
+        self.language_config().into_iter().flat_map(move |config| {
+            config.language_servers.iter().filter_map(move |features| {
+                let ls = &**self.language_servers.get(&features.name)?;
+                if ls.is_initialized() {
+                    Some(ls)
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
+    pub fn remove_language_server_by_name(&mut self, name: &str) -> Option<Arc<Client>> {
+        self.language_servers.remove(name)
+    }
+
+    pub fn language_servers_with_feature(
+        &self,
+        feature: LanguageServerFeature,
+    ) -> impl Iterator<Item = &helix_lsp::Client> {
+        self.language_config().into_iter().flat_map(move |config| {
+            config.language_servers.iter().filter_map(move |features| {
+                let ls = &**self.language_servers.get(&features.name)?;
+                if ls.is_initialized()
+                    && ls.supports_feature(feature)
+                    && features.has_feature(feature)
+                {
+                    Some(ls)
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
+    pub fn supports_language_server(&self, id: usize) -> bool {
+        self.language_servers().any(|l| l.id() == id)
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
@@ -1504,10 +1590,27 @@ impl Document {
         &self.diagnostics
     }
 
-    pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
-        self.diagnostics = diagnostics;
+    pub fn shown_diagnostics(&self) -> impl Iterator<Item = &Diagnostic> + DoubleEndedIterator {
+        self.diagnostics.iter().filter(|d| {
+            self.language_servers_with_feature(LanguageServerFeature::Diagnostics)
+                .any(|ls| ls.id() == d.language_server_id)
+        })
+    }
+
+    pub fn replace_diagnostics(
+        &mut self,
+        mut diagnostics: Vec<Diagnostic>,
+        language_server_id: usize,
+    ) {
+        self.clear_diagnostics(language_server_id);
+        self.diagnostics.append(&mut diagnostics);
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
+    }
+
+    pub fn clear_diagnostics(&mut self, language_server_id: usize) {
+        self.diagnostics
+            .retain(|d| d.language_server_id != language_server_id);
     }
 
     /// Get the document's auto pairs. If the document has a recognized

@@ -17,7 +17,7 @@ mod text;
 use crate::compositor::{Component, Compositor};
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
-pub use completion::Completion;
+pub use completion::{Completion, CompletionItem};
 pub use editor::EditorView;
 pub use markdown::Markdown;
 pub use menu::Menu;
@@ -238,6 +238,7 @@ pub mod completers {
     use crate::ui::prompt::Completion;
     use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
     use fuzzy_matcher::FuzzyMatcher;
+    use helix_core::syntax::LanguageServerFeature;
     use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::theme;
     use helix_view::{editor::Config, Editor};
@@ -393,20 +394,11 @@ pub mod completers {
     pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
         let matcher = Matcher::default();
 
-        let (_, doc) = current_ref!(editor);
-
-        let language_server = match doc.language_server() {
-            Some(language_server) => language_server,
-            None => {
-                return vec![];
-            }
-        };
-
-        let options = match &language_server.capabilities().execute_command_provider {
-            Some(options) => options,
-            None => {
-                return vec![];
-            }
+        let Some(options) = doc!(editor)
+            .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
+            .find_map(|ls| ls.capabilities().execute_command_provider.as_ref())
+        else {
+            return vec![];
         };
 
         let mut matches: Vec<_> = options
