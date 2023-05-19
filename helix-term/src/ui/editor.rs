@@ -33,7 +33,7 @@ use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
-use super::statusline;
+use super::{completion::CompletionItem, statusline};
 use super::{document::LineDecoration, lsp::SignatureHelp};
 
 pub struct EditorView {
@@ -650,7 +650,7 @@ impl EditorView {
             .primary()
             .cursor(doc.text().slice(..));
 
-        let diagnostics = doc.diagnostics().iter().filter(|diagnostic| {
+        let diagnostics = doc.shown_diagnostics().filter(|diagnostic| {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
         });
 
@@ -953,20 +953,13 @@ impl EditorView {
         &mut self,
         editor: &mut Editor,
         savepoint: Arc<SavePoint>,
-        items: Vec<helix_lsp::lsp::CompletionItem>,
-        offset_encoding: helix_lsp::OffsetEncoding,
+        items: Vec<CompletionItem>,
         start_offset: usize,
         trigger_offset: usize,
         size: Rect,
     ) -> Option<Rect> {
-        let mut completion = Completion::new(
-            editor,
-            savepoint,
-            items,
-            offset_encoding,
-            start_offset,
-            trigger_offset,
-        );
+        let mut completion =
+            Completion::new(editor, savepoint, items, start_offset, trigger_offset);
 
         if completion.is_empty() {
             // skip if we got no completion results

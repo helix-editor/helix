@@ -43,6 +43,7 @@ pub struct Diagnostic {
     pub message: String,
     pub severity: Option<Severity>,
     pub code: Option<NumberOrString>,
+    pub language_server_id: usize,
     pub tags: Vec<DiagnosticTag>,
     pub source: Option<String>,
     pub data: Option<serde_json::Value>,
