@@ -12,9 +12,7 @@ use toml::de::Error as TomlError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Config {
-    #[serde(default, deserialize_with = "opt_string_or_struct")]
     pub theme: Option<ThemeConfig>,
-    #[serde(default = "default")]
     pub keys: HashMap<Mode, Keymap>,
     pub editor: helix_view::editor::Config,
 }
@@ -22,7 +20,8 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
-    pub theme: Option<String>,
+    #[serde(default, deserialize_with = "opt_string_or_struct")]
+    pub theme: Option<ThemeConfig>,
     pub keys: Option<HashMap<Mode, Keymap>>,
     pub editor: Option<toml::Value>,
 }

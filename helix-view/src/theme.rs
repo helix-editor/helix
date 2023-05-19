@@ -84,7 +84,9 @@ impl Loader {
         }
 
         let mut visited_paths = HashSet::new();
-        let theme = self.load_theme(config, name, &mut visited_paths).map(Theme::from)?;
+        let theme = self
+            .load_theme(config, &mut visited_paths)
+            .map(Theme::from)?;
         let theme = persist_overrides(theme);
 
         Ok(Theme {
@@ -103,18 +105,12 @@ impl Loader {
     /// However, it is not recommended that users do this as it will make tracing
     /// errors more difficult.
     fn load_theme(
-        
         &self,
-       
         config: &ThemeConfig,
-        name: &str,
-        config: &ThemeConfig,
-       
         visited_paths: &mut HashSet<PathBuf>,
-    ,
     ) -> Result<Value> {
         let name = &config.name;
-        let path = self.path(name, visited_paths);
+        let path = self.path(name, visited_paths)?;
         let theme_toml = self.load_toml(path)?;
 
         let inherits = theme_toml.get("inherits");
@@ -136,11 +132,7 @@ impl Loader {
                         name: parent_theme_name.to_string(),
                         overrides: None,
                     };
-                    self.load_theme(
-                        &parent_theme_config,
-                        parent_theme_name,
-                        visited_paths,
-                    )?
+                    self.load_theme(&parent_theme_config, visited_paths)?
                 }
             };
 
