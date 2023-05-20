@@ -1240,8 +1240,13 @@ impl Document {
                 true
             });
 
-            self.diagnostics
-                .sort_unstable_by_key(|diagnostic| diagnostic.range);
+            self.diagnostics.sort_unstable_by_key(|diagnostic| {
+                (
+                    diagnostic.range,
+                    diagnostic.severity,
+                    diagnostic.language_server_id,
+                )
+            });
 
             // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
             let apply_inlay_hint_changes = |annotations: &mut Rc<[InlineAnnotation]>| {
@@ -1738,8 +1743,13 @@ impl Document {
             });
         }
         self.diagnostics.extend(diagnostics);
-        self.diagnostics
-            .sort_unstable_by_key(|diagnostic| diagnostic.range);
+        self.diagnostics.sort_unstable_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.language_server_id,
+            )
+        });
     }
 
     pub fn clear_diagnostics(&mut self, language_server_id: usize) {

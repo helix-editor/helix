@@ -907,7 +907,9 @@ impl Application {
 
                         // Sort diagnostics first by severity and then by line numbers.
                         // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-                        diagnostics.sort_unstable_by_key(|(d, _)| (d.severity, d.range.start));
+                        diagnostics.sort_unstable_by_key(|(d, server_id)| {
+                            (d.severity, d.range.start, *server_id)
+                        });
                     }
                     Notification::ShowMessage(params) => {
                         log::warn!("unhandled window/showMessage: {:?}", params);
