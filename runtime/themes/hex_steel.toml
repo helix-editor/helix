@@ -24,10 +24,19 @@
 "diff.delta" = { fg = "t4" }
 "diff.minus" = { fg = "t4" }
 
+<<<<<<< Updated upstream
 "ui.cursor.insert" = { fg = "t2", bg = "highlight" }
 "ui.cursor.select" = { fg = "t2", bg = "highlight_two" }
 "ui.cursor" = { fg = "t1", bg = "highlight_three" }
 "ui.cursor.match" = { fg = "highlight", bg = "t1", modifiers = ["bold"] }
+=======
+"ui.cursor.primary.insert" = { fg = "t2", bg = "highlight" }
+"ui.cursor.primary.select" = { fg = "t2", bg = "highlight_two" }
+"ui.cursor.primary" = { fg = "t1", bg = "highlight_three" }
+"ui.cursor.primary.match" = { fg = "highlight", bg = "selection", modifiers = [
+    "bold",
+] }
+>>>>>>> Stashed changes
 
 "ui.linenr" = { fg = "t3", bg = "t1" }
 "ui.linenr.selected" = { fg = "highlight_three", bg = "t1" }
