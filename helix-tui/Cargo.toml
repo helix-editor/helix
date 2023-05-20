@@ -16,11 +16,11 @@ include = ["src/**/*", "README.md"]
 default = ["crossterm"]
 
 [dependencies]
-bitflags = "2.1"
+bitflags = "2.2"
 cassowary = "0.3"
 unicode-segmentation = "1.10"
 crossterm = { version = "0.26", optional = true }
-termini = "0.1"
+termini = "1.0"
 serde = { version = "1", "optional" = true, features = ["derive"]}
 once_cell = "1.17"
 log = "~0.4"

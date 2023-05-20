@@ -68,7 +68,7 @@ grep-searcher = "0.1.11"
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
-libc = "0.2.141"
+libc = "0.2.144"
 
 [build-dependencies]
 helix-loader = { version = "0.6", path = "../helix-loader" }
