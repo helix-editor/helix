@@ -207,7 +207,7 @@ source = { git = "https://github.com/FuelLabs/tree-sitter-sway", rev = "e491a005
 name = "toml"
 scope = "source.toml"
 injection-regex = "toml"
-file-types = ["toml", "poetry.lock"]
+file-types = ["toml", "poetry.lock", "Cargo.lock"]
 roots = []
 comment-token = "#"
 language-servers = [ "taplo" ]
