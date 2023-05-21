@@ -1911,27 +1911,17 @@ fn sort_impl(
     Ok(())
 }
 
-fn reflow(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
-    let scrolloff = cx.editor.config().scrolloff;
-    let cfg_text_width: usize = cx.editor.config().text_width;
-    let (view, doc) = current!(cx.editor);
+pub(super) fn reflow_impl(editor: &mut Editor, text_width: Option<NonZeroUsize>) {
+    let scrolloff = editor.config().scrolloff;
+    let cfg_text_width = editor.config().text_width;
+    let (view, doc) = current!(editor);
 
     // Find the text_width by checking the following sources in order:
-    //   - The passed argument in `args`
+    //   - The passed argument
     //   - The configured text-width for this language in languages.toml
     //   - The configured text-width in the config.toml
-    let text_width: usize = args
-        .get(0)
-        .map(|num| num.parse::<usize>())
-        .transpose()?
+    let text_width: usize = text_width
+        .map(Into::into)
         .or_else(|| doc.language_config().and_then(|config| config.text_width))
         .unwrap_or(cfg_text_width);
 
@@ -1948,6 +1938,22 @@ fn reflow(
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
+}
+
+fn reflow(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let text_width = args
+        .get(0)
+        .map(|num| num.parse())
+        .transpose()?;
+    reflow_impl(cx.editor, text_width);
 
     Ok(())
 }

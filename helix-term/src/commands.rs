@@ -389,6 +389,7 @@ impl MappableCommand {
         paste_primary_clipboard_before, "Paste primary clipboard before selections",
         indent, "Indent selection",
         unindent, "Unindent selection",
+        reflow, "Hard-wrap selection to given width",
         format_selections, "Format selection",
         join_selections, "Join lines inside selection",
         join_selections_space, "Join lines inside selection and select spaces",
@@ -4042,6 +4043,10 @@ fn unindent(cx: &mut Context) {
     let transaction = Transaction::change(doc.text(), changes.into_iter());
 
     doc.apply(&transaction, view.id);
+}
+
+fn reflow(cx: &mut Context) {
+    reflow_impl(cx.editor, cx.count);
 }
 
 fn format_selections(cx: &mut Context) {
