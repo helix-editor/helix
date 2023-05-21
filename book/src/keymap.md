@@ -111,7 +111,8 @@
 | `s`                   | Select all regex matches inside selections                        | `select_regex`                       |
 | `S`                   | Split selection into sub selections on regex matches              | `split_selection`                    |
 | `Alt-s`               | Split selection on newlines                                       | `split_selection_on_newline`         |
-| `Alt-_ `              | Merge consecutive selections                                      | `merge_consecutive_selections`       |
+| `Alt-minus`           | Merge selections                                                  | `merge_selections`                   |
+| `Alt-_`               | Merge consecutive selections                                      | `merge_consecutive_selections`       |
 | `&`                   | Align selection in columns                                        | `align_selections`                   |
 | `_`                   | Trim whitespace from the selection                                | `trim_selections`                    |
 | `;`                   | Collapse selection onto a single cursor                           | `collapse_selection`                 |

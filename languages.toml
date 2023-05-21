@@ -1245,7 +1245,7 @@ roots = []
 file-types = ["COMMIT_EDITMSG"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-rulers = [50, 72]
+rulers = [51, 73]
 text-width = 72
 
 [[grammar]]
@@ -2140,7 +2140,7 @@ source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d1
 name = "xml"
 scope = "source.xml"
 injection-regex = "xml"
-file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg", "xsd", "gml"]
+file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg", "xsd", "gml", "xaml"]
 indent = { tab-width = 2, unit = "  " }
 roots = []
 
