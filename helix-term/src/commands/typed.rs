@@ -8,8 +8,11 @@ use super::*;
 use helix_core::{encoding, shellwords::Shellwords};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
+use open::that as open_that;
 use serde_json::Value;
 use ui::completers::{self, Completer};
+
+const HELIX_DOCS_URL: &str = "https://docs.helix-editor.com";
 
 #[derive(Clone)]
 pub struct TypableCommand {
@@ -2230,6 +2233,23 @@ fn clear_register(
     Ok(())
 }
 
+fn docs_open(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    if let Err(e) = open_that(HELIX_DOCS_URL) {
+        // this fails in WSL
+        bail!("Could not open web browser: {}", e);
+    } else {
+        cx.editor.set_status("Documentation opened in browser");
+        return Ok(());
+    }
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2804,6 +2824,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             fun: clear_register,
             signature: CommandSignature::none(),
         },
+        TypableCommand {
+            name: "docs-open",
+            aliases: &[],
+            doc: "Opens the helix documentation in the default web browser",
+            fun: docs_open,
+            signature: CommandSignature::none()
+        }
     ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
