@@ -445,7 +445,7 @@ pub mod completers {
     }
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
-    fn filename_impl<F>(_editor: &Editor, input: &str, filter_fn: F) -> Vec<Completion>
+    fn filename_impl<F>(editor: &Editor, input: &str, filter_fn: F) -> Vec<Completion>
     where
         F: Fn(&ignore::DirEntry) -> FileMatch,
     {
@@ -455,7 +455,17 @@ pub mod completers {
         use std::path::Path;
 
         let is_tilde = input == "~";
-        let path = helix_core::path::expand_tilde(Path::new(input));
+        let is_percent = input == "%";
+        let path = helix_core::path::expand_tilde(if is_percent {
+            let current_doc = view!(editor).doc;
+            editor
+                .documents()
+                .find(|doc| doc.id() == current_doc)
+                .and_then(|doc| doc.path().map(|p| p as &Path))
+                .unwrap_or_else(|| Path::new(input))
+        } else {
+            Path::new(input)
+        });
 
         let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)
@@ -508,6 +518,13 @@ pub mod completers {
                         // ~ -> <TAB> -> /home/user
                         // ~/ -> <TAB> -> ~/first_entry
                         path.to_path_buf()
+                    } else if is_percent {
+                        // if it's a single percent a *current*-dir-relative path of the active document is displayed
+                        std::env::current_dir()
+                            .ok()
+                            .and_then(|cur| path.strip_prefix(cur).ok())
+                            .unwrap_or(path)
+                            .to_path_buf()
                     } else {
                         path.strip_prefix(&dir).unwrap_or(path).to_path_buf()
                     };
