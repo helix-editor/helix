@@ -216,6 +216,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "space" => { "Space"
             "f" => file_picker,
             "F" => file_picker_in_current_directory,
+            "t" => tab_picker,
             "b" => buffer_picker,
             "j" => jumplist_picker,
             "s" => symbol_picker,
