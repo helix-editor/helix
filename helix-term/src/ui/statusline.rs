@@ -275,7 +275,7 @@ where
             });
 
     if warnings > 0 || errors > 0 {
-        write(context, format!(" {} ", "W"), None);
+        write(context, " W ".into(), None);
     }
 
     if warnings > 0 {
