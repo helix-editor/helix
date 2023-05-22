@@ -974,21 +974,8 @@ impl Application {
                         self.editor.diagnostics.retain(|_, diags| !diags.is_empty());
 
                         // Clear any diagnostics for documents with this server open.
-                        let urls: Vec<_> = self
-                            .editor
-                            .documents_mut()
-                            .filter_map(|doc| {
-                                if doc.supports_language_server(server_id) {
-                                    doc.clear_diagnostics(server_id);
-                                    doc.url()
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect();
-
-                        for url in urls {
-                            self.editor.diagnostics.remove(&url);
+                        for doc in self.editor.documents_mut() {
+                            doc.clear_diagnostics(server_id);
                         }
 
                         // Remove the language server from the registry.
