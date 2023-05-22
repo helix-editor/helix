@@ -48,6 +48,7 @@ pub const DEFAULT_LANGUAGE_NAME: &str = "text";
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum Mode {
     Normal = 0,
     Select = 1,
@@ -776,6 +777,7 @@ impl Document {
 
     /// The `Document`'s text is encoded according to its encoding and written to the file located
     /// at its `path()`.
+    #[cfg(not(fuzzing))]
     fn save_impl(
         &mut self,
         path: Option<PathBuf>,
@@ -855,6 +857,98 @@ impl Document {
                 if let Some(identifier) = &identifier {
                     if let Some(notification) =
                         language_server.text_document_did_save(identifier.clone(), &text)
+                    {
+                        notification.await?;
+                    }
+                }
+            }
+
+            Ok(event)
+        };
+
+        Ok(future)
+    }
+
+    // When we are fuzzing we don't neccesarily want to actually save any state to disk. Otherwise,
+    // we'll end up with a bunch of random files scattered all over our filesystem.
+    // So instead what we are going to do is pretend to "save" to disk. This is the equivelent
+    // to saving and then immediately having the file overwritten with the origional.
+    #[cfg(fuzzing)]
+    fn save_impl(
+        &mut self,
+        path: Option<PathBuf>,
+        force: bool,
+    ) -> Result<
+        impl Future<Output = Result<DocumentSavedEvent, anyhow::Error>> + 'static + Send,
+        anyhow::Error,
+    > {
+        log::debug!(
+            "submitting save of doc '{:?}'",
+            self.path().map(|path| path.to_string_lossy())
+        );
+
+        // we clone and move text + path into the future so that we asynchronously save the current
+        // state without blocking any further edits.
+        let text = self.text().clone();
+
+        let path = match path {
+            Some(path) => helix_core::path::get_canonicalized_path(&path)?,
+            None => {
+                if self.path.is_none() {
+                    bail!("Can't save with no path set!");
+                }
+
+                self.path.as_ref().unwrap().clone()
+            }
+        };
+
+        let identifier = self.path().map(|_| self.identifier());
+        let language_server = self.language_server.clone();
+
+        // mark changes up to now as saved
+        let current_rev = self.get_current_revision();
+        let doc_id = self.id();
+
+        let last_saved_time = self.last_saved_time;
+
+        // We encode the file according to the `Document`'s encoding.
+        let future = async move {
+            use tokio::fs;
+            if let Some(parent) = path.parent() {
+                // TODO: display a prompt asking the user if the directories should be created
+                if !parent.exists() {
+                    if !force {
+                        bail!("can't save file, parent directory does not exist");
+                    }
+                }
+            }
+
+            // Protect against overwriting changes made externally
+            if !force {
+                if let Ok(metadata) = fs::metadata(&path).await {
+                    if let Ok(mtime) = metadata.modified() {
+                        if last_saved_time < mtime {
+                            bail!("file modified by an external process, use :w! to overwrite");
+                        }
+                    }
+                }
+            }
+
+            let event = DocumentSavedEvent {
+                revision: current_rev,
+                doc_id,
+                path,
+                text: text.clone(),
+            };
+
+            if let Some(language_server) = language_server {
+                if !language_server.is_initialized() {
+                    return Ok(event);
+                }
+
+                if let Some(identifier) = identifier {
+                    if let Some(notification) =
+                        language_server.text_document_did_save(identifier, &text)
                     {
                         notification.await?;
                     }

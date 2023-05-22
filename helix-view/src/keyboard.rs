@@ -11,6 +11,19 @@ bitflags! {
     }
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a> arbitrary::Arbitrary<'a> for KeyModifiers {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        match u8::arbitrary(u)? {
+            // This doesn't need to map directly to the bitfields, just arbitrarily
+            0 => Ok(KeyModifiers::SHIFT),
+            1 => Ok(KeyModifiers::CONTROL),
+            2 => Ok(KeyModifiers::ALT),
+            _ => Ok(KeyModifiers::NONE),
+        }
+    }
+}
+
 #[cfg(feature = "term")]
 impl From<KeyModifiers> for crossterm::event::KeyModifiers {
     fn from(key_modifiers: KeyModifiers) -> Self {
@@ -55,6 +68,7 @@ impl From<crossterm::event::KeyModifiers> for KeyModifiers {
 
 /// Represents a media key (as part of [`KeyCode::Media`]).
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum MediaKeyCode {
     /// Play media key.
     Play,
@@ -132,6 +146,7 @@ impl From<crossterm::event::MediaKeyCode> for MediaKeyCode {
 
 /// Represents a media key (as part of [`KeyCode::Modifier`]).
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum ModifierKeyCode {
     /// Left Shift key.
     LeftShift,
@@ -213,6 +228,7 @@ impl From<crossterm::event::ModifierKeyCode> for ModifierKeyCode {
 
 /// Represents a key.
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum KeyCode {
     /// Backspace key.
     Backspace,

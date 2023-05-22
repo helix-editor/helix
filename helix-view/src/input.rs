@@ -7,6 +7,7 @@ use std::fmt;
 pub use crate::keyboard::{KeyCode, KeyModifiers, MediaKeyCode, ModifierKeyCode};
 
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum Event {
     FocusGained,
     FocusLost,
@@ -18,6 +19,7 @@ pub enum Event {
 }
 
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct MouseEvent {
     /// The kind of mouse event that was caused.
     pub kind: MouseEventKind,
@@ -30,6 +32,7 @@ pub struct MouseEvent {
 }
 
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum MouseEventKind {
     /// Pressed mouse button. Contains the button that was pressed.
     Down(MouseButton),
@@ -47,6 +50,7 @@ pub enum MouseEventKind {
 
 /// Represents a mouse button.
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum MouseButton {
     /// Left mouse button.
     Left,
@@ -58,6 +62,7 @@ pub enum MouseButton {
 /// Represents a key event.
 // We use a newtype here because we want to customize Deserialize and Display.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct KeyEvent {
     pub code: KeyCode,
     pub modifiers: KeyModifiers,

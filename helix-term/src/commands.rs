@@ -574,6 +574,17 @@ impl PartialEq for MappableCommand {
     }
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a> arbitrary::Arbitrary<'a> for MappableCommand {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(MappableCommand::Typable {
+            name: String::arbitrary(u)?,
+            args: Vec::<String>::arbitrary(u)?,
+            doc: String::arbitrary(u)?,
+        })
+    }
+}
+
 fn no_op(_cx: &mut Context) {}
 
 type MoveFn =

@@ -19,6 +19,7 @@ pub use default::default;
 use macros::key;
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct KeyTrieNode {
     /// A label for keys coming under this node, like "Goto mode"
     name: String,
@@ -144,6 +145,7 @@ impl DerefMut for KeyTrieNode {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum KeyTrie {
     Leaf(MappableCommand),
     Sequence(Vec<MappableCommand>),
@@ -258,6 +260,7 @@ pub enum KeymapResult {
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(transparent)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Keymap {
     /// Always a Node
     root: KeyTrie,
