@@ -964,6 +964,15 @@ impl Application {
                     Notification::Exit => {
                         self.editor.set_status("Language server exited");
 
+                        // LSPs may produce diagnostics for files that haven't been opened in helix,
+                        // we need to clear those and remove the entries from the list if this leads to
+                        // an empty diagnostic list for said files
+                        for diags in self.editor.diagnostics.values_mut() {
+                            diags.retain(|(_, lsp_id)| *lsp_id != server_id);
+                        }
+
+                        self.editor.diagnostics.retain(|_, diags| !diags.is_empty());
+
                         // Clear any diagnostics for documents with this server open.
                         let urls: Vec<_> = self
                             .editor
