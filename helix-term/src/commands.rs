@@ -49,7 +49,7 @@ use helix_view::{
     theme::Style,
     tree,
     view::View,
-    Document, DocumentId, Editor, ViewId,
+    Document, DocumentId, Editor, TabId, ViewId,
 };
 
 use anyhow::{anyhow, bail, ensure, Context as _};
@@ -329,6 +329,7 @@ impl MappableCommand {
         file_picker_in_current_buffer_directory, "Open file picker at current buffers's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
         code_action, "Perform code action",
+        tab_picker, "Open tab picker",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
@@ -2877,6 +2878,50 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
+fn tab_picker(cx: &mut Context) {
+    let current = cx.editor.tabs.focus;
+
+    #[derive(Debug)]
+    struct TabMeta {
+        idx: usize,
+        id: TabId,
+        name: String,
+        is_current: bool,
+    }
+
+    impl ui::menu::Item for TabMeta {
+        type Data = ();
+
+        fn format(&self, _data: &Self::Data) -> Row {
+            let mut flags = String::new();
+            if self.is_current {
+                flags.push('*');
+            }
+
+            Row::new([(self.idx + 1).to_string(), self.name.clone(), flags])
+        }
+    }
+
+    let opts = cx
+        .editor
+        .tabs
+        .iter_tabs()
+        .enumerate()
+        .map(|(idx, (id, tab))| TabMeta {
+            idx,
+            id,
+            name: tab.name.clone(),
+            is_current: id == current,
+        })
+        .collect();
+
+    let picker = Picker::new(opts, (), |cx, meta, _action| {
+        cx.editor.tabs.focus = meta.id;
+    });
+
+    cx.push_layer(Box::new(overlaid(picker)));
+}
+
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
@@ -2982,7 +3027,7 @@ fn jumplist_picker(cx: &mut Context) {
         }
     }
 
-    for (view, _) in cx.editor.tree.views_mut() {
+    for (view, _) in cx.editor.tabs.curr_tree_mut().views_mut() {
         for doc_id in view.jumps.iter().map(|e| e.0).collect::<Vec<_>>().iter() {
             let doc = doc_mut!(cx.editor, doc_id);
             view.sync_changes(doc);
@@ -3010,7 +3055,8 @@ fn jumplist_picker(cx: &mut Context) {
 
     let picker = Picker::new(
         cx.editor
-            .tree
+            .tabs
+            .curr_tree()
             .views()
             .flat_map(|(view, _)| {
                 view.jumps
@@ -3187,7 +3233,7 @@ pub fn command_palette(cx: &mut Context) {
 
                 command.execute(&mut ctx);
 
-                if ctx.editor.tree.contains(focus) {
+                if ctx.editor.tabs.curr_tree().contains(focus) {
                     let config = ctx.editor.config();
                     let mode = ctx.editor.mode();
                     let view = view_mut!(ctx.editor, focus);
@@ -3315,7 +3361,7 @@ async fn make_format_callback(
     let format = format.await;
 
     let call: job::Callback = Callback::Editor(Box::new(move |editor| {
-        if !editor.documents.contains_key(&doc_id) || !editor.tree.contains(view_id) {
+        if !editor.documents.contains_key(&doc_id) || !editor.tabs.curr_tree().contains(view_id) {
             return;
         }
 
@@ -5156,7 +5202,7 @@ fn vsplit_new(cx: &mut Context) {
 }
 
 fn wclose(cx: &mut Context) {
-    if cx.editor.tree.views().count() == 1 {
+    if cx.editor.tabs.curr_tree().views().count() == 1 {
         if let Err(err) = typed::buffers_remaining_impl(cx.editor) {
             cx.editor.set_error(err.to_string());
             return;
@@ -5170,7 +5216,8 @@ fn wclose(cx: &mut Context) {
 fn wonly(cx: &mut Context) {
     let views = cx
         .editor
-        .tree
+        .tabs
+        .curr_tree()
         .views()
         .map(|(v, focus)| (v.id, focus))
         .collect::<Vec<_>>();
