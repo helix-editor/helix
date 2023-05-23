@@ -84,9 +84,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.2.1"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24a6904aef64d73cf10ab17ebace7befb918b82164785cb89907993be7f83813"
+checksum = "6776fc96284a0bb647b615056fc496d1fe1644a7ab01829818a6d91cae888b84"
 
 [[package]]
 name = "bstr"
@@ -603,7 +603,7 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "786861e84a5793ad5f863d846de5eb064cd23b87e61ad708c8c402608202e7be"
 dependencies = [
- "bitflags 2.2.1",
+ "bitflags 2.3.1",
  "bstr",
  "gix-path",
  "libc",
@@ -697,7 +697,7 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c07c98204529ac3f24b34754540a852593d2a4c7349008df389240266627a72a"
 dependencies = [
- "bitflags 2.2.1",
+ "bitflags 2.3.1",
  "bstr",
  "gix-features",
  "gix-path",
@@ -742,7 +742,7 @@ version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa282756760f79c401d4f4f42588fbb4aa27bbb4b0830f3b4d3480c21a4ac5a7"
 dependencies = [
- "bitflags 2.2.1",
+ "bitflags 2.3.1",
  "bstr",
  "btoi",
  "filetime",
@@ -929,7 +929,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "794520043d5a024dfeac335c6e520cb616f6963e30dab995892382e998c12897"
 dependencies = [
- "bitflags 2.2.1",
+ "bitflags 2.3.1",
  "gix-path",
  "libc",
  "windows",
@@ -1091,7 +1091,7 @@ version = "0.6.0"
 dependencies = [
  "ahash 0.8.3",
  "arc-swap",
- "bitflags 2.2.1",
+ "bitflags 2.3.1",
  "chrono",
  "dunce",
  "encoding_rs",
@@ -1218,7 +1218,7 @@ dependencies = [
 name = "helix-tui"
 version = "0.6.0"
 dependencies = [
- "bitflags 2.2.1",
+ "bitflags 2.3.1",
  "cassowary",
  "crossterm",
  "helix-core",
@@ -1251,7 +1251,7 @@ version = "0.6.0"
 dependencies = [
  "anyhow",
  "arc-swap",
- "bitflags 2.2.1",
+ "bitflags 2.3.1",
  "chardetng",
  "clipboard-win",
  "crossterm",
