@@ -284,6 +284,7 @@ pub struct Config {
     pub soft_wrap: SoftWrap,
     /// Workspace specific lsp ceiling dirs
     pub workspace_lsp_roots: Vec<PathBuf>,
+    pub wrap_picker_list: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -759,6 +760,7 @@ impl Default for Config {
             text_width: 80,
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
+            wrap_picker_list: true,
         }
     }
 }
