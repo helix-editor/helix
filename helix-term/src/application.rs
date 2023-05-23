@@ -964,22 +964,18 @@ impl Application {
                     Notification::Exit => {
                         self.editor.set_status("Language server exited");
 
-                        // Clear any diagnostics for documents with this server open.
-                        let urls: Vec<_> = self
-                            .editor
-                            .documents_mut()
-                            .filter_map(|doc| {
-                                if doc.supports_language_server(server_id) {
-                                    doc.clear_diagnostics(server_id);
-                                    doc.url()
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect();
+                        // LSPs may produce diagnostics for files that haven't been opened in helix,
+                        // we need to clear those and remove the entries from the list if this leads to
+                        // an empty diagnostic list for said files
+                        for diags in self.editor.diagnostics.values_mut() {
+                            diags.retain(|(_, lsp_id)| *lsp_id != server_id);
+                        }
 
-                        for url in urls {
-                            self.editor.diagnostics.remove(&url);
+                        self.editor.diagnostics.retain(|_, diags| !diags.is_empty());
+
+                        // Clear any diagnostics for documents with this server open.
+                        for doc in self.editor.documents_mut() {
+                            doc.clear_diagnostics(server_id);
                         }
 
                         // Remove the language server from the registry.
