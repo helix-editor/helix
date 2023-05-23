@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use helix_core::syntax::LanguageServerFeature;
+
 use crate::{
     editor::GutterType,
     graphics::{Style, UnderlineStyle},
@@ -55,7 +57,7 @@ pub fn diagnostic<'doc>(
     let error = theme.get("error");
     let info = theme.get("info");
     let hint = theme.get("hint");
-    let diagnostics = doc.diagnostics();
+    let diagnostics = &doc.diagnostics;
 
     Box::new(
         move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
@@ -63,28 +65,24 @@ pub fn diagnostic<'doc>(
                 return None;
             }
             use helix_core::diagnostic::Severity;
-            if let Ok(index) = diagnostics.binary_search_by_key(&line, |d| d.line) {
-                let after = diagnostics[index..].iter().take_while(|d| d.line == line);
-
-                let before = diagnostics[..index]
-                    .iter()
-                    .rev()
-                    .take_while(|d| d.line == line);
-
-                let diagnostics_on_line = after.chain(before);
-
-                // This unwrap is safe because the iterator cannot be empty as it contains at least the item found by the binary search.
-                let diagnostic = diagnostics_on_line.max_by_key(|d| d.severity).unwrap();
-
-                write!(out, "●").unwrap();
-                return Some(match diagnostic.severity {
+            let first_diag_idx_maybe_on_line = diagnostics.partition_point(|d| d.line < line);
+            let diagnostics_on_line = diagnostics[first_diag_idx_maybe_on_line..]
+                .iter()
+                .take_while(|d| {
+                    d.line == line
+                        && doc
+                            .language_servers_with_feature(LanguageServerFeature::Diagnostics)
+                            .any(|ls| ls.id() == d.language_server_id)
+                });
+            diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
+                write!(out, "●").ok();
+                match d.severity {
                     Some(Severity::Error) => error,
                     Some(Severity::Warning) | None => warning,
                     Some(Severity::Info) => info,
                     Some(Severity::Hint) => hint,
-                });
-            }
-            None
+                }
+            })
         },
     )
 }

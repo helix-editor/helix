@@ -1331,26 +1331,22 @@ fn lsp_workspace_command(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    let (_, doc) = current!(cx.editor);
-
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => {
-            cx.editor
-                .set_status("Language server not active for current buffer");
-            return Ok(());
-        }
+    let doc = doc!(cx.editor);
+    let Some((language_server_id, options)) = doc
+        .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
+        .find_map(|ls| {
+            ls.capabilities()
+                .execute_command_provider
+                .as_ref()
+                .map(|options| (ls.id(), options))
+        })
+    else {
+        cx.editor.set_status(
+             "No active language servers for this document support workspace commands",
+        );
+        return Ok(());
     };
 
-    let options = match &language_server.capabilities().execute_command_provider {
-        Some(options) => options,
-        None => {
-            cx.editor
-                .set_status("Workspace commands are not supported for this language server");
-            return Ok(());
-        }
-    };
     if args.is_empty() {
         let commands = options
             .commands
@@ -1364,8 +1360,8 @@ fn lsp_workspace_command(
         let callback = async move {
             let call: job::Callback = Callback::EditorCompositor(Box::new(
                 move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let picker = ui::Picker::new(commands, (), |cx, command, _action| {
-                        execute_lsp_command(cx.editor, command.clone());
+                    let picker = ui::Picker::new(commands, (), move |cx, command, _action| {
+                        execute_lsp_command(cx.editor, language_server_id, command.clone());
                     });
                     compositor.push(Box::new(overlaid(picker)))
                 },
@@ -1378,6 +1374,7 @@ fn lsp_workspace_command(
         if options.commands.iter().any(|c| c == &command) {
             execute_lsp_command(
                 cx.editor,
+                language_server_id,
                 helix_lsp::lsp::Command {
                     title: command.clone(),
                     arguments: None,
@@ -1409,7 +1406,6 @@ fn lsp_restart(
         .language_config()
         .context("LSP not defined for the current document")?;
 
-    let scope = config.scope.clone();
     cx.editor.language_servers.restart(
         config,
         doc.path(),
@@ -1422,13 +1418,22 @@ fn lsp_restart(
         .editor
         .documents()
         .filter_map(|doc| match doc.language_config() {
-            Some(config) if config.scope.eq(&scope) => Some(doc.id()),
+            Some(config)
+                if config.language_servers.iter().any(|ls| {
+                    config
+                        .language_servers
+                        .iter()
+                        .any(|restarted_ls| restarted_ls.name == ls.name)
+                }) =>
+            {
+                Some(doc.id())
+            }
             _ => None,
         })
         .collect();
 
     for document_id in document_ids_to_refresh {
-        cx.editor.refresh_language_server(document_id);
+        cx.editor.refresh_language_servers(document_id);
     }
 
     Ok(())
@@ -1443,22 +1448,18 @@ fn lsp_stop(
         return Ok(());
     }
 
-    let doc = doc!(cx.editor);
+    let ls_shutdown_names = doc!(cx.editor)
+        .language_servers()
+        .map(|ls| ls.name().to_string())
+        .collect::<Vec<_>>();
 
-    let ls_id = doc
-        .language_server()
-        .map(|ls| ls.id())
-        .context("LSP not running for the current document")?;
+    for ls_name in &ls_shutdown_names {
+        cx.editor.language_servers.stop(ls_name);
 
-    let config = doc
-        .language_config()
-        .context("LSP not defined for the current document")?;
-    cx.editor.language_servers.stop(config);
-
-    for doc in cx.editor.documents_mut() {
-        if doc.language_server().map_or(false, |ls| ls.id() == ls_id) {
-            doc.set_language_server(None);
-            doc.set_diagnostics(Default::default());
+        for doc in cx.editor.documents_mut() {
+            if let Some(client) = doc.remove_language_server_by_name(ls_name) {
+                doc.clear_diagnostics(client.id());
+            }
         }
     }
 
@@ -1852,7 +1853,7 @@ fn language(
     doc.detect_indent_and_line_ending();
 
     let id = doc.id();
-    cx.editor.refresh_language_server(id);
+    cx.editor.refresh_language_servers(id);
     Ok(())
 }
 
@@ -2590,14 +2591,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "lsp-restart",
             aliases: &[],
-            doc: "Restarts the Language Server that is in use by the current doc",
+            doc: "Restarts the language servers used by the current doc",
             fun: lsp_restart,
             signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "lsp-stop",
             aliases: &[],
-            doc: "Stops the Language Server that is in use by the current doc",
+            doc: "Stops the language servers that are used by the current doc",
             fun: lsp_stop,
             signature: CommandSignature::none(),
         },
@@ -2849,13 +2850,10 @@ pub(super) fn command_mode(cx: &mut Context) {
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.
-                let (part, part_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {
+                let (word, word_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {
                     (&Cow::Borrowed(""), 0)
                 } else {
-                    (
-                        words.last().unwrap(),
-                        shellwords.parts().last().unwrap().len(),
-                    )
+                    (words.last().unwrap(), words.last().unwrap().len())
                 };
 
                 let argument_number = argument_number_of(&shellwords);
@@ -2864,13 +2862,13 @@ pub(super) fn command_mode(cx: &mut Context) {
                     .get(&words[0] as &str)
                     .map(|tc| tc.completer_for_argument_number(argument_number))
                 {
-                    completer(editor, part)
+                    completer(editor, word)
                         .into_iter()
                         .map(|(range, file)| {
                             let file = shellwords::escape(file);
 
                             // offset ranges to input
-                            let offset = input.len() - part_len;
+                            let offset = input.len() - word_len;
                             let range = (range.start + offset)..;
                             (range, file)
                         })

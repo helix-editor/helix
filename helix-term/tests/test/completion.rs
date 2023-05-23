@@ -17,6 +17,12 @@ async fn words_completion_basic() -> anyhow::Result<()> {
         test_syntax_conf(None),
     )?;
 
+    // Currently completion required at least one language server
+    // language server would be enabled only if doc has url
+    let _ = app
+        .editor
+        .open(std::path::Path::new("/tmp/file"), editor::Action::Load)?;
+
     // completion without language server
     test_key_sequences(
         &mut app,

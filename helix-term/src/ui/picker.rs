@@ -1,7 +1,9 @@
 use crate::{
     alt,
-    compositor::{Component, Compositor, Context, Event, EventResult},
-    ctrl, key, shift,
+    compositor::{self, Component, Compositor, Context, Event, EventResult},
+    ctrl,
+    job::Callback,
+    key, shift,
     ui::{
         self,
         document::{render_document, LineDecoration, LinePos, TextRenderer},
@@ -9,7 +11,7 @@ use crate::{
         EditorView,
     },
 };
-use futures_util::future::BoxFuture;
+use futures_util::{future::BoxFuture, FutureExt};
 use tui::{
     buffer::Buffer as Surface,
     layout::Constraint,
@@ -26,7 +28,7 @@ use std::{collections::HashMap, io::Read, path::PathBuf};
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
     movement::Direction, text_annotations::TextAnnotations,
-    unicode::segmentation::UnicodeSegmentation, Position,
+    unicode::segmentation::UnicodeSegmentation, Position, Syntax,
 };
 use helix_view::{
     editor::Action,
@@ -122,7 +124,7 @@ impl Preview<'_, '_> {
     }
 }
 
-impl<T: Item> FilePicker<T> {
+impl<T: Item + 'static> FilePicker<T> {
     pub fn new(
         options: Vec<T>,
         editor_data: T::Data,
@@ -208,29 +210,64 @@ impl<T: Item> FilePicker<T> {
     }
 
     fn handle_idle_timeout(&mut self, cx: &mut Context) -> EventResult {
+        let Some((current_file, _)) = self.current_file(cx.editor) else {
+            return EventResult::Consumed(None)
+        };
+
         // Try to find a document in the cache
-        let doc = self
-            .current_file(cx.editor)
-            .and_then(|(path, _range)| match path {
-                PathOrId::Id(doc_id) => Some(doc_mut!(cx.editor, &doc_id)),
-                PathOrId::Path(path) => match self.preview_cache.get_mut(&path) {
-                    Some(CachedPreview::Document(doc)) => Some(doc),
-                    _ => None,
-                },
-            });
+        let doc = match &current_file {
+            PathOrId::Id(doc_id) => doc_mut!(cx.editor, doc_id),
+            PathOrId::Path(path) => match self.preview_cache.get_mut(path) {
+                Some(CachedPreview::Document(ref mut doc)) => doc,
+                _ => return EventResult::Consumed(None),
+            },
+        };
+
+        let mut callback: Option<compositor::Callback> = None;
 
         // Then attempt to highlight it if it has no language set
-        if let Some(doc) = doc {
-            if doc.language_config().is_none() {
+        if doc.language_config().is_none() {
+            if let Some(language_config) = doc.detect_language_config(&cx.editor.syn_loader) {
+                doc.language = Some(language_config.clone());
+                let text = doc.text().clone();
                 let loader = cx.editor.syn_loader.clone();
-                doc.detect_language(loader);
+                let job = tokio::task::spawn_blocking(move || {
+                    let syntax = language_config
+                        .highlight_config(&loader.scopes())
+                        .and_then(|highlight_config| Syntax::new(&text, highlight_config, loader));
+                    let callback = move |editor: &mut Editor, compositor: &mut Compositor| {
+                        let Some(syntax) = syntax else {
+                            log::info!("highlighting picker item failed");
+                            return
+                        };
+                        let Some(Overlay { content: picker, .. }) = compositor.find::<Overlay<Self>>() else {
+                            log::info!("picker closed before syntax highlighting finished");
+                            return
+                        };
+                        // Try to find a document in the cache
+                        let doc = match current_file {
+                            PathOrId::Id(doc_id) => doc_mut!(editor, &doc_id),
+                            PathOrId::Path(path) => match picker.preview_cache.get_mut(&path) {
+                                Some(CachedPreview::Document(ref mut doc)) => doc,
+                                _ => return,
+                            },
+                        };
+                        doc.syntax = Some(syntax);
+                    };
+                    Callback::EditorCompositor(Box::new(callback))
+                });
+                let tmp: compositor::Callback = Box::new(move |_, ctx| {
+                    ctx.jobs
+                        .callback(job.map(|res| res.map_err(anyhow::Error::from)))
+                });
+                callback = Some(Box::new(tmp))
             }
-
-            // QUESTION: do we want to compute inlay hints in pickers too ? Probably not for now
-            // but it could be interesting in the future
         }
 
-        EventResult::Consumed(None)
+        // QUESTION: do we want to compute inlay hints in pickers too ? Probably not for now
+        // but it could be interesting in the future
+
+        EventResult::Consumed(callback)
     }
 }
 
@@ -372,6 +409,10 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         };
         self.picker.required_size((picker_width, height))?;
         Some((width, height))
+    }
+
+    fn id(&self) -> Option<&'static str> {
+        Some("file-picker")
     }
 }
 
@@ -945,17 +986,16 @@ impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
 
         cx.jobs.callback(async move {
             let new_options = new_options.await?;
-            let callback =
-                crate::job::Callback::EditorCompositor(Box::new(move |editor, compositor| {
-                    // Wrapping of pickers in overlay is done outside the picker code,
-                    // so this is fragile and will break if wrapped in some other widget.
-                    let picker = match compositor.find_id::<Overlay<DynamicPicker<T>>>(Self::ID) {
-                        Some(overlay) => &mut overlay.content.file_picker.picker,
-                        None => return,
-                    };
-                    picker.set_options(new_options);
-                    editor.reset_idle_timer();
-                }));
+            let callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
+                // Wrapping of pickers in overlay is done outside the picker code,
+                // so this is fragile and will break if wrapped in some other widget.
+                let picker = match compositor.find_id::<Overlay<DynamicPicker<T>>>(Self::ID) {
+                    Some(overlay) => &mut overlay.content.file_picker.picker,
+                    None => return,
+                };
+                picker.set_options(new_options);
+                editor.reset_idle_timer();
+            }));
             anyhow::Ok(callback)
         });
         EventResult::Consumed(None)
