@@ -139,7 +139,12 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     let test_case = test_case.into();
     let mut app = match app {
         Some(app) => app,
-        None => Application::new(Args::default(), test_config(), test_syntax_conf(None))?,
+        None => Application::new(
+            Args::default(),
+            test_config(),
+            test_syntax_conf(None),
+            false,
+        )?,
     };
 
     let (view, doc) = helix_view::current!(app.editor);
@@ -320,7 +325,7 @@ impl AppBuilder {
     }
 
     pub fn build(self) -> anyhow::Result<Application> {
-        let mut app = Application::new(self.args, self.config, self.syn_conf)?;
+        let mut app = Application::new(self.args, self.config, self.syn_conf, false)?;
 
         if let Some((text, selection)) = self.input {
             let (view, doc) = helix_view::current!(app.editor);
