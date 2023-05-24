@@ -1484,7 +1484,7 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
             };
             let (view, doc) = current!(editor);
             let text = doc.text();
-            let pos = doc.selection(view.id).primary().head;
+            let pos = doc.selection(view.id).primary().cursor(text.slice(..));
 
             // We must find the range that contains our primary cursor to prevent our primary cursor to move
             let mut primary_index = 0;
