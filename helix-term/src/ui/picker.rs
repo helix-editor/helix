@@ -192,7 +192,7 @@ impl<T: Item + 'static> FilePicker<T> {
                             }
                             _ => {
                                 // TODO: enable syntax highlighting; blocked by async rendering
-                                Document::open(path, None, None, editor.config.clone())
+                                Document::open(path, None, None, editor.config.clone(), false)
                                     .map(|doc| CachedPreview::Document(Box::new(doc)))
                                     .unwrap_or(CachedPreview::NotFound)
                             }

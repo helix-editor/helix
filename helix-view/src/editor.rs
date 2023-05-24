@@ -881,6 +881,11 @@ pub struct Editor {
     /// field is set and any old requests are automatically
     /// canceled as a result
     pub completion_request_handle: Option<oneshot::Sender<()>>,
+
+    /// Whether the editor is running in readonly mode
+    /// If true, files are opened in read-only mode and
+    /// cannot be written to
+    pub readonly: bool,
 }
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
@@ -940,6 +945,7 @@ impl Editor {
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
         config: Arc<dyn DynAccess<Config>>,
+        readonly: bool,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
@@ -986,6 +992,7 @@ impl Editor {
             needs_redraw: false,
             cursor_cache: Cell::new(None),
             completion_request_handle: None,
+            readonly,
         }
     }
 
@@ -1329,7 +1336,7 @@ impl Editor {
         let (rope, encoding, has_bom) = crate::document::from_reader(&mut stdin(), None)?;
         Ok(self.new_file_from_document(
             action,
-            Document::from(rope, Some((encoding, has_bom)), self.config.clone()),
+            Document::from(rope, Some((encoding, has_bom)), self.config.clone(), false),
         ))
     }
 
@@ -1346,6 +1353,7 @@ impl Editor {
                 None,
                 Some(self.syn_loader.clone()),
                 self.config.clone(),
+                self.readonly,
             )?;
 
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {

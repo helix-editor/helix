@@ -133,6 +133,7 @@ pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     selections: HashMap<ViewId, Selection>,
+    readonly: bool,
 
     /// Inlay hints annotations for the document, by view.
     ///
@@ -588,6 +589,7 @@ impl Document {
         text: Rope,
         encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
+        readonly: bool,
     ) -> Self {
         let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
         let changes = ChangeSet::new(&text);
@@ -599,6 +601,7 @@ impl Document {
             encoding,
             has_bom,
             text,
+            readonly,
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
@@ -625,7 +628,7 @@ impl Document {
     }
     pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
         let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
-        Self::from(text, None, config)
+        Self::from(text, None, config, false)
     }
     // TODO: async fn?
     /// Create a new document from `path`. Encoding is auto-detected, but it can be manually
@@ -635,6 +638,7 @@ impl Document {
         encoding: Option<&'static Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
+        readonly: bool,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding, has_bom) = if path.exists() {
@@ -646,7 +650,7 @@ impl Document {
             (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding, false)
         };
 
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
+        let mut doc = Self::from(rope, Some((encoding, has_bom)), config, readonly);
 
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
@@ -788,6 +792,10 @@ impl Document {
             "submitting save of doc '{:?}'",
             self.path().map(|path| path.to_string_lossy())
         );
+
+        if self.readonly {
+            bail!("opened in readonly mode");
+        }
 
         // we clone and move text + path into the future so that we asynchronously save the current
         // state without blocking any further edits.
@@ -1767,6 +1775,7 @@ mod test {
             text,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            false,
         );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(0, 0));
@@ -1805,6 +1814,7 @@ mod test {
             text,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            false,
         );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));

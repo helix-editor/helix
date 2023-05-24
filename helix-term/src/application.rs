@@ -106,6 +106,7 @@ impl Application {
         args: Args,
         config: Config,
         syn_loader_conf: syntax::Configuration,
+        readonly: bool,
     ) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
         setup_integration_logging();
@@ -151,6 +152,7 @@ impl Application {
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
+            readonly,
         );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {

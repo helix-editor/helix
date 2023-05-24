@@ -645,6 +645,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            false,
         );
 
         assert_eq!(
@@ -819,6 +820,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            false,
         );
         assert_eq!(
             view.text_pos_at_screen_coords(
@@ -848,6 +850,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            false,
         );
         assert_eq!(
             view.text_pos_at_screen_coords(
@@ -871,6 +874,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            false,
         );
 
         assert_eq!(
@@ -954,6 +958,7 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            false,
         );
 
         assert_eq!(

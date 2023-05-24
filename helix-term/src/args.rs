@@ -17,6 +17,7 @@ pub struct Args {
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
     pub files: Vec<(PathBuf, Position)>,
+    pub readonly: bool,
 }
 
 impl Args {
@@ -51,6 +52,7 @@ impl Args {
                         anyhow::bail!("--grammar must be followed by either 'fetch' or 'build'")
                     }
                 },
+                "--readonly" => args.readonly = true,
                 "-c" | "--config" => match argv.next().as_deref() {
                     Some(path) => args.config_file = Some(path.into()),
                     None => anyhow::bail!("--config must specify a path to read"),
