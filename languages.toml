@@ -2571,3 +2571,16 @@ indent = { tab-width = 4, unit = "\t" }
 [[grammar]]
 name = "just"
 source = { git = "https://github.com/IndianBoy42/tree-sitter-just", rev = "8af0aab79854aaf25b620a52c39485849922f766" }
+
+[[language]]
+name = "t32"
+scope = "source.t32"
+injection-regex = "t32"
+file-types = ["cmm", "t32"]
+roots = []
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "t32"
+source = { git = "https://codeberg.org/xasc/tree-sitter-t32", rev = "1dd98248b01e4a3933c1b85b58bab0875e2ba437" }
