@@ -16,17 +16,17 @@ use slotmap::{DefaultKey as LayerId, HopSlotMap};
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::{HashMap, VecDeque},
-    fmt,
+    collections::{HashMap, HashSet, VecDeque},
+    fmt::{self, Display},
     hash::{Hash, Hasher},
     mem::{replace, transmute},
-    path::Path,
+    path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
 };
 
 use once_cell::sync::{Lazy, OnceCell};
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeSeq, Deserialize, Serialize};
 
 use helix_loader::grammar::{get_language, load_runtime_file};
 
@@ -60,8 +60,11 @@ fn default_timeout() -> u64 {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
+    #[serde(default)]
+    pub language_server: HashMap<String, LanguageServerConfiguration>,
 }
 
 impl Default for Configuration {
@@ -75,17 +78,18 @@ impl Default for Configuration {
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
-    pub language_id: String, // c-sharp, rust
+    pub language_id: String, // c-sharp, rust, tsx
+    #[serde(rename = "language-id")]
+    // see the table under https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentItem
+    pub language_server_language_id: Option<String>, // csharp, rust, typescriptreact, for the language-server
     pub scope: String,             // source.rust
     pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
-    pub max_line_length: Option<usize>,
-
-    #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
-    pub config: Option<serde_json::Value>,
+    pub text_width: Option<usize>,
+    pub soft_wrap: Option<SoftWrap>,
 
     #[serde(default)]
     pub auto_format: bool,
@@ -106,8 +110,13 @@ pub struct LanguageConfiguration {
     #[serde(skip)]
     pub(crate) highlight_config: OnceCell<Option<Arc<HighlightConfiguration>>>,
     // tags_config OnceCell<> https://github.com/tree-sitter/tree-sitter/pull/583
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub language_server: Option<LanguageServerConfiguration>,
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        serialize_with = "serialize_lang_features",
+        deserialize_with = "deserialize_lang_features"
+    )]
+    pub language_servers: Vec<LanguageServerFeatures>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub indent: Option<IndentationConfiguration>,
 
@@ -126,6 +135,10 @@ pub struct LanguageConfiguration {
     pub auto_pairs: Option<AutoPairs>,
 
     pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
+
+    /// Hardcoded LSP root directories relative to the workspace root, like `examples` or `tools/fuzz`.
+    /// Falling back to the current working directory if none are configured.
+    pub workspace_lsp_roots: Option<Vec<PathBuf>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -182,9 +195,12 @@ impl<'de> Deserialize<'de> for FileType {
                 M: serde::de::MapAccess<'de>,
             {
                 match map.next_entry::<String, String>()? {
-                    Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix(
-                        suffix.replace('/', &std::path::MAIN_SEPARATOR.to_string()),
-                    )),
+                    Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix({
+                        // FIXME: use `suffix.replace('/', std::path::MAIN_SEPARATOR_STR)`
+                        //        if MSRV is updated to 1.68
+                        let mut seperator = [0; 1];
+                        suffix.replace('/', std::path::MAIN_SEPARATOR.encode_utf8(&mut seperator))
+                    })),
                     Some((key, _value)) => Err(serde::de::Error::custom(format!(
                         "unknown key in `file-types` list: {}",
                         key
@@ -200,6 +216,133 @@ impl<'de> Deserialize<'de> for FileType {
     }
 }
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "kebab-case")]
+pub enum LanguageServerFeature {
+    Format,
+    GotoDeclaration,
+    GotoDefinition,
+    GotoTypeDefinition,
+    GotoReference,
+    GotoImplementation,
+    // Goto, use bitflags, combining previous Goto members?
+    SignatureHelp,
+    Hover,
+    DocumentHighlight,
+    Completion,
+    CodeAction,
+    WorkspaceCommand,
+    DocumentSymbols,
+    WorkspaceSymbols,
+    // Symbols, use bitflags, see above?
+    Diagnostics,
+    RenameSymbol,
+    InlayHints,
+}
+
+impl Display for LanguageServerFeature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use LanguageServerFeature::*;
+        let feature = match self {
+            Format => "format",
+            GotoDeclaration => "goto-declaration",
+            GotoDefinition => "goto-definition",
+            GotoTypeDefinition => "goto-type-definition",
+            GotoReference => "goto-type-definition",
+            GotoImplementation => "goto-implementation",
+            SignatureHelp => "signature-help",
+            Hover => "hover",
+            DocumentHighlight => "document-highlight",
+            Completion => "completion",
+            CodeAction => "code-action",
+            WorkspaceCommand => "workspace-command",
+            DocumentSymbols => "document-symbols",
+            WorkspaceSymbols => "workspace-symbols",
+            Diagnostics => "diagnostics",
+            RenameSymbol => "rename-symbol",
+            InlayHints => "inlay-hints",
+        };
+        write!(f, "{feature}",)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged, rename_all = "kebab-case", deny_unknown_fields)]
+enum LanguageServerFeatureConfiguration {
+    #[serde(rename_all = "kebab-case")]
+    Features {
+        #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+        only_features: HashSet<LanguageServerFeature>,
+        #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+        except_features: HashSet<LanguageServerFeature>,
+        name: String,
+    },
+    Simple(String),
+}
+
+#[derive(Debug, Default)]
+pub struct LanguageServerFeatures {
+    pub name: String,
+    pub only: HashSet<LanguageServerFeature>,
+    pub excluded: HashSet<LanguageServerFeature>,
+}
+
+impl LanguageServerFeatures {
+    pub fn has_feature(&self, feature: LanguageServerFeature) -> bool {
+        (self.only.is_empty() || self.only.contains(&feature)) && !self.excluded.contains(&feature)
+    }
+}
+
+fn deserialize_lang_features<'de, D>(
+    deserializer: D,
+) -> Result<Vec<LanguageServerFeatures>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw: Vec<LanguageServerFeatureConfiguration> = Deserialize::deserialize(deserializer)?;
+    let res = raw
+        .into_iter()
+        .map(|config| match config {
+            LanguageServerFeatureConfiguration::Simple(name) => LanguageServerFeatures {
+                name,
+                ..Default::default()
+            },
+            LanguageServerFeatureConfiguration::Features {
+                only_features,
+                except_features,
+                name,
+            } => LanguageServerFeatures {
+                name,
+                only: only_features,
+                excluded: except_features,
+            },
+        })
+        .collect();
+    Ok(res)
+}
+fn serialize_lang_features<S>(
+    map: &Vec<LanguageServerFeatures>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let mut serializer = serializer.serialize_seq(Some(map.len()))?;
+    for features in map {
+        let features = if features.only.is_empty() && features.excluded.is_empty() {
+            LanguageServerFeatureConfiguration::Simple(features.name.to_owned())
+        } else {
+            LanguageServerFeatureConfiguration::Features {
+                only_features: features.only.clone(),
+                except_features: features.excluded.clone(),
+                name: features.name.to_owned(),
+            }
+        };
+        serializer.serialize_element(&features)?;
+    }
+    serializer.end()
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
@@ -209,9 +352,10 @@ pub struct LanguageServerConfiguration {
     pub args: Vec<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub environment: HashMap<String, String>,
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
+    pub config: Option<serde_json::Value>,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
-    pub language_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -546,6 +690,35 @@ impl LanguageConfiguration {
             .ok()
     }
 }
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct SoftWrap {
+    /// Soft wrap lines that exceed viewport width. Default to off
+    // NOTE: Option on purpose because the struct is shared between language config and global config.
+    // By default the option is None so that the language config falls back to the global config unless explicitly set.
+    pub enable: Option<bool>,
+    /// Maximum space left free at the end of the line.
+    /// This space is used to wrap text at word boundaries. If that is not possible within this limit
+    /// the word is simply split at the end of the line.
+    ///
+    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+    ///
+    /// Default to 20
+    pub max_wrap: Option<u16>,
+    /// Maximum number of indentation that can be carried over from the previous line when softwrapping.
+    /// If a line is indented further then this limit it is rendered at the start of the viewport instead.
+    ///
+    /// This is automatically hard-limited to a quarter of the viewport to ensure correct display on small views.
+    ///
+    /// Default to 40
+    pub max_indent_retain: Option<u16>,
+    /// Indicator placed at the beginning of softwrapped lines
+    ///
+    /// Defaults to ↪
+    pub wrap_indicator: Option<String>,
+    /// Softwrap at `text_width` instead of viewport width if it is shorter
+    pub wrap_at_text_width: Option<bool>,
+}
 
 // Expose loader as Lazy<> global since it's always static?
 
@@ -557,6 +730,8 @@ pub struct Loader {
     language_config_ids_by_suffix: HashMap<String, usize>,
     language_config_ids_by_shebang: HashMap<String, usize>,
 
+    language_server_configs: HashMap<String, LanguageServerConfiguration>,
+
     scopes: ArcSwap<Vec<String>>,
 }
 
@@ -564,6 +739,7 @@ impl Loader {
     pub fn new(config: Configuration) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
+            language_server_configs: config.language_server,
             language_config_ids_by_extension: HashMap::new(),
             language_config_ids_by_suffix: HashMap::new(),
             language_config_ids_by_shebang: HashMap::new(),
@@ -628,9 +804,8 @@ impl Loader {
 
     pub fn language_config_for_shebang(&self, source: &Rope) -> Option<Arc<LanguageConfiguration>> {
         let line = Cow::from(source.line(0));
-        static SHEBANG_REGEX: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"^#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)").unwrap()
-        });
+        static SHEBANG_REGEX: Lazy<Regex> =
+            Lazy::new(|| Regex::new(&["^", SHEBANG].concat()).unwrap());
         let configuration_id = SHEBANG_REGEX
             .captures(&line)
             .and_then(|cap| self.language_config_ids_by_shebang.get(&cap[1]));
@@ -652,15 +827,14 @@ impl Loader {
             .cloned()
     }
 
-    pub fn language_configuration_for_injection_string(
-        &self,
-        string: &str,
-    ) -> Option<Arc<LanguageConfiguration>> {
+    /// Unlike language_config_for_language_id, which only returns Some for an exact id, this
+    /// function will perform a regex match on the given string to find the closest language match.
+    pub fn language_config_for_name(&self, name: &str) -> Option<Arc<LanguageConfiguration>> {
         let mut best_match_length = 0;
         let mut best_match_position = None;
         for (i, configuration) in self.language_configs.iter().enumerate() {
             if let Some(injection_regex) = &configuration.injection_regex {
-                if let Some(mat) = injection_regex.find(string) {
+                if let Some(mat) = injection_regex.find(name) {
                     let length = mat.end() - mat.start();
                     if length > best_match_length {
                         best_match_position = Some(i);
@@ -670,15 +844,28 @@ impl Loader {
             }
         }
 
-        if let Some(i) = best_match_position {
-            let configuration = &self.language_configs[i];
-            return Some(configuration.clone());
+        best_match_position.map(|i| self.language_configs[i].clone())
+    }
+
+    pub fn language_configuration_for_injection_string(
+        &self,
+        capture: &InjectionLanguageMarker,
+    ) -> Option<Arc<LanguageConfiguration>> {
+        match capture {
+            InjectionLanguageMarker::Name(string) => self.language_config_for_name(string),
+            InjectionLanguageMarker::Filename(file) => self.language_config_for_file_name(file),
+            InjectionLanguageMarker::Shebang(shebang) => {
+                self.language_config_for_language_id(shebang)
+            }
         }
-        None
     }
 
     pub fn language_configs(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
         self.language_configs.iter()
+    }
+
+    pub fn language_server_configs(&self) -> &HashMap<String, LanguageServerConfiguration> {
+        &self.language_server_configs
     }
 
     pub fn set_scopes(&self, scopes: Vec<String>) {
@@ -724,7 +911,11 @@ fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<st
 }
 
 impl Syntax {
-    pub fn new(source: &Rope, config: Arc<HighlightConfiguration>, loader: Arc<Loader>) -> Self {
+    pub fn new(
+        source: &Rope,
+        config: Arc<HighlightConfiguration>,
+        loader: Arc<Loader>,
+    ) -> Option<Self> {
         let root_layer = LanguageLayer {
             tree: None,
             config,
@@ -749,11 +940,13 @@ impl Syntax {
             loader,
         };
 
-        syntax
-            .update(source, source, &ChangeSet::new(source))
-            .unwrap();
+        let res = syntax.update(source, source, &ChangeSet::new(source));
 
-        syntax
+        if res.is_err() {
+            log::error!("TS parser failed, disabeling TS for the current buffer: {res:?}");
+            return None;
+        }
+        Some(syntax)
     }
 
     pub fn update(
@@ -766,7 +959,7 @@ impl Syntax {
         queue.push_back(self.root);
 
         let scopes = self.loader.scopes.load();
-        let injection_callback = |language: &str| {
+        let injection_callback = |language: &InjectionLanguageMarker| {
             self.loader
                 .language_configuration_for_injection_string(language)
                 .and_then(|language_config| language_config.highlight_config(&scopes))
@@ -881,6 +1074,7 @@ impl Syntax {
 
         PARSER.with(|ts_parser| {
             let ts_parser = &mut ts_parser.borrow_mut();
+            ts_parser.parser.set_timeout_micros(1000 * 500); // half a second is pretty generours
             let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
             // TODO: might need to set cursor range
             cursor.set_byte_range(0..usize::MAX);
@@ -927,12 +1121,9 @@ impl Syntax {
                 );
                 let mut injections = Vec::new();
                 for mat in matches {
-                    let (language_name, content_node, included_children) = injection_for_match(
-                        &layer.config,
-                        &layer.config.injections_query,
-                        &mat,
-                        source_slice,
-                    );
+                    let (injection_capture, content_node, included_children) = layer
+                        .config
+                        .injection_for_match(&layer.config.injections_query, &mat, source_slice);
 
                     // Explicitly remove this match so that none of its other captures will remain
                     // in the stream of captures.
@@ -940,9 +1131,10 @@ impl Syntax {
 
                     // If a language is found with the given name, then add a new language layer
                     // to the highlighted document.
-                    if let (Some(language_name), Some(content_node)) = (language_name, content_node)
+                    if let (Some(injection_capture), Some(content_node)) =
+                        (injection_capture, content_node)
                     {
-                        if let Some(config) = (injection_callback)(&language_name) {
+                        if let Some(config) = (injection_callback)(&injection_capture) {
                             let ranges =
                                 intersect_ranges(&layer.ranges, &[content_node], included_children);
 
@@ -967,14 +1159,11 @@ impl Syntax {
                     );
                     for mat in matches {
                         let entry = &mut injections_by_pattern_index[mat.pattern_index];
-                        let (language_name, content_node, included_children) = injection_for_match(
-                            &layer.config,
-                            combined_injections_query,
-                            &mat,
-                            source_slice,
-                        );
-                        if language_name.is_some() {
-                            entry.0 = language_name;
+                        let (injection_capture, content_node, included_children) = layer
+                            .config
+                            .injection_for_match(combined_injections_query, &mat, source_slice);
+                        if injection_capture.is_some() {
+                            entry.0 = injection_capture;
                         }
                         if let Some(content_node) = content_node {
                             entry.1.push(content_node);
@@ -1129,6 +1318,7 @@ impl Syntax {
 bitflags! {
     /// Flags that track the status of a layer
     /// in the `Sytaxn::update` function
+    #[derive(Debug)]
     struct LayerUpdateFlags : u32{
         const MODIFIED = 0b001;
         const MOVED = 0b010;
@@ -1360,6 +1550,8 @@ pub struct HighlightConfiguration {
     non_local_variable_patterns: Vec<bool>,
     injection_content_capture_index: Option<u32>,
     injection_language_capture_index: Option<u32>,
+    injection_filename_capture_index: Option<u32>,
+    injection_shebang_capture_index: Option<u32>,
     local_scope_capture_index: Option<u32>,
     local_def_capture_index: Option<u32>,
     local_def_value_capture_index: Option<u32>,
@@ -1503,6 +1695,8 @@ impl HighlightConfiguration {
         // Store the numeric ids for all of the special captures.
         let mut injection_content_capture_index = None;
         let mut injection_language_capture_index = None;
+        let mut injection_filename_capture_index = None;
+        let mut injection_shebang_capture_index = None;
         let mut local_def_capture_index = None;
         let mut local_def_value_capture_index = None;
         let mut local_ref_capture_index = None;
@@ -1523,6 +1717,8 @@ impl HighlightConfiguration {
             match name.as_str() {
                 "injection.content" => injection_content_capture_index = i,
                 "injection.language" => injection_language_capture_index = i,
+                "injection.filename" => injection_filename_capture_index = i,
+                "injection.shebang" => injection_shebang_capture_index = i,
                 _ => {}
             }
         }
@@ -1538,6 +1734,8 @@ impl HighlightConfiguration {
             non_local_variable_patterns,
             injection_content_capture_index,
             injection_language_capture_index,
+            injection_filename_capture_index,
+            injection_shebang_capture_index,
             local_scope_capture_index,
             local_def_capture_index,
             local_def_value_capture_index,
@@ -1595,6 +1793,90 @@ impl HighlightConfiguration {
             .collect();
 
         self.highlight_indices.store(Arc::new(indices));
+    }
+
+    fn injection_pair<'a>(
+        &self,
+        query_match: &QueryMatch<'a, 'a>,
+        source: RopeSlice<'a>,
+    ) -> (Option<InjectionLanguageMarker<'a>>, Option<Node<'a>>) {
+        let mut injection_capture = None;
+        let mut content_node = None;
+
+        for capture in query_match.captures {
+            let index = Some(capture.index);
+            if index == self.injection_language_capture_index {
+                let name = byte_range_to_str(capture.node.byte_range(), source);
+                injection_capture = Some(InjectionLanguageMarker::Name(name));
+            } else if index == self.injection_filename_capture_index {
+                let name = byte_range_to_str(capture.node.byte_range(), source);
+                let path = Path::new(name.as_ref()).to_path_buf();
+                injection_capture = Some(InjectionLanguageMarker::Filename(path.into()));
+            } else if index == self.injection_shebang_capture_index {
+                let node_slice = source.byte_slice(capture.node.byte_range());
+
+                // some languages allow space and newlines before the actual string content
+                // so a shebang could be on either the first or second line
+                let lines = if let Ok(end) = node_slice.try_line_to_byte(2) {
+                    node_slice.byte_slice(..end)
+                } else {
+                    node_slice
+                };
+
+                static SHEBANG_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(SHEBANG).unwrap());
+
+                injection_capture = SHEBANG_REGEX
+                    .captures(&Cow::from(lines))
+                    .map(|cap| InjectionLanguageMarker::Shebang(cap[1].to_owned()))
+            } else if index == self.injection_content_capture_index {
+                content_node = Some(capture.node);
+            }
+        }
+        (injection_capture, content_node)
+    }
+
+    fn injection_for_match<'a>(
+        &self,
+        query: &'a Query,
+        query_match: &QueryMatch<'a, 'a>,
+        source: RopeSlice<'a>,
+    ) -> (
+        Option<InjectionLanguageMarker<'a>>,
+        Option<Node<'a>>,
+        IncludedChildren,
+    ) {
+        let (mut injection_capture, content_node) = self.injection_pair(query_match, source);
+
+        let mut included_children = IncludedChildren::default();
+        for prop in query.property_settings(query_match.pattern_index) {
+            match prop.key.as_ref() {
+                // In addition to specifying the language name via the text of a
+                // captured node, it can also be hard-coded via a `#set!` predicate
+                // that sets the injection.language key.
+                "injection.language" if injection_capture.is_none() => {
+                    injection_capture = prop
+                        .value
+                        .as_ref()
+                        .map(|s| InjectionLanguageMarker::Name(s.as_ref().into()));
+                }
+
+                // By default, injections do not include the *children* of an
+                // `injection.content` node - only the ranges that belong to the
+                // node itself. This can be changed using a `#set!` predicate that
+                // sets the `injection.include-children` key.
+                "injection.include-children" => included_children = IncludedChildren::All,
+
+                // Some queries might only exclude named children but include unnamed
+                // children in their `injection.content` node. This can be enabled using
+                // a `#set!` predicate that sets the `injection.include-unnamed-children` key.
+                "injection.include-unnamed-children" => {
+                    included_children = IncludedChildren::Unnamed
+                }
+                _ => {}
+            }
+        }
+
+        (injection_capture, content_node, included_children)
     }
 }
 
@@ -2007,55 +2289,14 @@ impl<'a> Iterator for HighlightIter<'a> {
     }
 }
 
-fn injection_for_match<'a>(
-    config: &HighlightConfiguration,
-    query: &'a Query,
-    query_match: &QueryMatch<'a, 'a>,
-    source: RopeSlice<'a>,
-) -> (Option<Cow<'a, str>>, Option<Node<'a>>, IncludedChildren) {
-    let content_capture_index = config.injection_content_capture_index;
-    let language_capture_index = config.injection_language_capture_index;
-
-    let mut language_name = None;
-    let mut content_node = None;
-    for capture in query_match.captures {
-        let index = Some(capture.index);
-        if index == language_capture_index {
-            let name = byte_range_to_str(capture.node.byte_range(), source);
-            language_name = Some(name);
-        } else if index == content_capture_index {
-            content_node = Some(capture.node);
-        }
-    }
-
-    let mut included_children = IncludedChildren::default();
-    for prop in query.property_settings(query_match.pattern_index) {
-        match prop.key.as_ref() {
-            // In addition to specifying the language name via the text of a
-            // captured node, it can also be hard-coded via a `#set!` predicate
-            // that sets the injection.language key.
-            "injection.language" => {
-                if language_name.is_none() {
-                    language_name = prop.value.as_ref().map(|s| s.as_ref().into())
-                }
-            }
-
-            // By default, injections do not include the *children* of an
-            // `injection.content` node - only the ranges that belong to the
-            // node itself. This can be changed using a `#set!` predicate that
-            // sets the `injection.include-children` key.
-            "injection.include-children" => included_children = IncludedChildren::All,
-
-            // Some queries might only exclude named children but include unnamed
-            // children in their `injection.content` node. This can be enabled using
-            // a `#set!` predicate that sets the `injection.include-unnamed-children` key.
-            "injection.include-unnamed-children" => included_children = IncludedChildren::Unnamed,
-            _ => {}
-        }
-    }
-
-    (language_name, content_node, included_children)
+#[derive(Debug, Clone)]
+pub enum InjectionLanguageMarker<'a> {
+    Name(Cow<'a, str>),
+    Filename(Cow<'a, Path>),
+    Shebang(String),
 }
+
+const SHEBANG: &str = r"#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)";
 
 pub struct Merge<I> {
     iter: I,
@@ -2272,7 +2513,10 @@ mod test {
         "#,
         );
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(Configuration {
+            language: vec![],
+            language_server: HashMap::new(),
+        });
         let language = get_language("rust").unwrap();
 
         let query = Query::new(language, query_str).unwrap();
@@ -2280,7 +2524,7 @@ mod test {
         let mut cursor = QueryCursor::new();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
 
         let root = syntax.tree().root_node();
         let mut test = |capture, range| {
@@ -2331,7 +2575,10 @@ mod test {
         .map(String::from)
         .collect();
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(Configuration {
+            language: vec![],
+            language_server: HashMap::new(),
+        });
 
         let language = get_language("rust").unwrap();
         let config = HighlightConfiguration::new(
@@ -2351,7 +2598,7 @@ mod test {
             fn main() {}
         ",
         );
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
         let tree = syntax.tree();
         let root = tree.root_node();
         assert_eq!(root.kind(), "source_file");
@@ -2434,11 +2681,14 @@ mod test {
     ) {
         let source = Rope::from_str(source);
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(Configuration {
+            language: vec![],
+            language_server: HashMap::new(),
+        });
         let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
 
         let root = syntax
             .tree()

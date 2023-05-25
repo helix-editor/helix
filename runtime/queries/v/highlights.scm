@@ -14,71 +14,130 @@
 
 (field_identifier) @variable.other.member
 (selector_expression
+  operand: (identifier) @variable
   field: (identifier) @variable.other.member)
 
 (int_literal) @constant.numeric.integer
-(interpreted_string_literal) @string
-(rune_literal) @string
+
+(attribute_declaration) @attribute
+(comment) @comment
+[
+  (c_string_literal)
+  (raw_string_literal)
+  (interpreted_string_literal)
+  (string_interpolation)
+  (rune_literal)
+] @string
+
 (escape_sequence) @constant.character.escape
 
 [
-  (type_identifier)
-  (builtin_type)
   (pointer_type)
   (array_type)
 ] @type
 
-[
-  (identifier)
-  (module_identifier)
-  (import_path)
-] @variable
+(const_spec name: (identifier) @constant)
+(global_var_type_initializer name: (identifier) @constant)
+(global_var_spec name: (identifier) @constant)
+((identifier) @constant (#match? @constant "^[A-Z][A-Z\\d_]*$"))
+
 
 [
- "as"
- "asm"
- "assert"
- ;"atomic"
- ;"break"
- "const"
- ;"continue"
- "defer"
- "else"
- "enum"
- "fn"
- "for"
- "$for"
- "go"
- "goto"
- "if"
- "$if"
- "import"
- "in"
- "!in"
- "interface"
- "is"
- "!is"
- "lock"
- "match"
- "module"
- "mut"
- "or"
- "pub"
- "return"
- "rlock"
- "select"
- ;"shared"
- ;"static"
- "struct"
- "type"
- ;"union"
- "unsafe"
-] @keyword
+  (generic_type)
+  (type_identifier)
+] @constructor 
+
+(builtin_type) @type.builtin
 
 [
  (true)
  (false)
-] @boolean
+] @constant.builtin.boolean
+
+
+[
+  (module_identifier)
+  (import_path)
+] @namespace
+
+[
+  (pseudo_comptime_identifier)
+  (label_name)
+] @label
+
+[
+  (identifier)
+] @variable
+
+
+[
+  "pub"
+  "assert"
+  "go"
+  "asm"
+  "defer"
+  "unsafe"
+  "sql"
+  (none)
+] @keyword
+
+[
+  "interface"
+  "enum"
+  "type"
+  "union"
+  "struct"
+  "module"
+] @keyword.storage.type
+
+[
+  "static"
+  "const"
+  "__global"
+] @keyword.storage.modifier
+
+[
+  "mut"
+] @keyword.storage.modifier.mut
+
+[
+  "shared"
+  "lock"
+  "rlock"
+  "spawn"
+] @keyword.control
+
+[
+  "if"
+  "select"
+  "else"
+  "match"
+] @keyword.control.conditional
+
+[
+  "for"
+] @keyword.control.repeat
+
+[
+  "goto"
+  "return"
+] @keyword.control.return
+
+[
+  "fn"
+] @keyword.control.function
+
+
+[
+  "import"
+] @keyword.control.import
+
+[
+  "as"
+  "in"
+  "is"
+  "or"
+] @keyword.operator
 
 [
  "."
@@ -146,5 +205,3 @@
  ".."
  "..."
 ] @operator
-
-(comment) @comment

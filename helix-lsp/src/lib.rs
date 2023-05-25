@@ -1,5 +1,6 @@
 mod client;
 pub mod jsonrpc;
+pub mod snippet;
 mod transport;
 
 pub use client::Client;
@@ -9,22 +10,23 @@ pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::syntax::{LanguageConfiguration, LanguageServerConfiguration};
+use helix_core::{
+    path,
+    syntax::{LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures},
+};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
-    collections::{hash_map::Entry, HashMap},
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use thiserror::Error;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub type Result<T> = core::result::Result<T, Error>;
-type LanguageId = String;
+pub type LanguageServerName = String;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -34,8 +36,8 @@ pub enum Error {
     Parse(#[from] serde_json::Error),
     #[error("IO Error: {0}")]
     IO(#[from] std::io::Error),
-    #[error("request timed out")]
-    Timeout,
+    #[error("request {0} timed out")]
+    Timeout(jsonrpc::Id),
     #[error("server closed the stream")]
     StreamClosed,
     #[error("Unhandled")]
@@ -44,7 +46,7 @@ pub enum Error {
     Other(#[from] anyhow::Error),
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum OffsetEncoding {
     /// UTF-8 code units aka bytes
     Utf8,
@@ -58,6 +60,7 @@ pub enum OffsetEncoding {
 pub mod util {
     use super::*;
     use helix_core::line_ending::{line_end_byte_index, line_end_char_index};
+    use helix_core::{chars, RopeSlice, SmallVec};
     use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
@@ -126,7 +129,11 @@ pub mod util {
     ) -> Option<usize> {
         let pos_line = pos.line as usize;
         if pos_line > doc.len_lines() - 1 {
-            return None;
+            // If it extends past the end, truncate it to the end. This is because the
+            // way the LSP describes the range including the last newline is by
+            // specifying a line number after what we would call the last line.
+            log::warn!("LSP position {pos:?} out of range assuming EOF");
+            return Some(doc.len_chars());
         }
 
         // We need to be careful here to fully comply ith the LSP spec.
@@ -142,10 +149,10 @@ pub mod util {
         // > ‘\n’, ‘\r\n’ and ‘\r’. Positions are line end character agnostic.
         // > So you can not specify a position that denotes \r|\n or \n| where | represents the character offset.
         //
-        // This means that while the line must be in bounds the `charater`
+        // This means that while the line must be in bounds the `character`
         // must be capped to the end of the line.
         // Note that the end of the line here is **before** the line terminator
-        // so we must use `line_end_char_index` istead of `doc.line_to_char(pos_line + 1)`
+        // so we must use `line_end_char_index` instead of `doc.line_to_char(pos_line + 1)`
         //
         // FIXME: Helix does not fully comply with the LSP spec for line terminators.
         // The LSP standard requires that line terminators are ['\n', '\r\n', '\r'].
@@ -236,13 +243,67 @@ pub mod util {
 
     pub fn lsp_range_to_range(
         doc: &Rope,
-        range: lsp::Range,
+        mut range: lsp::Range,
         offset_encoding: OffsetEncoding,
     ) -> Option<Range> {
+        // This is sort of an edgecase. It's not clear from the spec how to deal with
+        // ranges where end < start. They don't make much sense but vscode simply caps start to end
+        // and because it's not specified quite a few LS rely on this as a result (for example the TS server)
+        if range.start > range.end {
+            log::error!(
+                "Invalid LSP range start {:?} > end {:?}, using an empty range at the end instead",
+                range.start,
+                range.end
+            );
+            range.start = range.end;
+        }
         let start = lsp_pos_to_pos(doc, range.start, offset_encoding)?;
         let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
 
         Some(Range::new(start, end))
+    }
+
+    /// If the LS did not provide a range for the completion or the range of the
+    /// primary cursor can not be used for the secondary cursor, this function
+    /// can be used to find the completion range for a cursor
+    fn find_completion_range(text: RopeSlice, replace_mode: bool, cursor: usize) -> (usize, usize) {
+        let start = cursor
+            - text
+                .chars_at(cursor)
+                .reversed()
+                .take_while(|ch| chars::char_is_word(*ch))
+                .count();
+        let mut end = cursor;
+        if replace_mode {
+            end += text
+                .chars_at(cursor)
+                .skip(1)
+                .take_while(|ch| chars::char_is_word(*ch))
+                .count();
+        }
+        (start, end)
+    }
+    fn completion_range(
+        text: RopeSlice,
+        edit_offset: Option<(i128, i128)>,
+        replace_mode: bool,
+        cursor: usize,
+    ) -> Option<(usize, usize)> {
+        let res = match edit_offset {
+            Some((start_offset, end_offset)) => {
+                let start_offset = cursor as i128 + start_offset;
+                if start_offset < 0 {
+                    return None;
+                }
+                let end_offset = cursor as i128 + end_offset;
+                if end_offset > text.len_chars() as i128 {
+                    return None;
+                }
+                (start_offset as usize, end_offset as usize)
+            }
+            None => find_completion_range(text, replace_mode, cursor),
+        };
+        Some(res)
     }
 
     /// Creates a [Transaction] from the [lsp::TextEdit] in a completion response.
@@ -250,35 +311,179 @@ pub mod util {
     pub fn generate_transaction_from_completion_edit(
         doc: &Rope,
         selection: &Selection,
-        edit: lsp::TextEdit,
-        offset_encoding: OffsetEncoding,
+        edit_offset: Option<(i128, i128)>,
+        replace_mode: bool,
+        new_text: String,
     ) -> Transaction {
-        let replacement: Option<Tendril> = if edit.new_text.is_empty() {
+        let replacement: Option<Tendril> = if new_text.is_empty() {
             None
         } else {
-            Some(edit.new_text.into())
+            Some(new_text.into())
         };
 
         let text = doc.slice(..);
-        let primary_cursor = selection.primary().cursor(text);
+        let (removed_start, removed_end) = completion_range(
+            text,
+            edit_offset,
+            replace_mode,
+            selection.primary().cursor(text),
+        )
+        .expect("transaction must be valid for primary selection");
+        let removed_text = text.slice(removed_start..removed_end);
 
-        let start_offset = match lsp_pos_to_pos(doc, edit.range.start, offset_encoding) {
-            Some(start) => start as i128 - primary_cursor as i128,
-            None => return Transaction::new(doc),
-        };
-        let end_offset = match lsp_pos_to_pos(doc, edit.range.end, offset_encoding) {
-            Some(end) => end as i128 - primary_cursor as i128,
-            None => return Transaction::new(doc),
-        };
+        let (transaction, mut selection) = Transaction::change_by_selection_ignore_overlapping(
+            doc,
+            selection,
+            |range| {
+                let cursor = range.cursor(text);
+                completion_range(text, edit_offset, replace_mode, cursor)
+                    .filter(|(start, end)| text.slice(start..end) == removed_text)
+                    .unwrap_or_else(|| find_completion_range(text, replace_mode, cursor))
+            },
+            |_, _| replacement.clone(),
+        );
+        if transaction.changes().is_empty() {
+            return transaction;
+        }
+        selection = selection.map(transaction.changes());
+        transaction.with_selection(selection)
+    }
 
-        Transaction::change_by_selection(doc, selection, |range| {
-            let cursor = range.cursor(text);
-            (
-                (cursor as i128 + start_offset) as usize,
-                (cursor as i128 + end_offset) as usize,
-                replacement.clone(),
-            )
-        })
+    /// Creates a [Transaction] from the [snippet::Snippet] in a completion response.
+    /// The transaction applies the edit to all cursors.
+    #[allow(clippy::too_many_arguments)]
+    pub fn generate_transaction_from_snippet(
+        doc: &Rope,
+        selection: &Selection,
+        edit_offset: Option<(i128, i128)>,
+        replace_mode: bool,
+        snippet: snippet::Snippet,
+        line_ending: &str,
+        include_placeholder: bool,
+        tab_width: usize,
+        indent_width: usize,
+    ) -> Transaction {
+        let text = doc.slice(..);
+
+        let mut off = 0i128;
+        let mut mapped_doc = doc.clone();
+        let mut selection_tabstops: SmallVec<[_; 1]> = SmallVec::new();
+        let (removed_start, removed_end) = completion_range(
+            text,
+            edit_offset,
+            replace_mode,
+            selection.primary().cursor(text),
+        )
+        .expect("transaction must be valid for primary selection");
+        let removed_text = text.slice(removed_start..removed_end);
+
+        let (transaction, selection) = Transaction::change_by_selection_ignore_overlapping(
+            doc,
+            selection,
+            |range| {
+                let cursor = range.cursor(text);
+                completion_range(text, edit_offset, replace_mode, cursor)
+                    .filter(|(start, end)| text.slice(start..end) == removed_text)
+                    .unwrap_or_else(|| find_completion_range(text, replace_mode, cursor))
+            },
+            |replacement_start, replacement_end| {
+                let mapped_replacement_start = (replacement_start as i128 + off) as usize;
+                let mapped_replacement_end = (replacement_end as i128 + off) as usize;
+
+                let line_idx = mapped_doc.char_to_line(mapped_replacement_start);
+                let indent_level = helix_core::indent::indent_level_for_line(
+                    mapped_doc.line(line_idx),
+                    tab_width,
+                    indent_width,
+                ) * indent_width;
+
+                let newline_with_offset = format!(
+                    "{line_ending}{blank:indent_level$}",
+                    line_ending = line_ending,
+                    blank = ""
+                );
+
+                let (replacement, tabstops) =
+                    snippet::render(&snippet, &newline_with_offset, include_placeholder);
+                selection_tabstops.push((mapped_replacement_start, tabstops));
+                mapped_doc.remove(mapped_replacement_start..mapped_replacement_end);
+                mapped_doc.insert(mapped_replacement_start, &replacement);
+                off +=
+                    replacement_start as i128 - replacement_end as i128 + replacement.len() as i128;
+
+                Some(replacement)
+            },
+        );
+
+        let changes = transaction.changes();
+        if changes.is_empty() {
+            return transaction;
+        }
+
+        let mut mapped_selection = SmallVec::with_capacity(selection.len());
+        let mut mapped_primary_idx = 0;
+        let primary_range = selection.primary();
+        for (range, (tabstop_anchor, tabstops)) in selection.into_iter().zip(selection_tabstops) {
+            if range == primary_range {
+                mapped_primary_idx = mapped_selection.len()
+            }
+
+            let range = range.map(changes);
+            let tabstops = tabstops.first().filter(|tabstops| !tabstops.is_empty());
+            let Some(tabstops) = tabstops else{
+                // no tabstop normal mapping
+                mapped_selection.push(range);
+                continue;
+            };
+
+            // expand the selection to cover the tabstop to retain the helix selection semantic
+            // the tabstop closest to the range simply replaces `head` while anchor remains in place
+            // the remaining tabstops receive their own single-width cursor
+            if range.head < range.anchor {
+                let first_tabstop = tabstop_anchor + tabstops[0].1;
+
+                // if selection is forward but was moved to the right it is
+                // contained entirely in the replacement text, just do a point
+                // selection (fallback below)
+                if range.anchor >= first_tabstop {
+                    let range = Range::new(range.anchor, first_tabstop);
+                    mapped_selection.push(range);
+                    let rem_tabstops = tabstops[1..]
+                        .iter()
+                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.1));
+                    mapped_selection.extend(rem_tabstops);
+                    continue;
+                }
+            } else {
+                let last_idx = tabstops.len() - 1;
+                let last_tabstop = tabstop_anchor + tabstops[last_idx].1;
+
+                // if selection is forward but was moved to the right it is
+                // contained entirely in the replacement text, just do a point
+                // selection (fallback below)
+                if range.anchor <= last_tabstop {
+                    // we can't properly compute the the next grapheme
+                    // here because the transaction hasn't been applied yet
+                    // that is not a problem because the range gets grapheme aligned anyway
+                    // tough so just adding one will always cause head to be grapheme
+                    // aligned correctly when applied to the document
+                    let range = Range::new(range.anchor, last_tabstop + 1);
+                    mapped_selection.push(range);
+                    let rem_tabstops = tabstops[..last_idx]
+                        .iter()
+                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
+                    mapped_selection.extend(rem_tabstops);
+                    continue;
+                }
+            };
+
+            let tabstops = tabstops
+                .iter()
+                .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
+            mapped_selection.extend(tabstops);
+        }
+
+        transaction.with_selection(Selection::new(mapped_selection, mapped_primary_idx))
     }
 
     pub fn generate_transaction_from_edits(
@@ -337,6 +542,7 @@ pub enum MethodCall {
     ApplyWorkspaceEdit(lsp::ApplyWorkspaceEditParams),
     WorkspaceFolders,
     WorkspaceConfiguration(lsp::ConfigurationParams),
+    RegisterCapability(lsp::RegistrationParams),
 }
 
 impl MethodCall {
@@ -355,6 +561,10 @@ impl MethodCall {
             lsp::request::WorkspaceConfiguration::METHOD => {
                 let params: lsp::ConfigurationParams = params.parse()?;
                 Self::WorkspaceConfiguration(params)
+            }
+            lsp::request::RegisterCapability::METHOD => {
+                let params: lsp::RegistrationParams = params.parse()?;
+                Self::RegisterCapability(params)
             }
             _ => {
                 return Err(Error::Unhandled);
@@ -411,23 +621,18 @@ impl Notification {
 
 #[derive(Debug)]
 pub struct Registry {
-    inner: HashMap<LanguageId, (usize, Arc<Client>)>,
-
-    counter: AtomicUsize,
+    inner: HashMap<LanguageServerName, Vec<Arc<Client>>>,
+    syn_loader: Arc<helix_core::syntax::Loader>,
+    counter: usize,
     pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
 }
 
-impl Default for Registry {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Registry {
-    pub fn new() -> Self {
+    pub fn new(syn_loader: Arc<helix_core::syntax::Loader>) -> Self {
         Self {
             inner: HashMap::new(),
-            counter: AtomicUsize::new(0),
+            syn_loader,
+            counter: 0,
             incoming: SelectAll::new(),
         }
     }
@@ -435,43 +640,96 @@ impl Registry {
     pub fn get_by_id(&self, id: usize) -> Option<&Client> {
         self.inner
             .values()
-            .find(|(client_id, _)| client_id == &id)
-            .map(|(_, client)| client.as_ref())
+            .flatten()
+            .find(|client| client.id() == id)
+            .map(|client| &**client)
     }
 
     pub fn remove_by_id(&mut self, id: usize) {
-        self.inner.retain(|_, (client_id, _)| client_id != &id)
+        self.inner.retain(|_, language_servers| {
+            language_servers.retain(|ls| id != ls.id());
+            !language_servers.is_empty()
+        });
     }
 
+    fn start_client(
+        &mut self,
+        name: String,
+        ls_config: &LanguageConfiguration,
+        doc_path: Option<&std::path::PathBuf>,
+        root_dirs: &[PathBuf],
+        enable_snippets: bool,
+    ) -> Result<Arc<Client>> {
+        let config = self
+            .syn_loader
+            .language_server_configs()
+            .get(&name)
+            .ok_or_else(|| anyhow::anyhow!("Language server '{name}' not defined"))?;
+        let id = self.counter;
+        self.counter += 1;
+        let NewClient(client, incoming) = start_client(
+            id,
+            name,
+            ls_config,
+            config,
+            doc_path,
+            root_dirs,
+            enable_snippets,
+        )?;
+        self.incoming.push(UnboundedReceiverStream::new(incoming));
+        Ok(client)
+    }
+
+    /// If this method is called, all documents that have a reference to language servers used by the language config have to refresh their language servers,
+    /// as it could be that language servers of these documents were stopped by this method.
+    /// See helix_view::editor::Editor::refresh_language_servers
     pub fn restart(
         &mut self,
         language_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
-    ) -> Result<Option<Arc<Client>>> {
-        let config = match &language_config.language_server {
-            Some(config) => config,
-            None => return Ok(None),
-        };
+        root_dirs: &[PathBuf],
+        enable_snippets: bool,
+    ) -> Result<Vec<Arc<Client>>> {
+        language_config
+            .language_servers
+            .iter()
+            .filter_map(|LanguageServerFeatures { name, .. }| {
+                if self.inner.contains_key(name) {
+                    let client = match self.start_client(
+                        name.clone(),
+                        language_config,
+                        doc_path,
+                        root_dirs,
+                        enable_snippets,
+                    ) {
+                        Ok(client) => client,
+                        error => return Some(error),
+                    };
+                    let old_clients = self
+                        .inner
+                        .insert(name.clone(), vec![client.clone()])
+                        .unwrap();
 
-        let scope = language_config.scope.clone();
+                    for old_client in old_clients {
+                        tokio::spawn(async move {
+                            let _ = old_client.force_shutdown().await;
+                        });
+                    }
 
-        match self.inner.entry(scope) {
-            Entry::Vacant(_) => Ok(None),
-            Entry::Occupied(mut entry) => {
-                // initialize a new client
-                let id = self.counter.fetch_add(1, Ordering::Relaxed);
+                    Some(Ok(client))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 
-                let NewClientResult(client, incoming) =
-                    start_client(id, language_config, config, doc_path)?;
-                self.incoming.push(UnboundedReceiverStream::new(incoming));
-
-                let (_, old_client) = entry.insert((id, client.clone()));
-
+    pub fn stop(&mut self, name: &str) {
+        if let Some(clients) = self.inner.remove(name) {
+            for client in clients {
                 tokio::spawn(async move {
-                    let _ = old_client.force_shutdown().await;
+                    let _ = client.force_shutdown().await;
                 });
-
-                Ok(Some(client))
             }
         }
     }
@@ -480,30 +738,36 @@ impl Registry {
         &mut self,
         language_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
-    ) -> Result<Option<Arc<Client>>> {
-        let config = match &language_config.language_server {
-            Some(config) => config,
-            None => return Ok(None),
-        };
-
-        match self.inner.entry(language_config.scope.clone()) {
-            Entry::Occupied(entry) => Ok(Some(entry.get().1.clone())),
-            Entry::Vacant(entry) => {
-                // initialize a new client
-                let id = self.counter.fetch_add(1, Ordering::Relaxed);
-
-                let NewClientResult(client, incoming) =
-                    start_client(id, language_config, config, doc_path)?;
-                self.incoming.push(UnboundedReceiverStream::new(incoming));
-
-                entry.insert((id, client.clone()));
-                Ok(Some(client))
-            }
-        }
+        root_dirs: &[PathBuf],
+        enable_snippets: bool,
+    ) -> Result<HashMap<LanguageServerName, Arc<Client>>> {
+        language_config
+            .language_servers
+            .iter()
+            .map(|LanguageServerFeatures { name, .. }| {
+                if let Some(clients) = self.inner.get(name) {
+                    if let Some((_, client)) = clients.iter().enumerate().find(|(i, client)| {
+                        client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
+                    }) {
+                        return Ok((name.to_owned(), client.clone()));
+                    }
+                }
+                let client = self.start_client(
+                    name.clone(),
+                    language_config,
+                    doc_path,
+                    root_dirs,
+                    enable_snippets,
+                )?;
+                let clients = self.inner.entry(name.clone()).or_default();
+                clients.push(client.clone());
+                Ok((name.clone(), client))
+            })
+            .collect()
     }
 
     pub fn iter_clients(&self) -> impl Iterator<Item = &Arc<Client>> {
-        self.inner.values().map(|(_, client)| client)
+        self.inner.values().flatten()
     }
 }
 
@@ -585,23 +849,28 @@ impl LspProgressMap {
     }
 }
 
-struct NewClientResult(Arc<Client>, UnboundedReceiver<(usize, Call)>);
+struct NewClient(Arc<Client>, UnboundedReceiver<(usize, Call)>);
 
 /// start_client takes both a LanguageConfiguration and a LanguageServerConfiguration to ensure that
 /// it is only called when it makes sense.
 fn start_client(
     id: usize,
+    name: String,
     config: &LanguageConfiguration,
     ls_config: &LanguageServerConfiguration,
     doc_path: Option<&std::path::PathBuf>,
-) -> Result<NewClientResult> {
+    root_dirs: &[PathBuf],
+    enable_snippets: bool,
+) -> Result<NewClient> {
     let (client, incoming, initialize_notify) = Client::start(
         &ls_config.command,
         &ls_config.args,
-        config.config.clone(),
+        ls_config.config.clone(),
         ls_config.environment.clone(),
         &config.roots,
+        config.workspace_lsp_roots.as_deref().unwrap_or(root_dirs),
         id,
+        name,
         ls_config.timeout,
         doc_path,
     )?;
@@ -616,7 +885,7 @@ fn start_client(
             .capabilities
             .get_or_try_init(|| {
                 _client
-                    .initialize()
+                    .initialize(enable_snippets)
                     .map_ok(|response| response.capabilities)
             })
             .await;
@@ -635,7 +904,66 @@ fn start_client(
         initialize_notify.notify_one();
     });
 
-    Ok(NewClientResult(client, incoming))
+    Ok(NewClient(client, incoming))
+}
+
+/// Find an LSP workspace of a file using the following mechanism:
+/// * if the file is outside `workspace` return `None`
+/// * start at `file` and search the file tree upward
+/// * stop the search at the first `root_dirs` entry that contains `file`
+/// * if no `root_dirs` matches `file` stop at workspace
+/// * Returns the top most directory that contains a `root_marker`
+/// * If no root marker and we stopped at a `root_dirs` entry, return the directory we stopped at
+/// * If we stopped at `workspace` instead and `workspace_is_cwd == false` return `None`
+/// * If we stopped at `workspace` instead and `workspace_is_cwd == true` return `workspace`
+pub fn find_lsp_workspace(
+    file: &str,
+    root_markers: &[String],
+    root_dirs: &[PathBuf],
+    workspace: &Path,
+    workspace_is_cwd: bool,
+) -> Option<PathBuf> {
+    let file = std::path::Path::new(file);
+    let mut file = if file.is_absolute() {
+        file.to_path_buf()
+    } else {
+        let current_dir = std::env::current_dir().expect("unable to determine current directory");
+        current_dir.join(file)
+    };
+    file = path::get_normalized_path(&file);
+
+    if !file.starts_with(workspace) {
+        return None;
+    }
+
+    let mut top_marker = None;
+    for ancestor in file.ancestors() {
+        if root_markers
+            .iter()
+            .any(|marker| ancestor.join(marker).exists())
+        {
+            top_marker = Some(ancestor);
+        }
+
+        if root_dirs
+            .iter()
+            .any(|root_dir| path::get_normalized_path(&workspace.join(root_dir)) == ancestor)
+        {
+            // if the worskapce is the cwd do not search any higher for workspaces
+            // but specify
+            return Some(top_marker.unwrap_or(workspace).to_owned());
+        }
+        if ancestor == workspace {
+            // if the workspace is the CWD, let the LSP decide what the workspace
+            // is
+            return top_marker
+                .or_else(|| (!workspace_is_cwd).then_some(workspace))
+                .map(Path::to_owned);
+        }
+    }
+
+    debug_assert!(false, "workspace must be an ancestor of <file>");
+    None
 }
 
 #[cfg(test)]
@@ -656,16 +984,16 @@ mod tests {
 
         test_case!("", (0, 0) => Some(0));
         test_case!("", (0, 1) => Some(0));
-        test_case!("", (1, 0) => None);
+        test_case!("", (1, 0) => Some(0));
         test_case!("\n\n", (0, 0) => Some(0));
         test_case!("\n\n", (1, 0) => Some(1));
         test_case!("\n\n", (1, 1) => Some(1));
         test_case!("\n\n", (2, 0) => Some(2));
-        test_case!("\n\n", (3, 0) => None);
+        test_case!("\n\n", (3, 0) => Some(2));
         test_case!("test\n\n\n\ncase", (4, 3) => Some(11));
         test_case!("test\n\n\n\ncase", (4, 4) => Some(12));
         test_case!("test\n\n\n\ncase", (4, 5) => Some(12));
-        test_case!("", (u32::MAX, u32::MAX) => None);
+        test_case!("", (u32::MAX, u32::MAX) => Some(0));
     }
 
     #[test]

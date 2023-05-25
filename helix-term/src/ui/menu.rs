@@ -79,7 +79,7 @@ impl<T: Item> Menu<T> {
         Self {
             options,
             editor_data,
-            matcher: Box::default(),
+            matcher: Box::new(Matcher::default().ignore_case()),
             matches,
             cursor: None,
             widths: Vec::new(),
@@ -347,6 +347,7 @@ impl<T: Item + 'static> Component for Menu<T> {
                 offset: scroll,
                 selected: self.cursor,
             },
+            false,
         );
 
         if let Some(cursor) = self.cursor {

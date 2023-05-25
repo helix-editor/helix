@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     str,
 };
@@ -37,19 +37,21 @@ pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
 
 #[derive(Clone, Debug)]
 pub struct Loader {
-    user_dir: PathBuf,
-    default_dir: PathBuf,
+    /// Theme directories to search from highest to lowest priority
+    theme_dirs: Vec<PathBuf>,
 }
 impl Loader {
-    /// Creates a new loader that can load themes from two directories.
-    pub fn new<P: AsRef<Path>>(user_dir: P, default_dir: P) -> Self {
+    /// Creates a new loader that can load themes from multiple directories.
+    ///
+    /// The provided directories should be ordered from highest to lowest priority.
+    /// The directories will have their "themes" subdirectory searched.
+    pub fn new(dirs: &[PathBuf]) -> Self {
         Self {
-            user_dir: user_dir.as_ref().join("themes"),
-            default_dir: default_dir.as_ref().join("themes"),
+            theme_dirs: dirs.iter().map(|p| p.join("themes")).collect(),
         }
     }
 
-    /// Loads a theme first looking in the `user_dir` then in `default_dir`
+    /// Loads a theme searching directories in priority order.
     pub fn load(&self, name: &str) -> Result<Theme> {
         if name == "default" {
             return Ok(self.default());
@@ -58,7 +60,8 @@ impl Loader {
             return Ok(self.base16_default());
         }
 
-        let theme = self.load_theme(name, name, false).map(Theme::from)?;
+        let mut visited_paths = HashSet::new();
+        let theme = self.load_theme(name, &mut visited_paths).map(Theme::from)?;
 
         Ok(Theme {
             name: name.into(),
@@ -66,16 +69,18 @@ impl Loader {
         })
     }
 
-    // load the theme and its parent recursively and merge them
-    // `base_theme_name` is the theme from the config.toml,
-    // used to prevent some circular loading scenarios
-    fn load_theme(
-        &self,
-        name: &str,
-        base_theme_name: &str,
-        only_default_dir: bool,
-    ) -> Result<Value> {
-        let path = self.path(name, only_default_dir);
+    /// Recursively load a theme, merging with any inherited parent themes.
+    ///
+    /// The paths that have been visited in the inheritance hierarchy are tracked
+    /// to detect and avoid cycling.
+    ///
+    /// It is possible for one file to inherit from another file with the same name
+    /// so long as the second file is in a themes directory with lower priority.
+    /// However, it is not recommended that users do this as it will make tracing
+    /// errors more difficult.
+    fn load_theme(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<Value> {
+        let path = self.path(name, visited_paths)?;
+
         let theme_toml = self.load_toml(path)?;
 
         let inherits = theme_toml.get("inherits");
@@ -92,11 +97,7 @@ impl Loader {
                 // load default themes's toml from const.
                 "default" => DEFAULT_THEME_DATA.clone(),
                 "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
-                _ => self.load_theme(
-                    parent_theme_name,
-                    base_theme_name,
-                    base_theme_name == parent_theme_name,
-                )?,
+                _ => self.load_theme(parent_theme_name, visited_paths)?,
             };
 
             self.merge_themes(parent_theme_toml, theme_toml)
@@ -127,7 +128,7 @@ impl Loader {
         let parent_palette = parent_theme_toml.get("palette");
         let palette = theme_toml.get("palette");
 
-        // handle the table seperately since it needs a `merge_depth` of 2
+        // handle the table separately since it needs a `merge_depth` of 2
         // this would conflict with the rest of the theme merge strategy
         let palette_values = match (parent_palette, palette) {
             (Some(parent_palette), Some(palette)) => {
@@ -148,7 +149,7 @@ impl Loader {
         merge_toml_values(theme, palette.into(), 1)
     }
 
-    // Loads the theme data as `toml::Value` first from the user_dir then in default_dir
+    // Loads the theme data as `toml::Value`
     fn load_toml(&self, path: PathBuf) -> Result<Value> {
         let data = std::fs::read_to_string(path)?;
         let value = toml::from_str(&data)?;
@@ -156,25 +157,35 @@ impl Loader {
         Ok(value)
     }
 
-    // Returns the path to the theme with the name
-    // With `only_default_dir` as false the path will first search for the user path
-    // disabled it ignores the user path and returns only the default path
-    fn path(&self, name: &str, only_default_dir: bool) -> PathBuf {
+    /// Returns the path to the theme with the given name
+    ///
+    /// Ignores paths already visited and follows directory priority order.
+    fn path(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<PathBuf> {
         let filename = format!("{}.toml", name);
 
-        let user_path = self.user_dir.join(&filename);
-        if !only_default_dir && user_path.exists() {
-            user_path
-        } else {
-            self.default_dir.join(filename)
-        }
-    }
-
-    /// Lists all theme names available in default and user directory
-    pub fn names(&self) -> Vec<String> {
-        let mut names = Self::read_names(&self.user_dir);
-        names.extend(Self::read_names(&self.default_dir));
-        names
+        let mut cycle_found = false; // track if there was a path, but it was in a cycle
+        self.theme_dirs
+            .iter()
+            .find_map(|dir| {
+                let path = dir.join(&filename);
+                if !path.exists() {
+                    None
+                } else if visited_paths.contains(&path) {
+                    // Avoiding cycle, continuing to look in lower priority directories
+                    cycle_found = true;
+                    None
+                } else {
+                    visited_paths.insert(path.clone());
+                    Some(path)
+                }
+            })
+            .ok_or_else(|| {
+                if cycle_found {
+                    anyhow!("Theme: cycle found in inheriting: {}", name)
+                } else {
+                    anyhow!("Theme: file not found for: {}", name)
+                }
+            })
     }
 
     pub fn default_theme(&self, true_color: bool) -> Theme {

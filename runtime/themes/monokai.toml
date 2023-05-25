@@ -78,18 +78,18 @@
 "ui.statusline" = { fg = "active_text", bg = "#414339" }
 "ui.statusline.inactive" = { fg = "active_text", bg = "#75715e" }
 
-"ui.text" = { fg = "text", bg = "background" }
+"ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "active_text" }
 
 "warning" = { fg = "#cca700" }
 "error" = { fg = "#f48771" }
 "info" = { fg = "#75beff" }
-"hint" = { fg = "#eeeeeb3" }
+"hint" = { fg = "#eeeeb3" }
 
 "diagnostic.warning" = { underline = { color = "#cca700", style = "curl" } }
 "diagnostic.error" = { underline = { color = "#f48771", style = "curl" } }
 "diagnostic.info" = { underline = { color = "#75beff", style = "curl" } }
-"diagnostic.hint" = { underline = { color = "#eeeeeb3", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "#eeeeb3", style = "curl" } }
 
 [palette]
 type = "#A6E22E"

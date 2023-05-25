@@ -12,16 +12,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
+    parts.url = "github:hercules-ci/flake-parts";
   };
 
-  outputs = {
-    self,
-    nixpkgs,
-    nci,
-    ...
-  }: let
-    lib = nixpkgs.lib;
-    ncl = nci.lib.nci-lib;
+  outputs = inp: let
     mkRootPath = rel:
       builtins.path {
         path = "${toString ./.}/${rel}";
@@ -32,6 +26,12 @@
         ".envrc"
         ".ignore"
         ".github"
+        ".gitignore"
+        "logo.svg"
+        "logo_dark.svg"
+        "logo_light.svg"
+        "rust-toolchain.toml"
+        "rustfmt.toml"
         "runtime"
         "screenshot.png"
         "book"
@@ -46,6 +46,7 @@
         "flake.lock"
       ];
       ignorePaths = path: type: let
+        inherit (inp.nixpkgs) lib;
         # split the nix store path into its components
         components = lib.splitString "/" path;
         # drop off the `/nix/hash-source` section from the path
@@ -61,117 +62,108 @@
         # filter out unnecessary paths
         filter = ignorePaths;
       };
-    outputs = nci.lib.makeOutputs {
-      root = ./.;
-      config = common: {
-        outputs = {
-          # rename helix-term to helix since it's our main package
-          rename = {"helix-term" = "helix";};
-          # Set default app to hx (binary is from helix-term release build)
-          # Set default package to helix-term release build
-          defaults = {
-            app = "hx";
-            package = "helix";
-          };
-        };
-        cCompiler.package = with common.pkgs;
-          if stdenv.isLinux
-          then gcc
-          else clang;
-        shell = {
-          packages = with common.pkgs;
-            [lld_13 cargo-flamegraph rust-analyzer]
-            ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) cargo-tarpaulin)
-            ++ (lib.optional stdenv.isLinux lldb)
-            ++ (lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.CoreFoundation);
-          env = [
-            {
-              name = "HELIX_RUNTIME";
-              eval = "$PWD/runtime";
-            }
-            {
-              name = "RUST_BACKTRACE";
-              value = "1";
-            }
-            {
-              name = "RUSTFLAGS";
-              eval =
-                if common.pkgs.stdenv.isLinux
-                then "$RUSTFLAGS\" -C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment\""
-                else "$RUSTFLAGS";
-            }
-          ];
-        };
-      };
-      pkgConfig = common: {
-        helix-term = {
-          # Wrap helix with runtime
-          wrapper = _: old: let
-            inherit (common) pkgs;
-            makeOverridableHelix = old: config: let
-              grammars = pkgs.callPackage ./grammars.nix config;
-              runtimeDir = pkgs.runCommand "helix-runtime" {} ''
-                mkdir -p $out
-                ln -s ${mkRootPath "runtime"}/* $out
-                rm -r $out/grammars
-                ln -s ${grammars} $out/grammars
-              '';
-              helix-wrapped =
-                common.internal.pkgsSet.utils.wrapDerivation old
-                {
-                  nativeBuildInputs = [pkgs.makeWrapper];
-                  makeWrapperArgs = config.makeWrapperArgs or [];
-                }
-                ''
-                  rm -rf $out/bin
-                  mkdir -p $out/bin
-                  ln -sf ${old}/bin/* $out/bin/
-                  wrapProgram "$out/bin/hx" ''${makeWrapperArgs[@]} --set HELIX_RUNTIME "${runtimeDir}"
-                '';
-            in
-              helix-wrapped
-              // {override = makeOverridableHelix old;};
-          in
-            makeOverridableHelix old {};
-          overrides.fix-build.overrideAttrs = prev: {
-            src = filteredSource;
-
-            # disable fetching and building of tree-sitter grammars in the helix-term build.rs
-            HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
-
-            buildInputs = ncl.addBuildInputs prev [common.config.cCompiler.package.cc.lib];
-
-            # link languages and theme toml files since helix-term expects them (for tests)
-            preConfigure = ''
-              ${prev.preConfigure or ""}
-              ${
-                lib.concatMapStringsSep
-                "\n"
-                (path: "ln -sf ${mkRootPath path} ..")
-                ["languages.toml" "theme.toml" "base16_theme.toml"]
-              }
-            '';
-            checkPhase = ":";
-
-            meta.mainProgram = "hx";
-          };
-        };
-      };
-    };
   in
-    outputs
-    // {
-      packages =
-        lib.mapAttrs
-        (
-          system: packages:
-            packages
-            // {
-              helix-unwrapped = packages.helix.passthru.unwrapped;
-              helix-unwrapped-dev = packages.helix-dev.passthru.unwrapped;
+    inp.parts.lib.mkFlake {inputs = inp;} {
+      imports = [inp.nci.flakeModule inp.parts.flakeModules.easyOverlay];
+      systems = [
+        "x86_64-linux"
+        "x86_64-darwin"
+        "aarch64-linux"
+        "aarch64-darwin"
+        "i686-linux"
+      ];
+      perSystem = {
+        config,
+        pkgs,
+        lib,
+        ...
+      }: let
+        makeOverridableHelix = old: config: let
+          grammars = pkgs.callPackage ./grammars.nix config;
+          runtimeDir = pkgs.runCommand "helix-runtime" {} ''
+            mkdir -p $out
+            ln -s ${mkRootPath "runtime"}/* $out
+            rm -r $out/grammars
+            ln -s ${grammars} $out/grammars
+          '';
+          helix-wrapped =
+            pkgs.runCommand
+            old.name
+            {
+              inherit (old) pname version;
+              meta = old.meta or {};
+              passthru =
+                (old.passthru or {})
+                // {
+                  unwrapped = old;
+                };
+              nativeBuildInputs = [pkgs.makeWrapper];
+              makeWrapperArgs = config.makeWrapperArgs or [];
             }
-        )
-        outputs.packages;
+            ''
+              cp -rs --no-preserve=mode,ownership ${old} $out
+              wrapProgram "$out/bin/hx" ''${makeWrapperArgs[@]} --set HELIX_RUNTIME "${runtimeDir}"
+            '';
+        in
+          helix-wrapped
+          // {
+            override = makeOverridableHelix old;
+            passthru =
+              helix-wrapped.passthru
+              // {
+                wrapper = old: makeOverridableHelix old config;
+              };
+          };
+        stdenv =
+          if pkgs.stdenv.isLinux
+          then pkgs.stdenv
+          else pkgs.clangStdenv;
+        rustFlagsEnv =
+          if stdenv.isLinux
+          then ''$RUSTFLAGS -C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment''
+          else "$RUSTFLAGS";
+      in {
+        nci.projects."helix-project".relPath = "";
+        nci.crates."helix-term" = {
+          overrides = {
+            add-meta.override = _: {meta.mainProgram = "hx";};
+            add-inputs.overrideAttrs = prev: {
+              buildInputs = (prev.buildInputs or []) ++ [stdenv.cc.cc.lib];
+            };
+            disable-grammar-builds = {
+              # disable fetching and building of tree-sitter grammars in the helix-term build.rs
+              HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
+            };
+            disable-tests = {checkPhase = ":";};
+            set-stdenv.override = _: {inherit stdenv;};
+            set-filtered-src.override = _: {src = filteredSource;};
+          };
+        };
+
+        packages.helix-unwrapped = config.nci.outputs."helix-term".packages.release;
+        packages.helix-unwrapped-dev = config.nci.outputs."helix-term".packages.dev;
+        packages.helix = makeOverridableHelix config.packages.helix-unwrapped {};
+        packages.helix-dev = makeOverridableHelix config.packages.helix-unwrapped-dev {};
+        packages.default = config.packages.helix;
+
+        overlayAttrs = {
+          inherit (config.packages) helix;
+        };
+
+        devShells.default = config.nci.outputs."helix-project".devShell.overrideAttrs (old: {
+          nativeBuildInputs =
+            (old.nativeBuildInputs or [])
+            ++ (with pkgs; [lld_13 cargo-flamegraph rust-analyzer])
+            ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) pkgs.cargo-tarpaulin)
+            ++ (lib.optional stdenv.isLinux pkgs.lldb)
+            ++ (lib.optional stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.CoreFoundation);
+          shellHook = ''
+            export HELIX_RUNTIME="$PWD/runtime"
+            export RUST_BACKTRACE="1"
+            export RUSTFLAGS="${rustFlagsEnv}"
+          '';
+        });
+      };
     };
 
   nixConfig = {

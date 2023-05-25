@@ -79,6 +79,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "s" => select_regex,
         "A-s" => split_selection_on_newline,
+        "A-minus" => merge_selections,
         "A-_" => merge_consecutive_selections,
         "S" => split_selection,
         ";" => collapse_selection,
@@ -223,6 +224,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "'" => last_picker,
             "g" => { "Debug (experimental)" sticky=true
                 "l" => dap_launch,
+                "r" => dap_restart,
                 "b" => dap_toggle_breakpoint,
                 "c" => dap_continue,
                 "h" => dap_pause,
@@ -363,7 +365,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "A-d" | "A-del" => delete_word_forward,
         "C-u" => kill_to_line_start,
         "C-k" => kill_to_line_end,
-        "C-h" | "backspace" => delete_char_backward,
+        "C-h" | "backspace" | "S-backspace" => delete_char_backward,
         "C-d" | "del" => delete_char_forward,
         "C-j" | "ret" => insert_newline,
         "tab" => insert_tab,
