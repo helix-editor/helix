@@ -728,12 +728,11 @@ mod test {
         tree.focus = l0;
         let view = View::new(DocumentId::default(), GutterConfig::default());
         tree.split(view, Layout::Vertical);
-        let l2 = tree.focus;
 
         // Tree in test
         // | L0  | L2 |    |
         // |    L1    | R0 |
-        tree.focus = l2;
+        let l2 = tree.focus;
         assert_eq!(Some(l0), tree.find_split_in_direction(l2, Direction::Left));
         assert_eq!(Some(l1), tree.find_split_in_direction(l2, Direction::Down));
         assert_eq!(Some(r0), tree.find_split_in_direction(l2, Direction::Right));

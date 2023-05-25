@@ -12,15 +12,13 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
             #[lo|]#rem
             ipsum
             dolor
-            "})
-        .as_str(),
+            "}),
         "CC",
         platform_line(indoc! {"\
             #(lo|)#rem
             #(ip|)#sum
             #[do|]#lor
-            "})
-        .as_str(),
+            "}),
     ))
     .await?;
 
@@ -30,15 +28,13 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
             #[|lo]#rem
             ipsum
             dolor
-            "})
-        .as_str(),
+            "}),
         "CC",
         platform_line(indoc! {"\
             #(|lo)#rem
             #(|ip)#sum
             #[|do]#lor
-            "})
-        .as_str(),
+            "}),
     ))
     .await?;
 
@@ -47,14 +43,12 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
         platform_line(indoc! {"\
             test
             #[testitem|]#
-            "})
-        .as_str(),
+            "}),
         "<A-C>",
         platform_line(indoc! {"\
             test
             #[testitem|]#
-            "})
-        .as_str(),
+            "}),
     ))
     .await?;
 
@@ -63,14 +57,12 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
         platform_line(indoc! {"\
             test
             #[test|]#
-            "})
-        .as_str(),
+            "}),
         "<A-C>",
         platform_line(indoc! {"\
             #[test|]#
             #(test|)#
-            "})
-        .as_str(),
+            "}),
     ))
     .await?;
 
@@ -79,14 +71,12 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
         platform_line(indoc! {"\
             #[testitem|]#
             test
-            "})
-        .as_str(),
+            "}),
         "C",
         platform_line(indoc! {"\
             #[testitem|]#
             test
-            "})
-        .as_str(),
+            "}),
     ))
     .await?;
 
@@ -95,14 +85,12 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
         platform_line(indoc! {"\
             #[test|]#
             test
-            "})
-        .as_str(),
+            "}),
         "C",
         platform_line(indoc! {"\
             #(test|)#
             #[test|]#
-            "})
-        .as_str(),
+            "}),
     ))
     .await?;
     Ok(())
@@ -174,15 +162,13 @@ async fn test_multi_selection_paste() -> anyhow::Result<()> {
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "})
-        .as_str(),
+            "}),
         "yp",
         platform_line(indoc! {"\
             lorem#[|lorem]#
             ipsum#(|ipsum)#
             dolor#(|dolor)#
-            "})
-        .as_str(),
+            "}),
     ))
     .await?;
 
@@ -197,8 +183,7 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "})
-        .as_str(),
+            "}),
         "|echo foo<ret>",
         platform_line(indoc! {"\
             #[|foo\n]#
@@ -207,8 +192,7 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             
             #(|foo\n)#
             
-            "})
-        .as_str(),
+            "}),
     ))
     .await?;
 
@@ -218,8 +202,7 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "})
-        .as_str(),
+            "}),
         "!echo foo<ret>",
         platform_line(indoc! {"\
             #[|foo\n]#
@@ -228,8 +211,7 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             ipsum
             #(|foo\n)#
             dolor
-            "})
-        .as_str(),
+            "}),
     ))
     .await?;
 
@@ -239,8 +221,7 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "})
-        .as_str(),
+            "}),
         "<A-!>echo foo<ret>",
         platform_line(indoc! {"\
             lorem#[|foo\n]#
@@ -249,8 +230,7 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             
             dolor#(|foo\n)#
             
-            "})
-        .as_str(),
+            "}),
     ))
     .await?;
 
@@ -294,16 +274,14 @@ async fn test_extend_line() -> anyhow::Result<()> {
             ipsum
             dolor
             
-            "})
-        .as_str(),
+            "}),
         "x2x",
         platform_line(indoc! {"\
             #[lorem
             ipsum
             dolor\n|]#
             
-            "})
-        .as_str(),
+            "}),
     ))
     .await?;
 
@@ -313,15 +291,13 @@ async fn test_extend_line() -> anyhow::Result<()> {
             #[l|]#orem
             ipsum
             
-            "})
-        .as_str(),
+            "}),
         "2x",
         platform_line(indoc! {"\
             #[lorem
             ipsum\n|]#
             
-            "})
-        .as_str(),
+            "}),
     ))
     .await?;
 
@@ -381,6 +357,71 @@ async fn test_character_info() -> anyhow::Result<()> {
         }),
         false,
     )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_delete_char_backward() -> anyhow::Result<()> {
+    // don't panic when deleting overlapping ranges
+    test((
+        platform_line("#(x|)# #[x|]#"),
+        "c<space><backspace><esc>",
+        platform_line("#[\n|]#"),
+    ))
+    .await?;
+    test((
+        platform_line("#( |)##( |)#a#( |)#axx#[x|]#a"),
+        "li<backspace><esc>",
+        platform_line("#(a|)##(|a)#xx#[|a]#"),
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_delete_word_backward() -> anyhow::Result<()> {
+    // don't panic when deleting overlapping ranges
+    test((
+        platform_line("fo#[o|]#ba#(r|)#"),
+        "a<C-w><esc>",
+        platform_line("#[\n|]#"),
+    ))
+    .await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_delete_word_forward() -> anyhow::Result<()> {
+    // don't panic when deleting overlapping ranges
+    test((
+        platform_line("fo#[o|]#b#(|ar)#"),
+        "i<A-d><esc>",
+        platform_line("fo#[\n|]#"),
+    ))
+    .await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_delete_char_forward() -> anyhow::Result<()> {
+    test((
+        platform_line(indoc! {"\
+                #[abc|]#def
+                #(abc|)#ef
+                #(abc|)#f
+                #(abc|)#
+            "}),
+        "a<del><esc>",
+        platform_line(indoc! {"\
+                #[abc|]#ef
+                #(abc|)#f
+                #(abc|)#
+                #(abc|)#
+            "}),
+    ))
     .await?;
 
     Ok(())
