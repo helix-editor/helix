@@ -7,6 +7,7 @@ awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
 bass = { command = "bass", args = ["--lsp"] }
 bicep-langserver = { command = "bicep-langserver" }
+cairo-language-server = { command = "cairo-language-server", args = [] }
 cl-lsp = { command = "cl-lsp", args = [ "stdio" ] }
 clangd = { command = "clangd" }
 clojure-lsp = { command = "clojure-lsp" }
@@ -1701,8 +1702,8 @@ roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 # auto-format = true
-language-server = { command = "cairo-language-server", args = [] }
 grammar = "rust"
+language-servers = [ "cairo-language-server" ]
 
 [[language]]
 name = "cpon"
