@@ -1700,10 +1700,9 @@ file-types = ["cairo"]
 roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
-
-[[grammar]]
-name = "cairo"
-source = { git = "https://github.com/archseer/tree-sitter-cairo", rev = "b249662a1eefeb4d71c9529cdd971e74fecc10fe" }
+# auto-format = true
+language-server = { command = "cairo-language-server", args = [] }
+grammar = "rust"
 
 [[language]]
 name = "cpon"
