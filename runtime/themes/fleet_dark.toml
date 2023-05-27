@@ -66,10 +66,11 @@
 
 # ui specific
 "ui.background" = { bg = "Gray 10" } # .separator
-"ui.statusline" = { fg = "Gray 120", bg = "Gray 10" } # .inactive / .normal / .insert / .select
-# "ui.statusline.normal" = { fg = "lightest", bg = "darker"}
-# "ui.statusline.insert" = { fg = "lightest", bg = "blue_accent" }
-# "ui.statusline.select" = { fg = "lightest", bg = "orange_accent" }
+"ui.statusline" = { fg = "Gray 120", bg = "Gray 20" } # .inactive / .normal / .insert / .select
+"ui.statusline.normal" = { fg = "Gray 120", bg = "Gray 20" }
+"ui.statusline.inactive" = { fg = "Gray 90"}
+"ui.statusline.insert" = { fg = "Gray 20", bg = "Blue 90" }
+"ui.statusline.select" = { fg = "Gray 20", bg = "Yellow 60" }
 
 "ui.cursor" = { modifiers = ["reversed"] } # .insert / .select / .match / .primary
 "ui.cursor.match" = { bg = "Blue 30" } # .insert / .select / .match / .primary
@@ -91,8 +92,9 @@
 "ui.text" = "Gray 120" # .focus / .info
 "ui.text.focus" = { fg = "White", bg = "Blue 40" }
 
-"ui.virtual" = "Gray 80" # .whitespace
-# "ui.virtual.ruler" = { bg = "darker"}
+"ui.virtual" = "Gray 90" # .whitespace
+"ui.virtual.inlay-hint" = { fg = "Gray 70" }
+"ui.virtual.ruler" = { bg = "Gray 20" }
 
 "hint" = "Gray 80"
 "info" = "#A366C4"

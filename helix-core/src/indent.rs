@@ -4,6 +4,7 @@ use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
 
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
+    graphemes::tab_width_at,
     syntax::{LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
     Rope, RopeSlice,
@@ -189,7 +190,7 @@ pub fn indent_level_for_line(line: RopeSlice, tab_width: usize, indent_width: us
     let mut len = 0;
     for ch in line.chars() {
         match ch {
-            '\t' => len += tab_width,
+            '\t' => len += tab_width_at(len, tab_width as u16),
             ' ' => len += 1,
             _ => break,
         }

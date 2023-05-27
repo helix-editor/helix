@@ -33,7 +33,13 @@ inside the project. We use [xtask][xtask] as an ad-hoc task runner and
 thus do not require any dependencies other than `cargo` (You don't have
 to `cargo install` anything either).
 
-# Integration tests
+# Testing
+
+## Unit tests/Documentation tests
+
+Run `cargo test --workspace` to run unit tests and documentation tests in all packages.
+
+## Integration tests
 
 Integration tests for helix-term can be run with `cargo integration-test`. Code
 contributors are strongly encouraged to write integration tests for their code.

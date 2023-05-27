@@ -11,6 +11,7 @@ use crate::{
 };
 
 use helix_core::{
+    diagnostic::NumberOrString,
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
@@ -18,28 +19,28 @@ use helix_core::{
     syntax::{self, HighlightEvent},
     text_annotations::TextAnnotations,
     unicode::width::UnicodeWidthStr,
-    visual_offset_from_block, Position, Range, Selection, Transaction,
+    visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
 use helix_view::{
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{num::NonZeroUsize, path::PathBuf, rc::Rc};
+use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
-use tui::buffer::Buffer as Surface;
+use tui::{buffer::Buffer as Surface, text::Span};
 
-use super::statusline;
+use super::{completion::CompletionItem, statusline};
 use super::{document::LineDecoration, lsp::SignatureHelp};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<OnKeyCallback>,
     pseudo_pending: Vec<KeyEvent>,
-    last_insert: (commands::MappableCommand, Vec<InsertEvent>),
+    pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
 }
@@ -47,8 +48,12 @@ pub struct EditorView {
 #[derive(Debug, Clone)]
 pub enum InsertEvent {
     Key(KeyEvent),
-    CompletionApply(CompleteAction),
+    CompletionApply {
+        trigger_offset: usize,
+        changes: Vec<Change>,
+    },
     TriggerCompletion,
+    RequestCompletion,
 }
 
 impl Default for EditorView {
@@ -91,46 +96,29 @@ impl EditorView {
         let mut line_decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
         let mut translated_positions: Vec<TranslatedPosition> = Vec::new();
 
-        // DAP: Highlight current stack frame position
-        let stack_frame = editor.debugger.as_ref().and_then(|debugger| {
-            if let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id) {
-                debugger
-                    .stack_frames
-                    .get(&thread_id)
-                    .and_then(|bt| bt.get(frame))
-            } else {
-                None
-            }
-        });
-        if let Some(frame) = stack_frame {
-            if doc.path().is_some()
-                && frame
-                    .source
-                    .as_ref()
-                    .and_then(|source| source.path.as_ref())
-                    == doc.path()
-            {
-                let line = frame.line - 1; // convert to 0-indexing
-                let style = theme.get("ui.highlight");
-                let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
-                    if pos.doc_line != line {
-                        return;
-                    }
-                    renderer
-                        .surface
-                        .set_style(Rect::new(area.x, pos.visual_line, area.width, 1), style);
-                };
-
-                line_decorations.push(Box::new(line_decoration));
-            }
-        }
-
         if is_focused && config.cursorline {
             line_decorations.push(Self::cursorline_decorator(doc, view, theme))
         }
 
         if is_focused && config.cursorcolumn {
             Self::highlight_cursorcolumn(doc, view, surface, theme, inner, &text_annotations);
+        }
+
+        // Set DAP highlights, if needed.
+        if let Some(frame) = editor.current_stack_frame() {
+            let dap_line = frame.line.saturating_sub(1);
+            let style = theme.get("ui.highlight.frameline");
+            let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
+                if pos.doc_line != dap_line {
+                    return;
+                }
+                renderer.surface.set_style(
+                    Rect::new(inner.x, inner.y + pos.visual_line, inner.width, 1),
+                    style,
+                );
+            };
+
+            line_decorations.push(Box::new(line_decoration));
         }
 
         let mut highlights =
@@ -420,6 +408,7 @@ impl EditorView {
         let primary_selection_scope = theme
             .find_scope_index_exact("ui.selection.primary")
             .unwrap_or(selection_scope);
+
         let base_cursor_scope = theme
             .find_scope_index_exact("ui.cursor")
             .unwrap_or(selection_scope);
@@ -661,7 +650,7 @@ impl EditorView {
             .primary()
             .cursor(doc.text().slice(..));
 
-        let diagnostics = doc.diagnostics().iter().filter(|diagnostic| {
+        let diagnostics = doc.shown_diagnostics().filter(|diagnostic| {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
         });
 
@@ -683,6 +672,14 @@ impl EditorView {
                 });
             let text = Text::styled(&diagnostic.message, style);
             lines.extend(text.lines);
+            let code = diagnostic.code.as_ref().map(|x| match x {
+                NumberOrString::Number(n) => format!("({n})"),
+                NumberOrString::String(s) => format!("({s})"),
+            });
+            if let Some(code) = code {
+                let span = Span::styled(code, style);
+                lines.push(span.into());
+            }
         }
 
         let paragraph = Paragraph::new(lines)
@@ -819,7 +816,8 @@ impl EditorView {
                 }
                 (Mode::Insert, Mode::Normal) => {
                     // if exiting insert mode, remove completion
-                    self.completion = None;
+                    self.clear_completion(cxt.editor);
+                    cxt.editor.completion_request_handle = None;
 
                     // TODO: Use an on_mode_change hook to remove signature help
                     cxt.jobs.callback(async {
@@ -890,32 +888,42 @@ impl EditorView {
                 for _ in 0..cxt.editor.count.map_or(1, NonZeroUsize::into) {
                     // first execute whatever put us into insert mode
                     self.last_insert.0.execute(cxt);
+                    let mut last_savepoint = None;
+                    let mut last_request_savepoint = None;
                     // then replay the inputs
                     for key in self.last_insert.1.clone() {
                         match key {
                             InsertEvent::Key(key) => self.insert_mode(cxt, key),
-                            InsertEvent::CompletionApply(compl) => {
+                            InsertEvent::CompletionApply {
+                                trigger_offset,
+                                changes,
+                            } => {
                                 let (view, doc) = current!(cxt.editor);
 
-                                doc.restore(view);
+                                if let Some(last_savepoint) = last_savepoint.as_deref() {
+                                    doc.restore(view, last_savepoint, true);
+                                }
 
                                 let text = doc.text().slice(..);
                                 let cursor = doc.selection(view.id).primary().cursor(text);
 
                                 let shift_position =
-                                    |pos: usize| -> usize { pos + cursor - compl.trigger_offset };
+                                    |pos: usize| -> usize { pos + cursor - trigger_offset };
 
                                 let tx = Transaction::change(
                                     doc.text(),
-                                    compl.changes.iter().cloned().map(|(start, end, t)| {
+                                    changes.iter().cloned().map(|(start, end, t)| {
                                         (shift_position(start), shift_position(end), t)
                                     }),
                                 );
                                 doc.apply(&tx, view.id);
                             }
                             InsertEvent::TriggerCompletion => {
-                                let (_, doc) = current!(cxt.editor);
-                                doc.savepoint();
+                                last_savepoint = take(&mut last_request_savepoint);
+                            }
+                            InsertEvent::RequestCompletion => {
+                                let (view, doc) = current!(cxt.editor);
+                                last_request_savepoint = Some(doc.savepoint(view));
                             }
                         }
                     }
@@ -940,44 +948,59 @@ impl EditorView {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn set_completion(
         &mut self,
         editor: &mut Editor,
-        items: Vec<helix_lsp::lsp::CompletionItem>,
-        offset_encoding: helix_lsp::OffsetEncoding,
+        savepoint: Arc<SavePoint>,
+        items: Vec<CompletionItem>,
         start_offset: usize,
         trigger_offset: usize,
         size: Rect,
-    ) {
+    ) -> Option<Rect> {
         let mut completion =
-            Completion::new(editor, items, offset_encoding, start_offset, trigger_offset);
+            Completion::new(editor, savepoint, items, start_offset, trigger_offset);
 
         if completion.is_empty() {
             // skip if we got no completion results
-            return;
+            return None;
         }
 
-        // Immediately initialize a savepoint
-        doc_mut!(editor).savepoint();
-
+        let area = completion.area(size, editor);
         editor.last_completion = None;
         self.last_insert.1.push(InsertEvent::TriggerCompletion);
 
         // TODO : propagate required size on resize to completion too
         completion.required_size((size.width, size.height));
         self.completion = Some(completion);
+        Some(area)
     }
 
     pub fn clear_completion(&mut self, editor: &mut Editor) {
         self.completion = None;
+        if let Some(last_completion) = editor.last_completion.take() {
+            match last_completion {
+                CompleteAction::Applied {
+                    trigger_offset,
+                    changes,
+                } => self.last_insert.1.push(InsertEvent::CompletionApply {
+                    trigger_offset,
+                    changes,
+                }),
+                CompleteAction::Selected { savepoint } => {
+                    let (view, doc) = current!(editor);
+                    doc.restore(view, &savepoint, false);
+                }
+            }
+        }
 
         // Clear any savepoints
-        let doc = doc_mut!(editor);
-        doc.savepoint = None;
         editor.clear_idle_timer(); // don't retrigger
     }
 
     pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
+        commands::compute_inlay_hints_for_all_views(cx.editor, cx.jobs);
+
         if let Some(completion) = &mut self.completion {
             return if completion.ensure_item_resolved(cx) {
                 EventResult::Consumed(None)
@@ -1002,6 +1025,10 @@ impl EditorView {
         event: &MouseEvent,
         cxt: &mut commands::Context,
     ) -> EventResult {
+        if event.kind != MouseEventKind::Moved {
+            cxt.editor.reset_idle_timer();
+        }
+
         let config = cxt.editor.config();
         let MouseEvent {
             kind,
@@ -1011,10 +1038,15 @@ impl EditorView {
             ..
         } = *event;
 
-        let pos_and_view = |editor: &Editor, row, column| {
+        let pos_and_view = |editor: &Editor, row, column, ignore_virtual_text| {
             editor.tree.views().find_map(|(view, _focus)| {
-                view.pos_at_screen_coords(&editor.documents[&view.doc], row, column, true)
-                    .map(|pos| (pos, view.id))
+                view.pos_at_screen_coords(
+                    &editor.documents[&view.doc],
+                    row,
+                    column,
+                    ignore_virtual_text,
+                )
+                .map(|pos| (pos, view.id))
             })
         };
 
@@ -1029,7 +1061,7 @@ impl EditorView {
             MouseEventKind::Down(MouseButton::Left) => {
                 let editor = &mut cxt.editor;
 
-                if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
+                if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
 
                     if modifiers == KeyModifiers::ALT {
@@ -1093,7 +1125,7 @@ impl EditorView {
                     _ => unreachable!(),
                 };
 
-                match pos_and_view(cxt.editor, row, column) {
+                match pos_and_view(cxt.editor, row, column, false) {
                     Some((_, view_id)) => cxt.editor.tree.focus = view_id,
                     None => return EventResult::Ignored(None),
                 }
@@ -1164,7 +1196,7 @@ impl EditorView {
                     return EventResult::Consumed(None);
                 }
 
-                if let Some((pos, view_id)) = pos_and_view(editor, row, column) {
+                if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
                     doc.set_selection(view_id, Selection::point(pos));
                     cxt.editor.focus(view_id);
@@ -1240,30 +1272,44 @@ impl Component for EditorView {
                             // let completion swallow the event if necessary
                             let mut consumed = false;
                             if let Some(completion) = &mut self.completion {
-                                // use a fake context here
-                                let mut cx = Context {
-                                    editor: cx.editor,
-                                    jobs: cx.jobs,
-                                    scroll: None,
+                                let res = {
+                                    // use a fake context here
+                                    let mut cx = Context {
+                                        editor: cx.editor,
+                                        jobs: cx.jobs,
+                                        scroll: None,
+                                    };
+
+                                    if let EventResult::Consumed(callback) =
+                                        completion.handle_event(event, &mut cx)
+                                    {
+                                        consumed = true;
+                                        Some(callback)
+                                    } else if let EventResult::Consumed(callback) =
+                                        completion.handle_event(&Event::Key(key!(Enter)), &mut cx)
+                                    {
+                                        Some(callback)
+                                    } else {
+                                        None
+                                    }
                                 };
-                                let res = completion.handle_event(event, &mut cx);
 
-                                if let EventResult::Consumed(callback) = res {
-                                    consumed = true;
-
+                                if let Some(callback) = res {
                                     if callback.is_some() {
                                         // assume close_fn
                                         self.clear_completion(cx.editor);
+
+                                        // In case the popup was deleted because of an intersection w/ the auto-complete menu.
+                                        commands::signature_help_impl(
+                                            &mut cx,
+                                            commands::SignatureHelpInvoked::Automatic,
+                                        );
                                     }
                                 }
                             }
 
                             // if completion didn't take the event, we pass it onto commands
                             if !consumed {
-                                if let Some(compl) = cx.editor.last_completion.take() {
-                                    self.last_insert.1.push(InsertEvent::CompletionApply(compl));
-                                }
-
                                 self.insert_mode(&mut cx, key);
 
                                 // record last_insert key

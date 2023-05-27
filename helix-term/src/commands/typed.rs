@@ -5,7 +5,7 @@ use crate::job::Job;
 
 use super::*;
 
-use helix_core::encoding;
+use helix_core::{encoding, shellwords::Shellwords};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
@@ -18,7 +18,49 @@ pub struct TypableCommand {
     pub doc: &'static str,
     // params, flags, helper, completer
     pub fun: fn(&mut compositor::Context, &[Cow<str>], PromptEvent) -> anyhow::Result<()>,
-    pub completer: Option<Completer>,
+    /// What completion methods, if any, does this command have?
+    pub signature: CommandSignature,
+}
+
+impl TypableCommand {
+    fn completer_for_argument_number(&self, n: usize) -> &Completer {
+        match self.signature.positional_args.get(n) {
+            Some(completer) => completer,
+            _ => &self.signature.var_args,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct CommandSignature {
+    // Arguments with specific completion methods based on their position.
+    positional_args: &'static [Completer],
+
+    // All remaining arguments will use this completion method, if set.
+    var_args: Completer,
+}
+
+impl CommandSignature {
+    const fn none() -> Self {
+        Self {
+            positional_args: &[],
+            var_args: completers::none,
+        }
+    }
+
+    const fn positional(completers: &'static [Completer]) -> Self {
+        Self {
+            positional_args: completers,
+            var_args: completers::none,
+        }
+    }
+
+    const fn all(completer: Completer) -> Self {
+        Self {
+            positional_args: &[],
+            var_args: completer,
+        }
+    }
 }
 
 fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
@@ -74,7 +116,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
                         let picker = ui::file_picker(path, &editor.config());
-                        compositor.push(Box::new(overlayed(picker)));
+                        compositor.push(Box::new(overlaid(picker)));
                     },
                 ));
                 Ok(call)
@@ -338,6 +380,36 @@ fn force_write(
     }
 
     write_impl(cx, args.first(), true)
+}
+
+fn write_buffer_close(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(cx, args.first(), false)?;
+
+    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    buffer_close_by_ids_impl(cx, &document_ids, false)
+}
+
+fn force_write_buffer_close(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(cx, args.first(), true)?;
+
+    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
 fn new_file(
@@ -1257,26 +1329,22 @@ fn lsp_workspace_command(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    let (_, doc) = current!(cx.editor);
-
-    let language_server = match doc.language_server() {
-        Some(language_server) => language_server,
-        None => {
-            cx.editor
-                .set_status("Language server not active for current buffer");
-            return Ok(());
-        }
+    let doc = doc!(cx.editor);
+    let Some((language_server_id, options)) = doc
+        .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
+        .find_map(|ls| {
+            ls.capabilities()
+                .execute_command_provider
+                .as_ref()
+                .map(|options| (ls.id(), options))
+        })
+    else {
+        cx.editor.set_status(
+             "No active language servers for this document support workspace commands",
+        );
+        return Ok(());
     };
 
-    let options = match &language_server.capabilities().execute_command_provider {
-        Some(options) => options,
-        None => {
-            cx.editor
-                .set_status("Workspace commands are not supported for this language server");
-            return Ok(());
-        }
-    };
     if args.is_empty() {
         let commands = options
             .commands
@@ -1293,12 +1361,12 @@ fn lsp_workspace_command(
                     let picker = ui::Picker::new(
                         commands,
                         (),
-                        |cx, command, _action| {
-                            execute_lsp_command(cx.editor, command.clone());
+                        move |cx, command, _action| {
+                            execute_lsp_command(cx.editor, language_server_id, command.clone());
                         },
                         |_, _, _| None,
                     );
-                    compositor.push(Box::new(overlayed(picker)))
+                    compositor.push(Box::new(overlaid(picker)))
                 },
             ));
             Ok(call)
@@ -1309,6 +1377,7 @@ fn lsp_workspace_command(
         if options.commands.iter().any(|c| c == &command) {
             execute_lsp_command(
                 cx.editor,
+                language_server_id,
                 helix_lsp::lsp::Command {
                     title: command.clone(),
                     arguments: None,
@@ -1334,26 +1403,67 @@ fn lsp_restart(
         return Ok(());
     }
 
+    let editor_config = cx.editor.config.load();
     let (_view, doc) = current!(cx.editor);
     let config = doc
         .language_config()
         .context("LSP not defined for the current document")?;
 
-    let scope = config.scope.clone();
-    cx.editor.language_servers.restart(config, doc.path())?;
+    cx.editor.language_servers.restart(
+        config,
+        doc.path(),
+        &editor_config.workspace_lsp_roots,
+        editor_config.lsp.snippets,
+    )?;
 
     // This collect is needed because refresh_language_server would need to re-borrow editor.
     let document_ids_to_refresh: Vec<DocumentId> = cx
         .editor
         .documents()
         .filter_map(|doc| match doc.language_config() {
-            Some(config) if config.scope.eq(&scope) => Some(doc.id()),
+            Some(config)
+                if config.language_servers.iter().any(|ls| {
+                    config
+                        .language_servers
+                        .iter()
+                        .any(|restarted_ls| restarted_ls.name == ls.name)
+                }) =>
+            {
+                Some(doc.id())
+            }
             _ => None,
         })
         .collect();
 
     for document_id in document_ids_to_refresh {
-        cx.editor.refresh_language_server(document_id);
+        cx.editor.refresh_language_servers(document_id);
+    }
+
+    Ok(())
+}
+
+fn lsp_stop(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let ls_shutdown_names = doc!(cx.editor)
+        .language_servers()
+        .map(|ls| ls.name().to_string())
+        .collect::<Vec<_>>();
+
+    for ls_name in &ls_shutdown_names {
+        cx.editor.language_servers.stop(ls_name);
+
+        for doc in cx.editor.documents_mut() {
+            if let Some(client) = doc.remove_language_server_by_name(ls_name) {
+                doc.clear_diagnostics(client.id());
+            }
+        }
     }
 
     Ok(())
@@ -1539,10 +1649,39 @@ fn tutor(
         return Ok(());
     }
 
-    let path = helix_loader::runtime_dir().join("tutor");
+    let path = helix_loader::runtime_file(Path::new("tutor"));
     cx.editor.open(&path, Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
     doc_mut!(cx.editor).set_path(None)?;
+    Ok(())
+}
+
+fn abort_goto_line_number_preview(cx: &mut compositor::Context) {
+    if let Some(last_selection) = cx.editor.last_selection.take() {
+        let scrolloff = cx.editor.config().scrolloff;
+
+        let (view, doc) = current!(cx.editor);
+        doc.set_selection(view.id, last_selection);
+        view.ensure_cursor_in_view(doc, scrolloff);
+    }
+}
+
+fn update_goto_line_number_preview(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+) -> anyhow::Result<()> {
+    cx.editor.last_selection.get_or_insert_with(|| {
+        let (view, doc) = current!(cx.editor);
+        doc.selection(view.id).clone()
+    });
+
+    let scrolloff = cx.editor.config().scrolloff;
+    let line = args[0].parse::<usize>()?;
+    goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
+
+    let (view, doc) = current!(cx.editor);
+    view.ensure_cursor_in_view(doc, scrolloff);
+
     Ok(())
 }
 
@@ -1552,41 +1691,32 @@ pub(super) fn goto_line_number(
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     match event {
-        PromptEvent::Abort => {
-            if let Some(line_number) = cx.editor.last_line_number {
-                goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
-                let (view, doc) = current!(cx.editor);
-                view.ensure_cursor_in_view(doc, line_number);
-                cx.editor.last_line_number = None;
-            }
-            return Ok(());
-        }
+        PromptEvent::Abort => abort_goto_line_number_preview(cx),
         PromptEvent::Validate => {
             ensure!(!args.is_empty(), "Line number required");
-            cx.editor.last_line_number = None;
-        }
-        PromptEvent::Update => {
-            if args.is_empty() {
-                if let Some(line_number) = cx.editor.last_line_number {
-                    // When a user hits backspace and there are no numbers left,
-                    // we can bring them back to their original line
-                    goto_line_impl(cx.editor, NonZeroUsize::new(line_number));
-                    let (view, doc) = current!(cx.editor);
-                    view.ensure_cursor_in_view(doc, line_number);
-                    cx.editor.last_line_number = None;
-                }
-                return Ok(());
-            }
+
+            // If we are invoked directly via a keybinding, Validate is
+            // sent without any prior Update events. Ensure the cursor
+            // is moved to the appropriate location.
+            update_goto_line_number_preview(cx, args)?;
+
+            let last_selection = cx
+                .editor
+                .last_selection
+                .take()
+                .expect("update_goto_line_number_preview should always set last_selection");
+
             let (view, doc) = current!(cx.editor);
-            let text = doc.text().slice(..);
-            let line = doc.selection(view.id).primary().cursor_line(text);
-            cx.editor.last_line_number.get_or_insert(line + 1);
+            view.jumps.push((doc.id(), last_selection));
         }
+
+        // When a user hits backspace and there are no numbers left,
+        // we can bring them back to their original selection. If they
+        // begin typing numbers again, we'll start a new preview session.
+        PromptEvent::Update if args.is_empty() => abort_goto_line_number_preview(cx),
+        PromptEvent::Update => update_goto_line_number_preview(cx, args)?,
     }
-    let line = args[0].parse::<usize>()?;
-    goto_line_impl(cx.editor, NonZeroUsize::new(line));
-    let (view, doc) = current!(cx.editor);
-    view.ensure_cursor_in_view(doc, line);
+
     Ok(())
 }
 
@@ -1676,12 +1806,12 @@ fn toggle_option(
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
-    if let Value::Bool(b) = *value {
-        *value = Value::Bool(!b);
-    } else {
+    let Value::Bool(old_value) = *value else {
         anyhow::bail!("Key `{}` is not toggle-able", key)
-    }
+    };
 
+    let new_value = !old_value;
+    *value = Value::Bool(new_value);
     // This unwrap should never fail because we only replace one boolean value
     // with another, maintaining a valid json config
     let config = serde_json::from_value(config).unwrap();
@@ -1690,6 +1820,8 @@ fn toggle_option(
         .config_events
         .0
         .send(ConfigEvent::Update(config))?;
+    cx.editor
+        .set_status(format!("Option `{}` is now set to `{}`", key, new_value));
     Ok(())
 }
 
@@ -1724,7 +1856,7 @@ fn language(
     doc.detect_indent_and_line_ending();
 
     let id = doc.id();
-    cx.editor.refresh_language_server(id);
+    cx.editor.refresh_language_servers(id);
     Ok(())
 }
 
@@ -1794,30 +1926,26 @@ fn reflow(
     }
 
     let scrolloff = cx.editor.config().scrolloff;
+    let cfg_text_width: usize = cx.editor.config().text_width;
     let (view, doc) = current!(cx.editor);
 
-    const DEFAULT_MAX_LEN: usize = 79;
-
-    // Find the max line length by checking the following sources in order:
+    // Find the text_width by checking the following sources in order:
     //   - The passed argument in `args`
-    //   - The configured max_line_len for this language in languages.toml
-    //   - The const default we set above
-    let max_line_len: usize = args
+    //   - The configured text-width for this language in languages.toml
+    //   - The configured text-width in the config.toml
+    let text_width: usize = args
         .get(0)
         .map(|num| num.parse::<usize>())
         .transpose()?
-        .or_else(|| {
-            doc.language_config()
-                .and_then(|config| config.max_line_length)
-        })
-        .unwrap_or(DEFAULT_MAX_LEN);
+        .or_else(|| doc.language_config().and_then(|config| config.text_width))
+        .unwrap_or(cfg_text_width);
 
     let rope = doc.text();
 
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(rope, selection, |range| {
         let fragment = range.fragment(rope.slice(..));
-        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, max_line_len);
+        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, text_width);
 
         (range.from(), range.to(), Some(reflowed_text))
     });
@@ -1883,6 +2011,20 @@ fn open_config(
 
     cx.editor
         .open(&helix_loader::config_file(), Action::Replace)?;
+    Ok(())
+}
+
+fn open_workspace_config(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor
+        .open(&helix_loader::workspace_config_file(), Action::Replace)?;
     Ok(())
 }
 
@@ -1976,18 +2118,14 @@ fn run_shell_command(
         return Ok(());
     }
 
-    let shell = &cx.editor.config().shell;
-    let (output, success) = shell_impl(shell, &args.join(" "), None)?;
-    if success {
-        cx.editor.set_status("Command succeeded");
-    } else {
-        cx.editor.set_error("Command failed");
-    }
+    let shell = cx.editor.config().shell.clone();
+    let args = args.join(" ");
 
-    if !output.is_empty() {
-        let callback = async move {
-            let call: job::Callback = Callback::EditorCompositor(Box::new(
-                move |editor: &mut Editor, compositor: &mut Compositor| {
+    let callback = async move {
+        let (output, success) = shell_impl_async(&shell, &args, None).await?;
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                if !output.is_empty() {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output),
                         editor.syn_loader.clone(),
@@ -1996,14 +2134,104 @@ fn run_shell_command(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
                     ));
                     compositor.replace_or_push("shell", popup);
-                },
-            ));
-            Ok(call)
-        };
+                }
+                if success {
+                    editor.set_status("Command succeeded");
+                } else {
+                    editor.set_error("Command failed");
+                }
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
 
-        cx.jobs.callback(callback);
+    Ok(())
+}
+
+fn reset_diff_change(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    ensure!(args.is_empty(), ":reset-diff-change takes no arguments");
+
+    let editor = &mut cx.editor;
+    let scrolloff = editor.config().scrolloff;
+
+    let (view, doc) = current!(editor);
+    let Some(handle) = doc.diff_handle() else {
+        bail!("Diff is not available in the current buffer")
+    };
+
+    let diff = handle.load();
+    let doc_text = doc.text().slice(..);
+    let line = doc.selection(view.id).primary().cursor_line(doc_text);
+
+    let Some(hunk_idx) = diff.hunk_at(line as u32, true) else {
+        bail!("There is no change at the cursor")
+    };
+    let hunk = diff.nth_hunk(hunk_idx);
+    let diff_base = diff.diff_base();
+    let before_start = diff_base.line_to_char(hunk.before.start as usize);
+    let before_end = diff_base.line_to_char(hunk.before.end as usize);
+    let text: Tendril = diff
+        .diff_base()
+        .slice(before_start..before_end)
+        .chunks()
+        .collect();
+    let anchor = doc_text.line_to_char(hunk.after.start as usize);
+    let transaction = Transaction::change(
+        doc.text(),
+        [(
+            anchor,
+            doc_text.line_to_char(hunk.after.end as usize),
+            (!text.is_empty()).then_some(text),
+        )]
+        .into_iter(),
+    );
+    drop(diff); // make borrow check happy
+    doc.apply(&transaction, view.id);
+    // select inserted text
+    let text_len = before_end - before_start;
+    doc.set_selection(view.id, Selection::single(anchor, anchor + text_len));
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
+    Ok(())
+}
+
+fn clear_register(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
     }
 
+    ensure!(args.len() <= 1, ":clear-register takes at most 1 argument");
+    if args.is_empty() {
+        cx.editor.registers.clear();
+        cx.editor.set_status("All registers cleared");
+        return Ok(());
+    }
+
+    ensure!(
+        args[0].chars().count() == 1,
+        format!("Invalid register {}", args[0])
+    );
+    let register = args[0].chars().next().unwrap_or_default();
+    match cx.editor.registers.remove(register) {
+        Some(_) => cx
+            .editor
+            .set_status(format!("Register {} cleared", register)),
+        None => cx
+            .editor
+            .set_error(format!("Register {} not found", register)),
+    }
     Ok(())
 }
 
@@ -2013,112 +2241,128 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["q"],
             doc: "Close the current view.",
             fun: quit,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "quit!",
             aliases: &["q!"],
             doc: "Force close the current view, ignoring unsaved changes.",
             fun: force_quit,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "open",
             aliases: &["o"],
             doc: "Open a file from disk into the current view.",
             fun: open,
-            completer: Some(completers::filename),
+            signature: CommandSignature::all(completers::filename),
         },
         TypableCommand {
             name: "buffer-close",
             aliases: &["bc", "bclose"],
             doc: "Close the current buffer.",
             fun: buffer_close,
-            completer: Some(completers::buffer),
+            signature: CommandSignature::all(completers::buffer),
         },
         TypableCommand {
             name: "buffer-close!",
             aliases: &["bc!", "bclose!"],
             doc: "Close the current buffer forcefully, ignoring unsaved changes.",
             fun: force_buffer_close,
-            completer: Some(completers::buffer),
+            signature: CommandSignature::all(completers::buffer)
         },
         TypableCommand {
             name: "buffer-close-others",
             aliases: &["bco", "bcloseother"],
             doc: "Close all buffers but the currently focused one.",
             fun: buffer_close_others,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "buffer-close-others!",
             aliases: &["bco!", "bcloseother!"],
             doc: "Force close all buffers but the currently focused one.",
             fun: force_buffer_close_others,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "buffer-close-all",
             aliases: &["bca", "bcloseall"],
             doc: "Close all buffers without quitting.",
             fun: buffer_close_all,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "buffer-close-all!",
             aliases: &["bca!", "bcloseall!"],
             doc: "Force close all buffers ignoring unsaved changes without quitting.",
             fun: force_buffer_close_all,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "buffer-next",
             aliases: &["bn", "bnext"],
             doc: "Goto next buffer.",
             fun: buffer_next,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "buffer-previous",
             aliases: &["bp", "bprev"],
             doc: "Goto previous buffer.",
             fun: buffer_previous,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "write",
             aliases: &["w"],
             doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
             fun: write,
-            completer: Some(completers::filename),
+            signature: CommandSignature::positional(&[completers::filename]),
         },
         TypableCommand {
             name: "write!",
             aliases: &["w!"],
-            doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write some/path.txt)",
+            doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)",
             fun: force_write,
-            completer: Some(completers::filename),
+            signature: CommandSignature::positional(&[completers::filename]),
+        },
+        TypableCommand {
+            name: "write-buffer-close",
+            aliases: &["wbc"],
+            doc: "Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)",
+            fun: write_buffer_close,
+            signature: CommandSignature::positional(&[completers::filename]),
+        },
+        TypableCommand {
+            name: "write-buffer-close!",
+            aliases: &["wbc!"],
+            doc: "Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)",
+            fun: force_write_buffer_close,
+            signature: CommandSignature::positional(&[completers::filename]),
         },
         TypableCommand {
             name: "new",
             aliases: &["n"],
             doc: "Create a new scratch buffer.",
             fun: new_file,
-            completer: Some(completers::filename),
+            // TODO: This seems to complete with a filename, but doesn't use that filename to
+            //       set the path of the newly created buffer.
+            signature: CommandSignature::positional(&[completers::filename]),
         },
         TypableCommand {
             name: "format",
             aliases: &["fmt"],
             doc: "Format the file using the LSP formatter.",
             fun: format,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "indent-style",
             aliases: &[],
             doc: "Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)",
             fun: set_indent_style,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "line-ending",
@@ -2128,413 +2372,442 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             #[cfg(feature = "unicode-lines")]
             doc: "Set the document's default line ending. Options: crlf, lf, cr, ff, nel.",
             fun: set_line_ending,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "earlier",
             aliases: &["ear"],
             doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
             fun: earlier,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "later",
             aliases: &["lat"],
             doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
             fun: later,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "write-quit",
             aliases: &["wq", "x"],
             doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
             fun: write_quit,
-            completer: Some(completers::filename),
+            signature: CommandSignature::positional(&[completers::filename]),
         },
         TypableCommand {
             name: "write-quit!",
             aliases: &["wq!", "x!"],
             doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
             fun: force_write_quit,
-            completer: Some(completers::filename),
+            signature: CommandSignature::positional(&[completers::filename]),
         },
         TypableCommand {
             name: "write-all",
             aliases: &["wa"],
             doc: "Write changes from all buffers to disk.",
             fun: write_all,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "write-quit-all",
             aliases: &["wqa", "xa"],
             doc: "Write changes from all buffers to disk and close all views.",
             fun: write_all_quit,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "write-quit-all!",
             aliases: &["wqa!", "xa!"],
             doc: "Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
             fun: force_write_all_quit,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "quit-all",
             aliases: &["qa"],
             doc: "Close all views.",
             fun: quit_all,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "quit-all!",
             aliases: &["qa!"],
             doc: "Force close all views ignoring unsaved changes.",
             fun: force_quit_all,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "cquit",
             aliases: &["cq"],
             doc: "Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).",
             fun: cquit,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "cquit!",
             aliases: &["cq!"],
             doc: "Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).",
             fun: force_cquit,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "theme",
             aliases: &[],
             doc: "Change the editor theme (show current theme if no name specified).",
             fun: theme,
-            completer: Some(completers::theme),
+            signature: CommandSignature::positional(&[completers::theme]),
         },
         TypableCommand {
             name: "clipboard-yank",
             aliases: &[],
             doc: "Yank main selection into system clipboard.",
             fun: yank_main_selection_to_clipboard,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "clipboard-yank-join",
             aliases: &[],
             doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
             fun: yank_joined_to_clipboard,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "primary-clipboard-yank",
             aliases: &[],
             doc: "Yank main selection into system primary clipboard.",
             fun: yank_main_selection_to_primary_clipboard,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "primary-clipboard-yank-join",
             aliases: &[],
             doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
             fun: yank_joined_to_primary_clipboard,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "clipboard-paste-after",
             aliases: &[],
             doc: "Paste system clipboard after selections.",
             fun: paste_clipboard_after,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "clipboard-paste-before",
             aliases: &[],
             doc: "Paste system clipboard before selections.",
             fun: paste_clipboard_before,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "clipboard-paste-replace",
             aliases: &[],
             doc: "Replace selections with content of system clipboard.",
             fun: replace_selections_with_clipboard,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "primary-clipboard-paste-after",
             aliases: &[],
             doc: "Paste primary clipboard after selections.",
             fun: paste_primary_clipboard_after,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "primary-clipboard-paste-before",
             aliases: &[],
             doc: "Paste primary clipboard before selections.",
             fun: paste_primary_clipboard_before,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "primary-clipboard-paste-replace",
             aliases: &[],
             doc: "Replace selections with content of system primary clipboard.",
             fun: replace_selections_with_primary_clipboard,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "show-clipboard-provider",
             aliases: &[],
             doc: "Show clipboard provider name in status bar.",
             fun: show_clipboard_provider,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "change-current-directory",
             aliases: &["cd"],
             doc: "Change the current working directory.",
             fun: change_current_directory,
-            completer: Some(completers::directory),
+            signature: CommandSignature::positional(&[completers::directory]),
         },
         TypableCommand {
             name: "show-directory",
             aliases: &["pwd"],
             doc: "Show the current working directory.",
             fun: show_current_directory,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "encoding",
             aliases: &[],
             doc: "Set encoding. Based on `https://encoding.spec.whatwg.org`.",
             fun: set_encoding,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "character-info",
             aliases: &["char"],
             doc: "Get info about the character under the primary cursor.",
             fun: get_character_info,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "reload",
             aliases: &[],
             doc: "Discard changes and reload from the source file.",
             fun: reload,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "reload-all",
             aliases: &[],
             doc: "Discard changes and reload all documents from the source files.",
             fun: reload_all,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "update",
-            aliases: &[],
+            aliases: &["u"],
             doc: "Write changes only if the file has been modified.",
             fun: update,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "lsp-workspace-command",
             aliases: &[],
             doc: "Open workspace command picker",
             fun: lsp_workspace_command,
-            completer: Some(completers::lsp_workspace_command),
+            signature: CommandSignature::positional(&[completers::lsp_workspace_command]),
         },
         TypableCommand {
             name: "lsp-restart",
             aliases: &[],
-            doc: "Restarts the Language Server that is in use by the current doc",
+            doc: "Restarts the language servers used by the current doc",
             fun: lsp_restart,
-            completer: None,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "lsp-stop",
+            aliases: &[],
+            doc: "Stops the language servers that are used by the current doc",
+            fun: lsp_stop,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "tree-sitter-scopes",
             aliases: &[],
             doc: "Display tree sitter scopes, primarily for theming and development.",
             fun: tree_sitter_scopes,
-            completer: None,
-       },
+            signature: CommandSignature::none(),
+        },
         TypableCommand {
             name: "debug-start",
             aliases: &["dbg"],
             doc: "Start a debug session from a given template with given parameters.",
             fun: debug_start,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "debug-remote",
             aliases: &["dbg-tcp"],
             doc: "Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
             fun: debug_remote,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "debug-eval",
             aliases: &[],
             doc: "Evaluate expression in current debug context.",
             fun: debug_eval,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "vsplit",
             aliases: &["vs"],
             doc: "Open the file in a vertical split.",
             fun: vsplit,
-            completer: Some(completers::filename),
+            signature: CommandSignature::all(completers::filename)
         },
         TypableCommand {
             name: "vsplit-new",
             aliases: &["vnew"],
             doc: "Open a scratch buffer in a vertical split.",
             fun: vsplit_new,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "hsplit",
             aliases: &["hs", "sp"],
             doc: "Open the file in a horizontal split.",
             fun: hsplit,
-            completer: Some(completers::filename),
+            signature: CommandSignature::all(completers::filename)
         },
         TypableCommand {
             name: "hsplit-new",
             aliases: &["hnew"],
             doc: "Open a scratch buffer in a horizontal split.",
             fun: hsplit_new,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "tutor",
             aliases: &[],
             doc: "Open the tutorial.",
             fun: tutor,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "goto",
             aliases: &["g"],
             doc: "Goto line number.",
             fun: goto_line_number,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "set-language",
             aliases: &["lang"],
             doc: "Set the language of current buffer (show current language if no value specified).",
             fun: language,
-            completer: Some(completers::language),
+            signature: CommandSignature::positional(&[completers::language]),
         },
         TypableCommand {
             name: "set-option",
             aliases: &["set"],
             doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
             fun: set_option,
-            completer: Some(completers::setting),
+            // TODO: Add support for completion of the options value(s), when appropriate.
+            signature: CommandSignature::positional(&[completers::setting]),
         },
         TypableCommand {
             name: "toggle-option",
             aliases: &["toggle"],
             doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
             fun: toggle_option,
-            completer: Some(completers::setting),
+            signature: CommandSignature::positional(&[completers::setting]),
         },
         TypableCommand {
             name: "get-option",
             aliases: &["get"],
             doc: "Get the current value of a config option.",
             fun: get_option,
-            completer: Some(completers::setting),
+            signature: CommandSignature::positional(&[completers::setting]),
         },
         TypableCommand {
             name: "sort",
             aliases: &[],
             doc: "Sort ranges in selection.",
             fun: sort,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "rsort",
             aliases: &[],
             doc: "Sort ranges in selection in reverse order.",
             fun: sort_reverse,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "reflow",
             aliases: &[],
             doc: "Hard-wrap the current selection of lines to a given width.",
             fun: reflow,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "tree-sitter-subtree",
             aliases: &["ts-subtree"],
             doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
             fun: tree_sitter_subtree,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "config-reload",
             aliases: &[],
             doc: "Refresh user config.",
             fun: refresh_config,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "config-open",
             aliases: &[],
             doc: "Open the user config.toml file.",
             fun: open_config,
-            completer: None,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "config-open-workspace",
+            aliases: &[],
+            doc: "Open the workspace config.toml file.",
+            fun: open_workspace_config,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "log-open",
             aliases: &[],
             doc: "Open the helix log file.",
             fun: open_log,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "insert-output",
             aliases: &[],
             doc: "Run shell command, inserting output before each selection.",
             fun: insert_output,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "append-output",
             aliases: &[],
             doc: "Run shell command, appending output after each selection.",
             fun: append_output,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "pipe",
             aliases: &[],
             doc: "Pipe each selection to the shell command.",
             fun: pipe,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "pipe-to",
             aliases: &[],
             doc: "Pipe each selection to the shell command, ignoring output.",
             fun: pipe_to,
-            completer: None,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "run-shell-command",
             aliases: &["sh"],
             doc: "Run a shell command",
             fun: run_shell_command,
-            completer: Some(completers::filename),
+            signature: CommandSignature::all(completers::filename)
+        },
+       TypableCommand {
+            name: "reset-diff-change",
+            aliases: &["diffget", "diffg"],
+            doc: "Reset the diff change at the cursor position.",
+            fun: reset_diff_change,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "clear-register",
+            aliases: &[],
+            doc: "Clear given register. If no argument is provided, clear all registers.",
+            fun: clear_register,
+            signature: CommandSignature::none(),
         },
     ];
 
@@ -2551,8 +2824,6 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
 
 #[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
-    use shellwords::Shellwords;
-
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
@@ -2582,27 +2853,25 @@ pub(super) fn command_mode(cx: &mut Context) {
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.
-                let (part, part_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {
+                let (word, word_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {
                     (&Cow::Borrowed(""), 0)
                 } else {
-                    (
-                        words.last().unwrap(),
-                        shellwords.parts().last().unwrap().len(),
-                    )
+                    (words.last().unwrap(), words.last().unwrap().len())
                 };
 
-                if let Some(typed::TypableCommand {
-                    completer: Some(completer),
-                    ..
-                }) = typed::TYPABLE_COMMAND_MAP.get(&words[0] as &str)
+                let argument_number = argument_number_of(&shellwords);
+
+                if let Some(completer) = TYPABLE_COMMAND_MAP
+                    .get(&words[0] as &str)
+                    .map(|tc| tc.completer_for_argument_number(argument_number))
                 {
-                    completer(editor, part)
+                    completer(editor, word)
                         .into_iter()
                         .map(|(range, file)| {
                             let file = shellwords::escape(file);
 
                             // offset ranges to input
-                            let offset = input.len() - part_len;
+                            let offset = input.len() - word_len;
                             let range = (range.start + offset)..;
                             (range, file)
                         })
@@ -2658,4 +2927,30 @@ pub(super) fn command_mode(cx: &mut Context) {
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
     cx.push_layer(Box::new(prompt));
+}
+
+fn argument_number_of(shellwords: &Shellwords) -> usize {
+    if shellwords.ends_with_whitespace() {
+        shellwords.words().len().saturating_sub(1)
+    } else {
+        shellwords.words().len().saturating_sub(2)
+    }
+}
+
+#[test]
+fn test_argument_number_of() {
+    let cases = vec![
+        ("set-option", 0),
+        ("set-option ", 0),
+        ("set-option a", 0),
+        ("set-option asdf", 0),
+        ("set-option asdf ", 1),
+        ("set-option asdf xyz", 1),
+        ("set-option asdf xyz abc", 2),
+        ("set-option asdf xyz abc ", 3),
+    ];
+
+    for case in cases {
+        assert_eq!(case.1, argument_number_of(&Shellwords::from(case.0)));
+    }
 }

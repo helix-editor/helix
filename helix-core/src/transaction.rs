@@ -1,8 +1,11 @@
+use smallvec::SmallVec;
+
 use crate::{Range, Rope, Selection, Tendril};
 use std::borrow::Cow;
 
 /// (from, to, replacement)
 pub type Change = (usize, usize, Option<Tendril>);
+pub type Deletion = (usize, usize);
 
 // TODO: pub(crate)
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -466,6 +469,33 @@ impl Transaction {
         self
     }
 
+    /// Generate a transaction from a set of potentially overlapping changes. The `change_ranges`
+    /// iterator yield the range (of removed text) in the old document for each edit. If any change
+    /// overlaps with a range overlaps with a previous range then that range is ignored.
+    ///
+    /// The `process_change` callback is called for each edit that is not ignored (in the order
+    /// yielded by `changes`) and should return the new text that the associated range will be
+    /// replaced with.
+    ///
+    /// To make this function more flexible the iterator can yield additional data for each change
+    /// that is passed to `process_change`
+    pub fn change_ignore_overlapping<T>(
+        doc: &Rope,
+        change_ranges: impl Iterator<Item = (usize, usize, T)>,
+        mut process_change: impl FnMut(usize, usize, T) -> Option<Tendril>,
+    ) -> Self {
+        let mut last = 0;
+        let changes = change_ranges.filter_map(|(from, to, data)| {
+            if from < last {
+                return None;
+            }
+            let tendril = process_change(from, to, data);
+            last = to;
+            Some((from, to, tendril))
+        });
+        Self::change(doc, changes)
+    }
+
     /// Generate a transaction from a set of changes.
     pub fn change<I>(doc: &Rope, changes: I) -> Self
     where
@@ -505,12 +535,100 @@ impl Transaction {
         Self::from(changeset)
     }
 
+    /// Generate a transaction from a set of potentially overlapping deletions
+    /// by merging overlapping deletions together.
+    pub fn delete<I>(doc: &Rope, deletions: I) -> Self
+    where
+        I: Iterator<Item = Deletion>,
+    {
+        let len = doc.len_chars();
+
+        let (lower, upper) = deletions.size_hint();
+        let size = upper.unwrap_or(lower);
+        let mut changeset = ChangeSet::with_capacity(2 * size + 1); // rough estimate
+
+        let mut last = 0;
+        for (mut from, to) in deletions {
+            if last > to {
+                continue;
+            }
+            if last > from {
+                from = last
+            }
+            debug_assert!(
+                from <= to,
+                "Edit end must end before it starts (should {from} <= {to})"
+            );
+            // Retain from last "to" to current "from"
+            changeset.retain(from - last);
+            changeset.delete(to - from);
+            last = to;
+        }
+
+        changeset.retain(len - last);
+
+        Self::from(changeset)
+    }
+
+    pub fn insert_at_eof(mut self, text: Tendril) -> Transaction {
+        self.changes.insert(text);
+        self
+    }
+
     /// Generate a transaction with a change per selection range.
     pub fn change_by_selection<F>(doc: &Rope, selection: &Selection, f: F) -> Self
     where
         F: FnMut(&Range) -> Change,
     {
         Self::change(doc, selection.iter().map(f))
+    }
+
+    pub fn change_by_selection_ignore_overlapping(
+        doc: &Rope,
+        selection: &Selection,
+        mut change_range: impl FnMut(&Range) -> (usize, usize),
+        mut create_tendril: impl FnMut(usize, usize) -> Option<Tendril>,
+    ) -> (Transaction, Selection) {
+        let mut last_selection_idx = None;
+        let mut new_primary_idx = None;
+        let mut ranges: SmallVec<[Range; 1]> = SmallVec::new();
+        let process_change = |change_start, change_end, (idx, range): (usize, &Range)| {
+            // update the primary idx
+            if idx == selection.primary_index() {
+                new_primary_idx = Some(idx);
+            } else if new_primary_idx.is_none() {
+                if idx > selection.primary_index() {
+                    new_primary_idx = last_selection_idx;
+                } else {
+                    last_selection_idx = Some(idx);
+                }
+            }
+            ranges.push(*range);
+            create_tendril(change_start, change_end)
+        };
+        let transaction = Self::change_ignore_overlapping(
+            doc,
+            selection.iter().enumerate().map(|range| {
+                let (change_start, change_end) = change_range(range.1);
+                (change_start, change_end, range)
+            }),
+            process_change,
+        );
+
+        (
+            transaction,
+            Selection::new(ranges, new_primary_idx.unwrap_or(0)),
+        )
+    }
+
+    /// Generate a transaction with a deletion per selection range.
+    /// Compared to using `change_by_selection` directly these ranges may overlap.
+    /// In that case they are merged
+    pub fn delete_by_selection<F>(doc: &Rope, selection: &Selection, f: F) -> Self
+    where
+        F: FnMut(&Range) -> Deletion,
+    {
+        Self::delete(doc, selection.iter().map(f))
     }
 
     /// Insert text at each selection head.

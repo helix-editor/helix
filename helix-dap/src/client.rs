@@ -33,6 +33,7 @@ pub struct Client {
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
     connection_type: Option<ConnectionType>,
+    starting_request_args: Option<Value>,
     pub caps: Option<DebuggerCapabilities>,
     // thread_id -> frames
     pub stack_frames: HashMap<ThreadId, Vec<StackFrame>>,
@@ -61,12 +62,10 @@ impl Client {
         if command.is_empty() {
             return Result::Err(Error::Other(anyhow!("Command not provided")));
         }
-        if transport == "tcp" && port_arg.is_some() {
-            Self::tcp_process(command, args, port_arg.unwrap(), id).await
-        } else if transport == "stdio" {
-            Self::stdio(command, args, id)
-        } else {
-            Result::Err(Error::Other(anyhow!("Incorrect transport {}", transport)))
+        match (transport, port_arg) {
+            ("tcp", Some(port_arg)) => Self::tcp_process(command, args, port_arg, id).await,
+            ("stdio", _) => Self::stdio(command, args, id),
+            _ => Result::Err(Error::Other(anyhow!("Incorrect transport {}", transport))),
         }
     }
 
@@ -87,6 +86,7 @@ impl Client {
             request_counter: AtomicU64::new(0),
             caps: None,
             connection_type: None,
+            starting_request_args: None,
             stack_frames: HashMap::new(),
             thread_states: HashMap::new(),
             thread_id: None,
@@ -156,6 +156,10 @@ impl Client {
             .ok()?
             .port(),
         )
+    }
+
+    pub fn starting_request_args(&self) -> &Option<Value> {
+        &self.starting_request_args
     }
 
     pub async fn tcp_process(
@@ -356,12 +360,23 @@ impl Client {
 
     pub fn launch(&mut self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {
         self.connection_type = Some(ConnectionType::Launch);
+        self.starting_request_args = Some(args.clone());
         self.call::<requests::Launch>(args)
     }
 
     pub fn attach(&mut self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {
         self.connection_type = Some(ConnectionType::Attach);
+        self.starting_request_args = Some(args.clone());
         self.call::<requests::Attach>(args)
+    }
+
+    pub fn restart(&self) -> impl Future<Output = Result<Value>> {
+        let args = if let Some(args) = &self.starting_request_args {
+            args.clone()
+        } else {
+            Value::Null
+        };
+        self.call::<requests::Restart>(args)
     }
 
     pub async fn set_breakpoints(
@@ -494,5 +509,11 @@ impl Client {
         let args = requests::SetExceptionBreakpointsArguments { filters };
 
         self.call::<requests::SetExceptionBreakpoints>(args)
+    }
+
+    pub fn current_stack_frame(&self) -> Option<&StackFrame> {
+        self.stack_frames
+            .get(&self.thread_id?)?
+            .get(self.active_frame?)
     }
 }

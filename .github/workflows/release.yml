@@ -85,6 +85,7 @@ jobs:
           rust: stable
           target: x86_64-pc-windows-msvc
           cross: false
+        # 23.03: build issues
         - build: aarch64-macos
           os: macos-latest
           rust: stable
@@ -112,6 +113,12 @@ jobs:
         run: |
           mkdir -p runtime/grammars/sources
           tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
+
+      # The rust-toolchain action ignores rust-toolchain.toml files.
+      # Removing this before building with cargo ensures that the rust-toolchain
+      # is considered the same between installation and usage.
+      - name: Remove the rust-toolchain.toml file
+        run: rm rust-toolchain.toml
 
       - name: Install ${{ matrix.rust }} toolchain
         uses: dtolnay/rust-toolchain@master
@@ -155,6 +162,10 @@ jobs:
         shell: bash
         if: matrix.build == 'aarch64-linux' || matrix.build == 'x86_64-linux'
         run: |
+          # Required as of 22.x https://github.com/AppImage/AppImageKit/wiki/FUSE
+          sudo add-apt-repository universe
+          sudo apt install libfuse2
+
           mkdir dist
 
           name=dev
@@ -244,7 +255,7 @@ jobs:
                   exe=".exe"
               fi
               pkgname=helix-$GITHUB_REF_NAME-$platform
-              mkdir $pkgname
+              mkdir -p $pkgname
               cp $source/LICENSE $source/README.md $pkgname
               mkdir $pkgname/contrib
               cp -r $source/contrib/completion $pkgname/contrib

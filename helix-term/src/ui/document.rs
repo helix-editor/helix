@@ -118,7 +118,7 @@ pub fn render_document(
 
 fn translate_positions(
     char_pos: usize,
-    first_visisble_char_idx: usize,
+    first_visible_char_idx: usize,
     translated_positions: &mut [TranslatedPosition],
     text_fmt: &TextFormat,
     renderer: &mut TextRenderer,
@@ -126,7 +126,7 @@ fn translate_positions(
 ) {
     // check if any positions translated on the fly (like cursor) has been reached
     for (char_idx, callback) in &mut *translated_positions {
-        if *char_idx < char_pos && *char_idx >= first_visisble_char_idx {
+        if *char_idx < char_pos && *char_idx >= first_visible_char_idx {
             // by replacing the char_index with usize::MAX large number we ensure
             // that the same position is only translated once
             // text will never reach usize::MAX as rust memory allocations are limited
@@ -175,7 +175,6 @@ pub fn render_text<'t>(
         text_annotations,
     );
     row_off += offset.vertical_offset;
-    assert_eq!(0, offset.vertical_offset);
 
     let (mut formatter, mut first_visible_char_idx) =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, offset.anchor);
@@ -202,10 +201,7 @@ pub fn render_text<'t>(
         // formattter.line_pos returns to line index of the next grapheme
         // so it must be called before formatter.next
         let doc_line = formatter.line_pos();
-        // TODO refactor with let .. else once MSRV reaches 1.65
-        let (grapheme, mut pos) = if let Some(it) = formatter.next() {
-            it
-        } else {
+        let Some((grapheme, mut pos)) = formatter.next() else {
             let mut last_pos = formatter.visual_pos();
             if last_pos.row >= row_off {
                 last_pos.col -= 1;
@@ -226,7 +222,6 @@ pub fn render_text<'t>(
         // skip any graphemes on visual lines before the block start
         if pos.row < row_off {
             if char_pos >= style_span.1 {
-                // TODO refactor using let..else once MSRV reaches 1.65
                 style_span = if let Some(style_span) = styles.next() {
                     style_span
                 } else {
@@ -264,14 +259,9 @@ pub fn render_text<'t>(
             }
         }
 
-        // aquire the correct grapheme style
+        // acquire the correct grapheme style
         if char_pos >= style_span.1 {
-            // TODO refactor using let..else once MSRV reaches 1.65
-            style_span = if let Some(style_span) = styles.next() {
-                style_span
-            } else {
-                (Style::default(), usize::MAX)
-            }
+            style_span = styles.next().unwrap_or((Style::default(), usize::MAX));
         }
         char_pos += grapheme.doc_chars();
 
@@ -296,9 +286,11 @@ pub fn render_text<'t>(
             style_span.0
         };
 
+        let virt = grapheme.is_virtual();
         renderer.draw_grapheme(
             grapheme.grapheme,
             grapheme_style,
+            virt,
             &mut last_line_indent_level,
             &mut is_in_indent_area,
             pos,
@@ -322,6 +314,7 @@ pub struct TextRenderer<'a> {
     pub nbsp: String,
     pub space: String,
     pub tab: String,
+    pub virtual_tab: String,
     pub indent_width: u16,
     pub starting_indent: usize,
     pub draw_indent_guides: bool,
@@ -351,6 +344,7 @@ impl<'a> TextRenderer<'a> {
         } else {
             " ".repeat(tab_width)
         };
+        let virtual_tab = " ".repeat(tab_width);
         let newline = if ws_render.newline() == WhitespaceRenderValue::All {
             ws_chars.newline.into()
         } else {
@@ -379,6 +373,7 @@ impl<'a> TextRenderer<'a> {
             nbsp,
             space,
             tab,
+            virtual_tab,
             whitespace_style: theme.get("ui.virtual.whitespace"),
             indent_width,
             starting_indent: col_offset / indent_width as usize
@@ -401,6 +396,7 @@ impl<'a> TextRenderer<'a> {
         &mut self,
         grapheme: Grapheme,
         mut style: Style,
+        is_virtual: bool,
         last_indent_level: &mut usize,
         is_in_indent_area: &mut bool,
         position: Position,
@@ -408,20 +404,27 @@ impl<'a> TextRenderer<'a> {
         let cut_off_start = self.col_offset.saturating_sub(position.col);
         let is_whitespace = grapheme.is_whitespace();
 
-        // TODO is it correct to apply the whitspace style to all unicode white spaces?
+        // TODO is it correct to apply the whitespace style to all unicode white spaces?
         if is_whitespace {
             style = style.patch(self.whitespace_style);
         }
 
         let width = grapheme.width();
+        let space = if is_virtual { " " } else { &self.space };
+        let nbsp = if is_virtual { " " } else { &self.nbsp };
+        let tab = if is_virtual {
+            &self.virtual_tab
+        } else {
+            &self.tab
+        };
         let grapheme = match grapheme {
             Grapheme::Tab { width } => {
-                let grapheme_tab_width = char_to_byte_idx(&self.tab, width);
-                &self.tab[..grapheme_tab_width]
+                let grapheme_tab_width = char_to_byte_idx(tab, width);
+                &tab[..grapheme_tab_width]
             }
             // TODO special rendering for other whitespaces?
-            Grapheme::Other { ref g } if g == " " => &self.space,
-            Grapheme::Other { ref g } if g == "\u{00A0}" => &self.nbsp,
+            Grapheme::Other { ref g } if g == " " => space,
+            Grapheme::Other { ref g } if g == "\u{00A0}" => nbsp,
             Grapheme::Other { ref g } => g,
             Grapheme::Newline => &self.newline,
         };
