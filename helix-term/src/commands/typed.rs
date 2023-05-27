@@ -1636,7 +1636,7 @@ pub(super) fn goto_line_number(
     Ok(())
 }
 
-pub (super) fn clear_jump_list(
+pub(super) fn clear_jump_list(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     event: PromptEvent,
