@@ -213,7 +213,14 @@ fn line_numbers_width(view: &View, doc: &Document) -> usize {
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
     let last_drawn = if draw_last { last_line + 1 } else { last_line };
     let digits = count_digits(last_drawn);
-    let n_min = view.gutters.line_numbers.min_width;
+    let n_min = if view.gutters.line_numbers.min_width > view.area.width as usize {
+        // currently subtracting 3 because there seems to be a value of 3 added on to
+        // whatever this function returns, not sure why this is the case and need
+        // clarification
+        (view.area.width - 3) as usize
+    } else {
+        view.gutters.line_numbers.min_width
+    };
     digits.max(n_min)
 }
 
