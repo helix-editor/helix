@@ -2560,14 +2560,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
         TypableCommand {
             name: "reload",
-            aliases: &[],
+            aliases: &["rl"],
             doc: "Discard changes and reload from the source file.",
             fun: reload,
             signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "reload-all",
-            aliases: &[],
+            aliases: &["rla"],
             doc: "Discard changes and reload all documents from the source files.",
             fun: reload_all,
             signature: CommandSignature::none(),
