@@ -99,8 +99,8 @@ with the following priorities:
 
 Language servers are configured separately in the table `language-server` in the same file as the languages `languages.toml`
 
-> 💡 Due to limitations of toml anything in the ``language-server`` table must
-> be specified before the ``[[language]]`` and ``[[grammar]]`` arrays of tables.
+> 💡 Due to limitations of TOML, anything in the `language-server` table must
+> be specified before the `[[language]]` and `[[grammar]]` arrays of tables.
 
 For example:
 
