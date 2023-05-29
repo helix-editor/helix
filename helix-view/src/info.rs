@@ -55,10 +55,10 @@ impl Info {
         }
     }
 
-    pub fn from_keymap(title: &str, body: Vec<(&str, BTreeSet<KeyEvent>)>) -> Self {
+    pub fn from_keymap(title: &str, body: Vec<(BTreeSet<KeyEvent>, &str)>) -> Self {
         let body: Vec<_> = body
             .into_iter()
-            .map(|(desc, events)| {
+            .map(|(events, desc)| {
                 let events = events.iter().map(ToString::to_string).collect::<Vec<_>>();
                 (events.join(", "), desc)
             })

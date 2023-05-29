@@ -77,7 +77,7 @@ impl KeyTrieNode {
     }
 
     pub fn infobox(&self) -> Info {
-        let mut body: Vec<(&str, BTreeSet<KeyEvent>)> = Vec::with_capacity(self.len());
+        let mut body: Vec<(BTreeSet<KeyEvent>, &str)> = Vec::with_capacity(self.len());
         for (&key, trie) in self.iter() {
             let desc = match trie {
                 KeyTrie::MappableCommand(cmd) => {
@@ -89,14 +89,14 @@ impl KeyTrieNode {
                 KeyTrie::Node(n) => n.name(),
                 KeyTrie::Sequence(_) => "[Multiple commands]",
             };
-            match body.iter().position(|(d, _)| d == &desc) {
+            match body.iter().position(|(_, d)| d == &desc) {
                 Some(pos) => {
-                    body[pos].1.insert(key);
+                    body[pos].0.insert(key);
                 }
-                None => body.push((desc, BTreeSet::from([key]))),
+                None => body.push((BTreeSet::from([key]), desc)),
             }
         }
-        body.sort_unstable_by_key(|(_, keys)| {
+        body.sort_unstable_by_key(|(keys, _)| {
             self.order
                 .iter()
                 .position(|&k| k == *keys.iter().next().unwrap())
