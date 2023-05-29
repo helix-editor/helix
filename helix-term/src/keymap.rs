@@ -111,10 +111,6 @@ impl KeyTrieNode {
         }
         Info::from_keymap(self.name(), body)
     }
-    /// Get a reference to the key trie node's order.
-    pub fn order(&self) -> &[KeyEvent] {
-        self.order.as_slice()
-    }
 }
 
 impl PartialEq for KeyTrieNode {
@@ -534,7 +530,7 @@ mod tests {
         );
         // Make sure an order was set during merge
         let node = keymap.search(&[crate::key!(' ')]).unwrap();
-        assert!(!node.node().unwrap().order().is_empty())
+        assert!(!node.node().unwrap().order.as_slice().is_empty())
     }
 
     #[test]
