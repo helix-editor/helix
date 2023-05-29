@@ -102,13 +102,6 @@ impl KeyTrieNode {
                 .position(|&k| k == *keys.iter().next().unwrap())
                 .unwrap()
         });
-        let prefix = format!("{} ", self.name());
-        if body.iter().all(|(desc, _)| desc.starts_with(&prefix)) {
-            body = body
-                .into_iter()
-                .map(|(desc, keys)| (desc.strip_prefix(&prefix).unwrap(), keys))
-                .collect();
-        }
         Info::from_keymap(self.name(), body)
     }
 }
