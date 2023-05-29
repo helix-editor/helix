@@ -13,8 +13,6 @@
 (marker_annotation
   name: (identifier) @attribute)
 
-"@" @operator
-
 ; Types
 
 (interface_declaration
@@ -47,6 +45,9 @@
   (floating_point_type)
   (void_type)
 ] @type.builtin
+
+(type_arguments
+  (wildcard "?" @type.builtin))
 
 ; Variables
 
@@ -86,6 +87,84 @@
 
 (line_comment) @comment
 (block_comment) @comment
+
+; Punctuation
+
+[
+  "::"
+  "."
+  ";"
+  ","
+] @punctuation.delimiter
+
+[
+  "@"
+  "..."
+] @punctuation.special
+
+[
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket
+
+(type_arguments
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
+
+(type_parameters
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
+
+; Operators
+
+[
+  "="
+  ">"
+  "<"
+  "!"
+  "~"
+  "?"
+  ":"
+  "->"
+  "=="
+  ">="
+  "<="
+  "!="
+  "&&"
+  "||"
+  "++"
+  "--"
+  "+"
+  "-"
+  "*"
+  "/"
+  "&"
+  "|"
+  "^"
+  "%"
+  "<<"
+  ">>"
+  ">>>"
+  "+="
+  "-="
+  "*="
+  "/="
+  "&="
+  "|="
+  "^="
+  "%="
+  "<<="
+  ">>="
+  ">>>="
+] @operator
 
 ; Keywords
 
