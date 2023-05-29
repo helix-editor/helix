@@ -266,15 +266,12 @@ impl Keymap {
         // recursively visit all nodes in keymap
         fn map_node(cmd_map: &mut ReverseKeymap, node: &KeyTrie, keys: &mut Vec<KeyEvent>) {
             match node {
-                KeyTrie::MappableCommand(cmd) => match cmd {
-                    MappableCommand::Typable { name, .. } => {
+                KeyTrie::MappableCommand(cmd) => {
+                    let name = cmd.name();
+                    if name != "no_op" {
                         cmd_map.entry(name.into()).or_default().push(keys.clone())
                     }
-                    MappableCommand::Static { name, .. } => cmd_map
-                        .entry(name.to_string())
-                        .or_default()
-                        .push(keys.clone()),
-                },
+                }
                 KeyTrie::Node(next) => {
                     for (key, trie) in &next.map {
                         keys.push(*key);
