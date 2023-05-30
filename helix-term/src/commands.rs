@@ -1267,7 +1267,7 @@ where
 
         find_char_impl(cx.editor, &search_fn, inclusive, extend, ch, count);
         cx.editor.last_motion = Some(Motion(Box::new(move |editor: &mut Editor| {
-            find_char_impl(editor, &search_fn, inclusive, true, ch, 1);
+            find_char_impl(editor, &search_fn, inclusive, extend, ch, 1);
         })));
     })
 }
