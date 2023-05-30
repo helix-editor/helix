@@ -5,22 +5,26 @@
 "ui.background" = {bg="background"}
 "ui.text" = "foreground"
 "ui.text.focus" = { fg = "selection_background", modifiers = ["bold"]}
-"ui.selection" = {bg="selection_background", fg="selection_foreground"}
-"ui.cursorline" = {bg="cursorline_background"}
+"ui.selection" = {bg="selection_secondary_background", fg="selection_secondary_foreground"}
+"ui.selection.primary" = {bg="selection_background", fg="selection_foreground" }
 "ui.highlight" = {bg="cursorline_background"}
+"ui.cursorline" = {bg="cursorline_background"}
 "ui.statusline" = {bg="paper_bar_bg", fg="regular0"}
 "ui.statusline.select" = {bg="background", fg="bright7"}
 "ui.statusline.normal" = {bg="background", fg="bright3"}
 "ui.statusline.inactive" = {bg="selection_foreground", fg="foreground"}
+"ui.virtual" = {fg = "linenr_fg_selected"}
 "ui.virtual.whitespace" = { fg = "regular5" }
-"ui.virtual.ruler" = {bg="cursorline_background"}
-"ui.cursor.match" = {bg = "regular5", fg = "regular0"}
+"ui.virtual.indent-guide" = { bg = "regular5" }
+"ui.virtual.ruler" = {bg = "bright0", fg="bright4"}
+"ui.cursor.match" = {bg = "bright0", fg = "regular0"}
 "ui.cursor" = {bg = "regular5", fg = "background"}
-"ui.window" = {bg = "#303030", fg = "bright2"}
+"ui.cursor.primary" = {bg = "foreground", fg = "background"}
+"ui.window" = {bg = "ui_window_bg", fg = "foreground"}
 "ui.help" = {bg = "background", fg = "bright2"}
-"ui.popup" = {bg = "#303030", fg = "bright6"}
-"ui.menu" = {bg = "#303030", fg = "bright6"}
-"ui.menu.selected" = {bg = "#C6C6C6", fg="selection_foreground"}
+"ui.popup" = {bg = "ui_window_bg", fg = "foreground"}
+"ui.menu" = {bg = "ui_window_bg", fg = "foreground"}
+"ui.menu.selected" = {bg = "selection_background", fg="selection_foreground"}
 
 "markup.heading" = { fg = "regular4", modifiers = ["bold"] }
 "markup.heading.1" = { fg = "bright2", modifiers = ["bold"] }
@@ -33,7 +37,7 @@
 "markup.bold" = { fg = "foreground", modifiers = ["bold"] }
 "markup.italic" = { fg = "bright0", modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.link.url" = { fg = "bright6", modifiers = ["underlined"] }
+"markup.link.url" = { fg = "bright6", underline.style = "line" }
 "markup.link.text" = "bright2"
 "markup.link.label" = { fg = "regular2", modifiers = ["bold"] }
 "markup.raw" = "foreground"
@@ -52,12 +56,12 @@
 "variable.other.member" = "cyan"
 "variable.parameter" = "foreground"
 
-"special" = "#3E999F"
+"special" = "special"
 "function"  = "bright6"
 "constructor" = "regular4"
 "function.builtin" = { fg = "foreground", modifiers = ["bold"]}
 "function.macro" = { fg = "regular4", modifiers = ["bold"] }
-"comment" = { fg = "#686868", modifiers = ["dim"] }
+"comment" = { fg = "regular7", modifiers = ["dim"] }
 "ui.linenr" = { fg = "bright0" }
 "module" = "regular4"
 "constant" = "bright5"
@@ -97,14 +101,20 @@ bright0="#585858"
 bright1="#5faf5f"
 bright2="#afd700"
 bright3="#af87d7"
-bright4="#FFAF00"
+bright4="#ffaf00"
 bright5="#ff5faf"
 bright6="#00afaf"
 bright7="#5f8787"
 selection_foreground="#585858"
 selection_background="#8787AF"
+selection_secondary_background="#a1a1d6"
 cursorline_background="#303030"
 paper_bar_bg="#5F8787"
+linenr_fg_selected="#FFFF00"
+special="#3E999F"
+ui_window_bg="#444444"
+
+# 16 bit ANSI color names
 black="#1c1c1c"
 red="#af005f"
 green="#5faf00"
@@ -112,13 +122,12 @@ yellow="#d7af5f"
 blue="#5fafd7"
 magenta="#808080"
 cyan="#d7875f"
-gray="#d0d0d0"
+white="#d0d0d0"
+light-black="#585858"
 light-red="#5faf5f"
 light-green="#afd700"
 light-yellow="#af87d7"
-light-blue="#FFAF00"
+light-blue="#ffaf00"
 light-magenta="#ff5faf"
 light-cyan="#00afaf"
-light-gray="#5f8787"
-white="#808080"
-linenr_fg_selected="#FFFF00"
+light-white="#5f8787"

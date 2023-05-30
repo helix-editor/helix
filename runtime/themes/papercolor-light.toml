@@ -5,22 +5,25 @@
 "ui.background" = {bg="background"}
 "ui.text" = "foreground"
 "ui.text.focus" = { fg = "selection_background", modifiers = ["bold"]}
-"ui.selection" = {bg="selection_background", fg="selection_foreground"}
+"ui.selection" = {bg="selection_secondary_background", fg="selection_secondary_foreground"}
+"ui.selection.primary" = {bg="selection_background", fg="selection_foreground" }
 "ui.highlight" = {bg="cursorline_background"}
 "ui.cursorline" = {bg="cursorline_background"}
 "ui.statusline" = {bg="paper_bar_bg", fg="regular0"}
 "ui.statusline.select" = {bg="background", fg="bright7"}
 "ui.statusline.normal" = {bg="background", fg="bright3"}
 "ui.statusline.inactive" = {bg="bright0", fg="foreground"}
-"ui.virtual" = "indent"
+"ui.virtual" = {fg = "linenr_fg_selected"}
 "ui.virtual.whitespace" = { fg = "regular5" }
-"ui.virtual.ruler" = {bg="cursorline_background"}
-"ui.cursor.match" = {bg = "regular5", fg = "regular0"}
+"ui.virtual.indent-guide" = { bg = "regular5" }
+"ui.virtual.ruler" = {bg = "bright0", fg="bright4"}
+"ui.cursor.match" = {bg = "bright0", fg = "regular0"}
 "ui.cursor" = {bg = "regular5", fg = "background"}
-"ui.window" = {bg = "#D0D0D0", fg = "bright2"}
+"ui.cursor.primary" = {bg = "foreground", fg = "background"}
+"ui.window" = {bg = "ui_window_bg", fg = "foreground"}
 "ui.help" = {bg = "background", fg = "bright2"}
-"ui.popup" = {bg = "#D0D0D0", fg = "bright7"}
-"ui.menu" = {bg = "#D0D0D0", fg = "bright7"}
+"ui.popup" = {bg = "ui_window_bg", fg = "foreground"}
+"ui.menu" = {bg = "ui_window_bg", fg = "foreground"}
 "ui.menu.selected" = {bg = "selection_background", fg="selection_foreground"}
 
 "markup.heading" = { fg = "bright7", modifiers = ["bold"] }
@@ -34,9 +37,9 @@
 "markup.bold" = { fg = "foreground", modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.link.url" = { fg = "regular4", modifiers = ["underlined"] }
+"markup.link.url" = { fg = "regular4", underline.style = "line"  }
 "markup.link.text" = "bright2"
-"markup.link.label" = { fg = "regular7", modifiers = ["bold"] }
+"markup.link.label" = { fg = "regular2", modifiers = ["bold"] }
 "markup.raw" = "foreground"
 
 "string" = "foreground"
@@ -51,18 +54,18 @@
 "variable.other.member" = "regular4"
 "variable.parameter" = "foreground"
 
-"special" = "#3E999F"
+"special" = "special"
 "function"  = "bright1"
 "constructor" = "bright1"
 "function.builtin" = { fg = "regular4", modifiers = ["bold"]}
 "function.macro" = { fg = "regular1" }
 "comment" = { fg = "bright0", modifiers = ["dim"] }
 "ui.linenr" = { fg = "bright0" }
-"module" = "#af0000"
-"constant" = "#5f8700"
-"constant.builtin" = "#5f8700"
-"constant.numeric" = "#d75f00"
-"constant.character.escape" = { fg = "#8700af", modifiers = ["bold"]}
+"module" = "regular1"
+"constant" = "regular3"
+"constant.builtin" = "regular3"
+"constant.numeric" = "bright4"
+"constant.character.escape" = { fg = "bright3", modifiers = ["bold"]}
 "operator" = { fg = "regular4", modifiers = ["bold"]}
 
 "label" = { fg = "selection_background", modifiers = ["bold", "italic"] }
@@ -73,12 +76,12 @@
 
 "warning" = "bright4"
 "error" = "regular1"
-"info" = "#FFAF00"
+"info" = "#ffaf00"
 
 "diagnostic.warning".underline = { color = "bright4", style = "curl" } 
 "diagnostic.error".underline = { color = "regular1", style = "curl" } 
-"diagnostic.info".underline = { color = "#FFAF00", style = "curl" } 
-"diagnostic.hint".underline = { color = "#FFAF00", style = "curl" } 
+"diagnostic.info".underline = { color = "#ffaf00", style = "curl" } 
+"diagnostic.hint".underline = { color = "#ffaf00", style = "curl" } 
 
 
 [palette]
@@ -91,19 +94,27 @@ regular3="#5f8700"
 regular4="#0087af"
 regular5="#878787"
 regular6="#005f87"
-regular7="#764e37"
+regular7="#444444"
 bright0="#bcbcbc"
 bright1="#d70000"
 bright2="#d70087"
 bright3="#8700af"
 bright4="#d75f00"
 bright5="#d75f00"
-bright6="#4c7a5d"
-bright7="#005faf"
+bright6="#005faf"
+bright7="#005f87"
+
 selection_foreground="#eeeeee"
+selection_secondary_foreground="#d9d7d7"
 selection_background="#0087af"
+selection_secondary_background="#2c687a"
 cursorline_background="#fdfdfd"
 paper_bar_bg="#005F87"
+linenr_fg_selected="#AF634D"
+special="#3E999F"
+ui_window_bg="#d0d0d0"
+
+# 16 bit ANSI color names
 black="#eeeeee"
 red="#d70000"
 green="#008700"
@@ -111,13 +122,12 @@ yellow="#5f8700"
 blue="#0087af"
 magenta="#878787"
 cyan="#005f87"
-gray="#764e37"
+white="#444444"
+light-black="#bcbcbc"
 light-red="#d70000"
 light-green="#d70087"
 light-yellow="#8700af"
 light-blue="#d75f00"
 light-magenta="#d75f00"
 light-cyan="#4c7a4d"
-light-gray="#005faf"
-white="#444444"
-linenr_fg_selected="#AF634D"
+light-white="#005faf"
