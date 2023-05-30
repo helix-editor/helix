@@ -804,6 +804,7 @@ use futures_util::stream::{Flatten, Once};
 
 impl steel::gc::unsafe_erased_pointers::CustomReference for Editor {}
 
+#[repr(C)]
 pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,

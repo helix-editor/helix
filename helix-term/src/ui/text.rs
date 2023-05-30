@@ -3,6 +3,8 @@ use tui::buffer::Buffer as Surface;
 
 use helix_view::graphics::Rect;
 
+impl steel::rvals::Custom for Text {}
+
 pub struct Text {
     pub(crate) contents: tui::text::Text<'static>,
     size: (u16, u16),

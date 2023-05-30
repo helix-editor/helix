@@ -33,6 +33,7 @@ impl TypableCommand {
 }
 
 #[derive(Clone)]
+#[repr(C)]
 pub struct CommandSignature {
     // Arguments with specific completion methods based on their position.
     positional_args: &'static [Completer],
@@ -42,21 +43,21 @@ pub struct CommandSignature {
 }
 
 impl CommandSignature {
-    const fn none() -> Self {
+    pub const fn none() -> Self {
         Self {
             positional_args: &[],
             var_args: completers::none,
         }
     }
 
-    const fn positional(completers: &'static [Completer]) -> Self {
+    pub const fn positional(completers: &'static [Completer]) -> Self {
         Self {
             positional_args: completers,
             var_args: completers::none,
         }
     }
 
-    const fn all(completer: Completer) -> Self {
+    pub const fn all(completer: Completer) -> Self {
         Self {
             positional_args: &[],
             var_args: completer,

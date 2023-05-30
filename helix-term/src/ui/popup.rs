@@ -3,6 +3,7 @@ use crate::{
     compositor::{Callback, Component, Context, Event, EventResult},
     ctrl, key,
 };
+use steel::rvals::Custom;
 use tui::buffer::Buffer as Surface;
 
 use helix_core::Position;
@@ -13,6 +14,8 @@ use helix_view::{
 
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)
+
+impl<T: steel::rvals::IntoSteelVal + Component> Custom for Popup<T> {}
 
 pub struct Popup<T: Component> {
     contents: T,

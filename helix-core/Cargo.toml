@@ -48,6 +48,9 @@ chrono = { version = "0.4", default-features = false, features = ["alloc", "std"
 etcetera = "0.7"
 textwrap = "0.16.0"
 
+steel-core = { path = "../../../steel/crates/steel-core", version = "0.2.0", features = ["modules", "anyhow", "blocking_requests", "dylibs"] }
+
+
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
 indoc = "2.0.1"

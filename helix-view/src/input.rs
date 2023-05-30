@@ -17,6 +17,8 @@ pub enum Event {
     IdleTimeout,
 }
 
+impl steel::rvals::Custom for Event {}
+
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct MouseEvent {
     /// The kind of mouse event that was caused.

@@ -9,6 +9,7 @@ members = [
   "helix-loader",
   "helix-vcs",
   "helix-parsec",
+  "custom-commands",
   "xtask",
 ]
 
@@ -18,7 +19,7 @@ default-members = [
 
 [profile.release]
 lto = "thin"
-# debug = true
+debug = true
 
 [profile.opt]
 inherits = "release"
