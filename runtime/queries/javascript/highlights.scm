@@ -1,38 +1,14 @@
-; Function and method parameters
-;-------------------------------
+; Ecma based languages share many traits. Because of this we want to share as
+; many queries as possible while avoiding nested inheritance that can make
+; query behavior unpredictable due to unexpected precedence. To achieve that,
+; some ecma related languages have "public" and "private" versions that share
+; the same name, but the "private" version name starts with an underscore (with
+; the exception of ecma, that works as the base "private" language). This
+; allows the "private" versions to host the specific queries of the language
+; excluding any "inherits" statement, in order to make them safe to be
+; inherited by the "public" version of the same language and other languages
+; as well.
+; If you plan to add queries to this language, please consider adding them to
+; any of the inherited languages listed below.
 
-; (p) => ...
-(formal_parameters 
-  (identifier) @variable.parameter)
-
-; (...p) => ...
-(formal_parameters
-  (rest_pattern
-    (identifier) @variable.parameter))
-
-; ({ p }) => ...
-(formal_parameters
-  (object_pattern
-    (shorthand_property_identifier_pattern) @variable.parameter))
-
-; ({ a: p }) => ...
-(formal_parameters
-  (object_pattern
-    (pair_pattern
-      value: (identifier) @variable.parameter)))
-
-; ([ p ]) => ...
-(formal_parameters
-  (array_pattern
-    (identifier) @variable.parameter))
-
-; (p = 1) => ...
-(formal_parameters
-  (assignment_pattern
-    left: (identifier) @variable.parameter))
-
-; p => ...
-(arrow_function
-  parameter: (identifier) @variable.parameter)
-
-; inherits: ecma
+; inherits: _javascript,ecma

@@ -1,23 +1,14 @@
-(function_signature
-  name: (identifier) @name) @definition.function
+; Ecma based languages share many traits. Because of this we want to share as
+; many queries as possible while avoiding nested inheritance that can make
+; query behavior unpredictable due to unexpected precedence. To achieve that,
+; some ecma related languages have "public" and "private" versions that share
+; the same name, but the "private" version name starts with an underscore (with
+; the exception of ecma, that works as the base "private" language). This
+; allows the "private" versions to host the specific queries of the language
+; excluding any "inherits" statement, in order to make them safe to be
+; inherited by the "public" version of the same language and other languages
+; as well.
+; If you plan to add queries to this language, please consider adding them to
+; any of the inherited languages listed below.
 
-(method_signature
-  name: (property_identifier) @name) @definition.method
-
-(abstract_method_signature
-  name: (property_identifier) @name) @definition.method
-
-(abstract_class_declaration
-  name: (type_identifier) @name) @definition.class
-
-(module
-  name: (identifier) @name) @definition.module
-
-(interface_declaration
-  name: (type_identifier) @name) @definition.interface
-
-(type_annotation
-  (type_identifier) @name) @reference.type
-
-(new_expression
-  constructor: (identifier) @name) @reference.class
+; inherits: _typescript,ecma
