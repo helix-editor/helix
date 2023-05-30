@@ -1,7 +1,8 @@
 # Palette based on https://github.com/NLKNguyen/papercolor-theme
 # Author: Soc Virnyl Estela <socvirnyl.estela@gmail.com>
 
-"ui.linenr.selected" = { fg = "linenr_fg_selected" }
+"ui.linenr.selected" = { fg = "linenr_fg_selected", modifiers = ["bold"] }
+"ui.linenr" = { fg = "bright0" }
 "ui.background" = {bg="background"}
 "ui.text" = "foreground"
 "ui.text.focus" = { fg = "selection_background", modifiers = ["bold"]}
@@ -15,7 +16,7 @@
 "ui.statusline.inactive" = {bg="bright0", fg="foreground"}
 "ui.virtual" = {fg = "linenr_fg_selected"}
 "ui.virtual.whitespace" = { fg = "regular5" }
-"ui.virtual.indent-guide" = { bg = "regular5" }
+"ui.virtual.indent-guide" = { fg="bright0" }
 "ui.virtual.ruler" = {bg = "bright0", fg="bright4"}
 "ui.cursor.match" = {bg = "bright0", fg = "regular0"}
 "ui.cursor" = {bg = "regular5", fg = "background"}
@@ -60,7 +61,6 @@
 "function.builtin" = { fg = "regular4", modifiers = ["bold"]}
 "function.macro" = { fg = "regular1" }
 "comment" = { fg = "bright0", modifiers = ["dim"] }
-"ui.linenr" = { fg = "bright0" }
 "module" = "regular1"
 "constant" = "regular3"
 "constant.builtin" = "regular3"
@@ -108,7 +108,7 @@ selection_foreground="#eeeeee"
 selection_secondary_foreground="#d9d7d7"
 selection_background="#0087af"
 selection_secondary_background="#2c687a"
-cursorline_background="#fdfdfd"
+cursorline_background="#e4e4e4"
 paper_bar_bg="#005F87"
 linenr_fg_selected="#AF634D"
 special="#3E999F"
