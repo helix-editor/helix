@@ -501,17 +501,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "custom-commands"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "helix-core",
- "helix-term",
- "helix-view",
- "steel-core",
-]
-
-[[package]]
 name = "cxx"
 version = "1.0.94"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2662,6 +2651,7 @@ dependencies = [
  "thiserror",
  "ureq",
  "weak-table",
+ "which",
 ]
 
 [[package]]

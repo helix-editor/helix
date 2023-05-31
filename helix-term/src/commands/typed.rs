@@ -2905,12 +2905,12 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // TODO: @Matt - Add completion for added scripting commands here
             // Handle typable commands
+
+            // Register callback functions here - if the prompt event is validate,
+            // Grab the function run and run through the hooks.
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
                 let shellwords = Shellwords::from(input);
                 let args = shellwords.words();
-
-                log::warn!("calling builtin: {}...", parts[0]);
-
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }

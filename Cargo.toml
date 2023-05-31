@@ -9,7 +9,6 @@ members = [
   "helix-loader",
   "helix-vcs",
   "helix-parsec",
-  "custom-commands",
   "xtask",
 ]
 

@@ -25,7 +25,7 @@ use crate::{
     compositor::{self, Component, Compositor},
     job::{self, Callback},
     keymap::{merge_keys, Keymap},
-    ui::{self, overlay::overlaid, Popup, PromptEvent},
+    ui::{self, menu::Item, overlay::overlaid, Popup, PromptEvent},
 };
 
 use super::{
@@ -124,6 +124,23 @@ impl StatusLineMessage {
 
     pub fn get() -> Option<String> {
         STATUS_LINE_MESSAGE.message.read().unwrap().clone()
+    }
+}
+
+impl Item for SteelVal {
+    type Data = ();
+
+    // TODO: This shouldn't copy the data every time
+    fn format(&self, _data: &Self::Data) -> tui::widgets::Row {
+        let formatted = self.to_string();
+
+        formatted
+            .strip_prefix("\"")
+            .unwrap_or(&formatted)
+            .strip_suffix("\"")
+            .unwrap_or(&formatted)
+            .to_owned()
+            .into()
     }
 }
 
@@ -547,7 +564,7 @@ impl Component for BoxDynComponent {
 fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> {
     let mut engine = steel::steel_vm::engine::Engine::new();
 
-    println!("Loading engine!");
+    log::info!("Loading engine!");
 
     // Load native modules from the directory. Another idea - have a separate dlopen loading system
     // in place that does not use the type id, and instead we generate the module after the dylib
@@ -619,6 +636,8 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
             }
         },
     );
+
+    engine.register_fn("Picker::new", |values: Vec<String>| todo!());
 
     // engine.register_fn(
     //     "Picker::new",
