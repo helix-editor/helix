@@ -1172,7 +1172,15 @@ impl EditorView {
                     return EventResult::Ignored(None);
                 }
 
-                commands::MappableCommand::yank_main_selection_to_primary_clipboard.execute(cxt);
+                match config.mouse_yank_clipboard {
+                    helix_view::editor::MouseYankClipboard::Primary => {
+                        commands::MappableCommand::yank_main_selection_to_primary_clipboard
+                            .execute(cxt);
+                    }
+                    helix_view::editor::MouseYankClipboard::System => {
+                        commands::MappableCommand::yank_main_selection_to_clipboard.execute(cxt);
+                    }
+                }
 
                 EventResult::Consumed(None)
             }
@@ -1206,8 +1214,16 @@ impl EditorView {
                 }
 
                 if modifiers == KeyModifiers::ALT {
-                    commands::MappableCommand::replace_selections_with_primary_clipboard
-                        .execute(cxt);
+                    match config.mouse_yank_clipboard {
+                        helix_view::editor::MouseYankClipboard::Primary => {
+                            commands::MappableCommand::replace_selections_with_primary_clipboard
+                                .execute(cxt);
+                        }
+                        helix_view::editor::MouseYankClipboard::System => {
+                            commands::MappableCommand::replace_selections_with_clipboard
+                                .execute(cxt);
+                        }
+                    }
 
                     return EventResult::Consumed(None);
                 }
@@ -1216,7 +1232,15 @@ impl EditorView {
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
                     doc.set_selection(view_id, Selection::point(pos));
                     cxt.editor.focus(view_id);
-                    commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
+
+                    match config.mouse_yank_clipboard {
+                        helix_view::editor::MouseYankClipboard::Primary => {
+                            commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
+                        }
+                        helix_view::editor::MouseYankClipboard::System => {
+                            commands::MappableCommand::paste_clipboard_before.execute(cxt);
+                        }
+                    }
 
                     return EventResult::Consumed(None);
                 }

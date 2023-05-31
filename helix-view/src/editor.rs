@@ -219,6 +219,8 @@ pub struct Config {
     pub scroll_lines: isize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
+    /// Which clipboard to use for mouse yank.
+    pub mouse_yank_clipboard: MouseYankClipboard,
     /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
     pub shell: Vec<String>,
     /// Line number mode.
@@ -600,6 +602,16 @@ pub enum LineNumber {
     Relative,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum MouseYankClipboard {
+    /// Mouse yanks to primary clipboard
+    Primary,
+
+    /// Mouse yanks to system clipboard
+    System,
+}
+
 impl std::str::FromStr for LineNumber {
     type Err = anyhow::Error;
 
@@ -805,6 +817,7 @@ impl Default for Config {
             scrolloff: 5,
             scroll_lines: 3,
             mouse: true,
+            mouse_yank_clipboard: MouseYankClipboard::Primary,
             shell: if cfg!(windows) {
                 vec!["cmd".to_owned(), "/C".to_owned()]
             } else {
