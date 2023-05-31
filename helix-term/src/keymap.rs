@@ -80,7 +80,7 @@ impl KeyTrieNode {
         let mut body: Vec<(&str, BTreeSet<KeyEvent>)> = Vec::with_capacity(self.len());
         for (&key, trie) in self.iter() {
             let desc = match trie {
-                KeyTrie::Leaf(cmd) => {
+                KeyTrie::MappableCommand(cmd) => {
                     if cmd.name() == "no_op" {
                         continue;
                     }
@@ -139,7 +139,7 @@ impl DerefMut for KeyTrieNode {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeyTrie {
-    Leaf(MappableCommand),
+    MappableCommand(MappableCommand),
     Sequence(Vec<MappableCommand>),
     Node(KeyTrieNode),
 }
@@ -168,7 +168,7 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
     {
         command
             .parse::<MappableCommand>()
-            .map(KeyTrie::Leaf)
+            .map(KeyTrie::MappableCommand)
             .map_err(E::custom)
     }
 
@@ -205,14 +205,14 @@ impl KeyTrie {
     pub fn node(&self) -> Option<&KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref node) => Some(node),
-            KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
+            KeyTrie::MappableCommand(_) | KeyTrie::Sequence(_) => None,
         }
     }
 
     pub fn node_mut(&mut self) -> Option<&mut KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref mut node) => Some(node),
-            KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
+            KeyTrie::MappableCommand(_) | KeyTrie::Sequence(_) => None,
         }
     }
 
@@ -229,7 +229,7 @@ impl KeyTrie {
             trie = match trie {
                 KeyTrie::Node(map) => map.get(key),
                 // leaf encountered while keys left to process
-                KeyTrie::Leaf(_) | KeyTrie::Sequence(_) => None,
+                KeyTrie::MappableCommand(_) | KeyTrie::Sequence(_) => None,
             }?
         }
         Some(trie)
@@ -269,7 +269,7 @@ impl Keymap {
         // recursively visit all nodes in keymap
         fn map_node(cmd_map: &mut ReverseKeymap, node: &KeyTrie, keys: &mut Vec<KeyEvent>) {
             match node {
-                KeyTrie::Leaf(cmd) => match cmd {
+                KeyTrie::MappableCommand(cmd) => match cmd {
                     MappableCommand::Typable { name, .. } => {
                         cmd_map.entry(name.into()).or_default().push(keys.clone())
                     }
@@ -371,7 +371,7 @@ impl Keymaps {
         };
 
         let trie = match trie_node.search(&[*first]) {
-            Some(KeyTrie::Leaf(ref cmd)) => {
+            Some(KeyTrie::MappableCommand(ref cmd)) => {
                 return KeymapResult::Matched(cmd.clone());
             }
             Some(KeyTrie::Sequence(ref cmds)) => {
@@ -390,7 +390,7 @@ impl Keymaps {
                 }
                 KeymapResult::Pending(map.clone())
             }
-            Some(KeyTrie::Leaf(cmd)) => {
+            Some(KeyTrie::MappableCommand(cmd)) => {
                 self.state.clear();
                 KeymapResult::Matched(cmd.clone())
             }
@@ -479,19 +479,19 @@ mod tests {
         // Assumes that `g` is a node in default keymap
         assert_eq!(
             keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
-            &KeyTrie::Leaf(MappableCommand::goto_line_end),
+            &KeyTrie::MappableCommand(MappableCommand::goto_line_end),
             "Leaf should be present in merged subnode"
         );
         // Assumes that `gg` is in default keymap
         assert_eq!(
             keymap.root().search(&[key!('g'), key!('g')]).unwrap(),
-            &KeyTrie::Leaf(MappableCommand::delete_char_forward),
+            &KeyTrie::MappableCommand(MappableCommand::delete_char_forward),
             "Leaf should replace old leaf in merged subnode"
         );
         // Assumes that `ge` is in default keymap
         assert_eq!(
             keymap.root().search(&[key!('g'), key!('e')]).unwrap(),
-            &KeyTrie::Leaf(MappableCommand::goto_last_line),
+            &KeyTrie::MappableCommand(MappableCommand::goto_last_line),
             "Old leaves in subnode should be present in merged node"
         );
 
@@ -523,7 +523,7 @@ mod tests {
                 .root()
                 .search(&[key!(' '), key!('s'), key!('v')])
                 .unwrap(),
-            &KeyTrie::Leaf(MappableCommand::vsplit),
+            &KeyTrie::MappableCommand(MappableCommand::vsplit),
             "Leaf should be present in merged subnode"
         );
         // Make sure an order was set during merge

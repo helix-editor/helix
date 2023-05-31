@@ -81,7 +81,7 @@ macro_rules! alt {
 #[macro_export]
 macro_rules! keymap {
     (@trie $cmd:ident) => {
-        $crate::keymap::KeyTrie::Leaf($crate::commands::MappableCommand::$cmd)
+        $crate::keymap::KeyTrie::MappableCommand($crate::commands::MappableCommand::$cmd)
     };
 
     (@trie
