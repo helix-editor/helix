@@ -18,7 +18,7 @@ use std::{
 pub use default::default;
 use macros::key;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct KeyTrieNode {
     /// A label for keys coming under this node, like "Goto mode"
     name: String,
@@ -114,12 +114,6 @@ impl KeyTrieNode {
     /// Get a reference to the key trie node's order.
     pub fn order(&self) -> &[KeyEvent] {
         self.order.as_slice()
-    }
-}
-
-impl Default for KeyTrieNode {
-    fn default() -> Self {
-        Self::new("", HashMap::new(), Vec::new())
     }
 }
 
