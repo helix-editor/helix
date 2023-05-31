@@ -252,17 +252,14 @@ pub enum KeymapResult {
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(transparent)]
-pub struct Keymap {
-    /// Always a Node
-    root: KeyTrie,
-}
+pub struct Keymap(KeyTrie);
 
 /// A map of command names to keybinds that will execute the command.
 pub type ReverseKeymap = HashMap<String, Vec<Vec<KeyEvent>>>;
 
 impl Keymap {
     pub fn new(root: KeyTrie) -> Self {
-        Keymap { root }
+        Keymap(root)
     }
 
     pub fn reverse_map(&self) -> ReverseKeymap {
@@ -290,30 +287,28 @@ impl Keymap {
         }
 
         let mut res = HashMap::new();
-        map_node(&mut res, &self.root, &mut Vec::new());
+        map_node(&mut res, &self.0, &mut Vec::new());
         res
-    }
-
-    pub fn root(&self) -> &KeyTrie {
-        &self.root
-    }
-
-    pub fn merge(&mut self, other: Self) {
-        self.root.merge_nodes(other.root);
     }
 }
 
 impl Deref for Keymap {
-    type Target = KeyTrieNode;
+    type Target = KeyTrie;
 
     fn deref(&self) -> &Self::Target {
-        self.root.node().unwrap()
+        &self.0
+    }
+}
+
+impl DerefMut for Keymap {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
 impl Default for Keymap {
     fn default() -> Self {
-        Self::new(KeyTrie::Node(KeyTrieNode::default()))
+        Self(KeyTrie::Node(KeyTrieNode::default()))
     }
 }
 
@@ -367,7 +362,7 @@ impl Keymaps {
         let first = self.state.get(0).unwrap_or(&key);
         let trie_node = match self.sticky {
             Some(ref trie) => Cow::Owned(KeyTrie::Node(trie.clone())),
-            None => Cow::Borrowed(&keymap.root),
+            None => Cow::Borrowed(&keymap.0),
         };
 
         let trie = match trie_node.search(&[*first]) {
@@ -412,7 +407,7 @@ impl Default for Keymaps {
 /// Merge default config keys with user overwritten keys for custom user config.
 pub fn merge_keys(dst: &mut HashMap<Mode, Keymap>, mut delta: HashMap<Mode, Keymap>) {
     for (mode, keys) in dst {
-        keys.merge(delta.remove(mode).unwrap_or_default())
+        keys.merge_nodes(delta.remove(mode).unwrap_or_default().0)
     }
 }
 
@@ -478,25 +473,39 @@ mod tests {
         let keymap = merged_keyamp.get_mut(&Mode::Normal).unwrap();
         // Assumes that `g` is a node in default keymap
         assert_eq!(
-            keymap.root().search(&[key!('g'), key!('$')]).unwrap(),
+            keymap.search(&[key!('g'), key!('$')]).unwrap(),
             &KeyTrie::MappableCommand(MappableCommand::goto_line_end),
             "Leaf should be present in merged subnode"
         );
         // Assumes that `gg` is in default keymap
         assert_eq!(
-            keymap.root().search(&[key!('g'), key!('g')]).unwrap(),
+            keymap.search(&[key!('g'), key!('g')]).unwrap(),
             &KeyTrie::MappableCommand(MappableCommand::delete_char_forward),
             "Leaf should replace old leaf in merged subnode"
         );
         // Assumes that `ge` is in default keymap
         assert_eq!(
-            keymap.root().search(&[key!('g'), key!('e')]).unwrap(),
+            keymap.search(&[key!('g'), key!('e')]).unwrap(),
             &KeyTrie::MappableCommand(MappableCommand::goto_last_line),
             "Old leaves in subnode should be present in merged node"
         );
 
-        assert!(merged_keyamp.get(&Mode::Normal).unwrap().len() > 1);
-        assert!(merged_keyamp.get(&Mode::Insert).unwrap().len() > 0);
+        assert!(
+            merged_keyamp
+                .get(&Mode::Normal)
+                .and_then(|key_trie| key_trie.node())
+                .unwrap()
+                .len()
+                > 1
+        );
+        assert!(
+            merged_keyamp
+                .get(&Mode::Insert)
+                .and_then(|key_trie| key_trie.node())
+                .unwrap()
+                .len()
+                > 0
+        );
     }
 
     #[test]
@@ -519,22 +528,19 @@ mod tests {
         let keymap = merged_keyamp.get_mut(&Mode::Normal).unwrap();
         // Make sure mapping works
         assert_eq!(
-            keymap
-                .root()
-                .search(&[key!(' '), key!('s'), key!('v')])
-                .unwrap(),
+            keymap.search(&[key!(' '), key!('s'), key!('v')]).unwrap(),
             &KeyTrie::MappableCommand(MappableCommand::vsplit),
             "Leaf should be present in merged subnode"
         );
         // Make sure an order was set during merge
-        let node = keymap.root().search(&[crate::key!(' ')]).unwrap();
+        let node = keymap.search(&[crate::key!(' ')]).unwrap();
         assert!(!node.node().unwrap().order().is_empty())
     }
 
     #[test]
     fn aliased_modes_are_same_in_default_keymap() {
         let keymaps = Keymaps::default().map();
-        let root = keymaps.get(&Mode::Normal).unwrap().root();
+        let root = keymaps.get(&Mode::Normal).unwrap();
         assert_eq!(
             root.search(&[key!(' '), key!('w')]).unwrap(),
             root.search(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),
