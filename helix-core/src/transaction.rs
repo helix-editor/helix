@@ -513,6 +513,49 @@ impl ChangeSet {
     pub fn changes_iter(&self) -> ChangeIterator {
         ChangeIterator::new(self)
     }
+
+    pub fn from_change(doc: &Rope, change: Change) -> Self {
+        Self::from_changes(doc, std::iter::once(change))
+    }
+
+    /// Generate a ChangeSet from a set of changes.
+    pub fn from_changes<I>(doc: &Rope, changes: I) -> Self
+    where
+        I: Iterator<Item = Change>,
+    {
+        let len = doc.len_chars();
+
+        let (lower, upper) = changes.size_hint();
+        let size = upper.unwrap_or(lower);
+        let mut changeset = ChangeSet::with_capacity(2 * size + 1); // rough estimate
+
+        let mut last = 0;
+        for (from, to, tendril) in changes {
+            // Verify ranges are ordered and not overlapping
+            debug_assert!(last <= from);
+            // Verify ranges are correct
+            debug_assert!(
+                from <= to,
+                "Edit end must end before it starts (should {from} <= {to})"
+            );
+
+            // Retain from last "to" to current "from"
+            changeset.retain(from - last);
+            let span = to - from;
+            match tendril {
+                Some(text) => {
+                    changeset.insert(text);
+                    changeset.delete(span);
+                }
+                None => changeset.delete(span),
+            }
+            last = to;
+        }
+
+        changeset.retain(len - last);
+
+        changeset
+    }
 }
 
 /// Transaction represents a single undoable unit of changes. Several changes can be grouped into
@@ -606,38 +649,7 @@ impl Transaction {
     where
         I: Iterator<Item = Change>,
     {
-        let len = doc.len_chars();
-
-        let (lower, upper) = changes.size_hint();
-        let size = upper.unwrap_or(lower);
-        let mut changeset = ChangeSet::with_capacity(2 * size + 1); // rough estimate
-
-        let mut last = 0;
-        for (from, to, tendril) in changes {
-            // Verify ranges are ordered and not overlapping
-            debug_assert!(last <= from);
-            // Verify ranges are correct
-            debug_assert!(
-                from <= to,
-                "Edit end must end before it starts (should {from} <= {to})"
-            );
-
-            // Retain from last "to" to current "from"
-            changeset.retain(from - last);
-            let span = to - from;
-            match tendril {
-                Some(text) => {
-                    changeset.insert(text);
-                    changeset.delete(span);
-                }
-                None => changeset.delete(span),
-            }
-            last = to;
-        }
-
-        changeset.retain(len - last);
-
-        Self::from(changeset)
+        Self::from(ChangeSet::from_changes(doc, changes))
     }
 
     /// Generate a transaction from a set of potentially overlapping deletions
@@ -739,8 +751,8 @@ impl Transaction {
     /// Generate a transaction with a change per selection range, which
     /// generates a new selection as well. Each range is operated upon by
     /// the given function and can optionally produce a new range. If none
-    /// is returned by the function, that range is dropped from the resulting
-    /// selection.
+    /// is returned by the function, that range is mapped through the change
+    /// as usual.
     pub fn change_by_and_with_selection<F>(doc: &Rope, selection: &Selection, mut f: F) -> Self
     where
         F: FnMut(&Range) -> (Change, Option<Range>),
@@ -767,6 +779,10 @@ impl Transaction {
                 log::trace!("end range {:?} offset to: {:?}", end_range, offset_range);
 
                 end_ranges.push(offset_range);
+            } else {
+                let changeset = ChangeSet::from_change(doc, (from, to, replacement.clone()));
+                let end_range = start_range.map(&changeset);
+                end_ranges.push(end_range);
             }
 
             offset += change_size;

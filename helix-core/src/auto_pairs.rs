@@ -1,7 +1,7 @@
 //! When typing the opening character of one of the possible pairs defined below,
 //! this module provides the functionality to insert the paired closing character.
 
-use crate::{graphemes, movement::Direction, Range, Rope, Selection, Tendril, Transaction};
+use crate::{graphemes, movement::Direction, Change, Range, Rope, Tendril};
 use std::collections::HashMap;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
@@ -104,31 +104,23 @@ impl Default for AutoPairs {
     }
 }
 
-// insert hook:
-// Fn(doc, selection, char) => Option<Transaction>
-// problem is, we want to do this per range, so we can call default handler for some ranges
-// so maybe ret Vec<Option<Change>>
-// but we also need to be able to return transactions...
-//
-// to simplify, maybe return Option<Transaction> and just reimplement the default
-
 // [TODO]
 // * delete implementation where it erases the whole bracket (|) -> |
 // * change to multi character pairs to handle cases like placing the cursor in the
 //   middle of triple quotes, and more exotic pairs like Jinja's {% %}
 
 #[must_use]
-pub fn hook(doc: &Rope, selection: &Selection, ch: char, pairs: &AutoPairs) -> Option<Transaction> {
-    log::trace!("autopairs hook selection: {:#?}", selection);
+pub fn hook(doc: &Rope, range: &Range, ch: char, pairs: &AutoPairs) -> Option<(Change, Range)> {
+    log::trace!("autopairs hook range: {:#?}", range);
 
     if let Some(pair) = pairs.get(ch) {
         if pair.same() {
-            return Some(handle_same(doc, selection, pair));
+            return handle_same(doc, range, pair);
         } else if pair.open == ch {
-            return Some(handle_open(doc, selection, pair));
+            return handle_open(doc, range, pair);
         } else if pair.close == ch {
             // && char_at pos == close
-            return Some(handle_close(doc, selection, pair));
+            return handle_close(doc, range, pair);
         }
     }
 
@@ -251,94 +243,76 @@ fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range
     Range::new(end_anchor, end_head)
 }
 
-fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
-    let transaction = Transaction::change_by_and_with_selection(doc, selection, |start_range| {
-        let cursor = start_range.cursor(doc.slice(..));
-        let next_char = doc.get_char(cursor);
-        let len_inserted;
+fn handle_open(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
+    let cursor = range.cursor(doc.slice(..));
+    let next_char = doc.get_char(cursor);
+    let len_inserted;
 
-        // Since auto pairs are currently limited to single chars, we're either
-        // inserting exactly one or two chars. When arbitrary length pairs are
-        // added, these will need to be changed.
-        let change = match next_char {
-            Some(_) if !pair.should_close(doc, start_range) => {
-                len_inserted = 1;
-                let mut tendril = Tendril::new();
-                tendril.push(pair.open);
-                (cursor, cursor, Some(tendril))
-            }
-            _ => {
-                // insert open & close
-                let pair_str = Tendril::from_iter([pair.open, pair.close]);
-                len_inserted = 2;
-                (cursor, cursor, Some(pair_str))
-            }
-        };
+    // Since auto pairs are currently limited to single chars, we're either
+    // inserting exactly one or two chars. When arbitrary length pairs are
+    // added, these will need to be changed.
+    let change = match next_char {
+        Some(_) if !pair.should_close(doc, range) => {
+            return None;
+        }
+        _ => {
+            // insert open & close
+            let pair_str = Tendril::from_iter([pair.open, pair.close]);
+            len_inserted = 2;
+            (cursor, cursor, Some(pair_str))
+        }
+    };
 
-        let next_range = get_next_range(doc, start_range, len_inserted);
+    let next_range = get_next_range(doc, range, len_inserted);
+    let result = (change, next_range);
 
-        (change, Some(next_range))
-    });
+    log::debug!("auto pair change: {:#?}", &result);
 
-    log::debug!("auto pair transaction: {:#?}", transaction);
-    transaction
+    Some(result)
 }
 
-fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
-    let transaction = Transaction::change_by_and_with_selection(doc, selection, |start_range| {
-        let cursor = start_range.cursor(doc.slice(..));
-        let next_char = doc.get_char(cursor);
-        let mut len_inserted = 0;
+fn handle_close(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
+    let cursor = range.cursor(doc.slice(..));
+    let next_char = doc.get_char(cursor);
 
-        let change = if next_char == Some(pair.close) {
-            // return transaction that moves past close
-            (cursor, cursor, None) // no-op
-        } else {
-            len_inserted = 1;
-            let mut tendril = Tendril::new();
-            tendril.push(pair.close);
-            (cursor, cursor, Some(tendril))
-        };
+    let change = if next_char == Some(pair.close) {
+        // return transaction that moves past close
+        (cursor, cursor, None) // no-op
+    } else {
+        return None;
+    };
 
-        let next_range = get_next_range(doc, start_range, len_inserted);
+    let next_range = get_next_range(doc, range, 0);
+    let result = (change, next_range);
 
-        (change, Some(next_range))
-    });
+    log::debug!("auto pair change: {:#?}", &result);
 
-    log::debug!("auto pair transaction: {:#?}", transaction);
-    transaction
+    Some(result)
 }
 
 /// handle cases where open and close is the same, or in triples ("""docstring""")
-fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
-    let transaction = Transaction::change_by_and_with_selection(doc, selection, |start_range| {
-        let cursor = start_range.cursor(doc.slice(..));
-        let mut len_inserted = 0;
-        let next_char = doc.get_char(cursor);
+fn handle_same(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
+    let cursor = range.cursor(doc.slice(..));
+    let mut len_inserted = 0;
+    let next_char = doc.get_char(cursor);
 
-        let change = if next_char == Some(pair.open) {
-            //  return transaction that moves past close
-            (cursor, cursor, None) // no-op
-        } else {
-            let mut pair_str = Tendril::new();
-            pair_str.push(pair.open);
+    let change = if next_char == Some(pair.open) {
+        // return transaction that moves past close
+        (cursor, cursor, None) // no-op
+    } else {
+        if !pair.should_close(doc, range) {
+            return None;
+        }
 
-            // for equal pairs, don't insert both open and close if either
-            // side has a non-pair char
-            if pair.should_close(doc, start_range) {
-                pair_str.push(pair.close);
-            }
+        let pair_str = Tendril::from_iter([pair.open, pair.close]);
+        len_inserted = 2;
+        (cursor, cursor, Some(pair_str))
+    };
 
-            len_inserted += pair_str.chars().count();
-            (cursor, cursor, Some(pair_str))
-        };
+    let next_range = get_next_range(doc, range, len_inserted);
+    let result = (change, next_range);
 
-        let next_range = get_next_range(doc, start_range, len_inserted);
+    log::debug!("auto pair change: {:#?}", &result);
 
-        (change, Some(next_range))
-    });
-
-    log::debug!("auto pair transaction: {:#?}", transaction);
-
-    transaction
+    Some(result)
 }
