@@ -48,6 +48,21 @@ where
         .transpose()
 }
 
+fn deserialize_tab_width<'de, D>(deserializer: D) -> Result<usize, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    usize::deserialize(deserializer).and_then(|n| {
+        if n > 0 && n <= 16 {
+            Ok(n)
+        } else {
+            Err(serde::de::Error::custom(
+                "tab width must be a value from 1 to 16 inclusive",
+            ))
+        }
+    })
+}
+
 pub fn deserialize_auto_pairs<'de, D>(deserializer: D) -> Result<Option<AutoPairs>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -424,7 +439,8 @@ pub struct DebuggerQuirks {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentationConfiguration {
-    pub tab_width: std::num::NonZeroUsize,
+    #[serde(deserialize_with = "deserialize_tab_width")]
+    pub tab_width: usize,
     pub unit: String,
 }
 
