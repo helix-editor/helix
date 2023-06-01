@@ -13,15 +13,15 @@ const PAIRS: &[(char, char)] = &[
 
 // limit matching pairs to only ( ) { } [ ] < > ' ' " "
 
-// Returns the position of the matching bracket under cursor.
-//
-// If the cursor is on the opening bracket, the position of
-// the closing bracket is returned. If the cursor on the closing
-// bracket, the position of the opening bracket is returned.
-//
-// If the cursor is not on a bracket, `None` is returned.
-//
-// If no matching bracket is found, `None` is returned.
+/// Returns the position of the matching bracket under cursor.
+///
+/// If the cursor is on the opening bracket, the position of
+/// the closing bracket is returned. If the cursor on the closing
+/// bracket, the position of the opening bracket is returned.
+///
+/// If the cursor is not on a bracket, `None` is returned.
+///
+/// If no matching bracket is found, `None` is returned.
 #[must_use]
 pub fn find_matching_bracket(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
     if pos >= doc.len_chars() || !is_valid_bracket(doc.char(pos)) {
@@ -72,17 +72,17 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
     }
 }
 
-// Returns the position of the matching bracket under cursor, the search
-// is limited to the current line. This function works on plain text, it
-// ignores tree-sitter grammar.
-//
-// If the cursor is on the opening bracket, the position of
-// the closing bracket is returned. If the cursor on the closing
-// bracket, the position of the opening bracket is returned.
-//
-// If the cursor is not on a bracket, `None` is returned.
-//
-// If no matching bracket is found, `None` is returned.
+/// Returns the position of the matching bracket under cursor, the search
+/// is limited to the current line. This function works on plain text, it
+/// ignores tree-sitter grammar.
+///
+/// If the cursor is on the opening bracket, the position of
+/// the closing bracket is returned. If the cursor on the closing
+/// bracket, the position of the opening bracket is returned.
+///
+/// If the cursor is not on a bracket, `None` is returned.
+///
+/// If no matching bracket is found, `None` is returned.
 #[must_use]
 pub fn find_matching_bracket_current_line_plaintext(
     doc: &Rope,
