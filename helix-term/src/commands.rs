@@ -4127,16 +4127,6 @@ pub mod insert {
         }
     }
 
-    // The default insert hook: simply insert the character
-    #[allow(clippy::unnecessary_wraps)] // need to use Option<> because of the Hook signature
-    fn insert(doc: &Rope, selection: &Selection, ch: char) -> Option<Transaction> {
-        let cursors = selection.clone().cursors(doc.slice(..));
-        let mut t = Tendril::new();
-        t.push(ch);
-        let transaction = Transaction::insert(doc, &cursors, t);
-        Some(transaction)
-    }
-
     use helix_core::auto_pairs;
     use helix_view::editor::SmartTabConfig;
 
@@ -4146,15 +4136,25 @@ pub mod insert {
         let selection = doc.selection(view.id);
         let auto_pairs = doc.auto_pairs(cx.editor);
 
-        let transaction = auto_pairs
-            .as_ref()
-            .and_then(|ap| auto_pairs::hook(text, selection, c, ap))
-            .or_else(|| insert(text, selection, c));
+        let insert_char = |range: Range, ch: char| {
+            let cursor = range.cursor(text.slice(..));
+            let t = Tendril::from_iter([ch]);
+            ((cursor, cursor, Some(t)), None)
+        };
 
-        let (view, doc) = current!(cx.editor);
-        if let Some(t) = transaction {
-            doc.apply(&t, view.id);
-        }
+        let transaction = Transaction::change_by_and_with_selection(text, selection, |range| {
+            auto_pairs
+                .as_ref()
+                .and_then(|ap| {
+                    auto_pairs::hook(text, range, c, ap)
+                        .map(|(change, range)| (change, Some(range)))
+                        .or(Some(insert_char(*range, c)))
+                })
+                .unwrap_or_else(|| insert_char(*range, c))
+        });
+
+        let doc = doc_mut!(cx.editor, &doc.id());
+        doc.apply(&transaction, view.id);
 
         helix_event::dispatch(PostInsertChar { c, cx });
     }
