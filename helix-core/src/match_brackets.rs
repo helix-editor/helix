@@ -2,6 +2,9 @@ use tree_sitter::Node;
 
 use crate::{Rope, Syntax};
 
+const MAX_PLAINTEXT_SCAN: usize = 10000;
+
+// Limit matching pairs to only ( ) { } [ ] < > ' ' " "
 const PAIRS: &[(char, char)] = &[
     ('(', ')'),
     ('{', '}'),
@@ -10,8 +13,6 @@ const PAIRS: &[(char, char)] = &[
     ('\'', '\''),
     ('\"', '\"'),
 ];
-
-// limit matching pairs to only ( ) { } [ ] < > ' ' " "
 
 /// Returns the position of the matching bracket under cursor.
 ///
@@ -104,7 +105,7 @@ pub fn find_matching_bracket_current_line_plaintext(
 
     let mut open_cnt = 1;
 
-    for (i, candidate) in chars_iter.enumerate() {
+    for (i, candidate) in chars_iter.take(MAX_PLAINTEXT_SCAN).enumerate() {
         if candidate == bracket {
             open_cnt += 1;
         } else if is_valid_pair(
