@@ -170,6 +170,15 @@ where
     let visible = context.focused;
     let config = context.editor.config();
     let modenames = &config.statusline.mode;
+    let mode_style = if visible && config.color_modes {
+        match context.editor.mode() {
+            Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
+            Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
+            Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
+        }
+    } else {
+        None
+    };
     write(
         context,
         format!(
@@ -185,16 +194,25 @@ where
                 "   "
             }
         ),
-        if visible && config.color_modes {
-            match context.editor.mode() {
-                Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
-                Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
-                Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
-            }
-        } else {
-            None
-        },
+        mode_style,
     );
+
+    if visible {
+        match &config.statusline.mode_separator {
+            separator if separator.is_empty() => {}
+            separator => {
+                // use mode style as mode separator style except set
+                // background to statusline background
+                let mode_separator_style = mode_style.map(|s| Style {
+                    fg: s.bg,
+                    bg: context.editor.theme.get("ui.statusline").bg,
+                    ..Default::default()
+                });
+
+                write(context, separator.to_string(), mode_separator_style);
+            }
+        };
+    }
 }
 
 // TODO think about handling multiple language servers
