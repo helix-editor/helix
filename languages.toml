@@ -1041,7 +1041,7 @@ source = { git = "https://github.com/uyha/tree-sitter-cmake", rev = "6e51463ef30
 [[language]]
 name = "make"
 scope = "source.make"
-file-types = ["Makefile", "makefile", "mk"]
+file-types = ["Makefile", "makefile", "make", "mk"]
 injection-regex = "(make|makefile|Makefile|mk)"
 roots = []
 comment-token = "#"
