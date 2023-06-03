@@ -68,10 +68,10 @@ impl Config {
             (Ok(global), Ok(local)) => {
                 let mut keys = keymap::default();
                 if let Some(global_keys) = global.keys {
-                    merge_keys(&mut keys, global_keys)
+                    keys = merge_keys(keys, global_keys)
                 }
                 if let Some(local_keys) = local.keys {
-                    merge_keys(&mut keys, local_keys)
+                    keys = merge_keys(keys, local_keys)
                 }
 
                 let editor = match (global.editor, local.editor) {
@@ -98,7 +98,7 @@ impl Config {
             (Ok(config), Err(_)) | (Err(_), Ok(config)) => {
                 let mut keys = keymap::default();
                 if let Some(keymap) = config.keys {
-                    merge_keys(&mut keys, keymap);
+                    keys = merge_keys(keys, keymap);
                 }
                 Config {
                     theme: config.theme,
@@ -150,9 +150,8 @@ mod tests {
             A-F12 = "move_next_word_end"
         "#;
 
-        let mut keys = keymap::default();
-        merge_keys(
-            &mut keys,
+        let keys = merge_keys(
+            keymap::default(),
             hashmap! {
                 Mode::Insert => keymap!({ "Insert mode"
                     "y" => move_line_down,
@@ -171,6 +170,26 @@ mod tests {
                 ..Default::default()
             }
         );
+    }
+
+    #[test]
+    fn keybinding_order_preservation() {
+        let keymap = r#"
+            [keys.insert]
+            y = "move_line_down"
+            S-C-a = "delete_selection"
+        "#;
+
+        let reversed_keymap = r#"
+            [keys.insert]
+            S-C-a = "delete_selection"
+            y = "move_line_down"
+        "#;
+
+        assert_ne!(
+            Config::load_test(keymap),
+            Config::load_test(reversed_keymap)
+        )
     }
 
     #[test]

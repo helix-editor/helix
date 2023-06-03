@@ -192,10 +192,10 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "C-j" | "j" | "down" => jump_view_down,
             "C-k" | "k" | "up" => jump_view_up,
             "C-l" | "l" | "right" => jump_view_right,
-            "L" => swap_view_right,
-            "K" => swap_view_up,
             "H" => swap_view_left,
             "J" => swap_view_down,
+            "K" => swap_view_up,
+            "L" => swap_view_right,
             "n" => { "New split scratch buffer"
                 "C-s" | "s" => hsplit_new,
                 "C-v" | "v" => vsplit_new,
@@ -322,8 +322,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-a" => increment,
         "C-x" => decrement,
     });
-    let mut select = normal.clone();
-    select.merge_nodes(keymap!({ "Select mode"
+    let select = normal.clone().merge_nodes(keymap!({ "Select mode"
         "h" | "left" => extend_char_left,
         "j" | "down" => extend_visual_line_down,
         "k" | "up" => extend_visual_line_up,

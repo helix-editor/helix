@@ -106,10 +106,10 @@ macro_rules! keymap {
                     let _key = $key.parse::<::helix_view::input::KeyEvent>().unwrap();
                     let _duplicate = _map.insert(
                         _key,
-                        keymap!(@trie $value)
+                        _order.len()
                     );
                     assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
-                    _order.push(_key);
+                    _order.push(keymap!(@trie $value));
                 )+
             )*
             let mut _node = $crate::keymap::KeyTrieNode::new($label, _map, _order);
