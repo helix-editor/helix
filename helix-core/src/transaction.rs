@@ -738,16 +738,6 @@ impl Transaction {
         )
     }
 
-    /// Generate a transaction with a deletion per selection range.
-    /// Compared to using `change_by_selection` directly these ranges may overlap.
-    /// In that case they are merged
-    pub fn delete_by_selection<F>(doc: &Rope, selection: &Selection, f: F) -> Self
-    where
-        F: FnMut(&Range) -> Deletion,
-    {
-        Self::delete(doc, selection.iter().map(f))
-    }
-
     /// Generate a transaction with a change per selection range, which
     /// generates a new selection as well. Each range is operated upon by
     /// the given function and can optionally produce a new range. If none
@@ -796,6 +786,60 @@ impl Transaction {
             );
 
             (from, to, replacement)
+        });
+
+        transaction.with_selection(Selection::new(end_ranges, selection.primary_index()))
+    }
+
+    /// Generate a transaction with a deletion per selection range.
+    /// Compared to using `change_by_selection` directly these ranges may overlap.
+    /// In that case they are merged.
+    pub fn delete_by_selection<F>(doc: &Rope, selection: &Selection, f: F) -> Self
+    where
+        F: FnMut(&Range) -> Deletion,
+    {
+        Self::delete(doc, selection.iter().map(f))
+    }
+
+    /// Generate a transaction with a delete per selection range, which
+    /// generates a new selection as well. Each range is operated upon by
+    /// the given function and can optionally produce a new range. If none
+    /// is returned by the function, that range is mapped through the change
+    /// as usual.
+    ///
+    /// Compared to using `change_by_and_with_selection` directly these ranges
+    /// may overlap. In that case they are merged.
+    pub fn delete_by_and_with_selection<F>(doc: &Rope, selection: &Selection, mut f: F) -> Self
+    where
+        F: FnMut(&Range) -> (Deletion, Option<Range>),
+    {
+        let mut end_ranges = SmallVec::with_capacity(selection.len());
+        let mut offset = 0;
+
+        let transaction = Transaction::delete_by_selection(doc, selection, |start_range| {
+            let ((from, to), end_range) = f(start_range);
+            let change_size = to - from;
+
+            if let Some(end_range) = end_range {
+                let offset_range = Range::new(
+                    end_range.anchor.saturating_sub(offset),
+                    end_range.head.saturating_sub(offset),
+                );
+
+                log::trace!("end range {:?} offset to: {:?}", end_range, offset_range);
+
+                end_ranges.push(offset_range);
+            } else {
+                let changeset = ChangeSet::from_change(doc, (from, to, None));
+                let end_range = start_range.map(&changeset);
+                end_ranges.push(end_range);
+            }
+
+            offset += change_size;
+
+            log::trace!("delete from: {}, to: {}, offset: {}", from, to, offset);
+
+            (from, to)
         });
 
         transaction.with_selection(Selection::new(end_ranges, selection.primary_index()))
