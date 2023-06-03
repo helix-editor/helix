@@ -226,13 +226,6 @@ impl KeyTrie {
         res
     }
 
-    pub fn node(&self) -> Option<&KeyTrieNode> {
-        match *self {
-            KeyTrie::Node(ref node) => Some(node),
-            KeyTrie::MappableCommand(_) | KeyTrie::Sequence(_) => None,
-        }
-    }
-
     /// Merge another KeyTrie in, assuming that this KeyTrie and the other
     /// are both Nodes. Panics otherwise.
     pub fn merge_nodes(self, other: Self) -> Self {
@@ -407,6 +400,17 @@ mod tests {
     use arc_swap::access::Constant;
     use helix_core::hashmap;
 
+    impl KeyTrie {
+        fn as_node(&self) -> &KeyTrieNode {
+            match *self {
+                KeyTrie::Node(ref node) => node,
+                KeyTrie::MappableCommand(_) | KeyTrie::Sequence(_) => {
+                    panic!("Expected keytrie to be a node.")
+                }
+            }
+        }
+    }
+
     #[test]
     #[should_panic]
     fn duplicate_keys_should_panic() {
@@ -478,7 +482,7 @@ mod tests {
 
         assert!(!merged_keyamp
             .get(&Mode::Insert)
-            .and_then(|key_trie| key_trie.node())
+            .map(|key_trie| key_trie.as_node())
             .unwrap()
             .order
             .is_empty());
@@ -511,8 +515,7 @@ mod tests {
             "g" => goto_file_start,
             "e" => goto_file_end,
         })
-        .node()
-        .unwrap()
+        .as_node()
         .clone();
         let other_keymap = KeyTrie::Node(KeyTrieNode {
             name: None,
@@ -549,7 +552,7 @@ mod tests {
         );
         // Make sure an order was set during merge
         let node = keymap.search(&[crate::key!(' ')]).unwrap();
-        assert!(!node.node().unwrap().order.as_slice().is_empty())
+        assert!(!node.as_node().order.is_empty())
     }
 
     #[test]
@@ -596,8 +599,8 @@ mod tests {
             "Mismatch for window mode on `Space-w` and `Ctrl-w`"
         );
 
-        let z_view = root.search(&[key!('z')]).unwrap().node().unwrap().clone();
-        let mut z_sticky_view = root.search(&[key!('Z')]).unwrap().node().unwrap().clone();
+        let z_view = root.search(&[key!('z')]).unwrap().as_node().clone();
+        let mut z_sticky_view = root.search(&[key!('Z')]).unwrap().as_node().clone();
         assert!(z_sticky_view.is_sticky);
         z_sticky_view.is_sticky = false;
         assert_eq!(
