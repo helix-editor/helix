@@ -110,17 +110,22 @@ impl Default for AutoPairs {
 //   middle of triple quotes, and more exotic pairs like Jinja's {% %}
 
 #[must_use]
-pub fn hook(doc: &Rope, range: &Range, ch: char, pairs: &AutoPairs) -> Option<(Change, Range)> {
+pub fn hook_insert(
+    doc: &Rope,
+    range: &Range,
+    ch: char,
+    pairs: &AutoPairs,
+) -> Option<(Change, Range)> {
     log::trace!("autopairs hook range: {:#?}", range);
 
     if let Some(pair) = pairs.get(ch) {
         if pair.same() {
-            return handle_same(doc, range, pair);
+            return handle_insert_same(doc, range, pair);
         } else if pair.open == ch {
-            return handle_open(doc, range, pair);
+            return handle_insert_open(doc, range, pair);
         } else if pair.close == ch {
             // && char_at pos == close
-            return handle_close(doc, range, pair);
+            return handle_insert_close(doc, range, pair);
         }
     }
 
@@ -243,7 +248,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range
     Range::new(end_anchor, end_head)
 }
 
-fn handle_open(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
+fn handle_insert_open(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
     let cursor = range.cursor(doc.slice(..));
     let next_char = doc.get_char(cursor);
     let len_inserted;
@@ -271,7 +276,7 @@ fn handle_open(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)
     Some(result)
 }
 
-fn handle_close(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
+fn handle_insert_close(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
     let cursor = range.cursor(doc.slice(..));
     let next_char = doc.get_char(cursor);
 
@@ -291,7 +296,7 @@ fn handle_close(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range
 }
 
 /// handle cases where open and close is the same, or in triples ("""docstring""")
-fn handle_same(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
+fn handle_insert_same(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
     let cursor = range.cursor(doc.slice(..));
     let mut len_inserted = 0;
     let next_char = doc.get_char(cursor);
