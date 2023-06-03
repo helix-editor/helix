@@ -48,6 +48,12 @@ c = ":run-shell-command cargo build"
 t = ":run-shell-command cargo test"
 ```
 
+## Info box ordering
+
+Order of keybindings in config is preserved when displaying the respective info
+boxes. User defined keybindings take precedence over the built-in bindings,
+meaning that they are shown first.
+
 ## Special keys and modifiers
 
 Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
