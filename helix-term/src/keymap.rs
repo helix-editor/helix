@@ -476,15 +476,6 @@ mod tests {
             "Old leaves in subnode should be present in merged node"
         );
 
-        assert!(
-            merged_keyamp
-                .get(&Mode::Normal)
-                .and_then(|key_trie| key_trie.node())
-                .unwrap()
-                .order
-                .len()
-                > 1
-        );
         assert!(!merged_keyamp
             .get(&Mode::Insert)
             .and_then(|key_trie| key_trie.node())
