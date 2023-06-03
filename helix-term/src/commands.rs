@@ -3772,7 +3772,7 @@ pub mod insert {
             auto_pairs
                 .as_ref()
                 .and_then(|ap| {
-                    auto_pairs::hook(text, range, c, ap)
+                    auto_pairs::hook_insert(text, range, c, ap)
                         .map(|(change, range)| (change, Some(range)))
                         .or(Some(insert_char(*range, c)))
                 })
@@ -3938,11 +3938,13 @@ pub mod insert {
         let indent_width = doc.indent_width();
         let auto_pairs = doc.auto_pairs(cx.editor);
 
-        let transaction =
-            Transaction::delete_by_selection(doc.text(), doc.selection(view.id), |range| {
+        let transaction = Transaction::delete_by_and_with_selection(
+            doc.text(),
+            doc.selection(view.id),
+            |range| {
                 let pos = range.cursor(text);
                 if pos == 0 {
-                    return (pos, pos);
+                    return ((pos, pos), None);
                 }
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
                 // consider to delete by indent level if all characters before `pos` are indent units.
@@ -3950,7 +3952,10 @@ pub mod insert {
                 if !fragment.is_empty() && fragment.chars().all(|ch| ch == ' ' || ch == '\t') {
                     if text.get_char(pos.saturating_sub(1)) == Some('\t') {
                         // fast path, delete one char
-                        (graphemes::nth_prev_grapheme_boundary(text, pos, 1), pos)
+                        (
+                            (graphemes::nth_prev_grapheme_boundary(text, pos, 1), pos),
+                            None,
+                        )
                     } else {
                         let width: usize = fragment
                             .chars()
@@ -3977,7 +3982,7 @@ pub mod insert {
                                 _ => break,
                             }
                         }
-                        (start, pos) // delete!
+                        ((start, pos), None) // delete!
                     }
                 } else {
                     match (
@@ -3993,18 +3998,26 @@ pub mod insert {
                         // delete both autopaired characters
                         {
                             (
-                                graphemes::nth_prev_grapheme_boundary(text, pos, count),
-                                graphemes::nth_next_grapheme_boundary(text, pos, count),
+                                (
+                                    graphemes::nth_prev_grapheme_boundary(text, pos, count),
+                                    graphemes::nth_next_grapheme_boundary(text, pos, count),
+                                ),
+                                None,
                             )
                         }
                         _ =>
                         // delete 1 char
                         {
-                            (graphemes::nth_prev_grapheme_boundary(text, pos, count), pos)
+                            (
+                                (graphemes::nth_prev_grapheme_boundary(text, pos, count), pos),
+                                None,
+                            )
                         }
                     }
                 }
-            });
+            },
+        );
+
         let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
     }
