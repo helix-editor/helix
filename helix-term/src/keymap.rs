@@ -269,41 +269,11 @@ pub enum KeymapResult {
     Cancelled(Vec<KeyEvent>),
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(transparent)]
-pub struct Keymap(KeyTrie);
-
 /// A map of command names to keybinds that will execute the command.
 pub type ReverseKeymap = HashMap<String, Vec<Vec<KeyEvent>>>;
 
-impl Keymap {
-    pub fn new(root: KeyTrie) -> Self {
-        Keymap(root)
-    }
-}
-
-impl Deref for Keymap {
-    type Target = KeyTrie;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Keymap {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl Default for Keymap {
-    fn default() -> Self {
-        Self(KeyTrie::Node(KeyTrieNode::default()))
-    }
-}
-
 pub struct Keymaps {
-    pub map: Box<dyn DynAccess<HashMap<Mode, Keymap>>>,
+    pub map: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>,
     /// Stores pending keys waiting for the next key. This is relative to a
     /// sticky node if one is in use.
     state: Vec<KeyEvent>,
@@ -312,7 +282,7 @@ pub struct Keymaps {
 }
 
 impl Keymaps {
-    pub fn new(map: Box<dyn DynAccess<HashMap<Mode, Keymap>>>) -> Self {
+    pub fn new(map: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>) -> Self {
         Self {
             map,
             state: Vec::new(),
@@ -320,7 +290,7 @@ impl Keymaps {
         }
     }
 
-    pub fn map(&self) -> DynGuard<HashMap<Mode, Keymap>> {
+    pub fn map(&self) -> DynGuard<HashMap<Mode, KeyTrie>> {
         self.map.load()
     }
 
@@ -352,7 +322,7 @@ impl Keymaps {
         let first = self.state.get(0).unwrap_or(&key);
         let trie_node = match self.sticky {
             Some(ref trie) => Cow::Owned(KeyTrie::Node(trie.clone())),
-            None => Cow::Borrowed(&keymap.0),
+            None => Cow::Borrowed(keymap),
         };
 
         let trie = match trie_node.search(&[*first]) {
@@ -395,9 +365,13 @@ impl Default for Keymaps {
 }
 
 /// Merge default config keys with user overwritten keys for custom user config.
-pub fn merge_keys(dst: &mut HashMap<Mode, Keymap>, mut delta: HashMap<Mode, Keymap>) {
+pub fn merge_keys(dst: &mut HashMap<Mode, KeyTrie>, mut delta: HashMap<Mode, KeyTrie>) {
     for (mode, keys) in dst {
-        keys.merge_nodes(delta.remove(mode).unwrap_or_default().0)
+        keys.merge_nodes(
+            delta
+                .remove(mode)
+                .unwrap_or_else(|| KeyTrie::Node(KeyTrieNode::default())),
+        )
     }
 }
 
@@ -426,8 +400,7 @@ mod tests {
     #[test]
     fn merge_partial_keys() {
         let keymap = hashmap! {
-            Mode::Normal => Keymap::new(
-                keymap!({ "Normal mode"
+            Mode::Normal => keymap!({ "Normal mode"
                     "i" => normal_mode,
                     "无" => insert_mode,
                     "z" => jump_backward,
@@ -436,7 +409,6 @@ mod tests {
                         "g" => delete_char_forward,
                     },
                 })
-            )
         };
         let mut merged_keyamp = default();
         merge_keys(&mut merged_keyamp, keymap.clone());
@@ -501,8 +473,7 @@ mod tests {
     #[test]
     fn order_should_be_set() {
         let keymap = hashmap! {
-            Mode::Normal => Keymap::new(
-                keymap!({ "Normal mode"
+            Mode::Normal => keymap!({ "Normal mode"
                     "space" => { ""
                         "s" => { ""
                             "v" => vsplit,
@@ -510,7 +481,6 @@ mod tests {
                         },
                     },
                 })
-            )
         };
         let mut merged_keyamp = default();
         merge_keys(&mut merged_keyamp, keymap.clone());
@@ -553,7 +523,7 @@ mod tests {
             },
             "j" | "k" => move_line_down,
         });
-        let keymap = Keymap::new(normal_mode);
+        let keymap = normal_mode;
         let mut reverse_map = keymap.reverse_map();
 
         // sort keybindings in order to have consistent tests
@@ -601,7 +571,7 @@ mod tests {
             modifiers: KeyModifiers::NONE,
         };
 
-        let expectation = Keymap::new(KeyTrie::Node(KeyTrieNode::new(
+        let expectation = KeyTrie::Node(KeyTrieNode::new(
             "",
             hashmap! {
                 key => KeyTrie::Sequence(vec!{
@@ -618,7 +588,7 @@ mod tests {
                 })
             },
             vec![key],
-        )));
+        ));
 
         assert_eq!(toml::from_str(keys), Ok(expectation));
     }
