@@ -251,7 +251,7 @@ impl KeyTrie {
                     .map
                     .get(key)
                     .map(|key_trie_index| &node.order[*key_trie_index]),
-                // leaf encountered while keys left to process
+                // Command encountered while keys left to process
                 KeyTrie::MappableCommand(_) | KeyTrie::Sequence(_) => None,
             }?
         }
@@ -442,18 +442,18 @@ mod tests {
         assert_eq!(
             keymap.get(Mode::Normal, key!('i')),
             KeymapResult::Matched(MappableCommand::normal_mode),
-            "Leaf should replace leaf"
+            "Command should replace command"
         );
         assert_eq!(
             keymap.get(Mode::Normal, key!('无')),
             KeymapResult::Matched(MappableCommand::insert_mode),
-            "New leaf should be present in merged keymap"
+            "New Command should be present in merged keymap"
         );
         // Assumes that z is a node in the default keymap
         assert_eq!(
             keymap.get(Mode::Normal, key!('z')),
             KeymapResult::Matched(MappableCommand::jump_backward),
-            "Leaf should replace node"
+            "Command should replace node"
         );
 
         let keymap = merged_keyamp.get_mut(&Mode::Normal).unwrap();
@@ -461,19 +461,19 @@ mod tests {
         assert_eq!(
             keymap.search(&[key!('g'), key!('$')]).unwrap(),
             &KeyTrie::MappableCommand(MappableCommand::goto_line_end),
-            "Leaf should be present in merged subnode"
+            "Command should be present in merged subnode"
         );
         // Assumes that `gg` is in default keymap
         assert_eq!(
             keymap.search(&[key!('g'), key!('g')]).unwrap(),
             &KeyTrie::MappableCommand(MappableCommand::delete_char_forward),
-            "Leaf should replace old leaf in merged subnode"
+            "Command should override command in merged subnode"
         );
         // Assumes that `ge` is in default keymap
         assert_eq!(
             keymap.search(&[key!('g'), key!('e')]).unwrap(),
             &KeyTrie::MappableCommand(MappableCommand::goto_last_line),
-            "Old leaves in subnode should be present in merged node"
+            "Non-overriden command in subnode should be present in merged node"
         );
 
         assert!(!merged_keyamp
@@ -545,7 +545,7 @@ mod tests {
         assert_eq!(
             keymap.search(&[key!(' '), key!('s'), key!('v')]).unwrap(),
             &KeyTrie::MappableCommand(MappableCommand::vsplit),
-            "Leaf should be present in merged subnode"
+            "Command should be present in merged subnode"
         );
         // Make sure an order was set during merge
         let node = keymap.search(&[crate::key!(' ')]).unwrap();
