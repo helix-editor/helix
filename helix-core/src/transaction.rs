@@ -760,21 +760,19 @@ impl Transaction {
                 change_size = -change_size;
             }
 
-            if let Some(end_range) = end_range {
-                let offset_range = Range::new(
-                    (end_range.anchor as isize + offset) as usize,
-                    (end_range.head as isize + offset) as usize,
-                );
-
-                log::trace!("end range {:?} offset to: {:?}", end_range, offset_range);
-
-                end_ranges.push(offset_range);
+            let new_range = if let Some(end_range) = end_range {
+                end_range
             } else {
                 let changeset = ChangeSet::from_change(doc, (from, to, replacement.clone()));
-                let end_range = start_range.map(&changeset);
-                end_ranges.push(end_range);
-            }
+                start_range.map(&changeset)
+            };
 
+            let offset_range = Range::new(
+                (new_range.anchor as isize + offset) as usize,
+                (new_range.head as isize + offset) as usize,
+            );
+
+            end_ranges.push(offset_range);
             offset += change_size;
 
             log::trace!(
@@ -820,21 +818,19 @@ impl Transaction {
             let ((from, to), end_range) = f(start_range);
             let change_size = to - from;
 
-            if let Some(end_range) = end_range {
-                let offset_range = Range::new(
-                    end_range.anchor.saturating_sub(offset),
-                    end_range.head.saturating_sub(offset),
-                );
-
-                log::trace!("end range {:?} offset to: {:?}", end_range, offset_range);
-
-                end_ranges.push(offset_range);
+            let new_range = if let Some(end_range) = end_range {
+                end_range
             } else {
                 let changeset = ChangeSet::from_change(doc, (from, to, None));
-                let end_range = start_range.map(&changeset);
-                end_ranges.push(end_range);
-            }
+                start_range.map(&changeset)
+            };
 
+            let offset_range = Range::new(
+                new_range.anchor.saturating_sub(offset),
+                new_range.head.saturating_sub(offset),
+            );
+
+            end_ranges.push(offset_range);
             offset += change_size;
 
             log::trace!("delete from: {}, to: {}, offset: {}", from, to, offset);
