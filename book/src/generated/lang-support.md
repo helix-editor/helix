@@ -7,6 +7,7 @@
 | beancount | ✓ |  |  |  |
 | bibtex | ✓ |  |  | `texlab` |
 | bicep | ✓ |  |  | `bicep-langserver` |
+| blueprint | ✓ |  |  |  |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
 | cabal |  |  |  |  |
