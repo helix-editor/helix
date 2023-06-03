@@ -1801,39 +1801,39 @@ fn toggle_option(
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
     *value = match value.as_bool() {
-        Some(value) => serde_json::Value::Bool(!value),
+        Some(value) => {
+            ensure!(
+                args.len() == 1,
+                "Bad arguments. For boolean configurations use: `:toggle key`"
+            );
+            serde_json::Value::Bool(!value)
+        }
         None => {
-            if args.len() != 2 {
-                anyhow::bail!(
-                    "Bad arguments. For non-boolean configurations use: `:toggle key val1,val2`"
-                );
-            }
-            if !value.is_string() {
-                anyhow::bail!("Bad configuration. Cannot cycle non-string configurations");
-            }
+            ensure!(
+                args.len() > 2,
+                "Bad arguments. For non-boolean configurations use: `:toggle key val1 val2 ...`",
+            );
+            ensure!(
+                value.is_string(),
+                "Bad configuration. Cannot cycle non-string configurations"
+            );
 
-            // The comma separated values to cycle
-            let first_arg = &args[1];
-            let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", first_arg);
+            let value = value
+                .as_str()
+                .expect("programming error: should have been ensured before");
 
-            first_arg
-                .split_once(',')
-                .map(|(first, remaining)| {
-                    Ok(serde_json::Value::String(
-                        [first]
-                            .into_iter()
-                            .chain(remaining.split(','))
-                            .skip_while(|e| e != value)
-                            .nth(1)
-                            .unwrap_or(first)
-                            .to_string(),
-                    ))
-                })
-                .unwrap_or_else(|| first_arg.parse().map_err(field_error))?
+            serde_json::Value::String(
+                args[1..]
+                    .iter()
+                    .skip_while(|e| *e != value)
+                    .nth(1)
+                    .unwrap_or_else(|| &args[1])
+                    .to_string(),
+            )
         }
     };
 
-    let status = format!("Option `{}` is now set to `{}`", key, value);
+    let status = format!("'{key}' is now set to '{value}'");
     let config = serde_json::from_value(config)
         .map_err(|_| anyhow::anyhow!("Could not parse field: `{:?}`", &args))?;
 
