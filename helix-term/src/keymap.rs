@@ -21,7 +21,7 @@ use macros::key;
 #[derive(Debug, Clone, Default)]
 pub struct KeyTrieNode {
     /// A label for keys coming under this node, like "Goto mode"
-    name: String,
+    name: Option<String>,
     // Values represent index in order.
     map: HashMap<KeyEvent, usize>,
     order: Vec<KeyTrie>,
@@ -51,9 +51,9 @@ impl<'de> Deserialize<'de> for KeyTrieNode {
 }
 
 impl KeyTrieNode {
-    pub fn new(name: &str, map: HashMap<KeyEvent, usize>, order: Vec<KeyTrie>) -> Self {
+    pub fn new(name: Option<&str>, map: HashMap<KeyEvent, usize>, order: Vec<KeyTrie>) -> Self {
         Self {
-            name: name.to_string(),
+            name: name.map(ToString::to_string),
             map,
             order,
             is_sticky: false,
@@ -84,6 +84,14 @@ impl KeyTrieNode {
 
     // Order is preserved where order of other takes precedence.
     pub fn merge(self, mut other: Self) -> Self {
+        if other.name.is_none() && self.name.is_some() {
+            other.name = self.name.clone();
+        }
+
+        if !other.is_sticky && self.is_sticky {
+            other.is_sticky = true;
+        }
+
         for (self_key, self_trie) in self.paired() {
             match other.map.get(&self_key) {
                 None => {
@@ -114,7 +122,7 @@ impl KeyTrieNode {
                     }
                     cmd.doc()
                 }
-                KeyTrie::Node(n) => &n.name,
+                KeyTrie::Node(n) => n.name.as_deref().unwrap_or_default(),
                 KeyTrie::Sequence(_) => "[Multiple commands]",
             };
             match body.iter().position(|(_, d)| d == &desc) {
@@ -137,14 +145,15 @@ impl KeyTrieNode {
                 (events.join(", "), desc)
             })
             .collect();
-        Info::new(&self.name, &body)
+        Info::new(self.name.as_deref().unwrap_or_default(), &body)
     }
 }
 
 impl PartialEq for KeyTrieNode {
     fn eq(&self, other: &Self) -> bool {
-        // TODO: Should ideally check the other fields too.
-        self.paired_ref() == other.paired_ref()
+        self.is_sticky == other.is_sticky
+            && self.name == other.name
+            && self.paired_ref() == other.paired_ref()
     }
 }
 
@@ -208,7 +217,7 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
             mapping.insert(key, order.len());
             order.push(key_trie);
         }
-        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping, order)))
+        Ok(KeyTrie::Node(KeyTrieNode::new(None, mapping, order)))
     }
 }
 
@@ -507,6 +516,48 @@ mod tests {
     }
 
     #[test]
+    fn merge_overrides_node_name_and_sticky() {
+        let self_keymap = keymap!({ "Goto something"
+            "g" => goto_file_start,
+            "e" => goto_file_end,
+        });
+        let other_keymap = keymap!({ "Goto something new" sticky=true
+            "g" => goto_file_start,
+            "e" => goto_file_end,
+        });
+        let expected_keymap = keymap!({ "Goto something new" sticky=true
+            "g" => goto_file_start,
+            "e" => goto_file_end,
+        });
+        assert_eq!(expected_keymap, self_keymap.merge_nodes(other_keymap))
+    }
+
+    #[test]
+    fn merg_preserves_node_name_and_sticky() {
+        let self_keymap = keymap!({ "Goto something old" sticky=true
+            "g" => goto_file_start,
+            "e" => goto_file_end,
+        });
+        let other_keymap = keymap!({ ""
+            "g" => goto_file_start,
+            "e" => goto_file_end,
+        })
+        .node()
+        .unwrap()
+        .clone();
+        let other_keymap = KeyTrie::Node(KeyTrieNode {
+            name: None,
+            ..other_keymap
+        });
+        let expected_keymap = keymap!({ "Goto something old" sticky=true
+            "g" => goto_file_start,
+            "e" => goto_file_end,
+        });
+
+        assert_eq!(expected_keymap, self_keymap.merge_nodes(other_keymap))
+    }
+
+    #[test]
     fn order_should_be_set() {
         let keymap = hashmap! {
             Mode::Normal => keymap!({ "Normal mode"
@@ -575,9 +626,13 @@ mod tests {
             root.search(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),
             "Mismatch for window mode on `Space-w` and `Ctrl-w`"
         );
+
+        let z_view = root.search(&[key!('z')]).unwrap().node().unwrap().clone();
+        let mut z_sticky_view = root.search(&[key!('Z')]).unwrap().node().unwrap().clone();
+        assert!(z_sticky_view.is_sticky);
+        z_sticky_view.is_sticky = false;
         assert_eq!(
-            root.search(&[key!('z')]).unwrap(),
-            root.search(&[key!('Z')]).unwrap(),
+            z_view, z_sticky_view,
             "Mismatch for view mode on `z` and `Z`"
         );
     }
@@ -641,7 +696,7 @@ mod tests {
         };
 
         let expectation = KeyTrie::Node(KeyTrieNode::new(
-            "",
+            None,
             hashmap! {
                 key => 0
             },

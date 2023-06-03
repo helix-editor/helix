@@ -112,7 +112,7 @@ macro_rules! keymap {
                     _order.push(keymap!(@trie $value));
                 )+
             )*
-            let mut _node = $crate::keymap::KeyTrieNode::new($label, _map, _order);
+            let mut _node = $crate::keymap::KeyTrieNode::new(Some($label), _map, _order);
             $( _node.is_sticky = $sticky; )?
             $crate::keymap::KeyTrie::Node(_node)
         }
