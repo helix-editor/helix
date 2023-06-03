@@ -4828,17 +4828,19 @@ fn transpose_view(cx: &mut Context) {
     cx.editor.transpose_view()
 }
 
-// split helper, clear it later
-fn split(cx: &mut Context, action: Action) {
-    let (view, doc) = current!(cx.editor);
+/// Open a new split in the given direction specified by the action.
+///
+/// Maintain the current view (both the cursor's position and view in document).
+fn split_helper(editor: &mut Editor, action: Action) {
+    let (view, doc) = current!(editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
     let offset = view.offset;
 
-    cx.editor.switch(id, action);
+    editor.switch(id, action);
 
     // match the selection in the previous view
-    let (view, doc) = current!(cx.editor);
+    let (view, doc) = current!(editor);
     doc.set_selection(view.id, selection);
     // match the view scroll offset (switch doesn't handle this fully
     // since the selection is only matched after the split)
@@ -4846,7 +4848,7 @@ fn split(cx: &mut Context, action: Action) {
 }
 
 fn hsplit(cx: &mut Context) {
-    split(cx, Action::HorizontalSplit);
+    split_helper(&mut cx.editor, Action::HorizontalSplit);
 }
 
 fn hsplit_new(cx: &mut Context) {
@@ -4854,7 +4856,7 @@ fn hsplit_new(cx: &mut Context) {
 }
 
 fn vsplit(cx: &mut Context) {
-    split(cx, Action::VerticalSplit);
+    split_helper(&mut cx.editor, Action::VerticalSplit);
 }
 
 fn vsplit_new(cx: &mut Context) {
