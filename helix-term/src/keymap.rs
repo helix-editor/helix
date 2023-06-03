@@ -52,10 +52,6 @@ impl KeyTrieNode {
         }
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
     /// Merge another Node in. Leaves and subnodes from the other node replace
     /// corresponding keyevent in self, except when both other and self have
     /// subnodes for same key. In that case the merge is recursive.
@@ -86,7 +82,7 @@ impl KeyTrieNode {
                     }
                     cmd.doc()
                 }
-                KeyTrie::Node(n) => n.name(),
+                KeyTrie::Node(n) => &n.name,
                 KeyTrie::Sequence(_) => "[Multiple commands]",
             };
             match body.iter().position(|(_, d)| d == &desc) {
@@ -110,7 +106,7 @@ impl KeyTrieNode {
                 (events.join(", "), desc)
             })
             .collect();
-        Info::new(self.name(), &body)
+        Info::new(&self.name, &body)
     }
 }
 
