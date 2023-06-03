@@ -102,7 +102,15 @@ impl KeyTrieNode {
                 .position(|&k| k == *keys.iter().next().unwrap())
                 .unwrap()
         });
-        Info::from_keymap(self.name(), body)
+
+        let body: Vec<_> = body
+            .into_iter()
+            .map(|(events, desc)| {
+                let events = events.iter().map(ToString::to_string).collect::<Vec<_>>();
+                (events.join(", "), desc)
+            })
+            .collect();
+        Info::new(self.name(), &body)
     }
 }
 
