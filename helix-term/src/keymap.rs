@@ -28,28 +28,6 @@ pub struct KeyTrieNode {
     pub is_sticky: bool,
 }
 
-impl<'de> Deserialize<'de> for KeyTrieNode {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let list = Vec::<(KeyEvent, KeyTrie)>::deserialize(deserializer)?;
-        let mut map: HashMap<KeyEvent, usize> = HashMap::with_capacity(list.len());
-        let mut order: Vec<KeyTrie> = Vec::with_capacity(list.len());
-        for (index, (key_event, key_trie)) in list.into_iter().enumerate() {
-            map.insert(key_event, index)
-                .expect("Non-duplicate key events");
-            order.push(key_trie);
-        }
-
-        Ok(Self {
-            map,
-            order,
-            ..Default::default()
-        })
-    }
-}
-
 impl KeyTrieNode {
     pub fn new(name: Option<&str>, map: HashMap<KeyEvent, usize>, order: Vec<KeyTrie>) -> Self {
         Self {
