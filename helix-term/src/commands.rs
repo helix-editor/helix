@@ -4181,7 +4181,7 @@ pub mod insert {
                 .and_then(|ap| {
                     auto_pairs::hook_insert(text, range, c, ap)
                         .map(|(change, range)| (change, Some(range)))
-                        .or(Some(insert_char(*range, c)))
+                        .or_else(|| Some(insert_char(*range, c)))
                 })
                 .unwrap_or_else(|| insert_char(*range, c))
         });
@@ -4432,12 +4432,65 @@ pub mod insert {
         doc.apply(&transaction, view.id);
     }
 
+    fn dedent(doc: &Document, range: &Range) -> Option<Deletion> {
+        let text = doc.text().slice(..);
+        let pos = range.cursor(text);
+        let line_start_pos = text.line_to_char(range.cursor_line(text));
+
+        // consider to delete by indent level if all characters before `pos` are indent units.
+        let fragment = Cow::from(text.slice(line_start_pos..pos));
+
+        if fragment.is_empty() || !fragment.chars().all(|ch| ch == ' ' || ch == '\t') {
+            return None;
+        }
+
+        if text.get_char(pos.saturating_sub(1)) == Some('\t') {
+            // fast path, delete one char
+            return Some((graphemes::nth_prev_grapheme_boundary(text, pos, 1), pos));
+        }
+
+        let tab_width = doc.tab_width();
+        let indent_width = doc.indent_width();
+
+        let width: usize = fragment
+            .chars()
+            .map(|ch| {
+                if ch == '\t' {
+                    tab_width
+                } else {
+                    // it can be none if it still meet control characters other than '\t'
+                    // here just set the width to 1 (or some value better?).
+                    ch.width().unwrap_or(1)
+                }
+            })
+            .sum();
+
+        // round down to nearest unit
+        let mut drop = width % indent_width;
+
+        // if it's already at a unit, consume a whole unit
+        if drop == 0 {
+            drop = indent_width
+        };
+
+        let mut chars = fragment.chars().rev();
+        let mut start = pos;
+
+        for _ in 0..drop {
+            // delete up to `drop` spaces
+            match chars.next() {
+                Some(' ') => start -= 1,
+                _ => break,
+            }
+        }
+
+        Some((start, pos)) // delete!
+    }
+
     pub fn delete_char_backward(cx: &mut Context) {
         let count = cx.count();
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
-        let tab_width = doc.tab_width();
-        let indent_width = doc.indent_width();
 
         let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
         let auto_pairs = doc.auto_pairs(cx.editor, loader, view);
@@ -4447,82 +4500,33 @@ pub mod insert {
             doc.selection(view.id),
             |range| {
                 let pos = range.cursor(text);
+
+                log::debug!("cursor: {}, len: {}", pos, text.len_chars());
+
                 if pos == 0 {
                     return ((pos, pos), None);
                 }
-                let line_start_pos = text.line_to_char(range.cursor_line(text));
-                // consider to delete by indent level if all characters before `pos` are indent units.
-                let fragment = Cow::from(text.slice(line_start_pos..pos));
-                if !fragment.is_empty() && fragment.chars().all(|ch| ch == ' ' || ch == '\t') {
-                    if text.get_char(pos.saturating_sub(1)) == Some('\t') {
-                        // fast path, delete one char
+
+                dedent(doc, range)
+                    .map(|dedent| (dedent, None))
+                    .or_else(|| {
+                        // [TODO] should this be fixed to get the auto pairs for
+                        // each selection after 46af40017c0704142516b5740cf1a000ba4fd7c1 ?
+                        auto_pairs::hook_delete(doc.text(), range, auto_pairs?)
+                            .map(|(delete, new_range)| (delete, Some(new_range)))
+                    })
+                    .unwrap_or_else(|| {
                         (
-                            (graphemes::nth_prev_grapheme_boundary(text, pos, 1), pos),
+                            (graphemes::nth_prev_grapheme_boundary(text, pos, count), pos),
                             None,
                         )
-                    } else {
-                        let width: usize = fragment
-                            .chars()
-                            .map(|ch| {
-                                if ch == '\t' {
-                                    tab_width
-                                } else {
-                                    // it can be none if it still meet control characters other than '\t'
-                                    // here just set the width to 1 (or some value better?).
-                                    ch.width().unwrap_or(1)
-                                }
-                            })
-                            .sum();
-                        let mut drop = width % indent_width; // round down to nearest unit
-                        if drop == 0 {
-                            drop = indent_width
-                        }; // if it's already at a unit, consume a whole unit
-                        let mut chars = fragment.chars().rev();
-                        let mut start = pos;
-                        for _ in 0..drop {
-                            // delete up to `drop` spaces
-                            match chars.next() {
-                                Some(' ') => start -= 1,
-                                _ => break,
-                            }
-                        }
-                        ((start, pos), None) // delete!
-                    }
-                } else {
-                    match (
-                        text.get_char(pos.saturating_sub(1)),
-                        text.get_char(pos),
-                        auto_pairs,
-                    ) {
-                        (Some(_x), Some(_y), Some(ap))
-                            if range.is_single_grapheme(text)
-                                && ap.get(_x).is_some()
-                                && ap.get(_x).unwrap().open == _x
-                                && ap.get(_x).unwrap().close == _y =>
-                        // delete both autopaired characters
-                        {
-                            (
-                                (
-                                    graphemes::nth_prev_grapheme_boundary(text, pos, count),
-                                    graphemes::nth_next_grapheme_boundary(text, pos, count),
-                                ),
-                                None,
-                            )
-                        }
-                        _ =>
-                        // delete 1 char
-                        {
-                            (
-                                (graphemes::nth_prev_grapheme_boundary(text, pos, count), pos),
-                                None,
-                            )
-                        }
-                    }
-                }
+                    })
             },
         );
 
-        let (view, doc) = current!(cx.editor);
+        log::debug!("delete_char_backward transaction: {:?}", transaction);
+
+        let doc = doc_mut!(cx.editor, &doc.id());
         doc.apply(&transaction, view.id);
     }
 
