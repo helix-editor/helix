@@ -195,6 +195,32 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
 }
 
 impl KeyTrie {
+    pub fn reverse_map(&self) -> ReverseKeymap {
+        // recursively visit all nodes in keymap
+        fn map_node(cmd_map: &mut ReverseKeymap, node: &KeyTrie, keys: &mut Vec<KeyEvent>) {
+            match node {
+                KeyTrie::MappableCommand(cmd) => {
+                    let name = cmd.name();
+                    if name != "no_op" {
+                        cmd_map.entry(name.into()).or_default().push(keys.clone())
+                    }
+                }
+                KeyTrie::Node(next) => {
+                    for (key, trie) in &next.map {
+                        keys.push(*key);
+                        map_node(cmd_map, trie, keys);
+                        keys.pop();
+                    }
+                }
+                KeyTrie::Sequence(_) => {}
+            };
+        }
+
+        let mut res = HashMap::new();
+        map_node(&mut res, self, &mut Vec::new());
+        res
+    }
+
     pub fn node(&self) -> Option<&KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref node) => Some(node),
@@ -253,32 +279,6 @@ pub type ReverseKeymap = HashMap<String, Vec<Vec<KeyEvent>>>;
 impl Keymap {
     pub fn new(root: KeyTrie) -> Self {
         Keymap(root)
-    }
-
-    pub fn reverse_map(&self) -> ReverseKeymap {
-        // recursively visit all nodes in keymap
-        fn map_node(cmd_map: &mut ReverseKeymap, node: &KeyTrie, keys: &mut Vec<KeyEvent>) {
-            match node {
-                KeyTrie::MappableCommand(cmd) => {
-                    let name = cmd.name();
-                    if name != "no_op" {
-                        cmd_map.entry(name.into()).or_default().push(keys.clone())
-                    }
-                }
-                KeyTrie::Node(next) => {
-                    for (key, trie) in &next.map {
-                        keys.push(*key);
-                        map_node(cmd_map, trie, keys);
-                        keys.pop();
-                    }
-                }
-                KeyTrie::Sequence(_) => {}
-            };
-        }
-
-        let mut res = HashMap::new();
-        map_node(&mut res, &self.0, &mut Vec::new());
-        res
     }
 }
 
