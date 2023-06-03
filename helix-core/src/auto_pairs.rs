@@ -1,7 +1,7 @@
 //! When typing the opening character of one of the possible pairs defined below,
 //! this module provides the functionality to insert the paired closing character.
 
-use crate::{graphemes, movement::Direction, Change, Range, Rope, Tendril};
+use crate::{graphemes, movement::Direction, Change, Deletion, Range, Rope, Tendril};
 use std::collections::HashMap;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
@@ -130,6 +130,36 @@ pub fn hook_insert(
     }
 
     None
+}
+
+#[must_use]
+pub fn hook_delete(doc: &Rope, range: &Range, pairs: &AutoPairs) -> Option<(Deletion, Range)> {
+    let text = doc.slice(..);
+    let cursor = range.cursor(text);
+
+    let cur = doc.get_char(cursor)?;
+    let prev = prev_char(doc, cursor)?;
+    let pair = pairs.get(cur)?;
+
+    if pair.open != prev {
+        return None;
+    }
+
+    let end_next = graphemes::next_grapheme_boundary(text, cursor);
+    let end_prev = graphemes::prev_grapheme_boundary(text, cursor);
+
+    let delete = (end_prev, end_next);
+    let size_delete = end_next - end_prev;
+    let next_head = graphemes::next_grapheme_boundary(text, range.head) - size_delete;
+
+    let next_range = match range.direction() {
+        Direction::Forward => Range::new(range.anchor, next_head),
+        Direction::Backward => Range::new(range.anchor - size_delete, next_head),
+    };
+
+    log::trace!("auto pair delete: {:?}, range: {:?}", delete, range,);
+
+    Some((delete, next_range))
 }
 
 fn prev_char(doc: &Rope, pos: usize) -> Option<char> {
