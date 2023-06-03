@@ -1833,7 +1833,7 @@ fn toggle_option(
         }
     };
 
-    let status = format!("'{key}' is now set to '{value}'");
+    let status = format!("'{key}' is now set to {value}");
     let config = serde_json::from_value(config)
         .map_err(|_| anyhow::anyhow!("Could not parse field: `{:?}`", &args))?;
 
