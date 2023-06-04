@@ -49,6 +49,7 @@
 "ui.help" = { fg = "my_gray7", bg = "my_gray2" }
 "ui.virtual.whitespace" = { fg = "my_gray6" }
 "ui.virtual.ruler" = { bg = "my_gray1" }
+"ui.virtual.wrap" = "my_gray4"
 "ui.virtual.inlay-hint" = { fg = "my_gray4", modifiers = ["normal"] }
 "ui.virtual.inlay-hint.parameter" = { fg = "my_gray4", modifiers = ["normal"] }
 "ui.virtual.inlay-hint.type" = { fg = "my_gray4", modifiers = ["italic"] }
