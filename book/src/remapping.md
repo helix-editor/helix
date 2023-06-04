@@ -75,5 +75,23 @@ Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 
 Keys can be disabled by binding them to the `no_op` command.
 
+To remove all default bindings, `unbind-default-keys = true` can be added to the top level configuration.
+
+```toml
+unbind-default-keys = true
+
+# Only these normal mode bindings will be used
+[keys.normal]
+n = "normal_mode"
+t = "goto_definition"
+
+# remember to add bindings to return to normal mode
+[keys.select]
+esc = "normal_mode"
+
+[keys.insert]
+esc = "normal_mode"
+```
+
 A list of commands is available in the [Keymap](https://docs.helix-editor.com/keymap.html) documentation
  and in the source code at [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs) at the invocation of `static_commands!` macro and the `TypableCommandList`.

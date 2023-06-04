@@ -20,6 +20,8 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
     pub theme: Option<String>,
+    #[serde(default)]
+    pub unbind_default_keys: bool,
     pub keys: Option<HashMap<Mode, Keymap>>,
     pub editor: Option<toml::Value>,
 }
@@ -66,7 +68,11 @@ impl Config {
             local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
         let res = match (global_config, local_config) {
             (Ok(global), Ok(local)) => {
-                let mut keys = keymap::default();
+                let mut keys;
+                match local.unbind_default_keys {
+                    true => keys = HashMap::default(),
+                    false => keys = keymap::default(),
+                }
                 if let Some(global_keys) = global.keys {
                     merge_keys(&mut keys, global_keys)
                 }
@@ -96,7 +102,11 @@ impl Config {
                 return Err(ConfigLoadError::BadConfig(err))
             }
             (Ok(config), Err(_)) | (Err(_), Ok(config)) => {
-                let mut keys = keymap::default();
+                let mut keys;
+                match config.unbind_default_keys {
+                    true => keys = HashMap::default(),
+                    false => keys = keymap::default(),
+                }
                 if let Some(keymap) = config.keys {
                     merge_keys(&mut keys, keymap);
                 }
