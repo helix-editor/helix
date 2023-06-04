@@ -207,11 +207,7 @@ Or, create a symlink in `~/.config/helix` that links to the source code director
 ln -Ts $PWD/runtime ~/.config/helix/runtime
 ```
 
-If the above command notes that the directory exist either move `~/.config/helix/runtime` to a new location or delete it, then run the symlink command above again. For example to move it:
-
-```sh
-mv ~/.config/helix/runtime ~/.config/helix/runtime.old
-```
+If the above command fails to create a symbolic link because the file exists either move `~/.config/helix/runtime` to a new location or delete it, then run the symlink command above again. 
 
 #### Windows
 
