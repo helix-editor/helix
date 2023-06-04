@@ -204,7 +204,13 @@ HELIX_RUNTIME=/home/user-name/src/helix/runtime
 Or, create a symlink in `~/.config/helix` that links to the source code directory:
 
 ```sh
-ln -s $PWD/runtime ~/.config/helix/runtime
+ln -Ts $PWD/runtime ~/.config/helix/runtime
+```
+
+If the above command notes that the directory exist either move `~/.config/helix/runtime` to a new location or delete it, then run the symlink command above again. For example to move it:
+
+```sh
+mv ~/.config/helix/runtime ~/.config/helix/runtime.old
 ```
 
 #### Windows
