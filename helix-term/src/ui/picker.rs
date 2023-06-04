@@ -33,7 +33,6 @@ use helix_core::{
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
-    input::KeyEvent,
     theme::Style,
     view::ViewPosition,
     Document, DocumentId, Editor,
@@ -131,10 +130,9 @@ impl<T: Item + 'static> FilePicker<T> {
         editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
-        key_event_callback_fn: impl Fn(&mut Context, &T, &KeyEvent) -> Option<PickerAction<T>> + 'static,
     ) -> Self {
         let truncate_start = true;
-        let mut picker = Picker::new(options, editor_data, callback_fn, key_event_callback_fn);
+        let mut picker = Picker::new(options, editor_data, callback_fn);
         picker.truncate_start = truncate_start;
 
         Self {
@@ -395,6 +393,53 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         if let Event::IdleTimeout = event {
             return self.handle_idle_timeout(ctx);
         }
+
+        let Some((current_file, _)) = self.current_file(ctx.editor) else {
+            return EventResult::Consumed(None)
+        };
+
+        // Try to find a document in the cache
+        let doc = match &current_file {
+            PathOrId::Id(doc_id) => doc_mut!(ctx.editor, doc_id),
+            PathOrId::Path(path) => match self.preview_cache.get_mut(path) {
+                Some(CachedPreview::Document(ref mut doc)) => doc,
+                _ => return EventResult::Consumed(None),
+            },
+        };
+        let doc_id = doc.id();
+
+        if let Event::Key(key_event) = *event {
+            match key_event {
+                ctrl!('x') => {
+                    if ctx.editor.close_document(doc_id, false).is_err() {
+                        ctx.editor.set_error("Cannot close buffer");
+                    } else {
+                        ctx.editor.documents.remove(&doc_id);
+                        // .filter(|(d_id, _)| d_id() != doc_id)
+                        // .collect();
+                        // let updated_documents = ctx.editor.documents;
+                        // let updated_options =
+
+                        // self.picker.set_options(updated_documents);
+                    }
+                }
+                ctrl!('X') => {
+                    if ctx.editor.close_document(doc_id, true).is_err() {
+                        ctx.editor.set_error("Cannot force close buffer");
+                    } else {
+                        ctx.editor.documents.remove(&doc_id);
+                        // let updated_options = ctx
+                        //     .editor
+                        //     .documents
+                        //     .iter()
+                        //     .filter(|(_, d)| d.id() != doc_id)
+                        //     .collect();
+                        // self.picker.set_options(updated_options);
+                    }
+                }
+                _ => {}
+            }
+        };
         // TODO: keybinds for scrolling preview
         self.picker.handle_event(event, ctx)
     }
@@ -417,12 +462,6 @@ impl<T: Item + 'static> Component for FilePicker<T> {
         Some("file-picker")
     }
 }
-
-pub enum PickerAction<T: Item> {
-    UpdateOptions(Vec<T>),
-}
-
-type KeyEventCallback<T> = Box<dyn Fn(&mut Context, &T, &KeyEvent) -> Option<PickerAction<T>>>;
 
 #[derive(PartialEq, Eq, Debug)]
 struct PickerMatch {
@@ -472,7 +511,6 @@ pub struct Picker<T: Item> {
     /// Constraints for tabular formatting
     widths: Vec<Constraint>,
     callback_fn: PickerCallback<T>,
-    key_event_callback: Option<KeyEventCallback<T>>,
 }
 
 impl<T: Item> Picker<T> {
@@ -480,7 +518,6 @@ impl<T: Item> Picker<T> {
         options: Vec<T>,
         editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
-        key_event_callback_fn: impl Fn(&mut Context, &T, &KeyEvent) -> Option<PickerAction<T>> + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
@@ -501,7 +538,6 @@ impl<T: Item> Picker<T> {
             show_preview: true,
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
-            key_event_callback: Some(Box::new(key_event_callback_fn)),
             widths: Vec::new(),
         };
 
@@ -682,22 +718,6 @@ impl<T: Item> Picker<T> {
         self.show_preview = !self.show_preview;
     }
 
-    pub fn set_options(&mut self, options: Vec<T>) {
-        self.options = options;
-        self.matches.clear();
-        self.matches
-            .extend(self.options.iter().enumerate().map(|(index, option)| {
-                let text = option.filter_text(&self.editor_data);
-                PickerMatch {
-                    index,
-                    score: 0,
-                    len: text.chars().count(),
-                }
-            }));
-        self.score();
-        self.move_by(1, Direction::Backward);
-    }
-
     fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
             // TODO: recalculate only if pattern changed
@@ -783,17 +803,7 @@ impl<T: Item + 'static> Component for Picker<T> {
                 self.toggle_preview();
             }
             _ => {
-                // handle any external key_events
-                match self.selection().and_then(|option| {
-                    self.key_event_callback
-                        .as_ref()
-                        .and_then(|callback| callback(cx, option, &key_event))
-                }) {
-                    Some(PickerAction::UpdateOptions(options)) => self.set_options(options),
-                    None => {
-                        self.prompt_handle_event(event, cx);
-                    }
-                }
+                self.prompt_handle_event(event, cx);
             }
         }
 

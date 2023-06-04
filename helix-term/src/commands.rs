@@ -2,7 +2,6 @@ pub(crate) mod dap;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
-use crate::ctrl;
 pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
@@ -57,7 +56,7 @@ use crate::{
     keymap::ReverseKeymap,
     ui::{
         self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem,
-        FilePicker, Picker, PickerAction, Popup, Prompt, PromptEvent,
+        FilePicker, Picker, Popup, Prompt, PromptEvent,
     },
 };
 
@@ -2177,7 +2176,6 @@ fn global_search(cx: &mut Context) {
                     |_editor, FileResult { path, line_num }| {
                         Some((path.clone().into(), Some((*line_num, *line_num))))
                     },
-                    |_, _, _| None,
                 );
                 compositor.push(Box::new(overlaid(picker)));
             },
@@ -2584,37 +2582,6 @@ fn buffer_picker(cx: &mut Context) {
                 .cursor_line(doc.text().slice(..));
             Some((meta.id.into(), Some((line, line))))
         },
-        move |cx, meta, key_event| match key_event {
-            ctrl!('x') => {
-                if cx.editor.close_document(meta.id, false).is_err() {
-                    cx.editor.set_error("Cannot close buffer");
-                    None
-                } else {
-                    let updated_options = cx
-                        .editor
-                        .documents
-                        .iter()
-                        .map(|(_, doc)| new_meta(doc))
-                        .collect();
-                    Some(PickerAction::UpdateOptions(updated_options))
-                }
-            }
-            ctrl!('X') => {
-                if cx.editor.close_document(meta.id, true).is_err() {
-                    cx.editor.set_error("Cannot force close buffer");
-                    None
-                } else {
-                    let updated_options = cx
-                        .editor
-                        .documents
-                        .iter()
-                        .map(|(_, doc)| new_meta(doc))
-                        .collect();
-                    Some(PickerAction::UpdateOptions(updated_options))
-                }
-            }
-            _ => None,
-        },
     );
     cx.push_layer(Box::new(overlaid(picker)));
 }
@@ -2704,7 +2671,6 @@ fn jumplist_picker(cx: &mut Context) {
             let line = meta.selection.primary().cursor_line(doc.text().slice(..));
             Some((meta.path.clone()?.into(), Some((line, line))))
         },
-        |_, _, _| None,
     );
     cx.push_layer(Box::new(overlaid(picker)));
 }
@@ -2754,37 +2720,32 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(
-                commands,
-                keymap,
-                move |cx, command, _action| {
-                    let mut ctx = Context {
-                        register: None,
-                        count: std::num::NonZeroUsize::new(1),
-                        editor: cx.editor,
-                        callback: None,
-                        on_next_key_callback: None,
-                        jobs: cx.jobs,
-                    };
-                    let focus = view!(ctx.editor).id;
+            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+                let mut ctx = Context {
+                    register: None,
+                    count: std::num::NonZeroUsize::new(1),
+                    editor: cx.editor,
+                    callback: None,
+                    on_next_key_callback: None,
+                    jobs: cx.jobs,
+                };
+                let focus = view!(ctx.editor).id;
 
-                    command.execute(&mut ctx);
+                command.execute(&mut ctx);
 
-                    if ctx.editor.tree.contains(focus) {
-                        let config = ctx.editor.config();
-                        let mode = ctx.editor.mode();
-                        let view = view_mut!(ctx.editor, focus);
-                        let doc = doc_mut!(ctx.editor, &view.doc);
+                if ctx.editor.tree.contains(focus) {
+                    let config = ctx.editor.config();
+                    let mode = ctx.editor.mode();
+                    let view = view_mut!(ctx.editor, focus);
+                    let doc = doc_mut!(ctx.editor, &view.doc);
 
-                        view.ensure_cursor_in_view(doc, config.scrolloff);
+                    view.ensure_cursor_in_view(doc, config.scrolloff);
 
-                        if mode != Mode::Insert {
-                            doc.append_changes_to_history(view);
-                        }
+                    if mode != Mode::Insert {
+                        doc.append_changes_to_history(view);
                     }
-                },
-                |_, _, _| None,
-            );
+                }
+            });
             compositor.push(Box::new(overlaid(picker)));
         },
     ));

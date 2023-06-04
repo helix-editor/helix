@@ -87,7 +87,6 @@ fn thread_picker(
                     ));
                     Some((path.into(), pos))
                 },
-                |_, _, _| None,
             );
             compositor.push(Box::new(picker));
         },
@@ -287,7 +286,6 @@ pub fn dap_launch(cx: &mut Context) {
             });
             cx.jobs.callback(callback);
         },
-        |_, _, _| None,
     ))));
 }
 
@@ -763,7 +761,6 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
                     )
                 })
         },
-        |_, _, _| None,
     );
     cx.push_layer(Box::new(picker))
 }
