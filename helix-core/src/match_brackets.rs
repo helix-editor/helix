@@ -1,8 +1,10 @@
 use std::iter;
 
+use ropey::RopeSlice;
 use tree_sitter::Node;
 
-use crate::{Rope, Syntax};
+use crate::movement::Direction::{self, Backward, Forward};
+use crate::Syntax;
 
 const MAX_PLAINTEXT_SCAN: usize = 10000;
 const MATCH_LIMIT: usize = 16;
@@ -27,7 +29,7 @@ const PAIRS: &[(char, char)] = &[
 ///
 /// If no matching bracket is found, `None` is returned.
 #[must_use]
-pub fn find_matching_bracket(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
+pub fn find_matching_bracket(syntax: &Syntax, doc: RopeSlice, pos: usize) -> Option<usize> {
     if pos >= doc.len_chars() || !is_valid_bracket(doc.char(pos)) {
         return None;
     }
@@ -45,13 +47,18 @@ pub fn find_matching_bracket(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<
 //
 // If no surrounding scope is found, the function returns `None`.
 #[must_use]
-pub fn find_matching_bracket_fuzzy(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
+pub fn find_matching_bracket_fuzzy(syntax: &Syntax, doc: RopeSlice, pos: usize) -> Option<usize> {
     find_pair(syntax, doc, pos, true)
 }
 
-fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) -> Option<usize> {
+fn find_pair(
+    syntax: &Syntax,
+    doc: RopeSlice,
+    pos_: usize,
+    traverse_parents: bool,
+) -> Option<usize> {
     let tree = syntax.tree();
-    let pos = doc.char_to_byte(pos);
+    let pos = doc.char_to_byte(pos_);
 
     let mut node = tree.root_node().descendant_for_byte_range(pos, pos)?;
 
@@ -92,7 +99,7 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
                 }
             }
             if node.is_named() {
-                return None;
+                break;
             }
         }
 
@@ -104,8 +111,16 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
                 return doc.try_byte_to_char(close.start_byte()).ok();
             }
         }
-        node = node.parent()?;
+        let Some(parent) = node.parent() else { break; };
+        node = parent;
     }
+    let node = tree.root_node().named_descendant_for_byte_range(pos, pos)?;
+    if node.child_count() != 0 {
+        return None;
+    }
+    let node_start = doc.byte_to_char(node.start_byte());
+    find_matching_bracket_plaintext(doc.byte_slice(node.byte_range()), pos_ - node_start)
+        .map(|pos| pos + node_start)
 }
 
 /// Returns the position of the matching bracket under cursor.
@@ -120,10 +135,7 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
 ///
 /// If no matching bracket is found, `None` is returned.
 #[must_use]
-pub fn find_matching_bracket_current_line_plaintext(
-    doc: &Rope,
-    cursor_pos: usize,
-) -> Option<usize> {
+pub fn find_matching_bracket_plaintext(doc: RopeSlice, cursor_pos: usize) -> Option<usize> {
     // Don't do anything when the cursor is not on top of a bracket.
     let bracket = doc.char(cursor_pos);
     if !is_valid_bracket(bracket) {
@@ -179,11 +191,11 @@ fn is_forward_bracket(c: char) -> bool {
     PAIRS.iter().any(|(l, _)| *l == c)
 }
 
-fn is_valid_pair(doc: &Rope, start_char: usize, end_char: usize) -> bool {
+fn is_valid_pair(doc: RopeSlice, start_char: usize, end_char: usize) -> bool {
     PAIRS.contains(&(doc.char(start_char), doc.char(end_char)))
 }
 
-fn surrounding_bytes(doc: &Rope, node: &Node) -> Option<(usize, usize)> {
+fn surrounding_bytes(doc: RopeSlice, node: &Node) -> Option<(usize, usize)> {
     let len = doc.len_bytes();
 
     let start_byte = node.start_byte();
@@ -196,22 +208,8 @@ fn surrounding_bytes(doc: &Rope, node: &Node) -> Option<(usize, usize)> {
     Some((start_byte, end_byte))
 }
 
-/// Checks if `node` or its siblings (at most MATCH_LIMIT nodes) is the specified openiing char
-///
-/// # Returns
-///
-/// The position of the found node or `None` otherwise
-fn find_open_pair(doc: &Rope, node: Option<Node>, open: char) -> Option<usize> {
-    iter::successors(node, |node| node.prev_sibling())
-        .take(MATCH_LIMIT)
-        .find_map(|node| {
-            let (pos, c) = as_char(doc, &node)?;
-            (c == open).then_some(pos)
-        })
-}
-
 /// Tests if this node is a pair close char and returns the expected open char
-fn as_close_pair(doc: &Rope, node: &Node) -> Option<char> {
+fn as_close_pair(doc: RopeSlice, node: &Node) -> Option<char> {
     let close = as_char(doc, node)?.1;
     PAIRS
         .iter()
@@ -223,8 +221,17 @@ fn as_close_pair(doc: &Rope, node: &Node) -> Option<char> {
 /// # Returns
 ///
 /// The position of the found node or `None` otherwise
-fn find_close_pair(doc: &Rope, node: Option<Node>, close: char) -> Option<usize> {
-    iter::successors(node, |node| node.next_sibling())
+fn find_pair_end(
+    doc: RopeSlice,
+    node: Option<Node>,
+    end_char: char,
+    direction: Direction,
+) -> Option<usize> {
+    let advance = match direction {
+        Forward => Node::next_sibling,
+        Backward => Node::prev_sibling,
+    };
+    iter::successors(node, advance)
         .take(MATCH_LIMIT)
         .find_map(|node| {
             let (pos, c) = as_char(doc, &node)?;
@@ -233,15 +240,15 @@ fn find_close_pair(doc: &Rope, node: Option<Node>, close: char) -> Option<usize>
 }
 
 /// Tests if this node is a pair close char and returns the expected open char
-fn as_open_pair(doc: &Rope, node: &Node) -> Option<char> {
-    let close = as_char(doc, node)?.1;
+fn as_open_pair(doc: RopeSlice, node: &Node) -> Option<char> {
+    let open = as_char(doc, node)?.1;
     PAIRS
         .iter()
         .find_map(|&(open_, close)| (open_ == open).then_some(close))
 }
 
-/// Tests if this node is a pair opening and returns the expected close char
-fn as_char(doc: &Rope, node: &Node) -> Option<(usize, char)> {
+/// If node is a single char return it (and its char position)
+fn as_char(doc: RopeSlice, node: &Node) -> Option<(usize, char)> {
     // TODO: multi char/non ASCII pairs
     if node.byte_range().len() != 1 {
         return None;
@@ -257,11 +264,11 @@ mod tests {
     #[test]
     fn test_find_matching_bracket_current_line_plaintext() {
         let assert = |input: &str, pos, expected| {
-            let input = &Rope::from(input);
-            let actual = find_matching_bracket_current_line_plaintext(input, pos);
+            let input = RopeSlice::from(input);
+            let actual = find_matching_bracket_plaintext(input, pos);
             assert_eq!(expected, actual.unwrap());
 
-            let actual = find_matching_bracket_current_line_plaintext(input, expected);
+            let actual = find_matching_bracket_plaintext(input, expected);
             assert_eq!(pos, actual.unwrap(), "expected symmetrical behaviour");
         };
 

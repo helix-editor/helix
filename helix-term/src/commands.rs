@@ -4535,8 +4535,8 @@ fn match_brackets(cx: &mut Context) {
     let selection = doc.selection(view.id).clone().transform(|range| {
         let pos = range.cursor(text_slice);
         if let Some(matched_pos) = doc.syntax().map_or_else(
-            || match_brackets::find_matching_bracket_current_line_plaintext(text, pos),
-            |syntax| match_brackets::find_matching_bracket_fuzzy(syntax, text, pos),
+            || match_brackets::find_matching_bracket_plaintext(text.slice(..), pos),
+            |syntax| match_brackets::find_matching_bracket_fuzzy(syntax, text.slice(..), pos),
         ) {
             range.put_cursor(text_slice, matched_pos, is_select)
         } else {

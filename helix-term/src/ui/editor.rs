@@ -501,7 +501,9 @@ impl EditorView {
             use helix_core::match_brackets;
             let pos = doc.selection(view.id).primary().cursor(text);
 
-            if let Some(pos) = match_brackets::find_matching_bracket(syntax, doc.text(), pos) {
+            if let Some(pos) =
+                match_brackets::find_matching_bracket(syntax, doc.text().slice(..), pos)
+            {
                 // ensure col is on screen
                 if let Some(highlight) = theme.find_scope_index_exact("ui.cursor.match") {
                     return vec![(highlight, pos..pos + 1)];
