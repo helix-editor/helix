@@ -5,6 +5,7 @@ use std::borrow::Cow;
 
 /// (from, to, replacement)
 pub type Change = (usize, usize, Option<Tendril>);
+pub type Deletion = (usize, usize);
 
 // TODO: pub(crate)
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -534,6 +535,46 @@ impl Transaction {
         Self::from(changeset)
     }
 
+    /// Generate a transaction from a set of potentially overlapping deletions
+    /// by merging overlapping deletions together.
+    pub fn delete<I>(doc: &Rope, deletions: I) -> Self
+    where
+        I: Iterator<Item = Deletion>,
+    {
+        let len = doc.len_chars();
+
+        let (lower, upper) = deletions.size_hint();
+        let size = upper.unwrap_or(lower);
+        let mut changeset = ChangeSet::with_capacity(2 * size + 1); // rough estimate
+
+        let mut last = 0;
+        for (mut from, to) in deletions {
+            if last > to {
+                continue;
+            }
+            if last > from {
+                from = last
+            }
+            debug_assert!(
+                from <= to,
+                "Edit end must end before it starts (should {from} <= {to})"
+            );
+            // Retain from last "to" to current "from"
+            changeset.retain(from - last);
+            changeset.delete(to - from);
+            last = to;
+        }
+
+        changeset.retain(len - last);
+
+        Self::from(changeset)
+    }
+
+    pub fn insert_at_eof(mut self, text: Tendril) -> Transaction {
+        self.changes.insert(text);
+        self
+    }
+
     /// Generate a transaction with a change per selection range.
     pub fn change_by_selection<F>(doc: &Rope, selection: &Selection, f: F) -> Self
     where
@@ -578,6 +619,16 @@ impl Transaction {
             transaction,
             Selection::new(ranges, new_primary_idx.unwrap_or(0)),
         )
+    }
+
+    /// Generate a transaction with a deletion per selection range.
+    /// Compared to using `change_by_selection` directly these ranges may overlap.
+    /// In that case they are merged
+    pub fn delete_by_selection<F>(doc: &Rope, selection: &Selection, f: F) -> Self
+    where
+        F: FnMut(&Range) -> Deletion,
+    {
+        Self::delete(doc, selection.iter().map(f))
     }
 
     /// Insert text at each selection head.

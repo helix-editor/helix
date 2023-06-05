@@ -1,3 +1,120 @@
+# 23.05 (2023-05-18)
+
+23.05 is a smaller release focusing on fixes. There were 88 contributors in this release. Thank you all!
+
+Features:
+
+- Add a config option to exclude declaration from LSP references request ([#6886](https://github.com/helix-editor/helix/pull/6886))
+- Enable injecting languages based on their file extension and shebang ([#3970](https://github.com/helix-editor/helix/pull/3970))
+- Sort the buffer picker by most recent access ([#2980](https://github.com/helix-editor/helix/pull/2980))
+- Perform syntax highlighting in the picker asynchronously ([#7028](https://github.com/helix-editor/helix/pull/7028))
+
+Commands:
+
+- `:update` is now aliased as `:u` ([#6835](https://github.com/helix-editor/helix/pull/6835))
+- Add `extend_to_first_nonwhitespace` which acts the same as `goto_first_nonwhitespace` but always extends ([#6837](https://github.com/helix-editor/helix/pull/6837))
+- Add `:clear-register` for clearing the given register or all registers ([#5695](https://github.com/helix-editor/helix/pull/5695))
+- Add `:write-buffer-close` and `:write-buffer-close!` ([#6947](https://github.com/helix-editor/helix/pull/6947))
+
+Fixes:
+
+- Normalize LSP workspace paths ([#6517](https://github.com/helix-editor/helix/pull/6517))
+- Robustly handle invalid LSP ranges ([#6512](https://github.com/helix-editor/helix/pull/6512))
+- Fix line number display for LSP goto pickers ([#6559](https://github.com/helix-editor/helix/pull/6559))
+- Fix toggling of `soft-wrap.enable` option ([#6656](https://github.com/helix-editor/helix/pull/6656), [58e457a](https://github.com/helix-editor/helix/commit/58e457a), [#6742](https://github.com/helix-editor/helix/pull/6742))
+- Handle `workspace/configuration` requests from stopped language servers ([#6693](https://github.com/helix-editor/helix/pull/6693))
+- Fix possible crash from opening the jumplist picker ([#6672](https://github.com/helix-editor/helix/pull/6672))
+- Fix theme preview returning to current theme on line and word deletions ([#6694](https://github.com/helix-editor/helix/pull/6694))
+- Re-run crate build scripts on changes to revision and grammar repositories ([#6743](https://github.com/helix-editor/helix/pull/6743))
+- Fix crash on opening from suspended state ([#6764](https://github.com/helix-editor/helix/pull/6764))
+- Fix unwrap bug in DAP ([#6786](https://github.com/helix-editor/helix/pull/6786))
+- Always build tree-sitter parsers with C++14 and C11 ([#6792](https://github.com/helix-editor/helix/pull/6792), [#6834](https://github.com/helix-editor/helix/pull/6834), [#6845](https://github.com/helix-editor/helix/pull/6845))
+- Exit with a non-zero statuscode when tree-sitter parser builds fail ([#6795](https://github.com/helix-editor/helix/pull/6795))
+- Flip symbol range in LSP goto commands ([#6794](https://github.com/helix-editor/helix/pull/6794))
+- Fix runtime toggling of the `mouse` option ([#6675](https://github.com/helix-editor/helix/pull/6675))
+- Fix panic in inlay hint computation when view anchor is out of bounds ([#6883](https://github.com/helix-editor/helix/pull/6883))
+- Significantly improve performance of git discovery on slow file systems ([#6890](https://github.com/helix-editor/helix/pull/6890))
+- Downgrade gix log level to info ([#6915](https://github.com/helix-editor/helix/pull/6915))
+- Conserve BOM and properly support saving UTF16 files ([#6497](https://github.com/helix-editor/helix/pull/6497))
+- Correctly handle completion re-request ([#6594](https://github.com/helix-editor/helix/pull/6594))
+- Fix offset encoding in LSP `didChange` notifications ([#6921](https://github.com/helix-editor/helix/pull/6921))
+- Change `gix` logging level to info ([#6915](https://github.com/helix-editor/helix/pull/6915))
+- Improve error message when writes fail because parent directories do not exist ([#7014](https://github.com/helix-editor/helix/pull/7014))
+- Replace DAP variables popup instead of pushing more popups ([#7034](https://github.com/helix-editor/helix/pull/7034))
+- Disable tree-sitter for files after parsing for 500ms ([#7028](https://github.com/helix-editor/helix/pull/7028))
+- Fix crash when deleting with multiple cursors ([#6024](https://github.com/helix-editor/helix/pull/6024))
+- Fix selection sliding when deleting forwards in append mode ([#6024](https://github.com/helix-editor/helix/pull/6024))
+- Fix completion on paths containing spaces ([#6779](https://github.com/helix-editor/helix/pull/6779))
+
+Themes:
+
+- Style inlay hints in `dracula` theme ([#6515](https://github.com/helix-editor/helix/pull/6515))
+- Style inlay hints in `onedark` theme ([#6503](https://github.com/helix-editor/helix/pull/6503))
+- Style inlay hints and the soft-wrap indicator in `varua` ([#6568](https://github.com/helix-editor/helix/pull/6568), [#6589](https://github.com/helix-editor/helix/pull/6589))
+- Style inlay hints in `emacs` theme ([#6569](https://github.com/helix-editor/helix/pull/6569))
+- Update `base16_transparent` and `dark_high_contrast` themes ([#6577](https://github.com/helix-editor/helix/pull/6577))
+- Style inlay hints for `mellow` and `rasmus` themes ([#6583](https://github.com/helix-editor/helix/pull/6583))
+- Dim pane divider for `base16_transparent` theme ([#6534](https://github.com/helix-editor/helix/pull/6534))
+- Style inlay hints in `zenburn` theme ([#6593](https://github.com/helix-editor/helix/pull/6593))
+- Style inlay hints in `boo_berry` theme ([#6625](https://github.com/helix-editor/helix/pull/6625))
+- Add `ferra` theme ([#6619](https://github.com/helix-editor/helix/pull/6619), [#6776](https://github.com/helix-editor/helix/pull/6776))
+- Style inlay hints in `nightfox` theme ([#6655](https://github.com/helix-editor/helix/pull/6655))
+- Fix `ayu` theme family markup code block background ([#6538](https://github.com/helix-editor/helix/pull/6538))
+- Improve whitespace and search match colors in `rose_pine` theme ([#6679](https://github.com/helix-editor/helix/pull/6679))
+- Highlight selected items in `base16_transparent` theme ([#6716](https://github.com/helix-editor/helix/pull/6716))
+- Adjust everforest to resemble original more closely ([#5866](https://github.com/helix-editor/helix/pull/5866))
+- Refactor `dracula` theme ([#6552](https://github.com/helix-editor/helix/pull/6552), [#6767](https://github.com/helix-editor/helix/pull/6767), [#6855](https://github.com/helix-editor/helix/pull/6855), [#6987](https://github.com/helix-editor/helix/pull/6987))
+- Style inlay hints in `darcula` theme ([#6732](https://github.com/helix-editor/helix/pull/6732))
+- Style inlay hints in `kanagawa` theme ([#6773](https://github.com/helix-editor/helix/pull/6773))
+- Improve `ayu_dark` theme ([#6622](https://github.com/helix-editor/helix/pull/6622))
+- Refactor `noctis` theme multiple cursor highlighting ([96720e7](https://github.com/helix-editor/helix/commit/96720e7))
+- Refactor `noctis` theme whitespace rendering and indent guides ([f2ccc03](https://github.com/helix-editor/helix/commit/f2ccc03))
+- Add `amberwood` theme ([#6924](https://github.com/helix-editor/helix/pull/6924))
+- Update `nightfox` theme ([#7061](https://github.com/helix-editor/helix/pull/7061))
+
+Language support:
+
+- R language server: use the `--no-echo` flag to silence output ([#6570](https://github.com/helix-editor/helix/pull/6570))
+- Recognize CUDA files as C++ ([#6521](https://github.com/helix-editor/helix/pull/6521))
+- Add support for Hurl ([#6450](https://github.com/helix-editor/helix/pull/6450))
+- Add textobject queries for Julia ([#6588](https://github.com/helix-editor/helix/pull/6588))
+- Update Ruby highlight queries ([#6587](https://github.com/helix-editor/helix/pull/6587))
+- Add xsd to XML file-types ([#6631](https://github.com/helix-editor/helix/pull/6631))
+- Support Robot Framework ([#6611](https://github.com/helix-editor/helix/pull/6611))
+- Update Gleam tree-sitter parser ([#6641](https://github.com/helix-editor/helix/pull/6641))
+- Update git-commit tree-sitter parser ([#6692](https://github.com/helix-editor/helix/pull/6692))
+- Update Haskell tree-sitter parser ([#6317](https://github.com/helix-editor/helix/pull/6317))
+- Add injection queries for Haskell quasiquotes ([#6474](https://github.com/helix-editor/helix/pull/6474))
+- Highlight C/C++ escape sequences ([#6724](https://github.com/helix-editor/helix/pull/6724))
+- Support Markdoc ([#6432](https://github.com/helix-editor/helix/pull/6432))
+- Support OpenCL ([#6473](https://github.com/helix-editor/helix/pull/6473))
+- Support DTD ([#6644](https://github.com/helix-editor/helix/pull/6644))
+- Fix constant highlighting in Python queries ([#6751](https://github.com/helix-editor/helix/pull/6751))
+- Support Just ([#6453](https://github.com/helix-editor/helix/pull/6453))
+- Fix Go locals query for `var_spec` identifiers ([#6763](https://github.com/helix-editor/helix/pull/6763))
+- Update Markdown tree-sitter parser ([#6785](https://github.com/helix-editor/helix/pull/6785))
+- Fix Haskell workspace root for cabal projects ([#6828](https://github.com/helix-editor/helix/pull/6828))
+- Avoid extra indentation in Go switches ([#6817](https://github.com/helix-editor/helix/pull/6817))
+- Fix Go workspace roots ([#6884](https://github.com/helix-editor/helix/pull/6884))
+- Set PerlNavigator as the default Perl language server ([#6860](https://github.com/helix-editor/helix/pull/6860))
+- Highlight more sqlx macros in Rust ([#6793](https://github.com/helix-editor/helix/pull/6793))
+- Switch Odin tree-sitter grammar ([#6766](https://github.com/helix-editor/helix/pull/6766))
+- Recognize `poetry.lock` as TOML ([#6928](https://github.com/helix-editor/helix/pull/6928))
+- Recognize Jupyter notebooks as JSON ([#6927](https://github.com/helix-editor/helix/pull/6927))
+- Add language server configuration for Crystal ([#6948](https://github.com/helix-editor/helix/pull/6948))
+- Add `build.gradle.kts` to Java and Scala roots ([#6970](https://github.com/helix-editor/helix/pull/6970))
+- Recognize `sty` and `cls` files as latex ([#6986](https://github.com/helix-editor/helix/pull/6986))
+- Update Dockerfile tree-sitter grammar ([#6895](https://github.com/helix-editor/helix/pull/6895))
+- Add comment injections for Odin ([#7027](https://github.com/helix-editor/helix/pull/7027))
+- Recognize `gml` as XML ([#7055](https://github.com/helix-editor/helix/pull/7055))
+- Recognize `geojson` as JSON ([#7054](https://github.com/helix-editor/helix/pull/7054))
+
+Packaging:
+
+- Update the Nix flake dependencies, remove a deprecated option ([#6546](https://github.com/helix-editor/helix/pull/6546))
+- Fix and re-enable aarch64-macos release binary builds ([#6504](https://github.com/helix-editor/helix/pull/6504))
+- The git dependency on `tree-sitter` has been replaced with a regular crates.io dependency ([#6608](https://github.com/helix-editor/helix/pull/6608))
+
 # 23.03 (2023-03-31)
 
 23.03 brings some long-awaited and exciting features. Thank you to everyone involved! This release saw changes from 102 contributors.

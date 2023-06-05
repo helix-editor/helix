@@ -209,6 +209,24 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
     }
 }
 
+/// Finds the current workspace folder.
+/// Used as a ceiling dir for LSP root resolution, the filepicker and potentially as a future filewatching root
+///
+/// This function starts searching the FS upward from the CWD
+/// and returns the first directory that contains either `.git` or `.helix`.
+/// If no workspace was found returns (CWD, true).
+/// Otherwise (workspace, false) is returned
+pub fn find_workspace() -> (PathBuf, bool) {
+    let current_dir = std::env::current_dir().expect("unable to determine current directory");
+    for ancestor in current_dir.ancestors() {
+        if ancestor.join(".git").exists() || ancestor.join(".helix").exists() {
+            return (ancestor.to_owned(), false);
+        }
+    }
+
+    (current_dir, true)
+}
+
 #[cfg(test)]
 mod merge_toml_tests {
     use std::str;
@@ -280,22 +298,4 @@ mod merge_toml_tests {
             &vec![Value::String("lsp".into())]
         )
     }
-}
-
-/// Finds the current workspace folder.
-/// Used as a ceiling dir for LSP root resolution, the filepicker and potentially as a future filewatching root
-///
-/// This function starts searching the FS upward from the CWD
-/// and returns the first directory that contains either `.git` or `.helix`.
-/// If no workspace was found returns (CWD, true).
-/// Otherwise (workspace, false) is returned
-pub fn find_workspace() -> (PathBuf, bool) {
-    let current_dir = std::env::current_dir().expect("unable to determine current directory");
-    for ancestor in current_dir.ancestors() {
-        if ancestor.join(".git").exists() || ancestor.join(".helix").exists() {
-            return (ancestor.to_owned(), false);
-        }
-    }
-
-    (current_dir, true)
 }

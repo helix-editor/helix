@@ -19,8 +19,8 @@
 "ui.cursor.primary" = { bg = "fg1", fg = "bg1" } # The primary cursor when there are multiple (shift-c).
 "ui.cursor.match" = { fg = "yellow", modifiers = ["bold"] } # The matching parentheses of that under the cursor.
 
-"ui.selection" = { bg = "bg3" } # All currently selected text.
-"ui.selection.primary" = { bg = "bg4" } # The primary selection when there are multiple.
+"ui.selection" = { bg = "bg4" } # All currently selected text.
+"ui.selection.primary" = { bg = "sel1" } # The primary selection when there are multiple.
 "ui.cursorline.primary" = { bg = "bg3" } # The line of the primary cursor (if cursorline is enabled)
 # "ui.cursorline.secondary" = { } #	The lines of any other cursors (if cursorline is enabled)
 # "ui.cursorcolumn.primary" = { } #	The column of the primary cursor (if cursorcolumn is enabled)
@@ -40,6 +40,10 @@
 "ui.statusline.normal" = { bg = "blue", fg = "bg0", modifiers = ["bold"] } # Statusline mode during normal mode (only if editor.color-modes is enabled)
 "ui.statusline.insert" = { bg = "green", fg = "bg0", modifiers = ["bold"] } # Statusline mode during insert mode (only if editor.color-modes is enabled)
 "ui.statusline.select" = { bg = "magenta", fg = "bg0", modifiers = ["bold"] } # Statusline mode during select mode (only if editor.color-modes is enabled)
+
+"ui.bufferline" = { fg = "fg3", bg = "bg2", underline = { style = "line" } }
+"ui.bufferline.active" = { fg = "fg2", bg = "bg4" }
+"ui.bufferline.background" = { bg = "bg0" }
 
 "ui.help" = { bg = "sel0", fg = "fg1" } # Description box for commands.
 
