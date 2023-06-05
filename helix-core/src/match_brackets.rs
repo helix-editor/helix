@@ -50,16 +50,18 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
     let tree = syntax.tree();
     let pos = doc.char_to_byte(pos);
 
+    let mut node = tree.root_node().named_descendant_for_byte_range(pos, pos)?;
+    let mut node_positions = get_node_positions(doc, &node);
+
     if is_valid_bracket(doc.char(pos)) {
-        return find_matching_bracket_plaintext(doc, pos);
+        if let Some((_, _, start_char, end_char)) = node_positions {
+            if !is_valid_pair(doc, start_char, end_char) {
+                return find_matching_bracket_plaintext(doc, pos);
+            }
+        }
     }
 
-    let mut node = tree.root_node().named_descendant_for_byte_range(pos, pos)?;
-
-    loop {
-        let (start_byte, end_byte) = surrounding_bytes(doc, &node)?;
-        let (start_char, end_char) = (doc.byte_to_char(start_byte), doc.byte_to_char(end_byte));
-
+    while let Some((_, end_byte, start_char, end_char)) = node_positions {
         if is_valid_pair(doc, start_char, end_char) {
             if end_byte == pos {
                 return Some(start_char);
@@ -71,10 +73,19 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
 
         if traverse_parents {
             node = node.parent()?;
+            node_positions = get_node_positions(doc, &node);
         } else {
-            return None;
+            break;
         }
     }
+
+    None
+}
+
+fn get_node_positions(doc: &Rope, node: &Node) -> Option<(usize, usize, usize, usize)> {
+    let (start_byte, end_byte) = surrounding_bytes(doc, node)?;
+    let (start_char, end_char) = (doc.byte_to_char(start_byte), doc.byte_to_char(end_byte));
+    Some((start_byte, end_byte, start_char, end_char))
 }
 
 /// Returns the position of the matching bracket under cursor.
