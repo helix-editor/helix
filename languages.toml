@@ -77,6 +77,7 @@ vuels = { command = "vls" }
 wgsl_analyzer = { command = "wgsl_analyzer" }
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 zls = { command = "zls" }
+blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
 
 
 [language-server.lua-language-server]
@@ -2585,8 +2586,9 @@ injection-regex = "blueprint"
 file-types = ["blp"]
 roots = []
 comment-token = "//"
+language-servers = [ "blueprint-compiler" ]
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "blueprint"
-source = { git = "https://gitlab.com/gabmus/tree-sitter-blueprint.git", rev = "7f1a5df44861291d6951b6b2146a9fef4c226e14" }
+source = { git = "https://gitlab.com/gabmus/tree-sitter-blueprint", rev = "7f1a5df44861291d6951b6b2146a9fef4c226e14" }
