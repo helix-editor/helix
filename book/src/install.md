@@ -158,7 +158,7 @@ Requirements:
 
 Clone the Helix GitHub repository into a directory of your choice. The
 examples in this documentation assume installation into either `~/src/` on
-Linux and macOS, or `%userprofile%\src\helix\runtime` on Windows.
+Linux and macOS, or `%userprofile%\src\` on Windows.
 
 - The [Rust toolchain](https://www.rust-lang.org/tools/install)
 - The [Git version control system](https://git-scm.com/)
