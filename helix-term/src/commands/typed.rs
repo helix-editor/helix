@@ -8,7 +8,6 @@ use super::*;
 use helix_core::{encoding, shellwords::Shellwords};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
-use serde_json::Value;
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -1790,8 +1789,8 @@ fn toggle_option(
         return Ok(());
     }
 
-    if args.len() != 1 {
-        anyhow::bail!("Bad arguments. Usage: `:toggle key`");
+    if args.is_empty() {
+        anyhow::bail!("Bad arguments. Usage: `:toggle key [values]?`");
     }
     let key = &args[0].to_lowercase();
 
@@ -1801,22 +1800,48 @@ fn toggle_option(
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
-    let Value::Bool(old_value) = *value else {
-        anyhow::bail!("Key `{}` is not toggle-able", key)
+    *value = match value.as_bool() {
+        Some(value) => {
+            ensure!(
+                args.len() == 1,
+                "Bad arguments. For boolean configurations use: `:toggle key`"
+            );
+            serde_json::Value::Bool(!value)
+        }
+        None => {
+            ensure!(
+                args.len() > 2,
+                "Bad arguments. For non-boolean configurations use: `:toggle key val1 val2 ...`",
+            );
+            ensure!(
+                value.is_string(),
+                "Bad configuration. Cannot cycle non-string configurations"
+            );
+
+            let value = value
+                .as_str()
+                .expect("programming error: should have been ensured before");
+
+            serde_json::Value::String(
+                args[1..]
+                    .iter()
+                    .skip_while(|e| *e != value)
+                    .nth(1)
+                    .unwrap_or_else(|| &args[1])
+                    .to_string(),
+            )
+        }
     };
 
-    let new_value = !old_value;
-    *value = Value::Bool(new_value);
-    // This unwrap should never fail because we only replace one boolean value
-    // with another, maintaining a valid json config
-    let config = serde_json::from_value(config).unwrap();
+    let status = format!("'{key}' is now set to {value}");
+    let config = serde_json::from_value(config)
+        .map_err(|_| anyhow::anyhow!("Could not parse field: `{:?}`", &args))?;
 
     cx.editor
         .config_events
         .0
         .send(ConfigEvent::Update(config))?;
-    cx.editor
-        .set_status(format!("Option `{}` is now set to `{}`", key, new_value));
+    cx.editor.set_status(status);
     Ok(())
 }
 
