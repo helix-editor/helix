@@ -813,10 +813,13 @@ impl Transaction {
     {
         let mut end_ranges = SmallVec::with_capacity(selection.len());
         let mut offset = 0;
+        let mut last = 0;
 
         let transaction = Transaction::delete_by_selection(doc, selection, |start_range| {
             let ((from, to), end_range) = f(start_range);
-            let change_size = to - from;
+
+            // must account for possibly overlapping deletes
+            let change_size = if last > from { to - last } else { to - from };
 
             let new_range = if let Some(end_range) = end_range {
                 end_range
@@ -830,10 +833,18 @@ impl Transaction {
                 new_range.head.saturating_sub(offset),
             );
 
+            log::trace!(
+                "delete from: {}, to: {}, offset: {}, new_range: {:?}, offset_range: {:?}",
+                from,
+                to,
+                offset,
+                new_range,
+                offset_range
+            );
+
             end_ranges.push(offset_range);
             offset += change_size;
-
-            log::trace!("delete from: {}, to: {}, offset: {}", from, to, offset);
+            last = to;
 
             (from, to)
         });
