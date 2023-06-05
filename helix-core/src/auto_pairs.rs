@@ -136,6 +136,8 @@ pub fn hook_insert(
 
 #[must_use]
 pub fn hook_delete(doc: &Rope, range: &Range, pairs: &AutoPairs) -> Option<(Deletion, Range)> {
+    log::trace!("autopairs delete hook range: {:#?}", range);
+
     let text = doc.slice(..);
     let cursor = range.cursor(text);
 
@@ -175,12 +177,27 @@ pub fn handle_delete(doc: &Rope, range: &Range) -> Option<(Deletion, Range)> {
     let size_delete = end_next - end_prev;
     let next_head = graphemes::next_grapheme_boundary(text, range.head) - size_delete;
 
-    let next_range = match range.direction() {
-        Direction::Forward => Range::new(range.anchor, next_head),
-        Direction::Backward => Range::new(range.anchor - size_delete, next_head),
+    // if the range is a single grapheme cursor, we do not want to shrink the
+    // range, just move it, so we only subtract the size of the closing pair char
+    let next_anchor = match (range.direction(), range.is_single_grapheme(text)) {
+        // single grapheme forward needs to move, but only the width of the
+        // character under the cursor, which is the closer
+        (Direction::Forward, true) => range.anchor - (end_next - cursor),
+        (Direction::Backward, true) => range.anchor - (cursor - end_prev),
+
+        (Direction::Forward, false) => range.anchor,
+        (Direction::Backward, false) => range.anchor - size_delete,
     };
 
-    log::trace!("auto pair delete: {:?}, range: {:?}", delete, range,);
+    let next_range = Range::new(next_anchor, next_head);
+
+    log::trace!(
+        "auto pair delete: {:?}, range: {:?}, next_range: {:?}, text len: {}",
+        delete,
+        range,
+        next_range,
+        text.len_chars()
+    );
 
     Some((delete, next_range))
 }

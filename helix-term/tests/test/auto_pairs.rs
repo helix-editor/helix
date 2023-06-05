@@ -683,7 +683,7 @@ async fn delete_basic() -> anyhow::Result<()> {
         test((
             format!("{}#[|{}]#{}", pair.0, pair.1, LINE_END),
             "i<backspace>",
-            format!("#[{}|]#", LINE_END),
+            format!("#[|{}]#", LINE_END),
         ))
         .await?;
     }
@@ -695,9 +695,21 @@ async fn delete_basic() -> anyhow::Result<()> {
 async fn delete_multi() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
         test((
-            format!("{}#[|{}]#{}", pair.0, pair.1, LINE_END),
+            format!(
+                indoc! {"\
+                    {open}#[|{close}]#
+                    {open}#(|{close})#
+                    {open}#(|{close})#
+                "},
+                open = pair.0,
+                close = pair.1,
+            ),
             "i<backspace>",
-            format!("#[{}|]#", LINE_END),
+            indoc! {"\
+                #[|\n]#
+                #(|\n)#
+                #(|\n)#
+            "},
         ))
         .await?;
     }
@@ -711,7 +723,21 @@ async fn delete_whitespace() -> anyhow::Result<()> {
         test((
             format!("{} #[| ]#{}", pair.0, pair.1),
             "i<backspace>",
-            format!("{}#[{}|]#", pair.0, pair.1),
+            format!("{}#[|{}]#", pair.0, pair.1),
+        ))
+        .await?;
+    }
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn delete_whitespace_after_word() -> anyhow::Result<()> {
+    for pair in DEFAULT_PAIRS {
+        test((
+            format!("foo{} #[| ]#{}", pair.0, pair.1),
+            "i<backspace>",
+            format!("foo{}#[|{}]#", pair.0, pair.1),
         ))
         .await?;
     }
@@ -736,7 +762,7 @@ async fn delete_whitespace_multi() -> anyhow::Result<()> {
             "i<backspace>",
             format!(
                 indoc! {"\
-                    {open}#[{close}|]#
+                    {open}#[|{close}]#
                     {open}#(|{open})#{close}{close}
                     {open}{open}#(|{close}{close})#
                     foo#(|\n)#
@@ -830,7 +856,7 @@ async fn delete_configured_multi_byte_chars() -> anyhow::Result<()> {
             (
                 format!("{}#[|{}]#{}", open, close, LINE_END),
                 "i<backspace>",
-                format!("#[{}|]#", LINE_END),
+                format!("#[|{}]#", LINE_END),
             ),
         )
         .await?;
@@ -843,9 +869,95 @@ async fn delete_configured_multi_byte_chars() -> anyhow::Result<()> {
 async fn delete_after_word() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
         test((
-            format!("foo{}#[|{}]#{}", pair.0, pair.1, LINE_END),
+            &format!("foo{}#[|{}]#", pair.0, pair.1),
             "i<backspace>",
-            format!("foo#[{}|]#", LINE_END),
+            "foo#[|\n]#",
+        ))
+        .await?;
+    }
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn insert_then_delete() -> anyhow::Result<()> {
+    for pair in differing_pairs() {
+        test((
+            "#[\n|]#\n",
+            format!("ofoo{}<backspace>", pair.0),
+            "\nfoo#[\n|]#\n",
+        ))
+        .await?;
+    }
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn insert_then_delete_whitespace() -> anyhow::Result<()> {
+    for pair in differing_pairs() {
+        test((
+            "foo#[\n|]#",
+            format!("i{}<space><backspace><backspace>", pair.0),
+            "foo#[|\n]#",
+        ))
+        .await?;
+    }
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn insert_then_delete_multi() -> anyhow::Result<()> {
+    for pair in differing_pairs() {
+        test((
+            indoc! {"\
+                through a day#[\n|]#
+                in and out of weeks#(\n|)#
+                over a year#(\n|)#
+            "},
+            format!("i{}<space><backspace><backspace>", pair.0),
+            indoc! {"\
+                through a day#[|\n]#
+                in and out of weeks#(|\n)#
+                over a year#(|\n)#
+            "},
+        ))
+        .await?;
+    }
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn append_then_delete() -> anyhow::Result<()> {
+    for pair in differing_pairs() {
+        test((
+            "fo#[o|]#",
+            format!("a{}<space><backspace><backspace>", pair.0),
+            "fo#[o\n|]#",
+        ))
+        .await?;
+    }
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn append_then_delete_multi() -> anyhow::Result<()> {
+    for pair in differing_pairs() {
+        test((
+            indoc! {"\
+                #[through a day|]#
+                #(in and out of weeks|)#
+                #(over a year|)#
+            "},
+            format!("a{}<space><backspace><backspace>", pair.0),
+            indoc! {"\
+                #[through a day\n|]#
+                #(in and out of weeks\n|)#
+                #(over a year\n|)#
+            "},
         ))
         .await?;
     }
@@ -876,7 +988,7 @@ async fn delete_before_word() -> anyhow::Result<()> {
         test((
             format!("{}#[|{}]#foo{}", pair.0, pair.1, LINE_END),
             "i<backspace>",
-            format!("#[f|]#oo{}", LINE_END),
+            format!("#[|f]#oo{}", LINE_END),
         ))
         .await?;
     }
@@ -940,7 +1052,7 @@ async fn delete_before_eol() -> anyhow::Result<()> {
                 close = pair.1
             ),
             "i<backspace>",
-            format!("{0}#[{0}|]#", LINE_END),
+            format!("{0}#[|{0}]#", LINE_END),
         ))
         .await?;
     }
@@ -965,25 +1077,6 @@ async fn delete_auto_pairs_disabled() -> anyhow::Result<()> {
                 format!("#[|{}]#{}", pair.1, LINE_END),
             ),
         )
-        .await?;
-    }
-
-    Ok(())
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn delete_multi_range() -> anyhow::Result<()> {
-    for pair in DEFAULT_PAIRS {
-        test((
-            format!(
-                "{open}#[|{close}]#{eol}{open}#(|{close})#{eol}{open}#(|{close})#{eol}",
-                open = pair.0,
-                close = pair.1,
-                eol = LINE_END
-            ),
-            "i<backspace>",
-            format!("#[{eol}|]##({eol}|)##({eol}|)#", eol = LINE_END),
-        ))
         .await?;
     }
 
@@ -1016,7 +1109,7 @@ async fn delete_before_multi_code_point_graphemes() -> anyhow::Result<()> {
                 pair.0, pair.1, LINE_END
             ),
             "i<backspace>",
-            format!("hello #[👨‍👩‍👧‍👦|]# goodbye{}", LINE_END),
+            format!("hello #[|👨‍👩‍👧‍👦]# goodbye{}", LINE_END),
         ))
         .await?;
 
@@ -1072,7 +1165,7 @@ async fn delete_nested_open_inside_pair() -> anyhow::Result<()> {
             ),
             "i<backspace>",
             format!(
-                "{open}#[{close}|]#{eol}",
+                "{open}#[|{close}]#{eol}",
                 open = pair.0,
                 close = pair.1,
                 eol = LINE_END
@@ -1103,7 +1196,7 @@ async fn delete_nested_open_inside_pair_multi() -> anyhow::Result<()> {
                 ),
                 "i<backspace>",
                 format!(
-                    "{outer_open}#[{outer_close}|]#{eol}{outer_open}#({outer_close}|)#{eol}{outer_open}#({outer_close}|)#{eol}",
+                    "{outer_open}#[|{outer_close}]#{eol}{outer_open}#(|{outer_close})#{eol}{outer_open}#(|{outer_close})#{eol}",
                     outer_open = outer_pair.0,
                     outer_close = outer_pair.1,
                     eol = LINE_END
@@ -1187,7 +1280,7 @@ async fn delete_mixed_dedent() -> anyhow::Result<()> {
             ),
             "i<backspace>",
             indoc! {"\
-                bar = #[\n|]#
+                bar = #[|\n]#
                 #(|\n)#
                 fo#(|\n)#
             "},
