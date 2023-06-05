@@ -73,9 +73,9 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
     }
 }
 
-/// Returns the position of the matching bracket under cursor, the search
-/// is limited to the current line. This function works on plain text, it
-/// ignores tree-sitter grammar.
+/// Returns the position of the matching bracket under cursor.
+/// This function works on plain text and ignores tree-sitter grammar.
+/// The search is limited to `MAX_PLAINTEXT_SCAN` characters
 ///
 /// If the cursor is on the opening bracket, the position of
 /// the closing bracket is returned. If the cursor on the closing
