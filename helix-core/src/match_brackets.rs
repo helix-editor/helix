@@ -50,6 +50,10 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
     let tree = syntax.tree();
     let pos = doc.char_to_byte(pos);
 
+    if is_valid_bracket(doc.char(pos)) {
+        return find_matching_bracket_plaintext(doc, pos);
+    }
+
     let mut node = tree.root_node().named_descendant_for_byte_range(pos, pos)?;
 
     loop {
@@ -85,10 +89,7 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
 ///
 /// If no matching bracket is found, `None` is returned.
 #[must_use]
-pub fn find_matching_bracket_current_line_plaintext(
-    doc: &Rope,
-    cursor_pos: usize,
-) -> Option<usize> {
+pub fn find_matching_bracket_plaintext(doc: &Rope, cursor_pos: usize) -> Option<usize> {
     // Don't do anything when the cursor is not on top of a bracket.
     let bracket = doc.char(cursor_pos);
     if !is_valid_bracket(bracket) {
@@ -169,10 +170,10 @@ mod tests {
     fn test_find_matching_bracket_current_line_plaintext() {
         let assert = |input: &str, pos, expected| {
             let input = &Rope::from(input);
-            let actual = find_matching_bracket_current_line_plaintext(input, pos);
+            let actual = find_matching_bracket_plaintext(input, pos);
             assert_eq!(expected, actual.unwrap());
 
-            let actual = find_matching_bracket_current_line_plaintext(input, expected);
+            let actual = find_matching_bracket_plaintext(input, expected);
             assert_eq!(pos, actual.unwrap(), "expected symmetrical behaviour");
         };
 
