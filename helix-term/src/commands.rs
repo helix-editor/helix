@@ -51,12 +51,12 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
-    filter_picker_entry,
+    ctrl, filter_picker_entry,
     job::Callback,
     keymap::ReverseKeymap,
     ui::{
         self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem,
-        FilePicker, Picker, Popup, Prompt, PromptEvent,
+        FilePicker, Picker, PickerAction, Popup, Prompt, PromptEvent,
     },
 };
 
@@ -2567,7 +2567,7 @@ fn buffer_picker(cx: &mut Context) {
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
 
-    let picker = FilePicker::new(
+    let mut picker = FilePicker::new(
         items,
         (),
         |cx, meta, action| {
@@ -2583,6 +2583,38 @@ fn buffer_picker(cx: &mut Context) {
             Some((meta.id.into(), Some((line, line))))
         },
     );
+    picker.on_key_event(move |cx, meta, key_event| match key_event {
+        ctrl!('x') => {
+            if cx.editor.close_document(meta.id, false).is_err() {
+                cx.editor.set_error("Cannot close buffer");
+                None
+            } else {
+                let updated_options = cx
+                    .editor
+                    .documents
+                    .iter()
+                    .map(|(_, doc)| new_meta(doc))
+                    .collect();
+                Some(PickerAction::UpdateOptions(updated_options))
+            }
+        }
+        ctrl!('X') => {
+            if cx.editor.close_document(meta.id, true).is_err() {
+                cx.editor.set_error("Cannot force close buffer");
+                None
+            } else {
+                let updated_options = cx
+                    .editor
+                    .documents
+                    .iter()
+                    .map(|(_, doc)| new_meta(doc))
+                    .collect();
+                Some(PickerAction::UpdateOptions(updated_options))
+            }
+        }
+        _ => None,
+    });
+
     cx.push_layer(Box::new(overlaid(picker)));
 }
 

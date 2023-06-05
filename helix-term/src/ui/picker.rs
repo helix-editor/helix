@@ -33,6 +33,7 @@ use helix_core::{
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
+    input::KeyEvent,
     theme::Style,
     view::ViewPosition,
     Document, DocumentId, Editor,
@@ -74,6 +75,12 @@ impl From<DocumentId> for PathOrId {
 
 type FileCallback<T> = Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>;
 
+pub enum PickerAction<T: Item> {
+    UpdateOptions(Vec<T>),
+}
+
+type KeyEventCallback<T> = Box<dyn Fn(&mut Context, &T, &KeyEvent) -> Option<PickerAction<T>>>;
+
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation = (PathOrId, Option<(usize, usize)>);
 
@@ -85,6 +92,7 @@ pub struct FilePicker<T: Item> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: FileCallback<T>,
+    key_event_callback: Option<KeyEventCallback<T>>,
 }
 
 pub enum CachedPreview {
@@ -141,7 +149,15 @@ impl<T: Item + 'static> FilePicker<T> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: Box::new(preview_fn),
+            key_event_callback: None,
         }
+    }
+
+    pub fn on_key_event(
+        &mut self,
+        callback: impl Fn(&mut Context, &T, &KeyEvent) -> Option<PickerAction<T>> + 'static,
+    ) {
+        self.key_event_callback = Some(Box::new(callback));
     }
 
     pub fn truncate_start(mut self, truncate_start: bool) -> Self {
@@ -390,58 +406,28 @@ impl<T: Item + 'static> Component for FilePicker<T> {
     }
 
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
-        if let Event::IdleTimeout = event {
-            return self.handle_idle_timeout(ctx);
-        }
-
-        let Some((current_file, _)) = self.current_file(ctx.editor) else {
-            return EventResult::Consumed(None)
-        };
-
-        // Try to find a document in the cache
-        let doc = match &current_file {
-            PathOrId::Id(doc_id) => doc_mut!(ctx.editor, doc_id),
-            PathOrId::Path(path) => match self.preview_cache.get_mut(path) {
-                Some(CachedPreview::Document(ref mut doc)) => doc,
-                _ => return EventResult::Consumed(None),
-            },
-        };
-        let doc_id = doc.id();
-
-        if let Event::Key(key_event) = *event {
-            match key_event {
-                ctrl!('x') => {
-                    if ctx.editor.close_document(doc_id, false).is_err() {
-                        ctx.editor.set_error("Cannot close buffer");
-                    } else {
-                        ctx.editor.documents.remove(&doc_id);
-                        // .filter(|(d_id, _)| d_id() != doc_id)
-                        // .collect();
-                        // let updated_documents = ctx.editor.documents;
-                        // let updated_options =
-
-                        // self.picker.set_options(updated_documents);
-                    }
-                }
-                ctrl!('X') => {
-                    if ctx.editor.close_document(doc_id, true).is_err() {
-                        ctx.editor.set_error("Cannot force close buffer");
-                    } else {
-                        ctx.editor.documents.remove(&doc_id);
-                        // let updated_options = ctx
-                        //     .editor
-                        //     .documents
-                        //     .iter()
-                        //     .filter(|(_, d)| d.id() != doc_id)
-                        //     .collect();
-                        // self.picker.set_options(updated_options);
-                    }
-                }
-                _ => {}
+        let key_event = match event {
+            Event::Key(event) => *event,
+            Event::IdleTimeout => return self.handle_idle_timeout(ctx),
+            _ => {
+                // TODO: keybinds for scrolling preview
+                return self.picker.handle_event(event, ctx);
             }
         };
-        // TODO: keybinds for scrolling preview
-        self.picker.handle_event(event, ctx)
+
+        // handle any external key_events
+        match self.picker.selection().and_then(|option| {
+            self.key_event_callback
+                .as_ref()
+                .and_then(|cb| cb(ctx, option, &key_event))
+        }) {
+            Some(PickerAction::UpdateOptions(options)) => self.picker.set_options(options),
+            None => {
+                return self.picker.handle_event(event, ctx);
+            }
+        };
+
+        EventResult::Consumed(None)
     }
 
     fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
