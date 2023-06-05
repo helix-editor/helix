@@ -64,9 +64,12 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
                 if end_byte == pos {
                     return Some(start_char);
                 }
+
                 // We return the end char if the cursor is either on the start char
                 // or at some arbitrary position between start and end char.
-                return Some(end_char);
+                if traverse_parents || start_byte == pos {
+                    return Some(end_char);
+                }
             }
         }
         // this node itselt wasn't a pair but maybe its siblings are
