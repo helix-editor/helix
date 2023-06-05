@@ -2005,13 +2005,15 @@ fn global_search(cx: &mut Context) {
         path: PathBuf,
         /// 0 indexed lines
         line_num: usize,
+        line_content: String,
     }
 
     impl FileResult {
-        fn new(path: &Path, line_num: usize) -> Self {
+        fn new(path: &Path, line_num: usize, line_content: String) -> Self {
             Self {
                 path: path.to_path_buf(),
                 line_num,
+                line_content,
             }
         }
     }
@@ -2023,15 +2025,27 @@ fn global_search(cx: &mut Context) {
             let relative_path = helix_core::path::get_relative_path(&self.path)
                 .to_string_lossy()
                 .into_owned();
-            if current_path
+
+            let is_current = current_path
                 .as_ref()
                 .map(|p| p == &self.path)
-                .unwrap_or(false)
-            {
-                format!("{} (*)", relative_path).into()
-            } else {
-                relative_path.into()
-            }
+                .unwrap_or(false);
+
+            format!(
+                "{}:{}{}",
+                relative_path,
+                self.line_num,
+                if is_current { " (*)" } else { "" }
+            )
+            .into()
+        }
+
+        fn sort_text(&self, _current_path: &Self::Data) -> Cow<str> {
+            Cow::Borrowed(&self.line_content)
+        }
+
+        fn filter_text(&self, _current_path: &Self::Data) -> Cow<str> {
+            Cow::Borrowed(&self.line_content)
         }
     }
 
@@ -2106,9 +2120,13 @@ fn global_search(cx: &mut Context) {
                             let result = searcher.search_path(
                                 &matcher,
                                 entry.path(),
-                                sinks::UTF8(|line_num, _| {
+                                sinks::UTF8(|line_num, line_content| {
                                     all_matches_sx
-                                        .send(FileResult::new(entry.path(), line_num as usize - 1))
+                                        .send(FileResult::new(
+                                            entry.path(),
+                                            line_num as usize - 1,
+                                            line_content.to_string(),
+                                        ))
                                         .unwrap();
 
                                     Ok(true)
@@ -2147,7 +2165,7 @@ fn global_search(cx: &mut Context) {
                 let picker = FilePicker::new(
                     all_matches,
                     current_path,
-                    move |cx, FileResult { path, line_num }, action| {
+                    move |cx, FileResult { path, line_num, .. }, action| {
                         match cx.editor.open(path, action) {
                             Ok(_) => {}
                             Err(e) => {
@@ -2173,7 +2191,7 @@ fn global_search(cx: &mut Context) {
                         doc.set_selection(view.id, Selection::single(start, end));
                         align_view(doc, view, Align::Center);
                     },
-                    |_editor, FileResult { path, line_num }| {
+                    |_editor, FileResult { path, line_num, .. }| {
                         Some((path.clone().into(), Some((*line_num, *line_num))))
                     },
                 );
