@@ -1795,7 +1795,7 @@ auto-format = true
 
 [[grammar]]
 name = "gleam"
-source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "b2afa4fd6bb41a7bf912b034c653c90af7ae5122" }
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "bcf9c45b56cbe46e9dac5eee0aee75df270000ac" }
 
 [[language]]
 name = "ron"
