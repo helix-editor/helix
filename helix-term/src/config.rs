@@ -175,6 +175,106 @@ mod tests {
     }
 
     #[test]
+    fn parsing_menus() {
+        use crate::keymap;
+        use crate::keymap::Keymap;
+        use helix_core::hashmap;
+        use helix_view::document::Mode;
+
+        let sample_keymaps = r#"
+            [keys.normal]
+            f = { f = "file_picker", c = "wclose" }
+            b = { label = "buffer", b = "buffer_picker", n = "goto_next_buffer" }
+        "#;
+
+        assert_eq!(
+            toml::from_str::<Config>(sample_keymaps).unwrap(),
+            Config {
+                keys: hashmap! {
+                    Mode::Normal => Keymap::new(keymap!({ "Normal mode"
+                        "f" => { ""
+                            "f" => file_picker,
+                            "c" => wclose,
+                        },
+                        "b" => { "buffer"
+                            "b" => buffer_picker,
+                            "n" => goto_next_buffer,
+                        },
+                    })),
+                },
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn parsing_typable_commands() {
+        use crate::keymap;
+        use crate::keymap::MappableCommand;
+        use helix_view::document::Mode;
+        use helix_view::input::KeyEvent;
+        use std::str::FromStr;
+
+        let sample_keymaps = r#"
+            [keys.normal]
+            o = { label = "Edit Config", command = ":open ~/.config" }
+            c = ":buffer-close" 
+        "#;
+
+        let config = toml::from_str::<Config>(sample_keymaps).unwrap();
+
+        let tree = config.keys.get(&Mode::Normal).unwrap().root();
+
+        if let keymap::KeyTrie::Node(node) = tree {
+            let open_node = node.get(&KeyEvent::from_str("o").unwrap()).unwrap();
+
+            if let keymap::KeyTrie::Leaf(MappableCommand::Typable { doc, .. }) = open_node {
+                assert_eq!(doc, "Edit Config");
+            } else {
+                panic!("Edit Config did not parse to typable command");
+            }
+
+            let close_node = node.get(&KeyEvent::from_str("c").unwrap()).unwrap();
+            if let keymap::KeyTrie::Leaf(MappableCommand::Typable { doc, .. }) = close_node {
+                assert_eq!(doc, ":buffer-close []");
+            } else {
+                panic!(":buffer-close command did not parse to typable command");
+            }
+        } else {
+            panic!("Config did not parse to trie");
+        }
+    }
+
+    #[test]
+    fn parsing_list_of_typable_commands() {
+        use crate::keymap;
+        use helix_view::document::Mode;
+        use helix_view::input::KeyEvent;
+        use std::str::FromStr;
+
+        let sample_keymaps = r#"
+            [keys.normal]
+            l = { label = "Select till end of line", command = ["select_mode", "goto_line_end", "exit_select_mode"] }
+        "#;
+
+        let config = toml::from_str::<Config>(sample_keymaps).unwrap();
+
+        let tree = config.keys.get(&Mode::Normal).unwrap().root();
+
+        if let keymap::KeyTrie::Node(node) = tree {
+            let open_node = node.get(&KeyEvent::from_str("l").unwrap()).unwrap();
+
+            if let keymap::KeyTrie::Sequence(name, _) = open_node {
+                assert_eq!(name, "Select till end of line");
+            } else {
+                panic!("Edit Config did not parse to typable command");
+            }
+        } else {
+            panic!("Config did not parse to trie");
+        }
+    }
+
+    #[test]
     fn keys_resolve_to_correct_defaults() {
         // From serde default
         let default_keys = Config::load_test("").keys;
