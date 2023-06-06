@@ -193,6 +193,7 @@ impl MappableCommand {
             // TODO: @Matt - Add delegating to the engine to run scripts here
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
+                // TODO: Swap the order to allow overriding the existing commands?
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
                         editor: cx.editor,

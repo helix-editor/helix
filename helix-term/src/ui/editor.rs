@@ -796,6 +796,18 @@ impl EditorView {
         let key_result = self.keymaps.get(mode, event);
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
+        // Get the currently activated minor modes
+        // let extension = {
+        //     let current_focus = cxt.editor.tree.focus;
+        //     let view = cxt.editor.tree.get(current_focus);
+        //     let doc = &view.doc;
+        //     let current_doc = cxt.editor.documents.get(doc);
+
+        //     current_doc
+        //         .and_then(|x| x.path())
+        //         .and_then(|x| x.extension());
+        // };
+
         let mut execute_command = |command: &commands::MappableCommand| {
             command.execute(cxt);
             let current_mode = cxt.editor.mode();
@@ -832,6 +844,20 @@ impl EditorView {
 
         match &key_result {
             KeymapResult::Matched(command) => {
+                // TODO: @Matt - check minor modes here.
+                // Check current path:
+
+                // let current_focus = cxt.editor.tree.focus;
+                // let view = cxt.editor.tree.get(current_focus);
+                // let doc = &view.doc;
+                // let current_doc = cxt.editor.documents.get(doc);
+
+                // let extension =
+
+                // current_doc.and_then(|x| x.path().and_then(|x| x.to_str().map(|x| x.to_string())))
+
+                // cxt.editor.
+
                 execute_command(command);
             }
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),

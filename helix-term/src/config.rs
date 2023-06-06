@@ -127,23 +127,11 @@ impl Config {
         Ok(res)
     }
 
-    // TODO: @Matt -> Add key binding here by reading value from steel engine
     pub fn load_default() -> Result<Config, ConfigLoadError> {
         let global_config =
             fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error);
         let local_config = fs::read_to_string(helix_loader::workspace_config_file())
             .map_err(ConfigLoadError::Error);
-
-        // let binding = crate::commands::ENGINE.with(|x| {
-        //     x.borrow_mut()
-        //         .run("(value->jsexpr-string *KEYBINDINGS*)")
-        //         .unwrap()
-        // });
-        // let keybindings_as_str = binding[0]
-        //     .string_or_else(|| panic!("Should always be a string"))
-        //     .unwrap();
-
-        // let bindings: HashMap<Mode, Keymap> = serde_json::from_str(&keybindings_as_str).unwrap();
 
         let bindings = crate::commands::engine::SharedKeyBindingsEventQueue::get();
 

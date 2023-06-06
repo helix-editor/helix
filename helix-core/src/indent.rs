@@ -915,18 +915,22 @@ fn call_indent_hook(
     None
 }
 
+// TODO: Do this to allow for custom indent operations. Unfortunately, we'll have to wrap
+// all of the lifetimes up into references.
+// impl<'a> steel::gc::unsafe_erased_pointers::CustomReference for RopeSlice<'a> {}
+
 /// TODO: Come up with some elegant enough FFI for this, so that Steel can expose an API for this.
 /// Problem is - the issues with the `Any` type and using things with type id.
 #[allow(clippy::too_many_arguments)]
 pub fn custom_indent_for_newline(
     language_config: Option<&LanguageConfiguration>,
-    syntax: Option<&Syntax>,
-    indent_style: &IndentStyle,
-    tab_width: usize,
+    _syntax: Option<&Syntax>,
+    _indent_style: &IndentStyle,
+    _tab_width: usize,
     text: RopeSlice,
     line_before: usize,
     line_before_end_pos: usize,
-    current_line: usize,
+    _current_line: usize,
 ) -> Option<String> {
     if let Some(config) = language_config {
         // TODO: If possible, this would be very cool to be implemented in steel itself. If not,

@@ -1,12 +1,12 @@
 use fuzzy_matcher::FuzzyMatcher;
 use helix_core::{graphemes, Tendril};
-use helix_view::{document::Mode, Editor};
+use helix_view::{document::Mode, Document, DocumentId, Editor};
 use once_cell::sync::Lazy;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
     rvals::{FromSteelVal, IntoSteelVal, SteelString},
     steel_vm::{engine::Engine, register_fn::RegisterFn},
-    SteelVal,
+    SteelErr, SteelVal,
 };
 
 use std::{
@@ -28,6 +28,8 @@ use crate::{
     ui::{self, menu::Item, overlay::overlaid, Popup, PromptEvent},
 };
 
+use self::components::SteelDynamicComponent;
+
 use super::{
     insert::{insert_char, insert_string},
     plugin::{DylibContainers, ExternalModule},
@@ -42,6 +44,8 @@ pub struct ExternalContainersAndModules {
     containers: DylibContainers,
     modules: Vec<ExternalModule>,
 }
+
+mod components;
 
 // External modules that can load via rust dylib. These can then be consumed from
 // steel as needed, via the standard FFI for plugin functions.
@@ -76,6 +80,58 @@ pub fn initialize_engine() {
     ENGINE.with(|x| x.borrow().globals().first().copied());
 }
 
+pub fn compositor_present_error(cx: &mut compositor::Context, e: SteelErr) {
+    cx.editor.set_error(format!("{}", e));
+
+    let backtrace = ENGINE.with(|x| x.borrow_mut().raise_error_to_string(e));
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                if let Some(backtrace) = backtrace {
+                    let contents = ui::Markdown::new(
+                        format!("```\n{}\n```", backtrace),
+                        editor.syn_loader.clone(),
+                    );
+                    ui::Text::new(format!("```\n{}\n```", backtrace));
+                    let popup = Popup::new("engine", contents).position(Some(
+                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                    ));
+                    compositor.replace_or_push("engine", popup);
+                }
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+}
+
+pub fn present_error(cx: &mut Context, e: SteelErr) {
+    cx.editor.set_error(format!("{}", e));
+
+    let backtrace = ENGINE.with(|x| x.borrow_mut().raise_error_to_string(e));
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                if let Some(backtrace) = backtrace {
+                    let contents = ui::Markdown::new(
+                        format!("```\n{}\n```", backtrace),
+                        editor.syn_loader.clone(),
+                    );
+                    ui::Text::new(format!("```\n{}\n```", backtrace));
+                    let popup = Popup::new("engine", contents).position(Some(
+                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                    ));
+                    compositor.replace_or_push("engine", popup);
+                }
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+}
+
 /// Run the initialization script located at `$helix_config/init.scm`
 /// This runs the script in the global environment, and does _not_ load it as a module directly
 pub fn run_initialization_script(cx: &mut Context) {
@@ -83,12 +139,17 @@ pub fn run_initialization_script(cx: &mut Context) {
 
     let helix_module_path = helix_loader::steel_init_file();
 
+    // These contents need to be registered with the path?
     if let Ok(contents) = std::fs::read_to_string(&helix_module_path) {
-        ENGINE.with(|x| {
+        let res = ENGINE.with(|x| {
             x.borrow_mut()
                 .run_with_reference::<Context, Context>(cx, "*helix.cx*", &contents)
-                .unwrap()
         });
+
+        match res {
+            Ok(_) => {}
+            Err(e) => present_error(cx, e),
+        }
 
         log::info!("Finished loading init.scm!")
     } else {
@@ -98,6 +159,8 @@ pub fn run_initialization_script(cx: &mut Context) {
     // Start the worker thread - i.e. message passing to the workers
     // configure_background_thread()
 }
+
+// pub static MINOR_MODES: Lazy<Arc<RwLock<HashMap<String,
 
 pub static KEYBINDING_QUEUE: Lazy<SharedKeyBindingsEventQueue> =
     Lazy::new(|| SharedKeyBindingsEventQueue::new());
@@ -221,78 +284,7 @@ fn get_themes(cx: &mut Context) -> Vec<String> {
 // }
 
 /// A dynamic component, used for rendering thing
-#[derive(Clone)]
-// TODO: Implement `trace` method for objects that hold steel vals
-struct SteelDynamicComponent {
-    name: String,
-    // This _should_ be a struct, but in theory can be whatever you want. It will be the first argument
-    // passed to the functions in the remainder of the struct.
-    state: SteelVal,
-    handle_event: Option<SteelVal>,
-    should_update: Option<SteelVal>,
-    render: SteelVal,
-    cursor: Option<SteelVal>,
-    required_size: Option<SteelVal>,
-}
 
-impl SteelDynamicComponent {
-    fn new(name: String, state: SteelVal, render: SteelVal, h: HashMap<String, SteelVal>) -> Self {
-        // if let SteelVal::HashMapV(h) = functions {
-
-        Self {
-            name,
-            state,
-            render,
-            handle_event: h.get("handle_event").cloned(),
-            should_update: h.get("should_update").cloned(),
-            cursor: h.get("cursor").cloned(),
-            required_size: h.get("required_size").cloned(),
-        }
-
-        // } else {
-        // panic!("Implement better error handling")
-        // }
-    }
-
-    fn new_dyn(
-        name: String,
-        state: SteelVal,
-        render: SteelVal,
-        h: HashMap<String, SteelVal>,
-    ) -> WrappedDynComponent {
-        let s = Self::new(name, state, render, h);
-
-        WrappedDynComponent {
-            inner: Some(Box::new(s)),
-        }
-    }
-
-    fn get_state(&self) -> SteelVal {
-        self.state.clone()
-    }
-
-    fn get_render(&self) -> SteelVal {
-        self.render.clone()
-    }
-
-    fn get_handle_event(&self) -> Option<SteelVal> {
-        self.handle_event.clone()
-    }
-
-    fn get_should_update(&self) -> Option<SteelVal> {
-        self.should_update.clone()
-    }
-
-    fn get_cursor(&self) -> Option<SteelVal> {
-        self.cursor.clone()
-    }
-
-    fn get_required_size(&self) -> Option<SteelVal> {
-        self.required_size.clone()
-    }
-}
-
-impl Custom for SteelDynamicComponent {}
 impl Custom for compositor::EventResult {}
 impl FromSteelVal for compositor::EventResult {
     fn from_steelval(val: &SteelVal) -> steel::rvals::Result<Self> {
@@ -315,189 +307,8 @@ impl FromSteelVal for compositor::EventResult {
 
 // TODO: Call the function inside the component, using the global engine. Consider running in its own engine
 // but leaving it all in the same one is kinda nice
-impl Component for SteelDynamicComponent {
-    fn render(
-        &mut self,
-        area: helix_view::graphics::Rect,
-        frame: &mut tui::buffer::Buffer,
-        ctx: &mut compositor::Context,
-    ) {
-        let mut ctx = Context {
-            register: None,
-            count: None,
-            editor: ctx.editor,
-            callback: None,
-            on_next_key_callback: None,
-            jobs: ctx.jobs,
-        };
-
-        // Pass the `state` object through - this can be used for storing the state of whatever plugin thing we're
-        // attempting to render
-        let thunk = |engine: &mut Engine, f, c| {
-            engine.call_function_with_args(
-                self.render.clone(),
-                vec![self.state.clone(), area.into_steelval().unwrap(), f, c],
-            )
-        };
-
-        ENGINE
-            .with(|x| {
-                x.borrow_mut()
-                    .with_mut_reference::<tui::buffer::Buffer, tui::buffer::Buffer>(frame)
-                    .with_mut_reference::<Context, Context>(&mut ctx)
-                    .consume(|engine, args| {
-                        let mut arg_iter = args.into_iter();
-
-                        (thunk)(engine, arg_iter.next().unwrap(), arg_iter.next().unwrap())
-                    })
-
-                // .run_with_references::<tui::buffer::Buffer, tui::buffer::Buffer, Context, Context>(
-                //     frame, &mut ctx, thunk,
-                // )
-            })
-            .unwrap();
-
-        log::info!("Calling dynamic render!");
-    }
-
-    // TODO: Pass in event as well? Need to have immutable reference type
-    // Otherwise, we're gonna be in a bad spot. For now - just clone the object and pass it through.
-    // Clong is _not_ ideal, but it might be all we can do for now.
-    fn handle_event(
-        &mut self,
-        event: &helix_view::input::Event,
-        ctx: &mut compositor::Context,
-    ) -> compositor::EventResult {
-        if let Some(handle_event) = &mut self.handle_event {
-            let mut ctx = Context {
-                register: None,
-                count: None,
-                editor: ctx.editor,
-                callback: None,
-                on_next_key_callback: None,
-                jobs: ctx.jobs,
-            };
-
-            // Pass the `state` object through - this can be used for storing the state of whatever plugin thing we're
-            // attempting to render
-            let thunk = |engine: &mut Engine, c| {
-                engine.call_function_with_args(
-                    handle_event.clone(),
-                    vec![
-                        self.state.clone(),
-                        // TODO: We do _not_ want to clone here, we would need to create a bunch of methods on the engine for various
-                        // combinations of reference passing to do this safely. Right now its limited to mutable references, but we should
-                        // expose more - investigate macros on how to do that with recursively crunching the list to generate the combinations.
-                        // Experimentation needed.
-                        event.clone().into_steelval().unwrap(),
-                        c,
-                    ],
-                )
-            };
-
-            match ENGINE.with(|x| {
-                x.borrow_mut()
-                    .run_thunk_with_reference::<Context, Context>(&mut ctx, thunk)
-            }) {
-                Ok(v) => compositor::EventResult::from_steelval(&v)
-                    .unwrap_or_else(|_| compositor::EventResult::Ignored(None)),
-                Err(_) => compositor::EventResult::Ignored(None),
-            }
-        } else {
-            compositor::EventResult::Ignored(None)
-        }
-    }
-
-    fn should_update(&self) -> bool {
-        if let Some(should_update) = &self.should_update {
-            match ENGINE.with(|x| {
-                x.borrow_mut()
-                    .call_function_with_args(should_update.clone(), vec![self.state.clone()])
-            }) {
-                Ok(v) => bool::from_steelval(&v).unwrap_or(true),
-                Err(_) => true,
-            }
-        } else {
-            true
-        }
-    }
-
-    // TODO: Implement immutable references. Right now I'm only supporting mutable references.
-    fn cursor(
-        &self,
-        area: helix_view::graphics::Rect,
-        ctx: &Editor,
-    ) -> (
-        Option<helix_core::Position>,
-        helix_view::graphics::CursorKind,
-    ) {
-        if let Some(cursor) = &self.cursor {
-            // Pass the `state` object through - this can be used for storing the state of whatever plugin thing we're
-            // attempting to render
-            let thunk = |engine: &mut Engine, e| {
-                engine.call_function_with_args(
-                    cursor.clone(),
-                    vec![self.state.clone(), area.into_steelval().unwrap(), e],
-                )
-            };
-
-            <(
-                Option<helix_core::Position>,
-                helix_view::graphics::CursorKind,
-            )>::from_steelval(&ENGINE.with(|x| {
-                x.borrow_mut()
-                    .run_thunk_with_ro_reference::<Editor, Editor>(ctx, thunk)
-                    .unwrap()
-            }))
-            .unwrap()
-        } else {
-            (None, helix_view::graphics::CursorKind::Hidden)
-        }
-    }
-
-    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let name = self.type_name();
-
-        if let Some(required_size) = &mut self.required_size {
-            log::info!("Calling required-size inside: {}", name);
-
-            // TODO: Create some token that we can grab to enqueue function calls internally. Referencing
-            // the external API would cause problems - we just need to include a handle to the interpreter
-            // instance. Something like:
-            // ENGINE.call_function_or_enqueue? OR - this is the externally facing render function. Internal
-            // render calls do _not_ go through this interface. Instead, they are just called directly.
-            //
-            // If we go through this interface, we're going to get an already borrowed mut error, since it is
-            // re-entrant attempting to grab the ENGINE instead mutably, since we have to break the recursion
-            // somehow. By putting it at the edge, we then say - hey for these functions on this interface,
-            // call the engine instance. Otherwise, all computation happens inside the engine.
-            let res = ENGINE
-                .with(|x| {
-                    x.borrow_mut().call_function_with_args(
-                        required_size.clone(),
-                        vec![self.state.clone(), viewport.into_steelval().unwrap()],
-                    )
-                })
-                .and_then(|x| Option::<(u16, u16)>::from_steelval(&x))
-                .unwrap();
-
-            res
-        } else {
-            None
-        }
-    }
-
-    fn type_name(&self) -> &'static str {
-        std::any::type_name::<Self>()
-    }
-
-    fn id(&self) -> Option<&'static str> {
-        None
-    }
-}
 
 // Does this work?
-impl Custom for Box<dyn Component> {}
 
 struct WrappedDynComponent {
     inner: Option<Box<dyn Component>>,
@@ -714,6 +525,29 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
         helix_view::Editor,
     >::register_fn(&mut engine, "cx-editor!", get_editor);
 
+    engine.register_fn("editor-focus", current_focus);
+    engine.register_fn("editor->doc-id", get_document_id);
+    // engine.register_fn("editor->get-document", get_document);
+
+    // TODO: These are some horrendous type annotations, however... they do work?
+    // If the type annotations are a bit more ergonomic, we might be able to get away with this
+    // (i.e. if they're sensible enough)
+    RegisterFn::<
+        _,
+        steel::steel_vm::register_fn::MarkerWrapper8<(
+            helix_view::Editor,
+            DocumentId,
+            Document,
+            Document,
+            helix_view::Editor,
+        )>,
+        Document,
+    >::register_fn(&mut engine, "editor->get-document", get_document);
+
+    // Check if the doc exists first
+    engine.register_fn("editor-doc-exists?", document_exists);
+    engine.register_fn("Document-path", document_path);
+
     // RegisterFn::<
     //     _,
     //     steel::steel_vm::register_fn::MarkerWrapper7<(
@@ -837,6 +671,8 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     module.register_fn("get-helix-scm-path", get_helix_scm_path);
     module.register_fn("get-init-scm-path", get_init_scm_path);
     module.register_fn("block-on-shell-command", run_shell_command_text);
+
+    module.register_fn("cx->current-file", current_path);
 
     engine.register_module(module);
 
@@ -1030,6 +866,44 @@ fn get_init_scm_path() -> String {
         .unwrap()
         .to_string()
 }
+
+/// Get the current path! See if this can be done _without_ this function?
+// TODO:
+fn current_path(cx: &mut Context) -> Option<String> {
+    let current_focus = cx.editor.tree.focus;
+    let view = cx.editor.tree.get(current_focus);
+    let doc = &view.doc;
+    // Lifetime of this needs to be tied to the existing document
+    let current_doc = cx.editor.documents.get(doc);
+    current_doc.and_then(|x| x.path().and_then(|x| x.to_str().map(|x| x.to_string())))
+}
+
+// TODO: Expose the below in a separate module, make things a bit more clear!
+
+fn current_focus(editor: &mut Editor) -> helix_view::ViewId {
+    editor.tree.focus
+}
+
+// Get the document id
+fn get_document_id(editor: &mut Editor, view_id: helix_view::ViewId) -> DocumentId {
+    editor.tree.get(view_id).doc
+}
+
+// Get the document from the document id - TODO: Add result type here
+fn get_document(editor: &mut Editor, doc_id: DocumentId) -> &Document {
+    editor.documents.get(&doc_id).unwrap()
+}
+
+fn document_exists(editor: &mut Editor, doc_id: DocumentId) -> bool {
+    editor.documents.get(&doc_id).is_some()
+}
+
+fn document_path(doc: &Document) -> Option<String> {
+    doc.path().and_then(|x| x.to_str()).map(|x| x.to_string())
+}
+
+// cx->editor
+//
 
 fn run_shell_command_text(
     cx: &mut Context,

@@ -2,6 +2,7 @@ use std::ops::Deref;
 
 use crate::job::Job;
 
+use super::engine::{compositor_present_error, present_error};
 use super::*;
 
 use helix_core::{encoding, shellwords::Shellwords};
@@ -2920,7 +2921,7 @@ pub(super) fn command_mode(cx: &mut Context) {
 
                 // We're finalizing the event - we actually want to call the function
                 if event == PromptEvent::Validate {
-                    // TODO: @Matt - extract this whole API cal here to just be inside the engine module
+                    // TODO: @Matt - extract this whole API call here to just be inside the engine module
                     // For what its worth, also explore a more elegant API for calling apply with some arguments,
                     // this does work, but its a little opaque.
                     if let Err(e) = ENGINE.with(|x| {
@@ -2957,7 +2958,7 @@ pub(super) fn command_mode(cx: &mut Context) {
                             res
                         }
                     }) {
-                        cx.editor.set_error(format!("{}", e));
+                        compositor_present_error(cx, e)
                     };
                 }
             } else if event == PromptEvent::Validate {
