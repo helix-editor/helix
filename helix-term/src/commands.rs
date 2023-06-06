@@ -4560,20 +4560,23 @@ fn select_prev_sibling(cx: &mut Context) {
 
 fn match_brackets(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
+    let is_select = cx.editor.mode == Mode::Select;
+    let text = doc.text();
+    let text_slice = text.slice(..);
 
-    if let Some(syntax) = doc.syntax() {
-        let text = doc.text().slice(..);
-        let selection = doc.selection(view.id).clone().transform(|range| {
-            if let Some(pos) =
-                match_brackets::find_matching_bracket_fuzzy(syntax, doc.text(), range.cursor(text))
-            {
-                range.put_cursor(text, pos, cx.editor.mode == Mode::Select)
-            } else {
-                range
-            }
-        });
-        doc.set_selection(view.id, selection);
-    }
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let pos = range.cursor(text_slice);
+        if let Some(matched_pos) = doc.syntax().map_or_else(
+            || match_brackets::find_matching_bracket_current_line_plaintext(text, pos),
+            |syntax| match_brackets::find_matching_bracket_fuzzy(syntax, text, pos),
+        ) {
+            range.put_cursor(text_slice, matched_pos, is_select)
+        } else {
+            range
+        }
+    });
+
+    doc.set_selection(view.id, selection);
 }
 
 //

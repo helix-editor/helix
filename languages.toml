@@ -77,6 +77,7 @@ vuels = { command = "vls" }
 wgsl_analyzer = { command = "wgsl_analyzer" }
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 zls = { command = "zls" }
+blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
 
 
 [language-server.lua-language-server]
@@ -2577,3 +2578,17 @@ indent = { tab-width = 4, unit = "\t" }
 [[grammar]]
 name = "just"
 source = { git = "https://github.com/IndianBoy42/tree-sitter-just", rev = "8af0aab79854aaf25b620a52c39485849922f766" }
+
+[[language]]
+name = "blueprint"
+scope = "source.blueprint"
+injection-regex = "blueprint"
+file-types = ["blp"]
+roots = []
+comment-token = "//"
+language-servers = [ "blueprint-compiler" ]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "blueprint"
+source = { git = "https://gitlab.com/gabmus/tree-sitter-blueprint", rev = "7f1a5df44861291d6951b6b2146a9fef4c226e14" }

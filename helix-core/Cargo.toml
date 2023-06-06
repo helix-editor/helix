@@ -26,12 +26,12 @@ unicode-general-category = "0.6"
 # slab = "0.4.2"
 slotmap = "1.0"
 tree-sitter = "0.20"
-once_cell = "1.17"
+once_cell = "1.18"
 arc-swap = "1"
 regex = "1"
 bitflags = "2.3"
 ahash = "0.8.3"
-hashbrown = { version = "0.13.2", features = ["raw"] }
+hashbrown = { version = "0.14.0", features = ["raw"] }
 dunce = "1.0"
 
 log = "0.4"

@@ -22,7 +22,7 @@ unicode-segmentation = "1.10"
 crossterm = { version = "0.26", optional = true }
 termini = "1.0"
 serde = { version = "1", "optional" = true, features = ["derive"]}
-once_cell = "1.17"
+once_cell = "1.18"
 log = "~0.4"
 helix-view = { version = "0.6", path = "../helix-view", features = ["term"] }
 helix-core = { version = "0.6", path = "../helix-core" }
