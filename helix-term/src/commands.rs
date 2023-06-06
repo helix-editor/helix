@@ -254,11 +254,17 @@ impl MappableCommand {
         extend_next_long_word_start, "Extend to start of next long word",
         extend_prev_long_word_start, "Extend to start of previous long word",
         extend_next_long_word_end, "Extend to end of next long word",
-        find_till_char, "Move till next occurrence of char",
+        find_till_next_char, "Move till next occurrence of char",
+        // TODO: remove `find_till_char` with version 23.03 + X
+        find_till_char, "Move till next occurrence of char [DEPRECATED]",
         find_next_char, "Move to next occurrence of char",
-        extend_till_char, "Extend till next occurrence of char",
+        extend_till_next_char, "Extend till next occurrence of char",
+        // TODO: remove `extend_till_char` with version 23.03 + X
+        extend_till_char, "Extend till next occurrence of char [DEPRECATED]",
         extend_next_char, "Extend to next occurrence of char",
-        till_prev_char, "Move till previous occurrence of char",
+        find_till_prev_char, "Move till previous occurrence of char",
+        // TODO: remove `till_prev_char` with version 23.03 + X
+        till_prev_char, "Move till previous occurrence of char [DEPRECATED]",
         find_prev_char, "Move to previous occurrence of char",
         extend_till_prev_char, "Extend till previous occurrence of char",
         extend_prev_char, "Extend to previous occurrence of char",
@@ -1345,24 +1351,39 @@ fn find_prev_char_impl(
     }
 }
 
-fn find_till_char(cx: &mut Context) {
+fn find_till_next_char(cx: &mut Context) {
     will_find_char(cx, find_next_char_impl, false, false)
+}
+
+// todo: remove `find_till_char` with version 23.03 + X
+fn find_till_char(cx: &mut Context) {
+    find_till_next_char(cx)
 }
 
 fn find_next_char(cx: &mut Context) {
     will_find_char(cx, find_next_char_impl, true, false)
 }
 
-fn extend_till_char(cx: &mut Context) {
+fn extend_till_next_char(cx: &mut Context) {
     will_find_char(cx, find_next_char_impl, false, true)
+}
+
+// todo: remove `extend_till_char` with version 23.03 + X
+fn extend_till_char(cx: &mut Context) {
+    extend_till_next_char(cx)
 }
 
 fn extend_next_char(cx: &mut Context) {
     will_find_char(cx, find_next_char_impl, true, true)
 }
 
-fn till_prev_char(cx: &mut Context) {
+fn find_till_prev_char(cx: &mut Context) {
     will_find_char(cx, find_prev_char_impl, false, false)
+}
+
+// todo: remove `till_prev_char` with version 23.03 + X
+fn till_prev_char(cx: &mut Context) {
+    find_till_prev_char(cx)
 }
 
 fn find_prev_char(cx: &mut Context) {

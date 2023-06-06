@@ -11,9 +11,9 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "k" | "up" => move_visual_line_up,
         "l" | "right" => move_char_right,
 
-        "t" => find_till_char,
+        "t" => find_till_next_char,
         "f" => find_next_char,
-        "T" => till_prev_char,
+        "T" => find_till_prev_char,
         "F" => find_prev_char,
         "r" => replace,
         "R" => replace_with_yanked,
@@ -339,7 +339,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "n" => extend_search_next,
         "N" => extend_search_prev,
 
-        "t" => extend_till_char,
+        "t" => extend_till_next_char,
         "f" => extend_next_char,
         "T" => extend_till_prev_char,
         "F" => extend_prev_char,
