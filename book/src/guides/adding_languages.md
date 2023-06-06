@@ -9,6 +9,7 @@ below.
    necessary configuration for the new language. For more information on
    language configuration, refer to the
    [language configuration section](../languages.md) of the documentation.
+   A new language server can be added by extending the `[language-server]` table in the same file.
 2. If you are adding a new language or updating an existing language server
    configuration, run the command `cargo xtask docgen` to update the
    [Language Support](../lang-support.md) documentation.

@@ -5,7 +5,6 @@
 
 (ambient_declaration "global" @namespace)
 
-
 ; Variables
 
 (required_parameter (identifier) @variable.parameter)
@@ -21,8 +20,6 @@
 (property_signature "?" @punctuation.special)
 
 (conditional_type ["?" ":"] @operator)
-
-
 
 ; Keywords
 
@@ -50,16 +47,22 @@
   "readonly"
 ] @keyword.storage.modifier
 
-; inherits: ecma
-
 ; Types
 
 (type_identifier) @type
 (predefined_type) @type.builtin
 
 (type_arguments
-  "<" @punctuation.bracket
-  ">" @punctuation.bracket)
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
+
+(type_parameters
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
 
 ((identifier) @type
  (#match? @type "^[A-Z]"))
@@ -75,3 +78,5 @@
 (template_type
   "${" @punctuation.special
   "}" @punctuation.special) @embedded
+
+; inherits: ecma

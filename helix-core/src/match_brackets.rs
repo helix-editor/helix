@@ -2,6 +2,9 @@ use tree_sitter::Node;
 
 use crate::{Rope, Syntax};
 
+const MAX_PLAINTEXT_SCAN: usize = 10000;
+
+// Limit matching pairs to only ( ) { } [ ] < > ' ' " "
 const PAIRS: &[(char, char)] = &[
     ('(', ')'),
     ('{', '}'),
@@ -11,15 +14,15 @@ const PAIRS: &[(char, char)] = &[
     ('\"', '\"'),
 ];
 
-// limit matching pairs to only ( ) { } [ ] < > ' ' " "
-
-// Returns the position of the matching bracket under cursor.
-//
-// If the cursor is one the opening bracket, the position of
-// the closing bracket is returned. If the cursor in the closing
-// bracket, the position of the opening bracket is returned.
-//
-// If the cursor is not on a bracket, `None` is returned.
+/// Returns the position of the matching bracket under cursor.
+///
+/// If the cursor is on the opening bracket, the position of
+/// the closing bracket is returned. If the cursor on the closing
+/// bracket, the position of the opening bracket is returned.
+///
+/// If the cursor is not on a bracket, `None` is returned.
+///
+/// If no matching bracket is found, `None` is returned.
 #[must_use]
 pub fn find_matching_bracket(syntax: &Syntax, doc: &Rope, pos: usize) -> Option<usize> {
     if pos >= doc.len_chars() || !is_valid_bracket(doc.char(pos)) {
@@ -70,8 +73,75 @@ fn find_pair(syntax: &Syntax, doc: &Rope, pos: usize, traverse_parents: bool) ->
     }
 }
 
+/// Returns the position of the matching bracket under cursor.
+/// This function works on plain text and ignores tree-sitter grammar.
+/// The search is limited to `MAX_PLAINTEXT_SCAN` characters
+///
+/// If the cursor is on the opening bracket, the position of
+/// the closing bracket is returned. If the cursor on the closing
+/// bracket, the position of the opening bracket is returned.
+///
+/// If the cursor is not on a bracket, `None` is returned.
+///
+/// If no matching bracket is found, `None` is returned.
+#[must_use]
+pub fn find_matching_bracket_current_line_plaintext(
+    doc: &Rope,
+    cursor_pos: usize,
+) -> Option<usize> {
+    // Don't do anything when the cursor is not on top of a bracket.
+    let bracket = doc.char(cursor_pos);
+    if !is_valid_bracket(bracket) {
+        return None;
+    }
+
+    // Determine the direction of the matching.
+    let is_fwd = is_forward_bracket(bracket);
+    let chars_iter = if is_fwd {
+        doc.chars_at(cursor_pos + 1)
+    } else {
+        doc.chars_at(cursor_pos).reversed()
+    };
+
+    let mut open_cnt = 1;
+
+    for (i, candidate) in chars_iter.take(MAX_PLAINTEXT_SCAN).enumerate() {
+        if candidate == bracket {
+            open_cnt += 1;
+        } else if is_valid_pair(
+            doc,
+            if is_fwd {
+                cursor_pos
+            } else {
+                cursor_pos - i - 1
+            },
+            if is_fwd {
+                cursor_pos + i + 1
+            } else {
+                cursor_pos
+            },
+        ) {
+            // Return when all pending brackets have been closed.
+            if open_cnt == 1 {
+                return Some(if is_fwd {
+                    cursor_pos + i + 1
+                } else {
+                    cursor_pos - i - 1
+                });
+            }
+            open_cnt -= 1;
+        }
+    }
+
+    None
+}
+
 fn is_valid_bracket(c: char) -> bool {
     PAIRS.iter().any(|(l, r)| *l == c || *r == c)
+}
+
+fn is_forward_bracket(c: char) -> bool {
+    PAIRS.iter().any(|(l, _)| *l == c)
 }
 
 fn is_valid_pair(doc: &Rope, start_char: usize, end_char: usize) -> bool {
@@ -89,4 +159,37 @@ fn surrounding_bytes(doc: &Rope, node: &Node) -> Option<(usize, usize)> {
     }
 
     Some((start_byte, end_byte))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_matching_bracket_current_line_plaintext() {
+        let assert = |input: &str, pos, expected| {
+            let input = &Rope::from(input);
+            let actual = find_matching_bracket_current_line_plaintext(input, pos);
+            assert_eq!(expected, actual.unwrap());
+
+            let actual = find_matching_bracket_current_line_plaintext(input, expected);
+            assert_eq!(pos, actual.unwrap(), "expected symmetrical behaviour");
+        };
+
+        assert("(hello)", 0, 6);
+        assert("((hello))", 0, 8);
+        assert("((hello))", 1, 7);
+        assert("(((hello)))", 2, 8);
+
+        assert("key: ${value}", 6, 12);
+        assert("key: ${value} # (some comment)", 16, 29);
+
+        assert("(paren (paren {bracket}))", 0, 24);
+        assert("(paren (paren {bracket}))", 7, 23);
+        assert("(paren (paren {bracket}))", 14, 22);
+
+        assert("(prev line\n ) (middle) ( \n next line)", 0, 12);
+        assert("(prev line\n ) (middle) ( \n next line)", 14, 21);
+        assert("(prev line\n ) (middle) ( \n next line)", 23, 36);
+    }
 }

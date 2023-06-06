@@ -64,7 +64,7 @@
       };
   in
     inp.parts.lib.mkFlake {inputs = inp;} {
-      imports = [inp.nci.flakeModule];
+      imports = [inp.nci.flakeModule inp.parts.flakeModules.easyOverlay];
       systems = [
         "x86_64-linux"
         "x86_64-darwin"
@@ -145,6 +145,10 @@
         packages.helix = makeOverridableHelix config.packages.helix-unwrapped {};
         packages.helix-dev = makeOverridableHelix config.packages.helix-unwrapped-dev {};
         packages.default = config.packages.helix;
+
+        overlayAttrs = {
+          inherit (config.packages) helix;
+        };
 
         devShells.default = config.nci.outputs."helix-project".devShell.overrideAttrs (old: {
           nativeBuildInputs =

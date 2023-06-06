@@ -580,7 +580,7 @@ pub fn dap_variables(cx: &mut Context) {
 
     let contents = Text::from(tui::text::Text::from(variables));
     let popup = Popup::new("dap-variables", contents);
-    cx.push_layer(Box::new(popup));
+    cx.replace_or_push_layer("dap-variables", popup);
 }
 
 pub fn dap_terminate(cx: &mut Context) {

@@ -12,7 +12,9 @@
 | `:buffer-next`, `:bn`, `:bnext` | Goto next buffer. |
 | `:buffer-previous`, `:bp`, `:bprev` | Goto previous buffer. |
 | `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
-| `:write!`, `:w!` | Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write some/path.txt) |
+| `:write!`, `:w!` | Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt) |
+| `:write-buffer-close`, `:wbc` | Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt) |
+| `:write-buffer-close!`, `:wbc!` | Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt) |
 | `:new`, `:n` | Create a new scratch buffer. |
 | `:format`, `:fmt` | Format the file using the LSP formatter. |
 | `:indent-style` | Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.) |
@@ -48,8 +50,8 @@
 | `:reload-all` | Discard changes and reload all documents from the source files. |
 | `:update`, `:u` | Write changes only if the file has been modified. |
 | `:lsp-workspace-command` | Open workspace command picker |
-| `:lsp-restart` | Restarts the Language Server that is in use by the current doc |
-| `:lsp-stop` | Stops the Language Server that is in use by the current doc |
+| `:lsp-restart` | Restarts the language servers used by the current doc |
+| `:lsp-stop` | Stops the language servers that are used by the current doc |
 | `:tree-sitter-scopes` | Display tree sitter scopes, primarily for theming and development. |
 | `:debug-start`, `:dbg` | Start a debug session from a given template with given parameters. |
 | `:debug-remote`, `:dbg-tcp` | Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters. |
@@ -78,3 +80,4 @@
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh` | Run a shell command |
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
+| `:clear-register` | Clear given register. If no argument is provided, clear all registers. |

@@ -48,4 +48,7 @@
 ((variable) @constant
  (#match? @constant "^[A-Z][A-Z_0-9]*$"))
 
-
+[
+	(param)
+	(mount_param)
+] @constant

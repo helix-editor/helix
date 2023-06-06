@@ -1,7 +1,7 @@
 use crate::{
     align_view,
     clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
+    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
@@ -354,6 +354,8 @@ pub struct LspConfig {
     pub display_inlay_hints: bool,
     /// Whether to enable snippet support
     pub snippets: bool,
+    /// Whether to include declaration in the goto reference query
+    pub goto_reference_include_declaration: bool,
 }
 
 impl Default for LspConfig {
@@ -365,6 +367,7 @@ impl Default for LspConfig {
             display_signature_help_docs: true,
             display_inlay_hints: false,
             snippets: true,
+            goto_reference_include_declaration: true,
         }
     }
 }
@@ -815,7 +818,7 @@ pub struct Editor {
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
-    pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
+    pub diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
     pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
@@ -871,7 +874,7 @@ pub struct Editor {
     /// times during rendering and should not be set by other functions.
     pub cursor_cache: Cell<Option<Option<Position>>>,
     /// When a new completion request is sent to the server old
-    /// unifinished request must be dropped. Each completion
+    /// unfinished request must be dropped. Each completion
     /// request is associated with a channel that cancels
     /// when the channel is dropped. That channel is stored
     /// here. When a new completion request is sent this
@@ -903,9 +906,14 @@ enum ThemeAction {
 }
 
 #[derive(Debug, Clone)]
-pub struct CompleteAction {
-    pub trigger_offset: usize,
-    pub changes: Vec<Change>,
+pub enum CompleteAction {
+    Applied {
+        trigger_offset: usize,
+        changes: Vec<Change>,
+    },
+    /// A savepoint of the currently selected completion. The savepoint
+    /// MUST be restored before sending any event to the LSP
+    Selected { savepoint: Arc<SavePoint> },
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -933,6 +941,7 @@ impl Editor {
         syn_loader: Arc<syntax::Loader>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
+        let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
 
@@ -952,7 +961,7 @@ impl Editor {
             macro_recording: None,
             macro_replaying: Vec::new(),
             theme: theme_loader.default(),
-            language_servers: helix_lsp::Registry::new(),
+            language_servers,
             diagnostics: BTreeMap::new(),
             diff_providers: DiffProviderRegistry::default(),
             debugger: None,
@@ -1084,60 +1093,75 @@ impl Editor {
         self._refresh();
     }
 
+    #[inline]
+    pub fn language_server_by_id(&self, language_server_id: usize) -> Option<&helix_lsp::Client> {
+        self.language_servers.get_by_id(language_server_id)
+    }
+
     /// Refreshes the language server for a given document
-    pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
-        self.launch_language_server(doc_id)
+    pub fn refresh_language_servers(&mut self, doc_id: DocumentId) -> Option<()> {
+        self.launch_language_servers(doc_id)
     }
 
     /// Launch a language server for a given document
-    fn launch_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
+    fn launch_language_servers(&mut self, doc_id: DocumentId) -> Option<()> {
         if !self.config().lsp.enable {
             return None;
         }
-
         // if doc doesn't have a URL it's a scratch buffer, ignore it
-        let doc = self.document(doc_id)?;
+        let doc = self.documents.get_mut(&doc_id)?;
+        let doc_url = doc.url()?;
         let (lang, path) = (doc.language.clone(), doc.path().cloned());
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
 
-        // try to find a language server based on the language name
-        let language_server = lang.as_ref().and_then(|language| {
+        // try to find language servers based on the language name
+        let language_servers = lang.as_ref().and_then(|language| {
             self.language_servers
                 .get(language, path.as_ref(), root_dirs, config.lsp.snippets)
                 .map_err(|e| {
                     log::error!(
-                        "Failed to initialize the LSP for `{}` {{ {} }}",
+                        "Failed to initialize the language servers for `{}` {{ {} }}",
                         language.scope(),
                         e
                     )
                 })
                 .ok()
-                .flatten()
         });
 
-        let doc = self.document_mut(doc_id)?;
-        let doc_url = doc.url()?;
+        if let Some(language_servers) = language_servers {
+            let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
-        if let Some(language_server) = language_server {
-            // only spawn a new lang server if the servers aren't the same
-            if Some(language_server.id()) != doc.language_server().map(|server| server.id()) {
-                if let Some(language_server) = doc.language_server() {
-                    tokio::spawn(language_server.text_document_did_close(doc.identifier()));
-                }
+            // only spawn new language servers if the servers aren't the same
 
-                let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
+            let doc_language_servers_not_in_registry =
+                doc.language_servers.iter().filter(|(name, doc_ls)| {
+                    language_servers
+                        .get(*name)
+                        .map_or(true, |ls| ls.id() != doc_ls.id())
+                });
 
+            for (_, language_server) in doc_language_servers_not_in_registry {
+                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+            }
+
+            let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
+                doc.language_servers
+                    .get(*name)
+                    .map_or(true, |doc_ls| ls.id() != doc_ls.id())
+            });
+
+            for (_, language_server) in language_servers_not_in_doc {
                 // TODO: this now races with on_init code if the init happens too quickly
                 tokio::spawn(language_server.text_document_did_open(
-                    doc_url,
+                    doc_url.clone(),
                     doc.version(),
                     doc.text(),
-                    language_id,
+                    language_id.clone(),
                 ));
-
-                doc.set_language_server(Some(language_server));
             }
+
+            doc.language_servers = language_servers;
         }
         Some(())
     }
@@ -1173,6 +1197,7 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
         view.sync_changes(doc);
+        doc.mark_as_focused();
 
         align_view(doc, view, Align::Center);
     }
@@ -1243,6 +1268,7 @@ impl Editor {
                 let view_id = view!(self).id;
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
+                doc.mark_as_focused();
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
@@ -1264,6 +1290,7 @@ impl Editor {
                 // initialize selection for view
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
+                doc.mark_as_focused();
             }
         }
 
@@ -1299,10 +1326,10 @@ impl Editor {
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
-        let (rope, encoding) = crate::document::from_reader(&mut stdin(), None)?;
+        let (rope, encoding, has_bom) = crate::document::from_reader(&mut stdin(), None)?;
         Ok(self.new_file_from_document(
             action,
-            Document::from(rope, Some(encoding), self.config.clone()),
+            Document::from(rope, Some((encoding, has_bom)), self.config.clone()),
         ))
     }
 
@@ -1327,7 +1354,7 @@ impl Editor {
             doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
             let id = self.new_document(doc);
-            let _ = self.launch_language_server(id);
+            let _ = self.launch_language_servers(id);
 
             id
         };
@@ -1357,7 +1384,7 @@ impl Editor {
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
 
-        if let Some(language_server) = doc.language_server() {
+        for language_server in doc.language_servers() {
             // TODO: track error
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
@@ -1414,6 +1441,7 @@ impl Editor {
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);
+            doc.mark_as_focused();
         }
 
         self._refresh();
@@ -1468,6 +1496,10 @@ impl Editor {
                 view.sync_changes(doc);
             }
         }
+
+        let view = view!(self, view_id);
+        let doc = doc_mut!(self, &view.doc);
+        doc.mark_as_focused();
     }
 
     pub fn focus_next(&mut self) {

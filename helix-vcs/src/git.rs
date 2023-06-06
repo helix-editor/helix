@@ -23,7 +23,7 @@ impl Git {
         // This path depends on the install location of git and therefore requires some overhead to lookup
         // This is basically only used on windows and has some overhead hence it's disabled on other platforms.
         // `gitoxide` doesn't use this as default
-        let config = gix::permissions::Config {
+        let config = gix::open::permissions::Config {
             system: true,
             git: true,
             user: true,
@@ -32,19 +32,24 @@ impl Git {
             git_binary: cfg!(windows),
         };
         // change options for config permissions without touching anything else
-        git_open_opts_map.reduced = git_open_opts_map.reduced.permissions(gix::Permissions {
+        git_open_opts_map.reduced = git_open_opts_map
+            .reduced
+            .permissions(gix::open::Permissions {
+                config,
+                ..gix::open::Permissions::default_for_level(gix::sec::Trust::Reduced)
+            });
+        git_open_opts_map.full = git_open_opts_map.full.permissions(gix::open::Permissions {
             config,
-            ..gix::Permissions::default_for_level(gix::sec::Trust::Reduced)
-        });
-        git_open_opts_map.full = git_open_opts_map.full.permissions(gix::Permissions {
-            config,
-            ..gix::Permissions::default_for_level(gix::sec::Trust::Full)
+            ..gix::open::Permissions::default_for_level(gix::sec::Trust::Full)
         });
 
-        let mut open_options = gix::discover::upwards::Options::default();
-        if let Some(ceiling_dir) = ceiling_dir {
-            open_options.ceiling_dirs = vec![ceiling_dir.to_owned()];
-        }
+        let open_options = gix::discover::upwards::Options {
+            ceiling_dirs: ceiling_dir
+                .map(|dir| vec![dir.to_owned()])
+                .unwrap_or_default(),
+            dot_git_only: true,
+            ..Default::default()
+        };
 
         let res = ThreadSafeRepository::discover_with_environment_overrides_opts(
             path,
