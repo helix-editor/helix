@@ -3,3 +3,9 @@ target
 helix-term/rustfmt.toml
 result
 runtime/grammars
+
+# Snapcraft artifacts
+*.snap
+/parts/
+/prime/
+/stage/

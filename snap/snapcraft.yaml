@@ -1,0 +1,51 @@
+name: hx
+base: core22
+adopt-info: helix
+license: MPL-2.0
+source-code: https://github.com/helix-editor/helix
+issues: https://github.com/helix-editor/helix/issues
+
+title: Helix
+website: https://helix-editor.com
+summary: Helix is a modal text editor inspired by Vim and Kakoune
+description: |
+  * Vim-like modal editing
+  * Multiple selections
+  * Built-in language server support
+  * Smart, incremental syntax highlighting and code editing via tree-sitter
+  * Written in Rust
+
+  New to Helix? Read the [docs](https://docs.helix-editor.com/)!
+  Coming from Vim? Read about the [differences](https://github.com/helix-editor/helix/wiki/Differences-from#vim)!
+  Want answers to common questions? Check the [FAQ](https://github.com/helix-editor/helix/wiki/FAQ)!
+
+
+grade: stable
+confinement: classic
+
+apps:
+  hx:
+    command: bin/hx
+
+parts:
+  helix:
+    source: .
+    plugin: rust
+    rust-path: [helix-term]
+
+    override-pull: |
+      craftctl default
+      craftctl set version="$(git describe --tags --always)"
+
+    build-packages: [cargo, rustc, g++]
+    build-attributes:
+      - enable-patchelf
+    override-build: |
+      craftctl default
+
+      # Strip executables
+      find . -type f -executable -exec strip -s {} \;
+
+      # Copy runtime to install dir
+      cp -r "${CRAFT_PART_BUILD}/runtime" "${CRAFT_PART_INSTALL}/bin/"
+      rm -r "${CRAFT_PART_INSTALL}/bin/runtime/grammars/sources"
