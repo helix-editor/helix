@@ -2592,3 +2592,16 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "blueprint"
 source = { git = "https://gitlab.com/gabmus/tree-sitter-blueprint", rev = "7f1a5df44861291d6951b6b2146a9fef4c226e14" }
+
+[[language]]
+name = "forth"
+scope = "source.forth"
+injection-regex = "forth"
+file-types = ["fs", "forth", "fth", "4th"]
+roots = []
+comment-token = "\\"
+indent = { tab-width = 3, unit = "   " }
+
+[[grammar]]
+name = "forth"
+source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "c6fae50a17763af827604627c0fa9e4604aaac0b" }

@@ -41,6 +41,7 @@
 | erlang | ✓ | ✓ |  | `erlang_ls` |
 | esdl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |
+| forth | ✓ |  |  |  |
 | fortran | ✓ |  | ✓ | `fortls` |
 | gdscript | ✓ | ✓ | ✓ |  |
 | git-attributes | ✓ |  |  |  |
