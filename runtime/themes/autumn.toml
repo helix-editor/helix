@@ -24,7 +24,7 @@
 "ui.statusline.select" = {fg = "my_gray7", bg = "my_black", modifiers = ["bold"]}
 "ui.cursor" = { bg = "my_white4", fg = "my_black" }
 "ui.cursor.primary" = { fg = "my_white", modifiers = ["reversed"] }
-"ui.cursor.match" = { fg = "my_white", modifiers = ["bold"], underline = { style = "double_line", color = "my_white" }, bg = "my_black"}
+"ui.cursor.match" = { fg = "my_white", modifiers = ["bold"], underline = { style = "double_line", color = "my_white" }, bg = "my_black"} 
 "ui.cursorline.primary" = { bg = "my_black" }
 "ui.cursorline.secondary" = { bg = "my_black" }
 "ui.highlight.frameline" = { bg = "#8b6904" }
@@ -68,7 +68,10 @@
 "diff.delta" = "my_gray5"
 "diff.minus" = "my_red"
 
-"diagnostic" = {underline = { style = "line", color = "my_gray5" }, bg = "my_black"}
+"diagnostic" = { underline = { style = "line", color = "my_gray5" }, bg = "my_black"}
+"diagnostic.hint" = { underline = { style = "line", color = "my_gray5" }, bg = "my_black"}
+"diagnostic.info" = { underline = { style = "line" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "my_yellow2" } }
 "diagnostic.error" = { underline = { style = "curl", color = "my_red" } }
 "ui.gutter" = { bg = "my_gray0" }
 "hint" = "my_gray6"
@@ -91,7 +94,7 @@ my_gray8      = "#e8e8e8" # Light Background
 my_white      = "#F3F2CC" # Default Foreground, Caret, Delimiters, Operators
 my_white2     = "#F3F2CC" # Variables, XML Tags, Markup Link Text, Markup Lists, Diff Deleted
 my_white3     = "#F3F2CC" # Classes, Markup Bold, Search Text Background
-my_white4     = "#7e7d6a" # Secondary cursors
+my_white4     = "#7e7d6a" # Cursor match
 my_turquoise  = "#86c1b9" # Support, Regular Expressions, Escape Characters
 my_turquoise2 = "#72a59e" # URL
 my_green      = "#99be70" # Strings, Inherited Class, Markup Code, Diff Inserted
