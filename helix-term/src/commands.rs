@@ -3990,14 +3990,39 @@ fn indent(cx: &mut Context) {
 
     // Indent by one level
     let indent = Tendril::from(doc.indent_style.as_str().repeat(count));
+    let mut blank_lines : Vec<usize> = Vec::with_capacity(lines.len());
+    let lines_len = lines.len();
 
-    let transaction = Transaction::change(
-        doc.text(),
-        lines.into_iter().filter_map(|line| {
+    // Find out how many lines are empty, this will be used to figure out if entire transaction will have an effect
+    for line in lines.iter() {
+        let is_blank = doc.text().line(line.clone()).chunks().all(|s| s.trim().is_empty());
+        if is_blank {
+            blank_lines.push(*line);
+        }
+    }
+
+    // Iterator which will store if the line is empty or not plus change
+    let change = lines.into_iter().map(|line| {
             let pos = doc.text().line_to_char(line);
-            Some((pos, pos, Some(indent.clone())))
-        }),
-    );
+            (blank_lines.contains(&line), (pos, pos, Some(indent.clone())))
+        });    
+
+    // If some lines are not empty, indent only non-empty
+    // If all the selected lines are blank, do the indentation anyway
+    let transaction = {
+        if blank_lines.len() != lines_len {
+            Transaction::change(
+                doc.text(),
+                change.filter_map(|line|{ if line.0 {None} else{ Some(line.1)}}),
+                )
+           
+        } else {
+            Transaction::change(
+                doc.text(),
+                change.filter_map(|line| Some(line.1)),
+                )
+        }
+    };
     doc.apply(&transaction, view.id);
 }
 
