@@ -2597,7 +2597,7 @@ source = { git = "https://gitlab.com/gabmus/tree-sitter-blueprint", rev = "7f1a5
 name = "forth"
 scope = "source.forth"
 injection-regex = "forth"
-file-types = ["fs", "forth", "fth", "f", "4th"]
+file-types = ["fs", "forth", "fth", "4th"]
 roots = []
 comment-token = "\\"
 indent = { tab-width = 3, unit = "   " }
