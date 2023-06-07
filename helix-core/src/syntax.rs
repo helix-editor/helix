@@ -48,6 +48,21 @@ where
         .transpose()
 }
 
+fn deserialize_tab_width<'de, D>(deserializer: D) -> Result<usize, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    usize::deserialize(deserializer).and_then(|n| {
+        if n > 0 && n <= 16 {
+            Ok(n)
+        } else {
+            Err(serde::de::Error::custom(
+                "tab width must be a value from 1 to 16 inclusive",
+            ))
+        }
+    })
+}
+
 pub fn deserialize_auto_pairs<'de, D>(deserializer: D) -> Result<Option<AutoPairs>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -198,8 +213,8 @@ impl<'de> Deserialize<'de> for FileType {
                     Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix({
                         // FIXME: use `suffix.replace('/', std::path::MAIN_SEPARATOR_STR)`
                         //        if MSRV is updated to 1.68
-                        let mut seperator = [0; 1];
-                        suffix.replace('/', std::path::MAIN_SEPARATOR.encode_utf8(&mut seperator))
+                        let mut separator = [0; 1];
+                        suffix.replace('/', std::path::MAIN_SEPARATOR.encode_utf8(&mut separator))
                     })),
                     Some((key, _value)) => Err(serde::de::Error::custom(format!(
                         "unknown key in `file-types` list: {}",
@@ -424,6 +439,7 @@ pub struct DebuggerQuirks {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentationConfiguration {
+    #[serde(deserialize_with = "deserialize_tab_width")]
     pub tab_width: usize,
     pub unit: String,
 }

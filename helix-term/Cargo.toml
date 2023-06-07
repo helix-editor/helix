@@ -31,7 +31,7 @@ helix-vcs = { version = "0.6", path = "../helix-vcs" }
 helix-loader = { version = "0.6", path = "../helix-loader" }
 
 anyhow = "1"
-once_cell = "1.17"
+once_cell = "1.18"
 
 which = "4.4"
 
@@ -68,7 +68,7 @@ grep-searcher = "0.1.11"
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
-libc = "0.2.144"
+libc = "0.2.145"
 
 [build-dependencies]
 helix-loader = { version = "0.6", path = "../helix-loader" }

@@ -7,6 +7,7 @@ awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
 bass = { command = "bass", args = ["--lsp"] }
 bicep-langserver = { command = "bicep-langserver" }
+cairo-language-server = { command = "cairo-language-server", args = [] }
 cl-lsp = { command = "cl-lsp", args = [ "stdio" ] }
 clangd = { command = "clangd" }
 clojure-lsp = { command = "clojure-lsp" }
@@ -76,6 +77,7 @@ vuels = { command = "vls" }
 wgsl_analyzer = { command = "wgsl_analyzer" }
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 zls = { command = "zls" }
+blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
 
 
 [language-server.lua-language-server]
@@ -647,9 +649,15 @@ comment-token = "#"
 language-servers = [ "nls" ]
 indent = { tab-width = 2, unit = "  " }
 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+
 [[grammar]]
 name = "nickel"
-source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "9d83db400b6c11260b9106f131f93ddda8131933" }
+source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "3a794388773f2424a97b2186828aa3fac4c66ce6" }
 
 [[language]]
 name = "nix"
@@ -670,7 +678,7 @@ source = { git = "https://github.com/nix-community/tree-sitter-nix", rev = "1b69
 name = "ruby"
 scope = "source.ruby"
 injection-regex = "ruby"
-file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec", "Rakefile", "Gemfile", "rabl", "jbuilder", "jb", "Podfile", "podspec"]
+file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec", "Rakefile", "Gemfile", "rabl", "jbuilder", "jb", "Podfile", "podspec", "Vagrantfile"]
 shebangs = ["ruby"]
 roots = []
 comment-token = "#"
@@ -685,7 +693,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "206c7
 name = "bash"
 scope = "source.bash"
 injection-regex = "(shell|bash|zsh|sh)"
-file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc", ".bash_aliases"]
+file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", ".zimrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc", ".bash_aliases"]
 shebangs = ["sh", "bash", "dash", "zsh"]
 roots = []
 comment-token = "#"
@@ -1034,7 +1042,7 @@ source = { git = "https://github.com/uyha/tree-sitter-cmake", rev = "6e51463ef30
 [[language]]
 name = "make"
 scope = "source.make"
-file-types = ["Makefile", "makefile", "mk"]
+file-types = ["Makefile", "makefile", "make", "mk"]
 injection-regex = "(make|makefile|Makefile|mk)"
 roots = []
 comment-token = "#"
@@ -1222,7 +1230,7 @@ language-servers = [ "metals" ]
 
 [[grammar]]
 name = "scala"
-source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "f6bbf35de41653b409ca9a3537a154f2b095ef64" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-scala", rev = "23d21310fe4ab4b3273e7a6810e781224a3e7fe1" }
 
 [[language]]
 name = "dockerfile"
@@ -1700,10 +1708,9 @@ file-types = ["cairo"]
 roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
-
-[[grammar]]
-name = "cairo"
-source = { git = "https://github.com/archseer/tree-sitter-cairo", rev = "b249662a1eefeb4d71c9529cdd971e74fecc10fe" }
+# auto-format = true
+grammar = "rust"
+language-servers = [ "cairo-language-server" ]
 
 [[language]]
 name = "cpon"
@@ -1797,7 +1804,7 @@ injection-regex = "verilog"
 
 [[grammar]]
 name = "verilog"
-source = { git = "https://github.com/andreytkachenko/tree-sitter-verilog", rev = "514d8d70593d29ef3ef667fa6b0e504ae7c977e3" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-verilog", rev = "4457145e795b363f072463e697dfe2f6973c9a52" }
 
 [[language]]
 name = "edoc"
@@ -2140,7 +2147,7 @@ source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d1
 name = "xml"
 scope = "source.xml"
 injection-regex = "xml"
-file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg", "xsd", "gml", "xaml"]
+file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg", "xsd", "gml", "xaml", "gir"]
 indent = { tab-width = 2, unit = "  " }
 roots = []
 
@@ -2562,7 +2569,7 @@ source = { git = "https://github.com/lefp/tree-sitter-opencl", rev = "8e1d24a570
 [[language]]
 name = "just"
 scope = "source.just"
-file-types = ["justfile", "Justfile", "just"]
+file-types = ["justfile", "Justfile", ".justfile", ".Justfile"]
 injection-regex = "just"
 roots = []
 comment-token = "#"
@@ -2571,6 +2578,33 @@ indent = { tab-width = 4, unit = "\t" }
 [[grammar]]
 name = "just"
 source = { git = "https://github.com/IndianBoy42/tree-sitter-just", rev = "8af0aab79854aaf25b620a52c39485849922f766" }
+
+[[language]]
+name = "blueprint"
+scope = "source.blueprint"
+injection-regex = "blueprint"
+file-types = ["blp"]
+roots = []
+comment-token = "//"
+language-servers = [ "blueprint-compiler" ]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "blueprint"
+source = { git = "https://gitlab.com/gabmus/tree-sitter-blueprint", rev = "7f1a5df44861291d6951b6b2146a9fef4c226e14" }
+
+[[language]]
+name = "forth"
+scope = "source.forth"
+injection-regex = "forth"
+file-types = ["fs", "forth", "fth", "4th"]
+roots = []
+comment-token = "\\"
+indent = { tab-width = 3, unit = "   " }
+
+[[grammar]]
+name = "forth"
+source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "c6fae50a17763af827604627c0fa9e4604aaac0b" }
 
 [[language]]
 name = "t32"

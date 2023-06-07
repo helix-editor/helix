@@ -1765,7 +1765,7 @@ fn set_option(
 
     *value = if value.is_string() {
         // JSON strings require quotes, so we can't .parse() directly
-        serde_json::Value::String(arg.to_string())
+        Value::String(arg.to_string())
     } else {
         arg.parse().map_err(field_error)?
     };
@@ -1790,8 +1790,8 @@ fn toggle_option(
         return Ok(());
     }
 
-    if args.len() != 1 {
-        anyhow::bail!("Bad arguments. Usage: `:toggle key`");
+    if args.is_empty() {
+        anyhow::bail!("Bad arguments. Usage: `:toggle key [values]?`");
     }
     let key = &args[0].to_lowercase();
 
@@ -1801,22 +1801,43 @@ fn toggle_option(
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
-    let Value::Bool(old_value) = *value else {
-        anyhow::bail!("Key `{}` is not toggle-able", key)
+    *value = match value {
+        Value::Bool(ref value) => {
+            ensure!(
+                args.len() == 1,
+                "Bad arguments. For boolean configurations use: `:toggle key`"
+            );
+            Value::Bool(!value)
+        }
+        Value::String(ref value) => {
+            ensure!(
+                args.len() > 2,
+                "Bad arguments. For string configurations use: `:toggle key val1 val2 ...`",
+            );
+
+            Value::String(
+                args[1..]
+                    .iter()
+                    .skip_while(|e| *e != value)
+                    .nth(1)
+                    .unwrap_or_else(|| &args[1])
+                    .to_string(),
+            )
+        }
+        Value::Null | Value::Object(_) | Value::Array(_) | Value::Number(_) => {
+            anyhow::bail!("Configuration {key} does not support toggle yet")
+        }
     };
 
-    let new_value = !old_value;
-    *value = Value::Bool(new_value);
-    // This unwrap should never fail because we only replace one boolean value
-    // with another, maintaining a valid json config
-    let config = serde_json::from_value(config).unwrap();
+    let status = format!("'{key}' is now set to {value}");
+    let config = serde_json::from_value(config)
+        .map_err(|_| anyhow::anyhow!("Could not parse field: `{:?}`", &args))?;
 
     cx.editor
         .config_events
         .0
         .send(ConfigEvent::Update(config))?;
-    cx.editor
-        .set_status(format!("Option `{}` is now set to `{}`", key, new_value));
+    cx.editor.set_status(status);
     Ok(())
 }
 
