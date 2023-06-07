@@ -24,7 +24,7 @@
 "ui.statusline.select" = {fg = "my_gray7", bg = "my_black", modifiers = ["bold"]}
 "ui.cursor" = { bg = "my_white4", fg = "my_black" }
 "ui.cursor.primary" = { fg = "my_white", modifiers = ["reversed"] }
-"ui.cursor.match" = { fg = "my_white", modifiers = ["bold"], underline = { style = "double_line", color = "my_white" }, bg = "my_black"} 
+"ui.cursor.match" = { fg = "my_white", modifiers = ["bold"], underline = { style = "double_line", color = "my_white" }, bg = "my_black"}
 "ui.cursorline.primary" = { bg = "my_black" }
 "ui.cursorline.secondary" = { bg = "my_black" }
 "ui.highlight.frameline" = { bg = "#8b6904" }
