@@ -462,12 +462,24 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let sep = &context.editor.config().statusline.separator;
+    let convert_style_from = |scope: &str| {
+        let mut style = context.editor.theme.get(scope);
+        style.fg = style.bg;
+        style.bg = context.editor.theme.get("ui.statusline").bg;
+        style
+    };
 
-    write(
-        context,
-        sep.to_string(),
-        Some(context.editor.theme.get("ui.statusline.separator")),
-    );
+    let seperator_style = if context.editor.config().color_modes {
+        match &context.editor.mode {
+            Mode::Insert => Some(convert_style_from("ui.statusline.insert")),
+            Mode::Select => Some(convert_style_from("ui.statusline.select")),
+            Mode::Normal => Some(convert_style_from("ui.statusline.normal")),
+        }
+    } else {
+        Some(context.editor.theme.get("ui.statusline.separator"))
+    };
+
+    write(context, sep.to_string(), seperator_style);
 }
 
 fn render_spacer<F>(context: &mut RenderContext, write: F)
