@@ -1,0 +1,110 @@
+# Author : Eric Correia <correia.eh@gmail.com>
+
+"attribute" = { fg = "green" }
+"comment" = { fg = "light-gray" }
+"constant" = { fg = "green" }
+"constant.numeric" = { fg = "gold" }
+"constant.builtin" = { fg = "gold" }
+"constant.builtin.boolean" = { fg = "green" }
+"constant.character.escape" = { fg = "orange" }
+"constructor" = { fg = "blue" }
+"function" = { fg = "blue" }
+"function.builtin" = { fg = "blue" }
+"function.macro" = { fg = "purple" }
+"keyword" = { fg = "purple" }
+"keyword.control" = { fg = "purple" }
+"keyword.control.import" = { fg = "purple" }
+"keyword.directive" = { fg = "purple" }
+"label" = { fg = "black" }
+"namespace" = { fg = "black" }
+"operator" = { fg = "black" }
+"keyword.operator" = { fg = "purple" }
+"special" = { fg = "black" }
+"string" = { fg = "green" }
+"type" = { fg = "cyan" }
+"variable.builtin" = { fg = "gold" }
+"variable.parameter" = { fg = "black" }
+"variable.other.member" = { fg = "orange" }
+
+"markup.heading" = { fg = "orange" }
+"markup.raw.inline" = { fg = "green" }
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "purple", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.list" = { fg = "orange" }
+"markup.quote" = { fg = "green" }
+"markup.link.url" = { fg = "cyan", modifiers = ["underlined"]}
+"markup.link.text" = { fg = "purple" }
+
+"diff.plus" = "green"
+"diff.delta" = "orange"
+"diff.minus" = "orange"
+
+"diagnostic.info".underline = { color = "blue", style = "curl" } 
+"diagnostic.hint".underline = { color = "green", style = "curl" } 
+"diagnostic.warning".underline = { color = "yellow", style = "curl" } 
+"diagnostic.error".underline = { color = "orange", style = "curl" } 
+"info" = { fg = "blue", modifiers = ["bold"] }
+"hint" = { fg = "green", modifiers = ["bold"] }
+"warning" = { fg = "yellow", modifiers = ["bold"] }
+"error" = { fg = "orange", modifiers = ["bold"] }
+
+"ui.background" = { bg = "white" }
+"ui.virtual" = { fg = "faint-gray" }
+"ui.virtual.indent-guide" = { fg = "faint-gray" }
+"ui.virtual.whitespace" = { fg = "light-gray" }
+"ui.virtual.ruler" = { bg = "gray" }
+"ui.virtual.inlay-hint" = { fg = "light-gray" }
+
+"ui.cursor" = { fg = "dark-blue", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "dark-blue", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "blue", modifiers = ["underlined"]}
+
+"ui.selection" = { bg = "faint-gray" }
+"ui.selection.primary" = { bg = "gray" }
+"ui.cursorline.primary" = { bg = "faint-gray" }
+
+"ui.highlight" = { bg = "white" }
+"ui.highlight.frameline" = { bg = "#97202a" }
+
+"ui.linenr" = { fg = "linenr" }
+"ui.linenr.selected" = { fg = "black" }
+
+"ui.statusline" = { fg = "black", bg = "gray" }
+"ui.statusline.inactive" = { fg = "white", bg = "light-black" }
+"ui.statusline.normal" = { fg = "white", bg = "blue" }
+"ui.statusline.insert" = { fg = "white", bg = "green" }
+"ui.statusline.select" = { fg = "white", bg = "purple" }
+
+"ui.text" = { fg = "black" }
+"ui.text.focus" = { fg = "white", bg = "light-gray", modifiers = ["bold"] }
+
+"ui.help" = { fg = "black", bg = "dark-gray" }
+"ui.popup" = { bg = "dark-gray" }
+"ui.window" = { fg = "dark-gray" }
+"ui.menu" = { fg = "black", bg = "gray" }
+"ui.menu.selected" = { fg = "white", bg = "blue" }
+"ui.menu.scroll" = { fg = "black", bg = "light-gray" }
+
+"ui.debug" = { fg = "orange" }
+
+[palette]
+
+yellow = "#dac18c"
+blue = "#5185b5"
+dark-blue = "#607bdb"
+orange = "#ca7667"
+purple = "#a160ac"
+green = "#739d60"
+gold = "#a8763c"
+cyan = "#4b80b2"
+white = "#fafafa"
+black = "#404248"
+
+gray = "#dcdcdd"
+dark-gray = "#ebebec"
+light-gray = "#a6a6aa"
+faint-gray = "#efefef"
+
+light-black = "#2e323a"
+linenr = "#4B5263"

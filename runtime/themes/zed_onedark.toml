@@ -1,7 +1,7 @@
-# Author : Eric Henry <correia.eh@gmail.com>
+# Author : Eric Correia <correia.eh@gmail.com>
 
 "attribute" = { fg = "yellow" }
-"comment" = { fg = "light-gray", modifiers = ["italic"] }
+"comment" = { fg = "light-gray" }
 "constant" = { fg = "yellow" }
 "constant.numeric" = { fg = "orange" }
 "constant.builtin" = { fg = "orange" }
