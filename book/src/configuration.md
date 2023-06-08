@@ -117,6 +117,7 @@ The following statusline elements can be configured:
 | `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
 | `version-control` | The current branch name or detached commit hash of the opened workspace |
+| `register` | The current selected register |
 
 ### `[editor.lsp]` Section
 
