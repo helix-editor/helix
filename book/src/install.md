@@ -161,7 +161,7 @@ Requirements:
 
 - The [Rust toolchain](https://www.rust-lang.org/tools/install)
 - The [Git version control system](https://git-scm.com/)
-- A c++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang
+- A C++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang
 
 If you are using the `musl-libc` standard library instead of `glibc` the following environment variable must be set during the build to ensure tree-sitter grammars can be loaded correctly:
 

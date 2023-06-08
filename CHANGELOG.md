@@ -1596,7 +1596,7 @@ to distinguish it in bug reports..
 
 - The `runtime/` directory is now properly detected on binary releases and
   on cargo run. `~/.config/helix/runtime` can also be used.
-- Registers can now be selected via " (for example `"ay`)
+- Registers can now be selected via " (for example, `"ay`)
 - Support for Nix files was added
 - Movement is now fully tested and matches Kakoune implementation
 - A per-file LSP symbol picker was added to space+s

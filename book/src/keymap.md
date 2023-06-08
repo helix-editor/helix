@@ -392,7 +392,7 @@ end = "no_op"
 
 Select mode echoes Normal mode, but changes any movements to extend
 selections rather than replace them. Goto motions are also changed to
-extend, so that `vgl` for example extends the selection to the end of
+extend, so that `vgl`, for example, extends the selection to the end of
 the line.
 
 Search is also affected. By default, `n` and `N` will remove the current
