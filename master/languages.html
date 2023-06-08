@@ -154,16 +154,14 @@ in <code>languages.toml</code> files.</p>
 <p>There are three possible locations for a <code>languages.toml</code> file:</p>
 <ol>
 <li>
-<p>In the Helix source code, this lives in the
+<p>In the Helix source code, which lives in the
 <a href="https://github.com/helix-editor/helix/blob/master/languages.toml">Helix repository</a>.
 It provides the default configurations for languages and language servers.</p>
 </li>
 <li>
 <p>In your <a href="./configuration.html">configuration directory</a>. This overrides values
-from the built-in language configuration. For example to disable
+from the built-in language configuration. For example, to disable
 auto-LSP-formatting in Rust:</p>
-</li>
-</ol>
 <pre><code class="language-toml"># in &lt;config_dir&gt;/helix/languages.toml
 
 [language-server.mylang-lsp]
@@ -173,11 +171,13 @@ command = &quot;mylang-lsp&quot;
 name = &quot;rust&quot;
 auto-format = false
 </code></pre>
-<ol start="3">
-<li>In a <code>.helix</code> folder in your project. Language configuration may also be
+</li>
+<li>
+<p>In a <code>.helix</code> folder in your project. Language configuration may also be
 overridden local to a project by creating a <code>languages.toml</code> file in a
 <code>.helix</code> folder. Its settings will be merged with the language configuration
-in the configuration directory and the built-in configuration.</li>
+in the configuration directory and the built-in configuration.</p>
+</li>
 </ol>
 <h2 id="language-configuration"><a class="header" href="#language-configuration">Language configuration</a></h2>
 <p>Each language is configured by adding a <code>[[language]]</code> section to a
@@ -261,7 +261,7 @@ languages = { typescript = [ { formatCommand =&quot;prettier --stdin-filepath ${
 </div>
 <p>A <code>format</code> sub-table within <code>config</code> can be used to pass extra formatting options to
 <a href="https://github.com/microsoft/language-server-protocol/blob/gh-pages/_specifications/specification-3-17.md#document-formatting-request--leftwards_arrow_with_hook">Document Formatting Requests</a>.
-For example with typescript:</p>
+For example, with typescript:</p>
 <pre><code class="language-toml">[language-server.typescript-language-server]
 # pass format options according to https://github.com/typescript-language-server/typescript-language-server#workspacedidchangeconfiguration omitting the &quot;[language].format.&quot; prefix.
 config = { format = { &quot;semicolons&quot; = &quot;insert&quot;, &quot;insertSpaceBeforeFunctionParenthesis&quot; = true } }
@@ -272,8 +272,8 @@ config = { format = { &quot;semicolons&quot; = &quot;insert&quot;, &quot;insertS
 <p>Different languages can use the same language server instance, e.g. <code>typescript-language-server</code> is used for javascript, jsx, tsx and typescript by default.</p>
 <p>In case multiple language servers are specified in the <code>language-servers</code> attribute of a <code>language</code>,
 it's often useful to only enable/disable certain language-server features for these language servers.</p>
-<p>For example <code>efm-lsp-prettier</code> of the previous example is used only with a formatting command <code>prettier</code>,
-so everything else should be handled by the <code>typescript-language-server</code> (which is configured by default)
+<p>As an example, <code>efm-lsp-prettier</code> of the previous example is used only with a formatting command <code>prettier</code>,
+so everything else should be handled by the <code>typescript-language-server</code> (which is configured by default).
 The language configuration for typescript could look like this:</p>
 <pre><code class="language-toml">[[language]]
 name = &quot;typescript&quot;
@@ -285,10 +285,10 @@ name = &quot;typescript&quot;
 language-servers = [ { name = &quot;typescript-language-server&quot;, except-features = [ &quot;format&quot; ] }, &quot;efm-lsp-prettier&quot; ]
 </code></pre>
 <p>Each requested LSP feature is prioritized in the order of the <code>language-servers</code> array.
-For example the first <code>goto-definition</code> supported language server (in this case <code>typescript-language-server</code>) will be taken for the relevant LSP request (command <code>goto_definition</code>).
+For example, the first <code>goto-definition</code> supported language server (in this case <code>typescript-language-server</code>) will be taken for the relevant LSP request (command <code>goto_definition</code>).
 The features <code>diagnostics</code>, <code>code-action</code>, <code>completion</code>, <code>document-symbols</code> and <code>workspace-symbols</code> are an exception to that rule, as they are working for all language servers at the same time and are merged together, if enabled for the language.
-If no <code>except-features</code> or <code>only-features</code> is given all features for the language server are enabled.
-If a language server itself doesn't support a feature the next language server array entry will be tried (and so on).</p>
+If no <code>except-features</code> or <code>only-features</code> is given, all features for the language server are enabled.
+If a language server itself doesn't support a feature, the next language server array entry will be tried (and so on).</p>
 <p>The list of supported features is:</p>
 <ul>
 <li><code>format</code></li>
