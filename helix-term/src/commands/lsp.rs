@@ -442,6 +442,15 @@ pub fn symbol_picker(cx: &mut Context) {
 
 pub fn workspace_symbol_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
+        .count()
+        == 0
+    {
+        cx.editor
+            .set_error("No configured language server supports workspace symbols");
+        return;
+    }
 
     let get_symbols = move |pattern: String, editor: &mut Editor| {
         let doc = doc!(editor);
