@@ -403,7 +403,13 @@ impl Default for StatusLineConfig {
                 E::FileModificationIndicator,
             ],
             center: vec![],
-            right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
+            right: vec![
+                E::Diagnostics,
+                E::Selections,
+                E::Register,
+                E::Position,
+                E::FileEncoding,
+            ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
         }
@@ -484,6 +490,9 @@ pub enum StatusLineElement {
 
     /// Current version control information
     VersionControl,
+
+    /// Indicator for selected register
+    Register,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
