@@ -1,7 +1,7 @@
 # Author : Eric Correia <correia.eh@gmail.com>
 
 "attribute" = { fg = "green" }
-"comment" = { fg = "light-gray" }
+"comment" = { fg = "light-gray", modifiers = ["italic"] }
 "constant" = { fg = "green" }
 "constant.numeric" = { fg = "gold" }
 "constant.builtin" = { fg = "gold" }
@@ -64,7 +64,7 @@
 "ui.selection.primary" = { bg = "gray" }
 "ui.cursorline.primary" = { bg = "faint-gray" }
 
-"ui.highlight" = { bg = "white" }
+"ui.highlight" = { bg = "gray" }
 "ui.highlight.frameline" = { bg = "#97202a" }
 
 "ui.linenr" = { fg = "linenr" }

@@ -1,7 +1,7 @@
 # Author : Eric Correia <correia.eh@gmail.com>
 
 "attribute" = { fg = "yellow" }
-"comment" = { fg = "light-gray" }
+"comment" = { fg = "light-gray", modifiers = ["italic"] }
 "constant" = { fg = "yellow" }
 "constant.numeric" = { fg = "orange" }
 "constant.builtin" = { fg = "orange" }
