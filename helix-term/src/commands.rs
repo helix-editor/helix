@@ -5363,7 +5363,7 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
         cx,
         prompt,
         Some('|'),
-        ui::completers::none,
+        ui::completers::filename,
         move |cx, input: &str, event: PromptEvent| {
             if event != PromptEvent::Validate {
                 return;
