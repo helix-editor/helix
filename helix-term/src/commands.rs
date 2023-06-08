@@ -2755,30 +2755,27 @@ fn last_picker(cx: &mut Context) {
     }));
 }
 
-// I inserts at the first nonwhitespace character of each line with a selection
-// If the line is empty, automatically indent
-fn insert_at_line_start(cx: &mut Context) {
-    insert_with_indent(cx, |cursor_line, cursor_line_start, text| {
-        find_first_non_whitespace_char(text.line(cursor_line))
-            .map(|ws_offset| ws_offset + cursor_line_start)
-            .unwrap_or(cursor_line_start)
-    });
+/// Fallback position to use for [`insert_with_indent`].
+enum IndentFallbackPos {
+    LineStart,
+    LineEnd,
 }
 
-// A inserts at the end of each line with a selection
-// If the line is empty, automatically indent
+// `I` inserts at the first nonwhitespace character of each line with a selection.
+// If the line is empty, automatically indent.
+fn insert_at_line_start(cx: &mut Context) {
+    insert_with_indent(cx, IndentFallbackPos::LineStart);
+}
+
+// `A` inserts at the end of each line with a selection.
+// If the line is empty, automatically indent.
 fn insert_at_line_end(cx: &mut Context) {
-    insert_with_indent(cx, |cursor_line, _, text| {
-        line_end_char_index(text, cursor_line)
-    });
+    insert_with_indent(cx, IndentFallbackPos::LineEnd);
 }
 
 // Enter insert mode and auto-indent the current line if it is empty.
 // If the line is not empty, move the cursor to the specified fallback position.
-fn insert_with_indent(
-    cx: &mut Context,
-    cursor_fallback: impl Fn(usize, usize, &RopeSlice) -> usize,
-) {
+fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
     enter_insert_mode(cx);
 
     let (view, doc) = current!(cx.editor);
@@ -2822,7 +2819,15 @@ fn insert_with_indent(
             (line_end_index, line_end_index, Some(indent.into()))
         } else {
             // move cursor to the fallback position
-            let pos = cursor_fallback(cursor_line, cursor_line_start, &text);
+            let pos = match cursor_fallback {
+                IndentFallbackPos::LineStart => {
+                    find_first_non_whitespace_char(text.line(cursor_line))
+                        .map(|ws_offset| ws_offset + cursor_line_start)
+                        .unwrap_or(cursor_line_start)
+                }
+                IndentFallbackPos::LineEnd => line_end_char_index(&text, cursor_line),
+            };
+
             ranges.push(range.put_cursor(text, pos + offs, cx.editor.mode == Mode::Select));
 
             (cursor_line_start, cursor_line_start, None)
