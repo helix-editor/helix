@@ -186,9 +186,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         ".gitignore".to_string(),
     ];
 
-    if let Some(user_dots) = &config.file_picker.include_hidden {
-        defined_dots.extend(user_dots.to_owned().into_iter());
-    }
+    defined_dots.extend(config.file_picker.include_hidden.to_owned());
 
     defined_dots
         .into_iter()
