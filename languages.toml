@@ -460,6 +460,12 @@ request = "attach"
 completion = [ "pid" ]
 args = { mode = "local", processId = "{0}" }
 
+[[language.debugger.templates]]
+name = "core"
+request = "launch"
+completion = [ { name = "binary", completion = "filename" }, { name = "core", completion = "filename" } ]
+args = { mode = "core", program = "{0}", coreFilePath = "{1}" }
+
 [[grammar]]
 name = "go"
 source = { git = "https://github.com/tree-sitter/tree-sitter-go", rev = "64457ea6b73ef5422ed1687178d4545c3e91334a" }
