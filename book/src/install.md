@@ -43,6 +43,8 @@ Download pre-built binaries from the
 [GitHub Releases page](https://github.com/helix-editor/helix/releases). Add the binary to your system's `$PATH` to use it from the command
 line.
 
+Better still, use the [asdf helix plugin](https://github.com/nklmilojevic/asdf-helix).
+
 ## Linux, macOS, Windows and OpenBSD packaging status
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
