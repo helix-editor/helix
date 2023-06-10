@@ -12,12 +12,12 @@ impl DiffHandle {
         )
     }
     async fn into_diff(self, handle: JoinHandle<()>) -> Vec<Hunk> {
-        let hunks = self.hunks;
+        let diff = self.diff;
         // dropping the channel terminates the task
         drop(self.channel);
         handle.await.unwrap();
-        let hunks = hunks.lock();
-        Vec::clone(&*hunks)
+        let diff = diff.lock();
+        Vec::clone(&diff.hunks)
     }
 }
 

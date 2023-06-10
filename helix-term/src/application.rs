@@ -25,31 +25,23 @@ use crate::{
     config::Config,
     job::Jobs,
     keymap::Keymaps,
-    ui::{self, overlay::overlayed},
+    ui::{self, overlay::overlaid},
 };
 
 use log::{debug, error, warn};
 use std::{
-    io::{stdin, stdout, Write},
+    collections::btree_map::Entry,
+    io::{stdin, stdout},
+    path::Path,
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use anyhow::{Context, Error};
 
-use crossterm::{
-    event::{
-        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent,
-    },
-    execute, terminal,
-    tty::IsTty,
-};
+use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
-use {
-    signal_hook::{consts::signal, low_level},
-    signal_hook_tokio::Signals,
-};
+use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
@@ -62,10 +54,12 @@ use tui::backend::CrosstermBackend;
 use tui::backend::TestBackend;
 
 #[cfg(not(feature = "integration"))]
-type Terminal = tui::terminal::Terminal<CrosstermBackend<std::io::Stdout>>;
+type TerminalBackend = CrosstermBackend<std::io::Stdout>;
 
 #[cfg(feature = "integration")]
-type Terminal = tui::terminal::Terminal<TestBackend>;
+type TerminalBackend = TestBackend;
+
+type Terminal = tui::terminal::Terminal<TerminalBackend>;
 
 pub struct Application {
     compositor: Compositor,
@@ -107,23 +101,6 @@ fn setup_integration_logging() {
         .apply();
 }
 
-fn restore_term() -> Result<(), Error> {
-    let mut stdout = stdout();
-    // reset cursor shape
-    write!(stdout, "\x1B[0 q")?;
-    // Ignore errors on disabling, this might trigger on windows if we call
-    // disable without calling enable previously
-    let _ = execute!(stdout, DisableMouseCapture);
-    execute!(
-        stdout,
-        DisableBracketedPaste,
-        DisableFocusChange,
-        terminal::LeaveAlternateScreen
-    )?;
-    terminal::disable_raw_mode()?;
-    Ok(())
-}
-
 impl Application {
     pub fn new(
         args: Args,
@@ -135,10 +112,9 @@ impl Application {
 
         use helix_view::editor::Action;
 
-        let theme_loader = std::sync::Arc::new(theme::Loader::new(
-            &helix_loader::config_dir(),
-            &helix_loader::runtime_dir(),
-        ));
+        let mut theme_parent_dirs = vec![helix_loader::config_dir()];
+        theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
+        let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
 
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
@@ -159,7 +135,7 @@ impl Application {
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout());
+        let backend = CrosstermBackend::new(stdout(), &config.editor);
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
@@ -184,7 +160,7 @@ impl Application {
         compositor.push(editor_view);
 
         if args.load_tutor {
-            let path = helix_loader::runtime_dir().join("tutor");
+            let path = helix_loader::runtime_file(Path::new("tutor"));
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None)?;
@@ -194,7 +170,7 @@ impl Application {
                 std::env::set_current_dir(first).context("set current dir")?;
                 editor.new_file(Action::VerticalSplit);
                 let picker = ui::file_picker(".".into(), &config.load().editor);
-                compositor.push(Box::new(overlayed(picker)));
+                compositor.push(Box::new(overlaid(picker)));
             } else {
                 let nr_of_files = args.files.len();
                 for (i, (file, pos)) in args.files.into_iter().enumerate() {
@@ -255,8 +231,14 @@ impl Application {
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
-        let signals = Signals::new([signal::SIGTSTP, signal::SIGCONT, signal::SIGUSR1])
-            .context("build signal handler")?;
+        let signals = Signals::new([
+            signal::SIGTSTP,
+            signal::SIGCONT,
+            signal::SIGUSR1,
+            signal::SIGTERM,
+            signal::SIGINT,
+        ])
+        .context("build signal handler")?;
 
         let app = Self {
             compositor,
@@ -341,11 +323,13 @@ impl Application {
             tokio::select! {
                 biased;
 
+                Some(signal) = self.signals.next() => {
+                    if !self.handle_signals(signal).await {
+                        return false;
+                    };
+                }
                 Some(event) = input_stream.next() => {
                     self.handle_terminal_events(event).await;
-                }
-                Some(signal) = self.signals.next() => {
-                    self.handle_signals(signal).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
@@ -386,6 +370,9 @@ impl Application {
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = *editor_config;
+                if let Err(err) = self.terminal.reconfigure(app_config.editor.clone().into()) {
+                    self.editor.set_error(err.to_string());
+                };
                 self.config.store(Arc::new(app_config));
             }
         }
@@ -418,20 +405,23 @@ impl Application {
 
     /// Refresh theme after config change
     fn refresh_theme(&mut self, config: &Config) -> Result<(), Error> {
-        if let Some(theme) = config.theme.clone() {
-            let true_color = self.true_color();
-            let theme = self
-                .theme_loader
-                .load(&theme)
-                .map_err(|err| anyhow::anyhow!("Failed to load theme `{}`: {}", theme, err))?;
+        let true_color = config.editor.true_color || crate::true_color();
+        let theme = config
+            .theme
+            .as_ref()
+            .and_then(|theme| {
+                self.theme_loader
+                    .load(theme)
+                    .map_err(|e| {
+                        log::warn!("failed to load theme `{}` - {}", theme, e);
+                        e
+                    })
+                    .ok()
+                    .filter(|theme| (true_color || theme.is_16_color()))
+            })
+            .unwrap_or_else(|| self.theme_loader.default_theme(true_color));
 
-            if true_color || theme.is_16_color() {
-                self.editor.set_theme(theme);
-            } else {
-                anyhow::bail!("theme requires truecolor support, which is not available")
-            }
-        }
-
+        self.editor.set_theme(theme);
         Ok(())
     }
 
@@ -441,6 +431,8 @@ impl Application {
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
             self.refresh_theme(&default_config)?;
+            self.terminal
+                .reconfigure(default_config.editor.clone().into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())
@@ -456,29 +448,56 @@ impl Application {
         }
     }
 
-    fn true_color(&self) -> bool {
-        self.config.load().editor.true_color || crate::true_color()
-    }
-
     #[cfg(windows)]
     // no signal handling available on windows
-    pub async fn handle_signals(&mut self, _signal: ()) {}
+    pub async fn handle_signals(&mut self, _signal: ()) -> bool {
+        true
+    }
 
     #[cfg(not(windows))]
-    pub async fn handle_signals(&mut self, signal: i32) {
+    pub async fn handle_signals(&mut self, signal: i32) -> bool {
         match signal {
             signal::SIGTSTP => {
-                // restore cursor
-                use helix_view::graphics::CursorKind;
-                self.terminal
-                    .backend_mut()
-                    .show_cursor(CursorKind::Block)
-                    .ok();
-                restore_term().unwrap();
-                low_level::emulate_default_handler(signal::SIGTSTP).unwrap();
+                self.restore_term().unwrap();
+
+                // SAFETY:
+                //
+                // - helix must have permissions to send signals to all processes in its signal
+                //   group, either by already having the requisite permission, or by having the
+                //   user's UID / EUID / SUID match that of the receiving process(es).
+                let res = unsafe {
+                    // A pid of 0 sends the signal to the entire process group, allowing the user to
+                    // regain control of their terminal if the editor was spawned under another process
+                    // (e.g. when running `git commit`).
+                    //
+                    // We have to send SIGSTOP (not SIGTSTP) to the entire process group, because,
+                    // as mentioned above, the terminal will get stuck if `helix` was spawned from
+                    // an external process and that process waits for `helix` to complete. This may
+                    // be an issue with signal-hook-tokio, but the author of signal-hook believes it
+                    // could be a tokio issue instead:
+                    // https://github.com/vorner/signal-hook/issues/132
+                    libc::kill(0, signal::SIGSTOP)
+                };
+
+                if res != 0 {
+                    let err = std::io::Error::last_os_error();
+                    eprintln!("{}", err);
+                    let res = err.raw_os_error().unwrap_or(1);
+                    std::process::exit(res);
+                }
             }
             signal::SIGCONT => {
-                self.claim_term().await.unwrap();
+                // Copy/Paste from same issue from neovim:
+                // https://github.com/neovim/neovim/issues/12322
+                // https://github.com/neovim/neovim/pull/13084
+                for retries in 1..=10 {
+                    match self.claim_term().await {
+                        Ok(()) => break,
+                        Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
+                        Err(_) => continue,
+                    }
+                }
+
                 // redraw the terminal
                 let area = self.terminal.size().expect("couldn't get terminal size");
                 self.compositor.resize(area);
@@ -490,8 +509,14 @@ impl Application {
                 self.refresh_config();
                 self.render().await;
             }
+            signal::SIGTERM | signal::SIGINT => {
+                self.restore_term().unwrap();
+                return false;
+            }
             _ => unreachable!(),
         }
+
+        true
     }
 
     pub async fn handle_idle_timeout(&mut self) {
@@ -556,7 +581,7 @@ impl Application {
             let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
             let id = doc.id();
             doc.detect_language(loader);
-            let _ = self.editor.refresh_language_server(id);
+            self.editor.refresh_language_servers(id);
         }
 
         // TODO: fix being overwritten by lsp
@@ -634,6 +659,11 @@ impl Application {
                 self.compositor
                     .handle_event(&Event::Resize(width, height), &mut cx)
             }
+            // Ignore keyboard release events.
+            CrosstermEvent::Key(crossterm::event::KeyEvent {
+                kind: crossterm::event::KeyEventKind::Release,
+                ..
+            }) => false,
             event => self.compositor.handle_event(&event.into(), &mut cx),
         };
 
@@ -648,6 +678,18 @@ impl Application {
         server_id: usize,
     ) {
         use helix_lsp::{Call, MethodCall, Notification};
+
+        macro_rules! language_server {
+            () => {
+                match self.editor.language_server_by_id(server_id) {
+                    Some(language_server) => language_server,
+                    None => {
+                        warn!("can't find language server with id `{}`", server_id);
+                        return;
+                    }
+                }
+            };
+        }
 
         match call {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
@@ -664,14 +706,7 @@ impl Application {
 
                 match notification {
                     Notification::Initialized => {
-                        let language_server =
-                            match self.editor.language_servers.get_by_id(server_id) {
-                                Some(language_server) => language_server,
-                                None => {
-                                    warn!("can't find language server with id `{}`", server_id);
-                                    return;
-                                }
-                            };
+                        let language_server = language_server!();
 
                         // Trigger a workspace/didChangeConfiguration notification after initialization.
                         // This might not be required by the spec but Neovim does this as well, so it's
@@ -680,9 +715,10 @@ impl Application {
                             tokio::spawn(language_server.did_change_configuration(config.clone()));
                         }
 
-                        let docs = self.editor.documents().filter(|doc| {
-                            doc.language_server().map(|server| server.id()) == Some(server_id)
-                        });
+                        let docs = self
+                            .editor
+                            .documents()
+                            .filter(|doc| doc.supports_language_server(server_id));
 
                         // trigger textDocument/didOpen for docs that are already open
                         for doc in docs {
@@ -702,7 +738,7 @@ impl Application {
                             ));
                         }
                     }
-                    Notification::PublishDiagnostics(mut params) => {
+                    Notification::PublishDiagnostics(params) => {
                         let path = match params.uri.to_file_path() {
                             Ok(path) => path,
                             Err(_) => {
@@ -710,7 +746,17 @@ impl Application {
                                 return;
                             }
                         };
-                        let doc = self.editor.document_by_path_mut(&path);
+                        let offset_encoding = language_server!().offset_encoding();
+                        let doc = self.editor.document_by_path_mut(&path).filter(|doc| {
+                            if let Some(version) = params.version {
+                                if version != doc.version() {
+                                    log::info!("Version ({version}) is out of date for {path:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
+                                    return false;
+                                }
+                            }
+
+                            true
+                        });
 
                         if let Some(doc) = doc {
                             let lang_conf = doc.language_config();
@@ -723,18 +769,11 @@ impl Application {
                                     use helix_core::diagnostic::{Diagnostic, Range, Severity::*};
                                     use lsp::DiagnosticSeverity;
 
-                                    let language_server = if let Some(language_server) = doc.language_server() {
-                                        language_server
-                                    } else {
-                                        log::warn!("Discarding diagnostic because language server is not initialized: {:?}", diagnostic);
-                                        return None;
-                                    };
-
                                     // TODO: convert inside server
                                     let start = if let Some(start) = lsp_pos_to_pos(
                                         text,
                                         diagnostic.range.start,
-                                        language_server.offset_encoding(),
+                                        offset_encoding,
                                     ) {
                                         start
                                     } else {
@@ -742,11 +781,9 @@ impl Application {
                                         return None;
                                     };
 
-                                    let end = if let Some(end) = lsp_pos_to_pos(
-                                        text,
-                                        diagnostic.range.end,
-                                        language_server.offset_encoding(),
-                                    ) {
+                                    let end = if let Some(end) =
+                                        lsp_pos_to_pos(text, diagnostic.range.end, offset_encoding)
+                                    {
                                         end
                                     } else {
                                         log::warn!("lsp position out of bounds - {:?}", diagnostic);
@@ -785,14 +822,19 @@ impl Application {
                                         None => None,
                                     };
 
-                                    let tags = if let Some(ref tags) = diagnostic.tags {
-                                        let new_tags = tags.iter().filter_map(|tag| {
-                                            match *tag {
-                                                lsp::DiagnosticTag::DEPRECATED => Some(DiagnosticTag::Deprecated),
-                                                lsp::DiagnosticTag::UNNECESSARY => Some(DiagnosticTag::Unnecessary),
-                                                _ => None
-                                            }
-                                        }).collect();
+                                    let tags = if let Some(tags) = &diagnostic.tags {
+                                        let new_tags = tags
+                                            .iter()
+                                            .filter_map(|tag| match *tag {
+                                                lsp::DiagnosticTag::DEPRECATED => {
+                                                    Some(DiagnosticTag::Deprecated)
+                                                }
+                                                lsp::DiagnosticTag::UNNECESSARY => {
+                                                    Some(DiagnosticTag::Unnecessary)
+                                                }
+                                                _ => None,
+                                            })
+                                            .collect();
 
                                         new_tags
                                     } else {
@@ -808,25 +850,40 @@ impl Application {
                                         tags,
                                         source: diagnostic.source.clone(),
                                         data: diagnostic.data.clone(),
+                                        language_server_id: server_id,
                                     })
                                 })
                                 .collect();
 
-                            doc.set_diagnostics(diagnostics);
+                            doc.replace_diagnostics(diagnostics, server_id);
                         }
 
-                        // Sort diagnostics first by severity and then by line numbers.
-                        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-                        params
+                        let mut diagnostics = params
                             .diagnostics
-                            .sort_unstable_by_key(|d| (d.severity, d.range.start));
+                            .into_iter()
+                            .map(|d| (d, server_id))
+                            .collect();
 
                         // Insert the original lsp::Diagnostics here because we may have no open document
                         // for diagnosic message and so we can't calculate the exact position.
                         // When using them later in the diagnostics picker, we calculate them on-demand.
-                        self.editor
-                            .diagnostics
-                            .insert(params.uri, params.diagnostics);
+                        match self.editor.diagnostics.entry(params.uri) {
+                            Entry::Occupied(o) => {
+                                let current_diagnostics = o.into_mut();
+                                // there may entries of other language servers, which is why we can't overwrite the whole entry
+                                current_diagnostics.retain(|(_, lsp_id)| *lsp_id != server_id);
+                                current_diagnostics.append(&mut diagnostics);
+                                // Sort diagnostics first by severity and then by line numbers.
+                                // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
+                                current_diagnostics
+                                    .sort_unstable_by_key(|(d, _)| (d.severity, d.range.start));
+                            }
+                            Entry::Vacant(v) => {
+                                diagnostics
+                                    .sort_unstable_by_key(|(d, _)| (d.severity, d.range.start));
+                                v.insert(diagnostics);
+                            }
+                        };
                     }
                     Notification::ShowMessage(params) => {
                         log::warn!("unhandled window/showMessage: {:?}", params);
@@ -923,24 +980,18 @@ impl Application {
                     Notification::Exit => {
                         self.editor.set_status("Language server exited");
 
-                        // Clear any diagnostics for documents with this server open.
-                        let urls: Vec<_> = self
-                            .editor
-                            .documents_mut()
-                            .filter_map(|doc| {
-                                if doc.language_server().map(|server| server.id())
-                                    == Some(server_id)
-                                {
-                                    doc.set_diagnostics(Vec::new());
-                                    doc.url()
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect();
+                        // LSPs may produce diagnostics for files that haven't been opened in helix,
+                        // we need to clear those and remove the entries from the list if this leads to
+                        // an empty diagnostic list for said files
+                        for diags in self.editor.diagnostics.values_mut() {
+                            diags.retain(|(_, lsp_id)| *lsp_id != server_id);
+                        }
 
-                        for url in urls {
-                            self.editor.diagnostics.remove(&url);
+                        self.editor.diagnostics.retain(|_, diags| !diags.is_empty());
+
+                        // Clear any diagnostics for documents with this server open.
+                        for doc in self.editor.documents_mut() {
+                            doc.clear_diagnostics(server_id);
                         }
 
                         // Remove the language server from the registry.
@@ -951,24 +1002,32 @@ impl Application {
             Call::MethodCall(helix_lsp::jsonrpc::MethodCall {
                 method, params, id, ..
             }) => {
-                let call = match MethodCall::parse(&method, params) {
-                    Ok(call) => call,
+                let reply = match MethodCall::parse(&method, params) {
                     Err(helix_lsp::Error::Unhandled) => {
-                        error!("Language Server: Method not found {}", method);
-                        return;
+                        error!(
+                            "Language Server: Method {} not found in request {}",
+                            method, id
+                        );
+                        Err(helix_lsp::jsonrpc::Error {
+                            code: helix_lsp::jsonrpc::ErrorCode::MethodNotFound,
+                            message: format!("Method not found: {}", method),
+                            data: None,
+                        })
                     }
                     Err(err) => {
                         log::error!(
-                            "received malformed method call from Language Server: {}: {}",
+                            "Language Server: Received malformed method call {} in request {}: {}",
                             method,
+                            id,
                             err
                         );
-                        return;
+                        Err(helix_lsp::jsonrpc::Error {
+                            code: helix_lsp::jsonrpc::ErrorCode::ParseError,
+                            message: format!("Malformed method call: {}", method),
+                            data: None,
+                        })
                     }
-                };
-
-                let reply = match call {
-                    MethodCall::WorkDoneProgressCreate(params) => {
+                    Ok(MethodCall::WorkDoneProgressCreate(params)) => {
                         self.lsp_progress.create(server_id, params.token);
 
                         let editor_view = self
@@ -982,46 +1041,38 @@ impl Application {
 
                         Ok(serde_json::Value::Null)
                     }
-                    MethodCall::ApplyWorkspaceEdit(params) => {
-                        apply_workspace_edit(
+                    Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
+                        let res = apply_workspace_edit(
                             &mut self.editor,
                             helix_lsp::OffsetEncoding::Utf8,
                             &params.edit,
                         );
 
                         Ok(json!(lsp::ApplyWorkspaceEditResponse {
-                            applied: true,
-                            failure_reason: None,
-                            failed_change: None,
+                            applied: res.is_ok(),
+                            failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
+                            failed_change: res
+                                .as_ref()
+                                .err()
+                                .map(|err| err.failed_change_idx as u32),
                         }))
                     }
-                    MethodCall::WorkspaceFolders => {
-                        let language_server =
-                            self.editor.language_servers.get_by_id(server_id).unwrap();
-
-                        Ok(json!(language_server.workspace_folders()))
+                    Ok(MethodCall::WorkspaceFolders) => {
+                        Ok(json!(&*language_server!().workspace_folders().await))
                     }
-                    MethodCall::WorkspaceConfiguration(params) => {
+                    Ok(MethodCall::WorkspaceConfiguration(params)) => {
+                        let language_server = language_server!();
                         let result: Vec<_> = params
                             .items
                             .iter()
                             .map(|item| {
-                                let mut config = match &item.scope_uri {
-                                    Some(scope) => {
-                                        let path = scope.to_file_path().ok()?;
-                                        let doc = self.editor.document_by_path(path)?;
-                                        doc.language_config()?.config.as_ref()?
-                                    }
-                                    None => self
-                                        .editor
-                                        .language_servers
-                                        .get_by_id(server_id)
-                                        .unwrap()
-                                        .config()?,
-                                };
+                                let mut config = language_server.config()?;
                                 if let Some(section) = item.section.as_ref() {
-                                    for part in section.split('.') {
-                                        config = config.get(part)?;
+                                    // for some reason some lsps send an empty string (observed in 'vscode-eslint-language-server')
+                                    if !section.is_empty() {
+                                        for part in section.split('.') {
+                                            config = config.get(part)?;
+                                        }
                                     }
                                 }
                                 Some(config)
@@ -1029,40 +1080,38 @@ impl Application {
                             .collect();
                         Ok(json!(result))
                     }
-                };
+                    Ok(MethodCall::RegisterCapability(_params)) => {
+                        log::warn!("Ignoring a client/registerCapability request because dynamic capability registration is not enabled. Please report this upstream to the language server");
+                        // Language Servers based on the `vscode-languageserver-node` library often send
+                        // client/registerCapability even though we do not enable dynamic registration
+                        // for any capabilities. We should send a MethodNotFound JSONRPC error in this
+                        // case but that rejects the registration promise in the server which causes an
+                        // exit. So we work around this by ignoring the request and sending back an OK
+                        // response.
 
-                let language_server = match self.editor.language_servers.get_by_id(server_id) {
-                    Some(language_server) => language_server,
-                    None => {
-                        warn!("can't find language server with id `{}`", server_id);
-                        return;
+                        Ok(serde_json::Value::Null)
                     }
                 };
 
-                tokio::spawn(language_server.reply(id, reply));
+                tokio::spawn(language_server!().reply(id, reply));
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }
     }
 
-    async fn claim_term(&mut self) -> Result<(), Error> {
+    async fn claim_term(&mut self) -> std::io::Result<()> {
+        let terminal_config = self.config.load().editor.clone().into();
+        self.terminal.claim(terminal_config)
+    }
+
+    fn restore_term(&mut self) -> std::io::Result<()> {
+        let terminal_config = self.config.load().editor.clone().into();
         use helix_view::graphics::CursorKind;
-        terminal::enable_raw_mode()?;
-        if self.terminal.cursor_kind() == CursorKind::Hidden {
-            self.terminal.backend_mut().hide_cursor().ok();
-        }
-        let mut stdout = stdout();
-        execute!(
-            stdout,
-            terminal::EnterAlternateScreen,
-            EnableBracketedPaste,
-            EnableFocusChange
-        )?;
-        execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
-        if self.config.load().editor.mouse {
-            execute!(stdout, EnableMouseCapture)?;
-        }
-        Ok(())
+        self.terminal
+            .backend_mut()
+            .show_cursor(CursorKind::Block)
+            .ok();
+        self.terminal.restore(terminal_config)
     }
 
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
@@ -1077,7 +1126,7 @@ impl Application {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`.
-            let _ = restore_term();
+            let _ = TerminalBackend::force_restore();
             hook(info);
         }));
 
@@ -1085,13 +1134,7 @@ impl Application {
 
         let close_errs = self.close().await;
 
-        // restore cursor
-        use helix_view::graphics::CursorKind;
-        self.terminal
-            .backend_mut()
-            .show_cursor(CursorKind::Block)
-            .ok();
-        restore_term()?;
+        self.restore_term()?;
 
         for err in close_errs {
             self.editor.exit_code = 1;

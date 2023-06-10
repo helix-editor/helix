@@ -10,7 +10,7 @@ use tokio::sync::Notify;
 use tokio::time::{timeout, timeout_at, Duration};
 
 use crate::diff::{
-    Event, RenderLock, ALGORITHM, DIFF_DEBOUNCE_TIME_ASYNC, DIFF_DEBOUNCE_TIME_SYNC,
+    DiffInner, Event, RenderLock, ALGORITHM, DIFF_DEBOUNCE_TIME_ASYNC, DIFF_DEBOUNCE_TIME_SYNC,
 };
 
 use super::line_cache::InternedRopeLines;
@@ -21,7 +21,7 @@ mod test;
 
 pub(super) struct DiffWorker {
     pub channel: UnboundedReceiver<Event>,
-    pub hunks: Arc<Mutex<Vec<Hunk>>>,
+    pub diff: Arc<Mutex<DiffInner>>,
     pub new_hunks: Vec<Hunk>,
     pub redraw_notify: Arc<Notify>,
     pub diff_finished_notify: Arc<Notify>,
@@ -46,7 +46,7 @@ impl DiffWorker {
         if let Some(lines) = interner.interned_lines() {
             self.perform_diff(lines);
         }
-        self.apply_hunks();
+        self.apply_hunks(interner.diff_base(), interner.doc());
         while let Some(event) = self.channel.recv().await {
             let (doc, diff_base) = self.accumulate_events(event).await;
 
@@ -70,15 +70,18 @@ impl DiffWorker {
             #[cfg(not(test))]
             tokio::task::block_in_place(process_accumulated_events);
 
-            self.apply_hunks();
+            self.apply_hunks(interner.diff_base(), interner.doc());
         }
     }
 
     /// update the hunks (used by the gutter) by replacing it with `self.new_hunks`.
     /// `self.new_hunks` is always empty after this function runs.
     /// To improve performance this function tries to reuse the allocation of the old diff previously stored in `self.line_diffs`
-    fn apply_hunks(&mut self) {
-        swap(&mut *self.hunks.lock(), &mut self.new_hunks);
+    fn apply_hunks(&mut self, diff_base: Rope, doc: Rope) {
+        let mut diff = self.diff.lock();
+        diff.diff_base = diff_base;
+        diff.doc = doc;
+        swap(&mut diff.hunks, &mut self.new_hunks);
         self.diff_finished_notify.notify_waiters();
         self.new_hunks.clear();
     }

@@ -3,7 +3,7 @@ use crossterm::event::EventStream;
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
-use helix_term::config::Config;
+use helix_term::config::{Config, ConfigLoadError};
 use std::path::PathBuf;
 
 fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
@@ -68,7 +68,7 @@ FLAGS:
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
     -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
-    --log                          Specifies a file to use for logging
+    --log <file>                   Specifies a file to use for logging
                                    (default file: {})
     -V, --version                  Prints version information
     --vsplit                       Splits all given files vertically into different windows
@@ -126,18 +126,19 @@ FLAGS:
 
     helix_loader::initialize_config_file(args.config_file.clone());
 
-    let config = match std::fs::read_to_string(helix_loader::config_file()) {
-        Ok(config) => toml::from_str(&config)
-            .map(helix_term::keymap::merge_keys)
-            .unwrap_or_else(|err| {
-                eprintln!("Bad config: {}", err);
-                eprintln!("Press <ENTER> to continue with default config");
-                use std::io::Read;
-                let _ = std::io::stdin().read(&mut []);
-                Config::default()
-            }),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
-        Err(err) => return Err(Error::new(err)),
+    let config = match Config::load_default() {
+        Ok(config) => config,
+        Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
+            Config::default()
+        }
+        Err(ConfigLoadError::Error(err)) => return Err(Error::new(err)),
+        Err(ConfigLoadError::BadConfig(err)) => {
+            eprintln!("Bad config: {}", err);
+            eprintln!("Press <ENTER> to continue with default config");
+            use std::io::Read;
+            let _ = std::io::stdin().read(&mut []);
+            Config::default()
+        }
     };
 
     let syn_loader_conf = helix_core::config::user_syntax_loader().unwrap_or_else(|err| {

@@ -1,0 +1,8 @@
+([(start_definition)(end_definition)] @keyword)
+([(lparen) (rparen)] @punctuation.bracket)
+((stack_effect_sep) @punctuation)
+((number) @constant)
+((word) @function)
+((comment) @comment)
+([(core)] @type)
+([(operator)] @operator)

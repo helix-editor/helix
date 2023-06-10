@@ -9,7 +9,7 @@ use std::sync::Arc;
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag};
 
 use helix_core::{
-    syntax::{self, HighlightEvent, Syntax},
+    syntax::{self, HighlightEvent, InjectionLanguageMarker, Syntax},
     Rope,
 };
 use helix_view::{
@@ -47,9 +47,11 @@ pub fn highlighted_code_block<'a>(
 
     let rope = Rope::from(text.as_ref());
     let syntax = config_loader
-        .language_configuration_for_injection_string(language)
+        .language_configuration_for_injection_string(&InjectionLanguageMarker::Name(
+            language.into(),
+        ))
         .and_then(|config| config.highlight_config(theme.scopes()))
-        .map(|config| Syntax::new(&rope, config, Arc::clone(&config_loader)));
+        .and_then(|config| Syntax::new(&rope, config, Arc::clone(&config_loader)));
 
     let syntax = match syntax {
         Some(s) => s,
@@ -342,13 +344,10 @@ impl Component for Markdown {
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let padding = 2;
-        if padding >= viewport.1 || padding >= viewport.0 {
-            return None;
-        }
         let contents = self.parse(None);
 
         // TODO: account for tab width
-        let max_text_width = (viewport.0 - padding).min(120);
+        let max_text_width = (viewport.0.saturating_sub(padding)).min(120);
         let (width, height) = crate::ui::text::required_size(&contents, max_text_width);
 
         Some((width + padding, height + padding))

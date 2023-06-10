@@ -8,7 +8,10 @@ Some suggestions to get started:
 - Help with packaging on various distributions needed!
 - To use print debugging to the [Helix log file][log-file], you must:
   * Print using `log::info!`, `warn!`, or `error!`. (`log::info!("helix!")`)
-  * Pass the appropriate verbosity level option for the desired log level. (`hx -v <file>` for info, more `v`s for higher severity inclusive)
+  * Pass the appropriate verbosity level option for the desired log level. (`hx -v <file>` for info, more `v`s for higher verbosity)
+  * Want to display the logs in a separate file instead of using the `:log-open` command in your compiled Helix editor? Start your debug version with `cargo run -- --log foo.log` and in a new terminal use `tail -f foo.log`
+- Instead of running a release version of Helix, while developing you may want to run in debug mode with `cargo run` which is way faster to compile
+- Looking for even faster compile times? Give a try to [mold](https://github.com/rui314/mold)
 - If your preferred language is missing, integrating a tree-sitter grammar for
     it and defining syntax highlight queries for it is straight forward and
     doesn't require much knowledge of the internals.
@@ -30,7 +33,13 @@ inside the project. We use [xtask][xtask] as an ad-hoc task runner and
 thus do not require any dependencies other than `cargo` (You don't have
 to `cargo install` anything either).
 
-# Integration tests
+# Testing
+
+## Unit tests/Documentation tests
+
+Run `cargo test --workspace` to run unit tests and documentation tests in all packages.
+
+## Integration tests
 
 Integration tests for helix-term can be run with `cargo integration-test`. Code
 contributors are strongly encouraged to write integration tests for their code.

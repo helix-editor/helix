@@ -15,14 +15,16 @@ helix-core = { version = "0.6", path = "../helix-core" }
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot", "macros"] }
 parking_lot = "0.12"
+arc-swap = { version = "1.6.0" }
 
-git-repository = { version = "0.32", default-features = false , optional = true }
+gix = { version = "0.44.1", default-features = false , optional = true }
 imara-diff = "0.1.5"
+anyhow = "1"
 
 log = "0.4"
 
 [features]
-git = ["git-repository"]
+git = ["gix"]
 
 [dev-dependencies]
-tempfile = "3.3"
+tempfile = "3.4"

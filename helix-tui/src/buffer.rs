@@ -433,6 +433,47 @@ impl Buffer {
         (x_offset as u16, y)
     }
 
+    pub fn set_spans_truncated(&mut self, x: u16, y: u16, spans: &Spans, width: u16) -> (u16, u16) {
+        // prevent panic if out of range
+        if !self.in_bounds(x, y) || width == 0 {
+            return (x, y);
+        }
+
+        let mut x_offset = x as usize;
+        let max_offset = min(self.area.right(), width.saturating_add(x));
+        let mut start_index = self.index_of(x, y);
+        let mut index = self.index_of(max_offset, y);
+
+        let content_width = spans.width();
+        let truncated = content_width > width as usize;
+        if truncated {
+            self.content[start_index].set_symbol("…");
+            start_index += 1;
+        } else {
+            index -= width as usize - content_width;
+        }
+        for span in spans.0.iter().rev() {
+            for s in span.content.graphemes(true).rev() {
+                let width = s.width();
+                if width == 0 {
+                    continue;
+                }
+                let start = index - width;
+                if start < start_index {
+                    break;
+                }
+                self.content[start].set_symbol(s);
+                self.content[start].set_style(span.style);
+                for i in start + 1..index {
+                    self.content[i].reset();
+                }
+                index -= width;
+                x_offset += width;
+            }
+        }
+        (x_offset as u16, y)
+    }
+
     pub fn set_spans(&mut self, x: u16, y: u16, spans: &Spans, width: u16) -> (u16, u16) {
         let mut remaining_width = width;
         let mut x = x;

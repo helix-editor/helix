@@ -1,22 +1,43 @@
-# Usage
+# Using Helix
 
-(Currently not fully documented, see the [keymappings](./keymap.md) list for more.)
+<!--toc:start-->
+- [Registers](#registers)
+  - [User-defined registers](#user-defined-registers)
+  - [Special registers](#special-registers)
+- [Surround](#surround)
+- [Selecting and manipulating text with textobjects](#selecting-and-manipulating-text-with-textobjects)
+- [Navigating using tree-sitter textobjects](#navigating-using-tree-sitter-textobjects)
+- [Moving the selection with syntax-aware motions](#moving-the-selection-with-syntax-aware-motions)
+<!--toc:end-->
 
-See [tutor](https://github.com/helix-editor/helix/blob/master/runtime/tutor) (accessible via `hx --tutor` or `:tutor`) for a vimtutor-like introduction.
+For a full interactive introduction to Helix, refer to the
+[tutor](https://github.com/helix-editor/helix/blob/master/runtime/tutor) which
+can be accessed via the command `hx --tutor` or `:tutor`.
+
+> 💡 Currently, not all functionality is fully documented, please refer to the
+> [key mappings](./keymap.md) list.
 
 ## Registers
 
-Vim-like registers can be used to yank and store text to be pasted later. Usage is similar, with `"` being used to select a register:
+In Helix, registers are storage locations for text and other data, such as the
+result of a search. Registers can be used to cut, copy, and paste text, similar
+to the clipboard in other text editors. Usage is similar to Vim, with `"` being
+used to select a register.
+
+### User-defined registers
+
+Helix allows you to create your own named registers for storing text, for
+example:
 
 - `"ay` - Yank the current selection to register `a`.
 - `"op` - Paste the text in register `o` after the selection.
 
-If there is a selected register before invoking a change or delete command, the selection will be stored in the register and the action will be carried out:
+If a register is selected before invoking a change or delete command, the selection will be stored in the register and the action will be carried out:
 
 - `"hc` - Store the selection in register `h` and then change it (delete and enter insert mode).
 - `"md` - Store the selection in register `m` and delete it.
 
-### Special Registers
+### Special registers
 
 | Register character | Contains              |
 | ---                | ---                   |
@@ -25,41 +46,90 @@ If there is a selected register before invoking a change or delete command, the 
 | `"`                | Last yanked text      |
 | `_`                | Black hole            |
 
-> There is no special register for copying to system clipboard, instead special commands and keybindings are provided. See the [keymap](keymap.md#space-mode) for the specifics.
-> The black hole register works as a no-op register, meaning no data will be written to / read from it.
+The system clipboard is not directly supported by a special register. Instead, special commands and keybindings are provided. Refer to the
+[key map](keymap.md#space-mode) for more details.
+
+The black hole register is a no-op register, meaning that no data will be read or written to it.
 
 ## Surround
 
-Functionality similar to [vim-surround](https://github.com/tpope/vim-surround) is built into
-helix. The keymappings have been inspired from [vim-sandwich](https://github.com/machakann/vim-sandwich):
+Helix includes built-in functionality similar to [vim-surround](https://github.com/tpope/vim-surround).
+The keymappings have been inspired from [vim-sandwich](https://github.com/machakann/vim-sandwich):
 
-![surround demo](https://user-images.githubusercontent.com/23398472/122865801-97073180-d344-11eb-8142-8f43809982c6.gif)
+![Surround demo](https://user-images.githubusercontent.com/23398472/122865801-97073180-d344-11eb-8142-8f43809982c6.gif)
 
-- `ms` - Add surround characters
-- `mr` - Replace surround characters
-- `md` - Delete surround characters
+| Key Sequence                      | Action                                  |
+| --------------------------------- | --------------------------------------- |
+| `ms<char>` (after selecting text) | Add surround characters to selection    |
+| `mr<char_to_replace><new_char>`   | Replace the closest surround characters |
+| `md<char_to_delete>`              | Delete the closest surround characters  |
 
-`ms` acts on a selection, so select the text first and use `ms<char>`. `mr` and `md` work
-on the closest pairs found and selections are not required; use counts to act in outer pairs.
+You can use counts to act on outer pairs.
 
-It can also act on multiple selections (yay!). For example, to change every occurrence of `(use)` to `[use]`:
+Surround can also act on multiple selections. For example, to change every occurrence of `(use)` to `[use]`:
 
-- `%` to select the whole file
-- `s` to split the selections on a search term
-- Input `use` and hit Enter
-- `mr([` to replace the parens with square brackets
+1. `%` to select the whole file
+2. `s` to split the selections on a search term
+3. Input `use` and hit Enter
+4. `mr([` to replace the parentheses with square brackets
 
-Multiple characters are currently not supported, but planned.
+Multiple characters are currently not supported, but planned for future release.
 
-## Syntax-tree Motions
+## Selecting and manipulating text with textobjects
 
-`Alt-p`, `Alt-o`, `Alt-i`, and `Alt-n` (or `Alt` and arrow keys) move the primary
-selection according to the selection's place in the syntax tree. Let's walk
-through an example to get familiar with them. Many languages have a syntax like
-so for function calls:
+In Helix, textobjects are a way to select, manipulate and operate on a piece of
+text in a structured way. They allow you to refer to blocks of text based on
+their structure or purpose, such as a word, sentence, paragraph, or even a
+function or block of code.
 
-```
-func(arg1, arg2, arg3)
+![Textobject demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
+![Textobject tree-sitter demo](https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif)
+
+- `ma` - Select around the object (`va` in Vim, `<alt-a>` in Kakoune)
+- `mi` - Select inside the object (`vi` in Vim, `<alt-i>` in Kakoune)
+
+| Key after `mi` or `ma` | Textobject selected      |
+| ---                    | ---                      |
+| `w`                    | Word                     |
+| `W`                    | WORD                     |
+| `p`                    | Paragraph                |
+| `(`, `[`, `'`, etc.    | Specified surround pairs |
+| `m`                    | The closest surround pair    |
+| `f`                    | Function                 |
+| `t`                    | Type (or Class)          |
+| `a`                    | Argument/parameter       |
+| `c`                    | Comment                  |
+| `T`                    | Test                     |
+| `g`                    | Change                   |
+
+> 💡 `f`, `t`, etc. need a tree-sitter grammar active for the current
+document and a special tree-sitter query file to work properly. [Only
+some grammars][lang-support] currently have the query file implemented.
+Contributions are welcome!
+
+## Navigating using tree-sitter textobjects
+
+Navigating between functions, classes, parameters, and other elements is
+possible using tree-sitter and textobject queries. For
+example to move to the next function use `]f`, to move to previous
+type use `[t`, and so on.
+
+![Tree-sitter-nav-demo][tree-sitter-nav-demo]
+
+For the full reference see the [unimpaired][unimpaired-keybinds] section of the key bind
+documentation.
+
+> 💡 This feature relies on tree-sitter textobjects
+> and requires the corresponding query file to work properly.
+
+## Moving the selection with syntax-aware motions
+
+`Alt-p`, `Alt-o`, `Alt-i`, and `Alt-n` (or `Alt` and arrow keys) allow you to move the 
+selection according to its location in the syntax tree. For example, many languages have the
+following syntax for function calls:
+
+```js
+func(arg1, arg2, arg3);
 ```
 
 A function call might be parsed by tree-sitter into a tree like the following.
@@ -93,77 +163,29 @@ a more intuitive tree format:
    └──────────┘  └──────────┘  └──────────┘
 ```
 
-Say we have a selection that wraps `arg1`. The selection is on the `arg1` leaf
-in the tree above.
+If you have a selection that wraps `arg1` (see the tree above), and you use
+`Alt-n`, it will select the next sibling in the syntax tree: `arg2`.
 
-```
+```js
+// before
 func([arg1], arg2, arg3)
+// after
+func(arg1, [arg2], arg3);
 ```
 
-Using `Alt-n` would select the next sibling in the syntax tree: `arg2`.
+Similarly, `Alt-o` will expand the selection to the parent node, in this case, the
+arguments node.
 
-```
-func(arg1, [arg2], arg3)
-```
-
-While `Alt-o` would expand the selection to the parent node. In the tree above we
-can see that we would select the `arguments` node.
-
-```
-func[(arg1, arg2, arg3)]
+```js
+func[(arg1, arg2, arg3)];
 ```
 
 There is also some nuanced behavior that prevents you from getting stuck on a
-node with no sibling. If we have a selection on `arg1`, `Alt-p` would bring us
-to the previous child node. Since `arg1` doesn't have a sibling to its left,
-though, we climb the syntax tree and then take the previous selection. So
-`Alt-p` will move the selection over to the "func" `identifier`.
-
-```
-[func](arg1, arg2, arg3)
-```
-
-## Textobjects
-
-![textobject-demo](https://user-images.githubusercontent.com/23398472/124231131-81a4bb00-db2d-11eb-9d10-8e577ca7b177.gif)
-![textobject-treesitter-demo](https://user-images.githubusercontent.com/23398472/132537398-2a2e0a54-582b-44ab-a77f-eb818942203d.gif)
-
-- `ma` - Select around the object (`va` in Vim, `<alt-a>` in Kakoune)
-- `mi` - Select inside the object (`vi` in Vim, `<alt-i>` in Kakoune)
-
-| Key after `mi` or `ma` | Textobject selected      |
-| ---                    | ---                      |
-| `w`                    | Word                     |
-| `W`                    | WORD                     |
-| `p`                    | Paragraph                |
-| `(`, `[`, `'`, etc     | Specified surround pairs |
-| `m`                    | Closest surround pair    |
-| `f`                    | Function                 |
-| `c`                    | Class                    |
-| `a`                    | Argument/parameter       |
-| `o`                    | Comment                  |
-| `t`                    | Test                     |
-| `g`                    | Change                   |
-
-> NOTE: `f`, `c`, etc need a tree-sitter grammar active for the current
-document and a special tree-sitter query file to work properly. [Only
-some grammars][lang-support] currently have the query file implemented.
-Contributions are welcome!
-
-## Tree-sitter Textobject Based Navigation
-
-Navigating between functions, classes, parameters, etc is made
-possible by leveraging tree-sitter and textobjects queries. For
-example to move to the next function use `]f`, to move to previous
-class use `[c`, and so on.
-
-![tree-sitter-nav-demo][tree-sitter-nav-demo]
-
-See the [unimpaired][unimpaired-keybinds] section of the keybind
-documentation for the full reference.
-
-> NOTE: This feature is dependent on tree-sitter based textobjects
-and therefore requires the corresponding query file to work properly.
+node with no sibling. When using `Alt-p` with a selection on `arg1`, the previous
+child node will be selected. In the event that `arg1` does not have a previous
+sibling, the selection will move up the syntax tree and select the previous
+element. As a result, using `Alt-p` with a selection on `arg1` will move the
+selection to the "func" `identifier`.
 
 [lang-support]: ./lang-support.md
 [unimpaired-keybinds]: ./keymap.md#unimpaired

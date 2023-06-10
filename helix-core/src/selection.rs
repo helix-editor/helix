@@ -21,14 +21,14 @@ use std::borrow::Cow;
 /// can be in any order, or even share the same position.
 ///
 /// The anchor and head positions use gap indexing, meaning
-/// that their indices represent the the gaps *between* `char`s
+/// that their indices represent the gaps *between* `char`s
 /// rather than the `char`s themselves. For example, 1
 /// represents the position between the first and second `char`.
 ///
-/// Below are some example `Range` configurations to better
-/// illustrate.  The anchor and head indices are show as
-/// "(anchor, head)", followed by example text with "[" and "]"
-/// inserted to represent the anchor and head positions:
+/// Below are some examples of `Range` configurations.
+/// The anchor and head indices are shown as "(anchor, head)"
+/// tuples, followed by example text with "[" and "]" symbols
+/// representing the anchor and head positions:
 ///
 /// - (0, 3): `[Som]e text`.
 /// - (3, 0): `]Som[e text`.
@@ -38,7 +38,7 @@ use std::borrow::Cow;
 /// Ranges are considered to be inclusive on the left and
 /// exclusive on the right, regardless of anchor-head ordering.
 /// This means, for example, that non-zero-width ranges that
-/// are directly adjecent, sharing an edge, do not overlap.
+/// are directly adjacent, sharing an edge, do not overlap.
 /// However, a zero-width range will overlap with the shared
 /// left-edge of another range.
 ///
@@ -522,7 +522,14 @@ impl Selection {
         self
     }
 
-    // Merges all ranges that are consecutive
+    /// Replaces ranges with one spanning from first to last range.
+    pub fn merge_ranges(self) -> Self {
+        let first = self.ranges.first().unwrap();
+        let last = self.ranges.last().unwrap();
+        Selection::new(smallvec![first.merge(*last)], 0)
+    }
+
+    /// Merges all ranges that are consecutive.
     pub fn merge_consecutive_ranges(mut self) -> Self {
         let mut primary = self.ranges[self.primary_index];
 
@@ -578,6 +585,16 @@ impl Selection {
         self.normalize()
     }
 
+    /// Takes a closure and maps each `Range` over the closure to multiple `Range`s.
+    pub fn transform_iter<F, I>(mut self, f: F) -> Self
+    where
+        F: FnMut(Range) -> I,
+        I: Iterator<Item = Range>,
+    {
+        self.ranges = self.ranges.into_iter().flat_map(f).collect();
+        self.normalize()
+    }
+
     // Ensures the selection adheres to the following invariants:
     // 1. All ranges are grapheme aligned.
     // 2. All ranges are at least 1 character wide, unless at the
@@ -615,11 +632,6 @@ impl Selection {
 
     // returns true if self ⊇ other
     pub fn contains(&self, other: &Selection) -> bool {
-        // can't contain other if it is larger
-        if other.len() > self.len() {
-            return false;
-        }
-
         let (mut iter_self, mut iter_other) = (self.iter(), other.iter());
         let (mut ele_self, mut ele_other) = (iter_self.next(), iter_other.next());
 
@@ -653,6 +665,15 @@ impl<'a> IntoIterator for &'a Selection {
 
     fn into_iter(self) -> std::slice::Iter<'a, Range> {
         self.ranges().iter()
+    }
+}
+
+impl IntoIterator for Selection {
+    type Item = Range;
+    type IntoIter = smallvec::IntoIter<[Range; 1]>;
+
+    fn into_iter(self) -> smallvec::IntoIter<[Range; 1]> {
+        self.ranges.into_iter()
     }
 }
 
@@ -1230,5 +1251,11 @@ mod test {
             vec!((3, 4), (7, 9))
         ));
         assert!(!contains(vec!((1, 1), (5, 6)), vec!((1, 6))));
+
+        // multiple ranges of other are all contained in some ranges of self,
+        assert!(contains(
+            vec!((1, 4), (7, 10)),
+            vec!((1, 2), (3, 4), (7, 9))
+        ));
     }
 }
