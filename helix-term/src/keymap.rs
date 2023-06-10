@@ -197,14 +197,14 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
     where
         M: serde::de::MapAccess<'de>,
     {
-        let mut label = "";
+        let mut label = String::from("");
         let mut command = None;
         let mut mapping = HashMap::new();
         let mut order = Vec::new();
 
-        while let Some(key) = map.next_key::<&str>()? {
-            match key {
-                "label" => label = map.next_value::<&str>()?,
+        while let Some(key) = map.next_key::<String>()? {
+            match &key as &str {
+                "label" => label = map.next_value::<String>()?,
                 "command" => command = Some(map.next_value::<MappableCommand>()?),
                 _ => {
                     let key_event = key.parse::<KeyEvent>().map_err(serde::de::Error::custom)?;
@@ -216,7 +216,7 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
         }
 
         match command {
-            None => Ok(KeyTrie::Node(KeyTrieNode::new(label, mapping, order))),
+            None => Ok(KeyTrie::Node(KeyTrieNode::new(label.as_str(), mapping, order))),
             Some(_command) if !order.is_empty() => {
                 Err(serde::de::Error::custom("ambiguous mapping: 'command' is only valid with 'label', but I found other keys"))
             }
