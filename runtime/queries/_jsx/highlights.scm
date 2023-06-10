@@ -42,11 +42,14 @@
 ; Handle attribute delimiter
 (jsx_attribute "=" @punctuation.delimiter)
 
-; Highlight brackets differently
+; <Component>
 (jsx_opening_element ["<" ">"] @punctuation.bracket)
 
-; Highlight brackets differently
+; </Component>
 (jsx_closing_element ["<" "/" ">"] @punctuation.bracket)
 
-; Highlight brackets differently
+; <Component />
 (jsx_self_closing_element ["<" "/" ">"] @punctuation.bracket)
+
+; <> ... </>
+(jsx_fragment ["<" "/" ">"] @punctuation.bracket)
