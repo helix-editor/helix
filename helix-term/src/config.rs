@@ -187,21 +187,27 @@ mod tests {
             b = { label = "buffer", b = "buffer_picker", n = "goto_next_buffer" }
         "#;
 
+        let mut keys = keymap::default();
+        merge_keys(
+            &mut keys,
+            hashmap! {
+                Mode::Normal => Keymap::new(keymap!({ "Normal mode"
+                    "f" => { ""
+                        "f" => file_picker,
+                        "c" => wclose,
+                    },
+                    "b" => { "buffer"
+                        "b" => buffer_picker,
+                        "n" => goto_next_buffer,
+                    },
+                })),
+            },
+        );
+
         assert_eq!(
-            toml::from_str::<Config>(sample_keymaps).unwrap(),
+            Config::load_test(sample_keymaps),
             Config {
-                keys: hashmap! {
-                    Mode::Normal => Keymap::new(keymap!({ "Normal mode"
-                        "f" => { ""
-                            "f" => file_picker,
-                            "c" => wclose,
-                        },
-                        "b" => { "buffer"
-                            "b" => buffer_picker,
-                            "n" => goto_next_buffer,
-                        },
-                    })),
-                },
+                keys,
                 ..Default::default()
             }
         );
@@ -221,7 +227,7 @@ mod tests {
             c = ":buffer-close" 
         "#;
 
-        let config = toml::from_str::<Config>(sample_keymaps).unwrap();
+        let config = Config::load_test(sample_keymaps);
 
         let tree = config.keys.get(&Mode::Normal).unwrap().root();
 
