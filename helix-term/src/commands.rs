@@ -2315,10 +2315,27 @@ enum Operation {
     Change,
 }
 
+fn begin_by_a_whole_line(selection: &Selection, text: &Rope) -> bool {
+    if selection.ranges().len() == 1 {
+        let range = selection.ranges()[0];
+        // If at least a full line is selected (strange require 2).
+        if range.slice(text.slice(..)).len_lines() >= 2 {
+            // If in the begin of the selection is at the begining of a line.
+            let (start_line, _) = range.line_range(text.slice(..));
+            let start = text.line_to_char(start_line);
+            if start == range.anchor {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn delete_selection_impl(cx: &mut Context, op: Operation) {
     let (view, doc) = current!(cx.editor);
 
     let selection = doc.selection(view.id);
+    let begin_by_a_whole_line = begin_by_a_whole_line(selection, doc.text());
 
     if cx.register != Some('_') {
         // first yank the selection
@@ -2339,7 +2356,11 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
             exit_select_mode(cx);
         }
         Operation::Change => {
-            enter_insert_mode(cx);
+            if begin_by_a_whole_line {
+                open_above(cx);
+            } else {
+                enter_insert_mode(cx);
+            }
         }
     }
 }
