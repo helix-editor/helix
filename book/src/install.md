@@ -51,16 +51,6 @@ line.
 
 The following third party repositories are available:
 
-### Ubuntu
-
-Add the `PPA` for Helix:
-
-```sh
-sudo add-apt-repository ppa:maveonair/helix-editor
-sudo apt update
-sudo apt install helix
-```
-
 ### Fedora/RHEL
 
 Enable the `COPR` repository for Helix:
@@ -113,7 +103,7 @@ Download the official Helix AppImage from the [latest releases](https://github.c
 chmod +x helix-*.AppImage # change permission for executable mode
 ./helix-*.AppImage # run helix
 ```
- 
+
 ## macOS
 
 ### Homebrew Core
@@ -207,7 +197,7 @@ Or, create a symlink in `~/.config/helix` that links to the source code director
 ln -Ts $PWD/runtime ~/.config/helix/runtime
 ```
 
-If the above command fails to create a symbolic link because the file exists either move `~/.config/helix/runtime` to a new location or delete it, then run the symlink command above again. 
+If the above command fails to create a symbolic link because the file exists either move `~/.config/helix/runtime` to a new location or delete it, then run the symlink command above again.
 
 #### Windows
 
