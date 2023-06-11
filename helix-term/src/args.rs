@@ -3,6 +3,18 @@ use helix_core::Position;
 use helix_view::tree::Layout;
 use std::path::{Path, PathBuf};
 
+pub enum GrammarInput {
+    Fetch(Vec<String>),
+    Build(Vec<String>),
+    None,
+}
+
+impl Default for GrammarInput {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 #[derive(Default)]
 pub struct Args {
     pub display_help: bool,
@@ -10,8 +22,7 @@ pub struct Args {
     pub health: bool,
     pub health_arg: Option<String>,
     pub load_tutor: bool,
-    pub fetch_grammars: bool,
-    pub build_grammars: bool,
+    pub grammar_input: GrammarInput,
     pub split: Option<Layout>,
     pub verbosity: u64,
     pub log_file: Option<PathBuf>,
@@ -45,11 +56,15 @@ impl Args {
                     args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));
                 }
                 "-g" | "--grammar" => match argv.next().as_deref() {
-                    Some("fetch") => args.fetch_grammars = true,
-                    Some("build") => args.build_grammars = true,
-                    _ => {
-                        anyhow::bail!("--grammar must be followed by either 'fetch' or 'build'")
+                    Some("fetch") => {
+                        args.grammar_input = GrammarInput::Fetch(argv.collect());
+                        return Ok(args);
                     }
+                    Some("build") => {
+                        args.grammar_input = GrammarInput::Build(argv.collect());
+                        return Ok(args);
+                    }
+                    _ => anyhow::bail!("--grammar must be followed by either 'fetch' or 'build'"),
                 },
                 "-c" | "--config" => match argv.next().as_deref() {
                     Some(path) => args.config_file = Some(path.into()),

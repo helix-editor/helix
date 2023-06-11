@@ -2,7 +2,7 @@ use anyhow::{Context, Error, Result};
 use crossterm::event::EventStream;
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
-use helix_term::args::Args;
+use helix_term::args::{Args, GrammarInput};
 use helix_term::config::{Config, ConfigLoadError};
 use std::path::PathBuf;
 
@@ -65,7 +65,9 @@ FLAGS:
     --health [CATEGORY]            Checks for potential errors in editor setup
                                    CATEGORY can be a language or one of 'clipboard', 'languages'
                                    or 'all'. 'all' is the default if not specified.
-    -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
+    -g, --grammar {{fetch|build}} [..languages]    
+                                   Fetches or builds tree-sitter grammars listed in languages.toml. 
+                                   Can be followed by a list of language names to only fetch or build those.
     -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
     --log <file>                   Specifies a file to use for logging
@@ -106,14 +108,16 @@ FLAGS:
         std::process::exit(0);
     }
 
-    if args.fetch_grammars {
-        helix_loader::grammar::fetch_grammars()?;
-        return Ok(0);
-    }
-
-    if args.build_grammars {
-        helix_loader::grammar::build_grammars(None)?;
-        return Ok(0);
+    match args.grammar_input {
+        GrammarInput::Fetch(v) => {
+            helix_loader::grammar::fetch_grammars(&v)?;
+            return Ok(0);
+        }
+        GrammarInput::Build(v) => {
+            helix_loader::grammar::build_grammars(None, &v)?;
+            return Ok(0);
+        }
+        GrammarInput::None => (),
     }
 
     let logpath = args.log_file.as_ref().cloned().unwrap_or(logpath);

@@ -5,5 +5,5 @@ use helix_loader::grammar::fetch_grammars;
 // compilation time. This is not meant to be run manually.
 
 fn main() -> Result<()> {
-    fetch_grammars()
+    fetch_grammars(&[])
 }
