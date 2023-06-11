@@ -7,24 +7,24 @@ in `languages.toml` files.
 
 There are three possible locations for a `languages.toml` file:
 
-1. In the Helix source code, this lives in the
+1. In the Helix source code, which lives in the
    [Helix repository](https://github.com/helix-editor/helix/blob/master/languages.toml).
    It provides the default configurations for languages and language servers.
 
 2. In your [configuration directory](./configuration.md). This overrides values
-   from the built-in language configuration. For example to disable
+   from the built-in language configuration. For example, to disable
    auto-LSP-formatting in Rust:
 
-```toml
-# in <config_dir>/helix/languages.toml
+   ```toml
+   # in <config_dir>/helix/languages.toml
 
-[language-server.mylang-lsp]
-command = "mylang-lsp"
+   [language-server.mylang-lsp]
+   command = "mylang-lsp"
 
-[[language]]
-name = "rust"
-auto-format = false
-```
+   [[language]]
+   name = "rust"
+   auto-format = false
+   ```
 
 3. In a `.helix` folder in your project. Language configuration may also be
    overridden local to a project by creating a `languages.toml` file in a
@@ -128,7 +128,7 @@ These are the available options for a language server.
 
 A `format` sub-table within `config` can be used to pass extra formatting options to
 [Document Formatting Requests](https://github.com/microsoft/language-server-protocol/blob/gh-pages/_specifications/specification-3-17.md#document-formatting-request--leftwards_arrow_with_hook).
-For example with typescript:
+For example, with typescript:
 
 ```toml
 [language-server.typescript-language-server]
@@ -147,8 +147,8 @@ Different languages can use the same language server instance, e.g. `typescript-
 In case multiple language servers are specified in the `language-servers` attribute of a `language`,
 it's often useful to only enable/disable certain language-server features for these language servers.
 
-For example `efm-lsp-prettier` of the previous example is used only with a formatting command `prettier`,
-so everything else should be handled by the `typescript-language-server` (which is configured by default)
+As an example, `efm-lsp-prettier` of the previous example is used only with a formatting command `prettier`,
+so everything else should be handled by the `typescript-language-server` (which is configured by default).
 The language configuration for typescript could look like this:
 
 ```toml
@@ -166,10 +166,10 @@ language-servers = [ { name = "typescript-language-server", except-features = [ 
 ```
 
 Each requested LSP feature is prioritized in the order of the `language-servers` array.
-For example the first `goto-definition` supported language server (in this case `typescript-language-server`) will be taken for the relevant LSP request (command `goto_definition`).
+For example, the first `goto-definition` supported language server (in this case `typescript-language-server`) will be taken for the relevant LSP request (command `goto_definition`).
 The features `diagnostics`, `code-action`, `completion`, `document-symbols` and `workspace-symbols` are an exception to that rule, as they are working for all language servers at the same time and are merged together, if enabled for the language.
-If no `except-features` or `only-features` is given all features for the language server are enabled.
-If a language server itself doesn't support a feature the next language server array entry will be tried (and so on).
+If no `except-features` or `only-features` is given, all features for the language server are enabled.
+If a language server itself doesn't support a feature, the next language server array entry will be tried (and so on).
 
 The list of supported features is:
 

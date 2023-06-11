@@ -110,6 +110,7 @@ impl Completion {
         start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
+        let preview_completion_insert = editor.config().preview_completion_insert;
         let replace_mode = editor.config().completion_replace;
         // Sort completion items according to their preselect status (given by the LSP server)
         items.sort_by_key(|item| !item.item.preselect.unwrap_or(false));
@@ -230,7 +231,7 @@ impl Completion {
 
             match event {
                 PromptEvent::Abort => {}
-                PromptEvent::Update => {
+                PromptEvent::Update if preview_completion_insert => {
                     // Update creates "ghost" transactions which are not sent to the
                     // lsp server to avoid messing up re-requesting completions. Once a
                     // completion has been selected (with tab, c-n or c-p) it's always accepted whenever anything
@@ -263,6 +264,7 @@ impl Completion {
                     );
                     doc.apply_temporary(&transaction, view.id);
                 }
+                PromptEvent::Update => {}
                 PromptEvent::Validate => {
                     if let Some(CompleteAction::Selected { savepoint }) =
                         editor.last_completion.take()
