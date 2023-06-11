@@ -268,16 +268,15 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
         }
     };
 
-    // TODO multiple language servers
-    probe_protocol(
-        "language server",
-        lang.language_servers.first().and_then(|ls| {
+    for ls in &lang.language_servers {
+        probe_protocol(
+            "language server",
             syn_loader_conf
                 .language_server
                 .get(&ls.name)
-                .map(|config| config.command.clone())
-        }),
-    )?;
+                .map(|config| config.command.clone()),
+        )?;
+    }
 
     probe_protocol(
         "debug adapter",
