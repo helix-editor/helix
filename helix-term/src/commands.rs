@@ -2316,8 +2316,7 @@ enum Operation {
 }
 
 fn begin_by_a_whole_line(selection: &Selection, text: &Rope) -> bool {
-    if selection.ranges().len() == 1 {
-        let range = selection.ranges()[0];
+    for range in selection.ranges() {
         // If at least a full line is selected (strange require 2).
         if range.slice(text.slice(..)).len_lines() >= 2 {
             // If in the begin of the selection is at the begining of a line.
