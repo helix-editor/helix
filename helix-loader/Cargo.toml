@@ -21,6 +21,7 @@ etcetera = "0.8"
 tree-sitter = "0.20"
 once_cell = "1.18"
 log = "0.4"
+which = "4.4"
 
 # TODO: these two should be on !wasm32 only
 
