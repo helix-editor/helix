@@ -1167,6 +1167,7 @@ dependencies = [
  "threadpool",
  "toml",
  "tree-sitter",
+ "which",
 ]
 
 [[package]]
