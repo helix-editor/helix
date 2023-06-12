@@ -2325,7 +2325,7 @@ fn only_whole_lines(selection: &Selection, text: &Rope) -> bool {
         let (start_line, end_line) = range.line_range(text.slice(..));
         let start = text.line_to_char(start_line);
         let end = text.line_to_char((end_line + 1).min(text.len_lines()));
-        start == range.anchor && end == range.head
+        start == range.from() && end == range.to()
     })
 }
 
