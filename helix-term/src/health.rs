@@ -193,20 +193,17 @@ pub fn languages_all() -> std::io::Result<()> {
         match cmds.len() {
             0 => column("None", Color::Yellow),
             1 => check_binary(cmds.get(0).cloned()),
-            _ => {
-                let mut checks = cmds
-                    .iter()
-                    .map(|cmd| which::which(cmd).is_ok())
-                    .collect::<Vec<bool>>();
-                checks.sort_unstable();
-                checks.dedup();
-
-                if checks.len() == 2 {
-                    column("- Some", Color::Yellow);
-                } else if checks[0] {
-                    column("✓ All", Color::Green);
-                } else {
-                    column("✘ None", Color::Red);
+            n_configured => {
+                let n_available = cmds.iter().filter_map(|cmd| which::which(cmd).ok()).count();
+                match n_available {
+                    0 => column(&format!("✘ 0/{}", n_configured), Color::Red),
+                    n_available if n_available == n_configured => {
+                        column(&format!("✓ {}/{}", n_available, n_configured), Color::Green)
+                    }
+                    n_available => column(
+                        &format!("- {}/{}", n_available, n_configured),
+                        Color::Yellow,
+                    ),
                 }
             }
         };
