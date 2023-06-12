@@ -189,18 +189,43 @@ pub fn languages_all() -> std::io::Result<()> {
         None => column("None", Color::Yellow),
     };
 
+    let check_binaries = |cmds: Vec<String>| {
+        match cmds.len() {
+            0 => column("None", Color::Yellow),
+            1 => check_binary(cmds.get(0).cloned()),
+            _ => {
+                let mut checks = cmds
+                    .iter()
+                    .map(|cmd| which::which(cmd).is_ok())
+                    .collect::<Vec<bool>>();
+                checks.sort_unstable();
+                checks.dedup();
+
+                if checks.len() == 2 {
+                    column("- Some", Color::Yellow);
+                } else if checks[0] {
+                    column("✓ All", Color::Green);
+                } else {
+                    column("✘ None", Color::Red);
+                }
+            }
+        };
+    };
+
     for lang in &syn_loader_conf.language {
         column(&lang.language_id, Color::Reset);
 
-        // TODO multiple language servers (check binary for each supported language server, not just the first)
-
-        let lsp = lang.language_servers.first().and_then(|ls| {
-            syn_loader_conf
-                .language_server
-                .get(&ls.name)
-                .map(|config| config.command.clone())
-        });
-        check_binary(lsp);
+        let cmds = lang
+            .language_servers
+            .iter()
+            .filter_map(|ls| {
+                syn_loader_conf
+                    .language_server
+                    .get(&ls.name)
+                    .map(|config| config.command.clone())
+            })
+            .collect();
+        check_binaries(cmds);
 
         let dap = lang.debugger.as_ref().map(|dap| dap.command.to_string());
         check_binary(dap);
