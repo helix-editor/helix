@@ -2315,27 +2315,25 @@ enum Operation {
     Change,
 }
 
-fn begin_by_a_whole_line(selection: &Selection, text: &Rope) -> bool {
-    for range in selection.ranges() {
-        // If at least a full line is selected (strange require 2).
-        if range.slice(text.slice(..)).len_lines() >= 2 {
-            // If the start of the selection is at the start of a line and the end at the end of a line.
-            let (start_line, end_line) = range.line_range(text.slice(..));
-            let start = text.line_to_char(start_line);
-            let end = text.line_to_char((end_line + 1).min(text.len_lines()));
-            if start == range.anchor && end == range.head {
-                return true;
-            }
+fn only_whole_lines(selection: &Selection, text: &Rope) -> bool {
+    selection.ranges().into_iter().all(|range| {
+        // If not at least a full line is selected (strange require 2).
+        if range.slice(text.slice(..)).len_lines() < 2 {
+            return false;
         }
-    }
-    false
+        // If the start of the selection is at the start of a line and the end at the end of a line.
+        let (start_line, end_line) = range.line_range(text.slice(..));
+        let start = text.line_to_char(start_line);
+        let end = text.line_to_char((end_line + 1).min(text.len_lines()));
+        start == range.anchor && end == range.head
+    })
 }
 
 fn delete_selection_impl(cx: &mut Context, op: Operation) {
     let (view, doc) = current!(cx.editor);
 
     let selection = doc.selection(view.id);
-    let begin_by_a_whole_line = begin_by_a_whole_line(selection, doc.text());
+    let only_whole_lines = only_whole_lines(selection, doc.text());
 
     if cx.register != Some('_') {
         // first yank the selection
@@ -2356,7 +2354,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
             exit_select_mode(cx);
         }
         Operation::Change => {
-            if begin_by_a_whole_line {
+            if only_whole_lines {
                 open_above(cx);
             } else {
                 enter_insert_mode(cx);
