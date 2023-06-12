@@ -2319,10 +2319,11 @@ fn begin_by_a_whole_line(selection: &Selection, text: &Rope) -> bool {
     for range in selection.ranges() {
         // If at least a full line is selected (strange require 2).
         if range.slice(text.slice(..)).len_lines() >= 2 {
-            // If in the begin of the selection is at the begining of a line.
-            let (start_line, _) = range.line_range(text.slice(..));
+            // If the start of the selection is at the start of a line and the end at the end of a line.
+            let (start_line, end_line) = range.line_range(text.slice(..));
             let start = text.line_to_char(start_line);
-            if start == range.anchor {
+            let end = text.line_to_char((end_line + 1).min(text.len_lines()));
+            if start == range.anchor && end == range.head {
                 return true;
             }
         }
