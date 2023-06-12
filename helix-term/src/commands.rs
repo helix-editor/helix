@@ -2316,7 +2316,7 @@ enum Operation {
 }
 
 fn only_whole_lines(selection: &Selection, text: &Rope) -> bool {
-    selection.ranges().into_iter().all(|range| {
+    selection.ranges().iter().all(|range| {
         // If not at least a full line is selected (strange require 2).
         if range.slice(text.slice(..)).len_lines() < 2 {
             return false;
