@@ -1,10 +1,10 @@
 use std::{
     collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
+    path::PathBuf,
     str,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use helix_core::hashmap;
 use helix_loader::merge_toml_values;
 use log::warn;
@@ -61,7 +61,18 @@ impl Loader {
         }
 
         let mut visited_paths = HashSet::new();
-        let theme = self.load_theme(name, &mut visited_paths).map(Theme::from)?;
+        let default_themes = HashMap::from([
+            ("default", &DEFAULT_THEME_DATA),
+            ("base16_default", &BASE16_DEFAULT_THEME_DATA),
+        ]);
+        let theme = helix_loader::load_inheritable_toml(
+            name,
+            &self.theme_dirs,
+            &mut visited_paths,
+            &default_themes,
+            Self::merge_themes,
+        )
+        .map(Theme::from)?;
 
         Ok(Theme {
             name: name.into(),
@@ -69,62 +80,8 @@ impl Loader {
         })
     }
 
-    /// Recursively load a theme, merging with any inherited parent themes.
-    ///
-    /// The paths that have been visited in the inheritance hierarchy are tracked
-    /// to detect and avoid cycling.
-    ///
-    /// It is possible for one file to inherit from another file with the same name
-    /// so long as the second file is in a themes directory with lower priority.
-    /// However, it is not recommended that users do this as it will make tracing
-    /// errors more difficult.
-    fn load_theme(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<Value> {
-        let path = self.path(name, visited_paths)?;
-
-        let theme_toml = self.load_toml(path)?;
-
-        let inherits = theme_toml.get("inherits");
-
-        let theme_toml = if let Some(parent_theme_name) = inherits {
-            let parent_theme_name = parent_theme_name.as_str().ok_or_else(|| {
-                anyhow!(
-                    "Theme: expected 'inherits' to be a string: {}",
-                    parent_theme_name
-                )
-            })?;
-
-            let parent_theme_toml = match parent_theme_name {
-                // load default themes's toml from const.
-                "default" => DEFAULT_THEME_DATA.clone(),
-                "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
-                _ => self.load_theme(parent_theme_name, visited_paths)?,
-            };
-
-            self.merge_themes(parent_theme_toml, theme_toml)
-        } else {
-            theme_toml
-        };
-
-        Ok(theme_toml)
-    }
-
-    pub fn read_names(path: &Path) -> Vec<String> {
-        std::fs::read_dir(path)
-            .map(|entries| {
-                entries
-                    .filter_map(|entry| {
-                        let entry = entry.ok()?;
-                        let path = entry.path();
-                        (path.extension()? == "toml")
-                            .then(|| path.file_stem().unwrap().to_string_lossy().into_owned())
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
-
     // merge one theme into the parent theme
-    fn merge_themes(&self, parent_theme_toml: Value, theme_toml: Value) -> Value {
+    fn merge_themes(parent_theme_toml: Value, theme_toml: Value) -> Value {
         let parent_palette = parent_theme_toml.get("palette");
         let palette = theme_toml.get("palette");
 
@@ -147,45 +104,6 @@ impl Loader {
         let theme = merge_toml_values(parent_theme_toml, theme_toml, 1);
         // merge the before specially handled palette into the theme
         merge_toml_values(theme, palette.into(), 1)
-    }
-
-    // Loads the theme data as `toml::Value`
-    fn load_toml(&self, path: PathBuf) -> Result<Value> {
-        let data = std::fs::read_to_string(path)?;
-        let value = toml::from_str(&data)?;
-
-        Ok(value)
-    }
-
-    /// Returns the path to the theme with the given name
-    ///
-    /// Ignores paths already visited and follows directory priority order.
-    fn path(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<PathBuf> {
-        let filename = format!("{}.toml", name);
-
-        let mut cycle_found = false; // track if there was a path, but it was in a cycle
-        self.theme_dirs
-            .iter()
-            .find_map(|dir| {
-                let path = dir.join(&filename);
-                if !path.exists() {
-                    None
-                } else if visited_paths.contains(&path) {
-                    // Avoiding cycle, continuing to look in lower priority directories
-                    cycle_found = true;
-                    None
-                } else {
-                    visited_paths.insert(path.clone());
-                    Some(path)
-                }
-            })
-            .ok_or_else(|| {
-                if cycle_found {
-                    anyhow!("Theme: cycle found in inheriting: {}", name)
-                } else {
-                    anyhow!("Theme: file not found for: {}", name)
-                }
-            })
     }
 
     pub fn default_theme(&self, true_color: bool) -> Theme {

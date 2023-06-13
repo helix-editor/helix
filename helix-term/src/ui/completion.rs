@@ -2,6 +2,7 @@ use crate::compositor::{Component, Context, Event, EventResult};
 use helix_view::{
     document::SavePoint,
     editor::CompleteAction,
+    icons::Icons,
     theme::{Modifier, Style},
     ViewId,
 };
@@ -33,7 +34,8 @@ impl menu::Item for CompletionItem {
             .into()
     }
 
-    fn format(&self, _data: &Self::Data) -> menu::Row {
+    // Before implementing icons for the `CompletionItemKind`s, something must be done to `Menu::required_size` and `Menu::recalculate_size` in order to have correct sizes even with icons.
+    fn format<'a>(&self, _data: &Self::Data, _icons: Option<&'a Icons>) -> menu::Row {
         let deprecated = self.item.deprecated.unwrap_or_default()
             || self.item.tags.as_ref().map_or(false, |tags| {
                 tags.contains(&lsp::CompletionItemTag::DEPRECATED)

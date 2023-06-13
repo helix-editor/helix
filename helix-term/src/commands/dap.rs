@@ -8,7 +8,7 @@ use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
-use helix_view::editor::Breakpoint;
+use helix_view::{editor::Breakpoint, icons::Icons};
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -25,7 +25,7 @@ use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select
 impl ui::menu::Item for StackFrame {
     type Data = ();
 
-    fn format(&self, _data: &Self::Data) -> Row {
+    fn format<'a>(&self, _data: &Self::Data, _icons: Option<&'a Icons>) -> Row {
         self.name.as_str().into() // TODO: include thread_states in the label
     }
 }
@@ -33,7 +33,7 @@ impl ui::menu::Item for StackFrame {
 impl ui::menu::Item for DebugTemplate {
     type Data = ();
 
-    fn format(&self, _data: &Self::Data) -> Row {
+    fn format<'a>(&self, _data: &Self::Data, _icons: Option<&'a Icons>) -> Row {
         self.name.as_str().into()
     }
 }
@@ -41,7 +41,7 @@ impl ui::menu::Item for DebugTemplate {
 impl ui::menu::Item for Thread {
     type Data = ThreadStates;
 
-    fn format(&self, thread_states: &Self::Data) -> Row {
+    fn format<'a>(&self, thread_states: &Self::Data, _icons: Option<&'a Icons>) -> Row {
         format!(
             "{} ({})",
             self.name,
@@ -76,6 +76,7 @@ fn thread_picker(
             let picker = FilePicker::new(
                 threads,
                 thread_states,
+                None,
                 move |cx, thread, _action| callback_fn(cx.editor, thread),
                 move |editor, thread| {
                     let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
@@ -273,6 +274,7 @@ pub fn dap_launch(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(Picker::new(
         templates,
         (),
+        None,
         |cx, template, _action| {
             let completions = template.completion.clone();
             let name = template.name.clone();
@@ -731,6 +733,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
     let picker = FilePicker::new(
         frames,
         (),
+        None,
         move |cx, frame, _action| {
             let debugger = debugger!(cx.editor);
             // TODO: this should be simpler to find

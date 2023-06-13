@@ -115,7 +115,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             let callback = async move {
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(path, &editor.config());
+                        let picker = ui::file_picker(path, &editor.config(), &editor.icons);
                         compositor.push(Box::new(overlaid(picker)));
                     },
                 ));
@@ -883,6 +883,30 @@ fn theme(
     Ok(())
 }
 
+fn icons(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    let true_color = cx.editor.config.load().true_color || crate::true_color();
+    if let PromptEvent::Validate = event {
+        if let Some(flavor_name) = args.first() {
+            let icons = cx
+                .editor
+                .icons_loader
+                .load(flavor_name, &cx.editor.theme, true_color)
+                .map_err(|err| anyhow!("Could not load icon flavor: {}", err))?;
+            cx.editor.set_icons(icons);
+        } else {
+            let name = cx.editor.icons.name().to_string();
+
+            cx.editor.set_status(name);
+        }
+    };
+
+    Ok(())
+}
+
 fn yank_main_selection_to_clipboard(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1358,9 +1382,10 @@ fn lsp_workspace_command(
         let callback = async move {
             let call: job::Callback = Callback::EditorCompositor(Box::new(
                 move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let picker = ui::Picker::new(commands, (), move |cx, command, _action| {
-                        execute_lsp_command(cx.editor, language_server_id, command.clone());
-                    });
+                    let picker =
+                        ui::Picker::new(commands, (), None, move |cx, command, _action| {
+                            execute_lsp_command(cx.editor, language_server_id, command.clone());
+                        });
                     compositor.push(Box::new(overlaid(picker)))
                 },
             ));
@@ -2473,6 +2498,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Change the editor theme (show current theme if no name specified).",
             fun: theme,
             signature: CommandSignature::positional(&[completers::theme]),
+        },
+        TypableCommand {
+            name: "icons",
+            aliases: &[],
+            doc: "Change the editor icon flavor (show current flavor if no name specified).",
+            fun: icons,
+            signature: CommandSignature::positional(&[completers::icons]),
         },
         TypableCommand {
             name: "clipboard-yank",

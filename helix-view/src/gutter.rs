@@ -47,7 +47,7 @@ impl GutterType {
 }
 
 pub fn diagnostic<'doc>(
-    _editor: &'doc Editor,
+    editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,
     theme: &Theme,
@@ -75,7 +75,13 @@ pub fn diagnostic<'doc>(
                             .any(|ls| ls.id() == d.language_server_id)
                 });
             diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
-                write!(out, "●").ok();
+                let diagnostic_icon = match d.severity {
+                    Some(Severity::Error) => &editor.icons.diagnostic.error,
+                    Some(Severity::Warning) | None => &editor.icons.diagnostic.warning,
+                    Some(Severity::Info) => &editor.icons.diagnostic.info,
+                    Some(Severity::Hint) => &editor.icons.diagnostic.hint,
+                };
+                write!(out, "{}", diagnostic_icon.icon_char).ok();
                 match d.severity {
                     Some(Severity::Error) => error,
                     Some(Severity::Warning) | None => warning,
@@ -88,19 +94,20 @@ pub fn diagnostic<'doc>(
 }
 
 pub fn diff<'doc>(
-    _editor: &'doc Editor,
+    editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
-    let added = theme.get("diff.plus");
-    let deleted = theme.get("diff.minus");
-    let modified = theme.get("diff.delta");
     if let Some(diff_handle) = doc.diff_handle() {
+        let added = theme.get("diff.plus");
+        let deleted = theme.get("diff.minus");
+        let modified = theme.get("diff.delta");
         let hunks = diff_handle.load();
         let mut hunk_i = 0;
         let mut hunk = hunks.nth_hunk(hunk_i);
+        let icons = &editor.icons;
         Box::new(
             move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
                 // truncating the line is fine here because we don't compute diffs
@@ -120,18 +127,18 @@ pub fn diff<'doc>(
                 }
 
                 let (icon, style) = if hunk.is_pure_insertion() {
-                    ("▍", added)
+                    (&icons.diff.added, added)
                 } else if hunk.is_pure_removal() {
                     if !first_visual_line {
                         return None;
                     }
-                    ("▔", deleted)
+                    (&icons.diff.deleted, deleted)
                 } else {
-                    ("▍", modified)
+                    (&icons.diff.modified, modified)
                 };
 
-                write!(out, "{}", icon).unwrap();
-                Some(style)
+                write!(out, "{}", icon.icon_char).unwrap();
+                icon.style.map(|i| i.into()).or(Some(style))
             },
         )
     } else {
@@ -273,7 +280,11 @@ pub fn breakpoints<'doc>(
                 breakpoint_style
             };
 
-            let sym = if breakpoint.verified { "●" } else { "◯" };
+            let sym = if breakpoint.verified {
+                editor.icons.breakpoint.verified.icon_char
+            } else {
+                editor.icons.breakpoint.unverified.icon_char
+            };
             write!(out, "{}", sym).unwrap();
             Some(style)
         },
@@ -308,7 +319,7 @@ fn execution_pause_indicator<'doc>(
                 return None;
             }
 
-            let sym = "▶";
+            let sym = editor.icons.breakpoint.pause_indicator.icon_char;
             write!(out, "{}", sym).unwrap();
             Some(style)
         },

@@ -6,7 +6,7 @@ pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
 use tokio::sync::oneshot;
-use tui::widgets::Row;
+use tui::{text::Span, widgets::Row};
 pub use typed::*;
 
 use helix_core::{
@@ -35,6 +35,7 @@ use helix_view::{
     clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, CompleteAction, Motion},
+    icons::Icons,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -2030,11 +2031,12 @@ fn global_search(cx: &mut Context) {
     impl ui::menu::Item for FileResult {
         type Data = Option<PathBuf>;
 
-        fn format(&self, current_path: &Self::Data) -> Row {
+        fn format<'a>(&self, current_path: &Self::Data, icons: Option<&'a Icons>) -> Row {
+            let icon = icons.and_then(|icons| icons.icon_from_path(Some(&self.path)));
             let relative_path = helix_core::path::get_relative_path(&self.path)
                 .to_string_lossy()
                 .into_owned();
-            if current_path
+            let path_span: Span = if current_path
                 .as_ref()
                 .map(|p| p == &self.path)
                 .unwrap_or(false)
@@ -2042,6 +2044,12 @@ fn global_search(cx: &mut Context) {
                 format!("{} (*)", relative_path).into()
             } else {
                 relative_path.into()
+            };
+
+            if let Some(icon) = icon {
+                Row::new([icon.into(), path_span])
+            } else {
+                path_span.into()
             }
         }
     }
@@ -2158,6 +2166,7 @@ fn global_search(cx: &mut Context) {
                 let picker = FilePicker::new(
                     all_matches,
                     current_path,
+                    editor.config().icons.picker.then_some(&editor.icons),
                     move |cx, FileResult { path, line_num }, action| {
                         match cx.editor.open(path, action) {
                             Ok(_) => {}
@@ -2498,7 +2507,7 @@ fn append_mode(cx: &mut Context) {
 
 fn file_picker(cx: &mut Context) {
     let root = find_workspace().0;
-    let picker = ui::file_picker(root, &cx.editor.config());
+    let picker = ui::file_picker(root, &cx.editor.config(), &cx.editor.icons);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2515,12 +2524,12 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
         }
     };
 
-    let picker = ui::file_picker(path, &cx.editor.config());
+    let picker = ui::file_picker(path, &cx.editor.config(), &cx.editor.icons);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
-    let picker = ui::file_picker(cwd, &cx.editor.config());
+    let picker = ui::file_picker(cwd, &cx.editor.config(), &cx.editor.icons);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2538,7 +2547,7 @@ fn buffer_picker(cx: &mut Context) {
     impl ui::menu::Item for BufferMeta {
         type Data = ();
 
-        fn format(&self, _data: &Self::Data) -> Row {
+        fn format<'a>(&self, _data: &Self::Data, icons: Option<&'a Icons>) -> Row {
             let path = self
                 .path
                 .as_deref()
@@ -2548,6 +2557,9 @@ fn buffer_picker(cx: &mut Context) {
                 None => SCRATCH_BUFFER_NAME,
             };
 
+            // Get the filetype icon, or a "file" icon for scratch buffers
+            let icon = icons.and_then(|icons| icons.icon_from_path(self.path.as_ref()));
+
             let mut flags = String::new();
             if self.is_modified {
                 flags.push('+');
@@ -2556,7 +2568,17 @@ fn buffer_picker(cx: &mut Context) {
                 flags.push('*');
             }
 
-            Row::new([self.id.to_string(), flags, path.to_string()])
+            if let Some(icon) = icon {
+                let icon_span = Span::from(icon);
+                Row::new(vec![
+                    icon_span,
+                    self.id.to_string().into(),
+                    flags.into(),
+                    path.to_string().into(),
+                ])
+            } else {
+                Row::new([self.id.to_string(), flags, path.to_string()])
+            }
         }
     }
 
@@ -2581,6 +2603,7 @@ fn buffer_picker(cx: &mut Context) {
     let picker = FilePicker::new(
         items,
         (),
+        cx.editor.config().icons.picker.then_some(&cx.editor.icons),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
         },
@@ -2609,7 +2632,10 @@ fn jumplist_picker(cx: &mut Context) {
     impl ui::menu::Item for JumpMeta {
         type Data = ();
 
-        fn format(&self, _data: &Self::Data) -> Row {
+        fn format<'a>(&self, _data: &Self::Data, icons: Option<&'a Icons>) -> Row {
+            // Get the filetype icon, or a "file" icon for scratch buffers
+            let icon = icons.and_then(|icons| icons.icon_from_path(self.path.as_ref()));
+
             let path = self
                 .path
                 .as_deref()
@@ -2629,7 +2655,13 @@ fn jumplist_picker(cx: &mut Context) {
             } else {
                 format!(" ({})", flags.join(""))
             };
-            format!("{} {}{} {}", self.id, path, flag, self.text).into()
+
+            let path_span: Span = format!("{} {}{} {}", self.id, path, flag, self.text).into();
+            if let Some(icon) = icon {
+                Row::new(vec![icon.into(), path_span])
+            } else {
+                path_span.into()
+            }
         }
     }
 
@@ -2670,6 +2702,7 @@ fn jumplist_picker(cx: &mut Context) {
             })
             .collect(),
         (),
+        cx.editor.config().icons.picker.then_some(&cx.editor.icons),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
@@ -2689,7 +2722,7 @@ fn jumplist_picker(cx: &mut Context) {
 impl ui::menu::Item for MappableCommand {
     type Data = ReverseKeymap;
 
-    fn format(&self, keymap: &Self::Data) -> Row {
+    fn format<'a>(&self, keymap: &Self::Data, _icons: Option<&'a Icons>) -> Row {
         let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
             bindings.iter().fold(String::new(), |mut acc, bind| {
                 if !acc.is_empty() {
@@ -2734,7 +2767,7 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+            let picker = Picker::new(commands, keymap, None, move |cx, command, _action| {
                 let mut ctx = Context {
                     register,
                     count,

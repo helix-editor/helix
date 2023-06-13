@@ -1,0 +1,19 @@
+name = "default"
+
+# All icons here must be available as [default Unicode characters](https://en.wikipedia.org/wiki/List_of_Unicode_characters)
+
+[diagnostic]
+error = {icon = "●"}
+warning = {icon = "●"}
+info = {icon = "●"}
+hint = {icon = "●"}
+
+[breakpoint]
+verified = {icon = "●"}
+unverified = {icon = "◯"} 
+pause-indicator = {icon = "▶"}
+
+[diff]
+added = {icon = "▍"}
+deleted = {icon = "▔"}
+modified = {icon = "▍"}

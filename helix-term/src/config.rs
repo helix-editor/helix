@@ -13,6 +13,7 @@ use toml::de::Error as TomlError;
 pub struct Config {
     pub theme: Option<String>,
     pub keys: HashMap<Mode, KeyTrie>,
+    pub icons: Option<String>,
     pub editor: helix_view::editor::Config,
 }
 
@@ -21,6 +22,7 @@ pub struct Config {
 pub struct ConfigRaw {
     pub theme: Option<String>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
+    pub icons: Option<String>,
     pub editor: Option<toml::Value>,
 }
 
@@ -28,6 +30,7 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             theme: None,
+            icons: None,
             keys: keymap::default(),
             editor: helix_view::editor::Config::default(),
         }
@@ -86,6 +89,7 @@ impl Config {
 
                 Config {
                     theme: local.theme.or(global.theme),
+                    icons: local.icons.or(global.icons),
                     keys,
                     editor,
                 }
@@ -102,6 +106,7 @@ impl Config {
                 }
                 Config {
                     theme: config.theme,
+                    icons: config.icons,
                     keys,
                     editor: config.editor.map_or_else(
                         || Ok(helix_view::editor::Config::default()),

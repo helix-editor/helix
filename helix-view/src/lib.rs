@@ -12,6 +12,7 @@ pub mod handlers {
     pub mod lsp;
 }
 pub mod base64;
+pub mod icons;
 pub mod info;
 pub mod input;
 pub mod keyboard;
