@@ -4483,13 +4483,13 @@ fn rotate_selections_backward(cx: &mut Context) {
     rotate_selections(cx, Direction::Backward)
 }
 
-enum SelectionReorder {
+enum ReorderStrategy {
     RotateForward,
     RotateBackward,
     Reverse,
 }
 
-fn reorder_selection_contents(cx: &mut Context, strategy: SelectionReorder) {
+fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
     let count = cx.count;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -4508,9 +4508,9 @@ fn reorder_selection_contents(cx: &mut Context, strategy: SelectionReorder) {
     for chunk in fragments.chunks_mut(group) {
         // TODO: also modify main index
         match strategy {
-            SelectionReorder::RotateForward => chunk.rotate_right(1),
-            SelectionReorder::RotateBackward => chunk.rotate_left(1),
-            SelectionReorder::Reverse => chunk.reverse(),
+            ReorderStrategy::RotateForward => chunk.rotate_right(1),
+            ReorderStrategy::RotateBackward => chunk.rotate_left(1),
+            ReorderStrategy::Reverse => chunk.reverse(),
         };
     }
 
@@ -4527,13 +4527,13 @@ fn reorder_selection_contents(cx: &mut Context, strategy: SelectionReorder) {
 }
 
 fn rotate_selection_contents_forward(cx: &mut Context) {
-    reorder_selection_contents(cx, SelectionReorder::RotateForward)
+    reorder_selection_contents(cx, ReorderStrategy::RotateForward)
 }
 fn rotate_selection_contents_backward(cx: &mut Context) {
-    reorder_selection_contents(cx, SelectionReorder::RotateBackward)
+    reorder_selection_contents(cx, ReorderStrategy::RotateBackward)
 }
 fn reverse_selection_contents(cx: &mut Context) {
-    reorder_selection_contents(cx, SelectionReorder::Reverse)
+    reorder_selection_contents(cx, ReorderStrategy::Reverse)
 }
 
 // tree sitter node selection
