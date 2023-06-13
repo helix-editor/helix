@@ -162,6 +162,7 @@
 | vue | ✓ |  |  | `vls` |
 | wast | ✓ |  |  |  |
 | wat | ✓ |  |  |  |
+| webc | ✓ |  |  |  |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
 | wit | ✓ |  | ✓ |  |
 | xit | ✓ |  |  |  |
