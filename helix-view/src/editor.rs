@@ -251,6 +251,8 @@ pub struct Config {
         deserialize_with = "deserialize_duration_millis"
     )]
     pub idle_timeout: Duration,
+    /// Whether to insert the completion suggestion on hover. Defaults to true.
+    pub preview_completion_insert: bool,
     pub completion_trigger_len: u8,
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
@@ -404,7 +406,13 @@ impl Default for StatusLineConfig {
                 E::FileModificationIndicator,
             ],
             center: vec![],
-            right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
+            right: vec![
+                E::Diagnostics,
+                E::Selections,
+                E::Register,
+                E::Position,
+                E::FileEncoding,
+            ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
             date_time_format: String::from("%A %B %e, %Y %H:%M"),
@@ -489,6 +497,9 @@ pub enum StatusLineElement {
 
     /// Current version control information
     VersionControl,
+
+    /// Indicator for selected register
+    Register,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -742,6 +753,7 @@ impl Default for Config {
             auto_format: true,
             auto_save: false,
             idle_timeout: Duration::from_millis(400),
+            preview_completion_insert: true,
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),

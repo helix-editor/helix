@@ -450,11 +450,11 @@ impl<'a> Table<'a> {
             } else {
                 col
             };
+            if is_selected {
+                buf.set_style(table_row_area, self.highlight_style);
+            }
             let mut col = table_row_start_col;
             for (width, cell) in columns_widths.iter().zip(table_row.cells.iter()) {
-                if is_selected {
-                    buf.set_style(table_row_area, self.highlight_style);
-                }
                 render_cell(
                     buf,
                     cell,

@@ -52,6 +52,7 @@ Its settings will be merged with the configuration directory `config.toml` and t
 | `auto-format` | Enable automatic formatting on save | `true` |
 | `auto-save` | Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal | `false` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. Used for autocompletion, set to 0 for instant | `400` |
+| `preview-completion-insert` | Whether to apply completion item instantly when selected | `true` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
 | `completion-replace` | Set to `true` to make completions always replace the entire word and not just the part before the cursor | `false` |
 | `auto-info` | Whether to display info boxes | `true` |
@@ -119,6 +120,7 @@ The following statusline elements can be configured:
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
 | `date-time` | Displays the date and time based on the format specified in `editor.statusline.date-time-format` (defaults to `"%A %e %B, %Y %H:%M"`)
 | `version-control` | The current branch name or detached commit hash of the opened workspace |
+| `register` | The current selected register |
 
 ### `[editor.lsp]` Section
 
@@ -133,8 +135,8 @@ The following statusline elements can be configured:
 | `goto-reference-include-declaration` | Include declaration in the goto references popup. | `true`  |
 
 [^1]: By default, a progress spinner is shown in the statusline beside the file path.
-[^2]: You may also have to activate them in the LSP config for them to appear, not just in Helix.
-      Inlay hints in Helix are still being improved on and may be a little bit laggy/janky under some circumstances, please report any bugs you see so we can fix them!
+
+[^2]: You may also have to activate them in the LSP config for them to appear, not just in Helix. Inlay hints in Helix are still being improved on and may be a little bit laggy/janky under some circumstances. Please report any bugs you see so we can fix them!
 
 ### `[editor.cursor-shape]` Section
 
