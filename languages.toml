@@ -24,6 +24,7 @@ elm-language-server = { command = "elm-language-server" }
 elvish = { command = "elvish", args = ["-lsp"] }
 erlang-ls = { command = "erlang_ls" }
 forc = { command = "forc", args = ["lsp"] }
+forth-lsp = { command = "forth-lsp" }
 fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
 gleam = { command = "gleam", args = ["lsp"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
@@ -2606,11 +2607,12 @@ injection-regex = "forth"
 file-types = ["fs", "forth", "fth", "4th"]
 roots = []
 comment-token = "\\"
+language-servers = [ "forth-lsp" ]
 indent = { tab-width = 3, unit = "   " }
 
 [[grammar]]
 name = "forth"
-source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "c6fae50a17763af827604627c0fa9e4604aaac0b" }
+source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "304ed77beb113e37af38b20ff14e3c37bf350d10" }
 
 [[language]]
 name = "t32"
