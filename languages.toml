@@ -2579,6 +2579,15 @@ name = "just"
 source = { git = "https://github.com/IndianBoy42/tree-sitter-just", rev = "8af0aab79854aaf25b620a52c39485849922f766" }
 
 [[language]]
+name = "nunjucks"
+scope = "text.html.nunjucks"
+injection-regex = "nunjucks"
+file-types = ["njk"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+grammar = "jinja2"
+
+[[language]]
 name = "jinja"
 scope = "text.html.jinja"
 injection-regex = "jinja"
