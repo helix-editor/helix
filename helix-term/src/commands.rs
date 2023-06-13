@@ -406,6 +406,7 @@ impl MappableCommand {
         rotate_selections_backward, "Rotate selections backward",
         rotate_selection_contents_forward, "Rotate selection contents forward",
         rotate_selection_contents_backward, "Rotate selections contents backward",
+        reverse_selection_contents, "Reverse selections contents",
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
         select_next_sibling, "Select next sibling in syntax tree",
@@ -4482,7 +4483,13 @@ fn rotate_selections_backward(cx: &mut Context) {
     rotate_selections(cx, Direction::Backward)
 }
 
-fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
+enum ReorderStrategy {
+    RotateForward,
+    RotateBackward,
+    Reverse,
+}
+
+fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
     let count = cx.count;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -4500,9 +4507,10 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
 
     for chunk in fragments.chunks_mut(group) {
         // TODO: also modify main index
-        match direction {
-            Direction::Forward => chunk.rotate_right(1),
-            Direction::Backward => chunk.rotate_left(1),
+        match strategy {
+            ReorderStrategy::RotateForward => chunk.rotate_right(1),
+            ReorderStrategy::RotateBackward => chunk.rotate_left(1),
+            ReorderStrategy::Reverse => chunk.reverse(),
         };
     }
 
@@ -4519,10 +4527,13 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
 }
 
 fn rotate_selection_contents_forward(cx: &mut Context) {
-    rotate_selection_contents(cx, Direction::Forward)
+    reorder_selection_contents(cx, ReorderStrategy::RotateForward)
 }
 fn rotate_selection_contents_backward(cx: &mut Context) {
-    rotate_selection_contents(cx, Direction::Backward)
+    reorder_selection_contents(cx, ReorderStrategy::RotateBackward)
+}
+fn reverse_selection_contents(cx: &mut Context) {
+    reorder_selection_contents(cx, ReorderStrategy::Reverse)
 }
 
 // tree sitter node selection
