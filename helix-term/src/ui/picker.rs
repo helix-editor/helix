@@ -624,7 +624,7 @@ impl<T: Item> Picker<T> {
     }
 
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
-    pub fn move_by(&mut self, amount: usize, direction: Direction) {
+    pub fn move_by(&mut self, amount: usize, direction: Direction, wrap: bool) {
         let len = self.matches.len();
 
         if len == 0 {
@@ -634,22 +634,30 @@ impl<T: Item> Picker<T> {
 
         match direction {
             Direction::Forward => {
-                self.cursor = self.cursor.saturating_add(amount) % len;
+                if wrap {
+                    self.cursor = self.cursor.saturating_add(amount) % len;
+                } else {
+                    self.cursor = cmp::min(len - 1, self.cursor.saturating_add(amount));
+                }
             }
             Direction::Backward => {
-                self.cursor = self.cursor.saturating_add(len).saturating_sub(amount) % len;
+                if wrap {
+                    self.cursor = self.cursor.saturating_add(len).saturating_sub(amount) % len;
+                } else {
+                    self.cursor = self.cursor.saturating_sub(amount);
+                }
             }
         }
     }
 
     /// Move the cursor down by exactly one page. After the last page comes the first page.
-    pub fn page_up(&mut self) {
-        self.move_by(self.completion_height as usize, Direction::Backward);
+    pub fn page_up(&mut self, wrap: bool) {
+        self.move_by(self.completion_height as usize, Direction::Backward, wrap);
     }
 
     /// Move the cursor up by exactly one page. After the first page comes the last page.
-    pub fn page_down(&mut self) {
-        self.move_by(self.completion_height as usize, Direction::Forward);
+    pub fn page_down(&mut self, wrap: bool) {
+        self.move_by(self.completion_height as usize, Direction::Forward, wrap);
     }
 
     /// Move the cursor to the first entry
@@ -710,16 +718,16 @@ impl<T: Item + 'static> Component for Picker<T> {
 
         match key_event {
             shift!(Tab) | key!(Up) | ctrl!('p') => {
-                self.move_by(1, Direction::Backward);
+                self.move_by(1, Direction::Backward, cx.editor.config().wrap_picker_list);
             }
             key!(Tab) | key!(Down) | ctrl!('n') => {
-                self.move_by(1, Direction::Forward);
+                self.move_by(1, Direction::Forward, cx.editor.config().wrap_picker_list);
             }
             key!(PageDown) | ctrl!('d') => {
-                self.page_down();
+                self.page_down(cx.editor.config().wrap_picker_list);
             }
             key!(PageUp) | ctrl!('u') => {
-                self.page_up();
+                self.page_up(cx.editor.config().wrap_picker_list);
             }
             key!(Home) => {
                 self.to_start();
