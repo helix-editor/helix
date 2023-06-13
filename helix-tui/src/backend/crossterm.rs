@@ -1,4 +1,8 @@
-use crate::{backend::Backend, buffer::Cell, terminal::Config};
+use crate::{
+    backend::Backend,
+    buffer::Cell,
+    terminal::{Config, FeatureToggle},
+};
 use crossterm::{
     cursor::{Hide, MoveTo, SetCursorStyle, Show},
     event::{
@@ -64,6 +68,7 @@ pub struct CrosstermBackend<W: Write> {
     capabilities: Capabilities,
     supports_keyboard_enhancement_protocol: OnceCell<bool>,
     mouse_capture_enabled: bool,
+    enhanced_keyboard_protocol_enabled: bool,
 }
 
 impl<W> CrosstermBackend<W>
@@ -76,24 +81,31 @@ where
             capabilities: Capabilities::from_env_or_default(config),
             supports_keyboard_enhancement_protocol: OnceCell::new(),
             mouse_capture_enabled: false,
+            enhanced_keyboard_protocol_enabled: false,
         }
     }
 
     #[inline]
-    fn supports_keyboard_enhancement_protocol(&self) -> bool {
-        *self.supports_keyboard_enhancement_protocol
-            .get_or_init(|| {
-                use std::time::Instant;
+    fn enable_keyboard_enhancement_protocol(&self, config: Config) -> bool {
+        match config.enable_enhanced_keyboard_protocol {
+            FeatureToggle::Enable => true,
+            FeatureToggle::Disable => false,
+            FeatureToggle::Detect => {
+                *self.supports_keyboard_enhancement_protocol
+                    .get_or_init(|| {
+                        use std::time::Instant;
 
-                let now = Instant::now();
-                let supported = matches!(terminal::supports_keyboard_enhancement(), Ok(true));
-                log::debug!(
-                    "The keyboard enhancement protocol is {}supported in this terminal (checked in {:?})",
-                    if supported { "" } else { "not " },
-                    Instant::now().duration_since(now)
-                );
-                supported
-            })
+                        let now = Instant::now();
+                        let supported = matches!(terminal::supports_keyboard_enhancement(), Ok(true));
+                        log::debug!(
+                            "The keyboard enhancement protocol is {}supported in this terminal (checked in {:?})",
+                            if supported { "" } else { "not " },
+                            Instant::now().duration_since(now)
+                        );
+                        supported
+                    })
+            }
+        }
     }
 }
 
@@ -127,7 +139,7 @@ where
             execute!(self.buffer, EnableMouseCapture)?;
             self.mouse_capture_enabled = true;
         }
-        if self.supports_keyboard_enhancement_protocol() {
+        if self.enable_keyboard_enhancement_protocol(config) {
             execute!(
                 self.buffer,
                 PushKeyboardEnhancementFlags(
@@ -135,6 +147,7 @@ where
                         | KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
                 )
             )?;
+            self.enhanced_keyboard_protocol_enabled = true;
         }
         Ok(())
     }
@@ -149,6 +162,22 @@ where
             self.mouse_capture_enabled = config.enable_mouse_capture;
         }
 
+        let enable_enhanced_keyboard_protocol = self.enable_keyboard_enhancement_protocol(config);
+        if self.enhanced_keyboard_protocol_enabled != enable_enhanced_keyboard_protocol {
+            if enable_enhanced_keyboard_protocol {
+                execute!(
+                    self.buffer,
+                    PushKeyboardEnhancementFlags(
+                        KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+                            | KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
+                    )
+                )?;
+            } else {
+                execute!(self.buffer, PopKeyboardEnhancementFlags)?;
+            }
+            self.enhanced_keyboard_protocol_enabled = enable_enhanced_keyboard_protocol;
+        }
+
         Ok(())
     }
 
@@ -158,7 +187,7 @@ where
         if config.enable_mouse_capture {
             execute!(self.buffer, DisableMouseCapture)?;
         }
-        if self.supports_keyboard_enhancement_protocol() {
+        if self.enable_keyboard_enhancement_protocol(config) {
             execute!(self.buffer, PopKeyboardEnhancementFlags)?;
         }
         execute!(
