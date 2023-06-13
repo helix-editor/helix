@@ -1,4 +1,4 @@
-use std::iter;
+use std::{cmp::Reverse, iter};
 
 use ropey::iter::Chars;
 use tree_sitter::{Node, QueryCursor};
@@ -509,7 +509,8 @@ pub fn goto_treesitter_object(
     count: usize,
 ) -> Range {
     let get_range = move |range: Range| -> Option<Range> {
-        let byte_pos = slice.char_to_byte(range.cursor(slice));
+        let left_pos = slice.char_to_byte(range.cursor(slice));
+        let right_pos = slice.char_to_byte(range.from());
 
         let cap_name = |t: TextObject| format!("{}.{}", object_name, t);
         let mut cursor = QueryCursor::new();
@@ -526,11 +527,11 @@ pub fn goto_treesitter_object(
 
         let node = match dir {
             Direction::Forward => nodes
-                .filter(|n| n.start_byte() > byte_pos)
-                .min_by_key(|n| n.start_byte())?,
+                .filter(|n| n.start_byte() > left_pos)
+                .min_by_key(|n| (n.start_byte(), Reverse(n.end_byte())))?,
             Direction::Backward => nodes
-                .filter(|n| n.end_byte() < byte_pos)
-                .max_by_key(|n| n.end_byte())?,
+                .filter(|n| n.end_byte() < right_pos)
+                .max_by_key(|n| (n.end_byte(), Reverse(n.start_byte())))?,
         };
 
         let len = slice.len_bytes();
