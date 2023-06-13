@@ -2679,7 +2679,7 @@ fn jumplist_picker(cx: &mut Context) {
         |editor, meta| {
             let doc = &editor.documents.get(&meta.id)?;
             let line = meta.selection.primary().cursor_line(doc.text().slice(..));
-            Some((meta.path.clone()?.into(), Some((line, line))))
+            Some((meta.id.into(), Some((line, line))))
         },
     );
     cx.push_layer(Box::new(overlaid(picker)));
