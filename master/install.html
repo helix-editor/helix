@@ -275,6 +275,9 @@ You can get <a href="https://www.microsoft.com/p/app-installer/9nblggh4nns1#acti
 </code></pre>
 <h2 id="building-from-source"><a class="header" href="#building-from-source">Building from source</a></h2>
 <p>Requirements:</p>
+<p>Clone the Helix GitHub repository into a directory of your choice. The
+examples in this documentation assume installation into either <code>~/src/</code> on
+Linux and macOS, or <code>%userprofile%\src\</code> on Windows.</p>
 <ul>
 <li>The <a href="https://www.rust-lang.org/tools/install">Rust toolchain</a></li>
 <li>The <a href="https://git-scm.com/">Git version control system</a></li>
@@ -305,10 +308,12 @@ the <code>runtime</code> directory within the user's helix config directory (mor
 </blockquote>
 <h3 id="configuring-helixs-runtime-files"><a class="header" href="#configuring-helixs-runtime-files">Configuring Helix's runtime files</a></h3>
 <h4 id="linux-and-macos"><a class="header" href="#linux-and-macos">Linux and macOS</a></h4>
-<p>Either set the <code>HELIX_RUNTIME</code> environment variable to point to the runtime files and add it to your <code>~/.bashrc</code> or equivalent:</p>
-<pre><code class="language-sh">HELIX_RUNTIME=/home/user-name/src/helix/runtime
+<p>The <strong>runtime</strong> directory is one below the Helix source, so either set a
+<code>HELIX_RUNTIME</code> environment variable to point to that directory and add it to
+your <code>~/.bashrc</code> or equivalent:</p>
+<pre><code class="language-sh">HELIX_RUNTIME=~/src/helix/runtime
 </code></pre>
-<p>Or, create a symlink in <code>~/.config/helix</code> that links to the source code directory:</p>
+<p>Or, create a symbolic link:</p>
 <pre><code class="language-sh">ln -Ts $PWD/runtime ~/.config/helix/runtime
 </code></pre>
 <p>If the above command fails to create a symbolic link because the file exists either move <code>~/.config/helix/runtime</code> to a new location or delete it, then run the symlink command above again. </p>
