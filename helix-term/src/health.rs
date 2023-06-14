@@ -195,16 +195,12 @@ pub fn languages_all() -> std::io::Result<()> {
             1 => check_binary(cmds.get(0).cloned()),
             n_configured => {
                 let n_available = cmds.iter().filter_map(|cmd| which::which(cmd).ok()).count();
-                match n_available {
-                    0 => column(&format!("✘ 0/{}", n_configured), Color::Red),
-                    n_available if n_available == n_configured => {
-                        column(&format!("✓ {}/{}", n_available, n_configured), Color::Green)
-                    }
-                    n_available => column(
-                        &format!("- {}/{}", n_available, n_configured),
-                        Color::Yellow,
-                    ),
-                }
+                let (icon, color) = match n_available {
+                    0 => ("✘", Color::Red),
+                    n_available if n_available == n_configured => ("✓", Color::Green),
+                    _ => ("-", Color::Yellow),
+                };
+                column(&format!("{} {}/{}", icon, n_available, n_configured), color);
             }
         };
     };
