@@ -15,15 +15,15 @@
 "keyword.control" = { fg = "purple" }
 "keyword.control.import" = { fg = "purple" }
 "keyword.directive" = { fg = "purple" }
-"label" = { fg = "white" }
-"namespace" = { fg = "white" }
-"operator" = { fg = "white" }
+"label" = { fg = "ui-text" }
+"namespace" = { fg = "ui-text" }
+"operator" = { fg = "ui-text" }
 "keyword.operator" = { fg = "purple" }
 "special" = { fg = "blue" }
 "string" = { fg = "green" }
 "type" = { fg = "cyan" }
 "variable.builtin" = { fg = "orange" }
-"variable.parameter" = { fg = "white" }
+"variable.parameter" = { fg = "ui-text" }
 "variable.other.member" = { fg = "red" }
 
 "markup.heading" = { fg = "red" }
@@ -49,7 +49,7 @@
 "warning" = { fg = "yellow", modifiers = ["bold"] }
 "error" = { fg = "red", modifiers = ["bold"] }
 
-"ui.background" = { bg = "black" }
+"ui.background" = { bg = "ui-text-reversed" }
 "ui.virtual" = { fg = "faint-gray" }
 "ui.virtual.indent-guide" = { fg = "faint-gray" }
 "ui.virtual.whitespace" = { fg = "light-gray" }
@@ -68,7 +68,7 @@
 "ui.highlight.frameline" = { bg = "#97202a" }
 
 "ui.linenr" = { fg = "linenr" }
-"ui.linenr.selected" = { fg = "white" }
+"ui.linenr.selected" = { fg = "ui-text" }
 
 "ui.statusline" = { fg = "white", bg = "light-black" }
 "ui.statusline.inactive" = { fg = "light-gray", bg = "light-black" }
@@ -76,15 +76,15 @@
 "ui.statusline.insert" = { fg = "light-black", bg = "green" }
 "ui.statusline.select" = { fg = "light-black", bg = "purple" }
 
-"ui.text" = { fg = "white" }
+"ui.text" = { fg = "ui-text" }
 "ui.text.focus" = { fg = "white", bg = "light-black", modifiers = ["bold"] }
 
 "ui.help" = { fg = "white", bg = "gray" }
 "ui.popup" = { bg = "gray" }
 "ui.window" = { fg = "gray" }
 "ui.menu" = { fg = "white", bg = "gray" }
-"ui.menu.selected" = { fg = "black", bg = "blue" }
-"ui.menu.scroll" = { fg = "white", bg = "light-gray" }
+"ui.menu.selected" = { fg = "ui-text-reversed", bg = "blue" }
+"ui.menu.scroll" = { fg = "ui-text", bg = "light-gray" }
 
 "ui.debug" = { fg = "red" }
 
@@ -97,10 +97,14 @@ purple = "#9d74b9"
 green = "#a0b783"
 orange = "#b4926e" 
 cyan = "#7eb2be"
-white = "#a8adb7"
-black = "#292c33"
 light-black = "#2e323a"
 gray = "#363f4c"
 light-gray = "#5c606b"
 faint-gray = "#3B4048"
 linenr = "#4B5263"
+
+white = "#a8adb7"
+black = "#292c33"
+# black and white are used for a lot of the UI text
+ui-text = "#a8adb7"
+ui-text-reversed = "#292c33"
