@@ -907,8 +907,9 @@ impl EditorView {
                                 let text = doc.text().slice(..);
                                 let cursor = doc.selection(view.id).primary().cursor(text);
 
-                                let shift_position =
-                                    |pos: usize| -> usize { pos + cursor - trigger_offset };
+                                let shift_position = |pos: usize| -> usize {
+                                    (pos + cursor).saturating_sub(trigger_offset)
+                                };
 
                                 let tx = Transaction::change(
                                     doc.text(),
