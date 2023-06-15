@@ -1511,12 +1511,11 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         Backward => -(offset as isize),
     };
 
-    let doc_text = doc.text().slice(..);
     let viewport = view.inner_area(doc);
     let text_fmt = doc.text_format(viewport.width, None);
     let annotations = view.text_annotations(doc, None);
     (view.offset.anchor, view.offset.vertical_offset) = char_idx_at_visual_offset(
-        doc_text,
+        text,
         view.offset.anchor,
         view.offset.vertical_offset as isize + offset,
         0,
@@ -1524,12 +1523,17 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         &annotations,
     );
 
+    view.offset.anchor = view
+        .offset
+        .anchor
+        .min(text.line_to_char(text.len_lines().saturating_sub(height - scrolloff)));
+
     let mut head;
     match direction {
         Forward => {
             let off;
             (head, off) = char_idx_at_visual_offset(
-                doc_text,
+                text,
                 view.offset.anchor,
                 (view.offset.vertical_offset + scrolloff) as isize,
                 0,
@@ -1543,7 +1547,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         }
         Backward => {
             head = char_idx_at_visual_offset(
-                doc_text,
+                text,
                 view.offset.anchor,
                 (view.offset.vertical_offset + height - scrolloff - 1) as isize,
                 0,
