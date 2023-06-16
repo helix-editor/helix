@@ -3,10 +3,10 @@ authors = ["Blaž Hrastnik"]
 language = "en"
 multilingual = false
 src = "src"
-edit-url-template = "https://github.com/helix-editor/helix/tree/master/book/{path}?mode=edit"
 
 [output.html]
 cname = "docs.helix-editor.com"
 default-theme = "colibri"
 preferred-dark-theme = "colibri"
 git-repository-url = "https://github.com/helix-editor/helix"
+edit-url-template = "https://github.com/helix-editor/helix/edit/master/book/{path}"
