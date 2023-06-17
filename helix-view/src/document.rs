@@ -31,7 +31,6 @@ use helix_core::{
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
-    NATIVE_LINE_ENDING,
 };
 
 use crate::editor::{Config, RedrawHandle};
@@ -625,7 +624,8 @@ impl Document {
     }
 
     pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
-        let text = Rope::from(NATIVE_LINE_ENDING.as_str());
+        let line_ending: LineEnding = config.load().default_line_ending.into();
+        let text = Rope::from(line_ending.as_str());
         Self::from(text, None, config)
     }
 
@@ -644,8 +644,9 @@ impl Document {
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
             from_reader(&mut file, encoding)?
         } else {
+            let line_ending: LineEnding = config.load().default_line_ending.into();
             let encoding = encoding.unwrap_or(encoding::UTF_8);
-            (Rope::from(NATIVE_LINE_ENDING.as_str()), encoding, false)
+            (Rope::from(line_ending.as_str()), encoding, false)
         };
 
         let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
@@ -1925,7 +1926,7 @@ mod test {
             Document::default(Arc::new(ArcSwap::new(Arc::new(Config::default()))))
                 .text()
                 .to_string(),
-            NATIVE_LINE_ENDING.as_str()
+            helix_core::NATIVE_LINE_ENDING.as_str()
         );
     }
 
