@@ -269,10 +269,8 @@ impl<T: Item + 'static> FilePicker<T> {
 
         EventResult::Consumed(callback)
     }
-}
 
-impl<T: Item + 'static> Component for FilePicker<T> {
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render_picker(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
         // |prompt   | |preview  |
         // +---------+ |         |
@@ -413,6 +411,12 @@ impl<T: Item + 'static> Component for FilePicker<T> {
 
     fn id(&self) -> Option<&'static str> {
         Some("file-picker")
+    }
+}
+
+impl<T: Item + 'static> Component for FilePicker<T> {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        self.render_picker(area, surface, cx);
     }
 }
 
