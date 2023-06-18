@@ -412,6 +412,36 @@ fn force_write_buffer_close(
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
+fn write_buffer_next(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(cx, args.first(), false)?;
+
+    goto_buffer(cx.editor, Direction::Forward);
+    Ok(())
+}
+
+fn force_write_buffer_next(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(cx, args.first(), true)?;
+
+    goto_buffer(cx.editor, Direction::Forward);
+    Ok(())
+}
+
 fn new_file(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
