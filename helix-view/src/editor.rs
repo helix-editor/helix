@@ -982,6 +982,8 @@ pub enum Action {
     Replace,
     HorizontalSplit,
     VerticalSplit,
+    PasteBefore,
+    PasteAfter,
 }
 
 /// Error thrown on failed document closed
@@ -1351,6 +1353,9 @@ impl Editor {
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
                 doc.mark_as_focused();
+            }
+            Action::PasteBefore | Action::PasteAfter => {
+                // do nothing?
             }
         }
 
