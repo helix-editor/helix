@@ -312,6 +312,55 @@ impl<T: Item + 'static> FilePicker<T> {
         self.matches.sort_unstable();
     }
 
+    /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
+    pub fn move_by(&mut self, amount: usize, direction: Direction) {
+        let len = self.matches.len();
+
+        if len == 0 {
+            // No results, can't move.
+            return;
+        }
+
+        match direction {
+            Direction::Forward => {
+                self.cursor = self.cursor.saturating_add(amount) % len;
+            }
+            Direction::Backward => {
+                self.cursor = self.cursor.saturating_add(len).saturating_sub(amount) % len;
+            }
+        }
+    }
+
+    /// Move the cursor down by exactly one page. After the last page comes the first page.
+    pub fn page_up(&mut self) {
+        self.move_by(self.completion_height as usize, Direction::Backward);
+    }
+
+    /// Move the cursor up by exactly one page. After the first page comes the last page.
+    pub fn page_down(&mut self) {
+        self.move_by(self.completion_height as usize, Direction::Forward);
+    }
+
+    /// Move the cursor to the first entry
+    pub fn to_start(&mut self) {
+        self.cursor = 0;
+    }
+
+    /// Move the cursor to the last entry
+    pub fn to_end(&mut self) {
+        self.cursor = self.matches.len().saturating_sub(1);
+    }
+
+    pub fn selection(&self) -> Option<&T> {
+        self.matches
+            .get(self.cursor)
+            .map(|pmatch| &self.options[pmatch.index])
+    }
+
+    pub fn toggle_preview(&mut self) {
+        self.show_preview = !self.show_preview;
+    }
+
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
         self.picker
             .selection()
@@ -656,51 +705,35 @@ impl<T: Item> Picker<T> {
 
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
     pub fn move_by(&mut self, amount: usize, direction: Direction) {
-        let len = self.matches.len();
-
-        if len == 0 {
-            // No results, can't move.
-            return;
-        }
-
-        match direction {
-            Direction::Forward => {
-                self.cursor = self.cursor.saturating_add(amount) % len;
-            }
-            Direction::Backward => {
-                self.cursor = self.cursor.saturating_add(len).saturating_sub(amount) % len;
-            }
-        }
+        unimplemented!()
     }
 
     /// Move the cursor down by exactly one page. After the last page comes the first page.
     pub fn page_up(&mut self) {
-        self.move_by(self.completion_height as usize, Direction::Backward);
+        unimplemented!()
     }
 
     /// Move the cursor up by exactly one page. After the first page comes the last page.
     pub fn page_down(&mut self) {
-        self.move_by(self.completion_height as usize, Direction::Forward);
+        unimplemented!()
     }
 
     /// Move the cursor to the first entry
     pub fn to_start(&mut self) {
-        self.cursor = 0;
+        unimplemented!()
     }
 
     /// Move the cursor to the last entry
     pub fn to_end(&mut self) {
-        self.cursor = self.matches.len().saturating_sub(1);
+        unimplemented!()
     }
 
     pub fn selection(&self) -> Option<&T> {
-        self.matches
-            .get(self.cursor)
-            .map(|pmatch| &self.options[pmatch.index])
+        unimplemented!()
     }
 
     pub fn toggle_preview(&mut self) {
-        self.show_preview = !self.show_preview;
+        unimplemented!()
     }
 
     fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
