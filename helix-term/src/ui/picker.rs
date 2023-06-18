@@ -656,44 +656,21 @@ impl<T: Item + 'static> FilePicker<T> {
     }
 
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // +---------+ +---------+
-        // |prompt   | |preview  |
-        // +---------+ |         |
-        // |picker   | |         |
-        // |         | |         |
-        // +---------+ +---------+
-
-        let render_preview = self.picker.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
         let text = cx.editor.theme.get("ui.text");
         surface.clear_with(area, background);
 
-        let picker_width = if render_preview {
-            area.width / 2
-        } else {
-            area.width
-        };
-
-        let picker_area = area.with_width(picker_width);
-        self.picker.render(picker_area, surface, cx);
-
-        if !render_preview {
-            return;
-        }
-
-        let preview_area = area.clip_left(picker_width);
-
         // don't like this but the lifetime sucks
         let block = Block::default().borders(Borders::ALL);
 
         // calculate the inner area inside the box
-        let inner = block.inner(preview_area);
+        let inner = block.inner(area);
         // 1 column gap on either side
         let margin = Margin::horizontal(1);
         let inner = inner.inner(&margin);
-        block.render(preview_area, surface);
+        block.render(area, surface);
 
         if let Some((path, range)) = self.current_file(cx.editor) {
             let preview = self.get_preview(path, cx.editor);
@@ -873,7 +850,28 @@ impl<T: Item + 'static> FilePicker<T> {
 
 impl<T: Item + 'static> Component for FilePicker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        self.render_picker(area, surface, cx);
+        // +---------+ +---------+
+        // |prompt   | |preview  |
+        // +---------+ |         |
+        // |picker   | |         |
+        // |         | |         |
+        // +---------+ +---------+
+
+        let render_preview = self.picker.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+
+        let picker_width = if render_preview {
+            area.width / 2
+        } else {
+            area.width
+        };
+
+        let picker_area = area.with_width(picker_width);
+        self.render_picker(picker_area, surface, cx);
+
+        if render_preview {
+            let preview_area = area.clip_left(picker_width);
+            self.render_preview(preview_area, surface, cx);
+        }
     }
 }
 
