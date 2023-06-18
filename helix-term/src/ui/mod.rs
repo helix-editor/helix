@@ -217,21 +217,17 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
-    FilePicker::new(
-        files,
-        root,
-        move |cx, path: &PathBuf, action| {
-            if let Err(e) = cx.editor.open(path, action) {
-                let err = if let Some(err) = e.source() {
-                    format!("{}", err)
-                } else {
-                    format!("unable to open \"{}\"", path.display())
-                };
-                cx.editor.set_error(err);
-            }
-        },
-        |_editor, path| Some((path.clone().into(), None)),
-    )
+    FilePicker::new(files, root, move |cx, path: &PathBuf, action| {
+        if let Err(e) = cx.editor.open(path, action) {
+            let err = if let Some(err) = e.source() {
+                format!("{}", err)
+            } else {
+                format!("unable to open \"{}\"", path.display())
+            };
+            cx.editor.set_error(err);
+        }
+    })
+    .with_preview(|_editor, path| Some((path.clone().into(), None)))
 }
 
 pub mod completers {

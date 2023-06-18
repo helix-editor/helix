@@ -2184,11 +2184,9 @@ fn global_search(cx: &mut Context) {
 
                         doc.set_selection(view.id, Selection::single(start, end));
                         align_view(doc, view, Align::Center);
-                    },
-                    |_editor, FileResult { path, line_num }| {
+                    }).with_preview(|_editor, FileResult { path, line_num }| {
                         Some((path.clone().into(), Some((*line_num, *line_num))))
-                    },
-                );
+                    });
                 compositor.push(Box::new(overlaid(picker)));
             },
         ));
@@ -2579,22 +2577,18 @@ fn buffer_picker(cx: &mut Context) {
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
 
-    let picker = FilePicker::new(
-        items,
-        (),
-        |cx, meta, action| {
-            cx.editor.switch(meta.id, action);
-        },
-        |editor, meta| {
-            let doc = &editor.documents.get(&meta.id)?;
-            let &view_id = doc.selections().keys().next()?;
-            let line = doc
-                .selection(view_id)
-                .primary()
-                .cursor_line(doc.text().slice(..));
-            Some((meta.id.into(), Some((line, line))))
-        },
-    );
+    let picker = FilePicker::new(items, (), |cx, meta, action| {
+        cx.editor.switch(meta.id, action);
+    })
+    .with_preview(|editor, meta| {
+        let doc = &editor.documents.get(&meta.id)?;
+        let &view_id = doc.selections().keys().next()?;
+        let line = doc
+            .selection(view_id)
+            .primary()
+            .cursor_line(doc.text().slice(..));
+        Some((meta.id.into(), Some((line, line))))
+    });
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2678,12 +2672,12 @@ fn jumplist_picker(cx: &mut Context) {
             doc.set_selection(view.id, meta.selection.clone());
             view.ensure_cursor_in_view_center(doc, config.scrolloff);
         },
-        |editor, meta| {
-            let doc = &editor.documents.get(&meta.id)?;
-            let line = meta.selection.primary().cursor_line(doc.text().slice(..));
-            Some((meta.id.into(), Some((line, line))))
-        },
-    );
+    )
+    .with_preview(|editor, meta| {
+        let doc = &editor.documents.get(&meta.id)?;
+        let line = meta.selection.primary().cursor_line(doc.text().slice(..));
+        Some((meta.id.into(), Some((line, line))))
+    });
     cx.push_layer(Box::new(overlaid(picker)));
 }
 

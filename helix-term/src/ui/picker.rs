@@ -141,7 +141,7 @@ pub struct FilePicker<T: Item> {
     preview_cache: HashMap<PathBuf, CachedPreview>,
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
-    file_fn: FileCallback<T>,
+    file_fn: Option<FileCallback<T>>,
 }
 
 impl<T: Item + 'static> FilePicker<T> {
@@ -149,7 +149,6 @@ impl<T: Item + 'static> FilePicker<T> {
         options: Vec<T>,
         editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
-        preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
@@ -173,7 +172,7 @@ impl<T: Item + 'static> FilePicker<T> {
             widths: Vec::new(),
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
-            file_fn: Box::new(preview_fn),
+            file_fn: None,
 
             picker: unimplemented!(),
         };
@@ -199,6 +198,14 @@ impl<T: Item + 'static> FilePicker<T> {
     pub fn truncate_start(mut self, truncate_start: bool) -> Self {
         self.truncate_start = truncate_start;
         self.picker.truncate_start = truncate_start;
+        self
+    }
+
+    pub fn with_preview(
+        mut self,
+        preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
+    ) -> Self {
+        self.file_fn = Some(Box::new(preview_fn));
         self
     }
 
@@ -372,7 +379,7 @@ impl<T: Item + 'static> FilePicker<T> {
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
         self.picker
             .selection()
-            .and_then(|current| (self.file_fn)(editor, current))
+            .and_then(|current| (self.file_fn.as_ref()?)(editor, current))
             .and_then(|(path_or_id, line)| path_or_id.get_canonicalized().ok().zip(Some(line)))
     }
 
