@@ -895,6 +895,25 @@ fn yank_main_selection_to_clipboard(
     yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Clipboard)
 }
 
+fn yank_joined(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(args.len() <= 1, ":yank-join takes at most 1 argument");
+
+    let doc = doc!(cx.editor);
+    let default_sep = Cow::Borrowed(doc.line_ending.as_str());
+    let separator = args.first().unwrap_or(&default_sep);
+    let register = cx.editor.selected_register.unwrap_or('"');
+    yank_joined_impl(cx.editor, separator, register);
+    Ok(())
+}
+
 fn yank_joined_to_clipboard(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2473,6 +2492,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Change the editor theme (show current theme if no name specified).",
             fun: theme,
             signature: CommandSignature::positional(&[completers::theme]),
+        },
+        TypableCommand {
+            name: "yank-join",
+            aliases: &[],
+            doc: "Yank joined selections. A separator can be provided as first argument. Default value is newline.",
+            fun: yank_joined,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "clipboard-yank",
