@@ -31,8 +31,8 @@ use crate::{
     compositor::{self, Compositor},
     job::Callback,
     ui::{
-        self, lsp::SignatureHelp, overlay::overlaid, DynamicPicker, FileLocation, FilePicker,
-        Popup, PromptEvent,
+        self, lsp::SignatureHelp, overlay::overlaid, DynamicPicker, FileLocation, Picker, Popup,
+        PromptEvent,
     },
 };
 
@@ -236,11 +236,11 @@ fn jump_to_location(
     align_view(doc, view, Align::Center);
 }
 
-type SymbolPicker = FilePicker<SymbolInformationItem>;
+type SymbolPicker = Picker<SymbolInformationItem>;
 
 fn sym_picker(symbols: Vec<SymbolInformationItem>, current_path: Option<lsp::Url>) -> SymbolPicker {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
-    FilePicker::new(symbols, current_path.clone(), move |cx, item, action| {
+    Picker::new(symbols, current_path.clone(), move |cx, item, action| {
         let (view, doc) = current!(cx.editor);
         push_jump(view, doc);
 
@@ -288,7 +288,7 @@ fn diag_picker(
     diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
     current_path: Option<lsp::Url>,
     format: DiagnosticsFormat,
-) -> FilePicker<PickerDiagnostic> {
+) -> Picker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
 
     // flatten the map to a vec of (url, diag) pairs
@@ -314,7 +314,7 @@ fn diag_picker(
         error: cx.editor.theme.get("error"),
     };
 
-    FilePicker::new(
+    Picker::new(
         flat_diag,
         (styles, format),
         move |cx,
@@ -1043,7 +1043,7 @@ fn goto_impl(
             editor.set_error("No definition found.");
         }
         _locations => {
-            let picker = FilePicker::new(locations, cwdir, move |cx, location, action| {
+            let picker = Picker::new(locations, cwdir, move |cx, location, action| {
                 jump_to_location(cx.editor, location, offset_encoding, action)
             })
             .with_preview(move |_editor, location| Some(location_to_file_location(location)));

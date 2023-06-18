@@ -55,8 +55,8 @@ use crate::{
     job::Callback,
     keymap::ReverseKeymap,
     ui::{
-        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem,
-        FilePicker, Picker, Popup, Prompt, PromptEvent,
+        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem, Picker,
+        Popup, Prompt, PromptEvent,
     },
 };
 
@@ -2156,7 +2156,7 @@ fn global_search(cx: &mut Context) {
                     return;
                 }
 
-                let picker = FilePicker::new(
+                let picker = Picker::new(
                     all_matches,
                     current_path,
                     move |cx, FileResult { path, line_num }, action| {
@@ -2577,7 +2577,7 @@ fn buffer_picker(cx: &mut Context) {
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
 
-    let picker = FilePicker::new(items, (), |cx, meta, action| {
+    let picker = Picker::new(items, (), |cx, meta, action| {
         cx.editor.switch(meta.id, action);
     })
     .with_preview(|editor, meta| {
@@ -2654,7 +2654,7 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
-    let picker = FilePicker::new(
+    let picker = Picker::new(
         cx.editor
             .tree
             .views()
