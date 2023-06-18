@@ -490,6 +490,172 @@ impl<T: Item + 'static> FilePicker<T> {
     }
 
     fn render_picker(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        let text_style = cx.editor.theme.get("ui.text");
+        let selected = cx.editor.theme.get("ui.text.focus");
+        let highlight_style = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
+
+        // -- Render the frame:
+        // clear area
+        let background = cx.editor.theme.get("ui.background");
+        surface.clear_with(area, background);
+
+        // don't like this but the lifetime sucks
+        let block = Block::default().borders(Borders::ALL);
+
+        // calculate the inner area inside the box
+        let inner = block.inner(area);
+
+        block.render(area, surface);
+
+        // -- Render the input bar:
+
+        let area = inner.clip_left(1).with_height(1);
+
+        let count = format!("{}/{}", self.matches.len(), self.options.len());
+        surface.set_stringn(
+            (area.x + area.width).saturating_sub(count.len() as u16 + 1),
+            area.y,
+            &count,
+            (count.len()).min(area.width as usize),
+            text_style,
+        );
+
+        self.prompt.render(area, surface, cx);
+
+        // -- Separator
+        let sep_style = cx.editor.theme.get("ui.background.separator");
+        let borders = BorderType::line_symbols(BorderType::Plain);
+        for x in inner.left()..inner.right() {
+            if let Some(cell) = surface.get_mut(x, inner.y + 1) {
+                cell.set_symbol(borders.horizontal).set_style(sep_style);
+            }
+        }
+
+        // -- Render the contents:
+        // subtract area of prompt from top
+        let inner = inner.clip_top(2);
+
+        let rows = inner.height;
+        let offset = self.cursor - (self.cursor % std::cmp::max(1, rows as usize));
+        let cursor = self.cursor.saturating_sub(offset);
+
+        let options = self
+            .matches
+            .iter()
+            .skip(offset)
+            .take(rows as usize)
+            .map(|pmatch| &self.options[pmatch.index])
+            .map(|option| option.format(&self.editor_data))
+            .map(|mut row| {
+                const TEMP_CELL_SEP: &str = " ";
+
+                let line = row.cell_text().fold(String::new(), |mut s, frag| {
+                    s.push_str(&frag);
+                    s.push_str(TEMP_CELL_SEP);
+                    s
+                });
+
+                // Items are filtered by using the text returned by menu::Item::filter_text
+                // but we do highlighting here using the text in Row and therefore there
+                // might be inconsistencies. This is the best we can do since only the
+                // text in Row is displayed to the end user.
+                let (_score, highlights) = FuzzyQuery::new(self.prompt.line())
+                    .fuzzy_indices(&line, &self.matcher)
+                    .unwrap_or_default();
+
+                let highlight_byte_ranges: Vec<_> = line
+                    .char_indices()
+                    .enumerate()
+                    .filter_map(|(char_idx, (byte_offset, ch))| {
+                        highlights
+                            .contains(&char_idx)
+                            .then(|| byte_offset..byte_offset + ch.len_utf8())
+                    })
+                    .collect();
+
+                // The starting byte index of the current (iterating) cell
+                let mut cell_start_byte_offset = 0;
+                for cell in row.cells.iter_mut() {
+                    let spans = match cell.content.lines.get(0) {
+                        Some(s) => s,
+                        None => {
+                            cell_start_byte_offset += TEMP_CELL_SEP.len();
+                            continue;
+                        }
+                    };
+
+                    let mut cell_len = 0;
+
+                    let graphemes_with_style: Vec<_> = spans
+                        .0
+                        .iter()
+                        .flat_map(|span| {
+                            span.content
+                                .grapheme_indices(true)
+                                .zip(std::iter::repeat(span.style))
+                        })
+                        .map(|((grapheme_byte_offset, grapheme), style)| {
+                            cell_len += grapheme.len();
+                            let start = cell_start_byte_offset;
+
+                            let grapheme_byte_range =
+                                grapheme_byte_offset..grapheme_byte_offset + grapheme.len();
+
+                            if highlight_byte_ranges.iter().any(|hl_rng| {
+                                hl_rng.start >= start + grapheme_byte_range.start
+                                    && hl_rng.end <= start + grapheme_byte_range.end
+                            }) {
+                                (grapheme, style.patch(highlight_style))
+                            } else {
+                                (grapheme, style)
+                            }
+                        })
+                        .collect();
+
+                    let mut span_list: Vec<(String, Style)> = Vec::new();
+                    for (grapheme, style) in graphemes_with_style {
+                        if span_list.last().map(|(_, sty)| sty) == Some(&style) {
+                            let (string, _) = span_list.last_mut().unwrap();
+                            string.push_str(grapheme);
+                        } else {
+                            span_list.push((String::from(grapheme), style))
+                        }
+                    }
+
+                    let spans: Vec<Span> = span_list
+                        .into_iter()
+                        .map(|(string, style)| Span::styled(string, style))
+                        .collect();
+                    let spans: Spans = spans.into();
+                    *cell = Cell::from(spans);
+
+                    cell_start_byte_offset += cell_len + TEMP_CELL_SEP.len();
+                }
+
+                row
+            });
+
+        let table = Table::new(options)
+            .style(text_style)
+            .highlight_style(selected)
+            .highlight_symbol(" > ")
+            .column_spacing(1)
+            .widths(&self.widths);
+
+        use tui::widgets::TableState;
+
+        table.render_table(
+            inner,
+            surface,
+            &mut TableState {
+                offset: 0,
+                selected: Some(cursor),
+            },
+            self.truncate_start,
+        );
+    }
+
+    fn render_preview(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
         // |prompt   | |preview  |
         // +---------+ |         |
@@ -836,169 +1002,7 @@ impl<T: Item + 'static> Component for Picker<T> {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        let text_style = cx.editor.theme.get("ui.text");
-        let selected = cx.editor.theme.get("ui.text.focus");
-        let highlight_style = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
-
-        // -- Render the frame:
-        // clear area
-        let background = cx.editor.theme.get("ui.background");
-        surface.clear_with(area, background);
-
-        // don't like this but the lifetime sucks
-        let block = Block::default().borders(Borders::ALL);
-
-        // calculate the inner area inside the box
-        let inner = block.inner(area);
-
-        block.render(area, surface);
-
-        // -- Render the input bar:
-
-        let area = inner.clip_left(1).with_height(1);
-
-        let count = format!("{}/{}", self.matches.len(), self.options.len());
-        surface.set_stringn(
-            (area.x + area.width).saturating_sub(count.len() as u16 + 1),
-            area.y,
-            &count,
-            (count.len()).min(area.width as usize),
-            text_style,
-        );
-
-        self.prompt.render(area, surface, cx);
-
-        // -- Separator
-        let sep_style = cx.editor.theme.get("ui.background.separator");
-        let borders = BorderType::line_symbols(BorderType::Plain);
-        for x in inner.left()..inner.right() {
-            if let Some(cell) = surface.get_mut(x, inner.y + 1) {
-                cell.set_symbol(borders.horizontal).set_style(sep_style);
-            }
-        }
-
-        // -- Render the contents:
-        // subtract area of prompt from top
-        let inner = inner.clip_top(2);
-
-        let rows = inner.height;
-        let offset = self.cursor - (self.cursor % std::cmp::max(1, rows as usize));
-        let cursor = self.cursor.saturating_sub(offset);
-
-        let options = self
-            .matches
-            .iter()
-            .skip(offset)
-            .take(rows as usize)
-            .map(|pmatch| &self.options[pmatch.index])
-            .map(|option| option.format(&self.editor_data))
-            .map(|mut row| {
-                const TEMP_CELL_SEP: &str = " ";
-
-                let line = row.cell_text().fold(String::new(), |mut s, frag| {
-                    s.push_str(&frag);
-                    s.push_str(TEMP_CELL_SEP);
-                    s
-                });
-
-                // Items are filtered by using the text returned by menu::Item::filter_text
-                // but we do highlighting here using the text in Row and therefore there
-                // might be inconsistencies. This is the best we can do since only the
-                // text in Row is displayed to the end user.
-                let (_score, highlights) = FuzzyQuery::new(self.prompt.line())
-                    .fuzzy_indices(&line, &self.matcher)
-                    .unwrap_or_default();
-
-                let highlight_byte_ranges: Vec<_> = line
-                    .char_indices()
-                    .enumerate()
-                    .filter_map(|(char_idx, (byte_offset, ch))| {
-                        highlights
-                            .contains(&char_idx)
-                            .then(|| byte_offset..byte_offset + ch.len_utf8())
-                    })
-                    .collect();
-
-                // The starting byte index of the current (iterating) cell
-                let mut cell_start_byte_offset = 0;
-                for cell in row.cells.iter_mut() {
-                    let spans = match cell.content.lines.get(0) {
-                        Some(s) => s,
-                        None => {
-                            cell_start_byte_offset += TEMP_CELL_SEP.len();
-                            continue;
-                        }
-                    };
-
-                    let mut cell_len = 0;
-
-                    let graphemes_with_style: Vec<_> = spans
-                        .0
-                        .iter()
-                        .flat_map(|span| {
-                            span.content
-                                .grapheme_indices(true)
-                                .zip(std::iter::repeat(span.style))
-                        })
-                        .map(|((grapheme_byte_offset, grapheme), style)| {
-                            cell_len += grapheme.len();
-                            let start = cell_start_byte_offset;
-
-                            let grapheme_byte_range =
-                                grapheme_byte_offset..grapheme_byte_offset + grapheme.len();
-
-                            if highlight_byte_ranges.iter().any(|hl_rng| {
-                                hl_rng.start >= start + grapheme_byte_range.start
-                                    && hl_rng.end <= start + grapheme_byte_range.end
-                            }) {
-                                (grapheme, style.patch(highlight_style))
-                            } else {
-                                (grapheme, style)
-                            }
-                        })
-                        .collect();
-
-                    let mut span_list: Vec<(String, Style)> = Vec::new();
-                    for (grapheme, style) in graphemes_with_style {
-                        if span_list.last().map(|(_, sty)| sty) == Some(&style) {
-                            let (string, _) = span_list.last_mut().unwrap();
-                            string.push_str(grapheme);
-                        } else {
-                            span_list.push((String::from(grapheme), style))
-                        }
-                    }
-
-                    let spans: Vec<Span> = span_list
-                        .into_iter()
-                        .map(|(string, style)| Span::styled(string, style))
-                        .collect();
-                    let spans: Spans = spans.into();
-                    *cell = Cell::from(spans);
-
-                    cell_start_byte_offset += cell_len + TEMP_CELL_SEP.len();
-                }
-
-                row
-            });
-
-        let table = Table::new(options)
-            .style(text_style)
-            .highlight_style(selected)
-            .highlight_symbol(" > ")
-            .column_spacing(1)
-            .widths(&self.widths);
-
-        use tui::widgets::TableState;
-
-        table.render_table(
-            inner,
-            surface,
-            &mut TableState {
-                offset: 0,
-                selected: Some(cursor),
-            },
-            self.truncate_start,
-        );
+        unimplemented!()
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
