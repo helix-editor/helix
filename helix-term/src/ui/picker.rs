@@ -77,36 +77,6 @@ type FileCallback<T> = Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>;
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation = (PathOrId, Option<(usize, usize)>);
 
-pub struct FilePicker<T: Item> {
-    options: Vec<T>,
-    editor_data: T::Data,
-    // filter: String,
-    matcher: Box<Matcher>,
-    matches: Vec<PickerMatch>,
-
-    /// Current height of the completions box
-    completion_height: u16,
-
-    cursor: usize,
-    // pattern: String,
-    prompt: Prompt,
-    previous_pattern: (String, FuzzyQuery),
-    /// Whether to show the preview panel (default true)
-    show_preview: bool,
-    /// Constraints for tabular formatting
-    widths: Vec<Constraint>,
-
-    callback_fn: PickerCallback<T>,
-
-    picker: Picker<T>,
-    pub truncate_start: bool,
-    /// Caches paths to documents
-    preview_cache: HashMap<PathBuf, CachedPreview>,
-    read_buffer: Vec<u8>,
-    /// Given an item in the picker, return the file path and line number to display.
-    file_fn: FileCallback<T>,
-}
-
 pub enum CachedPreview {
     Document(Box<Document>),
     Binary,
@@ -142,6 +112,36 @@ impl Preview<'_, '_> {
             },
         }
     }
+}
+
+pub struct FilePicker<T: Item> {
+    options: Vec<T>,
+    editor_data: T::Data,
+    // filter: String,
+    matcher: Box<Matcher>,
+    matches: Vec<PickerMatch>,
+
+    /// Current height of the completions box
+    completion_height: u16,
+
+    cursor: usize,
+    // pattern: String,
+    prompt: Prompt,
+    previous_pattern: (String, FuzzyQuery),
+    /// Whether to show the preview panel (default true)
+    show_preview: bool,
+    /// Constraints for tabular formatting
+    widths: Vec<Constraint>,
+
+    callback_fn: PickerCallback<T>,
+
+    picker: Picker<T>,
+    pub truncate_start: bool,
+    /// Caches paths to documents
+    preview_cache: HashMap<PathBuf, CachedPreview>,
+    read_buffer: Vec<u8>,
+    /// Given an item in the picker, return the file path and line number to display.
+    file_fn: FileCallback<T>,
 }
 
 impl<T: Item + 'static> FilePicker<T> {
