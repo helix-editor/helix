@@ -442,6 +442,36 @@ fn force_write_buffer_next(
     Ok(())
 }
 
+fn write_buffer_previous(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(cx, args.first(), false)?;
+
+    goto_buffer(cx.editor, Direction::Backward);
+    Ok(())
+}
+
+fn force_write_buffer_previous(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(cx, args.first(), true)?;
+
+    goto_buffer(cx.editor, Direction::Backward);
+    Ok(())
+}
+
 fn new_file(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -2404,6 +2434,34 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["wbc!"],
             doc: "Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)",
             fun: force_write_buffer_close,
+            signature: CommandSignature::positional(&[completers::filename]),
+        },
+        TypableCommand {
+            name: "write-buffer-next",
+            aliases: &["wbn"],
+            doc: "Write changes to disk and goto next buffer. Accepts an optional path (:write-buffer-next some/path.txt)",
+            fun: write_buffer_next,
+            signature: CommandSignature::positional(&[completers::filename]),
+        },
+        TypableCommand {
+            name: "write-buffer-next!",
+            aliases: &["wbn!"],
+            doc: "Force write changes to disk creating necessary subdirectories and goto next buffer. Accepts an optional path (:write-buffer-next! some/path.txt)",
+            fun: force_write_buffer_next,
+            signature: CommandSignature::positional(&[completers::filename]),
+        },
+        TypableCommand {
+            name: "write-buffer-previous",
+            aliases: &["wbp"],
+            doc: "Write changes to disk and goto previous buffer. Accepts an optional path (:write-buffer-previous some/path.txt)",
+            fun: write_buffer_previous,
+            signature: CommandSignature::positional(&[completers::filename]),
+        },
+        TypableCommand {
+            name: "write-buffer-previous!",
+            aliases: &["wbp!"],
+            doc: "Force write changes to disk creating necessary subdirectories and goto previous buffer. Accepts an optional path (:write-buffer-previous! some/path.txt)",
+            fun: force_write_buffer_previous,
             signature: CommandSignature::positional(&[completers::filename]),
         },
         TypableCommand {

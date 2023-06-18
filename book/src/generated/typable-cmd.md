@@ -17,6 +17,8 @@
 | `:write-buffer-close!`, `:wbc!` | Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt) |
 | `:write-buffer-next`, `:wbc` | Write changes to disk and goto next buffer. |
 | `:write-buffer-next!`, `:wbc!` | Force write changes to disk creating necessary subdirectories and goto next buffer. |
+| `:write-buffer-previous`, `:wbc` | Write changes to disk and goto previous buffer. |
+| `:write-buffer-previous!`, `:wbc!` | Force write changes to disk creating necessary subdirectories and goto previous buffer. |
 | `:new`, `:n` | Create a new scratch buffer. |
 | `:format`, `:fmt` | Format the file using the LSP formatter. |
 | `:indent-style` | Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.) |
