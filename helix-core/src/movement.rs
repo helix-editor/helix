@@ -524,13 +524,47 @@ pub fn goto_treesitter_object(
             &mut cursor,
         )?;
 
-        let node = match dir {
+        let node_option = match dir {
             Direction::Forward => nodes
                 .filter(|n| n.start_byte() > byte_pos)
-                .min_by_key(|n| (n.start_byte(), Reverse(n.end_byte())))?,
+                .min_by_key(|n| (n.start_byte(), Reverse(n.end_byte()))),
             Direction::Backward => nodes
                 .filter(|n| n.end_byte() < byte_pos)
-                .max_by_key(|n| (n.end_byte(), Reverse(n.start_byte())))?,
+                .max_by_key(|n| (n.end_byte(), Reverse(n.start_byte()))),
+        };
+
+        let node = match node_option {
+            Some(node) => node,
+            None => match dir {
+                Direction::Forward => lang_config
+                    .textobject_query()?
+                    .capture_nodes_any(
+                        &[
+                            &cap_name(TextObject::Movement),
+                            &cap_name(TextObject::Around),
+                            &cap_name(TextObject::Inside),
+                        ],
+                        slice_tree,
+                        slice,
+                        &mut cursor,
+                    )?
+                    .filter(|n| n.end_byte() <= byte_pos)
+                    .min_by_key(|n| (n.end_byte(), Reverse(n.start_byte())))?,
+                Direction::Backward => lang_config
+                    .textobject_query()?
+                    .capture_nodes_any(
+                        &[
+                            &cap_name(TextObject::Movement),
+                            &cap_name(TextObject::Around),
+                            &cap_name(TextObject::Inside),
+                        ],
+                        slice_tree,
+                        slice,
+                        &mut cursor,
+                    )?
+                    .filter(|n| n.start_byte() >= byte_pos)
+                    .max_by_key(|n| (n.start_byte(), Reverse(n.end_byte())))?,
+            },
         };
 
         let len = slice.len_bytes();
