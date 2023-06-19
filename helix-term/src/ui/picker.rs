@@ -750,6 +750,33 @@ impl<T: Item + 'static> Picker<T> {
             );
         }
     }
+}
+
+impl<T: Item + 'static> Component for Picker<T> {
+    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        // +---------+ +---------+
+        // |prompt   | |preview  |
+        // +---------+ |         |
+        // |picker   | |         |
+        // |         | |         |
+        // +---------+ +---------+
+
+        let render_preview = self.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+
+        let picker_width = if render_preview {
+            area.width / 2
+        } else {
+            area.width
+        };
+
+        let picker_area = area.with_width(picker_width);
+        self.render_picker(picker_area, surface, cx);
+
+        if render_preview {
+            let preview_area = area.clip_left(picker_width);
+            self.render_preview(preview_area, surface, cx);
+        }
+    }
 
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
         if let Event::IdleTimeout = event {
@@ -843,33 +870,6 @@ impl<T: Item + 'static> Picker<T> {
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
         self.completion_height = height.saturating_sub(4);
         Some((width, height))
-    }
-}
-
-impl<T: Item + 'static> Component for Picker<T> {
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // +---------+ +---------+
-        // |prompt   | |preview  |
-        // +---------+ |         |
-        // |picker   | |         |
-        // |         | |         |
-        // +---------+ +---------+
-
-        let render_preview = self.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
-
-        let picker_width = if render_preview {
-            area.width / 2
-        } else {
-            area.width
-        };
-
-        let picker_area = area.with_width(picker_width);
-        self.render_picker(picker_area, surface, cx);
-
-        if render_preview {
-            let preview_area = area.clip_left(picker_width);
-            self.render_preview(preview_area, surface, cx);
-        }
     }
 }
 
