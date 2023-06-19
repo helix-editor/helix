@@ -524,7 +524,7 @@ pub fn goto_treesitter_object(
             &mut cursor,
         )?;
 
-        let node_option = match dir {
+        let next_node = match dir {
             Direction::Forward => nodes
                 .filter(|n| n.start_byte() > byte_pos)
                 .min_by_key(|n| (n.start_byte(), Reverse(n.end_byte()))),
@@ -533,38 +533,29 @@ pub fn goto_treesitter_object(
                 .max_by_key(|n| (n.end_byte(), Reverse(n.start_byte()))),
         };
 
-        let node = match node_option {
+        // In the case there is no next node, attempt to wrap the doc
+        let node = match next_node {
             Some(node) => node,
-            None => match dir {
-                Direction::Forward => lang_config
-                    .textobject_query()?
-                    .capture_nodes_any(
-                        &[
-                            &cap_name(TextObject::Movement),
-                            &cap_name(TextObject::Around),
-                            &cap_name(TextObject::Inside),
-                        ],
-                        slice_tree,
-                        slice,
-                        &mut cursor,
-                    )?
-                    .filter(|n| n.end_byte() <= byte_pos)
-                    .min_by_key(|n| (n.end_byte(), Reverse(n.start_byte())))?,
-                Direction::Backward => lang_config
-                    .textobject_query()?
-                    .capture_nodes_any(
-                        &[
-                            &cap_name(TextObject::Movement),
-                            &cap_name(TextObject::Around),
-                            &cap_name(TextObject::Inside),
-                        ],
-                        slice_tree,
-                        slice,
-                        &mut cursor,
-                    )?
-                    .filter(|n| n.start_byte() >= byte_pos)
-                    .max_by_key(|n| (n.start_byte(), Reverse(n.end_byte())))?,
-            },
+            None => {
+                let orig_nodes = lang_config.textobject_query()?.capture_nodes_any(
+                    &[
+                        &cap_name(TextObject::Movement),
+                        &cap_name(TextObject::Around),
+                        &cap_name(TextObject::Inside),
+                    ],
+                    slice_tree,
+                    slice,
+                    &mut cursor,
+                )?;
+                match dir {
+                    Direction::Forward => orig_nodes
+                        .filter(|n| n.end_byte() <= byte_pos)
+                        .min_by_key(|n| (n.end_byte(), Reverse(n.start_byte())))?,
+                    Direction::Backward => orig_nodes
+                        .filter(|n| n.start_byte() >= byte_pos)
+                        .max_by_key(|n| (n.start_byte(), Reverse(n.end_byte())))?,
+                }
+            }
         };
 
         let len = slice.len_bytes();
