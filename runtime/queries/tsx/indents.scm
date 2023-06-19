@@ -13,4 +13,4 @@
 ; them here or consider adding them to any of the inherited languages listed
 ; below.
 
-; inherits: _typescript,_jsx,ecma
+; inherits: _jsx,_typescript,ecma
