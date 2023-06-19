@@ -159,9 +159,13 @@ pacman -S mingw-w64-ucrt-x86_64-helix
 
 Requirements:
 
+Clone the Helix GitHub repository into a directory of your choice. The
+examples in this documentation assume installation into either `~/src/` on
+Linux and macOS, or `%userprofile%\src\` on Windows.
+
 - The [Rust toolchain](https://www.rust-lang.org/tools/install)
 - The [Git version control system](https://git-scm.com/)
-- A c++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang
+- A C++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang
 
 If you are using the `musl-libc` standard library instead of `glibc` the following environment variable must be set during the build to ensure tree-sitter grammars can be loaded correctly:
 
@@ -195,13 +199,15 @@ grammars in the local `runtime` folder.
 
 #### Linux and macOS
 
-Either set the `HELIX_RUNTIME` environment variable to point to the runtime files and add it to your `~/.bashrc` or equivalent:
+The **runtime** directory is one below the Helix source, so either set a
+`HELIX_RUNTIME` environment variable to point to that directory and add it to
+your `~/.bashrc` or equivalent:
 
 ```sh
-HELIX_RUNTIME=/home/user-name/src/helix/runtime
+HELIX_RUNTIME=~/src/helix/runtime
 ```
 
-Or, create a symlink in `~/.config/helix` that links to the source code directory:
+Or, create a symbolic link:
 
 ```sh
 ln -Ts $PWD/runtime ~/.config/helix/runtime

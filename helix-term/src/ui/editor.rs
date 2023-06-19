@@ -907,8 +907,9 @@ impl EditorView {
                                 let text = doc.text().slice(..);
                                 let cursor = doc.selection(view.id).primary().cursor(text);
 
-                                let shift_position =
-                                    |pos: usize| -> usize { pos + cursor - trigger_offset };
+                                let shift_position = |pos: usize| -> usize {
+                                    (pos + cursor).saturating_sub(trigger_offset)
+                                };
 
                                 let tx = Transaction::change(
                                     doc.text(),
@@ -943,6 +944,8 @@ impl EditorView {
                 self.handle_keymap_event(mode, cxt, event);
                 if self.keymaps.pending().is_empty() {
                     cxt.editor.count = None
+                } else {
+                    cxt.editor.selected_register = cxt.register.take();
                 }
             }
         }
