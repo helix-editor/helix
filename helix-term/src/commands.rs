@@ -296,8 +296,6 @@ impl MappableCommand {
         delete_selection, "Delete selection",
         delete_selection_noyank, "Delete selection without yanking",
         change_selection, "Change selection",
-        change_selection_with_indent, "Change selection and place the cursor at the appropriated indent",
-        change_selection_with_indent_noyank, "Change selection without yanking and place the cursor at the appropriated indent",
         change_selection_noyank, "Change selection without yanking",
         collapse_selection, "Collapse selection into single cursor",
         flip_selections, "Flip selection cursor and anchor",
@@ -2315,7 +2313,6 @@ fn shrink_to_line_bounds(cx: &mut Context) {
 enum Operation {
     Delete,
     Change,
-    ChangeWithIndent,
 }
 
 fn only_whole_lines(selection: &Selection, text: &Rope) -> bool {
@@ -2357,9 +2354,6 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
             exit_select_mode(cx);
         }
         Operation::Change => {
-            enter_insert_mode(cx);
-        }
-        Operation::ChangeWithIndent => {
             if only_whole_lines {
                 open_above(cx);
             } else {
@@ -2431,15 +2425,6 @@ fn change_selection(cx: &mut Context) {
 fn change_selection_noyank(cx: &mut Context) {
     cx.register = Some('_');
     delete_selection_impl(cx, Operation::Change);
-}
-
-fn change_selection_with_indent(cx: &mut Context) {
-    delete_selection_impl(cx, Operation::ChangeWithIndent);
-}
-
-fn change_selection_with_indent_noyank(cx: &mut Context) {
-    cx.register = Some('_');
-    delete_selection_impl(cx, Operation::ChangeWithIndent);
 }
 
 fn collapse_selection(cx: &mut Context) {
