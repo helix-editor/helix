@@ -1121,21 +1121,28 @@ impl Document {
 
             let changes = transaction.changes();
 
+            changes.update_positions(
+                self.diagnostics
+                    .iter_mut()
+                    .map(|diagnostic| (&mut diagnostic.range.start, Assoc::After)),
+            );
+            changes.update_positions(
+                self.diagnostics
+                    .iter_mut()
+                    .map(|diagnostic| (&mut diagnostic.range.end, Assoc::After)),
+            );
             // map state.diagnostics over changes::map_pos too
             for diagnostic in &mut self.diagnostics {
-                diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
-                diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
                 diagnostic.line = self.text.char_to_line(diagnostic.range.start);
             }
-            self.diagnostics
-                .sort_unstable_by_key(|diagnostic| diagnostic.range);
 
             // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
             let apply_inlay_hint_changes = |annotations: &mut Rc<[InlineAnnotation]>| {
                 if let Some(data) = Rc::get_mut(annotations) {
-                    for inline in data.iter_mut() {
-                        inline.char_idx = changes.map_pos(inline.char_idx, Assoc::After);
-                    }
+                    changes.update_positions(
+                        data.iter_mut()
+                            .map(|diagnostic| (&mut diagnostic.char_idx, Assoc::After)),
+                    );
                 }
             };
 
