@@ -221,7 +221,7 @@ pub fn languages_all() -> std::io::Result<()> {
 
 /// Display diagnostics pertaining to a particular language (LSP,
 /// highlight queries, etc).
-pub fn language(lang_str: String) -> std::io::Result<()> {
+pub fn language(lang_str: String, display_heading: bool) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
@@ -268,6 +268,13 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
             return Ok(());
         }
     };
+
+    if display_heading {
+        let stdout = std::io::stdout();
+        let mut stdout = stdout.lock();
+
+        writeln!(stdout, "\n{}", &lang_str.clone().white())?;
+    }
 
     // TODO multiple language servers
     probe_protocol(
@@ -339,10 +346,10 @@ pub fn print_health(health_arg: Option<HealthArg>) -> std::io::Result<()> {
             writeln!(std::io::stdout().lock())?;
             languages_all()?;
         }
-        Some(HealthArg::Language(lang)) => language(lang)?,
+        Some(HealthArg::Language(lang)) => language(lang, false)?,
         Some(HealthArg::Languages(languages)) => {
             for lang in languages {
-                language(lang)?;
+                language(lang, true)?;
             }
         }
     }
