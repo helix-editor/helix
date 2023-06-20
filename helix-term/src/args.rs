@@ -61,6 +61,9 @@ impl Args {
                             "all" => HealthArg::All,
                             "clipboard" => HealthArg::Clipboard,
                             "languages" => HealthArg::AllLanguges,
+                            languages if languages.contains(',') => HealthArg::Languages(
+                                languages.split(',').map(|s| s.to_string()).collect(),
+                            ),
                             language => HealthArg::Language(language.to_string()),
                         }),
                         _ => Some(HealthArg::Languages(health_args)),
