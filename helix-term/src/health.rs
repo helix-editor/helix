@@ -1,3 +1,4 @@
+use crate::args::HealthArg;
 use crossterm::{
     style::{Color, Print, Stylize},
     tty::IsTty,
@@ -328,17 +329,17 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
     Ok(())
 }
 
-pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
-    match health_arg.as_deref() {
-        Some("languages") => languages_all()?,
-        Some("clipboard") => clipboard()?,
-        None | Some("all") => {
+pub fn print_health(health_arg: Option<HealthArg>) -> std::io::Result<()> {
+    match health_arg {
+        Some(HealthArg::AllLanguges) => languages_all()?,
+        Some(HealthArg::Clipboard) => clipboard()?,
+        None | Some(HealthArg::All) => {
             general()?;
             clipboard()?;
             writeln!(std::io::stdout().lock())?;
             languages_all()?;
         }
-        Some(lang) => language(lang.to_string())?,
+        Some(HealthArg::Language(lang)) => language(lang)?,
     }
     Ok(())
 }

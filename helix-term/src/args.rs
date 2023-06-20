@@ -3,12 +3,19 @@ use helix_core::Position;
 use helix_view::tree::Layout;
 use std::path::{Path, PathBuf};
 
+pub enum HealthArg {
+    All,
+    AllLanguges,
+    Clipboard,
+    Language(String),
+}
+
 #[derive(Default)]
 pub struct Args {
     pub display_help: bool,
     pub display_version: bool,
     pub health: bool,
-    pub health_arg: Option<String>,
+    pub health_arg: Option<HealthArg>,
     pub load_tutor: bool,
     pub fetch_grammars: bool,
     pub build_grammars: bool,
@@ -42,7 +49,14 @@ impl Args {
                 },
                 "--health" => {
                     args.health = true;
-                    args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));
+                    args.health_arg =
+                        argv.next_if(|opt| !opt.starts_with('-'))
+                            .map(|opt| match opt.as_str() {
+                                "all" => HealthArg::All,
+                                "clipboard" => HealthArg::Clipboard,
+                                "languages" => HealthArg::AllLanguges,
+                                language => HealthArg::Language(language.to_string()),
+                            });
                 }
                 "-g" | "--grammar" => match argv.next().as_deref() {
                     Some("fetch") => args.fetch_grammars = true,
