@@ -340,6 +340,11 @@ pub fn print_health(health_arg: Option<HealthArg>) -> std::io::Result<()> {
             languages_all()?;
         }
         Some(HealthArg::Language(lang)) => language(lang)?,
+        Some(HealthArg::Languages(languages)) => {
+            for lang in languages {
+                language(lang)?;
+            }
+        }
     }
     Ok(())
 }

@@ -8,6 +8,7 @@ pub enum HealthArg {
     AllLanguges,
     Clipboard,
     Language(String),
+    Languages(Vec<String>),
 }
 
 #[derive(Default)]
@@ -49,14 +50,21 @@ impl Args {
                 },
                 "--health" => {
                     args.health = true;
-                    args.health_arg =
-                        argv.next_if(|opt| !opt.starts_with('-'))
-                            .map(|opt| match opt.as_str() {
-                                "all" => HealthArg::All,
-                                "clipboard" => HealthArg::Clipboard,
-                                "languages" => HealthArg::AllLanguges,
-                                language => HealthArg::Language(language.to_string()),
-                            });
+
+                    let mut health_args: Vec<String> = Vec::new();
+                    while let Some(opt) = argv.next_if(|opt| !opt.starts_with('-')) {
+                        health_args.push(opt);
+                    }
+                    args.health_arg = match health_args.len() {
+                        0 => None,
+                        1 => Some(match health_args.get(0).unwrap().as_str() {
+                            "all" => HealthArg::All,
+                            "clipboard" => HealthArg::Clipboard,
+                            "languages" => HealthArg::AllLanguges,
+                            language => HealthArg::Language(language.to_string()),
+                        }),
+                        _ => Some(HealthArg::Languages(health_args)),
+                    }
                 }
                 "-g" | "--grammar" => match argv.next().as_deref() {
                     Some("fetch") => args.fetch_grammars = true,
