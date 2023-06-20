@@ -51,23 +51,26 @@ impl Args {
                 "--health" => {
                     args.health = true;
 
-                    let mut health_args: Vec<String> = Vec::new();
-                    while let Some(opt) = argv.next_if(|opt| !opt.starts_with('-')) {
-                        health_args.push(opt);
-                    }
-                    args.health_arg = match health_args.len() {
-                        0 => None,
-                        1 => Some(match health_args.get(0).unwrap().as_str() {
-                            "all" => HealthArg::All,
-                            "clipboard" => HealthArg::Clipboard,
-                            "languages" => HealthArg::AllLanguges,
-                            languages if languages.contains(',') => HealthArg::Languages(
-                                languages.split(',').map(|s| s.to_string()).collect(),
-                            ),
-                            language => HealthArg::Language(language.to_string()),
-                        }),
-                        _ => Some(HealthArg::Languages(health_args)),
-                    }
+                    args.health_arg =
+                        argv.next_if(|opt| !opt.starts_with('-'))
+                            .map(|opt| match opt.as_str() {
+                                "all" => HealthArg::All,
+                                "clipboard" => HealthArg::Clipboard,
+                                "languages" => HealthArg::AllLanguges,
+                                language => match argv.next_if(|opt| !opt.starts_with('-')) {
+                                    Some(opt) => {
+                                        let mut languages: Vec<String> =
+                                            vec![language.to_string(), opt];
+                                        while let Some(opt) =
+                                            argv.next_if(|opt| !opt.starts_with('-'))
+                                        {
+                                            languages.push(opt);
+                                        }
+                                        HealthArg::Languages(languages)
+                                    }
+                                    None => HealthArg::Language(language.to_string()),
+                                },
+                            });
                 }
                 "-g" | "--grammar" => match argv.next().as_deref() {
                     Some("fetch") => args.fetch_grammars = true,
