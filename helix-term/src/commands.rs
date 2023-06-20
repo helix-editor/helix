@@ -55,8 +55,8 @@ use crate::{
     job::Callback,
     keymap::ReverseKeymap,
     ui::{
-        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem,
-        FilePicker, Picker, Popup, Prompt, PromptEvent,
+        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem, Picker,
+        Popup, Prompt, PromptEvent,
     },
 };
 
@@ -376,6 +376,7 @@ impl MappableCommand {
         later, "Move forward in history",
         commit_undo_checkpoint, "Commit changes to new checkpoint",
         yank, "Yank selection",
+        yank_joined, "Join and yank selections",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
         yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard",
@@ -406,6 +407,7 @@ impl MappableCommand {
         rotate_selections_backward, "Rotate selections backward",
         rotate_selection_contents_forward, "Rotate selection contents forward",
         rotate_selection_contents_backward, "Rotate selections contents backward",
+        reverse_selection_contents, "Reverse selections contents",
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
         select_next_sibling, "Select next sibling in syntax tree",
@@ -2154,7 +2156,7 @@ fn global_search(cx: &mut Context) {
                     return;
                 }
 
-                let picker = FilePicker::new(
+                let picker = Picker::new(
                     all_matches,
                     current_path,
                     move |cx, FileResult { path, line_num }, action| {
@@ -2182,11 +2184,9 @@ fn global_search(cx: &mut Context) {
 
                         doc.set_selection(view.id, Selection::single(start, end));
                         align_view(doc, view, Align::Center);
-                    },
-                    |_editor, FileResult { path, line_num }| {
+                    }).with_preview(|_editor, FileResult { path, line_num }| {
                         Some((path.clone().into(), Some((*line_num, *line_num))))
-                    },
-                );
+                    });
                 compositor.push(Box::new(overlaid(picker)));
             },
         ));
@@ -2577,22 +2577,18 @@ fn buffer_picker(cx: &mut Context) {
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
 
-    let picker = FilePicker::new(
-        items,
-        (),
-        |cx, meta, action| {
-            cx.editor.switch(meta.id, action);
-        },
-        |editor, meta| {
-            let doc = &editor.documents.get(&meta.id)?;
-            let &view_id = doc.selections().keys().next()?;
-            let line = doc
-                .selection(view_id)
-                .primary()
-                .cursor_line(doc.text().slice(..));
-            Some((meta.id.into(), Some((line, line))))
-        },
-    );
+    let picker = Picker::new(items, (), |cx, meta, action| {
+        cx.editor.switch(meta.id, action);
+    })
+    .with_preview(|editor, meta| {
+        let doc = &editor.documents.get(&meta.id)?;
+        let &view_id = doc.selections().keys().next()?;
+        let line = doc
+            .selection(view_id)
+            .primary()
+            .cursor_line(doc.text().slice(..));
+        Some((meta.id.into(), Some((line, line))))
+    });
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2658,7 +2654,7 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
-    let picker = FilePicker::new(
+    let picker = Picker::new(
         cx.editor
             .tree
             .views()
@@ -2676,12 +2672,12 @@ fn jumplist_picker(cx: &mut Context) {
             doc.set_selection(view.id, meta.selection.clone());
             view.ensure_cursor_in_view_center(doc, config.scrolloff);
         },
-        |editor, meta| {
-            let doc = &editor.documents.get(&meta.id)?;
-            let line = meta.selection.primary().cursor_line(doc.text().slice(..));
-            Some((meta.path.clone()?.into(), Some((line, line))))
-        },
-    );
+    )
+    .with_preview(|editor, meta| {
+        let doc = &editor.documents.get(&meta.id)?;
+        let line = meta.selection.primary().cursor_line(doc.text().slice(..));
+        Some((meta.id.into(), Some((line, line))))
+    });
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -3723,6 +3719,38 @@ fn yank(cx: &mut Context) {
     exit_select_mode(cx);
 }
 
+fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
+    let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id);
+    let joined = selection
+        .fragments(text)
+        .fold(String::new(), |mut acc, fragment| {
+            if !acc.is_empty() {
+                acc.push_str(separator);
+            }
+            acc.push_str(&fragment);
+            acc
+        });
+
+    let msg = format!(
+        "joined and yanked {} selection(s) to register {}",
+        selection.len(),
+        register,
+    );
+
+    editor.registers.write(register, vec![joined]);
+    editor.set_status(msg);
+}
+
+fn yank_joined(cx: &mut Context) {
+    let line_ending = doc!(cx.editor).line_ending;
+    let register = cx.register.unwrap_or('"');
+    yank_joined_impl(cx.editor, line_ending.as_str(), register);
+    exit_select_mode(cx);
+}
+
 fn yank_joined_to_clipboard_impl(
     editor: &mut Editor,
     separator: &str,
@@ -4482,7 +4510,13 @@ fn rotate_selections_backward(cx: &mut Context) {
     rotate_selections(cx, Direction::Backward)
 }
 
-fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
+enum ReorderStrategy {
+    RotateForward,
+    RotateBackward,
+    Reverse,
+}
+
+fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
     let count = cx.count;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -4500,9 +4534,10 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
 
     for chunk in fragments.chunks_mut(group) {
         // TODO: also modify main index
-        match direction {
-            Direction::Forward => chunk.rotate_right(1),
-            Direction::Backward => chunk.rotate_left(1),
+        match strategy {
+            ReorderStrategy::RotateForward => chunk.rotate_right(1),
+            ReorderStrategy::RotateBackward => chunk.rotate_left(1),
+            ReorderStrategy::Reverse => chunk.reverse(),
         };
     }
 
@@ -4519,10 +4554,13 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
 }
 
 fn rotate_selection_contents_forward(cx: &mut Context) {
-    rotate_selection_contents(cx, Direction::Forward)
+    reorder_selection_contents(cx, ReorderStrategy::RotateForward)
 }
 fn rotate_selection_contents_backward(cx: &mut Context) {
-    rotate_selection_contents(cx, Direction::Backward)
+    reorder_selection_contents(cx, ReorderStrategy::RotateBackward)
+}
+fn reverse_selection_contents(cx: &mut Context) {
+    reorder_selection_contents(cx, ReorderStrategy::Reverse)
 }
 
 // tree sitter node selection

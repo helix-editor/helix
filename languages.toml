@@ -24,6 +24,7 @@ elm-language-server = { command = "elm-language-server" }
 elvish = { command = "elvish", args = ["-lsp"] }
 erlang-ls = { command = "erlang_ls" }
 forc = { command = "forc", args = ["lsp"] }
+forth-lsp = { command = "forth-lsp" }
 fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
 gleam = { command = "gleam", args = ["lsp"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
@@ -1620,7 +1621,7 @@ injection-regex = "sql"
 
 [[grammar]]
 name = "sql"
-source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "3a3f92b29c880488a08bc2baaf1aca6432ec3380" }
+source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "7cbac0472e5b8f8486ce64ffbcf1982d5cd5fc8d" }
 
 [[language]]
 name = "gdscript"
@@ -2606,11 +2607,12 @@ injection-regex = "forth"
 file-types = ["fs", "forth", "fth", "4th"]
 roots = []
 comment-token = "\\"
+language-servers = [ "forth-lsp" ]
 indent = { tab-width = 3, unit = "   " }
 
 [[grammar]]
 name = "forth"
-source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "c6fae50a17763af827604627c0fa9e4604aaac0b" }
+source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "304ed77beb113e37af38b20ff14e3c37bf350d10" }
 
 [[language]]
 name = "t32"
@@ -2624,3 +2626,12 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "t32"
 source = { git = "https://codeberg.org/xasc/tree-sitter-t32", rev = "1dd98248b01e4a3933c1b85b58bab0875e2ba437" }
+
+[[language]]
+name = "webc"
+scope = "text.html.webc"
+injection-regex = "webc"
+file-types = ["webc"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+grammar = "html"
