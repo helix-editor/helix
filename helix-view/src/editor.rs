@@ -1490,7 +1490,7 @@ impl Editor {
                     self.close(view_id);
                 }
                 Action::ReplaceDoc(view_id, doc_id) => {
-                    self.replace_document_in_view(view_id, doc_id, true);
+                    self.replace_document_in_view(view_id, doc_id, false);
                 }
             }
         }
