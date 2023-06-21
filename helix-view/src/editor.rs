@@ -1268,14 +1268,6 @@ impl Editor {
         doc.ensure_view_init(view.id);
         view.sync_changes(doc);
         doc.mark_as_focused();
-        // let view = self.tree.get_mut(current_view);
-        // view.doc = doc_id;
-        // view.offset = ViewPosition::default();
-        // let doc = doc_mut!(self, &doc_id);
-        // doc.ensure_view_init(view.id);
-        // view.sync_changes(doc);
-        // doc.mark_as_focused();
-        // align_view(doc, view, Align::Center);
     }
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
