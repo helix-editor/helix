@@ -34,6 +34,7 @@ use helix_core::{
 };
 
 use crate::editor::{Config, RedrawHandle};
+use crate::view::ViewPosition;
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -185,6 +186,8 @@ pub struct Document {
 
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
+
+    pub last_view: ViewPosition,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -620,6 +623,7 @@ impl Document {
             config,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
+            last_view: ViewPosition::default(),
         }
     }
 
