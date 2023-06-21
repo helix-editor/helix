@@ -114,6 +114,12 @@ pub fn grapheme_width(g: &str) -> usize {
     }
 }
 
+/// Byte index aligned to start of the char that it is in. If byte is the start
+/// of a char it will remain unchanged.
+fn aligned_byte_index(slice: RopeSlice, byte_idx: usize) -> usize {
+    slice.char_to_byte(slice.byte_to_char(byte_idx))
+}
+
 #[must_use]
 pub fn nth_prev_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -> usize {
     // Bounds check
@@ -204,7 +210,9 @@ pub fn nth_next_grapheme_boundary(slice: RopeSlice, char_idx: usize, n: usize) -
 }
 
 #[must_use]
-pub fn nth_next_grapheme_boundary_byte(slice: RopeSlice, mut byte_idx: usize, n: usize) -> usize {
+pub fn nth_next_grapheme_boundary_byte(slice: RopeSlice, byte_idx: usize, n: usize) -> usize {
+    let mut byte_idx = aligned_byte_index(slice, byte_idx);
+
     // Bounds check
     debug_assert!(byte_idx <= slice.len_bytes());
 
@@ -326,6 +334,11 @@ pub fn is_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> bool {
 /// Returns whether the given byte position is a grapheme boundary.
 #[must_use]
 pub fn is_grapheme_boundary_byte(slice: RopeSlice, byte_idx: usize) -> bool {
+    if aligned_byte_index(slice, byte_idx) != byte_idx {
+        // byte is not start of char, so definently not start of grapheme
+        return false;
+    }
+
     // Bounds check
     debug_assert!(byte_idx <= slice.len_bytes());
 
