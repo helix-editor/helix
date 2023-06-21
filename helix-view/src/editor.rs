@@ -1255,14 +1255,14 @@ impl Editor {
     ) {
         let view = self.tree.get_mut(current_view);
 
+        // If swapping from a document, record the last view
         if !from_scratch {
             let old_view_offset = view.offset;
-            // If doc is a scratch align
             let mut old_doc = doc_mut!(self, &view.doc);
             old_doc.last_view = old_view_offset;
         }
-        view.doc = doc_id;
 
+        view.doc = doc_id;
         let doc = doc_mut!(self, &doc_id);
         view.offset = doc.last_view;
         doc.ensure_view_init(view.id);
