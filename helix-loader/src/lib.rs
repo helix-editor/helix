@@ -31,8 +31,8 @@ pub fn initialize_config_file(specified_file: Option<PathBuf>) {
 /// The priority is:
 ///
 /// 1. sibling directory to `CARGO_MANIFEST_DIR` (if environment variable is set)
-/// 2. subdirectory of user config directory (always included)
-/// 3. `HELIX_RUNTIME` (if environment variable is set)
+/// 2. `HELIX_RUNTIME` (if environment variable is set)
+/// 3. subdirectory of user config directory (always included)
 /// 4. subdirectory of path to helix executable (always included)
 ///
 /// Postcondition: returns at least two paths (they might not exist).
@@ -46,13 +46,15 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
         log::debug!("runtime dir: {}", path.to_string_lossy());
         rt_dirs.push(path);
     }
+    
+    if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
+        rt_dirs.push(dir.into());
+    }
 
     let conf_rt_dir = config_dir().join(RT_DIR);
     rt_dirs.push(conf_rt_dir);
 
-    if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
-        rt_dirs.push(dir.into());
-    }
+
 
     // fallback to location of the executable being run
     // canonicalize the path in case the executable is symlinked
@@ -105,10 +107,18 @@ pub fn runtime_file(rel_path: &Path) -> PathBuf {
     })
 }
 
+/// Returns the config dir in HELIX_CONFIG or if not set, then the default config dir (according to the platform).
+/// Panics:
+/// If HELIX_CONFIG is set and is not a valid path
 pub fn config_dir() -> PathBuf {
-    // TODO: allow env var override
-    let strategy = choose_base_strategy().expect("Unable to find the config directory!");
-    let mut path = strategy.config_dir();
+    let mut path = 
+        std::env::var("HELIX_CONFIG")
+            .ok()
+            .and_then(|dir| dir.parse::<PathBuf>().expect("Unable to parse HELIX_CONFIG!"))
+            .unwrap_or_else({
+                let strategy = choose_base_strategy().expect("Unable to find the config directory!");
+                let mut path = strategy.config_dir();
+            });
     path.push("helix");
     path
 }
