@@ -438,8 +438,9 @@ impl MappableCommand {
         reverse_selection_contents, "Reverse selections contents",
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
-        select_next_sibling, "Select next sibling in syntax tree",
-        select_prev_sibling, "Select previous sibling in syntax tree",
+        select_next_sibling, "Select next sibling in the syntax tree",
+        select_prev_sibling, "Select previous sibling the in syntax tree",
+        select_all_siblings, "Select all siblings in the syntax tree",
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
         save_selection, "Save current selection to jumplist",
@@ -4972,6 +4973,22 @@ pub fn extend_parent_node_end(cx: &mut Context) {
 
 pub fn extend_parent_node_start(cx: &mut Context) {
     move_node_bound_impl(cx, Direction::Backward, Movement::Extend)
+}
+
+fn select_all_siblings(cx: &mut Context) {
+    let motion = |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+
+        if let Some(syntax) = doc.syntax() {
+            let text = doc.text().slice(..);
+            let current_selection = doc.selection(view.id);
+            let selection =
+                object::select_all_siblings(syntax.tree(), text, current_selection.clone());
+            doc.set_selection(view.id, selection);
+        }
+    };
+
+    cx.editor.apply_motion(motion);
 }
 
 fn match_brackets(cx: &mut Context) {
