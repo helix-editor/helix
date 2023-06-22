@@ -26,16 +26,6 @@ pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     CONFIG_FILE.set(config_file).ok();
 }
 
-/// A list of runtime directories from highest to lowest priority
-///
-/// The priority is:
-///
-/// 1. sibling directory to `CARGO_MANIFEST_DIR` (if environment variable is set)
-/// 2. `HELIX_RUNTIME` (if environment variable is set)
-/// 3. subdirectory of user config directory (always included)
-/// 4. subdirectory of path to helix executable (always included)
-///
-/// Postcondition: returns at least two paths (they might not exist).
 fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     const RT_DIR: &str = "runtime";
     // Adding higher priority first
@@ -46,15 +36,13 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
         log::debug!("runtime dir: {}", path.to_string_lossy());
         rt_dirs.push(path);
     }
-    
-    if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
-        rt_dirs.push(dir.into());
-    }
 
     let conf_rt_dir = config_dir().join(RT_DIR);
     rt_dirs.push(conf_rt_dir);
 
-
+    if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
+        rt_dirs.push(dir.into());
+    }
 
     // fallback to location of the executable being run
     // canonicalize the path in case the executable is symlinked
