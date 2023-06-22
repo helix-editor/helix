@@ -114,10 +114,10 @@ pub fn config_dir() -> PathBuf {
     let mut path = 
         std::env::var("HELIX_CONFIG")
             .ok()
-            .and_then(|dir| dir.parse::<PathBuf>().expect("Unable to parse HELIX_CONFIG!"))
-            .unwrap_or_else({
+            .map(|dir| dir.parse::<PathBuf>().expect("Unable to parse HELIX_CONFIG!"))
+            .unwrap_or_else(|| {
                 let strategy = choose_base_strategy().expect("Unable to find the config directory!");
-                let mut path = strategy.config_dir();
+                strategy.config_dir()
             });
     path.push("helix");
     path
