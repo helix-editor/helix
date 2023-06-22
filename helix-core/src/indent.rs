@@ -19,6 +19,9 @@ pub enum IndentStyle {
     Spaces(u8),
 }
 
+// 256 spaces
+const INDENTS: &str = "                                                                                                                                                                                                                                                                ";
+
 impl IndentStyle {
     /// Creates an `IndentStyle` from an indentation string.
     ///
@@ -27,7 +30,7 @@ impl IndentStyle {
     #[inline]
     pub fn from_str(indent: &str) -> Self {
         // XXX: do we care about validating the input more than this?  Probably not...?
-        debug_assert!(!indent.is_empty() && indent.len() <= 8);
+        debug_assert!(!indent.is_empty() && indent.len() <= 256);
 
         if indent.starts_with(' ') {
             IndentStyle::Spaces(indent.len() as u8)
@@ -40,21 +43,7 @@ impl IndentStyle {
     pub fn as_str(&self) -> &'static str {
         match *self {
             IndentStyle::Tabs => "\t",
-            IndentStyle::Spaces(1) => " ",
-            IndentStyle::Spaces(2) => "  ",
-            IndentStyle::Spaces(3) => "   ",
-            IndentStyle::Spaces(4) => "    ",
-            IndentStyle::Spaces(5) => "     ",
-            IndentStyle::Spaces(6) => "      ",
-            IndentStyle::Spaces(7) => "       ",
-            IndentStyle::Spaces(8) => "        ",
-
-            // Unsupported indentation style.  This should never happen,
-            // but just in case fall back to two spaces.
-            IndentStyle::Spaces(n) => {
-                debug_assert!(n > 0 && n <= 8); // Always triggers. `debug_panic!()` wanted.
-                "  "
-            }
+            IndentStyle::Spaces(n) => &INDENTS[0..n as usize],
         }
     }
 
@@ -795,6 +784,22 @@ mod test {
         assert_eq!(
             indent_level_for_line(line.slice(..), tab_width, indent_width),
             3
+        );
+    }
+
+    #[test]
+    fn test_huge_indent_level() {
+        let tab_width = 256;
+        let indent_width = 256;
+        let line = Rope::from("                                                                                            fn new"); // 92 spaces
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            0
+        );
+        let line = Rope::from("                                                                                                                                                                                                                                                                fn new"); // 256 spaces
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            1
         );
     }
 }
