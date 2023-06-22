@@ -1,0 +1,97 @@
+theme = "default"
+
+[editor]
+scrolloff = 5
+mouse = true
+middle-click-paste = true
+scroll-lines = 3
+shell = ["sh", "-c"] # Unix
+#shell = ["cmd", "/C"] # Windows
+line-number = "absolute" # absolute*, relative
+cursorline = false
+cursorcolumn = false
+auto-completion = true
+auto-format = true
+auto-save = false
+idle-timeout = 400
+completion-trigger-len = 2
+completion-replace = false
+auto-info = true
+true-color = false
+undercurl = false
+rulers = []
+bufferline = "never" # never*, always, multiple
+auto-pairs = true
+
+[editor.statusline]
+left = ["mode", "spinner", "file-name"]
+center = []
+right = ["diagnostics", "selections", "position", "file-encoding"]
+separator = "│"
+mode.normal = "NOR"
+mode.insert = "INS"
+mode.select = "SEL"
+
+[editor.lsp]
+enable = true
+display-messages = false
+auto-signature-help = true
+display-inlay-hints = false
+display-signature-help-docs = true
+snippets = true
+goto-reference-include-declaration = true
+
+[editor.cursor-shape]
+# block*, bar, underline, hidden
+normal = "block"
+insert = "block"
+select = "block"
+
+[editor.file-picker]
+hidden = true
+follow-symlinks = true
+deduplicate-links = true
+parents = true
+ignore = true
+git-ignore = true
+git-global = true
+git-exclude = true
+#max-depth = 3
+
+[editor.search]
+smart-case = true
+wrap-around = true
+
+[editor.whitespace]
+render = "none" # all, none*, or table
+
+#[editor.whitespace.render]
+#space = "none"
+#nbsp = "none"
+#tab = "none"
+#newline = "none"
+
+#[editor.whitespace.characters]
+#space = "·"
+#nbsp = "⍽"
+#tab = "→"
+#newline = "⏎"
+#tabpad = "·"
+
+[editor.indent-guides]
+render = false
+character = "|"
+skip-levels = 1
+
+[editor.gutters]
+layout = ["diagnostics", "spacer", "line-numbers", "spacer", "diff"]
+
+[editor.gutters.line-numbers]
+min-width = 3
+
+[editor.soft-wrap]
+enable = false
+max-wrap = 20
+max-indent-retain = 40
+wrap-indicator = "↪"
+wrap-at-text-width = false
