@@ -21,6 +21,7 @@ pub enum IndentStyle {
 
 // 16 spaces
 const INDENTS: &str = "                ";
+const MAX_INDENT: u8 = 16;
 
 impl IndentStyle {
     /// Creates an `IndentStyle` from an indentation string.
@@ -30,10 +31,10 @@ impl IndentStyle {
     #[inline]
     pub fn from_str(indent: &str) -> Self {
         // XXX: do we care about validating the input more than this?  Probably not...?
-        debug_assert!(!indent.is_empty() && indent.len() <= 256);
+        debug_assert!(!indent.is_empty() && indent.len() <= MAX_INDENT as usize);
 
         if indent.starts_with(' ') {
-            IndentStyle::Spaces(indent.len() as u8)
+            IndentStyle::Spaces(indent.len().clamp(1, MAX_INDENT as usize) as u8)
         } else {
             IndentStyle::Tabs
         }
@@ -43,13 +44,13 @@ impl IndentStyle {
     pub fn as_str(&self) -> &'static str {
         match *self {
             IndentStyle::Tabs => "\t",
-            IndentStyle::Spaces(n) if n <= 16 && n >= 1 => &INDENTS[0..n as usize],
-            // Unsupported indentation style.  This should never happen,
-            // but just in case fall back to 16 spaces (the largest we support).
             IndentStyle::Spaces(n) => {
-                debug_assert!(n > 0 && n <= 16); // Always triggers. `debug_panic!()` wanted.
-                let closest_n = n.clamp(1, 16);
-                &INDENTS[0..closest_n as usize]
+                // Unsupported indentation style.  This should never happen,
+                debug_assert!(n > 0 && n <= MAX_INDENT);
+
+                // Either way, clamp to the nearest supported value
+                let closest_n = n.clamp(1, MAX_INDENT) as usize;
+                &INDENTS[0..closest_n]
             }
         }
     }
@@ -71,9 +72,9 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
     // Build a histogram of the indentation *increases* between
     // subsequent lines, ignoring lines that are all whitespace.
     //
-    // Index 0 is for tabs, the rest are 1-16 spaces.
-    let histogram: [usize; 17] = {
-        let mut histogram = [0; 17];
+    // Index 0 is for tabs, the rest are 1-MAX_INDENT spaces.
+    let histogram: [usize; MAX_INDENT as usize + 1] = {
+        let mut histogram = [0; MAX_INDENT as usize + 1];
         let mut prev_line_is_tabs = false;
         let mut prev_line_leading_count = 0usize;
 
@@ -132,7 +133,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
                     histogram[0] += 1;
                 } else {
                     let amount = leading_count - prev_line_leading_count;
-                    if amount <= 16 {
+                    if amount <= MAX_INDENT as usize {
                         histogram[amount] += 1;
                     }
                 }
