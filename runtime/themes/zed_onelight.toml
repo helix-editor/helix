@@ -28,8 +28,6 @@ inherits = "zed_onedark"
 "ui.statusline.insert" = { fg = "white", bg = "green" }
 "ui.statusline.select" = { fg = "white", bg = "purple" }
 
-"ui.text" = { fg = "black" }
-
 "ui.help" = { fg = "black", bg = "dark-gray" }
 "ui.popup" = { bg = "dark-gray" }
 "ui.window" = { fg = "dark-gray" }
