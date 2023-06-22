@@ -91,6 +91,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-n" | "A-right" => select_next_sibling,
         "A-e" => move_parent_node_end,
         "A-b" => move_parent_node_start,
+        "A-a" => select_all_siblings,
 
         "%" => select_all,
         "x" => extend_line_below,
