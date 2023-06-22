@@ -19,8 +19,8 @@ pub enum IndentStyle {
     Spaces(u8),
 }
 
-// 256 spaces
-const INDENTS: &str = "                                                                                                                                                                                                                                                                ";
+// 16 spaces
+const INDENTS: &str = "                ";
 
 impl IndentStyle {
     /// Creates an `IndentStyle` from an indentation string.
@@ -43,7 +43,14 @@ impl IndentStyle {
     pub fn as_str(&self) -> &'static str {
         match *self {
             IndentStyle::Tabs => "\t",
-            IndentStyle::Spaces(n) => &INDENTS[0..n as usize],
+            IndentStyle::Spaces(n) if n <= 16 && n >= 1 => &INDENTS[0..n as usize],
+            // Unsupported indentation style.  This should never happen,
+            // but just in case fall back to 16 spaces (the largest we support).
+            IndentStyle::Spaces(n) => {
+                debug_assert!(n > 0 && n <= 16); // Always triggers. `debug_panic!()` wanted.
+                let closest_n = n.clamp(1, 16);
+                &INDENTS[0..closest_n as usize]
+            }
         }
     }
 
@@ -64,9 +71,9 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
     // Build a histogram of the indentation *increases* between
     // subsequent lines, ignoring lines that are all whitespace.
     //
-    // Index 0 is for tabs, the rest are 1-8 spaces.
-    let histogram: [usize; 9] = {
-        let mut histogram = [0; 9];
+    // Index 0 is for tabs, the rest are 1-16 spaces.
+    let histogram: [usize; 17] = {
+        let mut histogram = [0; 17];
         let mut prev_line_is_tabs = false;
         let mut prev_line_leading_count = 0usize;
 
@@ -125,7 +132,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
                     histogram[0] += 1;
                 } else {
                     let amount = leading_count - prev_line_leading_count;
-                    if amount <= 8 {
+                    if amount <= 16 {
                         histogram[amount] += 1;
                     }
                 }
@@ -788,18 +795,18 @@ mod test {
     }
 
     #[test]
-    fn test_huge_indent_level() {
-        let tab_width = 256;
-        let indent_width = 256;
-        let line = Rope::from("                                                                                            fn new"); // 92 spaces
-        assert_eq!(
-            indent_level_for_line(line.slice(..), tab_width, indent_width),
-            0
-        );
-        let line = Rope::from("                                                                                                                                                                                                                                                                fn new"); // 256 spaces
+    fn test_large_indent_level() {
+        let tab_width = 16;
+        let indent_width = 16;
+        let line = Rope::from("                fn new"); // 16 spaces
         assert_eq!(
             indent_level_for_line(line.slice(..), tab_width, indent_width),
             1
+        );
+        let line = Rope::from("                                fn new"); // 32 spaces
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            2
         );
     }
 }
