@@ -451,15 +451,8 @@ impl Selection {
 
     /// Map selections over a set of changes. Useful for adjusting the selection position after
     /// applying changes to a document.
-    pub fn map(mut self, changes: &ChangeSet) -> Self {
-        if changes.is_empty() {
-            return self;
-        }
-        self = self.map_no_normalize(changes);
-        // TODO: only normalize if needed (any ranges out of order)
-        self = self.normalize();
-
-        self
+    pub fn map(self, changes: &ChangeSet) -> Self {
+        self.map_no_normalize(changes).normalize()
     }
 
     /// Map selections over a set of changes. Useful for adjusting the selection position after
@@ -524,6 +517,9 @@ impl Selection {
 
     /// Normalizes a `Selection`.
     fn normalize(mut self) -> Self {
+        if self.len() < 2 {
+            return self;
+        }
         let mut primary = self.ranges[self.primary_index];
         self.ranges.sort_unstable_by_key(Range::from);
 
@@ -588,17 +584,12 @@ impl Selection {
         assert!(!ranges.is_empty());
         debug_assert!(primary_index < ranges.len());
 
-        let mut selection = Self {
+        let selection = Self {
             ranges,
             primary_index,
         };
 
-        if selection.ranges.len() > 1 {
-            // TODO: only normalize if needed (any ranges out of order)
-            selection = selection.normalize();
-        }
-
-        selection
+        selection.normalize()
     }
 
     /// Takes a closure and maps each `Range` over the closure.
