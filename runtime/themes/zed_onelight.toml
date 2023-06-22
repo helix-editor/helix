@@ -7,15 +7,12 @@ inherits = "zed_onedark"
 "constant.numeric" = { fg = "gold" }
 "constant.builtin" = { fg = "gold" }
 "constant.builtin.boolean" = { fg = "green" }
-"special" = { fg = "black" }
 "variable.builtin" = { fg = "gold" }
 "variable.other.member" = { fg = "orange" }
 
 "markup.heading" = { fg = "orange" }
 "markup.list" = { fg = "orange" }
 "markup.quote" = { fg = "green" }
-
-"diagnostic.error".underline = { color = "orange", style = "curl" } 
 
 "ui.cursor" = { fg = "dark-blue", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "dark-blue", modifiers = ["reversed"] }
@@ -28,16 +25,17 @@ inherits = "zed_onedark"
 "ui.statusline.insert" = { fg = "white", bg = "green" }
 "ui.statusline.select" = { fg = "white", bg = "purple" }
 
+"ui.text.focus" = { fg = "ui-text", bg = "gray", modifiers = ["bold"] }
+
 "ui.help" = { fg = "black", bg = "dark-gray" }
 "ui.popup" = { bg = "dark-gray" }
 "ui.window" = { fg = "dark-gray" }
-
-"ui.debug" = { fg = "orange" }
 
 [palette]
 
 yellow = "#dac18c"
 blue = "#5185b5"
+red = "#bd7476"
 dark-blue = "#607bdb"
 orange = "#ca7667"
 purple = "#a160ac"

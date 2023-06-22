@@ -82,7 +82,7 @@
 "ui.help" = { fg = "white", bg = "gray" }
 "ui.popup" = { bg = "gray" }
 "ui.window" = { fg = "gray" }
-"ui.menu" = { fg = "white", bg = "gray" }
+"ui.menu" = { fg = "ui-text", bg = "gray" }
 "ui.menu.selected" = { fg = "ui-text-reversed", bg = "blue" }
 "ui.menu.scroll" = { fg = "ui-text", bg = "light-gray" }
 
@@ -106,5 +106,5 @@ linenr = "#4B5263"
 white = "#a8adb7"
 black = "#292c33"
 # black and white are used for a lot of the UI text
-ui-text = "#a8adb7"
-ui-text-reversed = "#292c33"
+ui-text = "#a8adb7" #white
+ui-text-reversed = "#292c33" #black
