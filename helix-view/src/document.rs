@@ -8,7 +8,6 @@ use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
-use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
 use ::parking_lot::Mutex;
@@ -31,8 +30,7 @@ use helix_core::{
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, Syntax, Transaction,
-    DEFAULT_LINE_ENDING,
+    ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
 use crate::editor::{Config, RedrawHandle};
@@ -590,6 +588,7 @@ impl Document {
         config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
         let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
+        let line_ending = config.load().default_line_ending.into();
         let changes = ChangeSet::new(&text);
         let old_state = None;
 
@@ -603,7 +602,7 @@ impl Document {
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
             indent_style: DEFAULT_INDENT,
-            line_ending: DEFAULT_LINE_ENDING,
+            line_ending,
             restore_cursor: false,
             syntax: None,
             language: None,
@@ -623,10 +622,13 @@ impl Document {
             focused_at: std::time::Instant::now(),
         }
     }
+
     pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
-        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
+        let line_ending: LineEnding = config.load().default_line_ending.into();
+        let text = Rope::from(line_ending.as_str());
         Self::from(text, None, config)
     }
+
     // TODO: async fn?
     /// Create a new document from `path`. Encoding is auto-detected, but it can be manually
     /// overwritten with the `encoding` parameter.
@@ -642,8 +644,9 @@ impl Document {
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
             from_reader(&mut file, encoding)?
         } else {
+            let line_ending: LineEnding = config.load().default_line_ending.into();
             let encoding = encoding.unwrap_or(encoding::UTF_8);
-            (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding, false)
+            (Rope::from(line_ending.as_str()), encoding, false)
         };
 
         let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
@@ -887,14 +890,16 @@ impl Document {
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
     /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
-    /// is likewise auto-detected, and will fallback to the default OS line ending.
+    /// is likewise auto-detected, and will remain unchanged if no line endings were detected.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
             self.language_config()
                 .and_then(|config| config.indent.as_ref())
                 .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
         });
-        self.line_ending = auto_detect_line_ending(&self.text).unwrap_or(DEFAULT_LINE_ENDING);
+        if let Some(line_ending) = auto_detect_line_ending(&self.text) {
+            self.line_ending = line_ending;
+        }
     }
 
     /// Reload the document from its path.
@@ -1921,7 +1926,7 @@ mod test {
             Document::default(Arc::new(ArcSwap::new(Arc::new(Config::default()))))
                 .text()
                 .to_string(),
-            DEFAULT_LINE_ENDING.as_str()
+            helix_core::NATIVE_LINE_ENDING.as_str()
         );
     }
 

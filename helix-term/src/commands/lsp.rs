@@ -31,8 +31,8 @@ use crate::{
     compositor::{self, Compositor},
     job::Callback,
     ui::{
-        self, lsp::SignatureHelp, overlay::overlaid, DynamicPicker, FileLocation, FilePicker,
-        Popup, PromptEvent,
+        self, lsp::SignatureHelp, overlay::overlaid, DynamicPicker, FileLocation, Picker, Popup,
+        PromptEvent,
     },
 };
 
@@ -236,48 +236,44 @@ fn jump_to_location(
     align_view(doc, view, Align::Center);
 }
 
-type SymbolPicker = FilePicker<SymbolInformationItem>;
+type SymbolPicker = Picker<SymbolInformationItem>;
 
 fn sym_picker(symbols: Vec<SymbolInformationItem>, current_path: Option<lsp::Url>) -> SymbolPicker {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
-    FilePicker::new(
-        symbols,
-        current_path.clone(),
-        move |cx, item, action| {
-            let (view, doc) = current!(cx.editor);
-            push_jump(view, doc);
+    Picker::new(symbols, current_path.clone(), move |cx, item, action| {
+        let (view, doc) = current!(cx.editor);
+        push_jump(view, doc);
 
-            if current_path.as_ref() != Some(&item.symbol.location.uri) {
-                let uri = &item.symbol.location.uri;
-                let path = match uri.to_file_path() {
-                    Ok(path) => path,
-                    Err(_) => {
-                        let err = format!("unable to convert URI to filepath: {}", uri);
-                        cx.editor.set_error(err);
-                        return;
-                    }
-                };
-                if let Err(err) = cx.editor.open(&path, action) {
-                    let err = format!("failed to open document: {}: {}", uri, err);
-                    log::error!("{}", err);
+        if current_path.as_ref() != Some(&item.symbol.location.uri) {
+            let uri = &item.symbol.location.uri;
+            let path = match uri.to_file_path() {
+                Ok(path) => path,
+                Err(_) => {
+                    let err = format!("unable to convert URI to filepath: {}", uri);
                     cx.editor.set_error(err);
                     return;
                 }
+            };
+            if let Err(err) = cx.editor.open(&path, action) {
+                let err = format!("failed to open document: {}: {}", uri, err);
+                log::error!("{}", err);
+                cx.editor.set_error(err);
+                return;
             }
+        }
 
-            let (view, doc) = current!(cx.editor);
+        let (view, doc) = current!(cx.editor);
 
-            if let Some(range) =
-                lsp_range_to_range(doc.text(), item.symbol.location.range, item.offset_encoding)
-            {
-                // we flip the range so that the cursor sits on the start of the symbol
-                // (for example start of the function).
-                doc.set_selection(view.id, Selection::single(range.head, range.anchor));
-                align_view(doc, view, Align::Center);
-            }
-        },
-        move |_editor, item| Some(location_to_file_location(&item.symbol.location)),
-    )
+        if let Some(range) =
+            lsp_range_to_range(doc.text(), item.symbol.location.range, item.offset_encoding)
+        {
+            // we flip the range so that the cursor sits on the start of the symbol
+            // (for example start of the function).
+            doc.set_selection(view.id, Selection::single(range.head, range.anchor));
+            align_view(doc, view, Align::Center);
+        }
+    })
+    .with_preview(move |_editor, item| Some(location_to_file_location(&item.symbol.location)))
     .truncate_start(false)
 }
 
@@ -292,7 +288,7 @@ fn diag_picker(
     diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
     current_path: Option<lsp::Url>,
     format: DiagnosticsFormat,
-) -> FilePicker<PickerDiagnostic> {
+) -> Picker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
 
     // flatten the map to a vec of (url, diag) pairs
@@ -318,7 +314,7 @@ fn diag_picker(
         error: cx.editor.theme.get("error"),
     };
 
-    FilePicker::new(
+    Picker::new(
         flat_diag,
         (styles, format),
         move |cx,
@@ -345,11 +341,11 @@ fn diag_picker(
                 align_view(doc, view, Align::Center);
             }
         },
-        move |_editor, PickerDiagnostic { url, diag, .. }| {
-            let location = lsp::Location::new(url.clone(), diag.range);
-            Some(location_to_file_location(&location))
-        },
     )
+    .with_preview(move |_editor, PickerDiagnostic { url, diag, .. }| {
+        let location = lsp::Location::new(url.clone(), diag.range);
+        Some(location_to_file_location(&location))
+    })
     .truncate_start(false)
 }
 
@@ -442,6 +438,15 @@ pub fn symbol_picker(cx: &mut Context) {
 
 pub fn workspace_symbol_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
+        .count()
+        == 0
+    {
+        cx.editor
+            .set_error("No configured language server supports workspace symbols");
+        return;
+    }
 
     let get_symbols = move |pattern: String, editor: &mut Editor| {
         let doc = doc!(editor);
@@ -1038,14 +1043,10 @@ fn goto_impl(
             editor.set_error("No definition found.");
         }
         _locations => {
-            let picker = FilePicker::new(
-                locations,
-                cwdir,
-                move |cx, location, action| {
-                    jump_to_location(cx.editor, location, offset_encoding, action)
-                },
-                move |_editor, location| Some(location_to_file_location(location)),
-            );
+            let picker = Picker::new(locations, cwdir, move |cx, location, action| {
+                jump_to_location(cx.editor, location, offset_encoding, action)
+            })
+            .with_preview(move |_editor, location| Some(location_to_file_location(location)));
             compositor.push(Box::new(overlaid(picker)));
         }
     }

@@ -8,6 +8,7 @@ use super::*;
 use helix_core::{encoding, shellwords::Shellwords};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
+use serde_json::Value;
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -894,6 +895,25 @@ fn yank_main_selection_to_clipboard(
     yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Clipboard)
 }
 
+fn yank_joined(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(args.len() <= 1, ":yank-join takes at most 1 argument");
+
+    let doc = doc!(cx.editor);
+    let default_sep = Cow::Borrowed(doc.line_ending.as_str());
+    let separator = args.first().unwrap_or(&default_sep);
+    let register = cx.editor.selected_register.unwrap_or('"');
+    yank_joined_impl(cx.editor, separator, register);
+    Ok(())
+}
+
 fn yank_joined_to_clipboard(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1764,7 +1784,7 @@ fn set_option(
 
     *value = if value.is_string() {
         // JSON strings require quotes, so we can't .parse() directly
-        serde_json::Value::String(arg.to_string())
+        Value::String(arg.to_string())
     } else {
         arg.parse().map_err(field_error)?
     };
@@ -1800,29 +1820,21 @@ fn toggle_option(
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
-    *value = match value.as_bool() {
-        Some(value) => {
+    *value = match value {
+        Value::Bool(ref value) => {
             ensure!(
                 args.len() == 1,
                 "Bad arguments. For boolean configurations use: `:toggle key`"
             );
-            serde_json::Value::Bool(!value)
+            Value::Bool(!value)
         }
-        None => {
+        Value::String(ref value) => {
             ensure!(
                 args.len() > 2,
-                "Bad arguments. For non-boolean configurations use: `:toggle key val1 val2 ...`",
-            );
-            ensure!(
-                value.is_string(),
-                "Bad configuration. Cannot cycle non-string configurations"
+                "Bad arguments. For string configurations use: `:toggle key val1 val2 ...`",
             );
 
-            let value = value
-                .as_str()
-                .expect("programming error: should have been ensured before");
-
-            serde_json::Value::String(
+            Value::String(
                 args[1..]
                     .iter()
                     .skip_while(|e| *e != value)
@@ -1830,6 +1842,9 @@ fn toggle_option(
                     .unwrap_or_else(|| &args[1])
                     .to_string(),
             )
+        }
+        Value::Null | Value::Object(_) | Value::Array(_) | Value::Number(_) => {
+            anyhow::bail!("Configuration {key} does not support toggle yet")
         }
     };
 
@@ -2479,6 +2494,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             signature: CommandSignature::positional(&[completers::theme]),
         },
         TypableCommand {
+            name: "yank-join",
+            aliases: &[],
+            doc: "Yank joined selections. A separator can be provided as first argument. Default value is newline.",
+            fun: yank_joined,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
             name: "clipboard-yank",
             aliases: &[],
             doc: "Yank main selection into system clipboard.",
@@ -2585,14 +2607,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
         TypableCommand {
             name: "reload",
-            aliases: &[],
+            aliases: &["rl"],
             doc: "Discard changes and reload from the source file.",
             fun: reload,
             signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "reload-all",
-            aliases: &[],
+            aliases: &["rla"],
             doc: "Discard changes and reload all documents from the source files.",
             fun: reload_all,
             signature: CommandSignature::none(),

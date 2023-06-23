@@ -55,8 +55,8 @@ use crate::{
     job::Callback,
     keymap::ReverseKeymap,
     ui::{
-        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem,
-        FilePicker, Picker, PickerAction, Popup, Prompt, PromptEvent,
+        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem, Picker,
+        Popup, Prompt, PromptEvent,
     },
 };
 
@@ -247,6 +247,7 @@ impl MappableCommand {
         move_next_long_word_start, "Move to start of next long word",
         move_prev_long_word_start, "Move to start of previous long word",
         move_next_long_word_end, "Move to end of next long word",
+        move_prev_long_word_end, "Move to end of previous long word",
         extend_next_word_start, "Extend to start of next word",
         extend_prev_word_start, "Extend to start of previous word",
         extend_next_word_end, "Extend to end of next word",
@@ -254,6 +255,7 @@ impl MappableCommand {
         extend_next_long_word_start, "Extend to start of next long word",
         extend_prev_long_word_start, "Extend to start of previous long word",
         extend_next_long_word_end, "Extend to end of next long word",
+        extend_prev_long_word_end, "Extend to end of prev long word",
         find_till_char, "Move till next occurrence of char",
         find_next_char, "Move to next occurrence of char",
         extend_till_char, "Extend till next occurrence of char",
@@ -374,6 +376,7 @@ impl MappableCommand {
         later, "Move forward in history",
         commit_undo_checkpoint, "Commit changes to new checkpoint",
         yank, "Yank selection",
+        yank_joined, "Join and yank selections",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
         yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard",
@@ -404,6 +407,7 @@ impl MappableCommand {
         rotate_selections_backward, "Rotate selections backward",
         rotate_selection_contents_forward, "Rotate selection contents forward",
         rotate_selection_contents_backward, "Rotate selections contents backward",
+        reverse_selection_contents, "Reverse selections contents",
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
         select_next_sibling, "Select next sibling in syntax tree",
@@ -1067,6 +1071,10 @@ fn move_prev_long_word_start(cx: &mut Context) {
     move_word_impl(cx, movement::move_prev_long_word_start)
 }
 
+fn move_prev_long_word_end(cx: &mut Context) {
+    move_word_impl(cx, movement::move_prev_long_word_end)
+}
+
 fn move_next_long_word_end(cx: &mut Context) {
     move_word_impl(cx, movement::move_next_long_word_end)
 }
@@ -1222,6 +1230,10 @@ fn extend_next_long_word_start(cx: &mut Context) {
 
 fn extend_prev_long_word_start(cx: &mut Context) {
     extend_word_impl(cx, movement::move_prev_long_word_start)
+}
+
+fn extend_prev_long_word_end(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_long_word_end)
 }
 
 fn extend_next_long_word_end(cx: &mut Context) {
@@ -2144,7 +2156,7 @@ fn global_search(cx: &mut Context) {
                     return;
                 }
 
-                let picker = FilePicker::new(
+                let picker = Picker::new(
                     all_matches,
                     current_path,
                     move |cx, FileResult { path, line_num }, action| {
@@ -2172,11 +2184,9 @@ fn global_search(cx: &mut Context) {
 
                         doc.set_selection(view.id, Selection::single(start, end));
                         align_view(doc, view, Align::Center);
-                    },
-                    |_editor, FileResult { path, line_num }| {
+                    }).with_preview(|_editor, FileResult { path, line_num }| {
                         Some((path.clone().into(), Some((*line_num, *line_num))))
-                    },
-                );
+                    });
                 compositor.push(Box::new(overlaid(picker)));
             },
         ));
@@ -2567,54 +2577,18 @@ fn buffer_picker(cx: &mut Context) {
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
 
-    let mut picker = FilePicker::new(
-        items,
-        (),
-        |cx, meta, action| {
-            cx.editor.switch(meta.id, action);
-        },
-        |editor, meta| {
-            let doc = &editor.documents.get(&meta.id)?;
-            let &view_id = doc.selections().keys().next()?;
-            let line = doc
-                .selection(view_id)
-                .primary()
-                .cursor_line(doc.text().slice(..));
-            Some((meta.id.into(), Some((line, line))))
-        },
-    );
-    picker.on_key_event(move |cx, meta, key_event| match key_event {
-        ctrl!('x') => {
-            if cx.editor.close_document(meta.id, false).is_err() {
-                cx.editor.set_error("Cannot close buffer");
-                None
-            } else {
-                let updated_options = cx
-                    .editor
-                    .documents
-                    .iter()
-                    .map(|(_, doc)| new_meta(doc))
-                    .collect();
-                Some(PickerAction::UpdateOptions(updated_options))
-            }
-        }
-        ctrl!('X') => {
-            if cx.editor.close_document(meta.id, true).is_err() {
-                cx.editor.set_error("Cannot force close buffer");
-                None
-            } else {
-                let updated_options = cx
-                    .editor
-                    .documents
-                    .iter()
-                    .map(|(_, doc)| new_meta(doc))
-                    .collect();
-                Some(PickerAction::UpdateOptions(updated_options))
-            }
-        }
-        _ => None,
+    let picker = Picker::new(items, (), |cx, meta, action| {
+        cx.editor.switch(meta.id, action);
+    })
+    .with_preview(|editor, meta| {
+        let doc = &editor.documents.get(&meta.id)?;
+        let &view_id = doc.selections().keys().next()?;
+        let line = doc
+            .selection(view_id)
+            .primary()
+            .cursor_line(doc.text().slice(..));
+        Some((meta.id.into(), Some((line, line))))
     });
-
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2680,7 +2654,7 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
-    let picker = FilePicker::new(
+    let picker = Picker::new(
         cx.editor
             .tree
             .views()
@@ -2698,12 +2672,12 @@ fn jumplist_picker(cx: &mut Context) {
             doc.set_selection(view.id, meta.selection.clone());
             view.ensure_cursor_in_view_center(doc, config.scrolloff);
         },
-        |editor, meta| {
-            let doc = &editor.documents.get(&meta.id)?;
-            let line = meta.selection.primary().cursor_line(doc.text().slice(..));
-            Some((meta.path.clone()?.into(), Some((line, line))))
-        },
-    );
+    )
+    .with_preview(|editor, meta| {
+        let doc = &editor.documents.get(&meta.id)?;
+        let line = meta.selection.primary().cursor_line(doc.text().slice(..));
+        Some((meta.id.into(), Some((line, line))))
+    });
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2737,6 +2711,9 @@ impl ui::menu::Item for MappableCommand {
 }
 
 pub fn command_palette(cx: &mut Context) {
+    let register = cx.register;
+    let count = cx.count;
+
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
             let keymap = compositor.find::<ui::EditorView>().unwrap().keymaps.map()
@@ -2754,8 +2731,8 @@ pub fn command_palette(cx: &mut Context) {
 
             let picker = Picker::new(commands, keymap, move |cx, command, _action| {
                 let mut ctx = Context {
-                    register: None,
-                    count: std::num::NonZeroUsize::new(1),
+                    register,
+                    count,
                     editor: cx.editor,
                     callback: None,
                     on_next_key_callback: None,
@@ -2794,24 +2771,87 @@ fn last_picker(cx: &mut Context) {
     }));
 }
 
-// I inserts at the first nonwhitespace character of each line with a selection
-fn insert_at_line_start(cx: &mut Context) {
-    goto_first_nonwhitespace(cx);
-    enter_insert_mode(cx);
+/// Fallback position to use for [`insert_with_indent`].
+enum IndentFallbackPos {
+    LineStart,
+    LineEnd,
 }
 
-// A inserts at the end of each line with a selection
+// `I` inserts at the first nonwhitespace character of each line with a selection.
+// If the line is empty, automatically indent.
+fn insert_at_line_start(cx: &mut Context) {
+    insert_with_indent(cx, IndentFallbackPos::LineStart);
+}
+
+// `A` inserts at the end of each line with a selection.
+// If the line is empty, automatically indent.
 fn insert_at_line_end(cx: &mut Context) {
+    insert_with_indent(cx, IndentFallbackPos::LineEnd);
+}
+
+// Enter insert mode and auto-indent the current line if it is empty.
+// If the line is not empty, move the cursor to the specified fallback position.
+fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
     enter_insert_mode(cx);
+
     let (view, doc) = current!(cx.editor);
 
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let text = doc.text().slice(..);
-        let line = range.cursor_line(text);
-        let pos = line_end_char_index(&text, line);
-        Range::new(pos, pos)
+    let text = doc.text().slice(..);
+    let contents = doc.text();
+    let selection = doc.selection(view.id);
+
+    let language_config = doc.language_config();
+    let syntax = doc.syntax();
+    let tab_width = doc.tab_width();
+
+    let mut ranges = SmallVec::with_capacity(selection.len());
+    let mut offs = 0;
+
+    let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
+        let cursor_line = range.cursor_line(text);
+        let cursor_line_start = text.line_to_char(cursor_line);
+
+        if line_end_char_index(&text, cursor_line) == cursor_line_start {
+            // line is empty => auto indent
+            let line_end_index = cursor_line_start;
+
+            let indent = indent::indent_for_newline(
+                language_config,
+                syntax,
+                &doc.indent_style,
+                tab_width,
+                text,
+                cursor_line,
+                line_end_index,
+                cursor_line,
+            );
+
+            // calculate new selection ranges
+            let pos = offs + cursor_line_start;
+            let indent_width = indent.chars().count();
+            ranges.push(Range::point(pos + indent_width));
+            offs += indent_width;
+
+            (line_end_index, line_end_index, Some(indent.into()))
+        } else {
+            // move cursor to the fallback position
+            let pos = match cursor_fallback {
+                IndentFallbackPos::LineStart => {
+                    find_first_non_whitespace_char(text.line(cursor_line))
+                        .map(|ws_offset| ws_offset + cursor_line_start)
+                        .unwrap_or(cursor_line_start)
+                }
+                IndentFallbackPos::LineEnd => line_end_char_index(&text, cursor_line),
+            };
+
+            ranges.push(range.put_cursor(text, pos + offs, cx.editor.mode == Mode::Select));
+
+            (cursor_line_start, cursor_line_start, None)
+        }
     });
-    doc.set_selection(view.id, selection);
+
+    transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
+    doc.apply(&transaction, view.id);
 }
 
 // Creates an LspCallback that waits for formatting changes to be computed. When they're done,
@@ -3679,6 +3719,38 @@ fn yank(cx: &mut Context) {
     exit_select_mode(cx);
 }
 
+fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
+    let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id);
+    let joined = selection
+        .fragments(text)
+        .fold(String::new(), |mut acc, fragment| {
+            if !acc.is_empty() {
+                acc.push_str(separator);
+            }
+            acc.push_str(&fragment);
+            acc
+        });
+
+    let msg = format!(
+        "joined and yanked {} selection(s) to register {}",
+        selection.len(),
+        register,
+    );
+
+    editor.registers.write(register, vec![joined]);
+    editor.set_status(msg);
+}
+
+fn yank_joined(cx: &mut Context) {
+    let line_ending = doc!(cx.editor).line_ending;
+    let register = cx.register.unwrap_or('"');
+    yank_joined_impl(cx.editor, line_ending.as_str(), register);
+    exit_select_mode(cx);
+}
+
 fn yank_joined_to_clipboard_impl(
     editor: &mut Editor,
     separator: &str,
@@ -4438,7 +4510,13 @@ fn rotate_selections_backward(cx: &mut Context) {
     rotate_selections(cx, Direction::Backward)
 }
 
-fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
+enum ReorderStrategy {
+    RotateForward,
+    RotateBackward,
+    Reverse,
+}
+
+fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
     let count = cx.count;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -4456,9 +4534,10 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
 
     for chunk in fragments.chunks_mut(group) {
         // TODO: also modify main index
-        match direction {
-            Direction::Forward => chunk.rotate_right(1),
-            Direction::Backward => chunk.rotate_left(1),
+        match strategy {
+            ReorderStrategy::RotateForward => chunk.rotate_right(1),
+            ReorderStrategy::RotateBackward => chunk.rotate_left(1),
+            ReorderStrategy::Reverse => chunk.reverse(),
         };
     }
 
@@ -4475,10 +4554,13 @@ fn rotate_selection_contents(cx: &mut Context, direction: Direction) {
 }
 
 fn rotate_selection_contents_forward(cx: &mut Context) {
-    rotate_selection_contents(cx, Direction::Forward)
+    reorder_selection_contents(cx, ReorderStrategy::RotateForward)
 }
 fn rotate_selection_contents_backward(cx: &mut Context) {
-    rotate_selection_contents(cx, Direction::Backward)
+    reorder_selection_contents(cx, ReorderStrategy::RotateBackward)
+}
+fn reverse_selection_contents(cx: &mut Context) {
+    reorder_selection_contents(cx, ReorderStrategy::Reverse)
 }
 
 // tree sitter node selection
@@ -4567,8 +4649,8 @@ fn match_brackets(cx: &mut Context) {
     let selection = doc.selection(view.id).clone().transform(|range| {
         let pos = range.cursor(text_slice);
         if let Some(matched_pos) = doc.syntax().map_or_else(
-            || match_brackets::find_matching_bracket_current_line_plaintext(text, pos),
-            |syntax| match_brackets::find_matching_bracket_fuzzy(syntax, text, pos),
+            || match_brackets::find_matching_bracket_plaintext(text.slice(..), pos),
+            |syntax| match_brackets::find_matching_bracket_fuzzy(syntax, text.slice(..), pos),
         ) {
             range.put_cursor(text_slice, matched_pos, is_select)
         } else {

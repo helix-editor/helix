@@ -2,7 +2,7 @@ use super::{Context, Editor};
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, Jobs},
-    ui::{self, overlay::overlaid, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
+    ui::{self, overlay::overlaid, Picker, Popup, Prompt, PromptEvent, Text},
 };
 use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
@@ -73,21 +73,19 @@ fn thread_picker(
             let debugger = debugger!(editor);
 
             let thread_states = debugger.thread_states.clone();
-            let picker = FilePicker::new(
-                threads,
-                thread_states,
-                move |cx, thread, _action| callback_fn(cx.editor, thread),
-                move |editor, thread| {
-                    let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
-                    let frame = frames.get(0)?;
-                    let path = frame.source.as_ref()?.path.clone()?;
-                    let pos = Some((
-                        frame.line.saturating_sub(1),
-                        frame.end_line.unwrap_or(frame.line).saturating_sub(1),
-                    ));
-                    Some((path.into(), pos))
-                },
-            );
+            let picker = Picker::new(threads, thread_states, move |cx, thread, _action| {
+                callback_fn(cx.editor, thread)
+            })
+            .with_preview(move |editor, thread| {
+                let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
+                let frame = frames.get(0)?;
+                let path = frame.source.as_ref()?.path.clone()?;
+                let pos = Some((
+                    frame.line.saturating_sub(1),
+                    frame.end_line.unwrap_or(frame.line).saturating_sub(1),
+                ));
+                Some((path.into(), pos))
+            });
             compositor.push(Box::new(picker));
         },
     );
@@ -728,39 +726,35 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
 
     let frames = debugger.stack_frames[&thread_id].clone();
 
-    let picker = FilePicker::new(
-        frames,
-        (),
-        move |cx, frame, _action| {
-            let debugger = debugger!(cx.editor);
-            // TODO: this should be simpler to find
-            let pos = debugger.stack_frames[&thread_id]
-                .iter()
-                .position(|f| f.id == frame.id);
-            debugger.active_frame = pos;
+    let picker = Picker::new(frames, (), move |cx, frame, _action| {
+        let debugger = debugger!(cx.editor);
+        // TODO: this should be simpler to find
+        let pos = debugger.stack_frames[&thread_id]
+            .iter()
+            .position(|f| f.id == frame.id);
+        debugger.active_frame = pos;
 
-            let frame = debugger.stack_frames[&thread_id]
-                .get(pos.unwrap_or(0))
-                .cloned();
-            if let Some(frame) = &frame {
-                jump_to_stack_frame(cx.editor, frame);
-            }
-        },
-        move |_editor, frame| {
-            frame
-                .source
-                .as_ref()
-                .and_then(|source| source.path.clone())
-                .map(|path| {
-                    (
-                        path.into(),
-                        Some((
-                            frame.line.saturating_sub(1),
-                            frame.end_line.unwrap_or(frame.line).saturating_sub(1),
-                        )),
-                    )
-                })
-        },
-    );
+        let frame = debugger.stack_frames[&thread_id]
+            .get(pos.unwrap_or(0))
+            .cloned();
+        if let Some(frame) = &frame {
+            jump_to_stack_frame(cx.editor, frame);
+        }
+    })
+    .with_preview(move |_editor, frame| {
+        frame
+            .source
+            .as_ref()
+            .and_then(|source| source.path.clone())
+            .map(|path| {
+                (
+                    path.into(),
+                    Some((
+                        frame.line.saturating_sub(1),
+                        frame.end_line.unwrap_or(frame.line).saturating_sub(1),
+                    )),
+                )
+            })
+    });
     cx.push_layer(Box::new(picker))
 }
