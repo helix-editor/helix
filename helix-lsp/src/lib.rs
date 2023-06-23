@@ -931,7 +931,7 @@ pub fn find_lsp_workspace(
     let mut file = if file.is_absolute() {
         file.to_path_buf()
     } else {
-        let current_dir = std::env::current_dir().expect("unable to determine current directory");
+        let current_dir = helix_loader::current_working_dir();
         current_dir.join(file)
     };
     file = path::get_normalized_path(&file);

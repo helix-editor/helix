@@ -2075,8 +2075,7 @@ fn global_search(cx: &mut Context) {
                     .binary_detection(BinaryDetection::quit(b'\x00'))
                     .build();
 
-                let search_root = std::env::current_dir()
-                    .expect("Global search error: Failed to get current dir");
+                let search_root = helix_loader::current_working_dir();
                 let dedup_symlinks = file_picker_config.deduplicate_links;
                 let absolute_root = search_root
                     .canonicalize()
@@ -2514,7 +2513,7 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 fn file_picker_in_current_directory(cx: &mut Context) {
-    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
+    let cwd = helix_loader::current_working_dir();
     let picker = ui::file_picker(cwd, &cx.editor.config());
     cx.push_layer(Box::new(overlaid(picker)));
 }

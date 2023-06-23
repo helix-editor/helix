@@ -1093,14 +1093,11 @@ fn change_current_directory(
             .as_ref(),
     );
 
-    if let Err(e) = std::env::set_current_dir(dir) {
-        bail!("Couldn't change the current working directory: {}", e);
-    }
+    helix_loader::set_current_working_dir(dir)?;
 
-    let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
     cx.editor.set_status(format!(
         "Current working directory is now {}",
-        cwd.display()
+        helix_loader::current_working_dir().display()
     ));
     Ok(())
 }
@@ -1114,7 +1111,7 @@ fn show_current_directory(
         return Ok(());
     }
 
-    let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
+    let cwd = helix_loader::current_working_dir();
     cx.editor
         .set_status(format!("Current working directory is {}", cwd.display()));
     Ok(())
