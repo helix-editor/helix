@@ -63,7 +63,21 @@ pub fn select_all_siblings(tree: &Tree, text: RopeSlice, selection: Selection) -
         root_node
             .descendant_for_byte_range(from, to)
             .and_then(find_parent_with_more_children)
-            .map(|parent| select_children(parent, text, range.direction()))
+            .and_then(|parent| select_children(parent, text, range.direction()))
+            .unwrap_or_else(|| vec![range].into_iter())
+    })
+}
+
+pub fn select_all_children(tree: &Tree, text: RopeSlice, selection: Selection) -> Selection {
+    let root_node = &tree.root_node();
+
+    selection.transform_iter(|range| {
+        let from = text.char_to_byte(range.from());
+        let to = text.char_to_byte(range.to());
+
+        root_node
+            .descendant_for_byte_range(from, to)
+            .and_then(|parent| select_children(parent, text, range.direction()))
             .unwrap_or_else(|| vec![range].into_iter())
     })
 }
@@ -72,10 +86,11 @@ fn select_children(
     node: Node,
     text: RopeSlice,
     direction: Direction,
-) -> <Vec<Range> as std::iter::IntoIterator>::IntoIter {
+) -> Option<<Vec<Range> as std::iter::IntoIterator>::IntoIter> {
     let mut cursor = node.walk();
 
-    node.named_children(&mut cursor)
+    let children = node
+        .named_children(&mut cursor)
         .map(|child| {
             let from = text.byte_to_char(child.start_byte());
             let to = text.byte_to_char(child.end_byte());
@@ -86,8 +101,13 @@ fn select_children(
                 Range::new(from, to)
             }
         })
-        .collect::<Vec<_>>()
-        .into_iter()
+        .collect::<Vec<_>>();
+
+    if !children.is_empty() {
+        Some(children.into_iter())
+    } else {
+        None
+    }
 }
 
 fn find_sibling_recursive<F>(node: Node, sibling_fn: F) -> Option<Node>
