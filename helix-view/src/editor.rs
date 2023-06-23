@@ -1386,11 +1386,22 @@ impl Editor {
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
-        let (rope, encoding, has_bom) = crate::document::from_reader(&mut stdin(), None)?;
-        Ok(self.new_file_from_document(
-            action,
-            Document::from(rope, Some((encoding, has_bom)), self.config.clone()),
-        ))
+        let (stdin, encoding, has_bom) = crate::document::read_to_string(&mut stdin(), None)?;
+        let doc = Document::from(
+            helix_core::Rope::default(),
+            Some((encoding, has_bom)),
+            self.config.clone(),
+        );
+        let doc_id = self.new_file_from_document(action, doc);
+        let doc = doc_mut!(self, &doc_id);
+        let view = view_mut!(self);
+        doc.ensure_view_init(view.id);
+        let transaction =
+            helix_core::Transaction::insert(doc.text(), doc.selection(view.id), stdin.into())
+                .with_selection(Selection::point(0));
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view);
+        Ok(doc_id)
     }
 
     // ??? possible use for integration tests
