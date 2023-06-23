@@ -187,7 +187,7 @@ pub struct Document {
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
 
-    pub last_view: ViewPosition,
+    pub last_view_position: ViewPosition,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -623,7 +623,7 @@ impl Document {
             config,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
-            last_view: ViewPosition::default(),
+            last_view_position: ViewPosition::default(),
         }
     }
 

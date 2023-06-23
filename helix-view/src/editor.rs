@@ -1247,24 +1247,17 @@ impl Editor {
         }
     }
 
-    fn replace_document_in_view(
-        &mut self,
-        current_view: ViewId,
-        doc_id: DocumentId,
-        from_scratch: bool,
-    ) {
+    fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
         let view = self.tree.get_mut(current_view);
 
-        // If swapping from a document, record the last view
-        if !from_scratch {
-            let old_view_offset = view.offset;
-            let mut old_doc = doc_mut!(self, &view.doc);
-            old_doc.last_view = old_view_offset;
+        // If swapping from a document, record the last view position
+        if let Some(old_doc) = self.documents.get_mut(&view.doc) {
+            old_doc.last_view_position = view.offset;
         }
 
         view.doc = doc_id;
         let doc = doc_mut!(self, &doc_id);
-        view.offset = doc.last_view;
+        view.offset = doc.last_view_position;
         doc.ensure_view_init(view.id);
         view.sync_changes(doc);
         doc.mark_as_focused();
@@ -1282,7 +1275,6 @@ impl Editor {
 
         match action {
             Action::Replace => {
-                let mut from_scratch = false;
                 let (view, doc) = current_ref!(self);
                 // If the current view is an empty scratch buffer and is not displayed in any other views, delete it.
                 // Boolean value is determined before the call to `view_mut` because the operation requires a borrow
@@ -1314,7 +1306,6 @@ impl Editor {
                     for (view, _) in self.tree.views_mut() {
                         view.remove_document(&id);
                     }
-                    from_scratch = true;
                 } else {
                     let jump = (view.doc, doc.selection(view.id).clone());
                     view.jumps.push(jump);
@@ -1330,7 +1321,7 @@ impl Editor {
                     }
                 }
 
-                self.replace_document_in_view(view_id, id, from_scratch);
+                self.replace_document_in_view(view_id, id);
 
                 return;
             }
@@ -1490,7 +1481,7 @@ impl Editor {
                     self.close(view_id);
                 }
                 Action::ReplaceDoc(view_id, doc_id) => {
-                    self.replace_document_in_view(view_id, doc_id, false);
+                    self.replace_document_in_view(view_id, doc_id);
                 }
             }
         }
