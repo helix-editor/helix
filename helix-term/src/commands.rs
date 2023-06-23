@@ -56,7 +56,7 @@ use crate::{
     keymap::ReverseKeymap,
     ui::{
         self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem, Picker,
-        Popup, Prompt, PromptEvent,
+        PickerAction, Popup, Prompt, PromptEvent,
     },
 };
 
@@ -2588,6 +2588,37 @@ fn buffer_picker(cx: &mut Context) {
             .primary()
             .cursor_line(doc.text().slice(..));
         Some((meta.id.into(), Some((line, line))))
+    })
+    .on_key_event(move |cx, meta, key_event| match key_event {
+        ctrl!('x') => {
+            if cx.editor.close_document(meta.id, false).is_err() {
+                cx.editor.set_error("Cannot close buffer");
+                None
+            } else {
+                let updated_options = cx
+                    .editor
+                    .documents
+                    .iter()
+                    .map(|(_, doc)| new_meta(doc))
+                    .collect();
+                Some(PickerAction::UpdateOptions(updated_options))
+            }
+        }
+        ctrl!('X') => {
+            if cx.editor.close_document(meta.id, true).is_err() {
+                cx.editor.set_error("Cannot force close buffer");
+                None
+            } else {
+                let updated_options = cx
+                    .editor
+                    .documents
+                    .iter()
+                    .map(|(_, doc)| new_meta(doc))
+                    .collect();
+                Some(PickerAction::UpdateOptions(updated_options))
+            }
+        }
+        _ => None,
     });
     cx.push_layer(Box::new(overlaid(picker)));
 }
