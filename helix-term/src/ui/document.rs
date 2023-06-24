@@ -397,9 +397,9 @@ impl<'a> TextRenderer<'a> {
             &self.tab
         };
         let mut whitespace_kind = WhitespaceKind::None;
-        let grapheme_value = match grapheme {
+        let grapheme = match grapheme {
             Grapheme::Tab { width } => {
-                whitespace_kind = WhitespaceKind::Tab(width);
+                whitespace_kind = WhitespaceKind::Tab;
                 let grapheme_tab_width = char_to_byte_idx(tab, width);
                 &tab[..grapheme_tab_width]
             }
@@ -419,41 +419,31 @@ impl<'a> TextRenderer<'a> {
             }
         };
 
-        self.trailing_whitespace_tracker
-            .track(position.col, whitespace_kind);
-
         let viewport_right_edge = self.viewport.width as usize + self.col_offset - 1;
         let in_bounds = self.col_offset <= position.col && position.col <= viewport_right_edge;
 
         if in_bounds {
-            if self.trailing_whitespace_tracker.is_enabled()
-                && (grapheme == Grapheme::Newline || position.col == viewport_right_edge)
+            let in_bounds_col = position.col - self.col_offset;
+            self.surface.set_string(
+                self.viewport.x + in_bounds_col as u16,
+                self.viewport.y + position.row as u16,
+                grapheme,
+                style,
+            );
+
+            if self
+                .trailing_whitespace_tracker
+                .track(in_bounds_col, whitespace_kind)
+                || position.col == viewport_right_edge
             {
                 if let Some((from, trailing_whitespace)) = self.trailing_whitespace_tracker.get() {
-                    let offset = if from < self.col_offset {
-                        0
-                    } else {
-                        from - self.col_offset
-                    };
-                    let begin_at = if from < self.col_offset {
-                        self.col_offset - from
-                    } else {
-                        0
-                    };
                     self.surface.set_string(
-                        self.viewport.x + offset as u16,
+                        self.viewport.x + from as u16,
                         self.viewport.y + position.row as u16,
-                        &trailing_whitespace[char_to_byte_idx(&trailing_whitespace, begin_at)..],
+                        &trailing_whitespace,
                         style,
                     );
                 }
-            } else {
-                self.surface.set_string(
-                    self.viewport.x + (position.col - self.col_offset) as u16,
-                    self.viewport.y + position.row as u16,
-                    grapheme_value,
-                    style,
-                );
             }
         } else if cut_off_start != 0 && cut_off_start < width {
             // partially on screen
