@@ -53,7 +53,7 @@ use crate::{
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
-    keymap::ReverseKeymap,
+    keymap::{Keymaps, ReverseKeymap},
     ui::{
         self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem, Picker,
         Popup, Prompt, PromptEvent,
@@ -81,6 +81,8 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 pub type OnKeyCallback = Box<dyn FnOnce(&mut Context, KeyEvent)>;
 
 pub struct Context<'a> {
+    pub keymaps: &'a mut Keymaps,
+
     pub register: Option<char>,
     pub count: Option<NonZeroUsize>,
     pub editor: &'a mut Editor,
@@ -196,6 +198,7 @@ impl MappableCommand {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
+                        keymaps: cx.keymaps,
                         editor: cx.editor,
                         jobs: cx.jobs,
                         scroll: None,
@@ -2716,9 +2719,8 @@ pub fn command_palette(cx: &mut Context) {
 
     cx.callback = Some(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
-            let keymap = compositor.find::<ui::EditorView>().unwrap().keymaps.map()
-                [&cx.editor.mode]
-                .reverse_map();
+            let keymap =
+                cx.keymaps.map()[&crate::keymap::Domain::Mode(cx.editor.mode)].reverse_map();
 
             let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
             commands.extend(typed::TYPABLE_COMMAND_LIST.iter().map(|cmd| {
@@ -2733,6 +2735,7 @@ pub fn command_palette(cx: &mut Context) {
                 let mut ctx = Context {
                     register,
                     count,
+                    keymaps: cx.keymaps,
                     editor: cx.editor,
                     callback: None,
                     on_next_key_callback: None,

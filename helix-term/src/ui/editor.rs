@@ -3,7 +3,7 @@ use crate::{
     compositor::{Component, Context, Event, EventResult},
     job::{self, Callback},
     key,
-    keymap::{KeymapResult, Keymaps},
+    keymap::KeymapResult,
     ui::{
         document::{render_document, LinePos, TextRenderer, TranslatedPosition},
         Completion, ProgressSpinners,
@@ -37,7 +37,6 @@ use super::{completion::CompletionItem, statusline};
 use super::{document::LineDecoration, lsp::SignatureHelp};
 
 pub struct EditorView {
-    pub keymaps: Keymaps,
     on_next_key: Option<OnKeyCallback>,
     pseudo_pending: Vec<KeyEvent>,
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
@@ -58,14 +57,7 @@ pub enum InsertEvent {
 
 impl Default for EditorView {
     fn default() -> Self {
-        Self::new(Keymaps::default())
-    }
-}
-
-impl EditorView {
-    pub fn new(keymaps: Keymaps) -> Self {
         Self {
-            keymaps,
             on_next_key: None,
             pseudo_pending: Vec::new(),
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
@@ -73,7 +65,9 @@ impl EditorView {
             spinners: ProgressSpinners::default(),
         }
     }
+}
 
+impl EditorView {
     pub fn spinners_mut(&mut self) -> &mut ProgressSpinners {
         &mut self.spinners
     }
@@ -786,7 +780,7 @@ impl EditorView {
         }
     }
 
-    /// Handle events by looking them up in `self.keymaps`. Returns None
+    /// Handle events by looking them up in `cxt.keymaps`. Returns None
     /// if event was handled (a command was executed or a subkeymap was
     /// activated). Only KeymapResult::{NotFound, Cancelled} is returned
     /// otherwise.
@@ -797,9 +791,9 @@ impl EditorView {
         event: KeyEvent,
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
-        self.pseudo_pending.extend(self.keymaps.pending());
-        let key_result = self.keymaps.get(mode, event);
-        cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
+        self.pseudo_pending.extend(cxt.keymaps.pending());
+        let key_result = cxt.keymaps.get(mode, event);
+        cxt.editor.autoinfo = cxt.keymaps.sticky().map(|node| node.infobox());
 
         let mut execute_command = |command: &commands::MappableCommand| {
             command.execute(cxt);
@@ -864,7 +858,7 @@ impl EditorView {
                             Some(ch) => commands::insert::insert_char(cx, ch),
                             None => {
                                 if let KeymapResult::Matched(command) =
-                                    self.keymaps.get(Mode::Insert, ev)
+                                    cx.keymaps.get_by_mode(Mode::Insert, ev)
                                 {
                                     command.execute(cx);
                                 }
@@ -886,7 +880,7 @@ impl EditorView {
                     std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
             }
             // special handling for repeat operator
-            (key!('.'), _) if self.keymaps.pending().is_empty() => {
+            (key!('.'), _) if cxt.keymaps.pending().is_empty() => {
                 for _ in 0..cxt.editor.count.map_or(1, NonZeroUsize::into) {
                     // first execute whatever put us into insert mode
                     self.last_insert.0.execute(cxt);
@@ -944,7 +938,7 @@ impl EditorView {
                 cxt.register = cxt.editor.selected_register.take();
 
                 self.handle_keymap_event(mode, cxt, event);
-                if self.keymaps.pending().is_empty() {
+                if cxt.keymaps.pending().is_empty() {
                     cxt.editor.count = None
                 } else {
                     cxt.editor.selected_register = cxt.register.take();
@@ -1225,6 +1219,7 @@ impl Component for EditorView {
         context: &mut crate::compositor::Context,
     ) -> EventResult {
         let mut cx = commands::Context {
+            keymaps: context.keymaps,
             editor: context.editor,
             count: None,
             register: None,
@@ -1280,6 +1275,7 @@ impl Component for EditorView {
                                 let res = {
                                     // use a fake context here
                                     let mut cx = Context {
+                                        keymaps: cx.keymaps,
                                         editor: cx.editor,
                                         jobs: cx.jobs,
                                         scroll: None,
@@ -1445,7 +1441,7 @@ impl Component for EditorView {
             if let Some(count) = cx.editor.count {
                 disp.push_str(&count.to_string())
             }
-            for key in self.keymaps.pending() {
+            for key in cx.keymaps.pending() {
                 disp.push_str(&key.key_sequence_format());
             }
             for key in &self.pseudo_pending {
