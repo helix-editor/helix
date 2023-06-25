@@ -803,6 +803,7 @@ pub struct Breakpoint {
 use futures_util::stream::{Flatten, Once};
 
 impl steel::gc::unsafe_erased_pointers::CustomReference for Editor {}
+steel::custom_reference!(Editor);
 
 #[repr(C)]
 pub struct Editor {
