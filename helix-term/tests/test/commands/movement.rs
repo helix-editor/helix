@@ -607,16 +607,16 @@ async fn select_all_children() -> anyhow::Result<()> {
     let tests = vec![
         // basic tests
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 let foo = bar#[(a, b, c)|]#;
-            "##}),
+            "##},
             "<A-I>",
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 let foo = bar(#[a|]#, #(b|)#, #(c|)#);
-            "##}),
+            "##},
         ),
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 let a = #[[
                     1,
                     2,
@@ -624,9 +624,9 @@ async fn select_all_children() -> anyhow::Result<()> {
                     4,
                     5,
                 ]|]#;
-            "##}),
+            "##},
             "<A-I>",
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 let a = [
                     #[1|]#,
                     #(2|)#,
@@ -634,11 +634,11 @@ async fn select_all_children() -> anyhow::Result<()> {
                     #(4|)#,
                     #(5|)#,
                 ];
-            "##}),
+            "##},
         ),
         // direction is preserved
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 let a = #[|[
                     1,
                     2,
@@ -646,9 +646,9 @@ async fn select_all_children() -> anyhow::Result<()> {
                     4,
                     5,
                 ]]#;
-            "##}),
+            "##},
             "<A-I>",
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 let a = [
                     #[|1]#,
                     #(|2)#,
@@ -656,11 +656,11 @@ async fn select_all_children() -> anyhow::Result<()> {
                     #(|4)#,
                     #(|5)#,
                 ];
-            "##}),
+            "##},
         ),
         // can't pick any more children - selection stays the same
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 let a = [
                     #[1|]#,
                     #(2|)#,
@@ -668,9 +668,9 @@ async fn select_all_children() -> anyhow::Result<()> {
                     #(4|)#,
                     #(5|)#,
                 ];
-            "##}),
+            "##},
             "<A-I>",
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 let a = [
                     #[1|]#,
                     #(2|)#,
@@ -678,11 +678,11 @@ async fn select_all_children() -> anyhow::Result<()> {
                     #(4|)#,
                     #(5|)#,
                 ];
-            "##}),
+            "##},
         ),
         // each cursor does the sibling select independently
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 let a = #[|[
                     1,
                     2,
@@ -698,9 +698,9 @@ async fn select_all_children() -> anyhow::Result<()> {
                     "four",
                     "five",
                 ]|)#;
-            "##}),
+            "##},
             "<A-I>",
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 let a = [
                     #[|1]#,
                     #(|2)#,
@@ -716,7 +716,7 @@ async fn select_all_children() -> anyhow::Result<()> {
                     #("four"|)#,
                     #("five"|)#,
                 ];
-            "##}),
+            "##},
         ),
     ];
 
