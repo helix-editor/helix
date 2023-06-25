@@ -50,7 +50,7 @@ use movement::Movement;
 
 use crate::{
     args,
-    compositor::{self, Component, Compositor},
+    compositor::{self, Component, Compositor, EventResult},
     filter_picker_entry,
     job::Callback,
     keymap::{Keymaps, ReverseKeymap},
@@ -172,6 +172,11 @@ pub enum MappableCommand {
         fun: fn(cx: &mut Context),
         doc: &'static str,
     },
+    Component {
+        name: &'static str,
+        fun: fn(&mut dyn crate::compositor::Component, &mut compositor::Context) -> EventResult,
+        doc: &'static str,
+    },
 }
 
 macro_rules! static_commands {
@@ -209,6 +214,7 @@ impl MappableCommand {
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
+            Self::Component { .. } => unimplemented!(),
         }
     }
 
@@ -216,6 +222,7 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, .. } => name,
             Self::Static { name, .. } => name,
+            Self::Component { .. } => unimplemented!(),
         }
     }
 
@@ -223,8 +230,17 @@ impl MappableCommand {
         match &self {
             Self::Typable { doc, .. } => doc,
             Self::Static { doc, .. } => doc,
+            Self::Component { .. } => unimplemented!(),
         }
     }
+
+    // TODO: macro for this...
+    #[allow(non_upper_case_globals)]
+    pub const close_buffer_in_buffer_picker: Self = Self::Component {
+        name: "close_buffer_in_buffer_picker",
+        fun: crate::ui::picker::close_buffer_in_buffer_picker,
+        doc: "Closes the currently focused buffer",
+    };
 
     #[rustfmt::skip]
     static_commands!(
@@ -503,6 +519,7 @@ impl fmt::Debug for MappableCommand {
                 .field(name)
                 .field(args)
                 .finish(),
+            Self::Component { .. } => unimplemented!(),
         }
     }
 }
@@ -2526,16 +2543,18 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
+pub struct BufferMeta {
+    pub id: DocumentId,
+    path: Option<PathBuf>,
+    is_modified: bool,
+    is_current: bool,
+    focused_at: std::time::Instant,
+}
+
+pub type BufferPicker = Picker<BufferMeta>;
+
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
-
-    struct BufferMeta {
-        id: DocumentId,
-        path: Option<PathBuf>,
-        is_modified: bool,
-        is_current: bool,
-        focused_at: std::time::Instant,
-    }
 
     impl ui::menu::Item for BufferMeta {
         type Data = ();
@@ -2710,6 +2729,7 @@ impl ui::menu::Item for MappableCommand {
                 Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
                 None => format!("{} [{}]", doc, name).into(),
             },
+            MappableCommand::Component { .. } => unimplemented!(),
         }
     }
 }

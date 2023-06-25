@@ -379,9 +379,15 @@ pub fn default() -> HashMap<Domain, KeyTrie> {
         "home" => goto_line_start,
         "end" => goto_line_end_newline,
     });
+
+    let buffer_picker = keymap!({ "Buffer picker"
+        "C-x" => close_buffer_in_buffer_picker,
+    });
+
     hashmap!(
         Domain::Mode(Mode::Normal) => normal,
         Domain::Mode(Mode::Select) => select,
         Domain::Mode(Mode::Insert) => insert,
+        Domain::Component("buffer-picker") => buffer_picker,
     )
 }

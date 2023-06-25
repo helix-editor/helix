@@ -802,6 +802,18 @@ impl<T: Item + 'static> Component for Picker<T> {
             _ => return EventResult::Ignored(None),
         };
 
+        match ctx.keymaps.get_by_component_id(self.id, key_event) {
+            crate::keymap::KeymapResult::Matched(crate::keymap::MappableCommand::Component {
+                fun,
+                ..
+            }) => {
+                if let EventResult::Consumed(callback) = fun(self, ctx) {
+                    return EventResult::Consumed(callback);
+                }
+            }
+            _ => (),
+        }
+
         let close_fn =
             EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _ctx| {
                 // remove the layer
@@ -986,4 +998,40 @@ impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
     fn id(&self) -> Option<&'static str> {
         Some(DYNAMIC_PICKER_ID)
     }
+}
+
+pub fn close_buffer_in_buffer_picker(
+    component: &mut dyn Component,
+    cx: &mut compositor::Context,
+) -> EventResult {
+    let Some(picker) = component
+        .as_any_mut()
+        .downcast_mut::<crate::commands::BufferPicker>()
+    else {
+        return EventResult::Ignored(None);
+    };
+    let Some(id) = picker.selection().map(|meta| meta.id) else {
+        return EventResult::Ignored(None);
+    };
+    match cx.editor.close_document(id, false) {
+        Ok(_) => {
+            picker.options.retain(|item| item.id != id);
+            if picker.options.is_empty() {
+                return close_fn();
+            }
+            picker.cursor = picker.cursor.saturating_sub(1);
+            picker.force_score();
+        }
+        // TODO: impl From<CloseError> for anyhow::Error
+        Err(_err) => cx.editor.set_error("Failed to close buffer"),
+    }
+
+    EventResult::Consumed(None)
+}
+
+fn close_fn() -> EventResult {
+    EventResult::Consumed(Some(Box::new(|compositor: &mut Compositor, _ctx| {
+        // remove the layer
+        compositor.last_picker = compositor.pop();
+    })))
 }
