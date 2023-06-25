@@ -54,6 +54,7 @@ use movement::Movement;
 
 use crate::{
     args,
+    commands::engine::CallbackQueue,
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
@@ -189,6 +190,29 @@ macro_rules! static_commands {
 
 impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
+        log::info!("Running command");
+
+        // TODO: Move this out to a standalone function
+        while let Some(callback) = CallbackQueue::dequeue() {
+            log::info!("Found callback: {}", callback);
+
+            if let Err(e) = ENGINE.with(|x| {
+                let mut guard = x.borrow_mut();
+
+                {
+                    let res = guard.run_with_reference::<Context, Context>(
+                        cx,
+                        "*context*",
+                        &format!("({} *context*)", callback),
+                    );
+
+                    res
+                }
+            }) {
+                cx.editor.set_error(format!("{}", e));
+            }
+        }
+
         match &self {
             // TODO: @Matt - Add delegating to the engine to run scripts here
             Self::Typable { name, args, doc: _ } => {

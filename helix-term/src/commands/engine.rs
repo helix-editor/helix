@@ -165,6 +165,10 @@ pub fn run_initialization_script(cx: &mut Context) {
 pub static KEYBINDING_QUEUE: Lazy<SharedKeyBindingsEventQueue> =
     Lazy::new(|| SharedKeyBindingsEventQueue::new());
 
+// pub static CALLBACK_QUEUE: Lazy<CallBackQueue> = Lazy::new(|| )
+
+pub static CALLBACK_QUEUE: Lazy<CallbackQueue> = Lazy::new(|| CallbackQueue::new());
+
 pub static EXPORTED_IDENTIFIERS: Lazy<ExportedIdentifiers> =
     Lazy::new(|| ExportedIdentifiers::default());
 
@@ -204,6 +208,27 @@ impl Item for SteelVal {
             .unwrap_or(&formatted)
             .to_owned()
             .into()
+    }
+}
+
+pub struct CallbackQueue {
+    queue: Arc<Mutex<VecDeque<String>>>,
+}
+
+impl CallbackQueue {
+    pub fn new() -> Self {
+        Self {
+            queue: Arc::new(Mutex::new(VecDeque::new())),
+        }
+    }
+
+    pub fn enqueue(value: String) {
+        CALLBACK_QUEUE.queue.lock().unwrap().push_back(value);
+    }
+
+    // Dequeue should probably be a R/W lock?
+    pub fn dequeue() -> Option<String> {
+        CALLBACK_QUEUE.queue.lock().unwrap().pop_front()
     }
 }
 
@@ -251,6 +276,8 @@ impl SharedKeyBindingsEventQueue {
 impl Custom for PromptEvent {}
 
 impl<'a> CustomReference for Context<'a> {}
+
+steel::custom_reference!(Context<'a>);
 
 fn get_editor<'a>(cx: &'a mut Context<'a>) -> &'a mut Editor {
     cx.editor
@@ -388,6 +415,8 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     //         .unwrap()
     //         .to_string(),
     // );
+
+    engine.register_fn("enqueue-callback!", CallbackQueue::enqueue);
 
     // Get the current OS
     engine.register_fn("current-os!", || std::env::consts::OS);
@@ -654,6 +683,20 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     engine.register_module(module);
 
     let mut module = BuiltInModule::new("helix/core/static".to_string());
+
+    for command in TYPABLE_COMMAND_LIST {
+        let func = |cx: &mut Context| {
+            let mut cx = compositor::Context {
+                editor: cx.editor,
+                scroll: None,
+                jobs: cx.jobs,
+            };
+
+            (command.fun)(&mut cx, &[], PromptEvent::Validate)
+        };
+
+        module.register_fn(command.name, func);
+    }
 
     // Register everything in the static command list as well
     // These just accept the context, no arguments

@@ -1,6 +1,11 @@
+use steel::gc::unsafe_erased_pointers::CustomReference;
+
 impl steel::rvals::Custom for crate::Position {}
 
 struct SRopeSlice<'a>(crate::RopeSlice<'a>);
+
+steel::custom_reference!(SRopeSlice<'a>);
+impl<'a> CustomReference for SRopeSlice<'a> {}
 
 impl<'a> SRopeSlice<'a> {
     pub fn char_to_byte(&self, pos: usize) -> usize {
