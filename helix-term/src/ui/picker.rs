@@ -1002,7 +1002,7 @@ impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
 
 pub fn close_buffer_in_buffer_picker(
     component: &mut dyn Component,
-    cx: &mut compositor::Context,
+    cx: &mut Context,
 ) -> EventResult {
     let Some(picker) = component
         .as_any_mut()
@@ -1025,6 +1025,56 @@ pub fn close_buffer_in_buffer_picker(
         // TODO: impl From<CloseError> for anyhow::Error
         Err(_err) => cx.editor.set_error("Failed to close buffer"),
     }
+
+    EventResult::Consumed(None)
+}
+
+// Above command is cool because it's for one specific picker.
+
+// This is also cool because it doesn't even need to interact with
+// the picker, so we don't need concrete types:
+
+pub fn close_picker(_component: &mut dyn Component, _cx: &mut Context) -> EventResult {
+    close_fn()
+}
+
+// Now this is a problem. It compiles ok.
+// We can probably even specify it in the default keymap:
+//
+//     MappableCommand::Component { name: "..", doc: "..", fun: crate::ui::picker::to_start<PathBuf> }
+//
+// But how do we represent this in keymap config? Do we do namespacing in the
+// command names and end up with tens of commands for scrolling each picker?
+//
+//     MappableCommand::Component {
+//         name: "file_picker::to_start",
+//         doc: "..",
+//         crate::ui::picker::to_start<PathBuf>,
+//     },
+//     MappableCommand::Component {
+//         name: "buffer_picker::to_start",
+//         doc: "..",
+//         crate::ui::picker::to_start<BufferMeta>,
+//     },
+//
+// Can we use a macro to close over the verbose parts of this?
+//
+// Can we do something clever with a hypothetical AnyPicker interface
+// similar to AnyComponent? Will we have to do that for every Component
+// that uses generics?
+
+pub fn to_start<T: ui::menu::Item + 'static>(
+    component: &mut dyn Component,
+    _cx: &mut Context,
+) -> EventResult {
+    let Some(picker) = component
+        .as_any_mut()
+        .downcast_mut::<Picker<T>>()
+    else {
+        return EventResult::Ignored(None);
+    };
+
+    picker.cursor = 0;
 
     EventResult::Consumed(None)
 }
