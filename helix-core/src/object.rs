@@ -1,5 +1,4 @@
-use crate::{movement::Direction, syntax::TreeCursor, Range, RopeSlice, Selection, Syntax};
-use tree_sitter::{Node, Tree};
+use crate::{syntax::TreeCursor, Range, RopeSlice, Selection, Syntax};
 
 pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
     let cursor = &mut syntax.walk();
@@ -41,83 +40,44 @@ pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: Selectio
     })
 }
 
-fn find_parent_with_more_children(mut node: Node) -> Option<Node> {
-    while let Some(parent) = node.parent() {
-        if parent.child_count() > 1 {
-            return Some(parent);
+pub fn select_all_siblings(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
+    selection.transform_iter(|range| {
+        let mut cursor = syntax.walk();
+        let (from, to) = range.into_byte_range(text);
+        cursor.reset_to_byte_range(from, to);
+
+        if !cursor.goto_parent_with(|parent| parent.child_count() > 1) {
+            return vec![range].into_iter();
         }
 
-        node = parent;
-    }
-
-    None
-}
-
-pub fn select_all_siblings(tree: &Tree, text: RopeSlice, selection: Selection) -> Selection {
-    let root_node = &tree.root_node();
-
-    selection.transform_iter(|range| {
-        let from = text.char_to_byte(range.from());
-        let to = text.char_to_byte(range.to());
-
-        root_node
-            .descendant_for_byte_range(from, to)
-            .and_then(find_parent_with_more_children)
-            .and_then(|parent| select_children(parent, text, range.direction()))
-            .unwrap_or_else(|| vec![range].into_iter())
+        select_children(&mut cursor, text, range).into_iter()
     })
 }
 
-pub fn select_all_children(tree: &Tree, text: RopeSlice, selection: Selection) -> Selection {
-    let root_node = &tree.root_node();
-
+pub fn select_all_children(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
     selection.transform_iter(|range| {
-        let from = text.char_to_byte(range.from());
-        let to = text.char_to_byte(range.to());
-
-        root_node
-            .descendant_for_byte_range(from, to)
-            .and_then(|parent| select_children(parent, text, range.direction()))
-            .unwrap_or_else(|| vec![range].into_iter())
+        let mut cursor = syntax.walk();
+        let (from, to) = range.into_byte_range(text);
+        cursor.reset_to_byte_range(from, to);
+        select_children(&mut cursor, text, range).into_iter()
     })
 }
 
-fn select_children(
-    node: Node,
+fn select_children<'n>(
+    cursor: &'n mut TreeCursor<'n>,
     text: RopeSlice,
-    direction: Direction,
-) -> Option<<Vec<Range> as std::iter::IntoIterator>::IntoIter> {
-    let mut cursor = node.walk();
-
-    let children = node
-        .named_children(&mut cursor)
-        .map(|child| {
-            let from = text.byte_to_char(child.start_byte());
-            let to = text.byte_to_char(child.end_byte());
-
-            if direction == Direction::Backward {
-                Range::new(to, from)
-            } else {
-                Range::new(from, to)
-            }
-        })
+    range: Range,
+) -> Vec<Range> {
+    let children = cursor
+        .named_children()
+        .map(|child| Range::from_node(child, text, range.direction()))
         .collect::<Vec<_>>();
 
     if !children.is_empty() {
-        Some(children.into_iter())
+        children
     } else {
-        None
+        vec![range]
     }
-}
-
-fn find_sibling_recursive<F>(node: Node, sibling_fn: F) -> Option<Node>
-where
-    F: Fn(Node) -> Option<Node>,
-{
-    sibling_fn(node).or_else(|| {
-        node.parent()
-            .and_then(|node| find_sibling_recursive(node, sibling_fn))
-    })
 }
 
 pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
