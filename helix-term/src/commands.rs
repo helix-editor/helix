@@ -2591,7 +2591,8 @@ fn buffer_picker(cx: &mut Context) {
             .primary()
             .cursor_line(doc.text().slice(..));
         Some((meta.id.into(), Some((line, line))))
-    });
+    })
+    .with_id("buffer-picker");
     cx.push_layer(Box::new(overlaid(picker)));
 }
 

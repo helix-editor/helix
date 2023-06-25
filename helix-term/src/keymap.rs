@@ -279,6 +279,34 @@ pub enum Domain {
     Component(&'static str),
 }
 
+const REMAPPABLE_COMPONENTS: [&'static str; 3] = [
+    crate::ui::DYNAMIC_PICKER_ID,
+    crate::ui::PICKER_ID,
+    // TODO: make it a constant
+    "buffer-picker",
+];
+
+impl<'de> Deserialize<'de> for Domain {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        if let Ok(mode) = s.parse::<Mode>() {
+            return Ok(Domain::Mode(mode));
+        } else if let Some(name) = REMAPPABLE_COMPONENTS
+            .iter()
+            .find(|name| **name == s.as_str())
+        {
+            Ok(Domain::Component(name))
+        } else {
+            Err(serde::de::Error::custom(format!(
+                "Unknown keymap domain {s}. Expected a mode or component name"
+            )))
+        }
+    }
+}
+
 pub struct Keymaps {
     pub map: Box<dyn DynAccess<HashMap<Domain, KeyTrie>>>,
     /// Stores pending keys waiting for the next key. This is relative to a

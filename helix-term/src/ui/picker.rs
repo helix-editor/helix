@@ -114,6 +114,8 @@ impl Preview<'_, '_> {
     }
 }
 
+pub const PICKER_ID: &'static str = "picker";
+
 pub struct Picker<T: Item> {
     options: Vec<T>,
     editor_data: T::Data,
@@ -141,6 +143,9 @@ pub struct Picker<T: Item> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Option<FileCallback<T>>,
+
+    /// A unique identifier for the picker as a Component
+    id: &'static str,
 }
 
 impl<T: Item + 'static> Picker<T> {
@@ -172,6 +177,7 @@ impl<T: Item + 'static> Picker<T> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
+            id: PICKER_ID,
         };
 
         picker.calculate_column_widths();
@@ -202,6 +208,11 @@ impl<T: Item + 'static> Picker<T> {
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         self.file_fn = Some(Box::new(preview_fn));
+        self
+    }
+
+    pub fn with_id(mut self, id: &'static str) -> Self {
+        self.id = id;
         self
     }
 
@@ -871,6 +882,10 @@ impl<T: Item + 'static> Component for Picker<T> {
         self.completion_height = height.saturating_sub(4);
         Some((width, height))
     }
+
+    fn id(&self) -> Option<&'static str> {
+        Some(self.id)
+    }
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -905,6 +920,8 @@ type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
 pub type DynQueryCallback<T> =
     Box<dyn Fn(String, &mut Editor) -> BoxFuture<'static, anyhow::Result<Vec<T>>>>;
 
+pub const DYNAMIC_PICKER_ID: &'static str = "dynamic-picker";
+
 /// A picker that updates its contents via a callback whenever the
 /// query string changes. Useful for live grep, workspace symbols, etc.
 pub struct DynamicPicker<T: ui::menu::Item + Send> {
@@ -914,8 +931,6 @@ pub struct DynamicPicker<T: ui::menu::Item + Send> {
 }
 
 impl<T: ui::menu::Item + Send> DynamicPicker<T> {
-    pub const ID: &'static str = "dynamic-picker";
-
     pub fn new(file_picker: Picker<T>, query_callback: DynQueryCallback<T>) -> Self {
         Self {
             file_picker,
@@ -947,10 +962,11 @@ impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
             let callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
                 // Wrapping of pickers in overlay is done outside the picker code,
                 // so this is fragile and will break if wrapped in some other widget.
-                let picker = match compositor.find_id::<Overlay<DynamicPicker<T>>>(Self::ID) {
-                    Some(overlay) => &mut overlay.content.file_picker,
-                    None => return,
-                };
+                let picker =
+                    match compositor.find_id::<Overlay<DynamicPicker<T>>>(DYNAMIC_PICKER_ID) {
+                        Some(overlay) => &mut overlay.content.file_picker,
+                        None => return,
+                    };
                 picker.set_options(new_options);
                 editor.reset_idle_timer();
             }));
@@ -968,6 +984,6 @@ impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
     }
 
     fn id(&self) -> Option<&'static str> {
-        Some(Self::ID)
+        Some(DYNAMIC_PICKER_ID)
     }
 }
