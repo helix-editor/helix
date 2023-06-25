@@ -272,8 +272,15 @@ pub enum KeymapResult {
 /// A map of command names to keybinds that will execute the command.
 pub type ReverseKeymap = HashMap<String, Vec<Vec<KeyEvent>>>;
 
+// TODO name
+#[derive(Eq, Hash, PartialEq, Clone, Debug)]
+pub enum Domain {
+    Mode(Mode),
+    Component(&'static str),
+}
+
 pub struct Keymaps {
-    pub map: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>,
+    pub map: Box<dyn DynAccess<HashMap<Domain, KeyTrie>>>,
     /// Stores pending keys waiting for the next key. This is relative to a
     /// sticky node if one is in use.
     state: Vec<KeyEvent>,
@@ -282,7 +289,7 @@ pub struct Keymaps {
 }
 
 impl Keymaps {
-    pub fn new(map: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>) -> Self {
+    pub fn new(map: Box<dyn DynAccess<HashMap<Domain, KeyTrie>>>) -> Self {
         Self {
             map,
             state: Vec::new(),
@@ -290,7 +297,7 @@ impl Keymaps {
         }
     }
 
-    pub fn map(&self) -> DynGuard<HashMap<Mode, KeyTrie>> {
+    pub fn map(&self) -> DynGuard<HashMap<Domain, KeyTrie>> {
         self.map.load()
     }
 
@@ -303,14 +310,24 @@ impl Keymaps {
         self.sticky.as_ref()
     }
 
+    pub fn get_by_mode(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
+        self.get(Domain::Mode(mode), key)
+    }
+
+    pub fn get_by_component_id(&mut self, id: &'static str, key: KeyEvent) -> KeymapResult {
+        self.get(Domain::Component(id), key)
+    }
+
     /// Lookup `key` in the keymap to try and find a command to execute. Escape
     /// key cancels pending keystrokes. If there are no pending keystrokes but a
     /// sticky node is in use, it will be cleared.
-    pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
-        // TODO: remove the sticky part and look up manually
+    fn get(&mut self, domain: Domain, key: KeyEvent) -> KeymapResult {
         let keymaps = &*self.map();
-        let keymap = &keymaps[&mode];
+        let Some(keymap) = keymaps.get(&domain) else {
+            return KeymapResult::NotFound;
+        };
 
+        // TODO: remove the sticky part and look up manually
         if key!(Esc) == key {
             if !self.state.is_empty() {
                 // Note that Esc is not included here
@@ -365,7 +382,7 @@ impl Default for Keymaps {
 }
 
 /// Merge default config keys with user overwritten keys for custom user config.
-pub fn merge_keys(dst: &mut HashMap<Mode, KeyTrie>, mut delta: HashMap<Mode, KeyTrie>) {
+pub fn merge_keys(dst: &mut HashMap<Domain, KeyTrie>, mut delta: HashMap<Domain, KeyTrie>) {
     for (mode, keys) in dst {
         keys.merge_nodes(
             delta
@@ -400,7 +417,7 @@ mod tests {
     #[test]
     fn merge_partial_keys() {
         let keymap = hashmap! {
-            Mode::Normal => keymap!({ "Normal mode"
+            Domain::Mode(Mode::Normal) => keymap!({ "Normal mode"
                     "i" => normal_mode,
                     "无" => insert_mode,
                     "z" => jump_backward,
@@ -416,23 +433,23 @@ mod tests {
 
         let mut keymap = Keymaps::new(Box::new(Constant(merged_keyamp.clone())));
         assert_eq!(
-            keymap.get(Mode::Normal, key!('i')),
+            keymap.get_by_mode(Mode::Normal, key!('i')),
             KeymapResult::Matched(MappableCommand::normal_mode),
             "Leaf should replace leaf"
         );
         assert_eq!(
-            keymap.get(Mode::Normal, key!('无')),
+            keymap.get_by_mode(Mode::Normal, key!('无')),
             KeymapResult::Matched(MappableCommand::insert_mode),
             "New leaf should be present in merged keymap"
         );
         // Assumes that z is a node in the default keymap
         assert_eq!(
-            keymap.get(Mode::Normal, key!('z')),
+            keymap.get_by_mode(Mode::Normal, key!('z')),
             KeymapResult::Matched(MappableCommand::jump_backward),
             "Leaf should replace node"
         );
 
-        let keymap = merged_keyamp.get_mut(&Mode::Normal).unwrap();
+        let keymap = merged_keyamp.get_mut(&Domain::Mode(Mode::Normal)).unwrap();
         // Assumes that `g` is a node in default keymap
         assert_eq!(
             keymap.search(&[key!('g'), key!('$')]).unwrap(),
@@ -454,7 +471,7 @@ mod tests {
 
         assert!(
             merged_keyamp
-                .get(&Mode::Normal)
+                .get(&Domain::Mode(Mode::Normal))
                 .and_then(|key_trie| key_trie.node())
                 .unwrap()
                 .len()
@@ -462,7 +479,7 @@ mod tests {
         );
         assert!(
             merged_keyamp
-                .get(&Mode::Insert)
+                .get(&Domain::Mode(Mode::Insert))
                 .and_then(|key_trie| key_trie.node())
                 .unwrap()
                 .len()
@@ -473,7 +490,7 @@ mod tests {
     #[test]
     fn order_should_be_set() {
         let keymap = hashmap! {
-            Mode::Normal => keymap!({ "Normal mode"
+            Domain::Mode(Mode::Normal) => keymap!({ "Normal mode"
                     "space" => { ""
                         "s" => { ""
                             "v" => vsplit,
@@ -485,7 +502,7 @@ mod tests {
         let mut merged_keyamp = default();
         merge_keys(&mut merged_keyamp, keymap.clone());
         assert_ne!(keymap, merged_keyamp);
-        let keymap = merged_keyamp.get_mut(&Mode::Normal).unwrap();
+        let keymap = merged_keyamp.get_mut(&Domain::Mode(Mode::Normal)).unwrap();
         // Make sure mapping works
         assert_eq!(
             keymap.search(&[key!(' '), key!('s'), key!('v')]).unwrap(),
@@ -500,7 +517,7 @@ mod tests {
     #[test]
     fn aliased_modes_are_same_in_default_keymap() {
         let keymaps = Keymaps::default().map();
-        let root = keymaps.get(&Mode::Normal).unwrap();
+        let root = keymaps.get(&Domain::Mode(Mode::Normal)).unwrap();
         assert_eq!(
             root.search(&[key!(' '), key!('w')]).unwrap(),
             root.search(&["C-w".parse::<KeyEvent>().unwrap()]).unwrap(),

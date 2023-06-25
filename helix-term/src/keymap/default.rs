@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use super::macros::keymap;
-use super::{KeyTrie, Mode};
+use super::{Domain, KeyTrie, Mode};
 use helix_core::hashmap;
 
-pub fn default() -> HashMap<Mode, KeyTrie> {
+pub fn default() -> HashMap<Domain, KeyTrie> {
     let normal = keymap!({ "Normal mode"
         "h" | "left" => move_char_left,
         "j" | "down" => move_visual_line_down,
@@ -380,8 +380,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "end" => goto_line_end_newline,
     });
     hashmap!(
-        Mode::Normal => normal,
-        Mode::Select => select,
-        Mode::Insert => insert,
+        Domain::Mode(Mode::Normal) => normal,
+        Domain::Mode(Mode::Select) => select,
+        Domain::Mode(Mode::Insert) => insert,
     )
 }

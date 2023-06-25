@@ -1,7 +1,6 @@
 use crate::keymap;
-use crate::keymap::{merge_keys, KeyTrie};
+use crate::keymap::{merge_keys, Domain, KeyTrie};
 use helix_loader::merge_toml_values;
-use helix_view::document::Mode;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -12,7 +11,7 @@ use toml::de::Error as TomlError;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Config {
     pub theme: Option<String>,
-    pub keys: HashMap<Mode, KeyTrie>,
+    pub keys: HashMap<Domain, KeyTrie>,
     pub editor: helix_view::editor::Config,
 }
 
@@ -20,7 +19,7 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
     pub theme: Option<String>,
-    pub keys: Option<HashMap<Mode, KeyTrie>>,
+    pub keys: Option<HashMap<Domain, KeyTrie>>,
     pub editor: Option<toml::Value>,
 }
 
@@ -154,11 +153,11 @@ mod tests {
         merge_keys(
             &mut keys,
             hashmap! {
-                Mode::Insert => keymap!({ "Insert mode"
+                Domain::Mode(Mode::Insert) => keymap!({ "Insert mode"
                     "y" => move_line_down,
                     "S-C-a" => delete_selection,
                 }),
-                Mode::Normal => keymap!({ "Normal mode"
+                Domain::Mode(Mode::Normal) => keymap!({ "Normal mode"
                     "A-F12" => move_next_word_end,
                 }),
             },
