@@ -22,7 +22,7 @@
   "deriving"
 ] @keyword
 
-"=" @punctuation.delimiter
+"=" @operator
 
 ;; ----------------------------------------------------------------------------
 ;; Functions and variables
