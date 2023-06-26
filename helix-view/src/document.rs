@@ -1136,6 +1136,9 @@ impl Document {
                 diagnostic.line = self.text.char_to_line(diagnostic.range.start);
             }
 
+            self.diagnostics
+                .sort_unstable_by_key(|diagnostic| diagnostic.range);
+
             // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
             let apply_inlay_hint_changes = |annotations: &mut Rc<[InlineAnnotation]>| {
                 if let Some(data) = Rc::get_mut(annotations) {
