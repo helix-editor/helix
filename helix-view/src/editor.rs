@@ -1248,6 +1248,7 @@ impl Editor {
     }
 
     fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
+        let scrolloff = self.config().scrolloff;
         let view = self.tree.get_mut(current_view);
 
         // If swapping from a document, record the last view position
@@ -1261,6 +1262,7 @@ impl Editor {
         doc.ensure_view_init(view.id);
         view.sync_changes(doc);
         doc.mark_as_focused();
+        view.ensure_cursor_in_view(doc, scrolloff);
     }
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
