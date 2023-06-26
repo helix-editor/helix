@@ -5,7 +5,8 @@ pub(crate) mod typed;
 pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
-use tokio::sync::oneshot;
+use serde_json::Value;
+use tokio::{runtime::Handle, sync::oneshot};
 use tui::widgets::Row;
 pub use typed::*;
 
@@ -375,6 +376,7 @@ impl MappableCommand {
         earlier, "Move backward in history",
         later, "Move forward in history",
         commit_undo_checkpoint, "Commit changes to new checkpoint",
+        translate, "Translate",
         yank, "Yank selection",
         yank_joined, "Join and yank selections",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
@@ -3751,6 +3753,76 @@ fn yank_joined(cx: &mut Context) {
     exit_select_mode(cx);
 }
 
+fn translate_impl(
+    editor: &mut Editor,
+    separator: &str,
+    clipboard_type: ClipboardType,
+) -> anyhow::Result<()> {
+    let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
+
+    let values: Vec<String> = doc
+        .selection(view.id)
+        .fragments(text)
+        .map(Cow::into_owned)
+        .collect();
+
+    let clipboard_text = match clipboard_type {
+        ClipboardType::Clipboard => "system clipboard",
+        ClipboardType::Selection => "primary clipboard",
+    };
+
+    let msg = format!(
+        "joined and yanked {} selection(s) to {}",
+        values.len(),
+        clipboard_text,
+    );
+
+    let joined = values.join(separator);
+
+    let data = tokio::task::block_in_place(move || {
+        let res = Handle::current().block_on(async move {
+            // do something async
+
+            let mut content = String::from("//");
+            if let Ok(res) = reqwest::Client::new()
+                .get(&format!(
+        "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-cn&dt=t&q={}",
+        joined
+    ))
+                .send()
+                .await
+            {
+                if let Ok(data) = res.json::<Vec<Value>>().await {
+                    if let Some(data) = data.get(0) {
+                        if let Ok(data) = serde_json::from_value::<Vec<Value>>(data.to_owned()) {
+                            for data in data {
+                                if let Ok(val) = serde_json::from_value::<Vec<Value>>(data) {
+                                    if let Some(data) = val.get(0) {
+                                        if let Ok(data) = serde_json::to_string(data) {
+                                            content = content + data.as_str();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            content
+        });
+        res
+    });
+
+    editor
+        .clipboard_provider
+        .set_contents(data, clipboard_type)
+        .context("Couldn't set system clipboard content")?;
+
+    editor.set_status(msg);
+
+    Ok(())
+}
 fn yank_joined_to_clipboard_impl(
     editor: &mut Editor,
     separator: &str,
@@ -3786,6 +3858,12 @@ fn yank_joined_to_clipboard_impl(
     editor.set_status(msg);
 
     Ok(())
+}
+
+fn translate(cx: &mut Context) {
+    let line_ending = doc!(cx.editor).line_ending;
+    let _ = translate_impl(cx.editor, line_ending.as_str(), ClipboardType::Clipboard);
+    exit_select_mode(cx);
 }
 
 fn yank_joined_to_clipboard(cx: &mut Context) {

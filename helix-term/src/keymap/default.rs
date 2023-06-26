@@ -275,6 +275,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "r" => rename_symbol,
             "h" => select_references_to_symbol_under_cursor,
             "?" => command_palette,
+            "t" => translate,
         },
         "z" => { "View"
             "z" | "c" => align_view_center,
