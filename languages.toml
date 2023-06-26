@@ -954,7 +954,6 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-haskell", rev = "98
 [[language]]
 name = "haskell-persistent"
 scope = "source.persistentmodels"
-injection-regex = "(persistWith|persistLowerCase|persistUpperCase)"
 file-types = ["persistentmodels"]
 roots = []
 comment-token = "--"
