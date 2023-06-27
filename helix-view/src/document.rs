@@ -1197,7 +1197,7 @@ impl Document {
                 if let Some(data) = Rc::get_mut(annotations) {
                     changes.update_positions(
                         data.iter_mut()
-                            .map(|diagnostic| (&mut diagnostic.char_idx, Assoc::After)),
+                            .map(|annotation| (&mut annotation.char_idx, Assoc::After)),
                     );
                 }
             };

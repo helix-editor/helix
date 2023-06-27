@@ -326,7 +326,7 @@ impl ChangeSet {
         self.changes.is_empty() || self.changes == [Operation::Retain(self.len)]
     }
 
-    /// Map a *sorted* list of positions through the changes.
+    /// Map a (mostly) *sorted* list of positions through the changes.
     ///
     /// This is equivalent to updating each position with `map_pos`:
     ///
@@ -335,27 +335,63 @@ impl ChangeSet {
     ///     *pos = changes.map_pos(*pos, assoc);
     /// }
     /// ```
-    /// However this function is significantly faster running in `O(N+M)` instead of `O(NM)`
+    /// However this function is significantly faster for sorted lists running
+    /// in `O(N+M)` instead of `O(NM)`. This function also handles unsorted/
+    /// partially sorted lists. However, in that case worst case complexity is
+    /// again `O(MN)`.  For lists that are often/mostly sorted (like the end of diagnostic ranges)
+    /// performanc is usally close to `O(N + M)`
     pub fn update_positions<'a>(&self, positions: impl Iterator<Item = (&'a mut usize, Assoc)>) {
         use Operation::*;
 
         let mut positions = positions.peekable();
-        macro_rules! map {
-            ($map: expr) => {
-                loop {
-                    let Some((pos, assoc)) = positions.peek_mut() else { return; };
-                    let Some(new_pos) = $map(**pos, *assoc) else { break; };
-                    **pos = new_pos;
-                    positions.next();
-                }
-            };
-        }
 
         let mut old_pos = 0;
         let mut new_pos = 0;
-        let mut iter = self.changes.iter().peekable();
+        let mut iter = self.changes.iter().enumerate().peekable();
 
-        while let Some(change) = iter.next() {
+        'outer: loop {
+            macro_rules! map {
+                ($map: expr, $i: expr) => {
+                    loop {
+                        let Some((pos, assoc)) = positions.peek_mut() else { return; };
+                        if **pos < old_pos {
+                            // Positions are not sorted, revert to the last Operation that
+                            // contains this position and continue iterating from there.
+                            // We can unwrap here since `pos` can not be negative
+                            // (unsigned integer) and iterating backwards to the start
+                            // should always move us back to the start
+                            for (i, change) in self.changes[..$i].iter().enumerate().rev() {
+                                match change {
+                                    Retain(i) => {
+                                        old_pos -= i;
+                                        new_pos -= i;
+                                    }
+                                    Delete(i) => {
+                                        old_pos -= i;
+                                    }
+                                    Insert(ins) => {
+                                        new_pos -= ins.chars().count();
+                                    }
+                                }
+                                if old_pos <= **pos {
+                                    iter = self.changes[i..].iter().enumerate().peekable();
+                                }
+                            }
+                            debug_assert!(old_pos <= **pos, "Reverse Iter across changeset works");
+                            continue 'outer;
+                        }
+                        let Some(new_pos) = $map(**pos, *assoc) else { break; };
+                        **pos = new_pos;
+                        positions.next();
+                    }
+                };
+            }
+
+            let Some((i, change)) = iter.next() else {
+                map!(|pos, _| (old_pos == pos).then_some(new_pos), self.changes.len());
+                break;
+            };
+
             let len = match change {
                 Delete(i) | Retain(i) => *i,
                 Insert(_) => 0,
@@ -364,42 +400,51 @@ impl ChangeSet {
 
             match change {
                 Retain(_) => {
-                    map!(|pos, _| (old_end > pos).then_some(new_pos + (pos - old_pos)));
+                    map!(
+                        |pos, _| (old_end > pos).then_some(new_pos + (pos - old_pos)),
+                        i
+                    );
                     new_pos += len;
                 }
                 Delete(_) => {
                     // in range
-                    map!(|pos, _| (old_end > pos).then_some(new_pos));
+                    map!(|pos, _| (old_end > pos).then_some(new_pos), i);
                 }
                 Insert(s) => {
                     let ins = s.chars().count();
 
                     // a subsequent delete means a replace, consume it
-                    if let Some(Delete(len)) = iter.peek() {
+                    if let Some((_, Delete(len))) = iter.peek() {
                         iter.next();
 
                         old_end = old_pos + len;
                         // in range of replaced text
-                        map!(|pos, assoc| (old_end > pos).then(|| {
-                            // at point or tracking before
-                            if pos == old_pos || assoc == Assoc::Before {
-                                new_pos
-                            } else {
-                                // place to end of insert
-                                new_pos + ins
-                            }
-                        }));
+                        map!(
+                            |pos, assoc| (old_end > pos).then(|| {
+                                // at point or tracking before
+                                if pos == old_pos || assoc == Assoc::Before {
+                                    new_pos
+                                } else {
+                                    // place to end of insert
+                                    new_pos + ins
+                                }
+                            }),
+                            i
+                        );
                     } else {
                         // at insert point
-                        map!(|pos, assoc| (old_pos == pos).then(|| {
-                            // return position before inserted text
-                            if assoc == Assoc::Before {
-                                new_pos
-                            } else {
-                                // after text
-                                new_pos + ins
-                            }
-                        }));
+                        map!(
+                            |pos, assoc| (old_pos == pos).then(|| {
+                                // return position before inserted text
+                                if assoc == Assoc::Before {
+                                    new_pos
+                                } else {
+                                    // after text
+                                    new_pos + ins
+                                }
+                            }),
+                            i
+                        );
                     }
 
                     new_pos += ins;
@@ -407,7 +452,6 @@ impl ChangeSet {
             }
             old_pos = old_end;
         }
-        map!(|pos, _| (old_pos == pos).then_some(new_pos));
         let out_of_bounds: Vec<_> = positions.collect();
 
         panic!("Positions {out_of_bounds:?} are out of range for changeset len {old_pos}!",)
@@ -822,6 +866,20 @@ mod test {
         };
         assert_eq!(cs.map_pos(2, Assoc::Before), 2);
         assert_eq!(cs.map_pos(2, Assoc::After), 2);
+        // unsorted selection
+        let cs = ChangeSet {
+            changes: vec![
+                Insert("ab".into()),
+                Delete(2),
+                Insert("cd".into()),
+                Delete(2),
+            ],
+            len: 4,
+            len_after: 4,
+        };
+        let mut positions = [4, 2];
+        cs.update_positions(positions.iter_mut().map(|pos| (pos, Assoc::After)));
+        assert_eq!(positions, [4, 2]);
     }
 
     #[test]
