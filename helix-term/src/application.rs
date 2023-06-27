@@ -746,7 +746,12 @@ impl Application {
                                 return;
                             }
                         };
-                        let offset_encoding = language_server!().offset_encoding();
+                        let language_server = language_server!();
+                        if !language_server.is_initialized() {
+                            log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
+                            return;
+                        }
+                        let offset_encoding = language_server.offset_encoding();
                         let doc = self.editor.document_by_path_mut(&path).filter(|doc| {
                             if let Some(version) = params.version {
                                 if version != doc.version() {
