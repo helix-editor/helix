@@ -1042,20 +1042,31 @@ impl Application {
                         Ok(serde_json::Value::Null)
                     }
                     Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
-                        let res = apply_workspace_edit(
-                            &mut self.editor,
-                            helix_lsp::OffsetEncoding::Utf8,
-                            &params.edit,
-                        );
+                        let language_server = language_server!();
+                        if language_server.is_initialized() {
+                            let offset_encoding = language_server.offset_encoding();
+                            let res = apply_workspace_edit(
+                                &mut self.editor,
+                                offset_encoding,
+                                &params.edit,
+                            );
 
-                        Ok(json!(lsp::ApplyWorkspaceEditResponse {
-                            applied: res.is_ok(),
-                            failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
-                            failed_change: res
-                                .as_ref()
-                                .err()
-                                .map(|err| err.failed_change_idx as u32),
-                        }))
+                            Ok(json!(lsp::ApplyWorkspaceEditResponse {
+                                applied: res.is_ok(),
+                                failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
+                                failed_change: res
+                                    .as_ref()
+                                    .err()
+                                    .map(|err| err.failed_change_idx as u32),
+                            }))
+                        } else {
+                            Err(helix_lsp::jsonrpc::Error {
+                                code: helix_lsp::jsonrpc::ErrorCode::InvalidRequest,
+                                message: "Server must be initialized to request workspace edits"
+                                    .to_string(),
+                                data: None,
+                            })
+                        }
                     }
                     Ok(MethodCall::WorkspaceFolders) => {
                         Ok(json!(&*language_server!().workspace_folders().await))
