@@ -2649,5 +2649,4 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "typst"
-# source = { path = "/home/alexander/github.com/tree-sitter-typst" }
 source = { git = "https://github.com/SeniorMars/tree-sitter-typst", rev = "2e66ef4b798a26f0b82144143711f3f7a9e8ea35" }
