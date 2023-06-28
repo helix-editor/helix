@@ -2154,7 +2154,10 @@ fn run_shell_command(
     }
 
     let shell = cx.editor.config().shell.clone();
-    let args = args.join(" ");
+    let args = args.into_iter()
+        .map(|arg| format!("'{}'", arg.trim()))
+        .collect::<Vec<String>>()
+        .join(" ");
 
     let callback = async move {
         let (output, success) = shell_impl_async(&shell, &args, None).await?;
