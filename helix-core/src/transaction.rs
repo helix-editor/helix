@@ -339,7 +339,7 @@ impl ChangeSet {
     /// in `O(N+M)` instead of `O(NM)`. This function also handles unsorted/
     /// partially sorted lists. However, in that case worst case complexity is
     /// again `O(MN)`.  For lists that are often/mostly sorted (like the end of diagnostic ranges)
-    /// performanc is usally close to `O(N + M)`
+    /// performance is usally close to `O(N + M)`
     pub fn update_positions<'a>(&self, positions: impl Iterator<Item = (&'a mut usize, Assoc)>) {
         use Operation::*;
 
