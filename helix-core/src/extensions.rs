@@ -1,6 +1,7 @@
 use steel::gc::unsafe_erased_pointers::CustomReference;
 
 impl steel::rvals::Custom for crate::Position {}
+impl steel::rvals::Custom for crate::Selection {}
 
 struct SRopeSlice<'a>(crate::RopeSlice<'a>);
 

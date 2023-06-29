@@ -1,6 +1,6 @@
 use fuzzy_matcher::FuzzyMatcher;
-use helix_core::{graphemes, Tendril};
-use helix_view::{document::Mode, Document, DocumentId, Editor};
+use helix_core::{graphemes, Tendril, Selection};
+use helix_view::{document::Mode, Document, DocumentId, Editor, editor::Action};
 use once_cell::sync::Lazy;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
@@ -556,6 +556,12 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     engine.register_fn("editor-focus", current_focus);
     engine.register_fn("editor->doc-id", get_document_id);
+    engine.register_fn("editor-switch!", switch);
+    engine.register_fn("editor-set-focus!", Editor::focus);
+    engine.register_fn("editor-mode", editor_get_mode);
+    engine.register_fn("editor-set-mode!", editor_set_mode);
+    engine.register_fn("editor-doc-in-view?", is_document_in_view);
+    
     // engine.register_fn("editor->get-document", get_document);
 
     // TODO: These are some horrendous type annotations, however... they do work?
@@ -634,8 +640,7 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     //     .load_modules_from_directory(Some(
     //         helix_loader::config_dir()
     //             .join("extensions")
-    //             .to_str()
-    //             .unwrap()
+    //             .to_str()tor    //             .unwrap()
     //             .to_string(),
     //     ));
 
@@ -710,6 +715,13 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     module.register_fn("insert_string", insert_string);
     module.register_fn("current_selection", get_selection);
     module.register_fn("current-highlighted-text!", get_highlighted_text);
+    module.register_fn("get-current-line-number", current_line_number);
+
+
+    module.register_fn("current-selection-object", current_selection);
+    module.register_fn("set-current-selection-object!", set_selection);
+
+    
     module.register_fn("run-in-engine!", run_in_engine);
     module.register_fn("get-helix-scm-path", get_helix_scm_path);
     module.register_fn("get-init-scm-path", get_init_scm_path);
@@ -831,6 +843,27 @@ fn get_highlighted_text(cx: &mut Context) -> String {
     doc.selection(view.id).primary().slice(text).to_string()
 }
 
+fn current_selection(cx: &mut Context) -> Selection {
+    let (view, doc) = current_ref!(cx.editor);
+    doc.selection(view.id).clone()
+}
+
+fn set_selection(cx: &mut Context, selection: Selection) {
+    let (view, doc) = current!(cx.editor);
+    doc.set_selection(view.id, selection)
+}
+
+fn current_line_number(cx: &mut Context) -> usize {
+    let (view, doc) = current_ref!(cx.editor);
+    helix_core::coords_at_pos(
+       doc.text().slice(..),
+            doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..)),
+    ).row    
+}
+
 fn get_selection(cx: &mut Context) -> String {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text().slice(..);
@@ -921,6 +954,10 @@ fn current_path(cx: &mut Context) -> Option<String> {
     current_doc.and_then(|x| x.path().and_then(|x| x.to_str().map(|x| x.to_string())))
 }
 
+fn cx_current_focus(cx: &mut Context) -> helix_view::ViewId {
+    cx.editor.tree.focus
+}
+
 // TODO: Expose the below in a separate module, make things a bit more clear!
 
 fn current_focus(editor: &mut Editor) -> helix_view::ViewId {
@@ -937,6 +974,10 @@ fn get_document(editor: &mut Editor, doc_id: DocumentId) -> &Document {
     editor.documents.get(&doc_id).unwrap()
 }
 
+fn is_document_in_view(editor: &mut Editor, doc_id: DocumentId) -> Option<helix_view::ViewId> {
+    editor.tree.traverse().find(|(_, v)| v.doc == doc_id).map(|(id, _)| id)
+}
+
 fn document_exists(editor: &mut Editor, doc_id: DocumentId) -> bool {
     editor.documents.get(&doc_id).is_some()
 }
@@ -945,6 +986,32 @@ fn document_path(doc: &Document) -> Option<String> {
     doc.path().and_then(|x| x.to_str()).map(|x| x.to_string())
 }
 
+fn switch(editor: &mut Editor, doc_id: DocumentId) {
+    editor.switch(doc_id, Action::VerticalSplit)
+}
+
+// fn editor_set_focus(editor: &mut Editor, view_id: helix_view::ViewId) {
+//     editor.tree.focus = view_id
+// }
+
+fn editor_get_mode(editor: &mut Editor) -> Mode {
+    editor.mode
+}
+
+fn editor_set_mode(editor: &mut Editor, mode: Mode) {
+    editor.mode = mode
+}
+
+// fn insert_text(cx: &mut Context, text: String) {
+//     let count = cx.count();
+//     let reg_name = cx.register.unwrap_or('"');
+//     let (view, doc) = current!(cx.editor);
+//     let registers = &mut cx.editor.registers;
+
+//     if let Some(values) = registers.read(reg_name) {
+//         paste_impl(values, doc, view, pos, count, cx.editor.mode);
+//     }
+// }
 // cx->editor
 //
 

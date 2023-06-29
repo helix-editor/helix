@@ -858,9 +858,13 @@ fn call_indent_hook(
                                         }
 
                                         // TODO: Don't unwrap here, we don't want that
-                                        if LISP_WORDS.contains(
-                                            line.slice(offset..offset + end).as_str().unwrap(),
-                                        ) {
+                                        // if LISP_WORDS.contains(
+                                        //     line.slice(offset..offset + end).as_str().unwrap(),
+                                        // ) {
+                                        //     return Some(" ".repeat(offset + 1));
+                                        // }
+
+                                        if line.slice(offset..offset + end).as_str().map(|x| LISP_WORDS.contains(x)).unwrap_or_default() {
                                             return Some(" ".repeat(offset + 1));
                                         }
 
@@ -1022,6 +1026,10 @@ pub fn custom_indent_for_newline(
                                         ) {
                                             return Some(" ".repeat(offset + 1));
                                         }
+
+                                        // if line.slice(offset..offset + end).as_str().map(|x| LISP_WORDS.contains(x)).unwrap_or_default() {
+                                        //     return Some(" ".repeat(offset + 1));
+                                        // }
 
                                         for _ in char_iter_from_paren
                                             .take_while(|(_, x)| x.is_whitespace())
