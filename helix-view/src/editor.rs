@@ -257,6 +257,8 @@ pub struct Config {
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
     pub completion_replace: bool,
+    /// Keep snippet placeholders when accepting completions. Defaults to `false`.
+    pub completion_keep_placeholders: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -797,6 +799,7 @@ impl Default for Config {
             idle_timeout: Duration::from_millis(400),
             preview_completion_insert: true,
             completion_trigger_len: 2,
+            completion_keep_placeholders: false,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
             statusline: StatusLineConfig::default(),

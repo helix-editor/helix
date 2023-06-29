@@ -112,6 +112,8 @@ impl Completion {
     ) -> Self {
         let preview_completion_insert = editor.config().preview_completion_insert;
         let replace_mode = editor.config().completion_replace;
+        let keep_placeholders = editor.config().completion_keep_placeholders;
+
         // Sort completion items according to their preselect status (given by the LSP server)
         items.sort_by_key(|item| !item.item.preselect.unwrap_or(false));
 
@@ -298,7 +300,7 @@ impl Completion {
                         &item.item,
                         offset_encoding,
                         trigger_offset,
-                        false,
+                        keep_placeholders,
                         replace_mode,
                     );
                     doc.apply(&transaction, view.id);
