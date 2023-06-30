@@ -9,3 +9,7 @@ impl Custom for crate::graphics::CursorKind {}
 impl Custom for DocumentId {}
 impl Custom for ViewId {}
 impl CustomReference for Document {}
+
+pub fn document_id_to_usize(doc_id: &DocumentId) -> usize {
+    doc_id.0.into()
+}

@@ -1,6 +1,6 @@
 use fuzzy_matcher::FuzzyMatcher;
 use helix_core::{graphemes, Tendril, Selection};
-use helix_view::{document::Mode, Document, DocumentId, Editor, editor::Action};
+use helix_view::{document::Mode, Document, DocumentId, Editor, editor::Action, extension::document_id_to_usize};
 use once_cell::sync::Lazy;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
@@ -556,6 +556,7 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     engine.register_fn("editor-focus", current_focus);
     engine.register_fn("editor->doc-id", get_document_id);
+    engine.register_fn("doc-id->usize", document_id_to_usize);
     engine.register_fn("editor-switch!", switch);
     engine.register_fn("editor-set-focus!", Editor::focus);
     engine.register_fn("editor-mode", editor_get_mode);
@@ -968,6 +969,8 @@ fn current_focus(editor: &mut Editor) -> helix_view::ViewId {
 fn get_document_id(editor: &mut Editor, view_id: helix_view::ViewId) -> DocumentId {
     editor.tree.get(view_id).doc
 }
+
+
 
 // Get the document from the document id - TODO: Add result type here
 fn get_document(editor: &mut Editor, doc_id: DocumentId) -> &Document {
