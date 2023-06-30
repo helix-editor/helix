@@ -41,39 +41,6 @@
 
 (function_arguments (identifier) @variable.parameter)
 
-; Operators
-
-[
-  "+"
-  ".+"
-  "-"
-  ".*"
-  "*"
-  ".*"
-  "/"
-  "./"
-  "\\"
-  ".\\"
-  "^"
-  ".^"
-  "'"
-  ".'"
-  "|"
-  "&"
-  "?"
-  "@"
-  "<"
-  "<="
-  ">"
-  ">="
-  "=="
-  "~="
-  "="
-  "&&"
-  "||"
-  ":"
-] @operator
-
 ; Conditionals
 
 (if_statement [ "if" "end" ] @keyword.control.conditional)
@@ -106,11 +73,45 @@
 (formatting_sequence) @constant.character.escape
 (string) @string
 (number) @constant.numeric.float
+(unary_operator ["+" "-"] @constant.numeric.float)
 (boolean) @constant.builtin.boolean
 
 ; Comments
 
 [ (comment) (line_continuation) ] @comment.line
+
+; Operators
+
+[
+  "+"
+  ".+"
+  "-"
+  ".*"
+  "*"
+  ".*"
+  "/"
+  "./"
+  "\\"
+  ".\\"
+  "^"
+  ".^"
+  "'"
+  ".'"
+  "|"
+  "&"
+  "?"
+  "@"
+  "<"
+  "<="
+  ">"
+  ">="
+  "=="
+  "~="
+  "="
+  "&&"
+  "||"
+  ":"
+] @operator
 
 ; Keywords
 
