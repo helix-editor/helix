@@ -296,18 +296,20 @@ Linux and macOS, or <code>%userprofile%\src\</code> on Windows.</p>
 <pre><code class="language-sh">RUSTFLAGS=&quot;-C target-feature=-crt-static&quot;
 </code></pre>
 <ol>
-<li>Clone the repository:</li>
-</ol>
+<li>
+<p>Clone the repository:</p>
 <pre><code class="language-sh">git clone https://github.com/helix-editor/helix
 cd helix
 </code></pre>
-<ol start="2">
-<li>Compile from source:</li>
-</ol>
+</li>
+<li>
+<p>Compile from source:</p>
 <pre><code class="language-sh">cargo install --path helix-term --locked
 </code></pre>
 <p>This command will create the <code>hx</code> executable and construct the tree-sitter
 grammars in the local <code>runtime</code> folder.</p>
+</li>
+</ol>
 <blockquote>
 <p>💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
 grammars with <code>hx --grammar fetch</code> and compile them with
