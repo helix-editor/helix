@@ -1044,11 +1044,11 @@ impl Editor {
     }
 
     pub fn repeat_last_motion(&mut self, count: usize) {
-        if let Some(motion) = &self.last_motion {
-            let motion = motion.clone();
+        if let Some(motion) = self.last_motion.take() {
             for _ in 0..count {
                 motion(self);
             }
+            self.last_motion = Some(motion);
         }
     }
     /// Current editing mode for the [`Editor`].
