@@ -1,40 +1,7 @@
 use derive_more::{Deref, DerefMut};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
-pub struct Register {
-    name: char,
-    values: Vec<String>,
-}
-
-impl Register {
-    pub const fn new(name: char) -> Self {
-        Self {
-            name,
-            values: Vec::new(),
-        }
-    }
-
-    pub fn new_with_values(name: char, values: Vec<String>) -> Self {
-        Self { name, values }
-    }
-
-    pub const fn name(&self) -> char {
-        self.name
-    }
-
-    pub fn read(&self) -> &[String] {
-        &self.values
-    }
-
-    pub fn write(&mut self, values: Vec<String>) {
-        self.values = values;
-    }
-
-    pub fn push(&mut self, value: String) {
-        self.values.push(value);
-    }
-}
+pub type Register = Vec<String>;
 
 /// Currently just wraps a `HashMap` of `Register`s
 #[derive(Debug, Clone, Default, Deref, DerefMut)]
@@ -42,12 +9,12 @@ pub struct Registers(pub HashMap<char, Register>);
 
 impl Registers {
     pub fn read(&self, name: char) -> Option<&[String]> {
-        self.get(&name).map(|reg| reg.read())
+        self.get(&name).map(|register| register.as_slice())
     }
 
     pub fn write(&mut self, name: char, values: Vec<String>) {
         if name != '_' {
-            self.insert(name, Register::new_with_values(name, values));
+            self.insert(name, values);
         }
     }
 

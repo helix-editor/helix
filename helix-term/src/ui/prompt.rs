@@ -611,8 +611,7 @@ impl Component for Prompt {
                     .iter()
                     .map(|(ch, reg)| {
                         let content = reg
-                            .read()
-                            .get(0)
+                            .first()
                             .and_then(|s| s.lines().next().to_owned())
                             .unwrap_or_default();
                         (0.., format!("{} {}", ch, &content).into())
