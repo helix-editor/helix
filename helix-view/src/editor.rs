@@ -896,8 +896,7 @@ pub struct Editor {
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
-    #[allow(clippy::complexity)]
-    last_motion: Option<Arc<dyn Fn(&mut Editor)>>,
+    last_motion: LastMotion,
     pub last_completion: Option<CompleteAction>,
 
     pub exit_code: i32,
@@ -930,6 +929,8 @@ pub struct Editor {
     /// canceled as a result
     pub completion_request_handle: Option<oneshot::Sender<()>>,
 }
+
+pub type LastMotion = Option<Arc<dyn Fn(&mut Editor)>>;
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
 
