@@ -33,6 +33,7 @@ bitflags = "2.3"
 ahash = "0.8.3"
 hashbrown = { version = "0.14.0", features = ["raw"] }
 dunce = "1.0"
+derive_more = "0.99"
 
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }

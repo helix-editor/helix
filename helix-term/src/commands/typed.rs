@@ -2259,7 +2259,7 @@ fn clear_register(
         format!("Invalid register {}", args[0])
     );
     let register = args[0].chars().next().unwrap_or_default();
-    match cx.editor.registers.remove(register) {
+    match cx.editor.registers.remove(&register) {
         Some(_) => cx
             .editor
             .set_status(format!("Register {} cleared", register)),
