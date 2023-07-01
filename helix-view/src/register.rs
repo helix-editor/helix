@@ -1,6 +1,8 @@
 use derive_more::{Deref, DerefMut};
 use std::collections::HashMap;
 
+use crate::info::Info;
+
 pub type Register = Vec<String>;
 
 /// Currently just wraps a `HashMap` of `Register`s
@@ -35,12 +37,28 @@ impl Registers {
     pub fn last(&self, name: char) -> Option<&String> {
         self.read(name).and_then(|entries| entries.last())
     }
+
+    pub fn infobox(&self) -> Info {
+        let body: Vec<_> = self
+            .iter()
+            .map(|(ch, register)| {
+                let content = register
+                    .last()
+                    .and_then(|s| s.lines().next())
+                    .unwrap_or_default();
+                (ch.to_string(), content)
+            })
+            .collect();
+
+        let mut infobox = Info::new("Registers", &body);
+        infobox.width = 30; // copied content could be very long
+        infobox
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::info::Info;
     use once_cell::sync::Lazy;
 
     const REGISTER_VALUE_1_MOCK: &str = "value_1";
@@ -53,8 +71,6 @@ mod tests {
         let mut registers = (*REGISTERS_MOCK).clone();
         registers.push('/', REGISTER_VALUE_2_MOCK.to_string());
 
-        assert!(Info::from_registers(&registers)
-            .text
-            .contains(REGISTER_VALUE_2_MOCK));
+        assert!(registers.infobox().text.contains(REGISTER_VALUE_2_MOCK));
     }
 }
