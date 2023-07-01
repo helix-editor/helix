@@ -76,4 +76,14 @@ impl Tabs {
         self.focus = id;
         id
     }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.tabs.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.tabs.is_empty()
+    }
 }
