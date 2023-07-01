@@ -1,8 +1,6 @@
 use helix_core::unicode::width::UnicodeWidthStr;
 use std::fmt::Write;
 
-use crate::register::Registers;
-
 #[derive(Debug)]
 /// Info box used in editor. Rendering logic will be in other crate.
 pub struct Info {
@@ -54,22 +52,5 @@ impl Info {
             height: body.len() as u16,
             text,
         }
-    }
-
-    pub fn from_registers(registers: &Registers) -> Self {
-        let body: Vec<_> = registers
-            .iter()
-            .map(|(ch, register)| {
-                let content = register
-                    .last()
-                    .and_then(|s| s.lines().next())
-                    .unwrap_or_default();
-                (ch.to_string(), content)
-            })
-            .collect();
-
-        let mut infobox = Self::new("Registers", &body);
-        infobox.width = 30; // copied content could be very long
-        infobox
     }
 }
