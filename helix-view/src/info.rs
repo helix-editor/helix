@@ -56,12 +56,11 @@ impl Info {
 
     pub fn from_registers(registers: &Registers) -> Self {
         let body: Vec<_> = registers
-            .inner()
             .iter()
             .map(|(ch, reg)| {
                 let content = reg
                     .read()
-                    .get(0)
+                    .last()
                     .and_then(|s| s.lines().next())
                     .unwrap_or_default();
                 (ch.to_string(), content)
@@ -71,5 +70,34 @@ impl Info {
         let mut infobox = Self::new("Registers", &body);
         infobox.width = 30; // copied content could be very long
         infobox
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use helix_core::register::Register;
+    use once_cell::sync::Lazy;
+
+    const REGISTER_VALUE_1_MOCK: &str = "value_1";
+    const REGISTER_VALUE_2_MOCK: &str = "value_2";
+    static REGISTERS_MOCK: Lazy<Registers> = Lazy::new(|| {
+        Registers(
+            [(
+                '/',
+                Register::new_with_values('/', vec![REGISTER_VALUE_1_MOCK.to_string()]),
+            )]
+            .into(),
+        )
+    });
+
+    #[test]
+    fn infobox_shows_latest_value() {
+        let mut registers = (*REGISTERS_MOCK).clone();
+        registers.push('/', REGISTER_VALUE_2_MOCK.to_string());
+
+        assert!(Info::from_registers(&registers)
+            .text
+            .contains(REGISTER_VALUE_2_MOCK));
     }
 }

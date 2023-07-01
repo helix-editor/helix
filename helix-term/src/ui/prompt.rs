@@ -608,7 +608,6 @@ impl Component for Prompt {
                 self.completion = cx
                     .editor
                     .registers
-                    .inner()
                     .iter()
                     .map(|(ch, reg)| {
                         let content = reg
