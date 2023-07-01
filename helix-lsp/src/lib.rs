@@ -9,7 +9,10 @@ pub use jsonrpc::Call;
 pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
-use futures_util::stream::select_all::SelectAll;
+use futures_util::{
+    stream::{select_all::SelectAll, Peekable},
+    StreamExt,
+};
 use helix_core::{
     path,
     syntax::{LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures},
@@ -19,6 +22,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
+    pin::Pin,
     sync::Arc,
 };
 
@@ -619,12 +623,14 @@ impl Notification {
     }
 }
 
+type IncomingStreams = Pin<Box<Peekable<SelectAll<UnboundedReceiverStream<(usize, Call)>>>>>;
+
 #[derive(Debug)]
 pub struct Registry {
     inner: HashMap<LanguageServerName, Vec<Arc<Client>>>,
     syn_loader: Arc<helix_core::syntax::Loader>,
     counter: usize,
-    pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
+    pub incoming: IncomingStreams,
 }
 
 impl Registry {
@@ -633,7 +639,7 @@ impl Registry {
             inner: HashMap::new(),
             syn_loader,
             counter: 0,
-            incoming: SelectAll::new(),
+            incoming: Box::pin(SelectAll::new().peekable()),
         }
     }
 
@@ -676,7 +682,9 @@ impl Registry {
             root_dirs,
             enable_snippets,
         )?;
-        self.incoming.push(UnboundedReceiverStream::new(incoming));
+        self.incoming
+            .get_mut()
+            .push(UnboundedReceiverStream::new(incoming));
         Ok(client)
     }
 

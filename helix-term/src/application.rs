@@ -608,10 +608,15 @@ impl Application {
             }
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
-                // limit render calls for fast language server messages
-                let last = self.editor.language_servers.incoming.is_empty();
 
-                if last || self.last_render.elapsed() > LSP_DEADLINE {
+                // Debounce rendering if any language server has a pending message
+                // ready to be handled.
+                let next_message_poll =
+                    futures_util::poll!(self.editor.language_servers.incoming.as_mut().peek());
+                let next_message_is_ready =
+                    matches!(next_message_poll, std::task::Poll::Ready(Some(_)));
+
+                if !next_message_is_ready || self.last_render.elapsed() > LSP_DEADLINE {
                     self.render().await;
                     self.last_render = Instant::now();
                 }
