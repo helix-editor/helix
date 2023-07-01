@@ -896,7 +896,7 @@ pub struct Editor {
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
-    last_motion: LastMotion,
+    last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
 
     pub exit_code: i32,
@@ -930,7 +930,7 @@ pub struct Editor {
     pub completion_request_handle: Option<oneshot::Sender<()>>,
 }
 
-pub type LastMotion = Option<Arc<dyn Fn(&mut Editor)>>;
+pub type Motion = Arc<dyn Fn(&mut Editor)>;
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
 
