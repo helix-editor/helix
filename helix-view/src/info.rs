@@ -1,5 +1,7 @@
-use helix_core::{register::Registers, unicode::width::UnicodeWidthStr};
+use helix_core::unicode::width::UnicodeWidthStr;
 use std::fmt::Write;
+
+use crate::register::Registers;
 
 #[derive(Debug)]
 /// Info box used in editor. Rendering logic will be in other crate.
