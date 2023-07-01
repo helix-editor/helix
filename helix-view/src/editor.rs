@@ -311,6 +311,8 @@ pub struct Config {
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
+    /// Display open tabs along the top
+    pub tabline: TabLine,
     /// Persistently display open buffers along the top
     pub bufferline: BufferLine,
     /// Vertical indent width guides.
@@ -625,6 +627,17 @@ impl Default for CursorShapeConfig {
     }
 }
 
+/// tabline render modes
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TabLine {
+    /// Always render
+    Always,
+    /// Only if multiple tabs are open
+    #[default]
+    Multiple,
+}
+
 /// bufferline render modes
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -898,6 +911,7 @@ impl Default for Config {
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
+            tabline: TabLine::default(),
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,

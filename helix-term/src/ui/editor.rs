@@ -583,18 +583,21 @@ impl EditorView {
             viewport,
             editor
                 .theme
-                .try_get("ui.bufferline.background")
+                .try_get("ui.tabline.background")
+                .or_else(|| editor.theme.try_get("ui.bufferline.background"))
                 .unwrap_or_else(|| editor.theme.get("ui.statusline")),
         );
 
-        let bufferline_active = editor
+        let tabline_active = editor
             .theme
-            .try_get("ui.bufferline.active")
+            .try_get("ui.tabline.active")
+            .or_else(|| editor.theme.try_get("ui.bufferline.active"))
             .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
 
-        let bufferline_inactive = editor
+        let tabline_inactive = editor
             .theme
-            .try_get("ui.bufferline")
+            .try_get("ui.tabline")
+            .or_else(|| editor.theme.try_get("ui.bufferline"))
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
         let mut x = viewport.x;
@@ -602,9 +605,9 @@ impl EditorView {
         let current_tab = editor.tabs.focus;
         for (id, tab) in editor.tabs.iter_tabs() {
             let style = if current_tab == id {
-                bufferline_active
+                tabline_active
             } else {
-                bufferline_inactive
+                tabline_inactive
             };
 
             let text = format!(" {} ", tab.name);
@@ -1511,6 +1514,14 @@ impl Component for EditorView {
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
 
+        // check if tabline should be rendered
+        use helix_view::editor::TabLine;
+        let use_tabline = if let TabLine::Multiple = config.tabline {
+            cx.editor.tabs.len() > 1
+        } else {
+            true
+        };
+
         // check if bufferline should be rendered
         use helix_view::editor::BufferLine;
         let use_bufferline = match config.bufferline {
@@ -1519,8 +1530,15 @@ impl Component for EditorView {
             _ => false,
         };
 
-        // -1 for commandline and -1 for bufferline
+        // -1 for commandline and -1 for tabline
+        let mut bufferline_area = area;
         let mut editor_area = area.clip_bottom(1);
+        if use_tabline {
+            editor_area = editor_area.clip_top(1);
+            bufferline_area = bufferline_area.clip_top(1);
+        }
+
+        // -1 for bufferline
         if use_bufferline {
             editor_area = editor_area.clip_top(1);
         }
@@ -1528,8 +1546,12 @@ impl Component for EditorView {
         // if the terminal size suddenly changed, we need to trigger a resize
         cx.editor.resize(editor_area);
 
-        if use_bufferline {
+        if use_tabline {
             Self::render_tabline(cx.editor, area.with_height(1), surface);
+        }
+
+        if use_bufferline {
+            Self::render_bufferline(cx.editor, bufferline_area.with_height(1), surface);
         }
 
         for (view, is_focused) in cx.editor.tabs.curr_tree().views() {
