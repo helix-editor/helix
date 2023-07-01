@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Register {
     name: char,
     values: Vec<String>,
@@ -36,9 +36,9 @@ impl Register {
 }
 
 /// Currently just wraps a `HashMap` of `Register`s
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Registers {
-    inner: HashMap<char, Register>,
+    pub inner: HashMap<char, Register>,
 }
 
 impl Registers {
