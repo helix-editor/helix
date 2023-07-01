@@ -5,6 +5,7 @@ use crate::{
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
+    register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
     view::ViewPosition,
@@ -40,7 +41,6 @@ use tokio::{
 use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
-pub use helix_core::register::Registers;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig, SoftWrap},
