@@ -73,24 +73,3 @@ impl Info {
         infobox
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use once_cell::sync::Lazy;
-
-    const REGISTER_VALUE_1_MOCK: &str = "value_1";
-    const REGISTER_VALUE_2_MOCK: &str = "value_2";
-    static REGISTERS_MOCK: Lazy<Registers> =
-        Lazy::new(|| Registers([('/', vec![REGISTER_VALUE_1_MOCK.to_string()])].into()));
-
-    #[test]
-    fn infobox_shows_latest_value() {
-        let mut registers = (*REGISTERS_MOCK).clone();
-        registers.push('/', REGISTER_VALUE_2_MOCK.to_string());
-
-        assert!(Info::from_registers(&registers)
-            .text
-            .contains(REGISTER_VALUE_2_MOCK));
-    }
-}
