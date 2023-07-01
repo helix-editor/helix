@@ -57,9 +57,8 @@ impl Info {
     pub fn from_registers(registers: &Registers) -> Self {
         let body: Vec<_> = registers
             .iter()
-            .map(|(ch, reg)| {
-                let content = reg
-                    .read()
+            .map(|(ch, register)| {
+                let content = register
                     .last()
                     .and_then(|s| s.lines().next())
                     .unwrap_or_default();
@@ -76,20 +75,12 @@ impl Info {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use helix_core::register::Register;
     use once_cell::sync::Lazy;
 
     const REGISTER_VALUE_1_MOCK: &str = "value_1";
     const REGISTER_VALUE_2_MOCK: &str = "value_2";
-    static REGISTERS_MOCK: Lazy<Registers> = Lazy::new(|| {
-        Registers(
-            [(
-                '/',
-                Register::new_with_values('/', vec![REGISTER_VALUE_1_MOCK.to_string()]),
-            )]
-            .into(),
-        )
-    });
+    static REGISTERS_MOCK: Lazy<Registers> =
+        Lazy::new(|| Registers([('/', vec![REGISTER_VALUE_1_MOCK.to_string()])].into()));
 
     #[test]
     fn infobox_shows_latest_value() {
