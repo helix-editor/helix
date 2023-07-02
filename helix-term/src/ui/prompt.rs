@@ -2,6 +2,8 @@ use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
+use helix_view::register::Register;
+use std::str::FromStr;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
 use tui::widgets::{Block, Borders, Widget};
@@ -26,7 +28,7 @@ pub struct Prompt {
     cursor: usize,
     completion: Vec<Completion>,
     selection: Option<usize>,
-    history_register: Option<char>,
+    register: Option<Register>,
     history_pos: Option<usize>,
     completion_fn: CompletionFn,
     callback_fn: CallbackFn,
@@ -67,7 +69,7 @@ fn is_word_sep(c: char) -> bool {
 impl Prompt {
     pub fn new(
         prompt: Cow<'static, str>,
-        history_register: Option<char>,
+        register: Option<Register>,
         completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
     ) -> Self {
@@ -77,7 +79,7 @@ impl Prompt {
             cursor: 0,
             completion: Vec::new(),
             selection: None,
-            history_register,
+            register,
             history_pos: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
@@ -293,7 +295,7 @@ impl Prompt {
     pub fn change_history(
         &mut self,
         cx: &mut Context,
-        register: char,
+        register: Register,
         direction: CompletionDirection,
     ) {
         (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
@@ -457,7 +459,7 @@ impl Prompt {
         let (input, is_suggestion): (Cow<str>, bool) = if self.line.is_empty() {
             // latest value in the register list
             match self
-                .history_register
+                .register
                 .and_then(|reg| cx.editor.registers.last(reg))
                 .map(|entry| entry.into())
             {
@@ -557,7 +559,7 @@ impl Component for Prompt {
                     self.recalculate_completion(cx.editor);
                 } else {
                     let last_item = self
-                        .history_register
+                        .register
                         .and_then(|reg| cx.editor.registers.last(reg).cloned())
                         .map(|entry| entry.into())
                         .unwrap_or_else(|| Cow::from(""));
@@ -568,7 +570,7 @@ impl Component for Prompt {
                     } else {
                         if last_item != self.line {
                             // store in history
-                            if let Some(register) = self.history_register {
+                            if let Some(register) = self.register {
                                 cx.editor.registers.push(register, self.line.clone());
                             };
                         }
@@ -582,12 +584,12 @@ impl Component for Prompt {
                 }
             }
             ctrl!('p') | key!(Up) => {
-                if let Some(register) = self.history_register {
+                if let Some(register) = self.register {
                     self.change_history(cx, register, CompletionDirection::Backward);
                 }
             }
             ctrl!('n') | key!(Down) => {
-                if let Some(register) = self.history_register {
+                if let Some(register) = self.register {
                     self.change_history(cx, register, CompletionDirection::Forward);
                 }
             }
@@ -609,24 +611,27 @@ impl Component for Prompt {
                     .editor
                     .registers
                     .iter()
-                    .map(|(ch, reg)| {
-                        let content = reg
+                    .map(|(register, values)| {
+                        let content = values
                             .first()
                             .and_then(|s| s.lines().next().to_owned())
                             .unwrap_or_default();
-                        (0.., format!("{} {}", ch, &content).into())
+                        (0.., format!("{} {}", register.as_ref(), &content).into())
                     })
                     .collect();
-                self.next_char_handler = Some(Box::new(|prompt, c, context| {
-                    prompt.insert_str(
-                        context
-                            .editor
-                            .registers
-                            .read(c)
-                            .and_then(|r| r.first())
-                            .map_or("", |r| r.as_str()),
-                        context.editor,
-                    );
+                self.next_char_handler = Some(Box::new(|prompt, ch, context| {
+                    // IMPROVEMENT: add error handling when register isn't found.
+                    if let Ok(register) = Register::from_str(&ch.to_string()) {
+                        prompt.insert_str(
+                            context
+                                .editor
+                                .registers
+                                .read(register)
+                                .and_then(|r| r.first())
+                                .map_or("", |r| r.as_str()),
+                            context.editor,
+                        );
+                    }
                 }));
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 return EventResult::Consumed(None);

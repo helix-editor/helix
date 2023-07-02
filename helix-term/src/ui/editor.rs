@@ -1464,8 +1464,8 @@ impl Component for EditorView {
                     .unwrap_or(&disp),
                 style,
             );
-            if let Some((reg, _)) = cx.editor.macro_recording {
-                let disp = format!("[{}]", reg);
+            if let Some((register, _)) = cx.editor.macro_recording {
+                let disp = format!("[{}]", register.as_ref());
                 let style = style
                     .fg(helix_view::graphics::Color::Yellow)
                     .add_modifier(Modifier::BOLD);
