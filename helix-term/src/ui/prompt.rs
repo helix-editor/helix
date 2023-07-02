@@ -610,14 +610,9 @@ impl Component for Prompt {
                 self.completion = cx
                     .editor
                     .registers
+                    .display_resent()
                     .iter()
-                    .map(|(register, values)| {
-                        let content = values
-                            .last()
-                            .and_then(|s| s.lines().next().to_owned())
-                            .unwrap_or_default();
-                        (0.., format!("{} {}", register.as_ref(), &content).into())
-                    })
+                    .map(|(name, content)| (0.., format!("{} {}", name, content).into()))
                     .collect();
                 self.next_char_handler = Some(Box::new(|prompt, ch, context| {
                     // IMPROVEMENT: add error handling when register isn't found.
