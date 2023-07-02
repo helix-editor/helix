@@ -62,9 +62,8 @@ impl Registers {
         self.read(register).and_then(|entries| entries.last())
     }
 
-    pub fn infobox(&self) -> Info {
-        let body: Vec<_> = self
-            .iter()
+    pub fn display_resent(&self) -> Vec<(&str, &str)> {
+        self.iter()
             .map(|(register, value)| {
                 let content = value
                     .last()
@@ -72,9 +71,11 @@ impl Registers {
                     .unwrap_or_default();
                 (register.as_ref(), content)
             })
-            .collect();
+            .collect()
+    }
 
-        let mut infobox = Info::new("Registers", &body);
+    pub fn infobox(&self) -> Info {
+        let mut infobox = Info::new("Registers", &self.display_resent());
         infobox.width = 30; // copied content could be very long
         infobox
     }
