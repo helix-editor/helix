@@ -613,7 +613,7 @@ impl Component for Prompt {
                     .iter()
                     .map(|(register, values)| {
                         let content = values
-                            .first()
+                            .last()
                             .and_then(|s| s.lines().next().to_owned())
                             .unwrap_or_default();
                         (0.., format!("{} {}", register.as_ref(), &content).into())
@@ -627,8 +627,8 @@ impl Component for Prompt {
                                 .editor
                                 .registers
                                 .read(register)
-                                .and_then(|r| r.first())
-                                .map_or("", |r| r.as_str()),
+                                .and_then(|values| values.last())
+                                .map_or(Default::default(), |value| value),
                             context.editor,
                         );
                     }
