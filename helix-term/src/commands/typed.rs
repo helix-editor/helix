@@ -1,5 +1,6 @@
 use std::fmt::Write;
 use std::ops::Deref;
+use std::str::FromStr;
 
 use crate::job::Job;
 
@@ -909,7 +910,7 @@ fn yank_joined(
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
-    let register = cx.editor.selected_register.unwrap_or('"');
+    let register = cx.editor.selected_register.unwrap_or(Register::Yank);
     yank_joined_impl(cx.editor, separator, register);
     Ok(())
 }
@@ -2254,18 +2255,17 @@ fn clear_register(
         return Ok(());
     }
 
-    ensure!(
-        args[0].chars().count() == 1,
-        format!("Invalid register {}", args[0])
-    );
-    let register = args[0].chars().next().unwrap_or_default();
+    let Some(register) = Register::from_str(&args[0]).ok() else {
+        return Err(anyhow!("Invalid register {}", args[0]));
+    };
+
     match cx.editor.registers.remove(&register) {
         Some(_) => cx
             .editor
-            .set_status(format!("Register {} cleared", register)),
+            .set_status(format!("Register {} cleared", register.as_ref())),
         None => cx
             .editor
-            .set_error(format!("Register {} not found", register)),
+            .set_error(format!("Register {} not found", register.as_ref())),
     }
     Ok(())
 }
@@ -2868,7 +2868,7 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
 pub(super) fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".into(),
-        Some(':'),
+        Some(Register::Command),
         |editor: &Editor, input: &str| {
             static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
                 Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
