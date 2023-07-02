@@ -1,10 +1,12 @@
 use fuzzy_matcher::FuzzyMatcher;
-use helix_core::{graphemes, Tendril, Selection};
-use helix_view::{document::Mode, Document, DocumentId, Editor, editor::Action, extension::document_id_to_usize};
+use helix_core::{graphemes, Selection, Tendril};
+use helix_view::{
+    document::Mode, editor::Action, extension::document_id_to_usize, Document, DocumentId, Editor,
+};
 use once_cell::sync::Lazy;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
-    rvals::{FromSteelVal, IntoSteelVal, SteelString},
+    rvals::{AsRefMutSteelValFromRef, FromSteelVal, IntoSteelVal},
     steel_vm::{engine::Engine, register_fn::RegisterFn},
     SteelErr, SteelVal,
 };
@@ -25,7 +27,7 @@ use crate::{
     compositor::{self, Component, Compositor},
     job::{self, Callback},
     keymap::{merge_keys, Keymap},
-    ui::{self, menu::Item, overlay::overlaid, Popup, PromptEvent},
+    ui::{self, menu::Item, overlay::overlaid, Popup, Prompt, PromptEvent},
 };
 
 use self::components::SteelDynamicComponent;
@@ -418,6 +420,11 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     engine.register_fn("enqueue-callback!", CallbackQueue::enqueue);
 
+    // Find the workspace
+    engine.register_fn("helix-find-workspace", || {
+        helix_core::find_workspace().0.to_str().unwrap().to_string()
+    });
+
     // Get the current OS
     engine.register_fn("current-os!", || std::env::consts::OS);
     engine.register_fn("new-component!", SteelDynamicComponent::new_dyn);
@@ -473,6 +480,52 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
                     Popup::<BoxDynComponent>::new("popup", BoxDynComponent::new(inner))
                         .position(Some(position)),
                 )),
+            }
+        },
+    );
+
+    engine.register_fn(
+        "Prompt::new",
+        |prompt: String, callback_fn: SteelVal| -> WrappedDynComponent {
+            let prompt = Prompt::new(
+                prompt.into(),
+                None,
+                |_, _| Vec::new(),
+                move |cx, input, prompt_event| {
+                    log::info!("Calling dynamic prompt callback");
+
+                    if prompt_event != PromptEvent::Validate {
+                        return;
+                    }
+
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor: cx.editor,
+                        callback: None,
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+
+                    let cloned_func = callback_fn.clone();
+
+                    ENGINE
+                        .with(|x| {
+                            x.borrow_mut()
+                                .with_mut_reference::<Context, Context>(&mut ctx)
+                                .consume(move |engine, mut args| {
+                                    // Add the string as an argument to the callback
+                                    args.push(input.into_steelval().unwrap());
+
+                                    engine.call_function_with_args(cloned_func.clone(), args)
+                                })
+                        })
+                        .unwrap();
+                },
+            );
+
+            WrappedDynComponent {
+                inner: Some(Box::new(prompt)),
             }
         },
     );
@@ -562,7 +615,7 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     engine.register_fn("editor-mode", editor_get_mode);
     engine.register_fn("editor-set-mode!", editor_set_mode);
     engine.register_fn("editor-doc-in-view?", is_document_in_view);
-    
+
     // engine.register_fn("editor->get-document", get_document);
 
     // TODO: These are some horrendous type annotations, however... they do work?
@@ -583,6 +636,8 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     // Check if the doc exists first
     engine.register_fn("editor-doc-exists?", document_exists);
     engine.register_fn("Document-path", document_path);
+    engine.register_fn("helix.context?", is_context);
+    engine.register_type::<DocumentId>("DocumentId?");
 
     // RegisterFn::<
     //     _,
@@ -617,6 +672,10 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     module.register_value(
         "PromptEvent::Validate",
         PromptEvent::Validate.into_steelval().unwrap(),
+    );
+    module.register_value(
+        "PromptEvent::Update",
+        PromptEvent::Update.into_steelval().unwrap(),
     );
 
     // Register everything in the typable command list. Now these are all available
@@ -718,11 +777,9 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     module.register_fn("current-highlighted-text!", get_highlighted_text);
     module.register_fn("get-current-line-number", current_line_number);
 
-
     module.register_fn("current-selection-object", current_selection);
     module.register_fn("set-current-selection-object!", set_selection);
 
-    
     module.register_fn("run-in-engine!", run_in_engine);
     module.register_fn("get-helix-scm-path", get_helix_scm_path);
     module.register_fn("get-init-scm-path", get_init_scm_path);
@@ -733,6 +790,7 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     engine.register_module(module);
 
     engine.register_fn("push-component!", push_component);
+    engine.register_fn("enqueue-thread-local-callback", enqueue_command);
 
     let helix_module_path = helix_loader::helix_module_file();
 
@@ -857,12 +915,12 @@ fn set_selection(cx: &mut Context, selection: Selection) {
 fn current_line_number(cx: &mut Context) -> usize {
     let (view, doc) = current_ref!(cx.editor);
     helix_core::coords_at_pos(
-       doc.text().slice(..),
-            doc
-            .selection(view.id)
+        doc.text().slice(..),
+        doc.selection(view.id)
             .primary()
             .cursor(doc.text().slice(..)),
-    ).row    
+    )
+    .row
 }
 
 fn get_selection(cx: &mut Context) -> String {
@@ -970,15 +1028,17 @@ fn get_document_id(editor: &mut Editor, view_id: helix_view::ViewId) -> Document
     editor.tree.get(view_id).doc
 }
 
-
-
 // Get the document from the document id - TODO: Add result type here
 fn get_document(editor: &mut Editor, doc_id: DocumentId) -> &Document {
     editor.documents.get(&doc_id).unwrap()
 }
 
 fn is_document_in_view(editor: &mut Editor, doc_id: DocumentId) -> Option<helix_view::ViewId> {
-    editor.tree.traverse().find(|(_, v)| v.doc == doc_id).map(|(id, _)| id)
+    editor
+        .tree
+        .traverse()
+        .find(|(_, v)| v.doc == doc_id)
+        .map(|(id, _)| id)
 }
 
 fn document_exists(editor: &mut Editor, doc_id: DocumentId) -> bool {
@@ -1035,45 +1095,59 @@ fn run_shell_command_text(
     }
 }
 
-// Pin the value to _this_ thread?
+fn is_context(value: SteelVal) -> bool {
+    Context::as_mut_ref_from_ref(&value).is_ok()
+}
 
 // Overlay the dynamic component, see what happens?
 // Probably need to pin the values to this thread - wrap it in a shim which pins the value
 // to this thread? - call methods on the thread local value?
 fn push_component(cx: &mut Context, component: &mut WrappedDynComponent) {
-    // let component = crate::ui::Text::new("Hello world!".to_string());
-
     log::info!("Pushing dynamic component!");
 
-    // todo!();
+    let inner = component.inner.take().unwrap();
 
-    // let callback = async move {
-    //     let call: job::Callback = Callback::EditorCompositor(Box::new(
-    //         move |_editor: &mut Editor, compositor: &mut Compositor| {
-    //             compositor.push(Box::new(component));
-    //         },
-    //     ));
-
-    //     Ok(call)
-    // };
-
-    // cx.jobs.callback(callback);
-
-    // Why does this not work? - UPDATE: This does work when called in a static command context, but
-    // in a typed command context, we do not have access to the real compositor. Thus, we need a callback
-    // that then requires the values to be moved over threads. We'll need some message passing scheme
-    // to call values from the typed command context.
-    cx.push_layer(component.inner.take().unwrap());
-
-    // TODO: This _needs_ to go through a callback. Otherwise the new layer is just dropped.
-    // Set up some sort of callback queue for dynamic components that we can pull from instead, so that
-    // things stay thread local?
-
-    // let root = helix_core::find_workspace().0;
-    // let picker = ui::file_picker(root, &cx.editor.config());
-    // cx.push_layer(Box::new(overlaid(picker)));
+    let callback = async move {
+        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+            move |_editor: &mut Editor, compositor: &mut Compositor, _| compositor.push(inner),
+        );
+        Ok(call)
+    };
+    cx.jobs.local_callback(callback);
 }
 
-// fn push_component_raw(cx: &mut Context, component: Box<dyn Component>) {
-//     cx.push_layer(component);
+fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
+    let callback = async move {
+        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+            move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
+                let mut ctx = Context {
+                    register: None,
+                    count: None,
+                    editor,
+                    callback: None,
+                    on_next_key_callback: None,
+                    jobs,
+                };
+
+                let cloned_func = callback_fn.clone();
+
+                ENGINE
+                    .with(|x| {
+                        x.borrow_mut()
+                            .with_mut_reference::<Context, Context>(&mut ctx)
+                            .consume(move |engine, args| {
+                                engine.call_function_with_args(cloned_func.clone(), args)
+                            })
+                    })
+                    .unwrap();
+            },
+        );
+        Ok(call)
+    };
+    cx.jobs.local_callback(callback);
+}
+
+// fn enqueue_callback(cx: &mut Context, thunk: SteelVal) {
+//     log::info!("Enqueueing callback!");
+
 // }

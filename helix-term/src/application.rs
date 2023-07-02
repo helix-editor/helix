@@ -343,6 +343,10 @@ impl Application {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render().await;
                 }
+                Some(callback) = self.jobs.local_futures.next() => {
+                    self.jobs.handle_local_callback(&mut self.editor, &mut self.compositor, callback);
+                    self.render().await;
+                }
                 event = self.editor.wait_event() => {
                     let _idle_handled = self.handle_editor_event(event).await;
 

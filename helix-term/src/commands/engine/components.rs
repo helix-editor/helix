@@ -10,7 +10,7 @@ use steel::{
 use crate::{
     commands::{engine::ENGINE, Context},
     compositor::{self, Component},
-    ui::Popup,
+    ui::{Popup, Prompt, PromptEvent},
 };
 
 pub fn helix_component_module() -> BuiltInModule {
@@ -69,6 +69,61 @@ pub fn helix_component_module() -> BuiltInModule {
                     Popup::<BoxDynComponent>::new("popup", BoxDynComponent::new(inner))
                         .position(Some(position)),
                 )),
+            }
+        },
+    );
+    // prompt: Cow<'static, str>,
+    // history_register: Option<char>,
+    // completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,
+    // callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
+    module.register_fn(
+        "Prompt::new",
+        |prompt: String, callback_fn: SteelVal| -> WrappedDynComponent {
+            let prompt = Prompt::new(
+                prompt.into(),
+                None,
+                |_, _| Vec::new(),
+                move |cx, input, prompt_event| {
+                    if prompt_event != PromptEvent::Validate {
+                        return;
+                    }
+
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor: cx.editor,
+                        callback: None,
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+
+                    let cloned_func = callback_fn.clone();
+                    // let thunk = move |engine: &mut Engine, cx, input| {
+                    //     engine.call_function_with_args(
+                    //         cloned_func,
+                    //         vec![cx, input],
+
+                    //     )
+
+                    // };
+
+                    ENGINE
+                        .with(|x| {
+                            x.borrow_mut()
+                                .with_mut_reference::<Context, Context>(&mut ctx)
+                                .consume(move |engine, mut args| {
+                                    // Add the string as an argument to the callback
+                                    args.push(input.into_steelval().unwrap());
+
+                                    engine.call_function_with_args(cloned_func.clone(), args)
+                                })
+                        })
+                        .unwrap();
+                },
+            );
+
+            WrappedDynComponent {
+                inner: Some(Box::new(prompt)),
             }
         },
     );

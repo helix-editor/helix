@@ -2,11 +2,14 @@ use helix_view::Editor;
 
 use crate::compositor::Compositor;
 
-use futures_util::future::{BoxFuture, Future, FutureExt};
-use futures_util::stream::{FuturesUnordered, StreamExt};
+use futures_util::future::{BoxFuture, Future, FutureExt, LocalBoxFuture};
+use futures_util::stream::{FuturesOrdered, FuturesUnordered, StreamExt};
 
 pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
 pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
+
+pub type ThreadLocalEditorCompositorCallback =
+    Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut Jobs)>;
 
 pub enum Callback {
     EditorCompositor(EditorCompositorCallback),
@@ -21,11 +24,16 @@ pub struct Job {
     pub wait: bool,
 }
 
+pub type ThreadLocalJob =
+    LocalBoxFuture<'static, anyhow::Result<Option<ThreadLocalEditorCompositorCallback>>>;
+
 #[derive(Default)]
 pub struct Jobs {
     pub futures: FuturesUnordered<JobFuture>,
     /// These are the ones that need to complete before we exit.
     pub wait_futures: FuturesUnordered<JobFuture>,
+
+    pub local_futures: FuturesUnordered<ThreadLocalJob>,
 }
 
 impl Job {
@@ -67,6 +75,16 @@ impl Jobs {
         self.add(Job::with_callback(f));
     }
 
+    pub fn local_callback<
+        F: Future<Output = anyhow::Result<ThreadLocalEditorCompositorCallback>> + 'static,
+    >(
+        &mut self,
+        f: F,
+    ) {
+        self.local_futures
+            .push(f.map(|r| r.map(Some)).boxed_local());
+    }
+
     pub fn handle_callback(
         &self,
         editor: &mut Editor,
@@ -81,6 +99,21 @@ impl Jobs {
             },
             Err(e) => {
                 editor.set_error(format!("Async job failed: {}", e));
+            }
+        }
+    }
+
+    pub fn handle_local_callback(
+        &mut self,
+        editor: &mut Editor,
+        compositor: &mut Compositor,
+        call: anyhow::Result<Option<ThreadLocalEditorCompositorCallback>>,
+    ) {
+        match call {
+            Ok(None) => {}
+            Ok(Some(call)) => call(editor, compositor, self),
+            Err(e) => {
+                editor.set_error(format!("Sync job failed: {}", e));
             }
         }
     }

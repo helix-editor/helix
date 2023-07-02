@@ -2933,17 +2933,18 @@ pub(super) fn command_mode(cx: &mut Context) {
                         );
 
                         let mut guard = x.borrow_mut();
+                        // let mut maybe_callback = None;
 
-                        let mut cx = Context {
-                            register: None,
-                            count: std::num::NonZeroUsize::new(1),
-                            editor: cx.editor,
-                            callback: None,
-                            on_next_key_callback: None,
-                            jobs: cx.jobs,
-                        };
+                        let res = {
+                            let mut cx = Context {
+                                register: None,
+                                count: std::num::NonZeroUsize::new(1),
+                                editor: cx.editor,
+                                callback: None,
+                                on_next_key_callback: None,
+                                jobs: cx.jobs,
+                            };
 
-                        {
                             guard
                                 .register_value("_helix_args", steel::rvals::SteelVal::ListV(args));
 
@@ -2955,8 +2956,22 @@ pub(super) fn command_mode(cx: &mut Context) {
 
                             guard.register_value("_helix_args", steel::rvals::SteelVal::Void);
 
+                            // if let Some(callback) = cx.callback.take() {
+                            //     panic!("Found a callback!");
+                            //     maybe_callback = Some(callback);
+                            // }
+
                             res
-                        }
+                        };
+
+                        // TODO: Recursively (or otherwise) keep retrying until we're back
+                        // into the engine context, executing a function. We might need to set up
+                        // some sort of fuel or something
+                        // if let Some(callback) = maybe_callback {
+                        // (callback)(_, cx);
+                        // }
+
+                        res
                     }) {
                         compositor_present_error(cx, e)
                     };
