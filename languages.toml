@@ -73,7 +73,7 @@ vhdl_ls = { command = "vhdl_ls", args = [] }
 vlang-language-server = { command = "v", args = ["ls"] }
 vscode-css-language-server = { command = "vscode-css-language-server", args = ["--stdio"], config = { "provideFormatter" = true }}
 vscode-html-language-server = { command = "vscode-html-language-server", args = ["--stdio"], config = { provideFormatter = true } }
-vscode-json-language-server =  { command = "vscode-json-language-server", args = ["--stdio"], config = { provideFormatter = true } }
+vscode-json-languageserver =  { command = "vscode-json-languageserver", args = ["--stdio"], config = { provideFormatter = true } }
 vuels = { command = "vue-language-server", args = ["--stdio"], config = { typescript = { tsdk = "node_modules/typescript/lib/" } } }
 wgsl_analyzer = { command = "wgsl_analyzer" }
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }

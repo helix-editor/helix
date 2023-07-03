@@ -70,7 +70,7 @@
 | java | ✓ | ✓ |  | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jsdoc | ✓ |  |  |  |
-| json | ✓ |  | ✓ | `vscode-json-language-server` |
+| json | ✓ |  | ✓ | `vscode-json-languageserver` |
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ | `julia` |
