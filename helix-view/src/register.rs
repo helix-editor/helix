@@ -1,8 +1,8 @@
 use crate::info::Info;
-use std::{collections::HashMap, convert::TryFrom, str::FromStr};
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 use strum_macros::{AsRefStr, EnumString};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, AsRefStr, EnumString)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, AsRefStr)]
 pub enum Register {
     #[strum(serialize = "\"")]
     Yank,
@@ -18,13 +18,23 @@ pub enum Register {
     SelectionIndices,
     #[strum(serialize = "|")]
     Pipe,
+    UserDefined(char),
 }
 
-impl TryFrom<char> for Register {
-    type Error = strum::ParseError;
+impl From<char> for Register {
+    fn from(ch: char) -> Self {
+        Register::from_str(&ch.to_string()).unwrap_or(Register::UserDefined(ch))
+    }
+}
 
-    fn try_from(ch: char) -> Result<Self, Self::Error> {
-        Register::from_str(&ch.to_string())
+impl Display for Register {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = match self {
+            Register::UserDefined(ch) => ch.to_string(),
+            other => AsRef::<str>::as_ref(&other).to_string(),
+        };
+
+        write!(f, "{}", string)
     }
 }
 
@@ -38,7 +48,9 @@ impl From<&Register> for RegisterClass {
     fn from(register: &Register) -> Self {
         match register {
             Register::Yank | Register::Macro => RegisterClass::Nested,
-            Register::Search | Register::Command | Register::Pipe => RegisterClass::Simple,
+            Register::Search | Register::Command | Register::Pipe | Register::UserDefined(_) => {
+                RegisterClass::Simple
+            }
             Register::SelectionIndices | Register::BlackHole => RegisterClass::NonWritable,
         }
     }
@@ -143,12 +155,12 @@ impl Registers {
         self.simple.remove(register).is_some() || self.nested.remove(register).is_some()
     }
 
-    pub fn display_recent(&self) -> Vec<(&str, &str)> {
+    pub fn display_recent(&self) -> Vec<(String, &str)> {
         let mut body = Vec::with_capacity(self.simple.len() + self.nested.len());
 
         for register in self.nested.keys() {
             body.push((
-                register.as_ref(),
+                register.to_string(),
                 self.newest(register)
                     .expect("Register should exist")
                     .first()
@@ -159,7 +171,7 @@ impl Registers {
 
         for register in self.simple.keys() {
             body.push((
-                register.as_ref(),
+                register.to_string(),
                 self.newest(register)
                     .expect("Register should exist")
                     .first()

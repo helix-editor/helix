@@ -496,6 +496,6 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     if let Some(register) = &context.editor.selected_register {
-        write(context, format!(" reg={} ", register.as_ref()), None)
+        write(context, format!(" reg={} ", register), None)
     }
 }
