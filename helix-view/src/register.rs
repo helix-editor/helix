@@ -28,6 +28,22 @@ impl TryFrom<char> for Register {
     }
 }
 
+enum RegisterClass {
+    Nested,
+    Simple,
+    NonWritable,
+}
+
+impl From<&Register> for RegisterClass {
+    fn from(register: &Register) -> Self {
+        match register {
+            Register::Yank | Register::Macro => RegisterClass::Nested,
+            Register::Search | Register::Command | Register::Pipe => RegisterClass::Simple,
+            Register::SelectionIndices | Register::BlackHole => RegisterClass::NonWritable,
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Registers {
     simple: HashMap<Register, Vec<String>>,
@@ -36,71 +52,71 @@ pub struct Registers {
 
 impl Registers {
     pub fn push(&mut self, register: Register, mut values: Vec<String>) {
-        match register {
-            Register::BlackHole | Register::SelectionIndices => (),
-            nested_register if register == Register::Yank || register == Register::Macro => {
-                if let Some(register_values) = self.nested.get_mut(&nested_register) {
+        match RegisterClass::from(&register) {
+            RegisterClass::Nested => {
+                if let Some(register_values) = self.nested.get_mut(&register) {
                     register_values.push(values);
                 } else {
-                    self.nested.insert(nested_register, vec![values]);
+                    self.nested.insert(register, vec![values]);
                 }
             }
-            simple_register => {
-                if let Some(register_values) = self.simple.get_mut(&simple_register) {
+            RegisterClass::Simple => {
+                if let Some(register_values) = self.simple.get_mut(&register) {
                     register_values.append(&mut values);
                 } else {
-                    self.simple.insert(simple_register, values);
+                    self.simple.insert(register, values);
                 }
             }
+            RegisterClass::NonWritable => (),
         }
     }
 
     /// Pushes to newest entry for nested registers.
     pub fn push_singular(&mut self, register: Register, value: String) {
-        match register {
-            Register::BlackHole | Register::SelectionIndices => (),
-            nested_register if register == Register::Yank || register == Register::Macro => {
-                if let Some(register_values) = self.nested.get_mut(&nested_register) {
+        match RegisterClass::from(&register) {
+            RegisterClass::Nested => {
+                if let Some(register_values) = self.nested.get_mut(&register) {
                     match register_values.last_mut() {
                         Some(newest_entry) => newest_entry.push(value),
                         None => register_values.push(vec![value]),
                     }
                 } else {
-                    self.nested.insert(nested_register, vec![vec![value]]);
+                    self.nested.insert(register, vec![vec![value]]);
                 }
             }
-            simple_register => {
-                if let Some(register_values) = self.simple.get_mut(&simple_register) {
+            RegisterClass::Simple => {
+                if let Some(register_values) = self.simple.get_mut(&register) {
                     register_values.push(value);
                 } else {
-                    self.simple.insert(simple_register, vec![value]);
+                    self.simple.insert(register, vec![value]);
                 }
             }
+            RegisterClass::NonWritable => (),
         }
     }
 
     /// All contents for nested registers, simple return a slice with only one value.
     pub fn newest(&self, register: &Register) -> Option<&[String]> {
-        match register {
-            Register::BlackHole | Register::SelectionIndices => None,
-            nested_register if register == &Register::Yank || register == &Register::Macro => self
+        match RegisterClass::from(register) {
+            RegisterClass::Nested => self
                 .nested
-                .get(nested_register)
+                .get(register)
                 .and_then(|nested_register| nested_register.last())
                 .map(|values| values.as_slice()),
-            simple_register => self
-                .values(simple_register)
+            RegisterClass::Simple => self
+                .values(register)
                 .map(|values| values.split_at(values.len() - 1).1),
+            RegisterClass::NonWritable => None,
         }
     }
 
     /// First value in newest entry for nested registers.
     /// Newest value for simple registers.
     pub fn newest_singular(&self, register: &Register) -> Option<&str> {
-        match register {
-            Register::BlackHole | Register::SelectionIndices => None,
-            other_register => self
-                .newest(other_register)
+        match RegisterClass::from(register) {
+            RegisterClass::NonWritable => None,
+            _ => self
+                .newest(register)
                 .and_then(|values| values.first())
                 .map(|value| value.as_str()),
         }
@@ -108,15 +124,13 @@ impl Registers {
 
     /// All values of the newest entry for nested registers and all values from simple registers.
     pub fn values(&self, register: &Register) -> Option<&[String]> {
-        match register {
-            Register::BlackHole | Register::SelectionIndices => None,
-            nested_register if register == &Register::Yank || register == &Register::Macro => {
-                self.newest(nested_register)
-            }
-            simple_register => self
+        match RegisterClass::from(register) {
+            RegisterClass::Nested => self.newest(register),
+            RegisterClass::Simple => self
                 .simple
-                .get(simple_register)
+                .get(register)
                 .map(|simple_register| simple_register.as_slice()),
+            RegisterClass::NonWritable => None,
         }
     }
 
