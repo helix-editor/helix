@@ -292,16 +292,20 @@ impl Prompt {
         self.recalculate_completion(editor);
     }
 
-    pub fn change_history(
-        &mut self,
-        cx: &mut Context,
-        register: Register,
-        direction: CompletionDirection,
-    ) {
+    pub fn change_history(&mut self, cx: &mut Context, direction: CompletionDirection) {
+        let Some(register) = &self.register else {
+            return;
+        };
+
         (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
-        let values = match cx.editor.registers.read(register) {
-            Some(values) if !values.is_empty() => values,
-            _ => return,
+
+        let Some(values) = cx
+            .editor
+            .registers
+            .values(register)
+            .filter(|values| !values.is_empty())
+        else {
+            return;
         };
 
         let end = values.len().saturating_sub(1);
@@ -460,7 +464,8 @@ impl Prompt {
             // latest value in the register list
             match self
                 .register
-                .and_then(|reg| cx.editor.registers.last(reg))
+                .as_ref()
+                .and_then(|register| cx.editor.registers.newest_singular(register))
                 .map(|entry| entry.into())
             {
                 Some(value) => (value, true),
@@ -558,10 +563,11 @@ impl Component for Prompt {
                 if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
                     self.recalculate_completion(cx.editor);
                 } else {
-                    let last_item = self
+                    let last_item: Cow<str> = self
                         .register
-                        .and_then(|reg| cx.editor.registers.last(reg).cloned())
-                        .map(|entry| entry.into())
+                        .as_ref()
+                        .and_then(|register| cx.editor.registers.newest_singular(register))
+                        .map(|entry| entry.to_string().into())
                         .unwrap_or_else(|| Cow::from(""));
 
                     // handle executing with last command in history if nothing entered
@@ -571,7 +577,9 @@ impl Component for Prompt {
                         if last_item != self.line {
                             // store in history
                             if let Some(register) = self.register {
-                                cx.editor.registers.push(register, self.line.clone());
+                                cx.editor
+                                    .registers
+                                    .push_singular(register, self.line.clone());
                             };
                         }
 
@@ -584,14 +592,10 @@ impl Component for Prompt {
                 }
             }
             ctrl!('p') | key!(Up) => {
-                if let Some(register) = self.register {
-                    self.change_history(cx, register, CompletionDirection::Backward);
-                }
+                self.change_history(cx, CompletionDirection::Backward);
             }
             ctrl!('n') | key!(Down) => {
-                if let Some(register) = self.register {
-                    self.change_history(cx, register, CompletionDirection::Forward);
-                }
+                self.change_history(cx, CompletionDirection::Forward);
             }
             key!(Tab) => {
                 self.change_completion_selection(CompletionDirection::Forward);
@@ -621,8 +625,7 @@ impl Component for Prompt {
                             context
                                 .editor
                                 .registers
-                                .read(register)
-                                .and_then(|values| values.last())
+                                .newest_singular(&register)
                                 .map_or(Default::default(), |value| value),
                             context.editor,
                         );

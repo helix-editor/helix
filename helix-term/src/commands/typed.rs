@@ -2272,10 +2272,10 @@ fn clear_register(
     };
 
     match cx.editor.registers.remove(&register) {
-        Some(_) => cx
+        true => cx
             .editor
             .set_status(format!("Register {} cleared", register.as_ref())),
-        None => cx
+        false => cx
             .editor
             .set_error(format!("Register {} not found", register.as_ref())),
     }
