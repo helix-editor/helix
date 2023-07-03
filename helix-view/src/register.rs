@@ -129,7 +129,7 @@ impl Registers {
         self.simple.remove(register).is_some() || self.nested.remove(register).is_some()
     }
 
-    pub fn display_resent(&self) -> Vec<(&str, &str)> {
+    pub fn display_recent(&self) -> Vec<(&str, &str)> {
         let mut body = Vec::with_capacity(self.simple.len() + self.nested.len());
 
         for register in self.nested.keys() {
@@ -158,7 +158,7 @@ impl Registers {
     }
 
     pub fn infobox(&self) -> Info {
-        let mut infobox = Info::new("Registers", &self.display_resent());
+        let mut infobox = Info::new("Registers", &self.display_recent());
         infobox.width = 30; // copied content could be very long
         infobox
     }

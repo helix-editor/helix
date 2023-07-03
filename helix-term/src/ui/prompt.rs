@@ -614,7 +614,7 @@ impl Component for Prompt {
                 self.completion = cx
                     .editor
                     .registers
-                    .display_resent()
+                    .display_recent()
                     .iter()
                     .map(|(name, content)| (0.., format!("{} {}", name, content).into()))
                     .collect();
