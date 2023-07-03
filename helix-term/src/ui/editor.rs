@@ -532,17 +532,32 @@ impl EditorView {
         let bufferline_active_modified = editor
             .theme
             .try_get("ui.bufferline.active.modified")
-            .unwrap_or_else(|| editor.theme.try_get("ui.bufferline.active").unwrap_or_else(|| editor.theme.get("ui.statusline.active")));
+            .unwrap_or_else(|| {
+                editor
+                    .theme
+                    .try_get("ui.bufferline.active")
+                    .unwrap_or_else(|| editor.theme.get("ui.statusline.active"))
+            });
 
         let bufferline_inactive = editor
             .theme
             .try_get("ui.bufferline.inactive")
-            .unwrap_or_else(|| editor.theme.try_get("ui.bufferline").unwrap_or_else(|| editor.theme.get("ui.statusline.inactive")));
+            .unwrap_or_else(|| {
+                editor
+                    .theme
+                    .try_get("ui.bufferline")
+                    .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"))
+            });
 
         let bufferline_inactive_modified = editor
             .theme
             .try_get("ui.bufferline.inactive.modified")
-            .unwrap_or_else(|| editor.theme.try_get("ui.bufferline").unwrap_or_else(|| editor.theme.get("ui.statusline.inactive")));
+            .unwrap_or_else(|| {
+                editor
+                    .theme
+                    .try_get("ui.bufferline")
+                    .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"))
+            });
 
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
@@ -557,13 +572,13 @@ impl EditorView {
                 .unwrap_or_default();
 
             let style = if current_doc == doc.id() {
-                if doc.is_modified() { 
-                    bufferline_active_modified 
+                if doc.is_modified() {
+                    bufferline_active_modified
                 } else {
                     bufferline_active
                 }
-            } else if doc.is_modified() { 
-                bufferline_inactive_modified 
+            } else if doc.is_modified() {
+                bufferline_inactive_modified
             } else {
                 bufferline_inactive
             };
