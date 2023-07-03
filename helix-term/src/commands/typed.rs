@@ -1,11 +1,13 @@
 use std::fmt::Write;
 use std::ops::Deref;
 
+use crate::health::TsFeature;
 use crate::job::Job;
 
 use super::*;
 
 use helix_core::{encoding, shellwords::Shellwords};
+use helix_loader::grammar::load_runtime_file;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
@@ -2270,6 +2272,87 @@ fn clear_register(
     Ok(())
 }
 
+fn show_health(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(args.is_empty(), ":health takes no arguments");
+    let mut contents = String::from("");
+
+    let (_view, doc) = current!(cx.editor);
+    match doc.language_config() {
+        Some(lc) => {
+            let get_path = |binary_name| -> String {
+                return match which::which(binary_name) {
+                    Ok(path) => path.display().to_string(),
+                    Err(_) => format!("'{}' not found in $PATH", binary_name),
+                };
+            };
+
+            let lsp_content = String::new();
+            let mut lsp_content =
+                lc.language_servers
+                    .iter()
+                    .fold(lsp_content, |mut lsp_content, ls| {
+                        let ls_content =
+                            format!("name: {}, path: {}\n", ls.name, get_path(&ls.name));
+                        lsp_content.push_str(&ls_content);
+                        lsp_content
+                    });
+            if lsp_content.is_empty() {
+                lsp_content = "None".to_string();
+            }
+
+            let dap_content = match &lc.debugger {
+                Some(debugger) => format!(
+                    "name: {}, path: {}\n",
+                    debugger.name,
+                    get_path(&debugger.name)
+                ),
+                None => "None".to_string(),
+            };
+
+            contents.push_str("* Configured Language Servers:\n");
+            contents.push_str(&lsp_content);
+            contents.push_str("* Configured Debugger:\n");
+            contents.push_str(&dap_content);
+            contents.push('\n');
+
+            for ts_feat in TsFeature::all() {
+                let found =
+                    match load_runtime_file(&lc.language_id, ts_feat.runtime_filename()).is_ok() {
+                        true => "✓",
+                        false => "✘",
+                    };
+                let ts_content = format!("* {} queries: {}\n", ts_feat.short_title(), found);
+                contents.push_str(&ts_content);
+            }
+        }
+        None => return Ok(()),
+    }
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let popup = Popup::new("show_health", contents)
+                    .auto_close(true)
+                    .position(Some(Position::new(2, 10)));
+                compositor.replace_or_push("show_health", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         TypableCommand {
             name: "quit",
@@ -2849,6 +2932,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &[],
             doc: "Clear given register. If no argument is provided, clear all registers.",
             fun: clear_register,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "health",
+            aliases: &[],
+            doc: "Show health of the current document's language",
+            fun: show_health,
             signature: CommandSignature::none(),
         },
     ];
