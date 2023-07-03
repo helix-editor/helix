@@ -488,6 +488,16 @@ impl From<crossterm::event::KeyEvent> for KeyEvent {
                 code: KeyCode::Tab,
                 modifiers,
             }
+        } else if code == crossterm::event::KeyCode::Char('[')
+            && modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
+        {
+            // Support Ctrl-[ as ESC for terminals that support sending Ctrl-[
+            let mut modifiers = modifiers;
+            modifiers.remove(crossterm::event::KeyModifiers::CONTROL);
+            Self {
+                code: KeyCode::Esc,
+                modifiers: modifiers.into(),
+            }
         } else {
             Self {
                 code: code.into(),
