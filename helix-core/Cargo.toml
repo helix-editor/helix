@@ -50,4 +50,4 @@ textwrap = "0.16.0"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
-indoc = "2.0.1"
+indoc = "2.0.2"
