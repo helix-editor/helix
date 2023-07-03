@@ -96,13 +96,13 @@ function or block of code.
 | `(`, `[`, `'`, etc.    | Specified surround pairs |
 | `m`                    | The closest surround pair    |
 | `f`                    | Function                 |
-| `c`                    | Class                    |
+| `t`                    | Type (or Class)          |
 | `a`                    | Argument/parameter       |
-| `o`                    | Comment                  |
-| `t`                    | Test                     |
+| `c`                    | Comment                  |
+| `T`                    | Test                     |
 | `g`                    | Change                   |
 
-> 💡 `f`, `c`, etc. need a tree-sitter grammar active for the current
+> 💡 `f`, `t`, etc. need a tree-sitter grammar active for the current
 document and a special tree-sitter query file to work properly. [Only
 some grammars][lang-support] currently have the query file implemented.
 Contributions are welcome!
@@ -112,7 +112,7 @@ Contributions are welcome!
 Navigating between functions, classes, parameters, and other elements is
 possible using tree-sitter and textobject queries. For
 example to move to the next function use `]f`, to move to previous
-class use `[c`, and so on.
+type use `[t`, and so on.
 
 ![Tree-sitter-nav-demo][tree-sitter-nav-demo]
 

@@ -164,6 +164,7 @@ where
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Custom => render_custom_text,
+        helix_view::editor::StatusLineElement::Register => render_register,
     }
 }
 
@@ -201,15 +202,15 @@ where
     );
 }
 
+// TODO think about handling multiple language servers
 fn render_lsp_spinner<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
+    let language_server = context.doc.language_servers().next();
     write(
         context,
-        context
-            .doc
-            .language_server()
+        language_server
             .and_then(|srv| {
                 context
                     .spinners
@@ -229,8 +230,7 @@ where
 {
     let (warnings, errors) = context
         .doc
-        .diagnostics()
-        .iter()
+        .shown_diagnostics()
         .fold((0, 0), |mut counts, diag| {
             use helix_core::diagnostic::Severity;
             match diag.severity {
@@ -270,7 +270,7 @@ where
             .diagnostics
             .values()
             .flatten()
-            .fold((0, 0), |mut counts, diag| {
+            .fold((0, 0), |mut counts, (diag, _)| {
                 match diag.severity {
                     Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
                     Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
@@ -280,7 +280,7 @@ where
             });
 
     if warnings > 0 || errors > 0 {
-        write(context, format!(" {} ", "W"), None);
+        write(context, " W ".into(), None);
     }
 
     if warnings > 0 {
@@ -501,5 +501,14 @@ where
 {
     if let Some(message) = StatusLineMessage::get() {
         write(context, message, None);
+    }
+}
+
+fn render_register<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    if let Some(reg) = context.editor.selected_register {
+        write(context, format!(" reg={} ", reg), None)
     }
 }

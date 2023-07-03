@@ -51,8 +51,8 @@
 "variable"                        = { fg = "foreground"                                                     }
 "variable.builtin"                = { fg = "purple",             modifiers = ["italic"]                     }
 "variable.parameter"              = { fg = "orange",             modifiers = ["italic"]                     }
-"variable.other"                  = { fg = "cyan"                                                           }
-"variable.other.member"           = { fg = "purple"                                                         }
+"variable.other"                  = { fg = "foreground"                                                     }
+"variable.other.member"           = { fg = "foreground"                                                     }
 
 
 "diff.plus"                       = { fg    = "green"                                                       }
@@ -73,10 +73,11 @@
 "ui.highlight.frameline"          = { fg    = "background",      bg = "red"                                 }
 "ui.linenr"                       = { fg    = "comment"                                                     }
 "ui.linenr.selected"              = { fg    = "foreground"                                                  }
-"ui.menu"                         = { fg    = "foreground",      bg = "black"                               }
-"ui.menu.selected"                = { fg    = "cyan",            bg = "black"                               }
+"ui.menu"                         = { fg    = "foreground",      bg = "current_line"                        }
+"ui.menu.selected"                = { fg    = "current_line",    bg = "purple",         modifiers = ["dim"] }
+"ui.menu.scroll"                  = { fg    = "foreground",      bg = "current_line"                        }
 "ui.popup"                        = { fg    = "foreground",      bg = "black"                               }
-"ui.selection.primary"            = {                            bg = "selection_primary"                   }
+"ui.selection.primary"            = {                            bg = "current_line"                        }
 "ui.selection"                    = {                            bg = "selection"                           }
 "ui.statusline"                   = { fg    = "foreground",      bg = "darker"                              }
 "ui.statusline.inactive"          = { fg    = "comment",         bg = "darker"                              }
@@ -86,8 +87,8 @@
 "ui.text"                         = { fg    = "foreground"                                                  }
 "ui.text.focus"                   = { fg    = "cyan"                                                        }
 "ui.window"                       = { fg    = "foreground"                                                  }
-"ui.virtual.whitespace"           = { fg    = "subtle"                                                      }
-"ui.virtual.wrap"                 = { fg    = "subtle"                                                      }
+"ui.virtual.whitespace"           = { fg    = "current_line"                                                }
+"ui.virtual.wrap"                 = { fg    = "current_line"                                                }
 "ui.virtual.ruler"                = { bg    = "black"                                                       }
 "ui.virtual.inlay-hint"           = { fg    = "cyan"                                                        }
 "ui.virtual.inlay-hint.parameter" = { fg    = "cyan",            modifiers = ["italic", "dim"]              }
@@ -121,13 +122,12 @@ darker            = "#222430"
 black             = "#191A21"
 grey              = "#666771"
 comment           = "#6272A4"
-selection_primary = "#44475a"
+current_line      = "#44475a"
 selection         = "#363848"
-subtle            = "#424450"
 red               = "#ff5555"
 orange            = "#ffb86c" 
 yellow            = "#f1fa8c" 
 green             = "#50fa7b" 
 purple            = "#BD93F9" 
 cyan              = "#8be9fd"
-pink              = "#ff79c6" 
+pink              = "#ff79c6"

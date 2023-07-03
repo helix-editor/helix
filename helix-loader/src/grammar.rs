@@ -85,7 +85,16 @@ pub fn get_language(name: &str) -> Result<Language> {
     Ok(language)
 }
 
+fn ensure_git_is_available() -> Result<()> {
+    match which::which("git") {
+        Ok(_cmd) => Ok(()),
+        Err(err) => Err(anyhow::anyhow!("'git' could not be found ({err})")),
+    }
+}
+
 pub fn fetch_grammars() -> Result<()> {
+    ensure_git_is_available()?;
+
     // We do not need to fetch local grammars.
     let mut grammars = get_grammar_configs()?;
     grammars.retain(|grammar| !matches!(grammar.source, GrammarSource::Local { .. }));
@@ -145,6 +154,8 @@ pub fn fetch_grammars() -> Result<()> {
 }
 
 pub fn build_grammars(target: Option<String>) -> Result<()> {
+    ensure_git_is_available()?;
+
     let grammars = get_grammar_configs()?;
     println!("Building {} grammars", grammars.len());
     let results = run_parallel(grammars, move |grammar| {

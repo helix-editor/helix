@@ -26,12 +26,12 @@ unicode-general-category = "0.6"
 # slab = "0.4.2"
 slotmap = "1.0"
 tree-sitter = "0.20"
-once_cell = "1.17"
+once_cell = "1.18"
 arc-swap = "1"
 regex = "1"
-bitflags = "2.2"
+bitflags = "2.3"
 ahash = "0.8.3"
-hashbrown = { version = "0.13.2", features = ["raw"] }
+hashbrown = { version = "0.14.0", features = ["raw"] }
 dunce = "1.0"
 
 log = "0.4"
@@ -45,7 +45,7 @@ encoding_rs = "0.8"
 
 chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
 
-etcetera = "0.7"
+etcetera = "0.8"
 textwrap = "0.16.0"
 
 steel-core = { path = "../../../steel/crates/steel-core", version = "0.2.0", features = ["modules", "anyhow", "blocking_requests"] }

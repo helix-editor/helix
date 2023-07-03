@@ -1,5 +1,5 @@
 use crate::keymap;
-use crate::keymap::{merge_keys, Keymap};
+use crate::keymap::{merge_keys, KeyTrie, Keymaps};
 use helix_loader::merge_toml_values;
 use helix_view::document::Mode;
 use serde::Deserialize;
@@ -12,7 +12,7 @@ use toml::de::Error as TomlError;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Config {
     pub theme: Option<String>,
-    pub keys: HashMap<Mode, Keymap>,
+    pub keys: HashMap<Mode, KeyTrie>,
     pub editor: helix_view::editor::Config,
 }
 
@@ -20,7 +20,7 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
     pub theme: Option<String>,
-    pub keys: Option<HashMap<Mode, Keymap>>,
+    pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
 }
 
@@ -59,7 +59,7 @@ impl Config {
     pub fn load(
         global: Result<String, ConfigLoadError>,
         local: Result<String, ConfigLoadError>,
-        engine_overlay: Option<HashMap<Mode, Keymap>>,
+        engine_overlay: Option<HashMap<Mode, KeyTrie>>,
     ) -> Result<Config, ConfigLoadError> {
         let global_config: Result<ConfigRaw, ConfigLoadError> =
             global.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
@@ -152,7 +152,6 @@ mod tests {
     #[test]
     fn parsing_keymaps_config_file() {
         use crate::keymap;
-        use crate::keymap::Keymap;
         use helix_core::hashmap;
         use helix_view::document::Mode;
 
@@ -169,13 +168,13 @@ mod tests {
         merge_keys(
             &mut keys,
             hashmap! {
-                Mode::Insert => Keymap::new(keymap!({ "Insert mode"
+                Mode::Insert => keymap!({ "Insert mode"
                     "y" => move_line_down,
                     "S-C-a" => delete_selection,
-                })),
-                Mode::Normal => Keymap::new(keymap!({ "Normal mode"
+                }),
+                Mode::Normal => keymap!({ "Normal mode"
                     "A-F12" => move_next_word_end,
-                })),
+                }),
             },
         );
 

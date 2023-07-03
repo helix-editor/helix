@@ -51,7 +51,7 @@ pub fn highlighted_code_block<'a>(
             language.into(),
         ))
         .and_then(|config| config.highlight_config(theme.scopes()))
-        .map(|config| Syntax::new(&rope, config, Arc::clone(&config_loader)));
+        .and_then(|config| Syntax::new(&rope, config, Arc::clone(&config_loader)));
 
     let syntax = match syntax {
         Some(s) => s,

@@ -26,7 +26,7 @@ use steel::{rvals::Custom, steel_vm::builtin::BuiltInModule};
 use crate::{
     compositor::{self, Component, Compositor},
     job::{self, Callback},
-    keymap::{merge_keys, Keymap},
+    keymap::{merge_keys, KeyTrie},
     ui::{self, menu::Item, overlay::overlaid, Popup, Prompt, PromptEvent},
 };
 
@@ -256,7 +256,7 @@ impl SharedKeyBindingsEventQueue {
             .push_back(other_as_json);
     }
 
-    pub fn get() -> Option<HashMap<Mode, Keymap>> {
+    pub fn get() -> Option<HashMap<Mode, KeyTrie>> {
         let mut guard = KEYBINDING_QUEUE.raw_bindings.lock().unwrap();
 
         if let Some(initial) = guard.pop_front() {

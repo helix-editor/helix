@@ -16,8 +16,8 @@ use slotmap::{DefaultKey as LayerId, HopSlotMap};
 use std::{
     borrow::Cow,
     cell::RefCell,
-    collections::{HashMap, VecDeque},
-    fmt,
+    collections::{HashMap, HashSet, VecDeque},
+    fmt::{self, Display},
     hash::{Hash, Hasher},
     mem::{replace, transmute},
     path::{Path, PathBuf},
@@ -26,7 +26,7 @@ use std::{
 };
 
 use once_cell::sync::{Lazy, OnceCell};
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeSeq, Deserialize, Serialize};
 
 use helix_loader::grammar::{get_language, load_runtime_file};
 
@@ -48,6 +48,21 @@ where
         .transpose()
 }
 
+fn deserialize_tab_width<'de, D>(deserializer: D) -> Result<usize, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    usize::deserialize(deserializer).and_then(|n| {
+        if n > 0 && n <= 16 {
+            Ok(n)
+        } else {
+            Err(serde::de::Error::custom(
+                "tab width must be a value from 1 to 16 inclusive",
+            ))
+        }
+    })
+}
+
 pub fn deserialize_auto_pairs<'de, D>(deserializer: D) -> Result<Option<AutoPairs>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -60,8 +75,11 @@ fn default_timeout() -> u64 {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
+    #[serde(default)]
+    pub language_server: HashMap<String, LanguageServerConfiguration>,
 }
 
 impl Default for Configuration {
@@ -75,7 +93,10 @@ impl Default for Configuration {
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
-    pub language_id: String, // c-sharp, rust
+    pub language_id: String, // c-sharp, rust, tsx
+    #[serde(rename = "language-id")]
+    // see the table under https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentItem
+    pub language_server_language_id: Option<String>, // csharp, rust, typescriptreact, for the language-server
     pub scope: String,             // source.rust
     pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
@@ -84,9 +105,6 @@ pub struct LanguageConfiguration {
     pub comment_token: Option<String>,
     pub text_width: Option<usize>,
     pub soft_wrap: Option<SoftWrap>,
-
-    #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
-    pub config: Option<serde_json::Value>,
 
     #[serde(default)]
     pub auto_format: bool,
@@ -107,8 +125,13 @@ pub struct LanguageConfiguration {
     #[serde(skip)]
     pub(crate) highlight_config: OnceCell<Option<Arc<HighlightConfiguration>>>,
     // tags_config OnceCell<> https://github.com/tree-sitter/tree-sitter/pull/583
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub language_server: Option<LanguageServerConfiguration>,
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        serialize_with = "serialize_lang_features",
+        deserialize_with = "deserialize_lang_features"
+    )]
+    pub language_servers: Vec<LanguageServerFeatures>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub indent: Option<IndentationConfiguration>,
 
@@ -187,9 +210,12 @@ impl<'de> Deserialize<'de> for FileType {
                 M: serde::de::MapAccess<'de>,
             {
                 match map.next_entry::<String, String>()? {
-                    Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix(
-                        suffix.replace('/', &std::path::MAIN_SEPARATOR.to_string()),
-                    )),
+                    Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix({
+                        // FIXME: use `suffix.replace('/', std::path::MAIN_SEPARATOR_STR)`
+                        //        if MSRV is updated to 1.68
+                        let mut separator = [0; 1];
+                        suffix.replace('/', std::path::MAIN_SEPARATOR.encode_utf8(&mut separator))
+                    })),
                     Some((key, _value)) => Err(serde::de::Error::custom(format!(
                         "unknown key in `file-types` list: {}",
                         key
@@ -205,6 +231,133 @@ impl<'de> Deserialize<'de> for FileType {
     }
 }
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "kebab-case")]
+pub enum LanguageServerFeature {
+    Format,
+    GotoDeclaration,
+    GotoDefinition,
+    GotoTypeDefinition,
+    GotoReference,
+    GotoImplementation,
+    // Goto, use bitflags, combining previous Goto members?
+    SignatureHelp,
+    Hover,
+    DocumentHighlight,
+    Completion,
+    CodeAction,
+    WorkspaceCommand,
+    DocumentSymbols,
+    WorkspaceSymbols,
+    // Symbols, use bitflags, see above?
+    Diagnostics,
+    RenameSymbol,
+    InlayHints,
+}
+
+impl Display for LanguageServerFeature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use LanguageServerFeature::*;
+        let feature = match self {
+            Format => "format",
+            GotoDeclaration => "goto-declaration",
+            GotoDefinition => "goto-definition",
+            GotoTypeDefinition => "goto-type-definition",
+            GotoReference => "goto-type-definition",
+            GotoImplementation => "goto-implementation",
+            SignatureHelp => "signature-help",
+            Hover => "hover",
+            DocumentHighlight => "document-highlight",
+            Completion => "completion",
+            CodeAction => "code-action",
+            WorkspaceCommand => "workspace-command",
+            DocumentSymbols => "document-symbols",
+            WorkspaceSymbols => "workspace-symbols",
+            Diagnostics => "diagnostics",
+            RenameSymbol => "rename-symbol",
+            InlayHints => "inlay-hints",
+        };
+        write!(f, "{feature}",)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged, rename_all = "kebab-case", deny_unknown_fields)]
+enum LanguageServerFeatureConfiguration {
+    #[serde(rename_all = "kebab-case")]
+    Features {
+        #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+        only_features: HashSet<LanguageServerFeature>,
+        #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+        except_features: HashSet<LanguageServerFeature>,
+        name: String,
+    },
+    Simple(String),
+}
+
+#[derive(Debug, Default)]
+pub struct LanguageServerFeatures {
+    pub name: String,
+    pub only: HashSet<LanguageServerFeature>,
+    pub excluded: HashSet<LanguageServerFeature>,
+}
+
+impl LanguageServerFeatures {
+    pub fn has_feature(&self, feature: LanguageServerFeature) -> bool {
+        (self.only.is_empty() || self.only.contains(&feature)) && !self.excluded.contains(&feature)
+    }
+}
+
+fn deserialize_lang_features<'de, D>(
+    deserializer: D,
+) -> Result<Vec<LanguageServerFeatures>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw: Vec<LanguageServerFeatureConfiguration> = Deserialize::deserialize(deserializer)?;
+    let res = raw
+        .into_iter()
+        .map(|config| match config {
+            LanguageServerFeatureConfiguration::Simple(name) => LanguageServerFeatures {
+                name,
+                ..Default::default()
+            },
+            LanguageServerFeatureConfiguration::Features {
+                only_features,
+                except_features,
+                name,
+            } => LanguageServerFeatures {
+                name,
+                only: only_features,
+                excluded: except_features,
+            },
+        })
+        .collect();
+    Ok(res)
+}
+fn serialize_lang_features<S>(
+    map: &Vec<LanguageServerFeatures>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let mut serializer = serializer.serialize_seq(Some(map.len()))?;
+    for features in map {
+        let features = if features.only.is_empty() && features.excluded.is_empty() {
+            LanguageServerFeatureConfiguration::Simple(features.name.to_owned())
+        } else {
+            LanguageServerFeatureConfiguration::Features {
+                only_features: features.only.clone(),
+                except_features: features.excluded.clone(),
+                name: features.name.to_owned(),
+            }
+        };
+        serializer.serialize_element(&features)?;
+    }
+    serializer.end()
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
@@ -214,9 +367,10 @@ pub struct LanguageServerConfiguration {
     pub args: Vec<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub environment: HashMap<String, String>,
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
+    pub config: Option<serde_json::Value>,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
-    pub language_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -285,6 +439,7 @@ pub struct DebuggerQuirks {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentationConfiguration {
+    #[serde(deserialize_with = "deserialize_tab_width")]
     pub tab_width: usize,
     pub unit: String,
 }
@@ -602,6 +757,8 @@ pub struct Loader {
     language_config_ids_by_suffix: HashMap<String, usize>,
     language_config_ids_by_shebang: HashMap<String, usize>,
 
+    language_server_configs: HashMap<String, LanguageServerConfiguration>,
+
     scopes: ArcSwap<Vec<String>>,
 }
 
@@ -609,6 +766,7 @@ impl Loader {
     pub fn new(config: Configuration) -> Self {
         let mut loader = Self {
             language_configs: Vec::new(),
+            language_server_configs: config.language_server,
             language_config_ids_by_extension: HashMap::new(),
             language_config_ids_by_suffix: HashMap::new(),
             language_config_ids_by_shebang: HashMap::new(),
@@ -733,6 +891,10 @@ impl Loader {
         self.language_configs.iter()
     }
 
+    pub fn language_server_configs(&self) -> &HashMap<String, LanguageServerConfiguration> {
+        &self.language_server_configs
+    }
+
     pub fn set_scopes(&self, scopes: Vec<String>) {
         self.scopes.store(Arc::new(scopes));
 
@@ -776,7 +938,11 @@ fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<st
 }
 
 impl Syntax {
-    pub fn new(source: &Rope, config: Arc<HighlightConfiguration>, loader: Arc<Loader>) -> Self {
+    pub fn new(
+        source: &Rope,
+        config: Arc<HighlightConfiguration>,
+        loader: Arc<Loader>,
+    ) -> Option<Self> {
         let root_layer = LanguageLayer {
             tree: None,
             config,
@@ -801,11 +967,13 @@ impl Syntax {
             loader,
         };
 
-        syntax
-            .update(source, source, &ChangeSet::new(source))
-            .unwrap();
+        let res = syntax.update(source, source, &ChangeSet::new(source));
 
-        syntax
+        if res.is_err() {
+            log::error!("TS parser failed, disabeling TS for the current buffer: {res:?}");
+            return None;
+        }
+        Some(syntax)
     }
 
     pub fn update(
@@ -933,6 +1101,7 @@ impl Syntax {
 
         PARSER.with(|ts_parser| {
             let ts_parser = &mut ts_parser.borrow_mut();
+            ts_parser.parser.set_timeout_micros(1000 * 500); // half a second is pretty generours
             let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
             // TODO: might need to set cursor range
             cursor.set_byte_range(0..usize::MAX);
@@ -1244,7 +1413,7 @@ impl LanguageLayer {
                 &mut |byte, _| {
                     if byte <= source.len_bytes() {
                         let (chunk, start_byte, _, _) = source.chunk_at_byte(byte);
-                        chunk[byte - start_byte..].as_bytes()
+                        &chunk.as_bytes()[byte - start_byte..]
                     } else {
                         // out of range
                         &[]
@@ -2371,7 +2540,10 @@ mod test {
         "#,
         );
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(Configuration {
+            language: vec![],
+            language_server: HashMap::new(),
+        });
         let language = get_language("rust").unwrap();
 
         let query = Query::new(language, query_str).unwrap();
@@ -2379,7 +2551,7 @@ mod test {
         let mut cursor = QueryCursor::new();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
 
         let root = syntax.tree().root_node();
         let mut test = |capture, range| {
@@ -2430,7 +2602,10 @@ mod test {
         .map(String::from)
         .collect();
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(Configuration {
+            language: vec![],
+            language_server: HashMap::new(),
+        });
 
         let language = get_language("rust").unwrap();
         let config = HighlightConfiguration::new(
@@ -2450,7 +2625,7 @@ mod test {
             fn main() {}
         ",
         );
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
         let tree = syntax.tree();
         let root = tree.root_node();
         assert_eq!(root.kind(), "source_file");
@@ -2533,11 +2708,14 @@ mod test {
     ) {
         let source = Rope::from_str(source);
 
-        let loader = Loader::new(Configuration { language: vec![] });
+        let loader = Loader::new(Configuration {
+            language: vec![],
+            language_server: HashMap::new(),
+        });
         let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader));
+        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
 
         let root = syntax
             .tree()
