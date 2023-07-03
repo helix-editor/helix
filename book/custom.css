@@ -1,3 +1,22 @@
+.sidebar .sidebar-scrollbox {
+  padding: 0;
+}
+
+.chapter {
+  margin: 0.25rem 0;
+}
+
+.chapter li.chapter-item {
+  line-height: initial;
+  margin: 0;
+  padding: 1rem 1.5rem;
+}
+
+.chapter .section li.chapter-item {
+  line-height: inherit;
+  padding: .5rem .5rem 0 .5rem;
+}
+
 pre code.hljs {
   display: block;
   overflow-x: auto;
