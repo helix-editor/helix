@@ -269,6 +269,10 @@ These scopes are used for theming the editor interface:
 | ---                               | ---                                                                                            |
 | `ui.background`                   |                                                                                                |
 | `ui.background.separator`         | Picker separator below input line                                                              |
+| `ui.bufferline.active`            |                                                                                                |
+| `ui.bufferline.active.modified`   |                                                                                                |
+| `ui.bufferline.inactive`          |                                                                                                |
+| `ui.bufferline.inactive.modified` |                                                                                                |
 | `ui.cursor`                       |                                                                                                |
 | `ui.cursor.normal`                |                                                                                                |
 | `ui.cursor.insert`                |                                                                                                |
