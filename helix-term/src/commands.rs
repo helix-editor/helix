@@ -3717,7 +3717,7 @@ fn yank(cx: &mut Context) {
     let msg = format!(
         "yanked {} selection(s) to register {}",
         values.len(),
-        cx.register.as_ref().unwrap_or(&Register::Yank).as_ref()
+        cx.register.unwrap_or(Register::Yank)
     );
 
     cx.editor
@@ -3746,7 +3746,7 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: Register) {
     let msg = format!(
         "joined and yanked {} selection(s) to register {}",
         selection.len(),
-        register.as_ref(),
+        register,
     );
 
     editor.registers.push(register, vec![joined]);
@@ -5552,12 +5552,12 @@ fn record_macro(cx: &mut Context) {
             .collect::<String>();
         cx.editor.registers.push(register, vec![s]);
         cx.editor
-            .set_status(format!("Recorded to register [{}]", register.as_ref()));
+            .set_status(format!("Recorded to register [{}]", register));
     } else {
         let register = cx.register.take().unwrap_or(Register::Macro);
         cx.editor.macro_recording = Some((register, Vec::new()));
         cx.editor
-            .set_status(format!("Recording to register [{}]", register.as_ref()));
+            .set_status(format!("Recording to register [{}]", register));
     }
 }
 
@@ -5567,7 +5567,7 @@ fn replay_macro(cx: &mut Context) {
     if cx.editor.macro_replaying.contains(&register) {
         cx.editor.set_error(format!(
             "Cannot replay from register [{}] because already replaying from same register",
-            register.as_ref()
+            register
         ));
         return;
     }
@@ -5582,7 +5582,7 @@ fn replay_macro(cx: &mut Context) {
         }
     } else {
         cx.editor
-            .set_error(format!("Register [{}] empty", register.as_ref()));
+            .set_error(format!("Register [{}] empty", register));
         return;
     };
 
