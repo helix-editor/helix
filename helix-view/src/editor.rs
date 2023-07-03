@@ -5,6 +5,7 @@ use crate::{
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
+    register::{Register, Registers},
     theme::{self, Theme},
     tree::{self, Tree},
     view::ViewPosition,
@@ -40,7 +41,6 @@ use tokio::{
 use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
-pub use helix_core::register::Registers;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig, SoftWrap},
@@ -873,10 +873,10 @@ pub struct Editor {
     pub write_count: usize,
 
     pub count: Option<std::num::NonZeroUsize>,
-    pub selected_register: Option<char>,
+    pub selected_register: Option<Register>,
     pub registers: Registers,
-    pub macro_recording: Option<(char, Vec<KeyEvent>)>,
-    pub macro_replaying: Vec<char>,
+    pub macro_recording: Option<(Register, Vec<KeyEvent>)>,
+    pub macro_replaying: Vec<Register>,
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
     pub diff_providers: DiffProviderRegistry,

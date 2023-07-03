@@ -18,7 +18,6 @@ pub mod movement;
 pub mod object;
 pub mod path;
 mod position;
-pub mod register;
 pub mod search;
 pub mod selection;
 pub mod shellwords;
