@@ -552,7 +552,16 @@ impl EditorView {
                 bufferline_inactive
             };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+            let text = format!(
+                " {}{} ",
+                fname,
+                if doc.is_modified() {
+                    editor.config().file_modification_indicator.to_string()
+                } else {
+                    "".to_string()
+                }
+            );
+
             let used_width = viewport.x.saturating_sub(x);
             let rem_width = surface.area.width.saturating_sub(used_width);
 

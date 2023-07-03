@@ -288,6 +288,8 @@ pub struct Config {
     pub workspace_lsp_roots: Vec<PathBuf>,
     /// Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`.
     pub default_line_ending: LineEndingConfig,
+    /// String to display when the file is modified. Defaults to `[+]`.
+    pub file_modification_indicator: String,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -819,6 +821,7 @@ impl Default for Config {
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
+            file_modification_indicator: String::from("[+]"),
         }
     }
 }
