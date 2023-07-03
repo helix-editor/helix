@@ -7,3 +7,105 @@ pre code.hljs {
 code.hljs {
   padding: 3px 5px;
 }
+
+.colibri {
+  --bg: #3b224c;
+  --fg: #bcbdd0;
+  --heading-fg: #fff;
+
+  --sidebar-bg: #281733;
+  --sidebar-fg: #c8c9db;
+  --sidebar-non-existent: #505274;
+  --sidebar-active: #a4a0e8;
+  --sidebar-spacer: #2d334f;
+
+  --scrollbar: var(--sidebar-fg);
+
+  --icons: #737480;
+  --icons-hover: #b7b9cc;
+
+  /* --links: #a4a0e8; */
+  --links: #ECCDBA;
+
+  --inline-code-color: hsl(48.7, 7.8%, 70%);
+
+  --theme-popup-bg: #161923;
+  --theme-popup-border: #737480;
+  --theme-hover: rgba(0, 0, 0, .2);
+
+  --quote-bg: #281733;
+  --quote-border: hsl(226, 15%, 22%);
+
+  --table-border-color: hsl(226, 23%, 76%);
+  --table-header-bg: hsla(226, 23%, 31%, 0);
+  --table-alternate-bg: hsl(226, 23%, 14%);
+  --table-border-line: hsla(201deg, 20%, 92%, 0.2);
+
+  --searchbar-border-color: #aaa;
+  --searchbar-bg: #aeaec6;
+  --searchbar-fg: #000;
+  --searchbar-shadow-color: #aaa;
+  --searchresults-header-fg: #5f5f71;
+  --searchresults-border-color: #5c5c68;
+  --searchresults-li-bg: #242430;
+  --search-mark-bg: #acff5;
+}
+
+/* highlight.js theme, :where() is used to avoid increasing specificity */
+
+:where(.colibri) .hljs {
+  background: #2f1e2e;
+  color: #a39e9b;
+}
+
+:where(.colibri) .hljs-comment,
+:where(.colibri) .hljs-quote {
+  color: #8d8687;
+}
+
+:where(.colibri) .hljs-link,
+:where(.colibri) .hljs-meta,
+:where(.colibri) .hljs-name,
+:where(.colibri) .hljs-regexp,
+:where(.colibri) .hljs-selector-class,
+:where(.colibri) .hljs-selector-id,
+:where(.colibri) .hljs-tag,
+:where(.colibri) .hljs-template-variable,
+:where(.colibri) .hljs-variable {
+  color: #ef6155;
+}
+
+:where(.colibri) .hljs-built_in,
+:where(.colibri) .hljs-deletion,
+:where(.colibri) .hljs-literal,
+:where(.colibri) .hljs-number,
+:where(.colibri) .hljs-params,
+:where(.colibri) .hljs-type {
+  color: #f99b15;
+}
+
+:where(.colibri) .hljs-attribute,
+:where(.colibri) .hljs-section,
+:where(.colibri) .hljs-title {
+  color: #fec418;
+}
+
+:where(.colibri) .hljs-addition,
+:where(.colibri) .hljs-bullet,
+:where(.colibri) .hljs-string,
+:where(.colibri) .hljs-symbol {
+  color: #48b685;
+}
+
+:where(.colibri) .hljs-keyword,
+:where(.colibri) .hljs-selector-tag {
+  color: #815ba4;
+}
+
+:where(.colibri) .hljs-emphasis {
+  font-style: italic;
+}
+
+:where(.colibri) .hljs-strong {
+  font-weight: 700;
+}
