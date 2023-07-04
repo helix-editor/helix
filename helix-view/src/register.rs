@@ -244,14 +244,26 @@ impl Registers {
         }
     }
 
-    fn prepare_infobox<S: AsRef<str>>(title: S, mut body: Vec<(String, &str)>) -> Info {
-        // Show only the first line:
-        body.iter_mut()
-            .for_each(|(_, value)| *value = value.lines().next().unwrap_or_default());
-        let mut infobox = Info::new(title.as_ref(), &body);
-        // Line could be very long
-        infobox.width = 30;
-        infobox
+    fn prepare_infobox<S: AsRef<str>>(title: S, body: Vec<(String, &str)>) -> Info {
+        let body: Vec<(String, String)> = body
+            .into_iter()
+            .map(|(key, value)| {
+                let mut line_iter = value.lines();
+                let Some(first_line) = line_iter.next() else {
+                    return (key, String::new())
+                };
+
+                (
+                    key,
+                    if first_line.len() > 30 || line_iter.next().is_some() {
+                        format!("{}...", first_line)
+                    } else {
+                        value.to_string()
+                    },
+                )
+            })
+            .collect();
+        Info::new(title.as_ref(), &body)
     }
 
     fn list_writable(&self) -> Vec<&Register> {
