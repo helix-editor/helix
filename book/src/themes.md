@@ -1,6 +1,6 @@
 # Themes
 
-To use a theme add `theme = "<name>"` to the top of your [`config.toml`](./configuration.md) file, or select it during runtime using `:theme <name>`.
+To use a theme add `theme = "<name>"` to the top of your [`config.toml`](./configuration.md) file, or select it during runtime using `:theme <name>`. To synchronize with your desktop color scheme preference `theme-light` and `theme-dark` can be used.
 
 ## Creating a theme
 

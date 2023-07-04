@@ -61,6 +61,8 @@ toml = "0.7"
 
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+zbus = { version = "3.13" }
+zvariant = { version = "3.13" }
 
 # ripgrep for global search
 grep-regex = "0.1.11"

@@ -9,6 +9,44 @@ use std::fs;
 use std::io::Error as IOError;
 use toml::de::Error as TomlError;
 
+/// The system's preferred color scheme
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ColorScheme {
+    NoPreference,
+    PreferDark,
+    PreferLight,
+}
+
+fn get_color_scheme() -> Option<ColorScheme> {
+    let connection = zbus::blocking::Connection::session();
+    if connection.is_err() {
+        return None;
+    }
+
+    let reply = connection.unwrap().call_method(
+        Some("org.freedesktop.portal.Desktop"),
+        "/org/freedesktop/portal/desktop",
+        Some("org.freedesktop.portal.Settings"),
+        "Read",
+        &("org.freedesktop.appearance", "color-scheme"),
+    );
+
+    if let Ok(reply) = &reply {
+        let theme = reply.body::<zvariant::Value>();
+        if theme.is_err() {
+            return None;
+        }
+        let theme = theme.unwrap().downcast::<u32>();
+        match theme.unwrap() {
+            1 => Some(ColorScheme::PreferDark),
+            2 => Some(ColorScheme::PreferLight),
+            _ => Some(ColorScheme::NoPreference),
+        }
+    } else {
+        None
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Config {
     pub theme: Option<String>,
@@ -20,6 +58,8 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
     pub theme: Option<String>,
+    pub theme_light: Option<String>,
+    pub theme_dark: Option<String>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
 }
@@ -64,6 +104,7 @@ impl Config {
             global.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
         let local_config: Result<ConfigRaw, ConfigLoadError> =
             local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
+        let color_scheme = get_color_scheme();
         let res = match (global_config, local_config) {
             (Ok(global), Ok(local)) => {
                 let mut keys = keymap::default();
@@ -85,7 +126,12 @@ impl Config {
                 };
 
                 Config {
-                    theme: local.theme.or(global.theme),
+                    theme: match color_scheme {
+                        Some(ColorScheme::NoPreference) => local.theme_light.or(global.theme_light),
+                        Some(ColorScheme::PreferLight) => local.theme_light.or(global.theme_light),
+                        Some(ColorScheme::PreferDark) => local.theme_dark.or(global.theme_dark),
+                        None => local.theme.or(global.theme),
+                    },
                     keys,
                     editor,
                 }
@@ -101,7 +147,12 @@ impl Config {
                     merge_keys(&mut keys, keymap);
                 }
                 Config {
-                    theme: config.theme,
+                    theme: match color_scheme {
+                        Some(ColorScheme::NoPreference) => config.theme_light,
+                        Some(ColorScheme::PreferLight) => config.theme_light,
+                        Some(ColorScheme::PreferDark) => config.theme_dark,
+                        None => config.theme,
+                    },
                     keys,
                     editor: config.editor.map_or_else(
                         || Ok(helix_view::editor::Config::default()),
