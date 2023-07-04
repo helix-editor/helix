@@ -173,7 +173,7 @@ impl Registers {
 
 // Presentation methods
 impl Registers {
-    pub fn display_recent(&self) -> Vec<(String, &str)> {
+    pub fn display_recent(&self) -> Vec<(String, String)> {
         let mut body = Vec::with_capacity(self.simple.len() + self.nested.len());
         for register in self.list_writable() {
             body.push((
@@ -181,7 +181,7 @@ impl Registers {
                 self.newest(register)
                     .expect("Register should exist")
                     .first()
-                    .map(|string_ref| string_ref.as_str())
+                    .map(String::to_string)
                     .unwrap_or_default(),
             ))
         }
@@ -198,7 +198,16 @@ impl Registers {
             "Select registers",
             self.list_writable()
                 .into_iter()
-                .map(|register| (register.to_string(), ""))
+                .map(|register| {
+                    (
+                        register.to_string(),
+                        format!(
+                            "({})",
+                            self.size(register)
+                                .expect("Writable register should have a size.")
+                        ),
+                    )
+                })
                 .collect(),
         )
     }
@@ -211,26 +220,23 @@ impl Registers {
                 prepare_history_infobox(register, &self.nested, |(index, values)| {
                     (
                         index,
-                        values
-                            .first()
-                            .map(|string_ref| string_ref.as_str())
-                            .unwrap_or_default(),
+                        values.first().map(String::to_string).unwrap_or_default(),
                     )
                 })
             }
             RegisterClass::Simple => {
-                prepare_history_infobox(register, &self.simple, |(i, s)| (i, s.as_str()))
+                prepare_history_infobox(register, &self.simple, |(i, s)| (i, s.to_string()))
             }
             RegisterClass::NonWritable => unreachable!(),
         };
 
         return Self::prepare_infobox(format!("Register: {}", register), body);
 
-        fn prepare_history_infobox<'a, 'b, T, F: Fn((String, &'b T)) -> (String, &'b str)>(
-            register_key: &'a Register,
-            register_map: &'b HashMap<Register, Vec<T>>,
+        fn prepare_history_infobox<T, F: Fn((String, &T)) -> (String, String)>(
+            register_key: &Register,
+            register_map: &HashMap<Register, Vec<T>>,
             values_map_fn: F,
-        ) -> Vec<(String, &'b str)> {
+        ) -> Vec<(String, String)> {
             register_map
                 .get(register_key)
                 .expect("Register should exist")
@@ -244,23 +250,20 @@ impl Registers {
         }
     }
 
-    fn prepare_infobox<S: AsRef<str>>(title: S, body: Vec<(String, &str)>) -> Info {
+    fn prepare_infobox<S: AsRef<str>>(title: S, body: Vec<(String, String)>) -> Info {
         let body: Vec<(String, String)> = body
             .into_iter()
-            .map(|(key, value)| {
+            .map(|(key, mut value)| {
                 let mut line_iter = value.lines();
                 let Some(first_line) = line_iter.next() else {
                     return (key, String::new())
                 };
 
-                (
-                    key,
-                    if first_line.len() > 30 || line_iter.next().is_some() {
-                        format!("{}...", first_line)
-                    } else {
-                        value.to_string()
-                    },
-                )
+                if first_line.len() > 30 || line_iter.next().is_some() {
+                    value = format!("{}...", first_line)
+                }
+
+                (key, value)
             })
             .collect();
         Info::new(title.as_ref(), &body)
