@@ -1,42 +1,17 @@
 use crate::info::Info;
-use std::{collections::HashMap, fmt::Display, str::FromStr};
-use strum_macros::{AsRefStr, EnumString};
+use derive_more::{Display, From};
+use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, AsRefStr)]
-pub enum Register {
-    #[strum(serialize = "\"")]
-    Yank,
-    #[strum(serialize = "/")]
-    Search,
-    #[strum(serialize = ":")]
-    Command,
-    #[strum(serialize = "_")]
-    BlackHole,
-    #[strum(serialize = "@")]
-    Macro,
-    #[strum(serialize = "#")]
-    SelectionIndices,
-    #[strum(serialize = "|")]
-    Pipe,
-    UserDefined(char),
-}
+pub const YANK: Register = Register('"');
+pub const SEARCH: Register = Register('/');
+pub const COMMAND: Register = Register(':');
+pub const BLACKHOLE: Register = Register('_');
+pub const MACRO: Register = Register('@');
+pub const SELECTION_INDICES: Register = Register('#');
+pub const PIPE: Register = Register('|');
 
-impl From<char> for Register {
-    fn from(ch: char) -> Self {
-        Register::from_str(&ch.to_string()).unwrap_or(Register::UserDefined(ch))
-    }
-}
-
-impl Display for Register {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let string = match self {
-            Register::UserDefined(ch) => ch.to_string(),
-            other => AsRef::<str>::as_ref(&other).to_string(),
-        };
-
-        write!(f, "{}", string)
-    }
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Display)]
+pub struct Register(char);
 
 enum RegisterClass {
     Nested,
@@ -47,11 +22,9 @@ enum RegisterClass {
 impl From<&Register> for RegisterClass {
     fn from(register: &Register) -> Self {
         match register {
-            Register::Yank | Register::Macro => RegisterClass::Nested,
-            Register::Search | Register::Command | Register::Pipe | Register::UserDefined(_) => {
-                RegisterClass::Simple
-            }
-            Register::SelectionIndices | Register::BlackHole => RegisterClass::NonWritable,
+            &YANK | &MACRO => RegisterClass::Nested,
+            &SELECTION_INDICES | &BLACKHOLE => RegisterClass::NonWritable,
+            _ => RegisterClass::Simple,
         }
     }
 }
