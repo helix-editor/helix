@@ -1,5 +1,6 @@
 use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
+use helix_view::editor::registers::EditorRegisters;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use helix_view::register::Register;
@@ -221,7 +222,8 @@ impl Prompt {
         self.recalculate_completion(cx.editor);
     }
 
-    pub fn insert_str(&mut self, s: &str, editor: &Editor) {
+    pub fn insert_str<S: AsRef<str>>(&mut self, s: S, editor: &Editor) {
+        let s = s.as_ref();
         self.line.insert_str(self.cursor, s);
         self.cursor += s.len();
         self.recalculate_completion(editor);
@@ -300,8 +302,7 @@ impl Prompt {
 
         let Some(values) = cx
             .editor
-            .registers
-            .values(register)
+            .register_values(register)
             .filter(|values| !values.is_empty())
         else {
             return;
@@ -464,8 +465,7 @@ impl Prompt {
             match self
                 .register
                 .as_ref()
-                .and_then(|register| cx.editor.registers.newest_singular(register))
-                .map(|entry| entry.into())
+                .and_then(|register| cx.editor.register_newest_value(register))
             {
                 Some(value) => (value, true),
                 None => (Cow::from(""), false),
@@ -565,7 +565,7 @@ impl Component for Prompt {
                     let last_item: Cow<str> = self
                         .register
                         .as_ref()
-                        .and_then(|register| cx.editor.registers.newest_singular(register))
+                        .and_then(|register| cx.editor.register_newest_value(register))
                         .map(|entry| entry.to_string().into())
                         .unwrap_or_else(|| Cow::from(""));
 
@@ -576,9 +576,7 @@ impl Component for Prompt {
                         if last_item != self.line {
                             // store in history
                             if let Some(register) = self.register {
-                                cx.editor
-                                    .registers
-                                    .push_singular(register, self.line.clone());
+                                cx.editor.register_push_value(register, self.line.clone());
                             };
                         }
 
@@ -621,8 +619,7 @@ impl Component for Prompt {
                     prompt.insert_str(
                         context
                             .editor
-                            .registers
-                            .newest_singular(&Register::from(ch))
+                            .register_newest_value(&Register::from_char(ch))
                             .map_or(Default::default(), |value| value),
                         context.editor,
                     );

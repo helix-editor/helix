@@ -1,3 +1,6 @@
+pub mod focus;
+pub mod registers;
+
 use crate::{
     align_view,
     clipboard::{get_clipboard_provider, ClipboardProvider},

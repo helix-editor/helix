@@ -34,7 +34,11 @@ use helix_core::{
 use helix_view::{
     clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, CompleteAction},
+    editor::{
+        focus::EditorFocus,
+        registers::{context_register, EditorRegisters},
+        Action, CompleteAction,
+    },
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -1850,12 +1854,17 @@ fn search_impl(
 fn search_completions(cx: &mut Context, register: &Register) -> Vec<String> {
     let mut items = cx
         .editor
-        .registers
-        .values(register)
-        .map_or(Vec::new(), |values| values.iter().take(200).collect());
+        .register_values(register)
+        .map_or(Vec::new(), |values| {
+            values
+                .iter()
+                .map(|value| value.to_owned())
+                .take(200)
+                .collect()
+        });
     items.sort_unstable();
     items.dedup();
-    items.into_iter().cloned().collect()
+    items
 }
 
 fn search(cx: &mut Context) {
@@ -1916,7 +1925,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
     let scrolloff = config.scrolloff;
     let (_, doc) = current!(cx.editor);
     let registers = &cx.editor.registers;
-    if let Some(query) = registers.newest_singular(&register::SEARCH) {
+    if let Some(query) = registers.newest_value(&register::SEARCH) {
         let contents = doc.text().slice(..).to_string();
         let search_config = &config.search;
         let case_insensitive = if search_config.smart_case {
@@ -1981,7 +1990,7 @@ fn search_selection(cx: &mut Context) {
 }
 
 fn make_search_word_bounded(cx: &mut Context) {
-    let Some(regex) = cx.editor.registers.newest_singular(&register::SEARCH) else {
+    let Some(regex) = cx.editor.register_newest_value(&register::SEARCH) else {
         return;
     };
 
@@ -1999,7 +2008,7 @@ fn make_search_word_bounded(cx: &mut Context) {
     if !start_anchored {
         new_regex.push_str("\\b");
     }
-    new_regex.push_str(regex);
+    new_regex.push_str(&regex);
     if !end_anchored {
         new_regex.push_str("\\b");
     }
@@ -2009,7 +2018,7 @@ fn make_search_word_bounded(cx: &mut Context) {
 
 fn update_search_register(cx: &mut Context, regex: String) {
     let msg = format!("register '{}' set to '{}'", register::SEARCH, &regex);
-    cx.editor.registers.push_singular(register::SEARCH, regex);
+    cx.editor.register_push_value(register::SEARCH, regex);
     cx.editor.set_status(msg);
 }
 
@@ -2318,22 +2327,27 @@ enum Operation {
 }
 
 fn delete_selection_impl(cx: &mut Context, op: Operation) {
-    let (view, doc) = current!(cx.editor);
-
-    let selection = doc.selection(view.id);
-
     if cx.register != Some(register::BLACKHOLE) {
         // first yank the selection
-        let text = doc.text().slice(..);
-        let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-        let register = cx.register.unwrap_or(register::YANK);
-        cx.editor.registers.push(register, values);
+        cx.editor.register_push_values(
+            cx.register.unwrap_or(register::YANK),
+            cx.editor
+                .focused_selection()
+                .fragments(cx.editor.focused_document().text().slice(..))
+                .map(Cow::into_owned)
+                .collect(),
+        );
     };
 
     // then delete
-    let transaction =
-        Transaction::delete_by_selection(doc.text(), selection, |range| (range.from(), range.to()));
-    doc.apply(&transaction, view.id);
+    let transaction = Transaction::delete_by_selection(
+        cx.editor.focused_document().text(),
+        cx.editor.focused_selection(),
+        |range| (range.from(), range.to()),
+    );
+
+    cx.editor
+        .apply_transaction_to_focused_view_doc(&transaction);
 
     match op {
         Operation::Delete => {
@@ -3714,7 +3728,7 @@ fn yank(cx: &mut Context) {
 
     cx.editor
         .registers
-        .push(cx.register.unwrap_or(register::YANK), values);
+        .push_values(cx.register.unwrap_or(register::YANK), values);
 
     cx.editor.set_status(msg);
     exit_select_mode(cx);
@@ -3741,7 +3755,7 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: Register) {
         register,
     );
 
-    editor.registers.push(register, vec![joined]);
+    editor.register_push_values(register, vec![joined]);
     editor.set_status(msg);
 }
 
@@ -3843,47 +3857,41 @@ enum Paste {
     Cursor,
 }
 
-fn paste_impl(
+fn new_paste_transaction(
     values: &[String],
-    doc: &mut Document,
-    view: &mut View,
+    doc: &Document,
+    view: &View,
     action: Paste,
     count: usize,
     mode: Mode,
-) {
+) -> Option<Transaction> {
     if values.is_empty() {
-        return;
+        return None;
     }
 
-    let repeat = std::iter::repeat(
-        // `values` is asserted to have at least one entry above.
-        values
-            .last()
-            .map(|value| Tendril::from(value.repeat(count)))
-            .unwrap(),
-    );
-
-    // if any of values ends with a line ending, it's linewise paste
-    let linewise = values
+    let is_linewise = values
         .iter()
         .any(|value| get_line_ending_of_str(value).is_some());
 
-    // Only compiled once.
-    static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());
-    let mut values = values
-        .iter()
-        .map(|value| REGEX.replace_all(value, doc.line_ending.as_str()))
-        .map(|value| Tendril::from(value.as_ref().repeat(count)))
-        .chain(repeat);
+    static LINE_ENDINGS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());
 
     let text = doc.text();
     let selection = doc.selection(view.id);
-
     let mut offset = 0;
     let mut ranges = SmallVec::with_capacity(selection.len());
+    let mut values = values
+        .iter()
+        .map(|value| LINE_ENDINGS_REGEX.replace_all(value, doc.line_ending.as_str()))
+        .map(|value| Tendril::from(value.as_ref().repeat(count)))
+        .chain(std::iter::repeat(Tendril::from(
+            values
+                .last()
+                .expect("Values should be non-empty.")
+                .repeat(count),
+        )));
 
     let mut transaction = Transaction::change_by_selection(text, selection, |range| {
-        let pos = match (action, linewise) {
+        let pos = match (action, is_linewise) {
             // paste linewise before
             (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
             // paste linewise after
@@ -3918,7 +3926,12 @@ fn paste_impl(
         transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
     }
 
-    doc.apply(&transaction, view.id);
+    Some(transaction)
+}
+
+fn apply_paste_transaction(editor: &mut Editor, transaction: &Transaction) {
+    let (view, doc) = current!(editor);
+    doc.apply(transaction, view.id);
     doc.append_changes_to_history(view);
 }
 
@@ -3928,8 +3941,12 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
         Mode::Insert | Mode::Select => Paste::Cursor,
         Mode::Normal => Paste::Before,
     };
-    let (view, doc) = current!(cx.editor);
-    paste_impl(&[contents], doc, view, paste, count, cx.editor.mode);
+    let (view, doc) = current_ref!(cx.editor);
+    if let Some(transaction) =
+        new_paste_transaction(&[contents], doc, view, paste, count, cx.editor.mode)
+    {
+        apply_paste_transaction(cx.editor, &transaction)
+    }
 }
 
 fn paste_clipboard_impl(
@@ -3941,7 +3958,11 @@ fn paste_clipboard_impl(
     let (view, doc) = current!(editor);
     match editor.clipboard_provider.get_contents(clipboard_type) {
         Ok(contents) => {
-            paste_impl(&[contents], doc, view, action, count, editor.mode);
+            if let Some(transaction) =
+                new_paste_transaction(&[contents], doc, view, action, count, editor.mode)
+            {
+                apply_paste_transaction(editor, &transaction)
+            }
             Ok(())
         }
         Err(e) => Err(e.context("Couldn't get system clipboard contents")),
@@ -3987,10 +4008,8 @@ fn paste_primary_clipboard_before(cx: &mut Context) {
 fn replace_with_yanked(cx: &mut Context) {
     let count = cx.count();
     let register = cx.register.unwrap_or(register::YANK);
-    let (view, doc) = current!(cx.editor);
-    let registers = &mut cx.editor.registers;
 
-    if let Some(values) = registers.newest(&register) {
+    if let Some(values) = cx.editor.register_newest_values(&register) {
         if !values.is_empty() {
             let repeat = std::iter::repeat(
                 values
@@ -4002,16 +4021,20 @@ fn replace_with_yanked(cx: &mut Context) {
                 .iter()
                 .map(|value| Tendril::from(&value.repeat(count)))
                 .chain(repeat);
-            let selection = doc.selection(view.id);
-            let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-                if !range.is_empty() {
-                    (range.from(), range.to(), Some(values.next().unwrap()))
-                } else {
-                    (range.from(), range.to(), None)
-                }
-            });
+            let selection = cx.editor.focused_selection();
+            let current_document = cx.editor.focused_document();
+            let transaction =
+                Transaction::change_by_selection(current_document.text(), selection, |range| {
+                    if !range.is_empty() {
+                        (range.from(), range.to(), Some(values.next().unwrap()))
+                    } else {
+                        (range.from(), range.to(), None)
+                    }
+                });
 
-            doc.apply(&transaction, view.id);
+            cx.editor
+                .apply_transaction_to_focused_view_doc(&transaction);
+
             exit_select_mode(cx);
         }
     }
@@ -4054,13 +4077,15 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
 }
 
 fn paste(cx: &mut Context, pos: Paste) {
-    let count = cx.count();
     let register = cx.register.unwrap_or(register::YANK);
-    let (view, doc) = current!(cx.editor);
-    let registers = &mut cx.editor.registers;
-
-    if let Some(values) = registers.newest(&register) {
-        paste_impl(values, doc, view, pos, count, cx.editor.mode);
+    if let Some(values) = cx.editor.register_newest_values(&register) {
+        let count = cx.count();
+        let (view, doc) = current_ref!(cx.editor);
+        if let Some(transaction) =
+            new_paste_transaction(&values, doc, view, pos, count, cx.editor.mode)
+        {
+            apply_paste_transaction(cx.editor, &transaction)
+        }
     }
 }
 
@@ -4813,7 +4838,7 @@ fn wonly(cx: &mut Context) {
 fn select_register(cx: &mut Context) {
     cx.editor.autoinfo = Some(cx.editor.registers.infobox());
     cx.on_next_key(move |cx, key_event| {
-        if let Some(register) = key_event.char().map(Register::from) {
+        if let Some(register) = key_event.char().map(Register::from_char) {
             cx.editor.autoinfo = None;
             cx.editor.selected_register = Some(register);
         }
@@ -4828,7 +4853,8 @@ fn select_register_history(cx: &mut Context) {
             return;
         }
 
-        if let Some(register) = key_event.char().and_then(|ch| Register::try_from(ch).ok()) {
+        if let Some(ch) = key_event.char(){
+            let register = Register::from_char(ch);
             cx.editor.autoinfo = Some(cx.editor.registers.register_history_infobox(&register));
 
             cx.on_next_key(move |cx, key_event| {
@@ -4842,10 +4868,10 @@ fn select_register_history(cx: &mut Context) {
                 };
 
                 // See documenation for register.register_history_infobox():
-                let index = (cx.editor.registers.size(&register).expect("Register should have been selected from an existing set.") - 1) 
+                let index = (cx.editor.register_size(&register).expect("Register should have been selected from an existing set.") - 1) 
                     - reversed_index as usize;
 
-                if let Err(index) = cx.editor.registers.set_newest(&register, index) {
+                if cx.editor.registers.set_newest(&register, index).is_err() {
                     return close_info_and_report_error(cx, format!("Index {} out of bounds.", index));
                 }
 
@@ -4865,9 +4891,9 @@ fn insert_register(cx: &mut Context) {
     cx.editor.autoinfo = Some(cx.editor.registers.infobox());
 
     cx.on_next_key(move |cx, key_event| {
-        if let Some(register) = key_event.char().map(Register::from) {
+        if let Some(ch) = key_event.char() {
             cx.editor.autoinfo = None;
-            cx.register = Some(register);
+            cx.register = Some(Register::from_char(ch));
             paste(cx, Paste::Cursor);
         }
     })
@@ -5515,7 +5541,7 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
     };
     let mut amount = sign * cx.count() as i64;
     // If the register is `#` then increase or decrease the `amount` by 1 per element
-    let increase_by = if cx.register == Some(register::SELECTION_INDICES) {
+    let increase_by = if cx.register == Some(context_register::SELECTION_INDICES) {
         sign
     } else {
         0
@@ -5578,7 +5604,7 @@ fn record_macro(cx: &mut Context) {
                 }
             })
             .collect::<String>();
-        cx.editor.registers.push(register, vec![s]);
+        cx.editor.register_push_values(register, vec![s]);
         cx.editor
             .set_status(format!("Recorded to register [{}]", register));
     } else {
@@ -5600,19 +5626,20 @@ fn replay_macro(cx: &mut Context) {
         return;
     }
 
-    let keys: Vec<KeyEvent> = if let Some([keys_str]) = cx.editor.registers.newest(&register) {
-        match helix_view::input::parse_macro(keys_str) {
-            Ok(keys) => keys,
-            Err(err) => {
-                cx.editor.set_error(format!("Invalid macro: {}", err));
-                return;
+    let keys: Vec<KeyEvent> =
+        if let Some([keys_str]) = cx.editor.register_newest_values(&register).as_deref() {
+            match helix_view::input::parse_macro(keys_str) {
+                Ok(keys) => keys,
+                Err(err) => {
+                    cx.editor.set_error(format!("Invalid macro: {}", err));
+                    return;
+                }
             }
-        }
-    } else {
-        cx.editor
-            .set_error(format!("Register [{}] empty", register));
-        return;
-    };
+        } else {
+            cx.editor
+                .set_error(format!("Register [{}] empty", register));
+            return;
+        };
 
     // Once the macro has been fully validated, it's marked as being under replay
     // to ensure we don't fall into infinite recursion.

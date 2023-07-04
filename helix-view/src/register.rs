@@ -1,19 +1,31 @@
+//! Editor/Context independent registers.
+
 use crate::info::Info;
-use derive_more::{Display, From};
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 pub const YANK: Register = Register('"');
 pub const SEARCH: Register = Register('/');
 pub const COMMAND: Register = Register(':');
 pub const BLACKHOLE: Register = Register('_');
 pub const MACRO: Register = Register('@');
-pub const SELECTION_INDICES: Register = Register('#');
 pub const PIPE: Register = Register('|');
 
 const HISTORY_LENGTH: usize = 10;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Register(char);
+
+impl Register {
+    pub const fn from_char(ch: char) -> Self {
+        Self(ch)
+    }
+}
+
+impl Display for Register {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", self.0)
+    }
+}
 
 enum RegisterClass {
     Nested,
@@ -25,7 +37,7 @@ impl From<&Register> for RegisterClass {
     fn from(register: &Register) -> Self {
         match register {
             &YANK | &MACRO => RegisterClass::Nested,
-            &SELECTION_INDICES | &BLACKHOLE => RegisterClass::NonWritable,
+            &BLACKHOLE => RegisterClass::NonWritable,
             _ => RegisterClass::Simple,
         }
     }
@@ -38,7 +50,7 @@ pub struct Registers {
 }
 
 impl Registers {
-    pub fn push(&mut self, register: Register, mut values: Vec<String>) {
+    pub fn push_values(&mut self, register: Register, mut values: Vec<String>) {
         match RegisterClass::from(&register) {
             RegisterClass::Nested => {
                 if let Some(register_values) = self.nested.get_mut(&register) {
@@ -115,7 +127,7 @@ impl Registers {
     }
 
     /// All contents for nested registers, simple returns a slice with only one value.
-    pub fn newest(&self, register: &Register) -> Option<&[String]> {
+    pub fn newest_values(&self, register: &Register) -> Option<&[String]> {
         match RegisterClass::from(register) {
             RegisterClass::Nested => self
                 .nested
@@ -131,11 +143,11 @@ impl Registers {
 
     /// First value in newest entry for nested registers.
     /// Newest value for simple registers.
-    pub fn newest_singular(&self, register: &Register) -> Option<&str> {
+    pub fn newest_value(&self, register: &Register) -> Option<&str> {
         match RegisterClass::from(register) {
             RegisterClass::NonWritable => None,
             _ => self
-                .newest(register)
+                .newest_values(register)
                 .and_then(|values| values.first())
                 .map(|value| value.as_str()),
         }
@@ -144,7 +156,7 @@ impl Registers {
     /// All values of the newest entry for nested registers and all values from simple registers.
     pub fn values(&self, register: &Register) -> Option<&[String]> {
         match RegisterClass::from(register) {
-            RegisterClass::Nested => self.newest(register),
+            RegisterClass::Nested => self.newest_values(register),
             RegisterClass::Simple => self
                 .simple
                 .get(register)
@@ -178,7 +190,7 @@ impl Registers {
         for register in self.list_writable() {
             body.push((
                 register.to_string(),
-                self.newest(register)
+                self.newest_values(register)
                     .expect("Register should exist")
                     .first()
                     .map(String::to_string)
