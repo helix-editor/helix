@@ -4823,10 +4823,20 @@ fn select_register(cx: &mut Context) {
 fn select_register_history(cx: &mut Context) {
     cx.editor.autoinfo = Some(cx.editor.registers.list_registers_infobox());
     cx.on_next_key(move |cx, key_event| {
+        if key_event.code == KeyCode::Esc {
+            cx.editor.autoinfo = None;
+            return;
+        }
+
         if let Some(register) = key_event.char().and_then(|ch| Register::try_from(ch).ok()) {
             cx.editor.autoinfo = Some(cx.editor.registers.register_history_infobox(&register));
 
             cx.on_next_key(move |cx, key_event| {
+                if key_event.code == KeyCode::Esc {
+                    cx.editor.autoinfo = None;
+                    return;
+                }
+
                 let Some(reversed_index) = key_event.char().and_then(|ch| ch.to_digit(10)) else {
                     return close_info_and_report_error(cx, format!("Expected an integer value, got: {}", key_event));
                 };
