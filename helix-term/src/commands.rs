@@ -434,6 +434,7 @@ impl MappableCommand {
         wclose, "Close window",
         wonly, "Close windows except current",
         select_register, "Select register",
+        select_register_history, "Select form register history",
         insert_register, "Insert register",
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
@@ -4825,6 +4826,37 @@ fn select_register(cx: &mut Context) {
             cx.editor.selected_register = Some(register);
         }
     })
+}
+
+fn select_register_history(cx: &mut Context) {
+    cx.editor.autoinfo = Some(cx.editor.registers.list_registers_infobox());
+    cx.on_next_key(move |cx, key_event| {
+        if let Some(register) = key_event.char().and_then(|ch| Register::try_from(ch).ok()) {
+            cx.editor.autoinfo = Some(cx.editor.registers.register_history_infobox(&register));
+
+            cx.on_next_key(move |cx, key_event| {
+                let Some(reversed_index) = key_event.char().and_then(|ch| ch.to_digit(10)) else {
+                    return close_info_and_report_error(cx, format!("Expected an integer value, got: {}", key_event));
+                };
+
+                // See documenation for register.register_history_infobox():
+                let index = (cx.editor.registers.size(&register).expect("Register should have been selected from an existing set.") - 1) 
+                    - reversed_index as usize;
+
+                if let Err(index) = cx.editor.registers.set_newest(&register, index) {
+                    return close_info_and_report_error(cx, format!("Index {} out of bounds.", index));
+                }
+
+                cx.editor.autoinfo = None;
+                cx.editor.selected_register = Some(register);
+            });
+        }
+    })
+}
+
+fn close_info_and_report_error(cx: &mut Context, message: String) {
+    cx.editor.set_error(message);
+    cx.editor.autoinfo = None;
 }
 
 fn insert_register(cx: &mut Context) {
