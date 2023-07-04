@@ -61,39 +61,40 @@ Normal mode is the default mode when you launch helix. Return to it from other m
 
 ### Changes
 
-| Key         | Description                                                          | Command                   |
-| -----       | -----------                                                          | -------                   |
-| `r`         | Replace with a character                                             | `replace`                 |
-| `R`         | Replace with yanked text                                             | `replace_with_yanked`     |
-| `~`         | Switch case of the selected text                                     | `switch_case`             |
-| `` ` ``     | Set the selected text to lower case                                  | `switch_to_lowercase`     |
-| `` Alt-` `` | Set the selected text to upper case                                  | `switch_to_uppercase`     |
-| `i`         | Insert before selection                                              | `insert_mode`             |
-| `a`         | Insert after selection (append)                                      | `append_mode`             |
-| `I`         | Insert at the start of the line                                      | `insert_at_line_start`    |
-| `A`         | Insert at the end of the line                                        | `insert_at_line_end`      |
-| `o`         | Open new line below selection                                        | `open_below`              |
-| `O`         | Open new line above selection                                        | `open_above`              |
-| `.`         | Repeat last insert                                                   | N/A                       |
-| `u`         | Undo change                                                          | `undo`                    |
-| `U`         | Redo change                                                          | `redo`                    |
-| `Alt-u`     | Move backward in history                                             | `earlier`                 |
-| `Alt-U`     | Move forward in history                                              | `later`                   |
-| `y`         | Yank selection                                                       | `yank`                    |
-| `p`         | Paste after selection                                                | `paste_after`             |
-| `P`         | Paste before selection                                               | `paste_before`            |
-| `"` `<reg>` | Select a register to yank to or paste from                           | `select_register`         |
-| `>`         | Indent selection                                                     | `indent`                  |
-| `<`         | Unindent selection                                                   | `unindent`                |
-| `=`         | Format selection (currently nonfunctional/disabled) (**LSP**)        | `format_selections`       |
-| `d`         | Delete selection                                                     | `delete_selection`        |
-| `Alt-d`     | Delete selection, without yanking                                    | `delete_selection_noyank` |
-| `c`         | Change selection (delete and enter insert mode)                      | `change_selection`        |
-| `Alt-c`     | Change selection (delete and enter insert mode, without yanking)     | `change_selection_noyank` |
-| `Ctrl-a`    | Increment object (number) under cursor                               | `increment`               |
-| `Ctrl-x`    | Decrement object (number) under cursor                               | `decrement`               |
-| `Q`         | Start/stop macro recording to the selected register (experimental)   | `record_macro`            |
-| `q`         | Play back a recorded macro from the selected register (experimental) | `replay_macro`            |
+| Key                       | Description                                                          | Command                   |
+| -----                     | -----------                                                          | -------                   |
+| `r`                       | Replace with a character                                             | `replace`                 |
+| `R`                       | Replace with yanked text                                             | `replace_with_yanked`     |
+| `~`                       | Switch case of the selected text                                     | `switch_case`             |
+| `` ` ``                   | Set the selected text to lower case                                  | `switch_to_lowercase`     |
+| `` Alt-` ``               | Set the selected text to upper case                                  | `switch_to_uppercase`     |
+| `i`                       | Insert before selection                                              | `insert_mode`             |
+| `a`                       | Insert after selection (append)                                      | `append_mode`             |
+| `I`                       | Insert at the start of the line                                      | `insert_at_line_start`    |
+| `A`                       | Insert at the end of the line                                        | `insert_at_line_end`      |
+| `o`                       | Open new line below selection                                        | `open_below`              |
+| `O`                       | Open new line above selection                                        | `open_above`              |
+| `.`                       | Repeat last insert                                                   | N/A                       |
+| `u`                       | Undo change                                                          | `undo`                    |
+| `U`                       | Redo change                                                          | `redo`                    |
+| `Alt-u`                   | Move backward in history                                             | `earlier`                 |
+| `Alt-U`                   | Move forward in history                                              | `later`                   |
+| `y`                       | Yank selection                                                       | `yank`                    |
+| `p`                       | Paste after selection                                                | `paste_after`             |
+| `P`                       | Paste before selection                                               | `paste_before`            |
+| `"` `<reg>`               | Select a register to yank to or paste from                           | `select_register`         |
+| `Alt-"` `<reg>` `<index>` | Select register value from its history.                              | `select_register_history` |
+| `>`                       | Indent selection                                                     | `indent`                  |
+| `<`                       | Unindent selection                                                   | `unindent`                |
+| `=`                       | Format selection (currently nonfunctional/disabled) (**LSP**)        | `format_selections`       |
+| `d`                       | Delete selection                                                     | `delete_selection`        |
+| `Alt-d`                   | Delete selection, without yanking                                    | `delete_selection_noyank` |
+| `c`                       | Change selection (delete and enter insert mode)                      | `change_selection`        |
+| `Alt-c`                   | Change selection (delete and enter insert mode, without yanking)     | `change_selection_noyank` |
+| `Ctrl-a`                  | Increment object (number) under cursor                               | `increment`               |
+| `Ctrl-x`                  | Decrement object (number) under cursor                               | `decrement`               |
+| `Q`                       | Start/stop macro recording to the selected register (experimental)   | `record_macro`            |
+| `q`                       | Play back a recorded macro from the selected register (experimental) | `replay_macro`            |
 
 #### Shell
 
