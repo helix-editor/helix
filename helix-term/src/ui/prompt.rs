@@ -3,7 +3,6 @@ use crate::{alt, ctrl, key, shift, ui};
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use helix_view::register::Register;
-use std::str::FromStr;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
 use tui::widgets::{Block, Borders, Widget};
@@ -620,16 +619,14 @@ impl Component for Prompt {
                     .collect();
                 self.next_char_handler = Some(Box::new(|prompt, ch, context| {
                     // IMPROVEMENT: add error handling when register isn't found.
-                    if let Ok(register) = Register::from_str(&ch.to_string()) {
-                        prompt.insert_str(
-                            context
-                                .editor
-                                .registers
-                                .newest_singular(&register)
-                                .map_or(Default::default(), |value| value),
-                            context.editor,
-                        );
-                    }
+                    prompt.insert_str(
+                        context
+                            .editor
+                            .registers
+                            .newest_singular(&Register::from(ch))
+                            .map_or(Default::default(), |value| value),
+                        context.editor,
+                    );
                 }));
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
                 return EventResult::Consumed(None);

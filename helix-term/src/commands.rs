@@ -38,7 +38,7 @@ use helix_view::{
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
-    register::Register,
+    register::{self, Register},
     tree,
     view::View,
     Document, DocumentId, Editor, ViewId,
@@ -63,7 +63,7 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use futures_util::{stream::FuturesUnordered, StreamExt, TryStreamExt};
-use std::{collections::HashMap, convert::TryFrom, fmt, future::Future};
+use std::{collections::HashMap, fmt, future::Future};
 use std::{collections::HashSet, num::NonZeroUsize};
 
 use std::{
@@ -1696,7 +1696,7 @@ fn select_all(cx: &mut Context) {
 }
 
 fn select_regex(cx: &mut Context) {
-    let register = cx.register.unwrap_or(Register::Search);
+    let register = cx.register.unwrap_or(register::SEARCH);
     ui::regex_prompt(
         cx,
         "select:".into(),
@@ -1718,7 +1718,7 @@ fn select_regex(cx: &mut Context) {
 }
 
 fn split_selection(cx: &mut Context) {
-    let register = cx.register.unwrap_or(Register::Search);
+    let register = cx.register.unwrap_or(register::SEARCH);
     ui::regex_prompt(
         cx,
         "split:".into(),
@@ -1866,7 +1866,7 @@ fn rsearch(cx: &mut Context) {
 }
 
 fn searcher(cx: &mut Context, direction: Direction) {
-    let register = cx.register.unwrap_or(Register::Search);
+    let register = cx.register.unwrap_or(register::SEARCH);
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
     let wrap_around = config.search.wrap_around;
@@ -1915,7 +1915,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
     let scrolloff = config.scrolloff;
     let (_, doc) = current!(cx.editor);
     let registers = &cx.editor.registers;
-    if let Some(query) = registers.newest_singular(&Register::Search) {
+    if let Some(query) = registers.newest_singular(&register::SEARCH) {
         let contents = doc.text().slice(..).to_string();
         let search_config = &config.search;
         let case_insensitive = if search_config.smart_case {
@@ -1980,7 +1980,7 @@ fn search_selection(cx: &mut Context) {
 }
 
 fn make_search_word_bounded(cx: &mut Context) {
-    let Some(regex) = cx.editor.registers.newest_singular(&Register::Search) else {
+    let Some(regex) = cx.editor.registers.newest_singular(&register::SEARCH) else {
         return;
     };
 
@@ -2007,12 +2007,8 @@ fn make_search_word_bounded(cx: &mut Context) {
 }
 
 fn update_search_register(cx: &mut Context, regex: String) {
-    let msg = format!(
-        "register '{}' set to '{}'",
-        Register::Search.as_ref(),
-        &regex
-    );
-    cx.editor.registers.push_singular(Register::Search, regex);
+    let msg = format!("register '{}' set to '{}'", register::SEARCH, &regex);
+    cx.editor.registers.push_singular(register::SEARCH, regex);
     cx.editor.set_status(msg);
 }
 
@@ -2057,7 +2053,7 @@ fn global_search(cx: &mut Context) {
     let smart_case = config.search.smart_case;
     let file_picker_config = config.file_picker.clone();
 
-    let register = cx.register.unwrap_or(Register::Search);
+    let register = cx.register.unwrap_or(register::SEARCH);
 
     let completions = search_completions(cx, &register);
     ui::regex_prompt(
@@ -2325,11 +2321,11 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
 
     let selection = doc.selection(view.id);
 
-    if cx.register != Some(Register::BlackHole) {
+    if cx.register != Some(register::BLACKHOLE) {
         // first yank the selection
         let text = doc.text().slice(..);
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-        let register = cx.register.unwrap_or(Register::Yank);
+        let register = cx.register.unwrap_or(register::YANK);
         cx.editor.registers.push(register, values);
     };
 
@@ -2400,7 +2396,7 @@ fn delete_selection(cx: &mut Context) {
 }
 
 fn delete_selection_noyank(cx: &mut Context) {
-    cx.register = Some(Register::BlackHole);
+    cx.register = Some(register::BLACKHOLE);
     delete_selection_impl(cx, Operation::Delete);
 }
 
@@ -2409,7 +2405,7 @@ fn change_selection(cx: &mut Context) {
 }
 
 fn change_selection_noyank(cx: &mut Context) {
-    cx.register = Some(Register::BlackHole);
+    cx.register = Some(register::BLACKHOLE);
     delete_selection_impl(cx, Operation::Change);
 }
 
@@ -3712,12 +3708,12 @@ fn yank(cx: &mut Context) {
     let msg = format!(
         "yanked {} selection(s) to register {}",
         values.len(),
-        cx.register.unwrap_or(Register::Yank)
+        cx.register.unwrap_or(register::YANK)
     );
 
     cx.editor
         .registers
-        .push(cx.register.unwrap_or(Register::Yank), values);
+        .push(cx.register.unwrap_or(register::YANK), values);
 
     cx.editor.set_status(msg);
     exit_select_mode(cx);
@@ -3750,7 +3746,7 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: Register) {
 
 fn yank_joined(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    let register = cx.register.unwrap_or(Register::Yank);
+    let register = cx.register.unwrap_or(register::YANK);
     yank_joined_impl(cx.editor, line_ending.as_str(), register);
     exit_select_mode(cx);
 }
@@ -3989,7 +3985,7 @@ fn paste_primary_clipboard_before(cx: &mut Context) {
 
 fn replace_with_yanked(cx: &mut Context) {
     let count = cx.count();
-    let register = cx.register.unwrap_or(Register::Yank);
+    let register = cx.register.unwrap_or(register::YANK);
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
@@ -4058,7 +4054,7 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
 
 fn paste(cx: &mut Context, pos: Paste) {
     let count = cx.count();
-    let register = cx.register.unwrap_or(Register::Yank);
+    let register = cx.register.unwrap_or(register::YANK);
     let (view, doc) = current!(cx.editor);
     let registers = &mut cx.editor.registers;
 
@@ -4273,7 +4269,7 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
 
 fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
     // keep or remove selections matching regex
-    let register = cx.register.unwrap_or(Register::Search);
+    let register = cx.register.unwrap_or(register::SEARCH);
     ui::regex_prompt(
         cx,
         if remove { "remove:" } else { "keep:" }.into(),
@@ -4816,7 +4812,7 @@ fn wonly(cx: &mut Context) {
 fn select_register(cx: &mut Context) {
     cx.editor.autoinfo = Some(cx.editor.registers.infobox());
     cx.on_next_key(move |cx, key_event| {
-        if let Some(register) = key_event.char().and_then(|ch| Register::try_from(ch).ok()) {
+        if let Some(register) = key_event.char().map(Register::from) {
             cx.editor.autoinfo = None;
             cx.editor.selected_register = Some(register);
         }
@@ -4827,7 +4823,7 @@ fn insert_register(cx: &mut Context) {
     cx.editor.autoinfo = Some(cx.editor.registers.infobox());
 
     cx.on_next_key(move |cx, key_event| {
-        if let Some(register) = key_event.char().and_then(|ch| Register::try_from(ch).ok()) {
+        if let Some(register) = key_event.char().map(Register::from) {
             cx.editor.autoinfo = None;
             cx.register = Some(register);
             paste(cx, Paste::Cursor);
@@ -5201,7 +5197,7 @@ fn shell_keep_pipe(cx: &mut Context) {
     ui::prompt(
         cx,
         "keep-pipe:".into(),
-        Some(Register::Pipe),
+        Some(register::PIPE),
         ui::completers::none,
         move |cx, input: &str, event: PromptEvent| {
             let shell = &cx.editor.config().shell;
@@ -5400,7 +5396,7 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
     ui::prompt(
         cx,
         prompt,
-        Some(Register::Pipe),
+        Some(register::PIPE),
         ui::completers::filename,
         move |cx, input: &str, event: PromptEvent| {
             if event != PromptEvent::Validate {
@@ -5477,7 +5473,7 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
     };
     let mut amount = sign * cx.count() as i64;
     // If the register is `#` then increase or decrease the `amount` by 1 per element
-    let increase_by = if cx.register == Some(Register::SelectionIndices) {
+    let increase_by = if cx.register == Some(register::SELECTION_INDICES) {
         sign
     } else {
         0
@@ -5544,7 +5540,7 @@ fn record_macro(cx: &mut Context) {
         cx.editor
             .set_status(format!("Recorded to register [{}]", register));
     } else {
-        let register = cx.register.take().unwrap_or(Register::Macro);
+        let register = cx.register.take().unwrap_or(register::MACRO);
         cx.editor.macro_recording = Some((register, Vec::new()));
         cx.editor
             .set_status(format!("Recording to register [{}]", register));
@@ -5552,7 +5548,7 @@ fn record_macro(cx: &mut Context) {
 }
 
 fn replay_macro(cx: &mut Context) {
-    let register = cx.register.unwrap_or(Register::Macro);
+    let register = cx.register.unwrap_or(register::MACRO);
 
     if cx.editor.macro_replaying.contains(&register) {
         cx.editor.set_error(format!(

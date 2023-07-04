@@ -27,8 +27,6 @@ helix-vcs = { version = "0.6", path = "../helix-vcs" }
 once_cell = "1.18"
 url = "2"
 
-strum = "0.25"
-strum_macros = "0.25"
 derive_more = "0.99"
 
 arc-swap = { version = "1.6.0" }
