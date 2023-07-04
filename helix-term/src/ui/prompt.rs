@@ -618,7 +618,6 @@ impl Component for Prompt {
                     .map(|(name, content)| (0.., format!("{} {}", name, content).into()))
                     .collect();
                 self.next_char_handler = Some(Box::new(|prompt, ch, context| {
-                    // IMPROVEMENT: add error handling when register isn't found.
                     prompt.insert_str(
                         context
                             .editor
