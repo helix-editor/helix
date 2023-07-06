@@ -2500,8 +2500,25 @@ fn append_mode(cx: &mut Context) {
 fn view_mode(cx: &mut Context) {
     cx.editor.mode = Mode::View;
 
+    let callback = move |compositor: &mut Compositor, cx: &mut compositor::Context| {
+        let editor_view = compositor.find::<ui::EditorView>().unwrap();
+
+        let node = editor_view.keymaps.map()[&cx.editor.mode].node().cloned();
+        let infobox = node.as_ref().map(|node| node.infobox());
+        cx.editor.autoinfo = infobox;
+        editor_view.keymaps.sticky = node;
+    };
+
+    cx.callback = Some(Box::new(callback));
 }
+
 fn exit_view_mode(cx: &mut Context) {
+    let callback = move |compositor: &mut Compositor, _: &mut compositor::Context| {
+        let editor_view = compositor.find::<ui::EditorView>().unwrap();
+        editor_view.keymaps.sticky = None;
+    };
+    cx.callback = Some(Box::new(callback));
+
     normal_mode(cx);
 }
 
