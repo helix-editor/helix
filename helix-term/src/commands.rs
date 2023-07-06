@@ -302,6 +302,8 @@ impl MappableCommand {
         ensure_selections_forward, "Ensure all selections face forward",
         insert_mode, "Insert before selection",
         append_mode, "Append after selection",
+        view_mode, "Enter view mode",
+        exit_view_mode, "Exit view mode",
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
         file_picker_in_current_buffer_directory, "Open file picker at current buffers's directory",
@@ -2495,6 +2497,14 @@ fn append_mode(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+fn view_mode(cx: &mut Context) {
+    cx.editor.mode = Mode::View;
+
+}
+fn exit_view_mode(cx: &mut Context) {
+    normal_mode(cx);
+}
+
 fn file_picker(cx: &mut Context) {
     let root = find_workspace().0;
     let picker = ui::file_picker(root, &cx.editor.config());
@@ -3925,7 +3935,7 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
     let count = cx.count();
     let paste = match cx.editor.mode {
         Mode::Insert | Mode::Select => Paste::Cursor,
-        Mode::Normal => Paste::Before,
+        Mode::Normal | Mode::View => Paste::Before,
     };
     let (view, doc) = current!(cx.editor);
     paste_impl(&[contents], doc, view, paste, count, cx.editor.mode);

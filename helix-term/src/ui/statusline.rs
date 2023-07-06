@@ -180,6 +180,7 @@ where
                     Mode::Insert => &modenames.insert,
                     Mode::Select => &modenames.select,
                     Mode::Normal => &modenames.normal,
+                    Mode::View => &modenames.view,
                 }
             } else {
                 // If not focused, explicitly leave an empty space instead of returning None.
@@ -191,6 +192,7 @@ where
                 Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
                 Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
                 Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
+                Mode::View => Some(context.editor.theme.get("ui.statusline.view")),
             }
         } else {
             None

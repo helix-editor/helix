@@ -293,24 +293,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "n" => search_next,
             "N" => search_prev,
         },
-        "Z" => { "View" sticky=true
-            "z" | "c" => align_view_center,
-            "t" => align_view_top,
-            "b" => align_view_bottom,
-            "m" => align_view_middle,
-            "k" | "up" => scroll_up,
-            "j" | "down" => scroll_down,
-            "C-b" | "pageup" => page_up,
-            "C-f" | "pagedown" => page_down,
-            "C-u" | "backspace" => half_page_up,
-            "C-d" | "space" => half_page_down,
-
-            "/" => search,
-            "?" => rsearch,
-            "n" => search_next,
-            "N" => search_prev,
-        },
-
+        "Z" => view_mode,
         "\"" => select_register,
         "|" => shell_pipe,
         "A-|" => shell_pipe_to,
@@ -379,9 +362,30 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "home" => goto_line_start,
         "end" => goto_line_end_newline,
     });
+    let view = keymap!({ "View mode"
+        "esc" => exit_view_mode,
+
+        "z" | "c" => align_view_center,
+        "t" => align_view_top,
+        "b" => align_view_bottom,
+        "m" => align_view_middle,
+        "k" | "up" => scroll_up,
+        "j" | "down" => scroll_down,
+        "C-b" | "pageup" => page_up,
+        "C-f" | "pagedown" => page_down,
+        "C-u" | "backspace" => half_page_up,
+        "C-d" | "space" => half_page_down,
+
+        "/" => search,
+        "?" => rsearch,
+        "n" => search_next,
+        "N" => search_prev,
+    });
+
     hashmap!(
         Mode::Normal => normal,
         Mode::Select => select,
         Mode::Insert => insert,
+        Mode::View => view,
     )
 }
