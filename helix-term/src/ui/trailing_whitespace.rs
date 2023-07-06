@@ -20,8 +20,7 @@ impl WhitespaceKind {
                 let grapheme_tab_width = char_to_byte_idx(&palette.tab, 1);
                 &palette.tab[..grapheme_tab_width]
             }
-            WhitespaceKind::Newline => &palette.newline,
-            WhitespaceKind::None => "",
+            WhitespaceKind::Newline | WhitespaceKind::None => "",
         }
     }
 }
@@ -44,35 +43,34 @@ impl TrailingWhitespaceTracker {
         }
     }
 
-    // Tracks the whitespace and returns wether [`get`] should be called right after
+    // Tracks the whitespace and returns wether [`render`] should be called right after
     // to display the trailing whitespace.
     pub fn track(&mut self, from: usize, kind: WhitespaceKind) -> bool {
         if !self.enabled || kind == WhitespaceKind::None {
             self.tracking_content.clear();
             return false;
         }
+        if kind == WhitespaceKind::Newline {
+            return true;
+        }
         if self.tracking_content.is_empty() {
             self.tracking_from = from;
         }
-        let is_newline = kind == WhitespaceKind::Newline;
         self.compress(kind);
-        is_newline
+        false
     }
 
-    #[must_use]
-    pub fn get(&mut self) -> Option<(usize, String)> {
+    pub fn render(&mut self, callback: &mut impl FnMut(&str, usize)) {
         if self.tracking_content.is_empty() {
-            return None;
+            return;
         }
-
-        let trailing_whitespace = self
-            .tracking_content
-            .iter()
-            .map(|(kind, n)| kind.to_str(&self.palette).repeat(*n))
-            .collect::<String>();
-
+        let mut offset = self.tracking_from;
+        self.tracking_content.iter().for_each(|(kind, n)| {
+            let ws = kind.to_str(&self.palette).repeat(*n);
+            callback(&ws, offset);
+            offset += n;
+        });
         self.tracking_content.clear();
-        Some((self.tracking_from, trailing_whitespace))
     }
 
     fn compress(&mut self, kind: WhitespaceKind) {
@@ -103,6 +101,22 @@ mod tests {
         }
     }
 
+    fn capture(sut: &mut TrailingWhitespaceTracker) -> (String, usize, usize) {
+        let mut captured_content = String::new();
+        let mut from: usize = 0;
+        let mut to: usize = 0;
+
+        sut.render(&mut |content: &str, pos: usize| {
+            captured_content.push_str(content);
+            if from == 0 {
+                from = pos;
+            }
+            to = pos;
+        });
+
+        (captured_content, from, to)
+    }
+
     #[test]
     fn test_trailing_whitespace_tracker_correctly_tracks_sequences() {
         let ws_render = WhitespaceRender::Basic(WhitespaceRenderValue::Trailing);
@@ -112,30 +126,29 @@ mod tests {
         sut.track(5, WhitespaceKind::Space);
         sut.track(6, WhitespaceKind::NonBreakingSpace);
         sut.track(7, WhitespaceKind::Tab);
-        sut.track(8, WhitespaceKind::Newline);
 
-        let trailing = sut.get();
-        assert!(trailing.is_some());
-        let (from, display) = trailing.unwrap();
+        let (content, from, to) = capture(&mut sut);
+
         assert_eq!(5, from);
-        assert_eq!("SNTL", display);
+        assert_eq!(7, to);
+        assert_eq!("SNT", content);
 
         // Now we break the sequence
         sut.track(6, WhitespaceKind::None);
-        let trailing = sut.get();
-        assert!(trailing.is_none());
 
-        // Now we track again
+        let (content, from, to) = capture(&mut sut);
+        assert_eq!(0, from);
+        assert_eq!(0, to);
+        assert_eq!("", content);
+
         sut.track(10, WhitespaceKind::Tab);
         sut.track(11, WhitespaceKind::NonBreakingSpace);
         sut.track(12, WhitespaceKind::Space);
-        sut.track(13, WhitespaceKind::Newline);
 
-        let trailing = sut.get();
-        assert!(trailing.is_some());
-        let (from, display) = trailing.unwrap();
+        let (content, from, to) = capture(&mut sut);
         assert_eq!(10, from);
-        assert_eq!("TNSL", display);
+        assert_eq!(12, to);
+        assert_eq!("TNS", content);
 
         // Verify compression works
         sut.track(20, WhitespaceKind::Space);
@@ -145,12 +158,10 @@ mod tests {
         sut.track(24, WhitespaceKind::Tab);
         sut.track(25, WhitespaceKind::Tab);
         sut.track(26, WhitespaceKind::Tab);
-        sut.track(27, WhitespaceKind::Newline);
 
-        let trailing = sut.get();
-        assert!(trailing.is_some());
-        let (from, display) = trailing.unwrap();
+        let (content, from, to) = capture(&mut sut);
         assert_eq!(20, from);
-        assert_eq!("SSNNTTTL", display);
+        assert_eq!(24, to); // Compression means last tracked token is on 24 instead of 26
+        assert_eq!("SSNNTTT", content);
     }
 }

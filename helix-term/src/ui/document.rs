@@ -436,14 +436,16 @@ impl<'a> TextRenderer<'a> {
                 .track(in_bounds_col, whitespace_kind)
                 || position.col == viewport_right_edge
             {
-                if let Some((from, trailing_whitespace)) = self.trailing_whitespace_tracker.get() {
-                    self.surface.set_string(
-                        self.viewport.x + from as u16,
-                        self.viewport.y + position.row as u16,
-                        &trailing_whitespace,
-                        style,
-                    );
-                }
+                self.trailing_whitespace_tracker.render(
+                    &mut |trailing_whitespace: &str, from: usize| {
+                        self.surface.set_string(
+                            self.viewport.x + from as u16,
+                            self.viewport.y + position.row as u16,
+                            trailing_whitespace,
+                            self.whitespace_style,
+                        );
+                    },
+                );
             }
         } else if cut_off_start != 0 && cut_off_start < width {
             // partially on screen
