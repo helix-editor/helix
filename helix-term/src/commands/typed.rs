@@ -2183,7 +2183,7 @@ fn rename_buffer(
     let (_, doc) = current!(cx.editor);
     let path = doc
         .relative_path()
-        .ok_or_else(|| anyhow!("Buffer not saved, use :write"))?
+        .ok_or_else(|| anyhow!("Scratch buffers can not be renamed, use :write"))?
         .canonicalize()
         .map_err(|_| anyhow!("Could not get absolute path of the document"))?;
     let mut path_new = path.clone();
