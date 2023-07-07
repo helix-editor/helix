@@ -2184,8 +2184,6 @@ fn rename_buffer(
     let path = doc
         .relative_path()
         .ok_or_else(|| anyhow!("Scratch buffers can not be renamed, use :write"))?
-        .canonicalize()
-        .map_err(|_| anyhow!("Could not get absolute path of the document"))?;
     let mut path_new = path.clone();
     path_new.set_file_name(OsStr::new(new_name.as_ref()));
     if path_new.exists() {
