@@ -23,6 +23,14 @@ pub trait EditorRegisters {
 
 impl EditorRegisters for Editor {
     fn register_push_values(&mut self, register: Register, values: Vec<String>) {
+        if !self.config().register_whitespace_writes {
+            for value in &values {
+                if value.chars().all(|ch| ch.is_whitespace()) {
+                    return;
+                }
+            }
+        }
+
         if CONTEXT_REGISTERS.contains(&register) {
             return context_register_write(self, &register, values);
         }
@@ -31,6 +39,10 @@ impl EditorRegisters for Editor {
     }
 
     fn register_push_value(&mut self, register: Register, value: String) {
+        if !self.config().register_whitespace_writes && value.chars().all(|ch| ch.is_whitespace()) {
+            return;
+        }
+
         if CONTEXT_REGISTERS.contains(&register) {
             return context_register_write(self, &register, vec![value]);
         }
