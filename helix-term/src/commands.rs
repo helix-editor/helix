@@ -36,7 +36,7 @@ use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{
         focus::EditorFocus,
-        registers::{context_register, EditorRegisters},
+        registers::{context_register, EditorRegisterDisplay, EditorRegisters},
         Action, CompleteAction,
     },
     info::Info,
@@ -1923,10 +1923,8 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
     let count = cx.count();
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
-    let (_, doc) = current!(cx.editor);
-    let registers = &cx.editor.registers;
-    if let Some(query) = registers.newest_value(&register::SEARCH) {
-        let contents = doc.text().slice(..).to_string();
+    if let Some(query) = cx.editor.register_newest_value(&register::SEARCH) {
+        let contents = cx.editor.focused_document().text().slice(..).to_string();
         let search_config = &config.search;
         let case_insensitive = if search_config.smart_case {
             !query.chars().any(char::is_uppercase)
@@ -1934,7 +1932,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
             false
         };
         let wrap_around = search_config.wrap_around;
-        if let Ok(regex) = RegexBuilder::new(query)
+        if let Ok(regex) = RegexBuilder::new(&query)
             .case_insensitive(case_insensitive)
             .multi_line(true)
             .build()
@@ -3727,8 +3725,7 @@ fn yank(cx: &mut Context) {
     );
 
     cx.editor
-        .registers
-        .push_values(cx.register.unwrap_or(register::YANK), values);
+        .register_push_values(cx.register.unwrap_or(register::YANK), values);
 
     cx.editor.set_status(msg);
     exit_select_mode(cx);
@@ -4836,7 +4833,7 @@ fn wonly(cx: &mut Context) {
 }
 
 fn select_register(cx: &mut Context) {
-    cx.editor.autoinfo = Some(cx.editor.registers.infobox());
+    cx.editor.autoinfo = Some(cx.editor.registers_newest_values_info());
     cx.on_next_key(move |cx, key_event| {
         if let Some(register) = key_event.char().map(Register::from_char) {
             cx.editor.autoinfo = None;
@@ -4846,7 +4843,7 @@ fn select_register(cx: &mut Context) {
 }
 
 fn select_register_history(cx: &mut Context) {
-    cx.editor.autoinfo = Some(cx.editor.registers.list_registers_infobox());
+    cx.editor.autoinfo = Some(cx.editor.registers_listed_info());
     cx.on_next_key(move |cx, key_event| {
         if key_event.code == KeyCode::Esc {
             cx.editor.autoinfo = None;
@@ -4855,7 +4852,7 @@ fn select_register_history(cx: &mut Context) {
 
         if let Some(ch) = key_event.char(){
             let register = Register::from_char(ch);
-            cx.editor.autoinfo = Some(cx.editor.registers.register_history_infobox(&register));
+            cx.editor.autoinfo = Some(cx.editor.registers_history_info(&register));
 
             cx.on_next_key(move |cx, key_event| {
                 if key_event.code == KeyCode::Esc {
@@ -4867,11 +4864,11 @@ fn select_register_history(cx: &mut Context) {
                     return close_info_and_report_error(cx, format!("Expected an integer value, got: {}", key_event));
                 };
 
-                // See documenation for register.register_history_infobox():
+                // See documenation for register_history_info():
                 let index = (cx.editor.register_size(&register).expect("Register should have been selected from an existing set.") - 1) 
                     - reversed_index as usize;
 
-                if cx.editor.registers.set_newest(&register, index).is_err() {
+                if cx.editor.register_select_newest(&register, index).is_err() {
                     return close_info_and_report_error(cx, format!("Index {} out of bounds.", index));
                 }
 
@@ -4888,7 +4885,7 @@ fn close_info_and_report_error(cx: &mut Context, message: String) {
 }
 
 fn insert_register(cx: &mut Context) {
-    cx.editor.autoinfo = Some(cx.editor.registers.infobox());
+    cx.editor.autoinfo = Some(cx.editor.registers_newest_values_info());
 
     cx.on_next_key(move |cx, key_event| {
         if let Some(ch) = key_event.char() {

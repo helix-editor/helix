@@ -1,6 +1,6 @@
 use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
-use helix_view::editor::registers::EditorRegisters;
+use helix_view::editor::registers::{EditorRegisterDisplay, EditorRegisters};
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use helix_view::register::Register;
@@ -610,8 +610,7 @@ impl Component for Prompt {
             ctrl!('r') => {
                 self.completion = cx
                     .editor
-                    .registers
-                    .display_recent()
+                    .registers_newest_values_display()
                     .iter()
                     .map(|(name, content)| (0.., format!("{} {}", name, content).into()))
                     .collect();

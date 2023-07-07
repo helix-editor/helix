@@ -867,7 +867,7 @@ pub struct Editor {
 
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<Register>,
-    pub registers: Registers,
+    registers: Registers,
     pub macro_recording: Option<(Register, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<Register>,
     pub language_servers: helix_lsp::Registry,

@@ -1,6 +1,4 @@
 //! Editor/Context independent registers.
-
-use crate::info::Info;
 use std::{collections::HashMap, fmt::Display};
 
 pub const YANK: Register = Register('"');
@@ -23,7 +21,7 @@ impl Register {
 
 impl Display for Register {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", self.0)
+        write!(f, "{}", self.0)
     }
 }
 
@@ -185,7 +183,7 @@ impl Registers {
 
 // Presentation methods
 impl Registers {
-    pub fn display_recent(&self) -> Vec<(String, String)> {
+    pub fn newest_values_display(&self) -> Vec<(String, String)> {
         let mut body = Vec::with_capacity(self.simple.len() + self.nested.len());
         for register in self.list_writable() {
             body.push((
@@ -201,33 +199,26 @@ impl Registers {
         body
     }
 
-    pub fn infobox(&self) -> Info {
-        Self::prepare_infobox("Registers", self.display_recent())
-    }
-
-    pub fn list_registers_infobox(&self) -> Info {
-        Self::prepare_infobox(
-            "Select registers",
-            self.list_writable()
-                .into_iter()
-                .map(|register| {
-                    (
-                        register.to_string(),
-                        format!(
-                            "({})",
-                            self.size(register)
-                                .expect("Writable register should have a size.")
-                        ),
-                    )
-                })
-                .collect(),
-        )
+    pub fn listed_info_body(&self) -> Vec<(String, String)> {
+        self.list_writable()
+            .into_iter()
+            .map(|register| {
+                (
+                    register.to_string(),
+                    format!(
+                        "({})",
+                        self.size(register)
+                            .expect("Writable register should have a size.")
+                    ),
+                )
+            })
+            .collect()
     }
 
     /// Newest pushed values are shown first with the indices reversed.
     /// E.g internal `[(0, oldest), (1, mid), (2, newest)]` is shown as `[(0, newest), (1, mid), (2, oldest)]`.
-    pub fn register_history_infobox(&self, register: &Register) -> Info {
-        let body = match RegisterClass::from(register) {
+    pub fn register_history_info_body(&self, register: &Register) -> Vec<(String, String)> {
+        return match RegisterClass::from(register) {
             RegisterClass::Nested => {
                 prepare_history_infobox(register, &self.nested, |(index, values)| {
                     (
@@ -241,8 +232,6 @@ impl Registers {
             }
             RegisterClass::NonWritable => unreachable!(),
         };
-
-        return Self::prepare_infobox(format!("Register: {}", register), body);
 
         fn prepare_history_infobox<T, F: Fn((String, &T)) -> (String, String)>(
             register_key: &Register,
@@ -260,25 +249,6 @@ impl Registers {
                 .map(values_map_fn)
                 .collect()
         }
-    }
-
-    fn prepare_infobox<S: AsRef<str>>(title: S, body: Vec<(String, String)>) -> Info {
-        let body: Vec<(String, String)> = body
-            .into_iter()
-            .map(|(key, mut value)| {
-                let mut line_iter = value.lines();
-                let Some(first_line) = line_iter.next() else {
-                    return (key, String::new())
-                };
-
-                if first_line.len() > 30 || line_iter.next().is_some() {
-                    value = format!("{}...", first_line)
-                }
-
-                (key, value)
-            })
-            .collect();
-        Info::new(title.as_ref(), &body)
     }
 
     fn list_writable(&self) -> Vec<&Register> {
