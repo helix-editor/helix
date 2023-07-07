@@ -34,7 +34,6 @@ use std::{
     io::{stdin, stdout},
     path::Path,
     sync::Arc,
-    time::{Duration, Instant},
 };
 
 use anyhow::{Context, Error};
@@ -44,8 +43,6 @@ use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
-
-const LSP_DEADLINE: Duration = Duration::from_millis(16);
 
 #[cfg(not(feature = "integration"))]
 use tui::backend::CrosstermBackend;
@@ -76,7 +73,6 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
-    last_render: Instant,
 }
 
 #[cfg(feature = "integration")]
@@ -253,7 +249,6 @@ impl Application {
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
-            last_render: Instant::now(),
         };
 
         Ok(app)
@@ -300,7 +295,6 @@ impl Application {
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
         self.render().await;
-        self.last_render = Instant::now();
 
         loop {
             if !self.event_loop_until_idle(input_stream).await {
@@ -609,12 +603,7 @@ impl Application {
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
                 // limit render calls for fast language server messages
-                let last = self.editor.language_servers.incoming.is_empty();
-
-                if last || self.last_render.elapsed() > LSP_DEADLINE {
-                    self.render().await;
-                    self.last_render = Instant::now();
-                }
+                self.editor.redraw_handle.0.notify_one();
             }
             EditorEvent::DebuggerEvent(payload) => {
                 let needs_render = self.editor.handle_debugger_message(payload).await;
