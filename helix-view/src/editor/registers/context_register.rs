@@ -36,7 +36,7 @@ pub fn context_register_read<'a>(editor: &'a Editor, register: &Register) -> Cow
         SELECTION_CONTENT => SelectionContent::read(editor),
         DOCUMENT_PATH => DocumentPath::read(editor),
         SYSTEM_CLIPBOARD => SystemClipboard::read(editor),
-        PRIMARY_CLIPBOARD => PrimaryClipboard::read(editor),
+        PRIMARY_CLIPBOARD => SystemPrimary::read(editor),
         _ => unreachable!(),
     }
 }
@@ -44,7 +44,7 @@ pub fn context_register_read<'a>(editor: &'a Editor, register: &Register) -> Cow
 pub fn context_register_write(editor: &mut Editor, register: &Register, values: Vec<String>) {
     match *register {
         SYSTEM_CLIPBOARD => SystemClipboard::write(editor, values),
-        PRIMARY_CLIPBOARD => PrimaryClipboard::write(editor, values),
+        PRIMARY_CLIPBOARD => SystemPrimary::write(editor, values),
         _ => unreachable!(),
     }
 }
@@ -100,13 +100,13 @@ impl WritableContextRegister for SystemClipboard {
     }
 }
 
-pub struct PrimaryClipboard;
-impl ContextRegister for PrimaryClipboard {
+pub struct SystemPrimary;
+impl ContextRegister for SystemPrimary {
     fn read(editor: &Editor) -> Cow<[String]> {
         read_clipboard_register(editor, &ClipboardType::Selection)
     }
 }
-impl WritableContextRegister for PrimaryClipboard {
+impl WritableContextRegister for SystemPrimary {
     fn write(editor: &mut Editor, values: Vec<String>) {
         write_clipboard_register(editor, &ClipboardType::Selection, values)
     }
