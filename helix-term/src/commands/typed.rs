@@ -2182,7 +2182,7 @@ fn rename_buffer(
 
     let (_, doc) = current!(cx.editor);
     let path = doc
-        .relative_path()
+        .path()
         .ok_or_else(|| anyhow!("Scratch buffers can not be renamed, use :write"))?
     let mut path_new = path.clone();
     path_new.set_file_name(OsStr::new(new_name.as_ref()));
