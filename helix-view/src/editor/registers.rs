@@ -1,7 +1,4 @@
-use self::context_register::{
-    context_register_read, context_register_write, CONTEXT_REGISTERS,
-    NON_WRITABLE_CONTEXT_REGISTERS, WRITABLE_CONTEXT_REGISTERS,
-};
+use self::context_register::{context_register_read, context_register_write, CONTEXT_REGISTERS};
 use crate::{info::Info, register::Register, Editor};
 use std::borrow::Cow;
 
@@ -26,24 +23,16 @@ pub trait EditorRegisters {
 
 impl EditorRegisters for Editor {
     fn register_push_values(&mut self, register: Register, values: Vec<String>) {
-        if WRITABLE_CONTEXT_REGISTERS.contains(&register) {
+        if CONTEXT_REGISTERS.contains(&register) {
             return context_register_write(self, &register, values);
-        }
-
-        if NON_WRITABLE_CONTEXT_REGISTERS.contains(&register) {
-            return;
         }
 
         self.registers.push_values(register, values)
     }
 
     fn register_push_value(&mut self, register: Register, value: String) {
-        if WRITABLE_CONTEXT_REGISTERS.contains(&register) {
+        if CONTEXT_REGISTERS.contains(&register) {
             return context_register_write(self, &register, vec![value]);
-        }
-
-        if NON_WRITABLE_CONTEXT_REGISTERS.contains(&register) {
-            return;
         }
 
         self.registers.push_singular(register, value)

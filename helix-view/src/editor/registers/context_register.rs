@@ -18,10 +18,6 @@ pub const CONTEXT_REGISTERS: [Register; 5] = [
     PRIMARY_CLIPBOARD,
 ];
 
-pub const WRITABLE_CONTEXT_REGISTERS: [Register; 2] = [SYSTEM_CLIPBOARD, PRIMARY_CLIPBOARD];
-pub const NON_WRITABLE_CONTEXT_REGISTERS: [Register; 3] =
-    [SELECTION_INDICES, SELECTION_CONTENT, DOCUMENT_PATH];
-
 trait ContextRegister {
     fn read(editor: &Editor) -> Cow<[String]>;
 }
@@ -45,7 +41,7 @@ pub fn context_register_write(editor: &mut Editor, register: &Register, values: 
     match *register {
         SYSTEM_CLIPBOARD => SystemClipboard::write(editor, values),
         PRIMARY_CLIPBOARD => SystemPrimary::write(editor, values),
-        _ => unreachable!(),
+        _ => (),
     }
 }
 
