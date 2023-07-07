@@ -19,6 +19,8 @@ pub const CONTEXT_REGISTERS: [Register; 5] = [
 ];
 
 pub const WRITABLE_CONTEXT_REGISTERS: [Register; 2] = [SYSTEM_CLIPBOARD, PRIMARY_CLIPBOARD];
+pub const NON_WRITABLE_CONTEXT_REGISTERS: [Register; 3] =
+    [SELECTION_INDICES, SELECTION_CONTENT, DOCUMENT_PATH];
 
 trait ContextRegister {
     fn read(editor: &Editor) -> Cow<[String]>;

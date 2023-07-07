@@ -1,5 +1,6 @@
 use self::context_register::{
-    context_register_read, context_register_write, CONTEXT_REGISTERS, WRITABLE_CONTEXT_REGISTERS,
+    context_register_read, context_register_write, CONTEXT_REGISTERS,
+    NON_WRITABLE_CONTEXT_REGISTERS, WRITABLE_CONTEXT_REGISTERS,
 };
 use crate::{info::Info, register::Register, Editor};
 use std::borrow::Cow;
@@ -7,7 +8,6 @@ use std::borrow::Cow;
 pub mod context_register;
 
 // NOTE: Picking from history currently only supported for "normal" registers.
-
 pub trait EditorRegisters {
     // Write:
     fn register_push_values(&mut self, register: Register, values: Vec<String>);
@@ -27,18 +27,26 @@ pub trait EditorRegisters {
 impl EditorRegisters for Editor {
     fn register_push_values(&mut self, register: Register, values: Vec<String>) {
         if WRITABLE_CONTEXT_REGISTERS.contains(&register) {
-            context_register_write(self, &register, values)
-        } else {
-            self.registers.push_values(register, values)
+            return context_register_write(self, &register, values);
         }
+
+        if NON_WRITABLE_CONTEXT_REGISTERS.contains(&register) {
+            return;
+        }
+
+        self.registers.push_values(register, values)
     }
 
     fn register_push_value(&mut self, register: Register, value: String) {
         if WRITABLE_CONTEXT_REGISTERS.contains(&register) {
-            context_register_write(self, &register, vec![value])
-        } else {
-            self.registers.push_singular(register, value)
+            return context_register_write(self, &register, vec![value]);
         }
+
+        if NON_WRITABLE_CONTEXT_REGISTERS.contains(&register) {
+            return;
+        }
+
+        self.registers.push_singular(register, value)
     }
 
     fn register_newest_values(&self, register: &Register) -> Option<Cow<[String]>> {
