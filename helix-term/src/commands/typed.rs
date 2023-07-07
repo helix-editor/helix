@@ -2187,7 +2187,7 @@ fn rename_buffer(
     let mut path_new = path.clone();
     path_new.set_file_name(OsStr::new(new_name.as_ref()));
     if path_new.exists() {
-        bail!("This file already exists");
+        bail!("Destination already exists");
     }
 
     if let Err(e) = std::fs::rename(&path, &path_new) {
