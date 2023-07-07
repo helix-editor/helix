@@ -2191,7 +2191,7 @@ fn rename_buffer(
     }
 
     if let Err(e) = std::fs::rename(&path, &path_new) {
-        bail!("Could not rename file, error: {}", e);
+        bail!("Could not rename file: {e}");
     }
     let (_, doc) = current!(cx.editor);
     doc.set_path(Some(path_new.as_path()))
