@@ -2453,7 +2453,7 @@ fn rename_buffer(
                             log::error!(":rename command failed to apply edits")
                         }
                     }
-                    Err(err) => log::error!("Language server error: {}", err),
+                    Err(err) => log::error!("willRename request failed: {err}"),
                 }
             } else {
                 log::error!(":rename command could not get new path uri")
