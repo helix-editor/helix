@@ -930,7 +930,7 @@ pub struct Editor {
     pub completion_request_handle: Option<oneshot::Sender<()>>,
 }
 
-pub type Motion = Arc<dyn Fn(&mut Editor)>;
+pub type Motion = Box<dyn Fn(&mut Editor)>;
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
 
@@ -1040,7 +1040,7 @@ impl Editor {
 
     pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {
         motion(self);
-        self.last_motion = Some(Arc::new(motion));
+        self.last_motion = Some(Box::new(motion));
     }
 
     pub fn repeat_last_motion(&mut self, count: usize) {
