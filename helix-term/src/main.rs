@@ -109,7 +109,6 @@ FLAGS:
         return Ok(0);
     }
 
-    helix_loader::ensure_config_dir();
     helix_loader::initialize_config_file(args.config_file.clone());
     helix_loader::initialize_log_file(args.log_file.clone());
 
