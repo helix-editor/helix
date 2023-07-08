@@ -6,7 +6,7 @@
 - [Linux](#linux)
   - [Ubuntu](#ubuntu)
   - [Fedora/RHEL](#fedorarhel)
-  - [Arch Linux community](#arch-linux-community)
+  - [Arch Linux extra](#arch-linux-extra)
   - [NixOS](#nixos)
   - [Flatpak](#flatpak)
   - [AppImage](#appimage)
@@ -70,9 +70,9 @@ sudo dnf copr enable varlad/helix
 sudo dnf install helix
 ```
 
-### Arch Linux community
+### Arch Linux extra
 
-Releases are available in the `community` repository:
+Releases are available in the `extra` repository:
 
 ```sh
 sudo pacman -S helix
@@ -175,19 +175,19 @@ RUSTFLAGS="-C target-feature=-crt-static"
 
 1. Clone the repository:
 
-```sh
-git clone https://github.com/helix-editor/helix
-cd helix
-```
+   ```sh
+   git clone https://github.com/helix-editor/helix
+   cd helix
+   ```
 
 2. Compile from source:
 
-```sh
-cargo install --path helix-term --locked
-```
+   ```sh
+   cargo install --path helix-term --locked
+   ```
 
-This command will create the `hx` executable and construct the tree-sitter
-grammars in the local `runtime` folder.
+   This command will create the `hx` executable and construct the tree-sitter
+   grammars in the local `runtime` folder.
 
 > 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
 > grammars with `hx --grammar fetch` and compile them with

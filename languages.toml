@@ -342,7 +342,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-c", rev = "7175a6dd
 name = "cpp"
 scope = "source.cpp"
 injection-regex = "cpp"
-file-types = ["cc", "hh", "c++", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino", "C", "H", "cu", "cuh"]
+file-types = ["cc", "hh", "c++", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino", "C", "H", "cu", "cuh", "cppm"]
 roots = []
 comment-token = "//"
 language-servers = [ "clangd" ]
@@ -664,7 +664,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nickel"
-source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "3a794388773f2424a97b2186828aa3fac4c66ce6" }
+source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "e1d9337864d209898a08c26b8cd4c2dd14c15148" }
 
 [[language]]
 name = "nix"
@@ -2285,7 +2285,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "matlab"
-source = { git = "https://github.com/mstanciu552/tree-sitter-matlab", rev = "2d5d3d5193718a86477d4335aba5b34e79147326" }
+source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "4029fa791ddadd555c6a371a4e882ef1735d868c" }
 
 [[language]]
 name = "ponylang"
