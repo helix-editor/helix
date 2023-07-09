@@ -5,5 +5,5 @@
 ((asssigned_argument) @type)
 (["#"] @punctuation)
 (["+"] @operator)
-(["(" ")" "{" "}" "[" "]"] @punctuation.brackets)
+(["(" ")" "{" "}" "[" "]"] @punctuation.bracket)
 (["="] @markup.heading)
