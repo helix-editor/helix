@@ -524,7 +524,6 @@ file-types = ["js", "mjs", "cjs"]
 shebangs = ["node"]
 roots = []
 comment-token = "//"
-# TODO: highlights-params
 language-servers = [ "typescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
 
@@ -564,7 +563,6 @@ file-types = ["ts", "mts", "cts"]
 language-id = "typescript"
 shebangs = []
 roots = []
-# TODO: highlights-params
 language-servers = [ "typescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
 
@@ -579,7 +577,6 @@ injection-regex = "(tsx)" # |typescript
 language-id = "typescriptreact"
 file-types = ["tsx"]
 roots = []
-# TODO: highlights-params
 language-servers = [ "typescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
 
