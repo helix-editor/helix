@@ -2,12 +2,6 @@
 
 @import 'variables.css';
 
-::-webkit-scrollbar {
-    background: var(--bg);
-}
-::-webkit-scrollbar-thumb {
-    background: var(--scrollbar);
-}
 html {
     scrollbar-color: var(--scrollbar) var(--bg);
 }
@@ -17,8 +11,18 @@ a:visited,
 a > .hljs {
     color: var(--links);
 }
-.content a:hover {
-    text-decoration: underline;
+
+/*
+    body-container is necessary because mobile browsers don't seem to like
+    overflow-x on the body tag when there is a <meta name="viewport"> tag.
+*/
+#body-container {
+    /*
+        This is used when the sidebar pushes the body content off the side of
+        the screen on small screens. Without it, dragging on mobile Safari
+        will want to reposition the viewport in a weird way.
+    */
+    overflow-x: clip;
 }
 
 /* Menu Bar */
@@ -196,7 +200,7 @@ a > .hljs {
     border-radius: 3px;
 }
 
-:not(pre):not(a):not(td):not(p) > .hljs {
+:not(pre):not(a) > .hljs {
     color: var(--inline-code-color);
     overflow-x: initial;
 }
@@ -211,24 +215,63 @@ pre {
 pre > .buttons {
     position: absolute;
     z-index: 100;
-    right: 5px;
-    top: 5px;
+    right: 0px;
+    top: 2px;
+    margin: 0px;
+    padding: 2px 0px;
 
     color: var(--sidebar-fg);
     cursor: pointer;
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0.1s linear, opacity 0.1s linear;
+}
+pre:hover > .buttons {
+    visibility: visible;
+    opacity: 1
 }
 pre > .buttons :hover {
     color: var(--sidebar-active);
+    border-color: var(--icons-hover);
+    background-color: var(--theme-hover);
 }
 pre > .buttons i {
     margin-left: 8px;
 }
 pre > .buttons button {
-    color: inherit;
-    background: transparent;
-    border: none;
     cursor: inherit;
+    margin: 0px 5px;
+    padding: 3px 5px;
+    font-size: 14px;
+
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 4px;
+    border-color: var(--icons);
+    background-color: var(--theme-popup-bg);
+    transition: 100ms;
+    transition-property: color,border-color,background-color;
+    color: var(--icons);
 }
+@media (pointer: coarse) {
+    pre > .buttons button {
+        /* On mobile, make it easier to tap buttons. */
+        padding: 0.3rem 1rem;
+    }
+}
+pre > code {
+    padding: 1rem;
+}
+
+/* FIXME: ACE editors overlap their buttons because ACE does absolute
+   positioning within the code block which breaks padding. The only solution I
+   can think of is to move the padding to the outer pre tag (or insert a div
+   wrapper), but that would require fixing a whole bunch of CSS rules.
+*/
+.hljs.ace_editor {
+  padding: 0rem 0rem;
+}
+
 pre > .result {
     margin-top: 10px;
 }
@@ -345,6 +388,7 @@ ul#searchresults span.teaser em {
     bottom: 0;
     left: 0;
     right: 0;
+    padding: 10px 10px;
 }
 .sidebar .sidebar-resize-handle {
     position: absolute;
@@ -381,7 +425,7 @@ ul#searchresults span.teaser em {
 .chapter {
     list-style: none outside none;
     padding-left: 0;
-    margin: .25rem 0;
+    line-height: 2.2em;
 }
 
 .chapter ol {
@@ -390,10 +434,11 @@ ul#searchresults span.teaser em {
 
 .chapter li {
     display: flex;
-    color: var(--sidebar-non-existent);
+    color: var(--sidebar-non-existant);
 }
 .chapter li a {
     display: block;
+    padding: 0;
     text-decoration: none;
     color: var(--sidebar-fg);
 }
@@ -425,11 +470,8 @@ ul#searchresults span.teaser em {
 }
 
 .chapter li.chapter-item {
-    padding: 1rem 1.5rem;
-}
-
-.chapter .section li.chapter-item {
-    padding: .5rem .5rem 0 .5rem;
+    line-height: 1.5em;
+    margin-top: 0.6em;
 }
 
 .chapter li.expanded > a.toggle div {
@@ -452,7 +494,7 @@ ul#searchresults span.teaser em {
 
 .section {
     list-style: none outside none;
-    padding-left: 2rem;
+    padding-left: 20px;
     line-height: 1.9em;
 }
 
@@ -472,6 +514,8 @@ ul#searchresults span.teaser em {
     padding: 0;
     list-style: none;
     display: none;
+    /* Don't let the children's background extend past the rounded corners. */
+    overflow: hidden;
 }
 .theme-popup .default {
     color: var(--icons);
@@ -480,7 +524,7 @@ ul#searchresults span.teaser em {
     width: 100%;
     border: 0;
     margin: 0;
-    padding: 2px 10px;
+    padding: 2px 20px;
     line-height: 25px;
     white-space: nowrap;
     text-align: left;
@@ -492,8 +536,10 @@ ul#searchresults span.teaser em {
 .theme-popup .theme:hover {
     background-color: var(--theme-hover);
 }
-.theme-popup .theme:hover:first-child,
-.theme-popup .theme:hover:last-child {
-    border-top-left-radius: inherit;
-    border-top-right-radius: inherit;
+
+.theme-selected::before {
+    display: inline-block;
+    content: "✓";
+    margin-left: -14px;
+    width: 14px;
 }
