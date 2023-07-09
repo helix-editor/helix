@@ -739,6 +739,18 @@ fn write_all(
     write_all_impl(cx, false, true)
 }
 
+fn force_write_all(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_all_impl(cx, true, true)
+}
+
 fn write_all_quit(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -2442,6 +2454,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["wa"],
             doc: "Write changes from all buffers to disk.",
             fun: write_all,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "write-all!",
+            aliases: &["wa!"],
+            doc: "Forcefully write changes from all buffers to disk creating necessary subdirectories.",
+            fun: force_write_all,
             signature: CommandSignature::none(),
         },
         TypableCommand {
