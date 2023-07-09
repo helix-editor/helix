@@ -76,6 +76,9 @@ FLAGS:
 
     let args = Args::parse_args().context("could not parse arguments")?;
 
+    helix_loader::initialize_config_file(args.config_file.clone());
+    helix_loader::initialize_log_file(args.log_file.clone());
+
     // Help has a higher priority and should be handled separately.
     if args.display_help {
         print!("{}", help);
@@ -108,9 +111,6 @@ FLAGS:
         helix_loader::grammar::build_grammars(None)?;
         return Ok(0);
     }
-
-    helix_loader::initialize_config_file(args.config_file.clone());
-    helix_loader::initialize_log_file(args.log_file.clone());
 
     setup_logging(args.verbosity).context("failed to initialize logging")?;
 
