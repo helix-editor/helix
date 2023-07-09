@@ -11,19 +11,18 @@ static RUNTIME_DIRS: once_cell::sync::Lazy<Vec<PathBuf>> =
 
 static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
+static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+
 pub fn initialize_config_file(specified_file: Option<PathBuf>) {
-    let config_file = specified_file.unwrap_or_else(|| {
-        let config_dir = config_dir();
-
-        if !config_dir.exists() {
-            std::fs::create_dir_all(&config_dir).ok();
-        }
-
-        config_dir.join("config.toml")
-    });
-
-    // We should only initialize this value once.
+    let config_file = specified_file.unwrap_or_else(default_config_file);
+    ensure_parent_dir(&config_file);
     CONFIG_FILE.set(config_file).ok();
+}
+
+pub fn initialize_log_file(specified_file: Option<PathBuf>) {
+    let log_file = specified_file.unwrap_or_else(default_log_file);
+    ensure_parent_dir(&log_file);
+    LOG_FILE.set(log_file).ok();
 }
 
 /// A list of runtime directories from highest to lowest priority
@@ -122,10 +121,11 @@ pub fn cache_dir() -> PathBuf {
 }
 
 pub fn config_file() -> PathBuf {
-    CONFIG_FILE
-        .get()
-        .map(|path| path.to_path_buf())
-        .unwrap_or_else(|| config_dir().join("config.toml"))
+    CONFIG_FILE.get().map(|path| path.to_path_buf()).unwrap()
+}
+
+pub fn log_file() -> PathBuf {
+    LOG_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }
 
 pub fn workspace_config_file() -> PathBuf {
@@ -136,7 +136,7 @@ pub fn lang_config_file() -> PathBuf {
     config_dir().join("languages.toml")
 }
 
-pub fn log_file() -> PathBuf {
+pub fn default_log_file() -> PathBuf {
     cache_dir().join("helix.log")
 }
 
@@ -225,6 +225,18 @@ pub fn find_workspace() -> (PathBuf, bool) {
     }
 
     (current_dir, true)
+}
+
+fn default_config_file() -> PathBuf {
+    config_dir().join("config.toml")
+}
+
+fn ensure_parent_dir(path: &Path) {
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).ok();
+        }
+    }
 }
 
 #[cfg(test)]
