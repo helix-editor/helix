@@ -921,7 +921,7 @@ fn yank_joined(
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
-    let register = cx.editor.selected_register.unwrap_or('"');
+    let register = cx.editor.selected_register.unwrap_or(register::YANK);
     yank_joined_impl(cx.editor, separator, register);
     Ok(())
 }
@@ -2261,24 +2261,21 @@ fn clear_register(
 
     ensure!(args.len() <= 1, ":clear-register takes at most 1 argument");
     if args.is_empty() {
-        cx.editor.registers.clear();
+        cx.editor.register_clear();
         cx.editor.set_status("All registers cleared");
         return Ok(());
     }
 
     ensure!(
         args[0].chars().count() == 1,
-        format!("Invalid register {}", args[0])
+        "Invalid register {}, expected a character.",
+        args[0]
     );
-    let register = args[0].chars().next().unwrap_or_default();
-    match cx.editor.registers.remove(register) {
-        Some(_) => cx
-            .editor
-            .set_status(format!("Register {} cleared", register)),
-        None => cx
-            .editor
-            .set_error(format!("Register {} not found", register)),
-    }
+
+    let register = Register::from_char(args[0].chars().next().expect("Should contain one char"));
+
+    cx.editor.register_remove(&register);
+
     Ok(())
 }
 
@@ -2887,7 +2884,7 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
 pub(super) fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".into(),
-        Some(':'),
+        Some(register::COMMAND),
         |editor: &Editor, input: &str| {
             static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
                 Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);

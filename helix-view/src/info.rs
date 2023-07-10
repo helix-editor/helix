@@ -1,4 +1,4 @@
-use helix_core::{register::Registers, unicode::width::UnicodeWidthStr};
+use helix_core::unicode::width::UnicodeWidthStr;
 use std::fmt::Write;
 
 #[derive(Debug)]
@@ -52,24 +52,5 @@ impl Info {
             height: body.len() as u16,
             text,
         }
-    }
-
-    pub fn from_registers(registers: &Registers) -> Self {
-        let body: Vec<_> = registers
-            .inner()
-            .iter()
-            .map(|(ch, reg)| {
-                let content = reg
-                    .read()
-                    .get(0)
-                    .and_then(|s| s.lines().next())
-                    .unwrap_or_default();
-                (ch.to_string(), content)
-            })
-            .collect();
-
-        let mut infobox = Self::new("Registers", &body);
-        infobox.width = 30; // copied content could be very long
-        infobox
     }
 }
