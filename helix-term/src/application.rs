@@ -77,7 +77,9 @@ impl Application {
         syn_loader_conf: syntax::Configuration,
     ) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
-        crate::log::setup_logging(std::io::stdout(), None).unwrap();
+        // Unwrap will be error error if logging system has been
+        // initialized by another test.
+        let _ = crate::log::setup_logging(std::io::stdout(), None);
 
         use helix_view::editor::Action;
 
