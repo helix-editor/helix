@@ -5,34 +5,7 @@ use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
 use helix_term::help::HELP_MESSAGE;
-
-fn setup_logging(verbosity: u64) -> Result<()> {
-    let mut base_config = fern::Dispatch::new();
-
-    base_config = match verbosity {
-        0 => base_config.level(log::LevelFilter::Warn),
-        1 => base_config.level(log::LevelFilter::Info),
-        2 => base_config.level(log::LevelFilter::Debug),
-        _3_or_more => base_config.level(log::LevelFilter::Trace),
-    };
-
-    // Separate file config so we can include year, month and day in file logs
-    let file_config = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .chain(fern::log_file(helix_loader::log_file())?);
-
-    base_config.chain(file_config).apply()?;
-
-    Ok(())
-}
+use helix_term::log::setup_logging;
 
 fn main() -> Result<()> {
     let exit_code = main_impl()?;
@@ -79,7 +52,11 @@ async fn main_impl() -> Result<i32> {
         return Ok(0);
     }
 
-    setup_logging(args.verbosity).context("failed to initialize logging")?;
+    setup_logging(
+        fern::log_file(helix_loader::log_file())?,
+        Some(args.verbosity),
+    )
+    .context("failed to initialize logging")?;
 
     let config = match Config::load_default() {
         Ok(config) => config,

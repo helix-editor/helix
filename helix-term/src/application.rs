@@ -29,12 +29,7 @@ use crate::{
 };
 
 use log::{debug, error, warn};
-use std::{
-    collections::btree_map::Entry,
-    io::{stdin, stdout},
-    path::Path,
-    sync::Arc,
-};
+use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
 use anyhow::{Context, Error};
 
@@ -75,28 +70,6 @@ pub struct Application {
     lsp_progress: LspProgressMap,
 }
 
-#[cfg(feature = "integration")]
-fn setup_integration_logging() {
-    let level = std::env::var("HELIX_LOG_LEVEL")
-        .map(|lvl| lvl.parse().unwrap())
-        .unwrap_or(log::LevelFilter::Info);
-
-    // Separate file config so we can include year, month and day in file logs
-    let _ = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .level(level)
-        .chain(std::io::stdout())
-        .apply();
-}
-
 impl Application {
     pub fn new(
         args: Args,
@@ -104,7 +77,7 @@ impl Application {
         syn_loader_conf: syntax::Configuration,
     ) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
-        setup_integration_logging();
+        crate::log::setup_logging(std::io::stdout(), None).unwrap();
 
         use helix_view::editor::Action;
 
@@ -131,7 +104,7 @@ impl Application {
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout(), &config.editor);
+        let backend = CrosstermBackend::new(std::io::stdout(), &config.editor);
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
