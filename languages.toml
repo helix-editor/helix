@@ -342,7 +342,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-c", rev = "7175a6dd
 name = "cpp"
 scope = "source.cpp"
 injection-regex = "cpp"
-file-types = ["cc", "hh", "c++", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino", "C", "H", "cu", "cuh"]
+file-types = ["cc", "hh", "c++", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino", "C", "H", "cu", "cuh", "cppm"]
 roots = []
 comment-token = "//"
 language-servers = [ "clangd" ]
@@ -524,7 +524,6 @@ file-types = ["js", "mjs", "cjs"]
 shebangs = ["node"]
 roots = []
 comment-token = "//"
-# TODO: highlights-params
 language-servers = [ "typescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
 
@@ -564,7 +563,6 @@ file-types = ["ts", "mts", "cts"]
 language-id = "typescript"
 shebangs = []
 roots = []
-# TODO: highlights-params
 language-servers = [ "typescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
 
@@ -579,7 +577,6 @@ injection-regex = "(tsx)" # |typescript
 language-id = "typescriptreact"
 file-types = ["tsx"]
 roots = []
-# TODO: highlights-params
 language-servers = [ "typescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
 
@@ -664,7 +661,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nickel"
-source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "3a794388773f2424a97b2186828aa3fac4c66ce6" }
+source = { git = "https://github.com/nickel-lang/tree-sitter-nickel", rev = "e1d9337864d209898a08c26b8cd4c2dd14c15148" }
 
 [[language]]
 name = "nix"
@@ -959,6 +956,18 @@ name = "haskell"
 source = { git = "https://github.com/tree-sitter/tree-sitter-haskell", rev = "98fc7f59049aeb713ab9b72a8ff25dcaaef81087" }
 
 [[language]]
+name = "haskell-persistent"
+scope = "source.persistentmodels"
+file-types = ["persistentmodels"]
+roots = []
+comment-token = "--"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "haskell-persistent"
+source = { git = "https://github.com/MercuryTechnologies/tree-sitter-haskell-persistent", rev = "58a6ccfd56d9f1de8fb9f77e6c42151f8f0d0f3d" }
+
+[[language]]
 name = "purescript"
 scope = "source.purescript"
 injection-regex = "purescript"
@@ -1224,7 +1233,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "dart"
-source = { git = "https://github.com/UserNobody14/tree-sitter-dart", rev = "2d7f66651c9319c1a0e4dda226cc2628fbb66528" }
+source = { git = "https://github.com/UserNobody14/tree-sitter-dart", rev = "e398400a0b785af3cf571f5a57eccab242f0cdf9" }
 
 [[language]]
 name = "scala"
@@ -2285,7 +2294,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "matlab"
-source = { git = "https://github.com/mstanciu552/tree-sitter-matlab", rev = "2d5d3d5193718a86477d4335aba5b34e79147326" }
+source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "676117eafa64afedc8380a921a77cd9f2244bc6b" }
 
 [[language]]
 name = "ponylang"

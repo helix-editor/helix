@@ -353,6 +353,11 @@ impl Transport {
             }
         }
 
+        fn is_shutdown(payload: &Payload) -> bool {
+            use lsp_types::request::{Request, Shutdown};
+            matches!(payload, Payload::Request { value: jsonrpc::MethodCall { method, .. }, .. } if method == Shutdown::METHOD)
+        }
+
         // TODO: events that use capabilities need to do the right thing
 
         loop {
@@ -391,7 +396,10 @@ impl Transport {
                 }
                 msg = client_rx.recv() => {
                     if let Some(msg) = msg {
-                        if is_pending && !is_initialize(&msg) {
+                        if is_pending && is_shutdown(&msg) {
+                            log::info!("Language server not initialized, shutting down");
+                            break;
+                        } else if is_pending && !is_initialize(&msg) {
                             // ignore notifications
                             if let Payload::Notification(_) = msg {
                                 continue;

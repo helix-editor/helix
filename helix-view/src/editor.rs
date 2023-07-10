@@ -616,7 +616,9 @@ impl std::str::FromStr for GutterType {
             "spacer" => Ok(Self::Spacer),
             "line-numbers" => Ok(Self::LineNumbers),
             "diff" => Ok(Self::Diff),
-            _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
+            _ => anyhow::bail!(
+                "Gutter type can only be `diagnostics`, `spacer`, `line-numbers` or `diff`."
+            ),
         }
     }
 }
@@ -837,18 +839,6 @@ impl Default for SearchConfig {
     }
 }
 
-pub struct Motion(pub Box<dyn Fn(&mut Editor)>);
-impl Motion {
-    pub fn run(&self, e: &mut Editor) {
-        (self.0)(e)
-    }
-}
-impl std::fmt::Debug for Motion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("motion")
-    }
-}
-
 #[derive(Debug, Clone, Default)]
 pub struct Breakpoint {
     pub id: Option<usize>,
@@ -913,8 +903,7 @@ pub struct Editor {
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
-    pub last_motion: Option<Motion>,
-
+    last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
 
     pub exit_code: i32,
@@ -947,6 +936,8 @@ pub struct Editor {
     /// canceled as a result
     pub completion_request_handle: Option<oneshot::Sender<()>>,
 }
+
+pub type Motion = Box<dyn Fn(&mut Editor)>;
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
 
@@ -1054,6 +1045,19 @@ impl Editor {
         }
     }
 
+    pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {
+        motion(self);
+        self.last_motion = Some(Box::new(motion));
+    }
+
+    pub fn repeat_last_motion(&mut self, count: usize) {
+        if let Some(motion) = self.last_motion.take() {
+            for _ in 0..count {
+                motion(self);
+            }
+            self.last_motion = Some(motion);
+        }
+    }
     /// Current editing mode for the [`Editor`].
     pub fn mode(&self) -> Mode {
         self.mode
@@ -1391,11 +1395,22 @@ impl Editor {
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
-        let (rope, encoding, has_bom) = crate::document::from_reader(&mut stdin(), None)?;
-        Ok(self.new_file_from_document(
-            action,
-            Document::from(rope, Some((encoding, has_bom)), self.config.clone()),
-        ))
+        let (stdin, encoding, has_bom) = crate::document::read_to_string(&mut stdin(), None)?;
+        let doc = Document::from(
+            helix_core::Rope::default(),
+            Some((encoding, has_bom)),
+            self.config.clone(),
+        );
+        let doc_id = self.new_file_from_document(action, doc);
+        let doc = doc_mut!(self, &doc_id);
+        let view = view_mut!(self);
+        doc.ensure_view_init(view.id);
+        let transaction =
+            helix_core::Transaction::insert(doc.text(), doc.selection(view.id), stdin.into())
+                .with_selection(Selection::point(0));
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view);
+        Ok(doc_id)
     }
 
     // ??? possible use for integration tests
@@ -1697,7 +1712,7 @@ impl Editor {
                 _ = self.redraw_handle.0.notified() => {
                     if  !self.needs_redraw{
                         self.needs_redraw = true;
-                        let timeout = Instant::now() + Duration::from_millis(96);
+                        let timeout = Instant::now() + Duration::from_millis(33);
                         if timeout < self.idle_timer.deadline(){
                             self.idle_timer.as_mut().reset(timeout)
                         }

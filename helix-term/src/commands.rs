@@ -34,7 +34,7 @@ use helix_core::{
 use helix_view::{
     clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, CompleteAction, Motion},
+    editor::{Action, CompleteAction},
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -1099,8 +1099,7 @@ where
             .transform(|range| move_fn(text, range, count, behavior));
         doc.set_selection(view.id, selection);
     };
-    motion(cx.editor);
-    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+    cx.editor.apply_motion(motion)
 }
 
 fn goto_prev_paragraph(cx: &mut Context) {
@@ -1240,10 +1239,7 @@ fn extend_next_long_word_end(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_long_word_end)
 }
 
-fn will_find_char<F>(cx: &mut Context, search_fn: F, inclusive: bool, extend: bool)
-where
-    F: Fn(RopeSlice, char, usize, usize, bool) -> Option<usize> + 'static,
-{
+fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
     let count = cx.count();
@@ -1275,11 +1271,18 @@ where
             } => ch,
             _ => return,
         };
+        let motion = move |editor: &mut Editor| {
+            match direction {
+                Direction::Forward => {
+                    find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count)
+                }
+                Direction::Backward => {
+                    find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count)
+                }
+            };
+        };
 
-        find_char_impl(cx.editor, &search_fn, inclusive, extend, ch, count);
-        cx.editor.last_motion = Some(Motion(Box::new(move |editor: &mut Editor| {
-            find_char_impl(editor, &search_fn, inclusive, extend, ch, 1);
-        })));
+        cx.editor.apply_motion(motion);
     })
 }
 
@@ -1358,46 +1361,39 @@ fn find_prev_char_impl(
 }
 
 fn find_till_char(cx: &mut Context) {
-    will_find_char(cx, find_next_char_impl, false, false)
+    find_char(cx, Direction::Forward, false, false);
 }
 
 fn find_next_char(cx: &mut Context) {
-    will_find_char(cx, find_next_char_impl, true, false)
+    find_char(cx, Direction::Forward, true, false)
 }
 
 fn extend_till_char(cx: &mut Context) {
-    will_find_char(cx, find_next_char_impl, false, true)
+    find_char(cx, Direction::Forward, false, true)
 }
 
 fn extend_next_char(cx: &mut Context) {
-    will_find_char(cx, find_next_char_impl, true, true)
+    find_char(cx, Direction::Forward, true, true)
 }
 
 fn till_prev_char(cx: &mut Context) {
-    will_find_char(cx, find_prev_char_impl, false, false)
+    find_char(cx, Direction::Backward, false, false)
 }
 
 fn find_prev_char(cx: &mut Context) {
-    will_find_char(cx, find_prev_char_impl, true, false)
+    find_char(cx, Direction::Backward, true, false)
 }
 
 fn extend_till_prev_char(cx: &mut Context) {
-    will_find_char(cx, find_prev_char_impl, false, true)
+    find_char(cx, Direction::Backward, false, true)
 }
 
 fn extend_prev_char(cx: &mut Context) {
-    will_find_char(cx, find_prev_char_impl, true, true)
+    find_char(cx, Direction::Backward, true, true)
 }
 
 fn repeat_last_motion(cx: &mut Context) {
-    let count = cx.count();
-    let last_motion = cx.editor.last_motion.take();
-    if let Some(m) = &last_motion {
-        for _ in 0..count {
-            m.run(cx.editor);
-        }
-        cx.editor.last_motion = last_motion;
-    }
+    cx.editor.repeat_last_motion(cx.count())
 }
 
 fn replace(cx: &mut Context) {
@@ -3248,8 +3244,7 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
 
         doc.set_selection(view.id, selection)
     };
-    motion(cx.editor);
-    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+    cx.editor.apply_motion(motion);
 }
 
 /// Returns the [Range] for a [Hunk] in the given text.
@@ -4584,8 +4579,7 @@ fn expand_selection(cx: &mut Context) {
             }
         }
     };
-    motion(cx.editor);
-    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+    cx.editor.apply_motion(motion);
 }
 
 fn shrink_selection(cx: &mut Context) {
@@ -4609,8 +4603,7 @@ fn shrink_selection(cx: &mut Context) {
             doc.set_selection(view.id, selection);
         }
     };
-    motion(cx.editor);
-    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+    cx.editor.apply_motion(motion);
 }
 
 fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: &'static F)
@@ -4628,8 +4621,7 @@ where
             doc.set_selection(view.id, selection);
         }
     };
-    motion(cx.editor);
-    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+    cx.editor.apply_motion(motion);
 }
 
 fn select_next_sibling(cx: &mut Context) {
@@ -4649,8 +4641,8 @@ fn match_brackets(cx: &mut Context) {
     let selection = doc.selection(view.id).clone().transform(|range| {
         let pos = range.cursor(text_slice);
         if let Some(matched_pos) = doc.syntax().map_or_else(
-            || match_brackets::find_matching_bracket_current_line_plaintext(text, pos),
-            |syntax| match_brackets::find_matching_bracket_fuzzy(syntax, text, pos),
+            || match_brackets::find_matching_bracket_plaintext(text.slice(..), pos),
+            |syntax| match_brackets::find_matching_bracket_fuzzy(syntax, text.slice(..), pos),
         ) {
             range.put_cursor(text_slice, matched_pos, is_select)
         } else {
@@ -4912,8 +4904,7 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
             editor.set_status("Syntax-tree is not available in current buffer");
         }
     };
-    motion(cx.editor);
-    cx.editor.last_motion = Some(Motion(Box::new(motion)));
+    cx.editor.apply_motion(motion);
 }
 
 fn goto_next_function(cx: &mut Context) {
@@ -5034,8 +5025,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 });
                 doc.set_selection(view.id, selection);
             };
-            textobject(cx.editor);
-            cx.editor.last_motion = Some(Motion(Box::new(textobject)));
+            cx.editor.apply_motion(textobject);
         }
     });
 
@@ -5401,7 +5391,7 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
         cx,
         prompt,
         Some('|'),
-        ui::completers::none,
+        ui::completers::filename,
         move |cx, input: &str, event: PromptEvent| {
             if event != PromptEvent::Validate {
                 return;
