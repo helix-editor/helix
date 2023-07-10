@@ -85,13 +85,6 @@ impl Jobs {
         }
     }
 
-    pub async fn next_job(&mut self) -> Option<anyhow::Result<Option<Callback>>> {
-        tokio::select! {
-            event = self.futures.next() => {  event }
-            event = self.wait_futures.next() => { event }
-        }
-    }
-
     pub fn add(&self, j: Job) {
         if j.wait {
             self.wait_futures.push(j.future);
