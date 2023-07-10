@@ -5115,11 +5115,25 @@ fn surround_replace(cx: &mut Context) {
             }
         };
 
+        // Visual feedback
+        let selection = selection.clone();
+        let mut ranges: SmallVec<[Range; 1]> = SmallVec::new();
+        change_pos.chunks(2).for_each(|p| {
+            if p.len() == 2 {
+                let from = *p.first().unwrap();
+                let to = *p.get(1).unwrap();
+                ranges.push(Range::new(from, from + 1));
+                ranges.push(Range::new(to, to + 1));
+            }
+        });
+        let feedback = Selection::new(ranges, 0);
+        doc.set_selection(view.id, feedback);
+
         cx.on_next_key(move |cx, event| {
             let (view, doc) = current!(cx.editor);
             let to = match event.char() {
                 Some(to) => to,
-                None => return,
+                None => return doc.set_selection(view.id, selection),
             };
             let (open, close) = surround::get_pair(to);
             let transaction = Transaction::change(
@@ -5130,6 +5144,7 @@ fn surround_replace(cx: &mut Context) {
                     (pos, pos + 1, Some(t))
                 }),
             );
+            doc.set_selection(view.id, selection);
             doc.apply(&transaction, view.id);
             exit_select_mode(cx);
         });
