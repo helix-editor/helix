@@ -463,7 +463,7 @@ impl Application {
                 // https://github.com/neovim/neovim/issues/12322
                 // https://github.com/neovim/neovim/pull/13084
                 for retries in 1..=10 {
-                    match self.claim_term().await {
+                    match self.claim_term() {
                         Ok(()) => break,
                         Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
                         Err(_) => continue,
@@ -1082,7 +1082,7 @@ impl Application {
         }
     }
 
-    async fn claim_term(&mut self) -> std::io::Result<()> {
+    fn claim_term(&mut self) -> std::io::Result<()> {
         let terminal_config = self.config.load().editor.clone().into();
         self.terminal.claim(terminal_config)
     }
@@ -1098,7 +1098,7 @@ impl Application {
     }
 
     pub async fn run(&mut self) -> Result<i32, Error> {
-        self.claim_term().await?;
+        self.claim_term()?;
 
         // Exit the alternate screen and disable raw mode before panicking
         let hook = std::panic::take_hook();
