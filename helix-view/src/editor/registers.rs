@@ -149,10 +149,6 @@ fn prepare_infobox<S: AsRef<str>>(title: S, body: Vec<(String, String)>) -> Info
                     return (key, String::new())
                 };
 
-            if first_line.trim().is_empty() {
-                return (key, String::new());
-            }
-
             let mut truncated_value: Option<Cow<str>> = None;
 
             const MAX_WIDTH: usize = 30;
@@ -172,7 +168,7 @@ fn prepare_infobox<S: AsRef<str>>(title: S, body: Vec<(String, String)>) -> Info
                 return (key, format!("{}...", truncated_value));
             }
 
-            (key, value)
+            (key, first_line.to_string())
         })
         .collect();
 
