@@ -1112,8 +1112,13 @@ fn show_current_directory(
     }
 
     let cwd = helix_loader::current_working_dir();
-    cx.editor
-        .set_status(format!("Current working directory is {}", cwd.display()));
+    let message = format!("Current working directory is {}", cwd.display());
+
+    if cwd.exists() {
+        cx.editor.set_status(message);
+    } else {
+        cx.editor.set_error(format!("{} (deleted)", message));
+    }
     Ok(())
 }
 

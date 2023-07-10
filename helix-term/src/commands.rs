@@ -2062,7 +2062,7 @@ fn global_search(cx: &mut Context) {
                 .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
                 .collect()
         },
-        move |_editor, regex, event| {
+        move |editor, regex, event| {
             if event != PromptEvent::Validate {
                 return;
             }
@@ -2076,6 +2076,11 @@ fn global_search(cx: &mut Context) {
                     .build();
 
                 let search_root = helix_loader::current_working_dir();
+                if !search_root.exists() {
+                    editor.set_error("Current working directory does not exist");
+                    return;
+                }
+
                 let dedup_symlinks = file_picker_config.deduplicate_links;
                 let absolute_root = search_root
                     .canonicalize()
@@ -2147,7 +2152,9 @@ fn global_search(cx: &mut Context) {
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 if all_matches.is_empty() {
-                    editor.set_status("No matches found");
+                    if !editor.is_err() {
+                        editor.set_status("No matches found");
+                    }
                     return;
                 }
 
@@ -2492,6 +2499,10 @@ fn append_mode(cx: &mut Context) {
 
 fn file_picker(cx: &mut Context) {
     let root = find_workspace().0;
+    if !root.exists() {
+        cx.editor.set_error("Workspace directory does not exist");
+        return;
+    }
     let picker = ui::file_picker(root, &cx.editor.config());
     cx.push_layer(Box::new(overlaid(picker)));
 }
@@ -2514,6 +2525,11 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
 }
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = helix_loader::current_working_dir();
+    if !cwd.exists() {
+        cx.editor
+            .set_error("Current working directory does not exist");
+        return;
+    }
     let picker = ui::file_picker(cwd, &cx.editor.config());
     cx.push_layer(Box::new(overlaid(picker)));
 }
