@@ -43,7 +43,7 @@
 | fish | ✓ | ✓ | ✓ |  |
 | forth | ✓ |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ | `fortls` |
-| gdscript | ✓ | ✓ | ✓ |  |
+| gdscript | ✓ | ✓ | ✓ | `nc` |
 | git-attributes | ✓ |  |  |  |
 | git-commit | ✓ | ✓ |  |  |
 | git-config | ✓ |  |  |  |

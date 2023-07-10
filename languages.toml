@@ -1643,6 +1643,8 @@ auto-format = true
 formatter = { command = "gdformat", args = ["-"] }
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
+# Change this to port 6005 for Godot 4.
+language-server = { command = "nc", args = ["localhost", "6008"] }
 
 [[grammar]]
 name = "gdscript"
