@@ -266,7 +266,7 @@ impl<T: Item + 'static> Picker<T> {
             // then we can score the filtered set.
             self.matches.retain_mut(|pmatch| {
                 let option = &self.options[pmatch.index];
-                let text = option.sort_text(&self.editor_data);
+                let text = option.filter_text(&self.editor_data);
 
                 match query.fuzzy_match(&text, &self.matcher) {
                     Some(s) => {
