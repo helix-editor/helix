@@ -1,5 +1,4 @@
 use anyhow::{Context, Error, Result};
-use crossterm::event::EventStream;
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
@@ -81,6 +80,6 @@ async fn main() -> Result<()> {
     let mut app = Application::new(args, config, syn_loader_conf)
         .context("unable to create new application")?;
 
-    let exit_code = app.run(&mut EventStream::new()).await?;
+    let exit_code = app.run().await?;
     std::process::exit(exit_code)
 }

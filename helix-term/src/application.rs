@@ -33,7 +33,10 @@ use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
 use anyhow::{Context, Error};
 
-use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
+use crossterm::{
+    event::{Event as CrosstermEvent, EventStream},
+    tty::IsTty,
+};
 #[cfg(not(windows))]
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
@@ -1089,10 +1092,7 @@ impl Application {
         self.terminal.restore(terminal_config)
     }
 
-    pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
-    where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
-    {
+    pub async fn run(&mut self) -> Result<i32, Error> {
         self.claim_term().await?;
 
         // Exit the alternate screen and disable raw mode before panicking
@@ -1105,7 +1105,7 @@ impl Application {
             hook(info);
         }));
 
-        self.event_loop(input_stream).await;
+        self.event_loop(&mut EventStream::new()).await;
 
         let close_errs = self.close().await;
 
