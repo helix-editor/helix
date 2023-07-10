@@ -7,13 +7,8 @@ use helix_term::config::{Config, ConfigLoadError};
 use helix_term::help::HELP_MESSAGE;
 use helix_term::log::setup_logging;
 
-fn main() -> Result<()> {
-    let exit_code = main_impl()?;
-    std::process::exit(exit_code);
-}
-
 #[tokio::main]
-async fn main_impl() -> Result<i32> {
+async fn main() -> Result<()> {
     let args = Args::parse_args().context("could not parse arguments")?;
 
     helix_loader::initialize_config_file(args.config_file.clone());
@@ -44,12 +39,12 @@ async fn main_impl() -> Result<i32> {
 
     if args.fetch_grammars {
         helix_loader::grammar::fetch_grammars()?;
-        return Ok(0);
+        std::process::exit(0);
     }
 
     if args.build_grammars {
         helix_loader::grammar::build_grammars(None)?;
-        return Ok(0);
+        std::process::exit(0);
     }
 
     setup_logging(
@@ -87,6 +82,5 @@ async fn main_impl() -> Result<i32> {
         .context("unable to create new application")?;
 
     let exit_code = app.run(&mut EventStream::new()).await?;
-
-    Ok(exit_code)
+    std::process::exit(exit_code)
 }
