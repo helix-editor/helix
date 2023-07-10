@@ -5119,11 +5119,11 @@ fn surround_replace(cx: &mut Context) {
         let selection = selection.clone();
         let mut ranges: SmallVec<[Range; 1]> = SmallVec::new();
         // TODO: Use [`array_chunks`] once stabilized
-        change_pos.chunks_exact(2).for_each(|p| {
+        for p in change_pos.chunks_exact(2) {
             let [from, to] = *p else { unreachable!() };
             ranges.push(Range::point(from));
             ranges.push(Range::point(to));
-        });
+        }
         doc.set_selection(view.id, Selection::new(ranges, 0));
 
         cx.on_next_key(move |cx, event| {
