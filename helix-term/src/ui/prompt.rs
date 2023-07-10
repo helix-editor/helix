@@ -1,7 +1,9 @@
 use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
+use helix_view::editor::registers::{EditorRegisterDisplay, EditorRegisters};
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
+use helix_view::register::Register;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
 use tui::widgets::{Block, Borders, Widget};
@@ -26,7 +28,7 @@ pub struct Prompt {
     cursor: usize,
     completion: Vec<Completion>,
     selection: Option<usize>,
-    history_register: Option<char>,
+    register: Option<Register>,
     history_pos: Option<usize>,
     completion_fn: CompletionFn,
     callback_fn: CallbackFn,
@@ -67,7 +69,7 @@ fn is_word_sep(c: char) -> bool {
 impl Prompt {
     pub fn new(
         prompt: Cow<'static, str>,
-        history_register: Option<char>,
+        register: Option<Register>,
         completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
     ) -> Self {
@@ -77,7 +79,7 @@ impl Prompt {
             cursor: 0,
             completion: Vec::new(),
             selection: None,
-            history_register,
+            register,
             history_pos: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
@@ -220,7 +222,8 @@ impl Prompt {
         self.recalculate_completion(cx.editor);
     }
 
-    pub fn insert_str(&mut self, s: &str, editor: &Editor) {
+    pub fn insert_str<S: AsRef<str>>(&mut self, s: S, editor: &Editor) {
+        let s = s.as_ref();
         self.line.insert_str(self.cursor, s);
         self.cursor += s.len();
         self.recalculate_completion(editor);
@@ -290,16 +293,19 @@ impl Prompt {
         self.recalculate_completion(editor);
     }
 
-    pub fn change_history(
-        &mut self,
-        cx: &mut Context,
-        register: char,
-        direction: CompletionDirection,
-    ) {
+    pub fn change_history(&mut self, cx: &mut Context, direction: CompletionDirection) {
+        let Some(register) = &self.register else {
+            return;
+        };
+
         (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
-        let values = match cx.editor.registers.read(register) {
-            Some(values) if !values.is_empty() => values,
-            _ => return,
+
+        let Some(values) = cx
+            .editor
+            .register_values(register)
+            .filter(|values| !values.is_empty())
+        else {
+            return;
         };
 
         let end = values.len().saturating_sub(1);
@@ -457,9 +463,9 @@ impl Prompt {
         let (input, is_suggestion): (Cow<str>, bool) = if self.line.is_empty() {
             // latest value in the register list
             match self
-                .history_register
-                .and_then(|reg| cx.editor.registers.last(reg))
-                .map(|entry| entry.into())
+                .register
+                .as_ref()
+                .and_then(|register| cx.editor.register_newest_value(register))
             {
                 Some(value) => (value, true),
                 None => (Cow::from(""), false),
@@ -556,10 +562,11 @@ impl Component for Prompt {
                 if self.selection.is_some() && self.line.ends_with(std::path::MAIN_SEPARATOR) {
                     self.recalculate_completion(cx.editor);
                 } else {
-                    let last_item = self
-                        .history_register
-                        .and_then(|reg| cx.editor.registers.last(reg).cloned())
-                        .map(|entry| entry.into())
+                    let last_item: Cow<str> = self
+                        .register
+                        .as_ref()
+                        .and_then(|register| cx.editor.register_newest_value(register))
+                        .map(|entry| entry.to_string().into())
                         .unwrap_or_else(|| Cow::from(""));
 
                     // handle executing with last command in history if nothing entered
@@ -568,8 +575,8 @@ impl Component for Prompt {
                     } else {
                         if last_item != self.line {
                             // store in history
-                            if let Some(register) = self.history_register {
-                                cx.editor.registers.push(register, self.line.clone());
+                            if let Some(register) = self.register {
+                                cx.editor.register_push_value(register, self.line.clone());
                             };
                         }
 
@@ -582,14 +589,10 @@ impl Component for Prompt {
                 }
             }
             ctrl!('p') | key!(Up) => {
-                if let Some(register) = self.history_register {
-                    self.change_history(cx, register, CompletionDirection::Backward);
-                }
+                self.change_history(cx, CompletionDirection::Backward);
             }
             ctrl!('n') | key!(Down) => {
-                if let Some(register) = self.history_register {
-                    self.change_history(cx, register, CompletionDirection::Forward);
-                }
+                self.change_history(cx, CompletionDirection::Forward);
             }
             key!(Tab) => {
                 self.change_completion_selection(CompletionDirection::Forward);
@@ -607,26 +610,16 @@ impl Component for Prompt {
             ctrl!('r') => {
                 self.completion = cx
                     .editor
-                    .registers
-                    .inner()
+                    .registers_newest_values_display()
                     .iter()
-                    .map(|(ch, reg)| {
-                        let content = reg
-                            .read()
-                            .get(0)
-                            .and_then(|s| s.lines().next().to_owned())
-                            .unwrap_or_default();
-                        (0.., format!("{} {}", ch, &content).into())
-                    })
+                    .map(|(name, content)| (0.., format!("{} {}", name, content).into()))
                     .collect();
-                self.next_char_handler = Some(Box::new(|prompt, c, context| {
+                self.next_char_handler = Some(Box::new(|prompt, ch, context| {
                     prompt.insert_str(
                         context
                             .editor
-                            .registers
-                            .read(c)
-                            .and_then(|r| r.first())
-                            .map_or("", |r| r.as_str()),
+                            .register_newest_value(&Register::from_char(ch))
+                            .map_or(Default::default(), |value| value),
                         context.editor,
                     );
                 }));

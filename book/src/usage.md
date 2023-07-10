@@ -37,19 +37,34 @@ If a register is selected before invoking a change or delete command, the select
 - `"hc` - Store the selection in register `h` and then change it (delete and enter insert mode).
 - `"md` - Store the selection in register `m` and delete it.
 
-### Special registers
+
+### Default registers
+
+Commands that use registers, like yank (`y`), use a default register if none is specified.
+These registers are used as defaults:
 
 | Register character | Contains              |
 | ---                | ---                   |
 | `/`                | Last search           |
 | `:`                | Last executed command |
 | `"`                | Last yanked text      |
-| `_`                | Black hole            |
+| `@`                | Last recorded macro   |
 
-The system clipboard is not directly supported by a special register. Instead, special commands and keybindings are provided. Refer to the
-[key map](keymap.md#space-mode) for more details.
+### Special registers
 
-The black hole register is a no-op register, meaning that no data will be read or written to it.
+Some registers have special behavior when read from and written to.
+
+| Register character | When read                                                       | When written                                       |
+| ---                | ---                                                             | ---                                                |
+| `_`                | No values are returned                                          | All values are discarded                           |
+| `#`                | Selection indices (first selection is `1`, second is `2`, etc.) | Not writable                                       |
+| `.`                | Contents of the current selections                              | Not writable                                       |
+| `%`                | Name of the current file                                        | Not writable                                       |
+| `*`                | Reads from the system clipboard                                 | Joins and yanks to system clipboard selection      |
+| `+`                | Reads from the primary clipboard                                | Joins and yanks to system primary selection        |
+
+Multiple selections in Helix are joined with newlines when yanked to the system selections.
+Pasting the same content back to Helix will then result in the insertion of only a one selection value.
 
 ## Surround
 

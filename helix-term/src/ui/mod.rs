@@ -19,6 +19,7 @@ use crate::filter_picker_entry;
 use crate::job::{self, Callback};
 pub use completion::{Completion, CompletionItem};
 pub use editor::EditorView;
+use helix_view::register::Register;
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{DynamicPicker, FileLocation, Picker};
@@ -36,11 +37,11 @@ use std::path::PathBuf;
 pub fn prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
-    history_register: Option<char>,
+    register: Option<Register>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
-    let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
+    let mut prompt = Prompt::new(prompt, register, completion_fn, callback_fn);
     // Calculate the initial completion
     prompt.recalculate_completion(cx.editor);
     cx.push_layer(Box::new(prompt));
@@ -50,19 +51,19 @@ pub fn prompt_with_input(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     input: String,
-    history_register: Option<char>,
+    register: Option<Register>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
-    let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
-        .with_line(input, cx.editor);
+    let prompt =
+        Prompt::new(prompt, register, completion_fn, callback_fn).with_line(input, cx.editor);
     cx.push_layer(Box::new(prompt));
 }
 
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
-    history_register: Option<char>,
+    register: Option<Register>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     fun: impl Fn(&mut Editor, Regex, PromptEvent) + 'static,
 ) {
@@ -74,7 +75,7 @@ pub fn regex_prompt(
 
     let mut prompt = Prompt::new(
         prompt,
-        history_register,
+        register,
         completion_fn,
         move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
             match event {
