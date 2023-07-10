@@ -739,6 +739,18 @@ fn write_all(
     write_all_impl(cx, false, true)
 }
 
+fn force_write_all(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_all_impl(cx, true, true)
+}
+
 fn write_all_quit(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -893,6 +905,25 @@ fn yank_main_selection_to_clipboard(
     }
 
     yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Clipboard)
+}
+
+fn yank_joined(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(args.len() <= 1, ":yank-join takes at most 1 argument");
+
+    let doc = doc!(cx.editor);
+    let default_sep = Cow::Borrowed(doc.line_ending.as_str());
+    let separator = args.first().unwrap_or(&default_sep);
+    let register = cx.editor.selected_register.unwrap_or('"');
+    yank_joined_impl(cx.editor, separator, register);
+    Ok(())
 }
 
 fn yank_joined_to_clipboard(
@@ -1765,7 +1796,7 @@ fn set_option(
 
     *value = if value.is_string() {
         // JSON strings require quotes, so we can't .parse() directly
-        serde_json::Value::String(arg.to_string())
+        Value::String(arg.to_string())
     } else {
         arg.parse().map_err(field_error)?
     };
@@ -1790,8 +1821,8 @@ fn toggle_option(
         return Ok(());
     }
 
-    if args.len() != 1 {
-        anyhow::bail!("Bad arguments. Usage: `:toggle key`");
+    if args.is_empty() {
+        anyhow::bail!("Bad arguments. Usage: `:toggle key [values]?`");
     }
     let key = &args[0].to_lowercase();
 
@@ -1801,22 +1832,43 @@ fn toggle_option(
     let pointer = format!("/{}", key.replace('.', "/"));
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
-    let Value::Bool(old_value) = *value else {
-        anyhow::bail!("Key `{}` is not toggle-able", key)
+    *value = match value {
+        Value::Bool(ref value) => {
+            ensure!(
+                args.len() == 1,
+                "Bad arguments. For boolean configurations use: `:toggle key`"
+            );
+            Value::Bool(!value)
+        }
+        Value::String(ref value) => {
+            ensure!(
+                args.len() > 2,
+                "Bad arguments. For string configurations use: `:toggle key val1 val2 ...`",
+            );
+
+            Value::String(
+                args[1..]
+                    .iter()
+                    .skip_while(|e| *e != value)
+                    .nth(1)
+                    .unwrap_or_else(|| &args[1])
+                    .to_string(),
+            )
+        }
+        Value::Null | Value::Object(_) | Value::Array(_) | Value::Number(_) => {
+            anyhow::bail!("Configuration {key} does not support toggle yet")
+        }
     };
 
-    let new_value = !old_value;
-    *value = Value::Bool(new_value);
-    // This unwrap should never fail because we only replace one boolean value
-    // with another, maintaining a valid json config
-    let config = serde_json::from_value(config).unwrap();
+    let status = format!("'{key}' is now set to {value}");
+    let config = serde_json::from_value(config)
+        .map_err(|_| anyhow::anyhow!("Could not parse field: `{:?}`", &args))?;
 
     cx.editor
         .config_events
         .0
         .send(ConfigEvent::Update(config))?;
-    cx.editor
-        .set_status(format!("Option `{}` is now set to `{}`", key, new_value));
+    cx.editor.set_status(status);
     Ok(())
 }
 
@@ -2405,6 +2457,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             signature: CommandSignature::none(),
         },
         TypableCommand {
+            name: "write-all!",
+            aliases: &["wa!"],
+            doc: "Forcefully write changes from all buffers to disk creating necessary subdirectories.",
+            fun: force_write_all,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
             name: "write-quit-all",
             aliases: &["wqa", "xa"],
             doc: "Write changes from all buffers to disk and close all views.",
@@ -2452,6 +2511,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Change the editor theme (show current theme if no name specified).",
             fun: theme,
             signature: CommandSignature::positional(&[completers::theme]),
+        },
+        TypableCommand {
+            name: "yank-join",
+            aliases: &[],
+            doc: "Yank joined selections. A separator can be provided as first argument. Default value is newline.",
+            fun: yank_joined,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "clipboard-yank",
@@ -2560,14 +2626,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
         TypableCommand {
             name: "reload",
-            aliases: &[],
+            aliases: &["rl"],
             doc: "Discard changes and reload from the source file.",
             fun: reload,
             signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "reload-all",
-            aliases: &[],
+            aliases: &["rla"],
             doc: "Discard changes and reload all documents from the source files.",
             fun: reload_all,
             signature: CommandSignature::none(),

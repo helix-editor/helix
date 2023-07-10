@@ -7,10 +7,11 @@
 | beancount | ✓ |  |  |  |
 | bibtex | ✓ |  |  | `texlab` |
 | bicep | ✓ |  |  | `bicep-langserver` |
+| blueprint | ✓ |  |  | `blueprint-compiler` |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
 | cabal |  |  |  |  |
-| cairo | ✓ |  |  |  |
+| cairo | ✓ | ✓ | ✓ | `cairo-language-server` |
 | capnp | ✓ |  | ✓ |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
@@ -40,6 +41,7 @@
 | erlang | ✓ | ✓ |  | `erlang_ls` |
 | esdl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |
+| forth | ✓ |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ | `fortls` |
 | gdscript | ✓ | ✓ | ✓ |  |
 | git-attributes | ✓ |  |  |  |
@@ -57,6 +59,7 @@
 | graphql | ✓ |  |  |  |
 | hare | ✓ |  |  |  |
 | haskell | ✓ | ✓ |  | `haskell-language-server-wrapper` |
+| haskell-persistent | ✓ |  |  |  |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  | `elixir-ls` |
 | hosts | ✓ |  |  |  |
@@ -86,7 +89,7 @@
 | markdoc | ✓ |  |  | `markdoc-ls` |
 | markdown | ✓ |  |  | `marksman` |
 | markdown.inline | ✓ |  |  |  |
-| matlab | ✓ |  |  |  |
+| matlab | ✓ | ✓ | ✓ |  |
 | mermaid | ✓ |  |  |  |
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
@@ -141,6 +144,7 @@
 | svelte | ✓ |  |  | `svelteserver` |
 | sway | ✓ | ✓ | ✓ | `forc` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
+| t32 | ✓ |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
@@ -156,9 +160,10 @@
 | verilog | ✓ | ✓ |  | `svlangserver` |
 | vhdl | ✓ |  |  | `vhdl_ls` |
 | vhs | ✓ |  |  |  |
-| vue | ✓ |  |  | `vls` |
+| vue | ✓ |  |  | `vue-language-server` |
 | wast | ✓ |  |  |  |
 | wat | ✓ |  |  |  |
+| webc | ✓ |  |  |  |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
 | wit | ✓ |  | ✓ |  |
 | xit | ✓ |  |  |  |

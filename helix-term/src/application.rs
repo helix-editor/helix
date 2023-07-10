@@ -34,7 +34,6 @@ use std::{
     io::{stdin, stdout},
     path::Path,
     sync::Arc,
-    time::{Duration, Instant},
 };
 
 use anyhow::{Context, Error};
@@ -44,8 +43,6 @@ use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
-
-const LSP_DEADLINE: Duration = Duration::from_millis(16);
 
 #[cfg(not(feature = "integration"))]
 use tui::backend::CrosstermBackend;
@@ -76,7 +73,6 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
-    last_render: Instant,
 }
 
 #[cfg(feature = "integration")]
@@ -233,8 +229,14 @@ impl Application {
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
-        let signals = Signals::new([signal::SIGTSTP, signal::SIGCONT, signal::SIGUSR1])
-            .context("build signal handler")?;
+        let signals = Signals::new([
+            signal::SIGTSTP,
+            signal::SIGCONT,
+            signal::SIGUSR1,
+            signal::SIGTERM,
+            signal::SIGINT,
+        ])
+        .context("build signal handler")?;
 
         let app = Self {
             compositor,
@@ -249,7 +251,6 @@ impl Application {
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
-            last_render: Instant::now(),
         };
 
         Ok(app)
@@ -296,7 +297,6 @@ impl Application {
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
         self.render().await;
-        self.last_render = Instant::now();
 
         loop {
             if !self.event_loop_until_idle(input_stream).await {
@@ -320,7 +320,9 @@ impl Application {
                 biased;
 
                 Some(signal) = self.signals.next() => {
-                    self.handle_signals(signal).await;
+                    if !self.handle_signals(signal).await {
+                        return false;
+                    };
                 }
                 Some(event) = input_stream.next() => {
                     self.handle_terminal_events(event).await;
@@ -444,10 +446,12 @@ impl Application {
 
     #[cfg(windows)]
     // no signal handling available on windows
-    pub async fn handle_signals(&mut self, _signal: ()) {}
+    pub async fn handle_signals(&mut self, _signal: ()) -> bool {
+        true
+    }
 
     #[cfg(not(windows))]
-    pub async fn handle_signals(&mut self, signal: i32) {
+    pub async fn handle_signals(&mut self, signal: i32) -> bool {
         match signal {
             signal::SIGTSTP => {
                 self.restore_term().unwrap();
@@ -501,8 +505,14 @@ impl Application {
                 self.refresh_config();
                 self.render().await;
             }
+            signal::SIGTERM | signal::SIGINT => {
+                self.restore_term().unwrap();
+                return false;
+            }
             _ => unreachable!(),
         }
+
+        true
     }
 
     pub async fn handle_idle_timeout(&mut self) {
@@ -595,12 +605,7 @@ impl Application {
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
                 // limit render calls for fast language server messages
-                let last = self.editor.language_servers.incoming.is_empty();
-
-                if last || self.last_render.elapsed() > LSP_DEADLINE {
-                    self.render().await;
-                    self.last_render = Instant::now();
-                }
+                self.editor.redraw_handle.0.notify_one();
             }
             EditorEvent::DebuggerEvent(payload) => {
                 let needs_render = self.editor.handle_debugger_message(payload).await;
@@ -732,7 +737,12 @@ impl Application {
                                 return;
                             }
                         };
-                        let offset_encoding = language_server!().offset_encoding();
+                        let language_server = language_server!();
+                        if !language_server.is_initialized() {
+                            log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
+                            return;
+                        }
+                        let offset_encoding = language_server.offset_encoding();
                         let doc = self.editor.document_by_path_mut(&path).filter(|doc| {
                             if let Some(version) = params.version {
                                 if version != doc.version() {
@@ -1028,20 +1038,31 @@ impl Application {
                         Ok(serde_json::Value::Null)
                     }
                     Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
-                        let res = apply_workspace_edit(
-                            &mut self.editor,
-                            helix_lsp::OffsetEncoding::Utf8,
-                            &params.edit,
-                        );
+                        let language_server = language_server!();
+                        if language_server.is_initialized() {
+                            let offset_encoding = language_server.offset_encoding();
+                            let res = apply_workspace_edit(
+                                &mut self.editor,
+                                offset_encoding,
+                                &params.edit,
+                            );
 
-                        Ok(json!(lsp::ApplyWorkspaceEditResponse {
-                            applied: res.is_ok(),
-                            failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
-                            failed_change: res
-                                .as_ref()
-                                .err()
-                                .map(|err| err.failed_change_idx as u32),
-                        }))
+                            Ok(json!(lsp::ApplyWorkspaceEditResponse {
+                                applied: res.is_ok(),
+                                failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
+                                failed_change: res
+                                    .as_ref()
+                                    .err()
+                                    .map(|err| err.failed_change_idx as u32),
+                            }))
+                        } else {
+                            Err(helix_lsp::jsonrpc::Error {
+                                code: helix_lsp::jsonrpc::ErrorCode::InvalidRequest,
+                                message: "Server must be initialized to request workspace edits"
+                                    .to_string(),
+                                data: None,
+                            })
+                        }
                     }
                     Ok(MethodCall::WorkspaceFolders) => {
                         Ok(json!(&*language_server!().workspace_folders().await))
