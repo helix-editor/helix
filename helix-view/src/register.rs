@@ -11,15 +11,31 @@ use crate::Editor;
 /// behaviors when read or written to:
 ///
 /// * Black hole (`_`): all values read and written are discarded
+/// * Selection indices (`#`): index number of each selection starting at 1
+/// * Selection contents (`.`)
 #[derive(Debug, Default)]
 pub struct Registers {
     inner: HashMap<char, Vec<String>>,
 }
 
 impl Registers {
-    pub fn read<'a>(&'a self, name: char, _editor: &'a Editor) -> Option<RegisterValues<'a>> {
+    pub fn read<'a>(&'a self, name: char, editor: &'a Editor) -> Option<RegisterValues<'a>> {
         match name {
             '_' => Some(RegisterValues::new(iter::empty())),
+            '#' => {
+                let (view, doc) = current_ref!(editor);
+                let selections = doc.selection(view.id).len();
+                // ExactSizeIterator is implemented for Range<usize> but
+                // not RangeInclusive<usize>.
+                Some(RegisterValues::new(
+                    (0..selections).map(|i| (i + 1).to_string().into()),
+                ))
+            }
+            '.' => {
+                let (view, doc) = current_ref!(editor);
+                let text = doc.text().slice(..);
+                Some(RegisterValues::new(doc.selection(view.id).fragments(text)))
+            }
             _ => self
                 .inner
                 .get(&name)
@@ -30,6 +46,7 @@ impl Registers {
     pub fn write(&mut self, name: char, values: Vec<String>) -> Result<()> {
         match name {
             '_' => Ok(()),
+            '#' | '.' => Err(anyhow::anyhow!("Register {name} does not support writing")),
             _ => {
                 self.inner.insert(name, values);
                 Ok(())
@@ -40,6 +57,7 @@ impl Registers {
     pub fn push(&mut self, name: char, value: String) -> Result<()> {
         match name {
             '_' => Ok(()),
+            '#' | '.' => Err(anyhow::anyhow!("Register {name} does not support pushing")),
             _ => {
                 self.inner.entry(name).or_insert_with(Vec::new).push(value);
                 Ok(())
@@ -66,7 +84,15 @@ impl Registers {
 
                 (*name, preview)
             })
-            .chain([('_', "<empty>")].iter().copied())
+            .chain(
+                [
+                    ('_', "<empty>"),
+                    ('#', "<selection indices>"),
+                    ('.', "<selection contents>"),
+                ]
+                .iter()
+                .copied(),
+            )
     }
 
     pub fn clear(&mut self) {
@@ -75,7 +101,7 @@ impl Registers {
 
     pub fn remove(&mut self, name: char) -> bool {
         match name {
-            '_' => false,
+            '_' | '#' | '.' => false,
             _ => self.inner.remove(&name).is_some(),
         }
     }
