@@ -28,6 +28,7 @@ use crate::{
     ui::{self, overlay::overlaid},
 };
 
+use core::panic;
 use log::{debug, error, warn};
 use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
@@ -1096,13 +1097,12 @@ impl Application {
         self.claim_term()?;
 
         // Exit the alternate screen and disable raw mode before panicking
-        let hook = std::panic::take_hook();
         std::panic::set_hook(Box::new(move |info| {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`.
             let _ = TerminalBackend::force_restore();
-            hook(info);
+            std::panic::take_hook()(info);
         }));
 
         self.event_loop(&mut EventStream::new()).await;
