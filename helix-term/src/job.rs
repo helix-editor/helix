@@ -56,10 +56,6 @@ impl Jobs {
         Self::default()
     }
 
-    pub fn spawn<F: Future<Output = anyhow::Result<()>> + Send + 'static>(&mut self, f: F) {
-        self.add(Job::new(f));
-    }
-
     pub fn callback<F: Future<Output = anyhow::Result<Callback>> + Send + 'static>(
         &mut self,
         f: F,
