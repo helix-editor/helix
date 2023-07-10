@@ -5118,16 +5118,13 @@ fn surround_replace(cx: &mut Context) {
         // Visual feedback
         let selection = selection.clone();
         let mut ranges: SmallVec<[Range; 1]> = SmallVec::new();
-        change_pos.chunks(2).for_each(|p| {
-            if p.len() == 2 {
-                let from = *p.first().unwrap();
-                let to = *p.get(1).unwrap();
-                ranges.push(Range::new(from, from + 1));
-                ranges.push(Range::new(to, to + 1));
-            }
+        // TODO: Use [`array_chunks`] once stabilized
+        change_pos.chunks_exact(2).for_each(|p| {
+            let [from, to] = *p else { unreachable!() };
+            ranges.push(Range::point(from));
+            ranges.push(Range::point(to));
         });
-        let feedback = Selection::new(ranges, 0);
-        doc.set_selection(view.id, feedback);
+        doc.set_selection(view.id, Selection::new(ranges, 0));
 
         cx.on_next_key(move |cx, event| {
             let (view, doc) = current!(cx.editor);
