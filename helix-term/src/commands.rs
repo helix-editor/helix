@@ -2342,10 +2342,25 @@ enum Operation {
     Change,
 }
 
+fn selection_is_linewise(selection: &Selection, text: &Rope) -> bool {
+    selection.ranges().iter().all(|range| {
+        let text = text.slice(..);
+        if range.slice(text).len_lines() < 2 {
+            return false;
+        }
+        // If the start of the selection is at the start of a line and the end at the end of a line.
+        let (start_line, end_line) = range.line_range(text);
+        let start = text.line_to_char(start_line);
+        let end = text.line_to_char((end_line + 1).min(text.len_lines()));
+        start == range.from() && end == range.to()
+    })
+}
+
 fn delete_selection_impl(cx: &mut Context, op: Operation) {
     let (view, doc) = current!(cx.editor);
 
     let selection = doc.selection(view.id);
+    let only_whole_lines = selection_is_linewise(selection, doc.text());
 
     if cx.register != Some('_') {
         // first yank the selection
@@ -2366,7 +2381,11 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
             exit_select_mode(cx);
         }
         Operation::Change => {
-            enter_insert_mode(cx);
+            if only_whole_lines {
+                open_above(cx);
+            } else {
+                enter_insert_mode(cx);
+            }
         }
     }
 }
