@@ -1908,9 +1908,10 @@ fn searcher(cx: &mut Context, direction: Direction) {
 
 fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
     let count = cx.count();
+    let register = cx.register.unwrap_or('/');
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
-    if let Some(query) = cx.editor.registers.last('/', cx.editor) {
+    if let Some(query) = cx.editor.registers.last(register, cx.editor) {
         let doc = doc!(cx.editor);
         let contents = doc.text().slice(..).to_string();
         let search_config = &config.search;
@@ -1960,6 +1961,7 @@ fn extend_search_prev(cx: &mut Context) {
 }
 
 fn search_selection(cx: &mut Context) {
+    let register = cx.register.unwrap_or('/');
     let (view, doc) = current!(cx.editor);
     let contents = doc.text().slice(..);
 
@@ -1972,15 +1974,16 @@ fn search_selection(cx: &mut Context) {
         .collect::<Vec<_>>()
         .join("|");
 
-    let msg = format!("register '{}' set to '{}'", '/', &regex);
-    match cx.editor.registers.push('/', regex) {
+    let msg = format!("register '{}' set to '{}'", register, &regex);
+    match cx.editor.registers.push(register, regex) {
         Ok(_) => cx.editor.set_status(msg),
         Err(err) => cx.editor.set_error(err.to_string()),
     }
 }
 
 fn make_search_word_bounded(cx: &mut Context) {
-    let regex = match cx.editor.registers.last('/', cx.editor) {
+    let register = cx.register.unwrap_or('/');
+    let regex = match cx.editor.registers.last(register, cx.editor) {
         Some(regex) => regex,
         None => return,
     };
@@ -2003,8 +2006,8 @@ fn make_search_word_bounded(cx: &mut Context) {
         new_regex.push_str("\\b");
     }
 
-    let msg = format!("register '{}' set to '{}'", '/', &new_regex);
-    match cx.editor.registers.push('/', new_regex) {
+    let msg = format!("register '{}' set to '{}'", register, &new_regex);
+    match cx.editor.registers.push(register, new_regex) {
         Ok(_) => cx.editor.set_status(msg),
         Err(err) => cx.editor.set_error(err.to_string()),
     }
