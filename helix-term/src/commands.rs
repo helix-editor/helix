@@ -5115,33 +5115,26 @@ fn surround_replace(cx: &mut Context) {
             }
         };
 
-        // Visual feedback
-        let selection = selection.clone();
-        let mut ranges: SmallVec<[Range; 1]> = SmallVec::new();
-        // TODO: Use [`array_chunks`] once stabilized
-        for p in change_pos.chunks_exact(2) {
-            let [from, to] = *p else { unreachable!() };
-            ranges.push(Range::point(from));
-            ranges.push(Range::point(to));
-        }
+        let original_selection = selection.clone();
+        let ranges: SmallVec<_> = change_pos.iter().map(|&p| Range::new(p, p + 1)).collect();
         doc.set_selection(view.id, Selection::new(ranges, 0));
 
         cx.on_next_key(move |cx, event| {
             let (view, doc) = current!(cx.editor);
             let to = match event.char() {
                 Some(to) => to,
-                None => return doc.set_selection(view.id, selection),
+                None => return doc.set_selection(view.id, original_selection),
             };
             let (open, close) = surround::get_pair(to);
-            let transaction = Transaction::change(
-                doc.text(),
-                change_pos.iter().enumerate().map(|(i, &pos)| {
+            let mut i = 0;
+            let transaction =
+                Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
                     let mut t = Tendril::new();
                     t.push(if i % 2 == 0 { open } else { close });
-                    (pos, pos + 1, Some(t))
-                }),
-            );
-            doc.set_selection(view.id, selection);
+                    i += 1;
+                    (range.from(), range.to(), Some(t))
+                });
+            doc.set_selection(view.id, original_selection);
             doc.apply(&transaction, view.id);
             exit_select_mode(cx);
         });
