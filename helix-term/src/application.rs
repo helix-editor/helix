@@ -16,7 +16,7 @@ use helix_view::{
     Align, Editor,
 };
 use serde_json::json;
-use tui::backend::Backend;
+use tui::{backend::Backend, Terminal};
 
 use crate::{
     args::Args,
@@ -43,33 +43,21 @@ use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
-#[cfg(not(feature = "integration"))]
-type TerminalBackend = tui::backend::CrosstermBackend<std::io::Stdout>;
-
-#[cfg(feature = "integration")]
-type TerminalBackend = tui::backend::TestBackend;
-
-type Terminal = tui::terminal::Terminal<TerminalBackend>;
-
-pub struct Application {
+pub struct Application<B: Backend> {
     compositor: Compositor,
-    terminal: Terminal,
+    terminal: Terminal<B>,
     pub editor: Editor,
-
     config: Arc<ArcSwap<Config>>,
-
-    #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
-    #[allow(dead_code)]
     syn_loader: Arc<syntax::Loader>,
-
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
 }
 
-impl Application {
+impl<B: Backend> Application<B> {
     pub fn new(
+        terminal_backend: B,
         args: Args,
         config: Config,
         syn_loader_conf: syntax::Configuration,
@@ -96,13 +84,7 @@ impl Application {
 
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
-        #[cfg(not(feature = "integration"))]
-        let backend = tui::backend::CrosstermBackend::new(std::io::stdout(), &config.editor);
-
-        #[cfg(feature = "integration")]
-        let backend = tui::backend::TestBackend::new(120, 150);
-
-        let terminal = Terminal::new(backend)?;
+        let terminal = Terminal::new(terminal_backend)?;
         let area = terminal.size().expect("couldn't get terminal size");
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
@@ -1088,7 +1070,7 @@ impl Application {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`.
-            let _ = TerminalBackend::force_restore();
+            let _ = B::force_restore();
             std::panic::take_hook()(info);
         }));
 

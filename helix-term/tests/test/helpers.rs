@@ -13,6 +13,9 @@ use helix_term::{application::Application, args::Args, config::Config, keymap::m
 use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use tui::backend::TestBackend;
+
+pub type TestApplication = Application<TestBackend>;
 
 #[derive(Clone, Debug)]
 pub struct TestCase {
@@ -45,9 +48,9 @@ where
 
 #[inline]
 pub async fn test_key_sequence(
-    app: &mut Application,
+    app: &mut TestApplication,
     in_keys: Option<&str>,
-    test_fn: Option<&dyn Fn(&Application)>,
+    test_fn: Option<&dyn Fn(&TestApplication)>,
     should_exit: bool,
 ) -> anyhow::Result<()> {
     test_key_sequences(app, vec![(in_keys, test_fn)], should_exit).await
@@ -55,8 +58,8 @@ pub async fn test_key_sequence(
 
 #[allow(clippy::type_complexity)]
 pub async fn test_key_sequences(
-    app: &mut Application,
-    inputs: Vec<(Option<&str>, Option<&dyn Fn(&Application)>)>,
+    app: &mut TestApplication,
+    inputs: Vec<(Option<&str>, Option<&dyn Fn(&TestApplication)>)>,
     should_exit: bool,
 ) -> anyhow::Result<()> {
     const TIMEOUT: Duration = Duration::from_millis(500);
@@ -131,9 +134,9 @@ pub async fn test_key_sequences(
 }
 
 pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
-    app: Option<Application>,
+    app: Option<TestApplication>,
     test_case: T,
-    test_fn: &dyn Fn(&Application),
+    test_fn: &dyn Fn(&TestApplication),
     should_exit: bool,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
@@ -313,12 +316,17 @@ impl AppBuilder {
         self
     }
 
-    pub fn build(self) -> anyhow::Result<Application> {
+    pub fn build(self) -> anyhow::Result<TestApplication> {
         // Unwrap will be error error if logging system has been
         // initialized by another test.
         let _ = helix_term::log::setup_logging(std::io::stdout(), None);
 
-        let mut app = Application::new(self.args, self.config, self.syn_conf)?;
+        let mut app = TestApplication::new(
+            tui::backend::TestBackend::new(120, 150),
+            self.args,
+            self.config,
+            self.syn_conf,
+        )?;
 
         if let Some((text, selection)) = self.input {
             let (view, doc) = helix_view::current!(app.editor);

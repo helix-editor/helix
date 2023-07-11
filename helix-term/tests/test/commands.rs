@@ -1,5 +1,3 @@
-use helix_term::application::Application;
-
 use super::*;
 
 mod write;
@@ -100,7 +98,7 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
 async fn test_goto_file_impl() -> anyhow::Result<()> {
     let file = tempfile::NamedTempFile::new()?;
 
-    fn match_paths(app: &Application, matches: Vec<&str>) -> usize {
+    fn match_paths(app: &TestApplication, matches: Vec<&str>) -> usize {
         app.editor
             .documents()
             .filter_map(|d| d.path()?.file_name())
