@@ -371,7 +371,7 @@ async fn surround_around_pair() -> anyhow::Result<()> {
 async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
     let test = |content: &str, expected_sel: Selection| -> anyhow::Result<()> {
         let file = helpers::temp_file_with_contents(content)?;
-        let mut app = helpers::AppBuilder::new()
+        let mut app = helpers::AppBuilder::default()
             .with_file(file.path(), None)
             .build()?;
 
@@ -413,7 +413,7 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::Result<()> {
     test_with_config(
-        AppBuilder::new().with_file("foo.rs", None),
+        AppBuilder::default().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 #[/|]#// Increments
@@ -438,7 +438,7 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Result<()> {
     test_with_config(
-        AppBuilder::new().with_file("foo.rs", None),
+        AppBuilder::default().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -464,7 +464,7 @@ async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Res
 async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> anyhow::Result<()> {
     // Note: the anchor stays put and the head moves back.
     test_with_config(
-        AppBuilder::new().with_file("foo.rs", None),
+        AppBuilder::default().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments
@@ -488,7 +488,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
     .await?;
 
     test_with_config(
-        AppBuilder::new().with_file("foo.rs", None),
+        AppBuilder::default().with_file("foo.rs", None),
         (
             helpers::platform_line(indoc! {"\
                 /// Increments

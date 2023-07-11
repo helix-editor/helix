@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test(flavor = "multi_thread")]
 async fn test_history_completion() -> anyhow::Result<()> {
     test_key_sequence(
-        &mut AppBuilder::new().build()?,
+        &mut AppBuilder::default().build()?,
         Some(":asdf<ret>:theme d<C-n><tab>"),
         Some(&|app| {
             assert!(!app.editor.is_err());

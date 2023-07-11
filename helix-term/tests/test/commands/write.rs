@@ -12,7 +12,7 @@ use super::*;
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit_fail() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
-    let mut app = helpers::AppBuilder::new()
+    let mut app = helpers::AppBuilder::default()
         .with_file(file.path(), None)
         .build()?;
 
@@ -37,7 +37,7 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     test_key_sequences(
-        &mut helpers::AppBuilder::new().build()?,
+        &mut helpers::AppBuilder::default().build()?,
         vec![
             (
                 None,
@@ -77,7 +77,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
 
     command.push_str(":buffer<minus>close<ret>");
 
-    let mut app = helpers::AppBuilder::new()
+    let mut app = helpers::AppBuilder::default()
         .with_file(file.path(), None)
         .build()?;
 
@@ -102,7 +102,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
-    let mut app = helpers::AppBuilder::new()
+    let mut app = helpers::AppBuilder::default()
         .with_file(file.path(), None)
         .build()?;
 
@@ -131,7 +131,7 @@ async fn test_write() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_overwrite_protection() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
-    let mut app = helpers::AppBuilder::new()
+    let mut app = helpers::AppBuilder::default()
         .with_file(file.path(), None)
         .build()?;
 
@@ -166,7 +166,7 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
-    let mut app = helpers::AppBuilder::new()
+    let mut app = helpers::AppBuilder::default()
         .with_file(file.path(), None)
         .build()?;
 
@@ -197,7 +197,7 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut command = String::new();
     const RANGE: RangeInclusive<i32> = 1..=1000;
-    let mut app = helpers::AppBuilder::new()
+    let mut app = helpers::AppBuilder::default()
         .with_file(file.path(), None)
         .build()?;
 
@@ -221,7 +221,7 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
-    let mut app = helpers::AppBuilder::new()
+    let mut app = helpers::AppBuilder::default()
         .with_file(file.path(), None)
         .build()?;
 
@@ -264,7 +264,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
     test_key_sequence(
-        &mut AppBuilder::new().build()?,
+        &mut AppBuilder::default().build()?,
         Some(format!("ihello<esc>:w {}<ret>", file.path().to_string_lossy()).as_ref()),
         Some(&|app| {
             assert!(!app.editor.is_err());
@@ -315,7 +315,7 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
             formatter = { command = "bash", args = [ "-c", "exit 1" ] }
         "#};
 
-    let mut app = helpers::AppBuilder::new()
+    let mut app = helpers::AppBuilder::default()
         .with_file(file.path(), None)
         .with_input_text("#[l|]#et foo = 0;\n")
         .with_lang_config(helpers::test_syntax_conf(Some(lang_conf.into())))
@@ -333,7 +333,7 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
 async fn test_write_new_path() -> anyhow::Result<()> {
     let mut file1 = tempfile::NamedTempFile::new().unwrap();
     let mut file2 = tempfile::NamedTempFile::new().unwrap();
-    let mut app = helpers::AppBuilder::new()
+    let mut app = helpers::AppBuilder::default()
         .with_file(file1.path(), None)
         .build()?;
 
@@ -380,7 +380,7 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
 
     test_key_sequences(
-        &mut AppBuilder::new().build()?,
+        &mut AppBuilder::default().build()?,
         vec![
             (
                 None,
@@ -434,7 +434,7 @@ async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     file.as_file_mut().write_all(file_content)?;
 
     helpers::test_key_sequence(
-        &mut helpers::AppBuilder::new().build()?,
+        &mut helpers::AppBuilder::default().build()?,
         Some(&format!(":o {}<ret>:x<ret>", file.path().to_string_lossy())),
         None,
         true,

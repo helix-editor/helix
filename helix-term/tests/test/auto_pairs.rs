@@ -41,7 +41,7 @@ async fn insert_configured_multi_byte_chars() -> anyhow::Result<()> {
 
     for (open, close) in pairs.iter() {
         test_with_config(
-            AppBuilder::new().with_config(config.clone()),
+            AppBuilder::default().with_config(config.clone()),
             (
                 format!("#[{}|]#", LINE_END),
                 format!("i{}", open),
@@ -51,7 +51,7 @@ async fn insert_configured_multi_byte_chars() -> anyhow::Result<()> {
         .await?;
 
         test_with_config(
-            AppBuilder::new().with_config(config.clone()),
+            AppBuilder::default().with_config(config.clone()),
             (
                 format!("{}#[{}|]#{}", open, close, LINE_END),
                 format!("i{}", close),
@@ -166,7 +166,7 @@ async fn insert_before_eol() -> anyhow::Result<()> {
 async fn insert_auto_pairs_disabled() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
         test_with_config(
-            AppBuilder::new().with_config(Config {
+            AppBuilder::default().with_config(Config {
                 editor: helix_view::editor::Config {
                     auto_pairs: AutoPairConfig::Enable(false),
                     ..Default::default()

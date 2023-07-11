@@ -8,7 +8,7 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
     let mut file2 = tempfile::NamedTempFile::new()?;
     let mut file3 = tempfile::NamedTempFile::new()?;
 
-    let mut app = helpers::AppBuilder::new()
+    let mut app = helpers::AppBuilder::default()
         .with_file(file1.path(), None)
         .build()?;
 
@@ -72,7 +72,7 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
-    let mut app = helpers::AppBuilder::new()
+    let mut app = helpers::AppBuilder::default()
         .with_file(file.path(), None)
         .build()?;
 

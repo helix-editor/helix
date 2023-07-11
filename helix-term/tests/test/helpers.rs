@@ -287,10 +287,6 @@ impl Default for AppBuilder {
 }
 
 impl AppBuilder {
-    pub fn new() -> Self {
-        AppBuilder::default()
-    }
-
     pub fn with_file<P: Into<PathBuf>>(
         mut self,
         path: P,

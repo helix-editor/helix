@@ -110,7 +110,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
 
     // Single selection
     test_key_sequence(
-        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        &mut AppBuilder::default().with_file(file.path(), None).build()?,
         Some("ione.js<esc>%gf"),
         Some(&|app| {
             assert_eq!(1, match_paths(app, vec!["one.js"]));
@@ -121,7 +121,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
 
     // Multiple selection
     test_key_sequence(
-        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        &mut AppBuilder::default().with_file(file.path(), None).build()?,
         Some("ione.js<ret>two.js<esc>%<A-s>gf"),
         Some(&|app| {
             assert_eq!(2, match_paths(app, vec!["one.js", "two.js"]));
@@ -132,7 +132,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
 
     // Cursor on first quote
     test_key_sequence(
-        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        &mut AppBuilder::default().with_file(file.path(), None).build()?,
         Some("iimport 'one.js'<esc>B;gf"),
         Some(&|app| {
             assert_eq!(1, match_paths(app, vec!["one.js"]));
@@ -143,7 +143,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
 
     // Cursor on last quote
     test_key_sequence(
-        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        &mut AppBuilder::default().with_file(file.path(), None).build()?,
         Some("iimport 'one.js'<esc>bgf"),
         Some(&|app| {
             assert_eq!(1, match_paths(app, vec!["one.js"]));
@@ -308,7 +308,7 @@ async fn test_extend_line() -> anyhow::Result<()> {
 async fn test_character_info() -> anyhow::Result<()> {
     // UTF-8, single byte
     test_key_sequence(
-        &mut helpers::AppBuilder::new().build()?,
+        &mut helpers::AppBuilder::default().build()?,
         Some("ih<esc>h:char<ret>"),
         Some(&|app| {
             assert_eq!(
@@ -322,7 +322,7 @@ async fn test_character_info() -> anyhow::Result<()> {
 
     // UTF-8, multi-byte
     test_key_sequence(
-        &mut helpers::AppBuilder::new().build()?,
+        &mut helpers::AppBuilder::default().build()?,
         Some("ië<esc>h:char<ret>"),
         Some(&|app| {
             assert_eq!(
@@ -336,7 +336,7 @@ async fn test_character_info() -> anyhow::Result<()> {
 
     // Multiple characters displayed as one, escaped characters
     test_key_sequence(
-        &mut helpers::AppBuilder::new().build()?,
+        &mut helpers::AppBuilder::default().build()?,
         Some(":line<minus>ending crlf<ret>:char<ret>"),
         Some(&|app| {
             assert_eq!(
@@ -350,7 +350,7 @@ async fn test_character_info() -> anyhow::Result<()> {
 
     // Non-UTF-8
     test_key_sequence(
-        &mut helpers::AppBuilder::new().build()?,
+        &mut helpers::AppBuilder::default().build()?,
         Some(":encoding ascii<ret>ih<esc>h:char<ret>"),
         Some(&|app| {
             assert_eq!(r#""h" Dec 104 Hex 68"#, app.editor.get_status().unwrap().0);
