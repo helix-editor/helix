@@ -32,7 +32,6 @@ use helix_core::{
     RopeReader, RopeSlice, Selection, SmallVec, Tendril, Transaction,
 };
 use helix_view::{
-    clipboard::ClipboardType,
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, CompleteAction},
     info::Info,
@@ -3759,7 +3758,12 @@ fn commit_undo_checkpoint(cx: &mut Context) {
 // Yank / Paste
 
 fn yank(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
+    yank_impl(cx.editor, cx.register.unwrap_or('"'));
+    exit_select_mode(cx);
+}
+
+fn yank_impl(editor: &mut Editor, register: char) {
+    let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
     let values: Vec<String> = doc
@@ -3768,16 +3772,14 @@ fn yank(cx: &mut Context) {
         .map(Cow::into_owned)
         .collect();
     let selections = values.len();
-    let register = cx.register.unwrap_or('"');
 
-    match cx.editor.registers.write(register, values) {
-        Ok(_) => cx.editor.set_status(format!(
-            "yanked {selections} selection(s) to register {register}",
+    match editor.registers.write(register, values) {
+        Ok(_) => editor.set_status(format!(
+            "yanked {selections} selection{} to register {register}",
+            if selections == 1 { "" } else { "s" }
         )),
-        Err(err) => cx.editor.set_error(err.to_string()),
+        Err(err) => editor.set_error(err.to_string()),
     }
-
-    exit_select_mode(cx);
 }
 
 fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
@@ -3798,100 +3800,50 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
 
     match editor.registers.write(register, vec![joined]) {
         Ok(_) => editor.set_status(format!(
-            "joined and yanked {selections} selection(s) to register {register}",
+            "joined and yanked {selections} selection{} to register {register}",
+            if selections == 1 { "" } else { "s" }
         )),
         Err(err) => editor.set_error(err.to_string()),
     }
 }
 
 fn yank_joined(cx: &mut Context) {
-    let line_ending = doc!(cx.editor).line_ending;
-    let register = cx.register.unwrap_or('"');
-    yank_joined_impl(cx.editor, line_ending.as_str(), register);
+    let separator = doc!(cx.editor).line_ending.as_str();
+    yank_joined_impl(cx.editor, separator, cx.register.unwrap_or('"'));
     exit_select_mode(cx);
-}
-
-fn yank_joined_to_clipboard_impl(
-    editor: &mut Editor,
-    separator: &str,
-    clipboard_type: ClipboardType,
-) -> anyhow::Result<()> {
-    let (view, doc) = current!(editor);
-    let text = doc.text().slice(..);
-
-    let values: Vec<String> = doc
-        .selection(view.id)
-        .fragments(text)
-        .map(Cow::into_owned)
-        .collect();
-
-    let clipboard_text = match clipboard_type {
-        ClipboardType::Clipboard => "system clipboard",
-        ClipboardType::Selection => "primary clipboard",
-    };
-
-    let msg = format!(
-        "joined and yanked {} selection(s) to {}",
-        values.len(),
-        clipboard_text,
-    );
-
-    let joined = values.join(separator);
-
-    editor
-        .clipboard_provider
-        .set_contents(joined, clipboard_type)
-        .context("Couldn't set system clipboard content")?;
-
-    editor.set_status(msg);
-
-    Ok(())
 }
 
 fn yank_joined_to_clipboard(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    let _ =
-        yank_joined_to_clipboard_impl(cx.editor, line_ending.as_str(), ClipboardType::Clipboard);
+    yank_joined_impl(cx.editor, line_ending.as_str(), '*');
     exit_select_mode(cx);
-}
-
-fn yank_main_selection_to_clipboard_impl(
-    editor: &mut Editor,
-    clipboard_type: ClipboardType,
-) -> anyhow::Result<()> {
-    let (view, doc) = current!(editor);
-    let text = doc.text().slice(..);
-
-    let message_text = match clipboard_type {
-        ClipboardType::Clipboard => "yanked main selection to system clipboard",
-        ClipboardType::Selection => "yanked main selection to primary clipboard",
-    };
-
-    let value = doc.selection(view.id).primary().fragment(text);
-
-    if let Err(e) = editor
-        .clipboard_provider
-        .set_contents(value.into_owned(), clipboard_type)
-    {
-        bail!("Couldn't set system clipboard content: {}", e);
-    }
-
-    editor.set_status(message_text);
-    Ok(())
-}
-
-fn yank_main_selection_to_clipboard(cx: &mut Context) {
-    let _ = yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Clipboard);
 }
 
 fn yank_joined_to_primary_clipboard(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    let _ =
-        yank_joined_to_clipboard_impl(cx.editor, line_ending.as_str(), ClipboardType::Selection);
+    yank_joined_impl(cx.editor, line_ending.as_str(), '+');
+    exit_select_mode(cx);
+}
+
+fn yank_primary_selection_impl(editor: &mut Editor, register: char) {
+    let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).primary().fragment(text).to_string();
+
+    match editor.registers.write(register, vec![selection]) {
+        Ok(_) => editor.set_status(format!("yanked primary selection to register {register}",)),
+        Err(err) => editor.set_error(err.to_string()),
+    }
+}
+
+fn yank_main_selection_to_clipboard(cx: &mut Context) {
+    yank_primary_selection_impl(cx.editor, '*');
+    exit_select_mode(cx);
 }
 
 fn yank_main_selection_to_primary_clipboard(cx: &mut Context) {
-    let _ = yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Selection);
+    yank_primary_selection_impl(cx.editor, '+');
     exit_select_mode(cx);
 }
 
@@ -3991,68 +3943,34 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
     paste_impl(&[contents], doc, view, paste, count, cx.editor.mode);
 }
 
-fn paste_clipboard_impl(
-    editor: &mut Editor,
-    action: Paste,
-    clipboard_type: ClipboardType,
-    count: usize,
-) -> anyhow::Result<()> {
-    let (view, doc) = current!(editor);
-    match editor.clipboard_provider.get_contents(clipboard_type) {
-        Ok(contents) => {
-            paste_impl(&[contents], doc, view, action, count, editor.mode);
-            Ok(())
-        }
-        Err(e) => Err(e.context("Couldn't get system clipboard contents")),
-    }
-}
-
 fn paste_clipboard_after(cx: &mut Context) {
-    let _ = paste_clipboard_impl(
-        cx.editor,
-        Paste::After,
-        ClipboardType::Clipboard,
-        cx.count(),
-    );
+    paste(cx.editor, '*', Paste::After, cx.count());
 }
 
 fn paste_clipboard_before(cx: &mut Context) {
-    let _ = paste_clipboard_impl(
-        cx.editor,
-        Paste::Before,
-        ClipboardType::Clipboard,
-        cx.count(),
-    );
+    paste(cx.editor, '*', Paste::Before, cx.count());
 }
 
 fn paste_primary_clipboard_after(cx: &mut Context) {
-    let _ = paste_clipboard_impl(
-        cx.editor,
-        Paste::After,
-        ClipboardType::Selection,
-        cx.count(),
-    );
+    paste(cx.editor, '+', Paste::After, cx.count());
 }
 
 fn paste_primary_clipboard_before(cx: &mut Context) {
-    let _ = paste_clipboard_impl(
-        cx.editor,
-        Paste::Before,
-        ClipboardType::Selection,
-        cx.count(),
-    );
+    paste(cx.editor, '+', Paste::Before, cx.count());
 }
 
 fn replace_with_yanked(cx: &mut Context) {
-    let count = cx.count();
-    let reg_name = cx.register.unwrap_or('"');
+    replace_with_yanked_impl(cx.editor, cx.register.unwrap_or('"'), cx.count());
+    exit_select_mode(cx);
+}
 
-    let Some(values) = cx.editor.registers
-        .read(reg_name, cx.editor)
+fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
+    let Some(values) = editor.registers
+        .read(register, editor)
         .filter(|values| values.len() > 0) else { return };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
-    let (view, doc) = current!(cx.editor);
+    let (view, doc) = current!(editor);
     let repeat = std::iter::repeat(
         values
             .last()
@@ -4073,62 +3991,40 @@ fn replace_with_yanked(cx: &mut Context) {
     });
 
     doc.apply(&transaction, view.id);
-    exit_select_mode(cx);
-}
-
-fn replace_selections_with_clipboard_impl(
-    cx: &mut Context,
-    clipboard_type: ClipboardType,
-) -> anyhow::Result<()> {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-
-    match cx.editor.clipboard_provider.get_contents(clipboard_type) {
-        Ok(contents) => {
-            let selection = doc.selection(view.id);
-            let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-                (
-                    range.from(),
-                    range.to(),
-                    Some(contents.repeat(count).as_str().into()),
-                )
-            });
-
-            doc.apply(&transaction, view.id);
-            doc.append_changes_to_history(view);
-        }
-        Err(e) => return Err(e.context("Couldn't get system clipboard contents")),
-    }
-
-    exit_select_mode(cx);
-    Ok(())
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(cx, ClipboardType::Clipboard);
+    replace_with_yanked_impl(cx.editor, '*', cx.count());
 }
 
 fn replace_selections_with_primary_clipboard(cx: &mut Context) {
-    let _ = replace_selections_with_clipboard_impl(cx, ClipboardType::Selection);
+    replace_with_yanked_impl(cx.editor, '+', cx.count());
 }
 
-fn paste(cx: &mut Context, pos: Paste) {
-    let count = cx.count();
-    let reg_name = cx.register.unwrap_or('"');
-
-    let Some(values) = cx.editor.registers.read(reg_name, cx.editor) else { return };
+fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
+    let Some(values) = editor.registers.read(register, editor) else { return };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
-    let (view, doc) = current!(cx.editor);
-    paste_impl(&values, doc, view, pos, count, cx.editor.mode);
+    let (view, doc) = current!(editor);
+    paste_impl(&values, doc, view, pos, count, editor.mode);
 }
 
 fn paste_after(cx: &mut Context) {
-    paste(cx, Paste::After)
+    paste(
+        cx.editor,
+        cx.register.unwrap_or('"'),
+        Paste::After,
+        cx.count(),
+    );
 }
 
 fn paste_before(cx: &mut Context) {
-    paste(cx, Paste::Before)
+    paste(
+        cx.editor,
+        cx.register.unwrap_or('"'),
+        Paste::Before,
+        cx.count(),
+    );
 }
 
 fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
@@ -4885,7 +4781,12 @@ fn insert_register(cx: &mut Context) {
         if let Some(ch) = event.char() {
             cx.editor.autoinfo = None;
             cx.register = Some(ch);
-            paste(cx, Paste::Cursor);
+            paste(
+                cx.editor,
+                cx.register.unwrap_or('"'),
+                Paste::Cursor,
+                cx.count(),
+            );
         }
     })
 }
