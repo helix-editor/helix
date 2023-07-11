@@ -44,16 +44,10 @@ use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 type Signals = futures_util::stream::Empty<()>;
 
 #[cfg(not(feature = "integration"))]
-use tui::backend::CrosstermBackend;
+type TerminalBackend = tui::backend::CrosstermBackend<std::io::Stdout>;
 
 #[cfg(feature = "integration")]
-use tui::backend::TestBackend;
-
-#[cfg(not(feature = "integration"))]
-type TerminalBackend = CrosstermBackend<std::io::Stdout>;
-
-#[cfg(feature = "integration")]
-type TerminalBackend = TestBackend;
+type TerminalBackend = tui::backend::TestBackend;
 
 type Terminal = tui::terminal::Terminal<TerminalBackend>;
 
@@ -110,10 +104,10 @@ impl Application {
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(std::io::stdout(), &config.editor);
+        let backend = tui::backend::CrosstermBackend::new(std::io::stdout(), &config.editor);
 
         #[cfg(feature = "integration")]
-        let backend = TestBackend::new(120, 150);
+        let backend = tui::backend::TestBackend::new(120, 150);
 
         let terminal = Terminal::new(backend)?;
         let area = terminal.size().expect("couldn't get terminal size");
