@@ -5,6 +5,7 @@ use std::{
 
 use helix_core::{diagnostic::Severity, path::get_normalized_path};
 use helix_view::doc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use super::*;
 
@@ -134,7 +135,10 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
         .with_file(file.path(), None)
         .build()?;
 
-    helpers::run_event_loop_until_idle(&mut app).await;
+    app.event_loop_until_idle(&mut UnboundedReceiverStream::new(
+        tokio::sync::mpsc::unbounded_channel().1,
+    ))
+    .await;
 
     file.as_file_mut()
         .write_all(helpers::platform_line("extremely important content").as_bytes())?;
@@ -427,7 +431,7 @@ async fn test_write_utf_bom_file() -> anyhow::Result<()> {
 async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
-    file.as_file_mut().write_all(&file_content)?;
+    file.as_file_mut().write_all(file_content)?;
 
     helpers::test_key_sequence(
         &mut helpers::AppBuilder::new().build()?,
