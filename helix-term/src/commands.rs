@@ -375,6 +375,8 @@ impl MappableCommand {
         later, "Move forward in history",
         commit_undo_checkpoint, "Commit changes to new checkpoint",
         yank, "Yank selection",
+        yank_to_clipboard, "Yank selections to clipboard",
+        yank_to_primary_clipboard, "Yank selections to primary clipboard",
         yank_joined, "Join and yank selections",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
@@ -3759,6 +3761,16 @@ fn commit_undo_checkpoint(cx: &mut Context) {
 
 fn yank(cx: &mut Context) {
     yank_impl(cx.editor, cx.register.unwrap_or('"'));
+    exit_select_mode(cx);
+}
+
+fn yank_to_clipboard(cx: &mut Context) {
+    yank_impl(cx.editor, '*');
+    exit_select_mode(cx);
+}
+
+fn yank_to_primary_clipboard(cx: &mut Context) {
+    yank_impl(cx.editor, '+');
     exit_select_mode(cx);
 }
 
