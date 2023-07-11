@@ -1911,7 +1911,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
     let register = cx.register.unwrap_or('/');
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
-    if let Some(query) = cx.editor.registers.last(register, cx.editor) {
+    if let Some(query) = cx.editor.registers.first(register, cx.editor) {
         let doc = doc!(cx.editor);
         let contents = doc.text().slice(..).to_string();
         let search_config = &config.search;
@@ -1983,7 +1983,7 @@ fn search_selection(cx: &mut Context) {
 
 fn make_search_word_bounded(cx: &mut Context) {
     let register = cx.register.unwrap_or('/');
-    let regex = match cx.editor.registers.last(register, cx.editor) {
+    let regex = match cx.editor.registers.first(register, cx.editor) {
         Some(regex) => regex,
         None => return,
     };

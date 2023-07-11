@@ -23,6 +23,10 @@ use crate::{
 /// * Primary clipboard (`+`)
 #[derive(Debug)]
 pub struct Registers {
+    /// The mapping of register to values.
+    /// Values are stored in reverse order when inserted with `Registers::write`.
+    /// The order is reversed again in `Registers::read`. This allows us to
+    /// efficiently prepend new values in `Registers::push`.
     inner: HashMap<char, Vec<String>>,
     clipboard_provider: Box<dyn ClipboardProvider>,
 }
@@ -77,11 +81,11 @@ impl Registers {
             _ => self
                 .inner
                 .get(&name)
-                .map(|values| RegisterValues::new(values.iter().map(Cow::from))),
+                .map(|values| RegisterValues::new(values.iter().map(Cow::from).rev())),
         }
     }
 
-    pub fn write(&mut self, name: char, values: Vec<String>) -> Result<()> {
+    pub fn write(&mut self, name: char, mut values: Vec<String>) -> Result<()> {
         match name {
             '_' => Ok(()),
             '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support writing")),
@@ -94,17 +98,19 @@ impl Registers {
                         _ => unreachable!(),
                     },
                 )?;
+                values.reverse();
                 self.inner.insert(name, values);
                 Ok(())
             }
             _ => {
+                values.reverse();
                 self.inner.insert(name, values);
                 Ok(())
             }
         }
     }
 
-    pub fn push(&mut self, name: char, value: String) -> Result<()> {
+    pub fn push(&mut self, name: char, mut value: String) -> Result<()> {
         match name {
             '_' => Ok(()),
             '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support pushing")),
@@ -121,11 +127,13 @@ impl Registers {
                     anyhow::bail!("Failed to push to register {name}: clipboard does not match register contents");
                 }
 
-                saved_values.push(value);
-                self.clipboard_provider.set_contents(
-                    saved_values.join(NATIVE_LINE_ENDING.as_str()),
-                    clipboard_type,
-                )?;
+                saved_values.push(value.clone());
+                if !contents.is_empty() {
+                    value.push_str(NATIVE_LINE_ENDING.as_str());
+                }
+                value.push_str(&contents);
+                self.clipboard_provider
+                    .set_contents(value, clipboard_type)?;
 
                 Ok(())
             }
@@ -150,7 +158,7 @@ impl Registers {
             .filter(|(name, _)| !matches!(name, '*' | '+'))
             .map(|(name, values)| {
                 let preview = values
-                    .first()
+                    .last()
                     .and_then(|s| s.lines().next())
                     .unwrap_or("<empty>");
 
@@ -222,7 +230,7 @@ fn read_from_clipboard<'a>(
             let Some(values) = saved_values else { return RegisterValues::new(iter::once(contents.into())) };
 
             if contents_are_saved(values, &contents) {
-                RegisterValues::new(values.iter().map(Cow::from))
+                RegisterValues::new(values.iter().map(Cow::from).rev())
             } else {
                 RegisterValues::new(iter::once(contents.into()))
             }
@@ -243,7 +251,7 @@ fn read_from_clipboard<'a>(
 
 fn contents_are_saved(saved_values: &[String], mut contents: &str) -> bool {
     let line_ending = NATIVE_LINE_ENDING.as_str();
-    let mut values = saved_values.iter();
+    let mut values = saved_values.iter().rev();
 
     match values.next() {
         Some(first) if contents.starts_with(first) => {
