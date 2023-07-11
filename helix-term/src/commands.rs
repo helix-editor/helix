@@ -5115,26 +5115,26 @@ fn surround_replace(cx: &mut Context) {
             }
         };
 
-        let original_selection = selection.clone();
-        let ranges: SmallVec<_> = change_pos.iter().map(|&p| Range::new(p, p + 1)).collect();
+        let selection = selection.clone();
+        let ranges: SmallVec<_> = change_pos.iter().map(|&pos| Range::point(pos)).collect();
         doc.set_selection(view.id, Selection::new(ranges, 0));
 
         cx.on_next_key(move |cx, event| {
             let (view, doc) = current!(cx.editor);
             let to = match event.char() {
                 Some(to) => to,
-                None => return doc.set_selection(view.id, original_selection),
+                None => return doc.set_selection(view.id, selection),
             };
             let (open, close) = surround::get_pair(to);
-            let mut i = 0;
-            let transaction =
-                Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
+            let transaction = Transaction::change(
+                doc.text(),
+                change_pos.iter().enumerate().map(|(i, &pos)| {
                     let mut t = Tendril::new();
                     t.push(if i % 2 == 0 { open } else { close });
-                    i += 1;
-                    (range.from(), range.to(), Some(t))
-                });
-            doc.set_selection(view.id, original_selection);
+                    (pos, pos + 1, Some(t))
+                }),
+            );
+            doc.set_selection(view.id, selection);
             doc.apply(&transaction, view.id);
             exit_select_mode(cx);
         });
