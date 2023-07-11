@@ -321,6 +321,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "C-a" => increment,
         "C-x" => decrement,
+        "C-k" => move_selection_above,
+        "C-j" => move_selection_below,
     });
     let mut select = normal.clone();
     select.merge_nodes(keymap!({ "Select mode"

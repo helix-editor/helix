@@ -28,7 +28,7 @@ use helix_core::{
     textobject,
     tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
-    visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
+    visual_offset_from_block, Change, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
     RopeSlice, Selection, SmallVec, Tendril, Transaction,
 };
 use helix_view::{
@@ -326,6 +326,8 @@ impl MappableCommand {
         goto_declaration, "Goto declaration",
         add_newline_above, "Add newline above",
         add_newline_below, "Add newline below",
+        move_selection_above, "Move current line or selection up",
+        move_selection_below, "Move current line or selection down",
         goto_type_definition, "Goto type definition",
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto line number <n> else file start",
@@ -5441,6 +5443,215 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
 
     let transaction = Transaction::change(text, changes);
     doc.apply(&transaction, view.id);
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum MoveSelection {
+    Below,
+    Above,
+}
+
+type ExtendedChange = (usize, usize, Option<Tendril>, Option<(usize, usize)>);
+
+/// Move line or block of text in specified direction.
+/// The function respects single line, single selection, multiple lines using
+/// several cursors and multiple selections.
+fn move_selection(cx: &mut Context, direction: MoveSelection) {
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+    let text = doc.text();
+    let slice = text.slice(..);
+    let mut last_step_changes: Vec<ExtendedChange> = vec![];
+    let mut at_doc_edge = false;
+    let all_changes = selection.into_iter().map(|range| {
+        let (start, end) = range.line_range(slice);
+        let line_start = text.line_to_char(start);
+        let line_end = line_end_char_index(&slice, end);
+        let line = text.slice(line_start..line_end).to_string();
+
+        let next_line = match direction {
+            MoveSelection::Above => start.saturating_sub(1),
+            MoveSelection::Below => end + 1,
+        };
+
+        let rel_pos_anchor = range.anchor - line_start;
+        let rel_pos_head = range.head - line_start;
+
+        if next_line == start || next_line >= text.len_lines() || at_doc_edge {
+            at_doc_edge = true;
+            let cursor_rel_pos = (rel_pos_anchor, rel_pos_head);
+            let changes = vec![(
+                line_start,
+                line_end,
+                Some(line.into()),
+                Some(cursor_rel_pos),
+            )];
+            last_step_changes = changes.clone();
+            changes
+        } else {
+            let next_line_start = text.line_to_char(next_line);
+            let next_line_end = line_end_char_index(&slice, next_line);
+            let next_line_text = text.slice(next_line_start..next_line_end).to_string();
+
+            let cursor_rel_pos = (rel_pos_anchor, rel_pos_head);
+            let changes = match direction {
+                MoveSelection::Above => vec![
+                    (
+                        next_line_start,
+                        next_line_end,
+                        Some(line.into()),
+                        Some(cursor_rel_pos),
+                    ),
+                    (line_start, line_end, Some(next_line_text.into()), None),
+                ],
+                MoveSelection::Below => vec![
+                    (line_start, line_end, Some(next_line_text.into()), None),
+                    (
+                        next_line_start,
+                        next_line_end,
+                        Some(line.into()),
+                        Some(cursor_rel_pos),
+                    ),
+                ],
+            };
+
+            let changes = if last_step_changes.len() > 1 {
+                evaluate_changes(last_step_changes.clone(), changes.clone(), &direction)
+            } else {
+                changes
+            };
+            last_step_changes = changes.clone();
+            changes
+        }
+    });
+
+    /// Merge changes from subsequent cursors
+    fn evaluate_changes(
+        mut last_changes: Vec<ExtendedChange>,
+        current_changes: Vec<ExtendedChange>,
+        direction: &MoveSelection,
+    ) -> Vec<ExtendedChange> {
+        let mut current_it = current_changes.into_iter();
+
+        if let (Some(mut last), Some(mut current_first), Some(current_last)) =
+            (last_changes.pop(), current_it.next(), current_it.next())
+        {
+            if last.0 == current_first.0 {
+                match direction {
+                    MoveSelection::Above => {
+                        last.0 = current_last.0;
+                        last.1 = current_last.1;
+                        if let Some(first) = last_changes.pop() {
+                            last_changes.push(first)
+                        }
+                        last_changes.extend(vec![current_first, last.to_owned()]);
+                        last_changes
+                    }
+                    MoveSelection::Below => {
+                        current_first.0 = last_changes[0].0;
+                        current_first.1 = last_changes[0].1;
+                        last_changes[0] = current_first;
+                        last_changes.extend(vec![last.to_owned(), current_last]);
+                        last_changes
+                    }
+                }
+            } else {
+                if let Some(first) = last_changes.pop() {
+                    last_changes.push(first)
+                }
+                last_changes.extend(vec![last.to_owned(), current_first, current_last]);
+                last_changes
+            }
+        } else {
+            last_changes
+        }
+    }
+
+    let mut flattened: Vec<Vec<ExtendedChange>> = all_changes.into_iter().collect();
+    let last_changes = flattened.pop().unwrap_or(vec![]);
+
+    let acc_cursors = get_adjusted_selection(&doc, &last_changes, direction, at_doc_edge);
+
+    let changes: Vec<Change> = last_changes
+        .into_iter()
+        .map(|change| (change.0, change.1, change.2.to_owned()))
+        .collect();
+
+    let new_sel = Selection::new(acc_cursors.into(), 0);
+    let transaction = Transaction::change(doc.text(), changes.into_iter());
+
+    doc.apply(&transaction, view.id);
+    doc.set_selection(view.id, new_sel);
+}
+
+/// Returns selection range that is valid for the updated document
+/// This logic is necessary because it's not possible to apply changes
+/// to the document first and then set selection.
+fn get_adjusted_selection(
+    doc: &Document,
+    last_changes: &Vec<ExtendedChange>,
+    direction: MoveSelection,
+    at_doc_edge: bool,
+) -> Vec<Range> {
+    let mut first_change_len = 0;
+    let mut next_start = 0;
+    let mut acc_cursors: Vec<Range> = vec![];
+
+    for change in last_changes.iter() {
+        let change_len = change.2.as_ref().map_or(0, |x| x.len());
+
+        if let Some((rel_anchor, rel_head)) = change.3 {
+            let (anchor, head) = if at_doc_edge {
+                let anchor = change.0 + rel_anchor;
+                let head = change.0 + rel_head;
+                (anchor, head)
+            } else {
+                match direction {
+                    MoveSelection::Above => {
+                        if next_start == 0 {
+                            next_start = change.0;
+                        }
+                        let anchor = next_start + rel_anchor;
+                        let head = next_start + rel_head;
+
+                        // If there is next cursor below, selection position should be adjusted
+                        // according to the length of the current line.
+                        next_start += change_len + doc.line_ending.len_chars();
+                        (anchor, head)
+                    }
+                    MoveSelection::Below => {
+                        let anchor = change.0 + first_change_len + rel_anchor - change_len;
+                        let head = change.0 + first_change_len + rel_head - change_len;
+                        (anchor, head)
+                    }
+                }
+            };
+
+            let cursor = Range::new(anchor, head);
+            if let Some(last) = acc_cursors.pop() {
+                if cursor.overlaps(&last) {
+                    acc_cursors.push(last);
+                } else {
+                    acc_cursors.push(last);
+                    acc_cursors.push(cursor);
+                };
+            } else {
+                acc_cursors.push(cursor);
+            };
+        } else {
+            first_change_len = change.2.as_ref().map_or(0, |x| x.len());
+            next_start = 0;
+        };
+    }
+    acc_cursors
+}
+
+fn move_selection_below(cx: &mut Context) {
+    move_selection(cx, MoveSelection::Below)
+}
+
+fn move_selection_above(cx: &mut Context) {
+    move_selection(cx, MoveSelection::Above)
 }
 
 enum IncrementDirection {
