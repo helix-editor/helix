@@ -163,7 +163,7 @@ impl Application {
         } else if !args.files.is_empty() {
             let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
-                std::env::set_current_dir(first).context("set current dir")?;
+                helix_loader::set_current_working_dir(first.clone())?;
                 editor.new_file(Action::VerticalSplit);
                 let picker = ui::file_picker(".".into(), &config.load().editor);
                 compositor.push(Box::new(overlaid(picker)));

@@ -3,8 +3,11 @@ pub mod grammar;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 use std::path::{Path, PathBuf};
+use std::sync::RwLock;
 
 pub const VERSION_AND_GIT_HASH: &str = env!("VERSION_AND_GIT_HASH");
+
+static CWD: RwLock<Option<PathBuf>> = RwLock::new(None);
 
 static RUNTIME_DIRS: once_cell::sync::Lazy<Vec<PathBuf>> =
     once_cell::sync::Lazy::new(prioritize_runtime_dirs);
@@ -12,6 +15,31 @@ static RUNTIME_DIRS: once_cell::sync::Lazy<Vec<PathBuf>> =
 static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
 static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+
+// Get the current working directory.
+// This information is managed internally as the call to std::env::current_dir
+// might fail if the cwd has been deleted.
+pub fn current_working_dir() -> PathBuf {
+    if let Some(path) = &*CWD.read().unwrap() {
+        return path.clone();
+    }
+
+    let path = std::env::current_dir()
+        .and_then(dunce::canonicalize)
+        .expect("Couldn't determine current working directory");
+    let mut cwd = CWD.write().unwrap();
+    *cwd = Some(path.clone());
+
+    path
+}
+
+pub fn set_current_working_dir(path: PathBuf) -> std::io::Result<()> {
+    let path = dunce::canonicalize(path)?;
+    std::env::set_current_dir(path.clone())?;
+    let mut cwd = CWD.write().unwrap();
+    *cwd = Some(path);
+    Ok(())
+}
 
 pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(default_config_file);
@@ -217,7 +245,7 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
 /// If no workspace was found returns (CWD, true).
 /// Otherwise (workspace, false) is returned
 pub fn find_workspace() -> (PathBuf, bool) {
-    let current_dir = std::env::current_dir().expect("unable to determine current directory");
+    let current_dir = current_working_dir();
     for ancestor in current_dir.ancestors() {
         if ancestor.join(".git").exists() || ancestor.join(".helix").exists() {
             return (ancestor.to_owned(), false);
@@ -243,8 +271,20 @@ fn ensure_parent_dir(path: &Path) {
 mod merge_toml_tests {
     use std::str;
 
-    use super::merge_toml_values;
+    use super::{current_working_dir, merge_toml_values, set_current_working_dir};
     use toml::Value;
+
+    #[test]
+    fn current_dir_is_set() {
+        let new_path = dunce::canonicalize(std::env::temp_dir()).unwrap();
+        let cwd = current_working_dir();
+        assert_ne!(cwd, new_path);
+
+        set_current_working_dir(new_path.clone()).expect("Couldn't set new path");
+
+        let cwd = current_working_dir();
+        assert_eq!(cwd, new_path);
+    }
 
     #[test]
     fn language_toml_map_merges() {
