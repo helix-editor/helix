@@ -1,6 +1,5 @@
 use crate::{
     align_view,
-    clipboard::{get_clipboard_provider, ClipboardProvider},
     document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint},
     graphics::{CursorKind, Rect},
     info::Info,
@@ -875,8 +874,6 @@ pub struct Editor {
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
-    pub clipboard_provider: Box<dyn ClipboardProvider>,
-
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
     /// last_theme is used for theme previews. We store the current theme here,
@@ -1023,7 +1020,6 @@ impl Editor {
             last_theme: None,
             last_selection: None,
             registers: Registers::default(),
-            clipboard_provider: get_clipboard_provider(),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),

@@ -904,7 +904,8 @@ fn yank_main_selection_to_clipboard(
         return Ok(());
     }
 
-    yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Clipboard)
+    yank_primary_selection_impl(cx.editor, '*');
+    Ok(())
 }
 
 fn yank_joined(
@@ -938,7 +939,8 @@ fn yank_joined_to_clipboard(
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_to_clipboard_impl(cx.editor, separator, ClipboardType::Clipboard)
+    yank_joined_impl(cx.editor, separator, '*');
+    Ok(())
 }
 
 fn yank_main_selection_to_primary_clipboard(
@@ -950,7 +952,8 @@ fn yank_main_selection_to_primary_clipboard(
         return Ok(());
     }
 
-    yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Selection)
+    yank_primary_selection_impl(cx.editor, '+');
+    Ok(())
 }
 
 fn yank_joined_to_primary_clipboard(
@@ -965,7 +968,8 @@ fn yank_joined_to_primary_clipboard(
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_to_clipboard_impl(cx.editor, separator, ClipboardType::Selection)
+    yank_joined_impl(cx.editor, separator, '+');
+    Ok(())
 }
 
 fn paste_clipboard_after(
@@ -977,7 +981,8 @@ fn paste_clipboard_after(
         return Ok(());
     }
 
-    paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard, 1)
+    paste(cx.editor, '*', Paste::After, 1);
+    Ok(())
 }
 
 fn paste_clipboard_before(
@@ -989,7 +994,8 @@ fn paste_clipboard_before(
         return Ok(());
     }
 
-    paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Clipboard, 1)
+    paste(cx.editor, '*', Paste::Before, 1);
+    Ok(())
 }
 
 fn paste_primary_clipboard_after(
@@ -1001,7 +1007,8 @@ fn paste_primary_clipboard_after(
         return Ok(());
     }
 
-    paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection, 1)
+    paste(cx.editor, '+', Paste::After, 1);
+    Ok(())
 }
 
 fn paste_primary_clipboard_before(
@@ -1013,30 +1020,8 @@ fn paste_primary_clipboard_before(
         return Ok(());
     }
 
-    paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Selection, 1)
-}
-
-fn replace_selections_with_clipboard_impl(
-    cx: &mut compositor::Context,
-    clipboard_type: ClipboardType,
-) -> anyhow::Result<()> {
-    let scrolloff = cx.editor.config().scrolloff;
-    let (view, doc) = current!(cx.editor);
-
-    match cx.editor.clipboard_provider.get_contents(clipboard_type) {
-        Ok(contents) => {
-            let selection = doc.selection(view.id);
-            let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-                (range.from(), range.to(), Some(contents.as_str().into()))
-            });
-
-            doc.apply(&transaction, view.id);
-            doc.append_changes_to_history(view);
-            view.ensure_cursor_in_view(doc, scrolloff);
-            Ok(())
-        }
-        Err(e) => Err(e.context("Couldn't get system clipboard contents")),
-    }
+    paste(cx.editor, '+', Paste::Before, 1);
+    Ok(())
 }
 
 fn replace_selections_with_clipboard(
@@ -1048,7 +1033,8 @@ fn replace_selections_with_clipboard(
         return Ok(());
     }
 
-    replace_selections_with_clipboard_impl(cx, ClipboardType::Clipboard)
+    replace_with_yanked_impl(cx.editor, '*', 1);
+    Ok(())
 }
 
 fn replace_selections_with_primary_clipboard(
@@ -1060,7 +1046,8 @@ fn replace_selections_with_primary_clipboard(
         return Ok(());
     }
 
-    replace_selections_with_clipboard_impl(cx, ClipboardType::Selection)
+    replace_with_yanked_impl(cx.editor, '+', 1);
+    Ok(())
 }
 
 fn show_clipboard_provider(
@@ -1073,7 +1060,7 @@ fn show_clipboard_provider(
     }
 
     cx.editor
-        .set_status(cx.editor.clipboard_provider.name().to_string());
+        .set_status(cx.editor.registers.clipboard_provider_name().to_string());
     Ok(())
 }
 

@@ -215,6 +215,10 @@ impl Registers {
             )
         }
     }
+
+    pub fn clipboard_provider_name(&self) -> Cow<str> {
+        self.clipboard_provider.name()
+    }
 }
 
 fn read_from_clipboard<'a>(
