@@ -31,14 +31,14 @@ use crate::{
 use log::{debug, error, warn};
 use std::{
     collections::btree_map::Entry,
-    io::{stdin, stdout},
+    io::{stdin, stdout, IsTerminal},
     path::Path,
     sync::Arc,
 };
 
 use anyhow::{Context, Error};
 
-use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
+use crossterm::event::Event as CrosstermEvent;
 #[cfg(not(windows))]
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
@@ -209,7 +209,7 @@ impl Application {
                 let (view, doc) = current!(editor);
                 align_view(doc, view, Align::Center);
             }
-        } else if stdin().is_tty() || cfg!(feature = "integration") {
+        } else if stdin().is_terminal() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
         } else if cfg!(target_os = "macos") {
             // On Linux and Windows, we allow the output of a command to be piped into the new buffer.

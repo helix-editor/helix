@@ -1,11 +1,10 @@
 use crossterm::{
     style::{Color, Print, Stylize},
-    tty::IsTty,
 };
 use helix_core::config::{default_syntax_loader, user_syntax_loader};
 use helix_loader::grammar::load_runtime_file;
 use helix_view::clipboard::get_clipboard_provider;
-use std::io::Write;
+use std::io::{Write, IsTerminal};
 
 #[derive(Copy, Clone)]
 pub enum TsFeature {
@@ -153,7 +152,7 @@ pub fn languages_all() -> std::io::Result<()> {
 
     let terminal_cols = crossterm::terminal::size().map(|(c, _)| c).unwrap_or(80);
     let column_width = terminal_cols as usize / headings.len();
-    let is_terminal = std::io::stdout().is_tty();
+    let is_terminal = std::io::stdout().is_terminal();
 
     let column = |item: &str, color: Color| {
         let mut data = format!(
