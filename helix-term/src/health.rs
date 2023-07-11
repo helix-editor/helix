@@ -1,10 +1,8 @@
-use crossterm::{
-    style::{Color, Print, Stylize},
-};
+use crossterm::style::{Color, Print, Stylize};
 use helix_core::config::{default_syntax_loader, user_syntax_loader};
 use helix_loader::grammar::load_runtime_file;
 use helix_view::clipboard::get_clipboard_provider;
-use std::io::{Write, IsTerminal};
+use std::io::{IsTerminal, Write};
 
 #[derive(Copy, Clone)]
 pub enum TsFeature {
