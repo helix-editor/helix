@@ -307,7 +307,7 @@ impl Prompt {
     ) {
         (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
         let mut values = match cx.editor.registers.read(register, cx.editor) {
-            Some(values) if values.len() > 0 => values,
+            Some(values) if values.len() > 0 => values.rev(),
             _ => return,
         };
 
@@ -473,7 +473,7 @@ impl Prompt {
             // Show the most recently entered value as a suggestion.
             if let Some(suggestion) = self
                 .history_register
-                .and_then(|reg| cx.editor.registers.last(reg, cx.editor))
+                .and_then(|reg| cx.editor.registers.first(reg, cx.editor))
             {
                 surface.set_string(line_area.x, line_area.y, suggestion, suggestion_color);
             }
@@ -570,7 +570,7 @@ impl Component for Prompt {
                 } else {
                     let last_item = self
                         .history_register
-                        .and_then(|reg| cx.editor.registers.last(reg, cx.editor))
+                        .and_then(|reg| cx.editor.registers.first(reg, cx.editor))
                         .map(|entry| entry.to_string())
                         .unwrap_or_else(|| String::from(""));
 
