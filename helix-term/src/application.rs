@@ -9,7 +9,7 @@ use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
-    editor::{ConfigEvent, EditorEvent},
+    editor::{Action, ConfigEvent, EditorEvent},
     graphics::Rect,
     theme,
     tree::Layout,
@@ -74,13 +74,6 @@ impl Application {
         config: Config,
         syn_loader_conf: syntax::Configuration,
     ) -> Result<Self, Error> {
-        #[cfg(feature = "integration")]
-        // Unwrap will be error error if logging system has been
-        // initialized by another test.
-        let _ = crate::log::setup_logging(std::io::stdout(), None);
-
-        use helix_view::editor::Action;
-
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));

@@ -139,7 +139,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     let test_case = test_case.into();
     let mut app = match app {
         Some(app) => app,
-        None => Application::new(Args::default(), test_config(), test_syntax_conf(None))?,
+        None => AppBuilder::default().build()?,
     };
 
     let (view, doc) = helix_view::current!(app.editor);
@@ -296,8 +296,6 @@ impl AppBuilder {
         self
     }
 
-    // Remove this attribute once `with_config` is used in a test:
-    #[allow(dead_code)]
     pub fn with_config(mut self, mut config: Config) -> Self {
         let keys = replace(&mut config.keys, helix_term::keymap::default());
         merge_keys(&mut config.keys, keys);
@@ -316,6 +314,10 @@ impl AppBuilder {
     }
 
     pub fn build(self) -> anyhow::Result<Application> {
+        // Unwrap will be error error if logging system has been
+        // initialized by another test.
+        let _ = helix_term::log::setup_logging(std::io::stdout(), None);
+
         let mut app = Application::new(self.args, self.config, self.syn_conf)?;
 
         if let Some((text, selection)) = self.input {
