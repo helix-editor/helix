@@ -31,9 +31,7 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
         )],
         false,
     )
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -98,9 +96,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file.as_file_mut(), &RANGE.end().to_string())?;
-
-    Ok(())
+    helpers::assert_file_has_content(file.as_file_mut(), &RANGE.end().to_string())
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -262,9 +258,7 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
         ],
         false,
     )
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -289,9 +283,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file.as_file_mut(), &helpers::platform_line("hello"))?;
-
-    Ok(())
+    helpers::assert_file_has_content(file.as_file_mut(), &helpers::platform_line("hello"))
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -310,9 +302,7 @@ async fn test_write_scratch_no_path_fails() -> anyhow::Result<()> {
         },
         false,
     )
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -377,9 +367,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
     helpers::assert_file_has_content(
         file2.as_file_mut(),
         &helpers::platform_line("i can eat glass, it will not hurt me\n"),
-    )?;
-
-    Ok(())
+    )
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -414,9 +402,7 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
         ],
         false,
     )
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -430,9 +416,7 @@ async fn test_write_utf_bom_file() -> anyhow::Result<()> {
 
     edit_file_with_content(&UTF8_FILE).await?;
     edit_file_with_content(&UTF16LE_FILE).await?;
-    edit_file_with_content(&UTF16BE_FILE).await?;
-
-    Ok(())
+    edit_file_with_content(&UTF16BE_FILE).await
 }
 
 async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {

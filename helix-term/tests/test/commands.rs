@@ -90,8 +90,7 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
             #[test|]#
             "}),
     ))
-    .await?;
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -156,9 +155,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
         )],
         false,
     )
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -176,9 +173,7 @@ async fn test_multi_selection_paste() -> anyhow::Result<()> {
             dolor#(|dolor)#
             "}),
     ))
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -238,9 +233,7 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             
             "}),
     ))
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -266,9 +259,7 @@ async fn test_undo_redo() -> anyhow::Result<()> {
     test(("#[|]#", "[<space><C-s>kduU<C-o><C-i>", "#[|]#")).await?;
 
     // In this case we 'redo' manually to ensure that the transactions are composing correctly.
-    test(("#[|]#", "[<space>u[<space>u", "#[|]#")).await?;
-
-    Ok(())
+    test(("#[|]#", "[<space>u[<space>u", "#[|]#")).await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -305,9 +296,7 @@ async fn test_extend_line() -> anyhow::Result<()> {
             
             "}),
     ))
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -371,9 +360,7 @@ async fn test_character_info() -> anyhow::Result<()> {
         )],
         false,
     )
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -390,9 +377,7 @@ async fn test_delete_char_backward() -> anyhow::Result<()> {
         "li<backspace><esc>",
         platform_line("#(a|)##(|a)#xx#[|a]#"),
     ))
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -403,8 +388,7 @@ async fn test_delete_word_backward() -> anyhow::Result<()> {
         "a<C-w><esc>",
         platform_line("#[\n|]#"),
     ))
-    .await?;
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -415,8 +399,7 @@ async fn test_delete_word_forward() -> anyhow::Result<()> {
         "i<A-d><esc>",
         platform_line("fo#[\n|]#"),
     ))
-    .await?;
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -436,9 +419,7 @@ async fn test_delete_char_forward() -> anyhow::Result<()> {
                 #(abc|)#
             "}),
     ))
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -489,7 +470,5 @@ fn bar() {#(\n|)#\
 \x20   #(\n|)#\
 }#(|)#",
     ))
-    .await?;
-
-    Ok(())
+    .await
 }

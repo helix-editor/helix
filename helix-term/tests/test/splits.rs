@@ -64,9 +64,7 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
 
     helpers::assert_file_has_content(file1.as_file_mut(), "hello1")?;
     helpers::assert_file_has_content(file2.as_file_mut(), "hello2")?;
-    helpers::assert_file_has_content(file3.as_file_mut(), "hello3")?;
-
-    Ok(())
+    helpers::assert_file_has_content(file3.as_file_mut(), "hello3")
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -125,9 +123,7 @@ async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
     helpers::assert_file_has_content(
         file.as_file_mut(),
         &helpers::platform_line("hello\ngoodbye"),
-    )?;
-
-    Ok(())
+    )
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -186,7 +182,5 @@ async fn test_changes_in_splits_apply_to_all_views() -> anyhow::Result<()> {
         "3[<space><C-w>v<C-s><C-w>wuu3[<space><C-w>q%d",
         "#[|]#",
     ))
-    .await?;
-
-    Ok(())
+    .await
 }

@@ -13,9 +13,7 @@ async fn insert_mode_cursor_position() -> anyhow::Result<()> {
 
     test(("#[\n|]#", "i", "#[|\n]#")).await?;
     test(("#[\n|]#", "i<esc>", "#[|\n]#")).await?;
-    test(("#[\n|]#", "i<esc>i", "#[|\n]#")).await?;
-
-    Ok(())
+    test(("#[\n|]#", "i<esc>i", "#[|\n]#")).await
 }
 
 /// Range direction is preserved when escaping insert mode to normal
@@ -59,9 +57,7 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
                 #(b|)#ar"
         },
     ))
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -104,9 +100,7 @@ async fn surround_by_character() -> anyhow::Result<()> {
         "mi\"",
         "'so \"#[many 'good' text|]#\" here'",
     ))
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -232,9 +226,7 @@ async fn surround_inside_pair() -> anyhow::Result<()> {
         "mim",
         "(#[so (many (good) text) here\nso (many (good) text) here|]#)",
     ))
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -360,9 +352,7 @@ async fn surround_around_pair() -> anyhow::Result<()> {
         "mam",
         "#[(so (many (good) text) here\nso (many (good) text) here)|]#",
     ))
-    .await?;
-
-    Ok(())
+    .await
 }
 
 /// Ensure the very initial cursor in an opened file is the width of
@@ -384,9 +374,7 @@ async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
 
     test("foo", Selection::single(0, 1))?;
     test("👨‍👩‍👧‍👦 foo", Selection::single(0, 7))?;
-    test("", Selection::single(0, 0))?;
-
-    Ok(())
+    test("", Selection::single(0, 0))
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -405,9 +393,7 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
         "abar<esc>",
         helpers::platform_line("#[foobar|]#\n"),
     ))
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -430,9 +416,7 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
             "}),
         ),
     )
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -455,9 +439,7 @@ async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Res
             "}),
         ),
     )
-    .await?;
-
-    Ok(())
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -509,7 +491,5 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
             "}),
         ),
     )
-    .await?;
-
-    Ok(())
+    .await
 }

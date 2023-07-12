@@ -11,8 +11,7 @@ mod test {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn hello_world() -> anyhow::Result<()> {
-        test(("#[\n|]#", "ihello world<esc>", "hello world#[|\n]#")).await?;
-        Ok(())
+        test(("#[\n|]#", "ihello world<esc>", "hello world#[|\n]#")).await
     }
 
     mod auto_indent;
