@@ -1,3 +1,7 @@
+use helpers::{
+    test_harness::{test_key_sequence_with_input_text, test_key_sequences},
+    AppBuilder,
+};
 use std::{
     io::{Read, Seek, Write},
     ops::RangeInclusive,
@@ -7,11 +11,16 @@ use helix_core::{diagnostic::Severity, path::get_normalized_path};
 use helix_view::doc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+use crate::test::helpers::{
+    file::{assert_file_has_content, new_readonly_tempfile},
+    test_harness::test_with_config,
+};
+
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit_fail() -> anyhow::Result<()> {
-    let file = helpers::new_readonly_tempfile()?;
+    let file = new_readonly_tempfile()?;
     let mut app = helpers::AppBuilder::default()
         .with_file(file.path(), None)
         .build()?;
@@ -96,7 +105,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file.as_file_mut(), &RANGE.end().to_string())
+    assert_file_has_content(file.as_file_mut(), &RANGE.end().to_string())
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -224,7 +233,7 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
-    let file = helpers::new_readonly_tempfile()?;
+    let file = new_readonly_tempfile()?;
     let mut app = helpers::AppBuilder::default()
         .with_file(file.path(), None)
         .build()?;
@@ -283,12 +292,12 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file.as_file_mut(), &helpers::platform_line("hello"))
+    assert_file_has_content(file.as_file_mut(), &helpers::platform_line("hello"))
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_scratch_no_path_fails() -> anyhow::Result<()> {
-    helpers::test_key_sequence_with_input_text(
+    test_key_sequence_with_input_text(
         AppBuilder::default(),
         ("#[\n|]#", "ihello<esc>:w<ret>", "hello#[\n|]#"),
         &|app| {
@@ -323,7 +332,7 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file.as_file_mut(), "let foo = 0;\n")
+    assert_file_has_content(file.as_file_mut(), "let foo = 0;\n")
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -359,12 +368,12 @@ async fn test_write_new_path() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(
+    assert_file_has_content(
         file1.as_file_mut(),
         &helpers::platform_line("i can eat glass, it will not hurt me\n"),
     )?;
 
-    helpers::assert_file_has_content(
+    assert_file_has_content(
         file2.as_file_mut(),
         &helpers::platform_line("i can eat glass, it will not hurt me\n"),
     )
@@ -372,7 +381,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_fail_new_path() -> anyhow::Result<()> {
-    let file = helpers::new_readonly_tempfile()?;
+    let file = new_readonly_tempfile()?;
 
     test_key_sequences(
         &mut AppBuilder::default().build()?,
@@ -424,8 +433,8 @@ async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
 
     file.as_file_mut().write_all(file_content)?;
 
-    helpers::test_key_sequences(
-        &mut helpers::AppBuilder::default().build()?,
+    test_key_sequences(
+        &mut AppBuilder::default().build()?,
         &[(
             Some(&format!(":o {}<ret>:x<ret>", file.path().to_string_lossy())),
             None,

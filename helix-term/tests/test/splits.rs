@@ -1,4 +1,9 @@
-use super::*;
+use crate::test::helpers::{
+    file::assert_file_has_content,
+    platform_line,
+    test_harness::{test, test_key_sequences},
+    AppBuilder,
+};
 
 use helix_core::path::get_normalized_path;
 
@@ -8,7 +13,7 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
     let mut file2 = tempfile::NamedTempFile::new()?;
     let mut file3 = tempfile::NamedTempFile::new()?;
 
-    let mut app = helpers::AppBuilder::default()
+    let mut app = AppBuilder::default()
         .with_file(file1.path(), None)
         .build()?;
 
@@ -62,17 +67,15 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file1.as_file_mut(), "hello1")?;
-    helpers::assert_file_has_content(file2.as_file_mut(), "hello2")?;
-    helpers::assert_file_has_content(file3.as_file_mut(), "hello3")
+    assert_file_has_content(file1.as_file_mut(), "hello1")?;
+    assert_file_has_content(file2.as_file_mut(), "hello2")?;
+    assert_file_has_content(file3.as_file_mut(), "hello3")
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
-    let mut app = helpers::AppBuilder::default()
-        .with_file(file.path(), None)
-        .build()?;
+    let mut app = AppBuilder::default().with_file(file.path(), None).build()?;
 
     test_key_sequences(
         &mut app,
@@ -88,10 +91,7 @@ async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
 
                     let doc = docs.pop().unwrap();
 
-                    assert_eq!(
-                        helpers::platform_line("hello\ngoodbye"),
-                        doc.text().to_string()
-                    );
+                    assert_eq!(platform_line("hello\ngoodbye"), doc.text().to_string());
 
                     assert!(doc.is_modified());
                 }),
@@ -107,10 +107,7 @@ async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
 
                     let doc = docs.pop().unwrap();
 
-                    assert_eq!(
-                        helpers::platform_line("hello\ngoodbye"),
-                        doc.text().to_string()
-                    );
+                    assert_eq!(platform_line("hello\ngoodbye"), doc.text().to_string());
 
                     assert!(!doc.is_modified());
                 }),
@@ -120,10 +117,7 @@ async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(
-        file.as_file_mut(),
-        &helpers::platform_line("hello\ngoodbye"),
-    )
+    assert_file_has_content(file.as_file_mut(), &platform_line("hello\ngoodbye"))
 }
 
 #[tokio::test(flavor = "multi_thread")]

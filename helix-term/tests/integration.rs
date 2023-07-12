@@ -2,12 +2,7 @@
 mod test {
     mod helpers;
 
-    use helix_core::{syntax::AutoPairConfig, Selection};
-    use helix_term::config::Config;
-
-    use indoc::indoc;
-
-    use self::helpers::*;
+    use self::helpers::test_harness::test;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn hello_world() -> anyhow::Result<()> {

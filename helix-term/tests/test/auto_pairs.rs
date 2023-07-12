@@ -1,6 +1,10 @@
-use helix_core::{auto_pairs::DEFAULT_PAIRS, hashmap};
+use helix_core::{auto_pairs::DEFAULT_PAIRS, hashmap, syntax::AutoPairConfig, Selection};
+use helix_term::config::Config;
 
-use super::*;
+use crate::test::helpers::{
+    test_harness::{test, test_with_config, TestCase},
+    AppBuilder,
+};
 
 const LINE_END: &str = helix_core::NATIVE_LINE_ENDING.as_str();
 

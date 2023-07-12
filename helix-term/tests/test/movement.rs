@@ -1,4 +1,11 @@
-use super::*;
+use crate::test::helpers::{
+    file::temp_file_with_contents,
+    platform_line,
+    test_harness::{test, test_with_config, TestCase},
+    AppBuilder,
+};
+use helix_core::Selection;
+use indoc::indoc;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_mode_cursor_position() -> anyhow::Result<()> {
@@ -360,10 +367,8 @@ async fn surround_around_pair() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
     let test = |content: &str, expected_sel: Selection| -> anyhow::Result<()> {
-        let file = helpers::temp_file_with_contents(content)?;
-        let mut app = helpers::AppBuilder::default()
-            .with_file(file.path(), None)
-            .build()?;
+        let file = temp_file_with_contents(content)?;
+        let mut app = AppBuilder::default().with_file(file.path(), None).build()?;
 
         let (view, doc) = helix_view::current!(app.editor);
         let sel = doc.selection(view.id).clone();
@@ -380,20 +385,10 @@ async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn cursor_position_append_eof() -> anyhow::Result<()> {
     // Selection is forwards
-    test((
-        "#[foo|]#",
-        "abar<esc>",
-        helpers::platform_line("#[foobar|]#\n"),
-    ))
-    .await?;
+    test(("#[foo|]#", "abar<esc>", platform_line("#[foobar|]#\n"))).await?;
 
     // Selection is backwards
-    test((
-        "#[|foo]#",
-        "abar<esc>",
-        helpers::platform_line("#[foobar|]#\n"),
-    ))
-    .await
+    test(("#[|foo]#", "abar<esc>", platform_line("#[foobar|]#\n"))).await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -401,14 +396,14 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
     test_with_config(
         AppBuilder::default().with_file("foo.rs", None),
         (
-            helpers::platform_line(indoc! {"\
+            platform_line(indoc! {"\
                 #[/|]#// Increments
                 fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }
             "}),
             "]fv]f",
-            helpers::platform_line(indoc! {"\
+            platform_line(indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
@@ -424,14 +419,14 @@ async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Res
     test_with_config(
         AppBuilder::default().with_file("foo.rs", None),
         (
-            helpers::platform_line(indoc! {"\
+            platform_line(indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }|]#
             "}),
             "v[f",
-            helpers::platform_line(indoc! {"\
+            platform_line(indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }|]#
                 /// Decrements
@@ -448,7 +443,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
     test_with_config(
         AppBuilder::default().with_file("foo.rs", None),
         (
-            helpers::platform_line(indoc! {"\
+            platform_line(indoc! {"\
                 /// Increments
                 fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
@@ -457,7 +452,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 #[fn ident(x: usize) -> usize { x }|]#
             "}),
             "v[f",
-            helpers::platform_line(indoc! {"\
+            platform_line(indoc! {"\
                 /// Increments
                 fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
@@ -472,7 +467,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
     test_with_config(
         AppBuilder::default().with_file("foo.rs", None),
         (
-            helpers::platform_line(indoc! {"\
+            platform_line(indoc! {"\
                 /// Increments
                 fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
@@ -481,7 +476,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
                 #[fn ident(x: usize) -> usize { x }|]#
             "}),
             "v[f[f",
-            helpers::platform_line(indoc! {"\
+            platform_line(indoc! {"\
                 /// Increments
                 #[|fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements

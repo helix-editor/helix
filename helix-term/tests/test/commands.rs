@@ -1,6 +1,11 @@
-use super::*;
-
 mod write;
+
+use crate::test::helpers::{
+    self, platform_line,
+    test_harness::{test, test_key_sequences},
+    AppBuilder, TestApplication,
+};
+use indoc::indoc;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_selection_duplication() -> anyhow::Result<()> {
@@ -303,7 +308,7 @@ async fn test_extend_line() -> anyhow::Result<()> {
 async fn test_character_info() -> anyhow::Result<()> {
     // UTF-8, single byte
     test_key_sequences(
-        &mut helpers::AppBuilder::default().build()?,
+        &mut AppBuilder::default().build()?,
         &[(
             Some("ih<esc>h:char<ret>"),
             Some(&|app| {
@@ -319,7 +324,7 @@ async fn test_character_info() -> anyhow::Result<()> {
 
     // UTF-8, multi-byte
     test_key_sequences(
-        &mut helpers::AppBuilder::default().build()?,
+        &mut AppBuilder::default().build()?,
         &[(
             Some("ië<esc>h:char<ret>"),
             Some(&|app| {
@@ -335,7 +340,7 @@ async fn test_character_info() -> anyhow::Result<()> {
 
     // Multiple characters displayed as one, escaped characters
     test_key_sequences(
-        &mut helpers::AppBuilder::default().build()?,
+        &mut AppBuilder::default().build()?,
         &[(
             Some(":line<minus>ending crlf<ret>:char<ret>"),
             Some(&|app| {
@@ -351,7 +356,7 @@ async fn test_character_info() -> anyhow::Result<()> {
 
     // Non-UTF-8
     test_key_sequences(
-        &mut helpers::AppBuilder::default().build()?,
+        &mut AppBuilder::default().build()?,
         &[(
             Some(":encoding ascii<ret>ih<esc>h:char<ret>"),
             Some(&|app| {
