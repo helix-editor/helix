@@ -217,7 +217,7 @@ pub fn dap_start_impl(
         }
     }
 
-    args.insert("cwd", to_value(std::env::current_dir().unwrap())?);
+    args.insert("cwd", to_value(helix_loader::current_working_dir())?);
 
     let args = to_value(args).unwrap();
 

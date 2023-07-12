@@ -1668,6 +1668,7 @@ name = "nu"
 scope = "source.nu"
 injection-regex = "nu"
 file-types = ["nu"]
+shebangs = ["nu"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
@@ -2233,7 +2234,26 @@ grammar = "bash"
 [[language]]
 name = "ini"
 scope = "source.ini"
-file-types = ["ini"]
+file-types = [
+  "ini",
+  # Systemd unit files
+  "service",
+  "automount",
+  "device",
+  "mount",
+  "path",
+  "service",
+  "slice",
+  "socket",
+  "swap",
+  "target",
+  "timer",
+  # Podman quadlets
+  "container",
+  "volume",
+  "kube",
+  "network"
+]
 injection-regex = "ini"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }

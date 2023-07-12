@@ -1260,6 +1260,7 @@ version = "0.6.0"
 dependencies = [
  "anyhow",
  "cc",
+ "dunce",
  "etcetera",
  "libloading",
  "log",
