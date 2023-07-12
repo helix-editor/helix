@@ -37,6 +37,17 @@ where
     }
 }
 
+#[macro_export]
+macro_rules! test_case {
+    (($($arg_1:tt)*), ($($arg_2:tt)*), ($($arg_3:tt)*)) => {
+        $crate::test::helpers::test_harness::test((
+            format!($($arg_1)*),
+            format!($($arg_2)*),
+            format!($($arg_3)*)
+        ))
+    };
+}
+
 pub async fn test<T: Into<TestCase>>(test_case: T) -> anyhow::Result<()> {
     test_with_config(AppBuilder::default(), test_case).await
 }
