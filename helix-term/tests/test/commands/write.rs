@@ -325,18 +325,15 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
             formatter = { command = "bash", args = [ "-c", "exit 1" ] }
         "#};
 
-    let mut app = helpers::AppBuilder::default()
-        .with_file(file.path(), None)
-        .with_input_text("#[l|]#et foo = 0;\n")
-        .with_lang_config(helpers::test_syntax_conf(Some(lang_conf.into())))
-        .build()?;
+    test_with_config(
+        helpers::AppBuilder::default()
+            .with_file(file.path(), None)
+            .with_lang_config(helpers::test_syntax_conf(Some(lang_conf.into()))),
+        ("#[l|]#et foo = 0;\n", ":w<ret>", "#[l|]#et foo = 0;\n"),
+    )
+    .await?;
 
-    test_key_sequences(&mut app, &[(Some(":w<ret>"), None)], false).await?;
-
-    // file still saves
-    helpers::assert_file_has_content(file.as_file_mut(), "let foo = 0;\n")?;
-
-    Ok(())
+    helpers::assert_file_has_content(file.as_file_mut(), "let foo = 0;\n")
 }
 
 #[tokio::test(flavor = "multi_thread")]

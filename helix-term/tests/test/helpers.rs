@@ -26,13 +26,13 @@ pub struct TestCase {
     pub out_selection: Selection,
 }
 
-impl<S, R, V> From<(S, R, V)> for TestCase
+impl<I, K, O> From<(I, K, O)> for TestCase
 where
-    S: AsRef<str>,
-    R: Into<String>,
-    V: AsRef<str>,
+    I: AsRef<str>,
+    K: Into<String>,
+    O: AsRef<str>,
 {
-    fn from((input, keys, output): (S, R, V)) -> Self {
+    fn from((input, keys, output): (I, K, O)) -> Self {
         let (in_text, in_selection) = test::print(input.as_ref());
         let (out_text, out_selection) = test::print(output.as_ref());
 
@@ -236,7 +236,6 @@ pub struct AppBuilder {
     args: Args,
     config: Config,
     syn_conf: helix_core::syntax::Configuration,
-    input: Option<(String, Selection)>,
 }
 
 impl Default for AppBuilder {
@@ -255,7 +254,6 @@ impl Default for AppBuilder {
                 ..Default::default()
             },
             syn_conf: test_syntax_conf(None),
-            input: None,
         }
     }
 }
@@ -277,11 +275,6 @@ impl AppBuilder {
         self
     }
 
-    pub fn with_input_text<S: Into<String>>(mut self, input_text: S) -> Self {
-        self.input = Some(test::print(&input_text.into()));
-        self
-    }
-
     pub fn with_lang_config(mut self, syn_conf: helix_core::syntax::Configuration) -> Self {
         self.syn_conf = syn_conf;
         self
@@ -292,26 +285,12 @@ impl AppBuilder {
         // initialized by another test.
         let _ = helix_term::log::setup_logging(std::io::stdout(), None);
 
-        let mut app = TestApplication::new(
+        TestApplication::new(
             tui::backend::TestBackend::new(120, 150),
             self.args,
             self.config,
             self.syn_conf,
-        )?;
-
-        if let Some((text, selection)) = self.input {
-            let (view, doc) = helix_view::current!(app.editor);
-            let sel = doc.selection(view.id).clone();
-            let trans = Transaction::change_by_selection(doc.text(), &sel, |_| {
-                (0, doc.text().len_chars(), Some((text.clone()).into()))
-            })
-            .with_selection(selection);
-
-            // replace the initial text with the input text
-            doc.apply(&trans, view.id);
-        }
-
-        Ok(app)
+        )
     }
 }
 
