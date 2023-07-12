@@ -1,14 +1,12 @@
 use crate::{
     test::helpers::{
         file::temp_file_with_contents,
-        platform_line,
-        test_harness::{test, test_with_config, TestCase},
+        test_harness::{test, TestCase},
         AppBuilder,
     },
     test_case,
 };
 use helix_core::Selection;
-use indoc::indoc;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_mode_cursor_position() -> anyhow::Result<()> {
@@ -396,46 +394,42 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::Result<()> {
-    test_with_config(
+    test_case!(
         AppBuilder::default().with_file("foo.rs", None),
-        (
-            platform_line(indoc! {"\
-                #[/|]#// Increments
-                fn inc(x: usize) -> usize { x + 1 }
-                /// Decrements
-                fn dec(x: usize) -> usize { x - 1 }
-            "}),
-            "]fv]f",
-            platform_line(indoc! {"\
-                /// Increments
-                #[fn inc(x: usize) -> usize { x + 1 }
-                /// Decrements
-                fn dec(x: usize) -> usize { x - 1 }|]#
-            "}),
-        ),
+        ("
+            #[/|]#// Increments
+            fn inc(x: usize) -> usize {{ x + 1 }}
+            /// Decrements
+            fn dec(x: usize) -> usize {{ x - 1 }}
+        "),
+        ("]fv]f"),
+        ("
+            /// Increments
+            #[fn inc(x: usize) -> usize {{ x + 1 }}
+            /// Decrements
+            fn dec(x: usize) -> usize {{ x - 1 }}|]#
+        ")
     )
     .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Result<()> {
-    test_with_config(
+    test_case!(
         AppBuilder::default().with_file("foo.rs", None),
-        (
-            platform_line(indoc! {"\
-                /// Increments
-                #[fn inc(x: usize) -> usize { x + 1 }
-                /// Decrements
-                fn dec(x: usize) -> usize { x - 1 }|]#
-            "}),
-            "v[f",
-            platform_line(indoc! {"\
-                /// Increments
-                #[fn inc(x: usize) -> usize { x + 1 }|]#
-                /// Decrements
-                fn dec(x: usize) -> usize { x - 1 }
-            "}),
-        ),
+        ("
+            /// Increments
+            #[fn inc(x: usize) -> usize {{ x + 1 }}
+            /// Decrements
+            fn dec(x: usize) -> usize {{ x - 1 }}|]#
+        "),
+        ("v[f"),
+        ("
+            /// Increments
+            #[fn inc(x: usize) -> usize {{ x + 1 }}|]#
+            /// Decrements
+            fn dec(x: usize) -> usize {{ x - 1 }}
+        ")
     )
     .await
 }
@@ -443,51 +437,47 @@ async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Res
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> anyhow::Result<()> {
     // Note: the anchor stays put and the head moves back.
-    test_with_config(
+    test_case!(
         AppBuilder::default().with_file("foo.rs", None),
-        (
-            platform_line(indoc! {"\
-                /// Increments
-                fn inc(x: usize) -> usize { x + 1 }
-                /// Decrements
-                fn dec(x: usize) -> usize { x - 1 }
-                /// Identity
-                #[fn ident(x: usize) -> usize { x }|]#
-            "}),
-            "v[f",
-            platform_line(indoc! {"\
-                /// Increments
-                fn inc(x: usize) -> usize { x + 1 }
-                /// Decrements
-                #[|fn dec(x: usize) -> usize { x - 1 }
-                /// Identity
-                ]#fn ident(x: usize) -> usize { x }
-            "}),
-        ),
+        ("
+            /// Increments
+            fn inc(x: usize) -> usize {{ x + 1 }}
+            /// Decrements
+            fn dec(x: usize) -> usize {{ x - 1 }}
+            /// Identity
+            #[fn ident(x: usize) -> usize {{ x }}|]#
+        "),
+        ("v[f"),
+        ("
+            /// Increments
+            fn inc(x: usize) -> usize {{ x + 1 }}
+            /// Decrements
+            #[|fn dec(x: usize) -> usize {{ x - 1 }}
+            /// Identity
+            ]#fn ident(x: usize) -> usize {{ x }}
+        ")
     )
     .await?;
 
-    test_with_config(
+    test_case!(
         AppBuilder::default().with_file("foo.rs", None),
-        (
-            platform_line(indoc! {"\
-                /// Increments
-                fn inc(x: usize) -> usize { x + 1 }
-                /// Decrements
-                fn dec(x: usize) -> usize { x - 1 }
-                /// Identity
-                #[fn ident(x: usize) -> usize { x }|]#
-            "}),
-            "v[f[f",
-            platform_line(indoc! {"\
-                /// Increments
-                #[|fn inc(x: usize) -> usize { x + 1 }
-                /// Decrements
-                fn dec(x: usize) -> usize { x - 1 }
-                /// Identity
-                ]#fn ident(x: usize) -> usize { x }
-            "}),
-        ),
+        ("
+            /// Increments
+            fn inc(x: usize) -> usize {{ x + 1 }}
+            /// Decrements
+            fn dec(x: usize) -> usize {{ x - 1 }}
+            /// Identity
+            #[fn ident(x: usize) -> usize {{ x }}|]#
+        "),
+        ("v[f[f"),
+        ("
+            /// Increments
+            #[|fn inc(x: usize) -> usize {{ x + 1 }}
+            /// Decrements
+            fn dec(x: usize) -> usize {{ x - 1 }}
+            /// Identity
+            ]#fn ident(x: usize) -> usize {{ x }}
+        ")
     )
     .await
 }

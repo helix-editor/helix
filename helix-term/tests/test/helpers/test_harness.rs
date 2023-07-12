@@ -39,12 +39,20 @@ where
 
 #[macro_export]
 macro_rules! test_case {
-    (($($arg_1:tt)*), ($($arg_2:tt)*), ($($arg_3:tt)*)) => {
-        $crate::test::helpers::test_harness::test((
+    ($config:expr, ($($arg_1:tt)*), ($($arg_2:tt)*), ($($arg_3:tt)*)) => {
+        $crate::test::helpers::test_harness::test_with_config($config, (
             $crate::test::helpers::platform_line(&indoc::formatdoc!($($arg_1)*)),
             format!($($arg_2)*),
             $crate::test::helpers::platform_line(&indoc::formatdoc!($($arg_3)*))
         ))
+    };
+    ($arg_1:tt, $arg_2:tt, $arg_3:tt) => {
+        $crate::test_case!(
+            $crate::test::helpers::AppBuilder::default(),
+            $arg_1,
+            $arg_2,
+            $arg_3
+        )
     };
 }
 
