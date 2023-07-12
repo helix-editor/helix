@@ -46,16 +46,6 @@ where
     }
 }
 
-#[inline]
-pub async fn test_key_sequence(
-    app: &mut TestApplication,
-    in_keys: Option<&str>,
-    test_fn: Option<&dyn Fn(&TestApplication)>,
-    should_exit: bool,
-) -> anyhow::Result<()> {
-    test_key_sequences(app, &[(in_keys, test_fn)], should_exit).await
-}
-
 #[allow(clippy::type_complexity)]
 pub async fn test_key_sequences(
     app: &mut TestApplication,
@@ -148,10 +138,9 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 
     doc.apply(&transaction, view.id);
 
-    test_key_sequence(
+    test_key_sequences(
         &mut app,
-        Some(&test_case.in_keys),
-        Some(test_fn),
+        &[(Some(&test_case.in_keys), Some(test_fn))],
         should_exit,
     )
     .await

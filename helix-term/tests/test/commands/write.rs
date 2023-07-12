@@ -16,17 +16,19 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
         .with_file(file.path(), None)
         .build()?;
 
-    test_key_sequence(
+    test_key_sequences(
         &mut app,
-        Some("ihello<esc>:wq<ret>"),
-        Some(&|app| {
-            let mut docs: Vec<_> = app.editor.documents().collect();
-            assert_eq!(1, docs.len());
+        &[(
+            Some("ihello<esc>:wq<ret>"),
+            Some(&|app| {
+                let mut docs: Vec<_> = app.editor.documents().collect();
+                assert_eq!(1, docs.len());
 
-            let doc = docs.pop().unwrap();
-            assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
-            assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
-        }),
+                let doc = docs.pop().unwrap();
+                assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
+                assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
+            }),
+        )],
         false,
     )
     .await?;
@@ -81,15 +83,17 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
         .with_file(file.path(), None)
         .build()?;
 
-    test_key_sequence(
+    test_key_sequences(
         &mut app,
-        Some(&command),
-        Some(&|app| {
-            assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());
+        &[(
+            Some(&command),
+            Some(&|app| {
+                assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());
 
-            let doc = app.editor.document_by_path(file.path());
-            assert!(doc.is_none(), "found doc: {:?}", doc);
-        }),
+                let doc = app.editor.document_by_path(file.path());
+                assert!(doc.is_none(), "found doc: {:?}", doc);
+            }),
+        )],
         false,
     )
     .await?;
@@ -106,10 +110,12 @@ async fn test_write() -> anyhow::Result<()> {
         .with_file(file.path(), None)
         .build()?;
 
-    test_key_sequence(
+    test_key_sequences(
         &mut app,
-        Some("ithe gostak distims the doshes<ret><esc>:w<ret>"),
-        None,
+        &[(
+            Some("ithe gostak distims the doshes<ret><esc>:w<ret>"),
+            None,
+        )],
         false,
     )
     .await?;
@@ -146,7 +152,7 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
     file.as_file_mut().flush()?;
     file.as_file_mut().sync_all()?;
 
-    test_key_sequence(&mut app, Some(":x<ret>"), None, false).await?;
+    test_key_sequences(&mut app, &[(Some(":x<ret>"), None)], false).await?;
 
     file.as_file_mut().flush()?;
     file.as_file_mut().sync_all()?;
@@ -170,10 +176,12 @@ async fn test_write_quit() -> anyhow::Result<()> {
         .with_file(file.path(), None)
         .build()?;
 
-    test_key_sequence(
+    test_key_sequences(
         &mut app,
-        Some("ithe gostak distims the doshes<ret><esc>:wq<ret>"),
-        None,
+        &[(
+            Some("ithe gostak distims the doshes<ret><esc>:wq<ret>"),
+            None,
+        )],
         true,
     )
     .await?;
@@ -206,7 +214,7 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
         command.push_str(&cmd);
     }
 
-    test_key_sequence(&mut app, Some(&command), None, false).await?;
+    test_key_sequences(&mut app, &[(Some(&command), None)], false).await?;
 
     file.as_file_mut().flush()?;
     file.as_file_mut().sync_all()?;
@@ -263,18 +271,20 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
 async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
-    test_key_sequence(
+    test_key_sequences(
         &mut AppBuilder::default().build()?,
-        Some(format!("ihello<esc>:w {}<ret>", file.path().to_string_lossy()).as_ref()),
-        Some(&|app| {
-            assert!(!app.editor.is_err());
+        &[(
+            Some(format!("ihello<esc>:w {}<ret>", file.path().to_string_lossy()).as_ref()),
+            Some(&|app| {
+                assert!(!app.editor.is_err());
 
-            let mut docs: Vec<_> = app.editor.documents().collect();
-            assert_eq!(1, docs.len());
+                let mut docs: Vec<_> = app.editor.documents().collect();
+                assert_eq!(1, docs.len());
 
-            let doc = docs.pop().unwrap();
-            assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
-        }),
+                let doc = docs.pop().unwrap();
+                assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
+            }),
+        )],
         false,
     )
     .await?;
@@ -433,10 +443,12 @@ async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
 
     file.as_file_mut().write_all(file_content)?;
 
-    helpers::test_key_sequence(
+    helpers::test_key_sequences(
         &mut helpers::AppBuilder::default().build()?,
-        Some(&format!(":o {}<ret>:x<ret>", file.path().to_string_lossy())),
-        None,
+        &[(
+            Some(&format!(":o {}<ret>:x<ret>", file.path().to_string_lossy())),
+            None,
+        )],
         true,
     )
     .await?;

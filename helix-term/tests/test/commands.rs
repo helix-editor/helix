@@ -107,45 +107,53 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
     }
 
     // Single selection
-    test_key_sequence(
+    test_key_sequences(
         &mut AppBuilder::default().with_file(file.path(), None).build()?,
-        Some("ione.js<esc>%gf"),
-        Some(&|app| {
-            assert_eq!(1, match_paths(app, vec!["one.js"]));
-        }),
+        &[(
+            Some("ione.js<esc>%gf"),
+            Some(&|app| {
+                assert_eq!(1, match_paths(app, vec!["one.js"]));
+            }),
+        )],
         false,
     )
     .await?;
 
     // Multiple selection
-    test_key_sequence(
+    test_key_sequences(
         &mut AppBuilder::default().with_file(file.path(), None).build()?,
-        Some("ione.js<ret>two.js<esc>%<A-s>gf"),
-        Some(&|app| {
-            assert_eq!(2, match_paths(app, vec!["one.js", "two.js"]));
-        }),
+        &[(
+            Some("ione.js<ret>two.js<esc>%<A-s>gf"),
+            Some(&|app| {
+                assert_eq!(2, match_paths(app, vec!["one.js", "two.js"]));
+            }),
+        )],
         false,
     )
     .await?;
 
     // Cursor on first quote
-    test_key_sequence(
+    test_key_sequences(
         &mut AppBuilder::default().with_file(file.path(), None).build()?,
-        Some("iimport 'one.js'<esc>B;gf"),
-        Some(&|app| {
-            assert_eq!(1, match_paths(app, vec!["one.js"]));
-        }),
+        &[(
+            Some("iimport 'one.js'<esc>B;gf"),
+            Some(&|app| {
+                assert_eq!(1, match_paths(app, vec!["one.js"]));
+            }),
+        )],
         false,
     )
     .await?;
 
     // Cursor on last quote
-    test_key_sequence(
+    test_key_sequences(
         &mut AppBuilder::default().with_file(file.path(), None).build()?,
-        Some("iimport 'one.js'<esc>bgf"),
-        Some(&|app| {
-            assert_eq!(1, match_paths(app, vec!["one.js"]));
-        }),
+        &[(
+            Some("iimport 'one.js'<esc>bgf"),
+            Some(&|app| {
+                assert_eq!(1, match_paths(app, vec!["one.js"]));
+            }),
+        )],
         false,
     )
     .await?;
@@ -305,54 +313,62 @@ async fn test_extend_line() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_character_info() -> anyhow::Result<()> {
     // UTF-8, single byte
-    test_key_sequence(
+    test_key_sequences(
         &mut helpers::AppBuilder::default().build()?,
-        Some("ih<esc>h:char<ret>"),
-        Some(&|app| {
-            assert_eq!(
-                r#""h" (U+0068) Dec 104 Hex 68"#,
-                app.editor.get_status().unwrap().0
-            );
-        }),
+        &[(
+            Some("ih<esc>h:char<ret>"),
+            Some(&|app| {
+                assert_eq!(
+                    r#""h" (U+0068) Dec 104 Hex 68"#,
+                    app.editor.get_status().unwrap().0
+                );
+            }),
+        )],
         false,
     )
     .await?;
 
     // UTF-8, multi-byte
-    test_key_sequence(
+    test_key_sequences(
         &mut helpers::AppBuilder::default().build()?,
-        Some("ië<esc>h:char<ret>"),
-        Some(&|app| {
-            assert_eq!(
-                r#""ë" (U+0065 U+0308) Hex 65 + cc 88"#,
-                app.editor.get_status().unwrap().0
-            );
-        }),
+        &[(
+            Some("ië<esc>h:char<ret>"),
+            Some(&|app| {
+                assert_eq!(
+                    r#""ë" (U+0065 U+0308) Hex 65 + cc 88"#,
+                    app.editor.get_status().unwrap().0
+                );
+            }),
+        )],
         false,
     )
     .await?;
 
     // Multiple characters displayed as one, escaped characters
-    test_key_sequence(
+    test_key_sequences(
         &mut helpers::AppBuilder::default().build()?,
-        Some(":line<minus>ending crlf<ret>:char<ret>"),
-        Some(&|app| {
-            assert_eq!(
-                r#""\r\n" (U+000d U+000a) Hex 0d + 0a"#,
-                app.editor.get_status().unwrap().0
-            );
-        }),
+        &[(
+            Some(":line<minus>ending crlf<ret>:char<ret>"),
+            Some(&|app| {
+                assert_eq!(
+                    r#""\r\n" (U+000d U+000a) Hex 0d + 0a"#,
+                    app.editor.get_status().unwrap().0
+                );
+            }),
+        )],
         false,
     )
     .await?;
 
     // Non-UTF-8
-    test_key_sequence(
+    test_key_sequences(
         &mut helpers::AppBuilder::default().build()?,
-        Some(":encoding ascii<ret>ih<esc>h:char<ret>"),
-        Some(&|app| {
-            assert_eq!(r#""h" Dec 104 Hex 68"#, app.editor.get_status().unwrap().0);
-        }),
+        &[(
+            Some(":encoding ascii<ret>ih<esc>h:char<ret>"),
+            Some(&|app| {
+                assert_eq!(r#""h" Dec 104 Hex 68"#, app.editor.get_status().unwrap().0);
+            }),
+        )],
         false,
     )
     .await?;
