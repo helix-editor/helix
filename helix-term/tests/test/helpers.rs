@@ -146,19 +146,6 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     .await
 }
 
-/// Generates language configs that merge in overrides, like a user language
-/// config. The argument string must be a raw TOML document.
-pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Configuration {
-    let mut lang = helix_loader::config::default_lang_config();
-
-    if let Some(overrides) = overrides {
-        let override_toml = toml::from_str(&overrides).unwrap();
-        lang = helix_loader::merge_toml_values(lang, override_toml, 3);
-    }
-
-    lang.try_into().unwrap()
-}
-
 /// Use this for very simple test cases where there is one input
 /// document, selection, and sequence of key presses, and you just
 /// want to verify the resulting document and selection.
@@ -235,7 +222,7 @@ pub fn new_readonly_tempfile() -> anyhow::Result<NamedTempFile> {
 pub struct AppBuilder {
     args: Args,
     config: Config,
-    syn_conf: helix_core::syntax::Configuration,
+    raw_lang_overrides: Option<String>,
 }
 
 impl Default for AppBuilder {
@@ -253,7 +240,7 @@ impl Default for AppBuilder {
                 keys: helix_term::keymap::default(),
                 ..Default::default()
             },
-            syn_conf: test_syntax_conf(None),
+            raw_lang_overrides: None,
         }
     }
 }
@@ -275,8 +262,9 @@ impl AppBuilder {
         self
     }
 
-    pub fn with_lang_config(mut self, syn_conf: helix_core::syntax::Configuration) -> Self {
-        self.syn_conf = syn_conf;
+    // Raw TOML string.
+    pub fn lang_config_overrides(mut self, raw: String) -> Self {
+        self.raw_lang_overrides = Some(raw);
         self
     }
 
@@ -285,11 +273,17 @@ impl AppBuilder {
         // initialized by another test.
         let _ = helix_term::log::setup_logging(std::io::stdout(), None);
 
+        let mut language_config = helix_loader::config::default_lang_config();
+        if let Some(overrides) = self.raw_lang_overrides {
+            language_config =
+                helix_loader::merge_toml_values(language_config, toml::from_str(&overrides)?, 3);
+        }
+
         TestApplication::new(
             tui::backend::TestBackend::new(120, 150),
             self.args,
             self.config,
-            self.syn_conf,
+            language_config.try_into()?,
         )
     }
 }

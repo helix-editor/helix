@@ -318,7 +318,7 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
     test_with_config(
         helpers::AppBuilder::default()
             .with_file(file.path(), None)
-            .with_lang_config(helpers::test_syntax_conf(Some(lang_conf.into()))),
+            .lang_config_overrides(lang_conf.into()),
         ("#[l|]#et foo = 0;\n", ":w<ret>", "#[l|]#et foo = 0;\n"),
     )
     .await?;
