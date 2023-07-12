@@ -14,7 +14,7 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
 
     test_key_sequences(
         &mut app,
-        vec![
+        &[
             (
                 Some(&format!(
                     "ihello1<esc>:sp<ret>:o {}<ret>ihello2<esc>:sp<ret>:o {}<ret>ihello3<esc>",
@@ -78,7 +78,7 @@ async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
 
     test_key_sequences(
         &mut app,
-        vec![
+        &[
             (
                 Some("O<esc>ihello<esc>:sp<ret>ogoodbye<esc>"),
                 Some(&|app| {

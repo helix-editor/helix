@@ -28,13 +28,13 @@ pub struct TestCase {
 
 impl<S, R, V> From<(S, R, V)> for TestCase
 where
-    S: Into<String>,
+    S: AsRef<str>,
     R: Into<String>,
-    V: Into<String>,
+    V: AsRef<str>,
 {
     fn from((input, keys, output): (S, R, V)) -> Self {
-        let (in_text, in_selection) = test::print(&input.into());
-        let (out_text, out_selection) = test::print(&output.into());
+        let (in_text, in_selection) = test::print(input.as_ref());
+        let (out_text, out_selection) = test::print(output.as_ref());
 
         TestCase {
             in_text,
@@ -53,13 +53,13 @@ pub async fn test_key_sequence(
     test_fn: Option<&dyn Fn(&TestApplication)>,
     should_exit: bool,
 ) -> anyhow::Result<()> {
-    test_key_sequences(app, vec![(in_keys, test_fn)], should_exit).await
+    test_key_sequences(app, &[(in_keys, test_fn)], should_exit).await
 }
 
 #[allow(clippy::type_complexity)]
 pub async fn test_key_sequences(
     app: &mut TestApplication,
-    inputs: Vec<(Option<&str>, Option<&dyn Fn(&TestApplication)>)>,
+    inputs: &[(Option<&str>, Option<&dyn Fn(&TestApplication)>)],
     should_exit: bool,
 ) -> anyhow::Result<()> {
     const TIMEOUT: Duration = Duration::from_millis(500);
@@ -130,17 +130,13 @@ pub async fn test_key_sequences(
 }
 
 pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
-    app: Option<TestApplication>,
+    app_builder: AppBuilder,
     test_case: T,
     test_fn: &dyn Fn(&TestApplication),
     should_exit: bool,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
-    let mut app = match app {
-        Some(app) => app,
-        None => AppBuilder::default().build()?,
-    };
-
+    let mut app = app_builder.build()?;
     let (view, doc) = helix_view::current!(app.editor);
     let sel = doc.selection(view.id).clone();
 
@@ -182,10 +178,9 @@ pub async fn test_with_config<T: Into<TestCase>>(
     test_case: T,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
-    let app = app_builder.build()?;
 
     test_key_sequence_with_input_text(
-        Some(app),
+        app_builder,
         test_case.clone(),
         &|app| {
             let doc = doc!(app.editor);
@@ -218,25 +213,6 @@ pub fn temp_file_with_contents<S: AsRef<str>>(
     temp_file.flush()?;
     temp_file.as_file_mut().sync_all()?;
     Ok(temp_file)
-}
-
-/// Generates a config with defaults more suitable for integration tests
-pub fn test_config() -> Config {
-    Config {
-        editor: test_editor_config(),
-        keys: helix_term::keymap::default(),
-        ..Default::default()
-    }
-}
-
-pub fn test_editor_config() -> helix_view::editor::Config {
-    helix_view::editor::Config {
-        lsp: LspConfig {
-            enable: false,
-            ..Default::default()
-        },
-        ..Default::default()
-    }
 }
 
 /// Replaces all LF chars with the system's appropriate line feed
@@ -278,7 +254,17 @@ impl Default for AppBuilder {
     fn default() -> Self {
         Self {
             args: Args::default(),
-            config: test_config(),
+            config: Config {
+                editor: helix_view::editor::Config {
+                    lsp: LspConfig {
+                        enable: false,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                keys: helix_term::keymap::default(),
+                ..Default::default()
+            },
             syn_conf: test_syntax_conf(None),
             input: None,
         }

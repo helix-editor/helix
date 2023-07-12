@@ -38,7 +38,7 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
 async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     test_key_sequences(
         &mut helpers::AppBuilder::default().build()?,
-        vec![
+        &[
             (
                 None,
                 Some(&|app| {
@@ -227,7 +227,7 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
 
     test_key_sequences(
         &mut app,
-        vec![
+        &[
             (
                 None,
                 Some(&|app| {
@@ -287,7 +287,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_scratch_no_path_fails() -> anyhow::Result<()> {
     helpers::test_key_sequence_with_input_text(
-        None,
+        AppBuilder::default(),
         ("#[\n|]#", "ihello<esc>:w<ret>", "hello#[\n|]#"),
         &|app| {
             assert!(app.editor.is_err());
@@ -321,7 +321,7 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
         .with_lang_config(helpers::test_syntax_conf(Some(lang_conf.into())))
         .build()?;
 
-    test_key_sequences(&mut app, vec![(Some(":w<ret>"), None)], false).await?;
+    test_key_sequences(&mut app, &[(Some(":w<ret>"), None)], false).await?;
 
     // file still saves
     helpers::assert_file_has_content(file.as_file_mut(), "let foo = 0;\n")?;
@@ -339,7 +339,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
 
     test_key_sequences(
         &mut app,
-        vec![
+        &[
             (
                 Some("ii can eat glass, it will not hurt me<ret><esc>:w<ret>"),
                 Some(&|app| {
@@ -381,7 +381,7 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
 
     test_key_sequences(
         &mut AppBuilder::default().build()?,
-        vec![
+        &[
             (
                 None,
                 Some(&|app| {
