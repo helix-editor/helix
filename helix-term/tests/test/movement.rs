@@ -30,43 +30,43 @@ async fn insert_mode_cursor_position() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
     test(("#[f|]#oo\n", "vll<A-;><esc>", "#[|foo]#\n")).await?;
-    test((
-        indoc! {"\
-                #[f|]#oo
-                #(b|)#ar"
-        },
-        "vll<A-;><esc>",
-        indoc! {"\
-                #[|foo]#
-                #(|bar)#"
-        },
-    ))
+    test_case!(
+        ("
+            #[f|]#oo
+            #(b|)#ar
+        "),
+        ("vll<A-;><esc>"),
+        ("
+            #[|foo]#
+            #(|bar)#
+        ")
+    )
     .await?;
 
-    test((
-        indoc! {"\
-                #[f|]#oo
-                #(b|)#ar"
-        },
-        "a",
-        indoc! {"\
-                #[fo|]#o
-                #(ba|)#r"
-        },
-    ))
+    test_case!(
+        ("
+            #[f|]#oo
+            #(b|)#ar
+        "),
+        ("a"),
+        ("
+            #[fo|]#o
+            #(ba|)#r
+        ")
+    )
     .await?;
 
-    test((
-        indoc! {"\
+    test_case!(
+        ("
+            #[f|]#oo
+            #(b|)#ar
+        "),
+        ("a<esc>"),
+        ("
                 #[f|]#oo
-                #(b|)#ar"
-        },
-        "a<esc>",
-        indoc! {"\
-                #[f|]#oo
-                #(b|)#ar"
-        },
-    ))
+                #(b|)#ar
+        ")
+    )
     .await
 }
 

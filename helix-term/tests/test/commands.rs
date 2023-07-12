@@ -8,95 +8,94 @@ use crate::{
     },
     test_case,
 };
-use indoc::indoc;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_selection_duplication() -> anyhow::Result<()> {
     // Forward
     test_case!(
-        (indoc! {"\
+        ("
             #[lo|]#rem
             ipsum
             dolor
-            "}),
+        "),
         ("CC"),
-        (indoc! {"\
+        ("
             #(lo|)#rem
             #(ip|)#sum
             #[do|]#lor
-            "})
+        ")
     )
     .await?;
 
     // Backward
     test_case!(
-        (indoc! {"\
+        ("
             #[|lo]#rem
             ipsum
             dolor
-            "}),
+        "),
         ("CC"),
-        (indoc! {"\
+        ("
             #(|lo)#rem
             #(|ip)#sum
             #[|do]#lor
-            "})
+        ")
     )
     .await?;
 
     // Copy the selection to previous line, skipping the first line in the file
     test_case!(
-        (indoc! {"\
+        ("
             test
             #[testitem|]#
-            "}),
+        "),
         ("<A-C>"),
-        (indoc! {"\
+        ("
             test
             #[testitem|]#
-            "})
+        ")
     )
     .await?;
 
     // Copy the selection to previous line, including the first line in the file
     test_case!(
-        (indoc! {"\
+        ("
             test
             #[test|]#
-            "}),
+        "),
         ("<A-C>"),
-        (indoc! {"\
+        ("
             #[test|]#
             #(test|)#
-            "})
+        ")
     )
     .await?;
 
     // Copy the selection to next line, skipping the last line in the file
     test_case!(
-        (indoc! {"\
+        ("
             #[testitem|]#
             test
-            "}),
+        "),
         ("C"),
-        (indoc! {"\
+        ("
             #[testitem|]#
             test
-            "})
+        ")
     )
     .await?;
 
     // Copy the selection to next line, including the last line in the file
     test_case!(
-        (indoc! {"\
+        ("
             #[test|]#
             test
-            "}),
+        "),
         ("C"),
-        (indoc! {"\
+        ("
             #(test|)#
             #[test|]#
-            "})
+        ")
     )
     .await
 }
@@ -169,17 +168,17 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_multi_selection_paste() -> anyhow::Result<()> {
     test_case!(
-        (indoc! {"\
+        ("
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "}),
+        "),
         ("yp"),
-        (indoc! {"\
+        ("
             lorem#[|lorem]#
             ipsum#(|ipsum)#
             dolor#(|dolor)#
-            "})
+        ")
     )
     .await
 }
@@ -188,58 +187,58 @@ async fn test_multi_selection_paste() -> anyhow::Result<()> {
 async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
     // pipe
     test_case!(
-        (indoc! {"\
+        ("
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "}),
+        "),
         ("|echo foo<ret>"),
-        (indoc! {"\
+        ("
             #[|foo\n]#
             
             #(|foo\n)#
             
             #(|foo\n)#
             
-            "})
+        ")
     )
     .await?;
 
     // insert-output
     test_case!(
-        (indoc! {"\
+        ("
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "}),
+        "),
         ("!echo foo<ret>"),
-        (indoc! {"\
+        ("
             #[|foo\n]#
             lorem
             #(|foo\n)#
             ipsum
             #(|foo\n)#
             dolor
-            "})
+        ")
     )
     .await?;
 
     // append-output
     test_case!(
-        (indoc! {"\
+        ("
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "}),
+        "),
         ("<A-!>echo foo<ret>"),
-        (indoc! {"\
+        ("
             lorem#[|foo\n]#
             
             ipsum#(|foo\n)#
             
             dolor#(|foo\n)#
             
-            "})
+        ")
     )
     .await
 }
@@ -274,35 +273,35 @@ async fn test_undo_redo() -> anyhow::Result<()> {
 async fn test_extend_line() -> anyhow::Result<()> {
     // extend with line selected then count
     test_case!(
-        (indoc! {"\
+        ("
             #[l|]#orem
             ipsum
             dolor
             
-            "}),
+        "),
         ("x2x"),
-        (indoc! {"\
+        ("
             #[lorem
             ipsum
             dolor\n|]#
             
-            "})
+        ")
     )
     .await?;
 
     // extend with count on partial selection
     test_case!(
-        (indoc! {"\
+        ("
             #[l|]#orem
             ipsum
             
-            "}),
+        "),
         ("2x"),
-        (indoc! {"\
+        ("
             #[lorem
             ipsum\n|]#
             
-            "})
+        ")
     )
     .await
 }
@@ -398,19 +397,19 @@ async fn test_delete_word_forward() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_delete_char_forward() -> anyhow::Result<()> {
     test_case!(
-        (indoc! {"\
-                #[abc|]#def
-                #(abc|)#ef
-                #(abc|)#f
-                #(abc|)#
-            "}),
+        ("
+            #[abc|]#def
+            #(abc|)#ef
+            #(abc|)#f
+            #(abc|)#
+        "),
         ("a<del><esc>"),
-        (indoc! {"\
-                #[abc|]#ef
-                #(abc|)#f
-                #(abc|)#
-                #(abc|)#
-            "})
+        ("
+            #[abc|]#ef
+            #(abc|)#f
+            #(abc|)#
+            #(abc|)#
+        ")
     )
     .await
 }

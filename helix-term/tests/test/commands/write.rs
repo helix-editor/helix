@@ -318,7 +318,7 @@ async fn test_write_scratch_no_path_fails() -> anyhow::Result<()> {
 async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
     let mut file = tempfile::Builder::new().suffix(".rs").tempfile()?;
 
-    let lang_conf = indoc! {r#"
+    let lang_conf = indoc::indoc! {r#"
             [[language]]
             name = "rust"
             formatter = { command = "bash", args = [ "-c", "exit 1" ] }
