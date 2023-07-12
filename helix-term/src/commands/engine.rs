@@ -234,6 +234,45 @@ impl ScriptingEngine {
 
         None
     }
+
+    pub(crate) fn fuzzy_match<'a>(
+        fuzzy_matcher: &'a fuzzy_matcher::skim::SkimMatcherV2,
+        input: &'a str,
+    ) -> Vec<(String, i64)> {
+        EXPORTED_IDENTIFIERS
+            .identifiers
+            .read()
+            .unwrap()
+            .iter()
+            .filter_map(|name| {
+                fuzzy_matcher
+                    .fuzzy_match(name, input)
+                    .map(|score| (name, score))
+            })
+            .map(|x| (x.0.to_string(), x.1))
+            .collect::<Vec<_>>()
+    }
+
+    pub(crate) fn is_exported(ident: &str) -> bool {
+        EXPORTED_IDENTIFIERS
+            .identifiers
+            .read()
+            .unwrap()
+            .contains(ident)
+    }
+
+    pub(crate) fn engine_get_doc(ident: &str) -> Option<String> {
+        EXPORTED_IDENTIFIERS
+            .docs
+            .read()
+            .unwrap()
+            .get(ident)
+            .cloned()
+    }
+
+    // fn get_doc(&self, ident: &str) -> Option<String> {
+    //     self.docs.read().unwrap().get(ident).cloned()
+    // }
 }
 
 // External modules that can load via rust dylib. These can then be consumed from
@@ -1120,12 +1159,17 @@ impl ExportedIdentifiers {
     }
 
     pub(crate) fn engine_get_doc(ident: &str) -> Option<String> {
-        EXPORTED_IDENTIFIERS.get_doc(ident)
+        EXPORTED_IDENTIFIERS
+            .docs
+            .read()
+            .unwrap()
+            .get(ident)
+            .cloned()
     }
 
-    fn get_doc(&self, ident: &str) -> Option<String> {
-        self.docs.read().unwrap().get(ident).cloned()
-    }
+    // fn get_doc(&self, ident: &str) -> Option<String> {
+    //     self.docs.read().unwrap().get(ident).cloned()
+    // }
 }
 
 fn get_highlighted_text(cx: &mut Context) -> String {

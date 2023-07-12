@@ -542,13 +542,13 @@ impl std::str::FromStr for MappableCommand {
                     args: args.clone(),
                 })
                 .or_else(|| {
-                    if let Some(doc) = self::engine::ExportedIdentifiers::engine_get_doc(name) {
+                    if let Some(doc) = self::engine::ScriptingEngine::engine_get_doc(name) {
                         Some(MappableCommand::Typable {
                             name: name.to_owned(),
                             args,
                             doc,
                         })
-                    } else if self::engine::ExportedIdentifiers::is_exported(name) {
+                    } else if self::engine::ScriptingEngine::is_exported(name) {
                         Some(MappableCommand::Typable {
                             name: name.to_owned(),
                             args,

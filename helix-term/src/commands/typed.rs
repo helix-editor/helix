@@ -2924,13 +2924,11 @@ pub(super) fn command_mode(cx: &mut Context) {
             let words = shellwords.words();
 
             if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
-                let globals = crate::commands::engine::ExportedIdentifiers::fuzzy_match(
-                    &FUZZY_MATCHER,
-                    input,
-                )
-                .into_iter()
-                .map(|x| (Cow::from(x.0), x.1))
-                .collect::<Vec<_>>();
+                let globals =
+                    crate::commands::engine::ScriptingEngine::fuzzy_match(&FUZZY_MATCHER, input)
+                        .into_iter()
+                        .map(|x| (Cow::from(x.0), x.1))
+                        .collect::<Vec<_>>();
 
                 // If the command has not been finished yet, complete commands.
                 let mut matches: Vec<_> = typed::TYPABLE_COMMAND_LIST
