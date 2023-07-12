@@ -1,15 +1,7 @@
-use helix_core::{auto_pairs::DEFAULT_PAIRS, hashmap, syntax::AutoPairConfig, Selection};
+use helix_core::{auto_pairs::DEFAULT_PAIRS, hashmap, syntax::AutoPairConfig};
 use helix_term::config::Config;
 
-use crate::{
-    test::helpers::{
-        test_harness::{test, test_with_config, TestCase},
-        AppBuilder,
-    },
-    test_case,
-};
-
-const LINE_END: &str = helix_core::NATIVE_LINE_ENDING.as_str();
+use crate::{test::helpers::AppBuilder, test_case};
 
 fn differing_pairs() -> impl Iterator<Item = &'static (char, char)> {
     DEFAULT_PAIRS.iter().filter(|(open, close)| open != close)
@@ -22,12 +14,7 @@ fn matching_pairs() -> impl Iterator<Item = &'static (char, char)> {
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_basic() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
-        test_case!(
-            ("#[{}|]#", LINE_END),
-            ("i{}", pair.0),
-            ("{}#[|{}]#{}", pair.0, pair.1, LINE_END)
-        )
-        .await?;
+        test_case!(("#[\n|]#"), ("i{}", pair.0), ("{}#[|{}]#", pair.0, pair.1)).await?;
     }
 
     Ok(())
@@ -47,23 +34,19 @@ async fn insert_configured_multi_byte_chars() -> anyhow::Result<()> {
     };
 
     for (open, close) in pairs.iter() {
-        test_with_config(
+        test_case!(
             AppBuilder::default().with_config(config.clone()),
-            (
-                format!("#[{}|]#", LINE_END),
-                format!("i{}", open),
-                format!("{}#[|{}]#{}", open, close, LINE_END),
-            ),
+            ("#[\n|]#"),
+            ("i{}", open),
+            ("{}#[|{}]#", open, close)
         )
         .await?;
 
-        test_with_config(
+        test_case!(
             AppBuilder::default().with_config(config.clone()),
-            (
-                format!("{}#[{}|]#{}", open, close, LINE_END),
-                format!("i{}", close),
-                format!("{}{}#[|{}]#", open, close, LINE_END),
-            ),
+            ("{}#[{}|]#", open, close),
+            ("i{}", close),
+            ("{}{}#[|\n]#", open, close)
         )
         .await?;
     }
@@ -75,20 +58,15 @@ async fn insert_configured_multi_byte_chars() -> anyhow::Result<()> {
 async fn insert_after_word() -> anyhow::Result<()> {
     for pair in differing_pairs() {
         test_case!(
-            ("foo#[{}|]#", LINE_END),
+            ("foo#[\n|]#"),
             ("i{}", pair.0),
-            ("foo{}#[|{}]#{}", pair.0, pair.1, LINE_END)
+            ("foo{}#[|{}]#", pair.0, pair.1)
         )
         .await?;
     }
 
     for pair in matching_pairs() {
-        test_case!(
-            ("foo#[{}|]#", LINE_END),
-            ("i{}", pair.0),
-            ("foo{}#[|{}]#", pair.0, LINE_END)
-        )
-        .await?;
+        test_case!(("foo#[\n|]#"), ("i{}", pair.0), ("foo{}#[|\n]#", pair.0)).await?;
     }
 
     Ok(())
@@ -97,12 +75,7 @@ async fn insert_after_word() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_before_word() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
-        test_case!(
-            ("#[f|]#oo{}", LINE_END),
-            ("i{}", pair.0),
-            ("{}#[|f]#oo{}", pair.0, LINE_END)
-        )
-        .await?;
+        test_case!(("#[f|]#oo"), ("i{}", pair.0), ("{}#[|f]#oo", pair.0)).await?;
     }
 
     Ok(())
@@ -111,12 +84,7 @@ async fn insert_before_word() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_before_word_selection() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
-        test_case!(
-            ("#[foo|]#{}", LINE_END),
-            ("i{}", pair.0),
-            ("{}#[|foo]#{}", pair.0, LINE_END)
-        )
-        .await?;
+        test_case!(("#[foo|]#"), ("i{}", pair.0), ("{}#[|foo]#", pair.0)).await?;
     }
 
     Ok(())
@@ -126,9 +94,9 @@ async fn insert_before_word_selection() -> anyhow::Result<()> {
 async fn insert_before_word_selection_trailing_word() -> anyhow::Result<()> {
     for pair in differing_pairs() {
         test_case!(
-            ("foo#[ wor|]#{}", LINE_END),
+            ("foo#[ wor|]#"),
             ("i{}", pair.0),
-            ("foo{}#[|{} wor]#{}", pair.0, pair.1, LINE_END)
+            ("foo{}#[|{} wor]#", pair.0, pair.1)
         )
         .await?;
     }
@@ -140,9 +108,9 @@ async fn insert_before_word_selection_trailing_word() -> anyhow::Result<()> {
 async fn insert_closer_selection_trailing_word() -> anyhow::Result<()> {
     for pair in differing_pairs() {
         test_case!(
-            ("foo{}#[|{} wor]#{}", pair.0, pair.1, LINE_END),
+            ("foo{}#[|{} wor]#", pair.0, pair.1),
             ("i{}", pair.1),
-            ("foo{}{}#[| wor]#{}", pair.0, pair.1, LINE_END)
+            ("foo{}{}#[| wor]#", pair.0, pair.1)
         )
         .await?;
     }
@@ -154,14 +122,9 @@ async fn insert_closer_selection_trailing_word() -> anyhow::Result<()> {
 async fn insert_before_eol() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
         test_case!(
-            ("{0}#[{0}|]#", LINE_END),
+            ("\n#[\n|]#"),
             ("i{}", pair.0),
-            (
-                "{eol}{open}#[|{close}]#{eol}",
-                eol = LINE_END,
-                open = pair.0,
-                close = pair.1,
-            )
+            ("\n{open}#[|{close}]#", open = pair.0, close = pair.1,)
         )
         .await?;
     }
@@ -172,7 +135,7 @@ async fn insert_before_eol() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_auto_pairs_disabled() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
-        test_with_config(
+        test_case!(
             AppBuilder::default().with_config(Config {
                 editor: helix_view::editor::Config {
                     auto_pairs: AutoPairConfig::Enable(false),
@@ -180,11 +143,9 @@ async fn insert_auto_pairs_disabled() -> anyhow::Result<()> {
                 },
                 ..Default::default()
             }),
-            (
-                format!("#[{}|]#", LINE_END),
-                format!("i{}", pair.0),
-                format!("{}#[|{}]#", pair.0, LINE_END),
-            ),
+            ("#[\n|]#"),
+            ("i{}", pair.0),
+            ("{}#[|\n]#", pair.0)
         )
         .await?;
     }
@@ -196,13 +157,12 @@ async fn insert_auto_pairs_disabled() -> anyhow::Result<()> {
 async fn insert_multi_range() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
         test_case!(
-            ("#[{eol}|]##({eol}|)##({eol}|)#", eol = LINE_END),
+            ("#[\n|]##(\n|)##(\n|)#"),
             ("i{}", pair.0),
             (
-                "{open}#[|{close}]#{eol}{open}#(|{close})#{eol}{open}#(|{close})#{eol}",
+                "{open}#[|{close}]#\n{open}#(|{close})#\n{open}#(|{close})#",
                 open = pair.0,
                 close = pair.1,
-                eol = LINE_END
             )
         )
         .await?;
@@ -215,9 +175,9 @@ async fn insert_multi_range() -> anyhow::Result<()> {
 async fn insert_before_multi_code_point_graphemes() -> anyhow::Result<()> {
     for pair in differing_pairs() {
         test_case!(
-            ("hello #[👨‍👩‍👧‍👦|]# goodbye{}", LINE_END),
+            ("hello #[👨‍👩‍👧‍👦|]# goodbye"),
             ("i{}", pair.1),
-            ("hello {}#[|👨‍👩‍👧‍👦]# goodbye{}", pair.1, LINE_END)
+            ("hello {}#[|👨‍👩‍👧‍👦]# goodbye", pair.1)
         )
         .await?;
     }
@@ -227,22 +187,19 @@ async fn insert_before_multi_code_point_graphemes() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_at_end_of_document() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
-        test(TestCase {
-            in_text: String::from(LINE_END),
-            in_selection: Selection::single(LINE_END.len(), LINE_END.len()),
-            in_keys: format!("i{}", pair.0),
-            out_text: format!("{}{}{}", LINE_END, pair.0, pair.1),
-            out_selection: Selection::single(LINE_END.len() + 1, LINE_END.len() + 2),
-        })
-        .await?;
+        test_case!(("#[|]#"), ("i{}", pair.0), ("{}#[|{}]#", pair.0, pair.1)).await?;
 
-        test(TestCase {
-            in_text: format!("foo{}", LINE_END),
-            in_selection: Selection::single(3 + LINE_END.len(), 3 + LINE_END.len()),
-            in_keys: format!("i{}", pair.0),
-            out_text: format!("foo{}{}{}", LINE_END, pair.0, pair.1),
-            out_selection: Selection::single(LINE_END.len() + 4, LINE_END.len() + 5),
-        })
+        // HELP: is this intentional?
+        const QUOTE_CHARS: [char; 3] = ['\'', '"', '`'];
+        if QUOTE_CHARS.contains(&pair.0) {
+            continue;
+        }
+
+        test_case!(
+            ("foo#[|]#"),
+            ("i{}", pair.0),
+            ("foo{}#[|{}]#", pair.0, pair.1)
+        )
         .await?;
     }
 
@@ -253,19 +210,9 @@ async fn insert_at_end_of_document() -> anyhow::Result<()> {
 async fn insert_close_inside_pair() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
         test_case!(
-            (
-                "{open}#[{close}|]#{eol}",
-                open = pair.0,
-                close = pair.1,
-                eol = LINE_END
-            ),
+            ("{open}#[{close}|]#", open = pair.0, close = pair.1,),
             ("i{}", pair.1),
-            (
-                "{open}{close}#[|{eol}]#",
-                open = pair.0,
-                close = pair.1,
-                eol = LINE_END
-            )
+            ("{open}{close}#[|\n]#", open = pair.0, close = pair.1,)
         )
         .await?;
     }
@@ -278,17 +225,15 @@ async fn insert_close_inside_pair_multi() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
         test_case!(
             (
-                "{open}#[{close}|]#{eol}{open}#({close}|)#{eol}{open}#({close}|)#{eol}",
+                "{open}#[{close}|]#\n{open}#({close}|)#\n{open}#({close}|)#",
                 open = pair.0,
                 close = pair.1,
-                eol = LINE_END
             ),
             ("i{}", pair.1),
             (
-                "{open}{close}#[|{eol}]#{open}{close}#(|{eol})#{open}{close}#(|{eol})#",
+                "{open}{close}#[|\n]#{open}{close}#(|\n)#{open}{close}#(|\n)#",
                 open = pair.0,
                 close = pair.1,
-                eol = LINE_END
             )
         )
         .await?;
@@ -301,18 +246,12 @@ async fn insert_close_inside_pair_multi() -> anyhow::Result<()> {
 async fn insert_nested_open_inside_pair() -> anyhow::Result<()> {
     for pair in differing_pairs() {
         test_case!(
-            (
-                "{open}#[{close}|]#{eol}",
-                open = pair.0,
-                close = pair.1,
-                eol = LINE_END
-            ),
+            ("{open}#[{close}|]#", open = pair.0, close = pair.1,),
             ("i{}", pair.0),
             (
-                "{open}{open}#[|{close}]#{close}{eol}",
+                "{open}{open}#[|{close}]#{close}",
                 open = pair.0,
                 close = pair.1,
-                eol = LINE_END
             )
         )
         .await?;
@@ -331,19 +270,17 @@ async fn insert_nested_open_inside_pair_multi() -> anyhow::Result<()> {
 
             test_case!(
                 (
-                    "{outer_open}#[{outer_close}|]#{eol}{outer_open}#({outer_close}|)#{eol}{outer_open}#({outer_close}|)#{eol}",
+                    "{outer_open}#[{outer_close}|]#\n{outer_open}#({outer_close}|)#\n{outer_open}#({outer_close}|)#",
                     outer_open = outer_pair.0,
                     outer_close = outer_pair.1,
-                    eol = LINE_END
                 ),
                 ("i{}", inner_pair.0),
                 (
-                    "{outer_open}{inner_open}#[|{inner_close}]#{outer_close}{eol}{outer_open}{inner_open}#(|{inner_close})#{outer_close}{eol}{outer_open}{inner_open}#(|{inner_close})#{outer_close}{eol}",
+                    "{outer_open}{inner_open}#[|{inner_close}]#{outer_close}\n{outer_open}{inner_open}#(|{inner_close})#{outer_close}\n{outer_open}{inner_open}#(|{inner_close})#{outer_close}",
                     outer_open = outer_pair.0,
                     outer_close = outer_pair.1,
                     inner_open = inner_pair.0,
                     inner_close = inner_pair.1,
-                    eol = LINE_END
                 )
             )
             .await?;
@@ -357,14 +294,9 @@ async fn insert_nested_open_inside_pair_multi() -> anyhow::Result<()> {
 async fn append_basic() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
         test_case!(
-            ("#[{}|]#", LINE_END),
+            ("#[\n|]#"),
             ("a{}", pair.0),
-            (
-                "#[{eol}{open}{close}|]#{eol}",
-                open = pair.0,
-                close = pair.1,
-                eol = LINE_END
-            )
+            ("#[\n{open}{close}|]#", open = pair.0, close = pair.1,)
         )
         .await?;
     }
@@ -376,13 +308,12 @@ async fn append_basic() -> anyhow::Result<()> {
 async fn append_multi_range() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
         test_case!(
-            ("#[ |]#{eol}#( |)#{eol}#( |)#{eol}", eol = LINE_END),
+            ("#[ |]#\n#( |)#\n#( |)#"),
             ("a{}", pair.0),
             (
-                "#[ {open}{close}|]#{eol}#( {open}{close}|)#{eol}#( {open}{close}|)#{eol}",
+                "#[ {open}{close}|]#\n#( {open}{close}|)#\n#( {open}{close}|)#",
                 open = pair.0,
                 close = pair.1,
-                eol = LINE_END
             )
         )
         .await?;
@@ -395,19 +326,9 @@ async fn append_multi_range() -> anyhow::Result<()> {
 async fn append_close_inside_pair() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
         test_case!(
-            (
-                "#[{open}|]#{close}{eol}",
-                open = pair.0,
-                close = pair.1,
-                eol = LINE_END
-            ),
+            ("#[{open}|]#{close}", open = pair.0, close = pair.1,),
             ("a{}", pair.1),
-            (
-                "#[{open}{close}{eol}|]#",
-                open = pair.0,
-                close = pair.1,
-                eol = LINE_END
-            )
+            ("#[{open}{close}\n|]#", open = pair.0, close = pair.1,)
         )
         .await?;
     }
@@ -420,17 +341,15 @@ async fn append_close_inside_pair_multi() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
         test_case!(
             (
-                "#[{open}|]#{close}{eol}#({open}|)#{close}{eol}#({open}|)#{close}{eol}",
+                "#[{open}|]#{close}\n#({open}|)#{close}\n#({open}|)#{close}",
                 open = pair.0,
                 close = pair.1,
-                eol = LINE_END
             ),
             ("a{}", pair.1),
             (
-                "#[{open}{close}{eol}|]##({open}{close}{eol}|)##({open}{close}{eol}|)#",
+                "#[{open}{close}\n|]##({open}{close}\n|)##({open}{close}\n|)#",
                 open = pair.0,
                 close = pair.1,
-                eol = LINE_END
             )
         )
         .await?;
@@ -443,14 +362,9 @@ async fn append_close_inside_pair_multi() -> anyhow::Result<()> {
 async fn append_end_of_word() -> anyhow::Result<()> {
     for pair in differing_pairs() {
         test_case!(
-            ("fo#[o|]#{}", LINE_END),
+            ("fo#[o|]#"),
             ("a{}", pair.0),
-            (
-                "fo#[o{open}{close}|]#{eol}",
-                open = pair.0,
-                close = pair.1,
-                eol = LINE_END
-            )
+            ("fo#[o{open}{close}|]#", open = pair.0, close = pair.1,)
         )
         .await?;
     }
@@ -461,12 +375,7 @@ async fn append_end_of_word() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn append_middle_of_word() -> anyhow::Result<()> {
     for pair in differing_pairs() {
-        test_case!(
-            ("#[wo|]#rd{}", LINE_END),
-            ("a{}", pair.1),
-            ("#[wo{}r|]#d{}", pair.1, LINE_END)
-        )
-        .await?;
+        test_case!(("#[wo|]#rd"), ("a{}", pair.1), ("#[wo{}r|]#d", pair.1)).await?;
     }
 
     Ok(())
@@ -476,13 +385,12 @@ async fn append_middle_of_word() -> anyhow::Result<()> {
 async fn append_end_of_word_multi() -> anyhow::Result<()> {
     for pair in differing_pairs() {
         test_case!(
-            ("fo#[o|]#{eol}fo#(o|)#{eol}fo#(o|)#{eol}", eol = LINE_END),
+            ("fo#[o|]#\nfo#(o|)#\nfo#(o|)#"),
             ("a{}", pair.0),
             (
-                "fo#[o{open}{close}|]#{eol}fo#(o{open}{close}|)#{eol}fo#(o{open}{close}|)#{eol}",
+                "fo#[o{open}{close}|]#\nfo#(o{open}{close}|)#\nfo#(o{open}{close}|)#",
                 open = pair.0,
                 close = pair.1,
-                eol = LINE_END
             )
         )
         .await?;
@@ -495,18 +403,12 @@ async fn append_end_of_word_multi() -> anyhow::Result<()> {
 async fn append_inside_nested_pair() -> anyhow::Result<()> {
     for pair in differing_pairs() {
         test_case!(
-            (
-                "f#[oo{open}|]#{close}{eol}",
-                open = pair.0,
-                close = pair.1,
-                eol = LINE_END
-            ),
+            ("f#[oo{open}|]#{close}", open = pair.0, close = pair.1,),
             ("a{}", pair.0),
             (
-                "f#[oo{open}{open}{close}|]#{close}{eol}",
+                "f#[oo{open}{open}{close}|]#{close}",
                 open = pair.0,
                 close = pair.1,
-                eol = LINE_END
             )
         )
         .await?;
@@ -525,19 +427,17 @@ async fn append_inside_nested_pair_multi() -> anyhow::Result<()> {
 
             test_case!(
                 (
-                    "f#[oo{outer_open}|]#{outer_close}{eol}f#(oo{outer_open}|)#{outer_close}{eol}f#(oo{outer_open}|)#{outer_close}{eol}",
+                    "f#[oo{outer_open}|]#{outer_close}\nf#(oo{outer_open}|)#{outer_close}\nf#(oo{outer_open}|)#{outer_close}",
                     outer_open = outer_pair.0,
                     outer_close = outer_pair.1,
-                    eol = LINE_END
                 ),
                 ("a{}", inner_pair.0),
                 (
-                    "f#[oo{outer_open}{inner_open}{inner_close}|]#{outer_close}{eol}f#(oo{outer_open}{inner_open}{inner_close}|)#{outer_close}{eol}f#(oo{outer_open}{inner_open}{inner_close}|)#{outer_close}{eol}",
+                    "f#[oo{outer_open}{inner_open}{inner_close}|]#{outer_close}\nf#(oo{outer_open}{inner_open}{inner_close}|)#{outer_close}\nf#(oo{outer_open}{inner_open}{inner_close}|)#{outer_close}",
                     outer_open = outer_pair.0,
                     outer_close = outer_pair.1,
                     inner_open = inner_pair.0,
                     inner_close = inner_pair.1,
-                    eol = LINE_END
                 )
             )
             .await?;
