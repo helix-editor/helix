@@ -8,9 +8,9 @@ use std::{
 
 use anyhow::bail;
 use crossterm::event::{Event, KeyEvent};
-use helix_core::{diagnostic::Severity, test, Selection, Transaction};
+use helix_core::{test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
-use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
+use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tui::backend::TestBackend;
@@ -297,10 +297,4 @@ pub fn assert_file_has_content(file: &mut File, content: &str) -> anyhow::Result
     assert_eq!(content, file_content);
 
     Ok(())
-}
-
-pub fn assert_status_not_error(editor: &Editor) {
-    if let Some((_, sev)) = editor.get_status() {
-        assert_ne!(&Severity::Error, sev);
-    }
 }
