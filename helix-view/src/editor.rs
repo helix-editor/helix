@@ -1571,6 +1571,8 @@ impl Editor {
         if prev_id != view_id {
             log::info!("Changing focus: {:?}", view_id);
 
+            // TODO: Consult map for modes to change given file type?
+
             self.enter_normal_mode();
             self.ensure_cursor_in_view(view_id);
 

@@ -55,7 +55,7 @@ use movement::Movement;
 
 use crate::{
     args,
-    commands::engine::CallbackQueue,
+    commands::engine::{CallbackQueue, ScriptingEngine},
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
@@ -200,29 +200,7 @@ impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         log::info!("Running command");
 
-        // TODO: Move this out to a standalone function
-        while let Some(callback) = CallbackQueue::dequeue() {
-            log::info!("Found callback: {}", callback);
-
-            if let Err(e) = ENGINE.with(|x| {
-                let mut guard = x.borrow_mut();
-
-                {
-                    let res = guard.run_with_reference::<Context, Context>(
-                        cx,
-                        "*context*",
-                        &format!("({} *context*)", callback),
-                    );
-
-                    res
-                }
-            }) {
-                cx.editor.set_error(format!("{}", e));
-            }
-        }
-
         match &self {
-            // TODO: @Matt - Add delegating to the engine to run scripts here
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 // TODO: Swap the order to allow overriding the existing commands?
@@ -235,33 +213,8 @@ impl MappableCommand {
                     if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
                         cx.editor.set_error(format!("{}", e));
                     }
-                } else if ENGINE.with(|x| x.borrow().global_exists(name)) {
-                    let args = steel::List::from(
-                        args.iter()
-                            .map(|x| x.clone().into_steelval().unwrap())
-                            .collect::<Vec<_>>(),
-                    );
-
-                    if let Err(e) = ENGINE.with(|x| {
-                        let mut guard = x.borrow_mut();
-
-                        {
-                            guard
-                                .register_value("_helix_args", steel::rvals::SteelVal::ListV(args));
-
-                            let res = guard.run_with_reference::<Context, Context>(
-                                cx,
-                                "*context*",
-                                &format!("(apply {} (cons *context* _helix_args))", name),
-                            );
-
-                            guard.register_value("_helix_args", steel::rvals::SteelVal::Void);
-
-                            res
-                        }
-                    }) {
-                        cx.editor.set_error(format!("{}", e));
-                    }
+                } else {
+                    ScriptingEngine::call_function_if_global_exists(cx, name, args)
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
@@ -681,8 +634,6 @@ fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movem
 }
 
 use helix_core::movement::{move_horizontally, move_vertically};
-
-use self::engine::ENGINE;
 
 fn move_char_left(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Move)

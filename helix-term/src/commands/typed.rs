@@ -3004,67 +3004,9 @@ pub(super) fn command_mode(cx: &mut Context) {
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }
-            } else if ENGINE.with(|x| x.borrow().global_exists(parts[0])) {
-                let shellwords = Shellwords::from(input);
-                let args = shellwords.words();
-
-                // We're finalizing the event - we actually want to call the function
-                if event == PromptEvent::Validate {
-                    // TODO: @Matt - extract this whole API call here to just be inside the engine module
-                    // For what its worth, also explore a more elegant API for calling apply with some arguments,
-                    // this does work, but its a little opaque.
-                    if let Err(e) = ENGINE.with(|x| {
-                        let args = steel::List::from(
-                            args[1..]
-                                .iter()
-                                .map(|x| x.clone().into_steelval().unwrap())
-                                .collect::<Vec<_>>(),
-                        );
-
-                        let mut guard = x.borrow_mut();
-                        // let mut maybe_callback = None;
-
-                        let res = {
-                            let mut cx = Context {
-                                register: None,
-                                count: std::num::NonZeroUsize::new(1),
-                                editor: cx.editor,
-                                callback: None,
-                                on_next_key_callback: None,
-                                jobs: cx.jobs,
-                            };
-
-                            guard
-                                .register_value("_helix_args", steel::rvals::SteelVal::ListV(args));
-
-                            let res = guard.run_with_reference::<Context, Context>(
-                                &mut cx,
-                                "*context*",
-                                &format!("(apply {} (cons *context* _helix_args))", parts[0]),
-                            );
-
-                            guard.register_value("_helix_args", steel::rvals::SteelVal::Void);
-
-                            // if let Some(callback) = cx.callback.take() {
-                            //     panic!("Found a callback!");
-                            //     maybe_callback = Some(callback);
-                            // }
-
-                            res
-                        };
-
-                        // TODO: Recursively (or otherwise) keep retrying until we're back
-                        // into the engine context, executing a function. We might need to set up
-                        // some sort of fuel or something
-                        // if let Some(callback) = maybe_callback {
-                        // (callback)(_, cx);
-                        // }
-
-                        res
-                    }) {
-                        compositor_present_error(cx, e)
-                    };
-                }
+            } else if ScriptingEngine::call_typed_command_if_global_exists(cx, input, &parts, event)
+            {
+                // Engine handles the other cases
             } else if event == PromptEvent::Validate {
                 cx.editor
                     .set_error(format!("no such command: '{}'", parts[0]));
@@ -3081,18 +3023,8 @@ pub(super) fn command_mode(cx: &mut Context) {
                 return Some((*doc).into());
             }
             return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
-        } else if ENGINE.with(|x| x.borrow().global_exists(part)) {
-            if let Some(v) = super::engine::ExportedIdentifiers::engine_get_doc(part) {
-                return Some(v.into());
-            }
-
-            // if let Ok(v) = ENGINE.with(|x| x.borrow().extract_value(&format!("{part}__doc__"))) {
-            //     if let steel::rvals::SteelVal::StringV(s) = v {
-            //         return Some(s.to_string().into());
-            //     }
-            // }
-
-            return Some("Run this plugin command!".into());
+        } else if let Some(doc) = ScriptingEngine::get_doc_for_identifier(part) {
+            return Some(doc.into());
         }
 
         None

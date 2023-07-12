@@ -1,7 +1,8 @@
 use fuzzy_matcher::FuzzyMatcher;
-use helix_core::{graphemes, Selection, Tendril};
+use helix_core::{graphemes, shellwords::Shellwords, Selection, Tendril};
 use helix_view::{
-    document::Mode, editor::Action, extension::document_id_to_usize, Document, DocumentId, Editor,
+    document::Mode, editor::Action, extension::document_id_to_usize, input::KeyEvent, Document,
+    DocumentId, Editor,
 };
 use once_cell::sync::Lazy;
 use steel::{
@@ -14,6 +15,8 @@ use steel::{
 use std::{
     borrow::Cow,
     collections::{HashMap, VecDeque},
+    marker::PhantomData,
+    path::PathBuf,
     sync::Mutex,
 };
 use std::{
@@ -25,8 +28,9 @@ use steel::{rvals::Custom, steel_vm::builtin::BuiltInModule};
 
 use crate::{
     compositor::{self, Component, Compositor},
+    config::Config,
     job::{self, Callback},
-    keymap::{merge_keys, KeyTrie},
+    keymap::{self, merge_keys, KeyTrie, KeymapResult, Keymaps},
     ui::{self, menu::Item, overlay::overlaid, Popup, Prompt, PromptEvent},
 };
 
@@ -48,6 +52,189 @@ pub struct ExternalContainersAndModules {
 }
 
 mod components;
+
+// pub struct PluginEngine<T: PluginSystem>(PhantomData<T>);
+
+pub struct ScriptingEngine;
+
+pub trait PluginSystem {
+    fn initialize();
+    fn run_initialization_script(cx: &mut Context);
+
+    fn call_function_if_global_exists(cx: &mut Context, name: &str, args: Vec<Cow<str>>);
+    fn call_typed_command_if_global_exists<'a>(
+        cx: &mut compositor::Context,
+        input: &'a str,
+        parts: &'a [&'a str],
+        event: PromptEvent,
+    ) -> bool;
+
+    fn get_doc_for_identifier(ident: &str) -> Option<String>;
+}
+
+impl ScriptingEngine {
+    pub fn initialize() {
+        initialize_engine();
+    }
+
+    pub fn run_initialization_script(cx: &mut Context) {
+        run_initialization_script(cx)
+    }
+
+    // Attempt to fetch the keymap for the extension
+    pub fn get_keymap_for_extension<'a>(cx: &'a mut Context) -> Option<SteelVal> {
+        // Get the currently activated extension, also need to check the
+        // buffer type.
+        let extension = {
+            let current_focus = cx.editor.tree.focus;
+            let view = cx.editor.tree.get(current_focus);
+            let doc = &view.doc;
+            let current_doc = cx.editor.documents.get(doc);
+
+            current_doc
+                .and_then(|x| x.path())
+                .and_then(|x| x.extension())
+                .and_then(|x| x.to_str())
+        };
+
+        if let Some(extension) = extension {
+            let special_buffer_map = "*buffer-or-extension-keybindings*";
+
+            let value = ENGINE.with(|x| x.borrow().extract_value(special_buffer_map).clone());
+
+            if let Ok(SteelVal::HashMapV(map)) = value {
+                if let Some(value) = map.get(&SteelVal::StringV(extension.into())) {
+                    if let SteelVal::Custom(inner) = value {
+                        if let Some(_) = steel::rvals::as_underlying_type::<EmbeddedKeyMap>(
+                            inner.borrow().as_ref(),
+                        ) {
+                            return Some(value.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn call_function_if_global_exists(cx: &mut Context, name: &str, args: Vec<Cow<str>>) {
+        if ENGINE.with(|x| x.borrow().global_exists(name)) {
+            let args = steel::List::from(
+                args.iter()
+                    .map(|x| x.clone().into_steelval().unwrap())
+                    .collect::<Vec<_>>(),
+            );
+
+            if let Err(e) = ENGINE.with(|x| {
+                let mut guard = x.borrow_mut();
+
+                {
+                    guard.register_value("_helix_args", steel::rvals::SteelVal::ListV(args));
+
+                    let res = guard.run_with_reference::<Context, Context>(
+                        cx,
+                        "*context*",
+                        &format!("(apply {} (cons *context* _helix_args))", name),
+                    );
+
+                    guard.register_value("_helix_args", steel::rvals::SteelVal::Void);
+
+                    res
+                }
+            }) {
+                cx.editor.set_error(format!("{}", e));
+            }
+        }
+    }
+
+    pub fn call_typed_command_if_global_exists<'a>(
+        cx: &mut compositor::Context,
+        input: &'a str,
+        parts: &'a [&'a str],
+        event: PromptEvent,
+    ) -> bool {
+        if ENGINE.with(|x| x.borrow().global_exists(parts[0])) {
+            let shellwords = Shellwords::from(input);
+            let args = shellwords.words();
+
+            // We're finalizing the event - we actually want to call the function
+            if event == PromptEvent::Validate {
+                // TODO: @Matt - extract this whole API call here to just be inside the engine module
+                // For what its worth, also explore a more elegant API for calling apply with some arguments,
+                // this does work, but its a little opaque.
+                if let Err(e) = ENGINE.with(|x| {
+                    let args = steel::List::from(
+                        args[1..]
+                            .iter()
+                            .map(|x| x.clone().into_steelval().unwrap())
+                            .collect::<Vec<_>>(),
+                    );
+
+                    let mut guard = x.borrow_mut();
+                    // let mut maybe_callback = None;
+
+                    let res = {
+                        let mut cx = Context {
+                            register: None,
+                            count: std::num::NonZeroUsize::new(1),
+                            editor: cx.editor,
+                            callback: None,
+                            on_next_key_callback: None,
+                            jobs: cx.jobs,
+                        };
+
+                        guard.register_value("_helix_args", steel::rvals::SteelVal::ListV(args));
+
+                        let res = guard.run_with_reference::<Context, Context>(
+                            &mut cx,
+                            "*context*",
+                            &format!("(apply {} (cons *context* _helix_args))", parts[0]),
+                        );
+
+                        guard.register_value("_helix_args", steel::rvals::SteelVal::Void);
+
+                        // if let Some(callback) = cx.callback.take() {
+                        //     panic!("Found a callback!");
+                        //     maybe_callback = Some(callback);
+                        // }
+
+                        res
+                    };
+
+                    // TODO: Recursively (or otherwise) keep retrying until we're back
+                    // into the engine context, executing a function. We might need to set up
+                    // some sort of fuel or something
+                    // if let Some(callback) = maybe_callback {
+                    // (callback)(_, cx);
+                    // }
+
+                    res
+                }) {
+                    compositor_present_error(cx, e);
+                };
+            }
+
+            // Global exists
+            true
+        } else {
+            // Global does not exist
+            false
+        }
+    }
+
+    pub fn get_doc_for_identifier(ident: &str) -> Option<String> {
+        if ENGINE.with(|x| x.borrow().global_exists(ident)) {
+            if let Some(v) = super::engine::ExportedIdentifiers::engine_get_doc(ident) {
+                return Some(v.into());
+            }
+
+            return Some("Run this plugin command!".into());
+        }
+
+        None
+    }
+}
 
 // External modules that can load via rust dylib. These can then be consumed from
 // steel as needed, via the standard FFI for plugin functions.
@@ -132,6 +319,39 @@ pub fn present_error(cx: &mut Context, e: SteelErr) {
         Ok(call)
     };
     cx.jobs.callback(callback);
+}
+
+// Key maps
+#[derive(Clone, Debug)]
+pub struct EmbeddedKeyMap(pub HashMap<Mode, KeyTrie>);
+impl Custom for EmbeddedKeyMap {}
+
+pub fn get_keymap() -> EmbeddedKeyMap {
+    // Snapsnot current configuration for use in forking the keymap
+    let keymap = Config::load_default().unwrap();
+
+    // These are the actual mappings that we want
+    let map = keymap.keys;
+
+    EmbeddedKeyMap(map)
+}
+
+// Base level - no configuration
+pub fn default_keymap() -> EmbeddedKeyMap {
+    EmbeddedKeyMap(keymap::default())
+}
+
+// Completely empty, allow for overriding
+pub fn empty_keymap() -> EmbeddedKeyMap {
+    EmbeddedKeyMap(HashMap::default())
+}
+
+pub fn string_to_embedded_keymap(value: String) -> EmbeddedKeyMap {
+    EmbeddedKeyMap(serde_json::from_str(&value).unwrap())
+}
+
+pub fn merge_keybindings(left: &mut EmbeddedKeyMap, right: EmbeddedKeyMap) {
+    merge_keys(&mut left.0, right.0)
 }
 
 /// Run the initialization script located at `$helix_config/init.scm`
@@ -238,13 +458,13 @@ impl CallbackQueue {
 /// queue that the engine and the config push and pull from. Alternatively, we could use a channel
 /// directly, however this was easy enough to set up.
 pub struct SharedKeyBindingsEventQueue {
-    raw_bindings: Arc<Mutex<VecDeque<String>>>,
+    raw_bindings: Arc<Mutex<Vec<String>>>,
 }
 
 impl SharedKeyBindingsEventQueue {
     pub fn new() -> Self {
         Self {
-            raw_bindings: std::sync::Arc::new(std::sync::Mutex::new(VecDeque::new())),
+            raw_bindings: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
         }
     }
 
@@ -253,17 +473,18 @@ impl SharedKeyBindingsEventQueue {
             .raw_bindings
             .lock()
             .unwrap()
-            .push_back(other_as_json);
+            .push(other_as_json);
     }
 
     pub fn get() -> Option<HashMap<Mode, KeyTrie>> {
-        let mut guard = KEYBINDING_QUEUE.raw_bindings.lock().unwrap();
+        let guard = KEYBINDING_QUEUE.raw_bindings.lock().unwrap();
 
-        if let Some(initial) = guard.pop_front() {
-            let mut initial = serde_json::from_str(&initial).unwrap();
+        if let Some(first) = guard.get(0).clone() {
+            let mut initial = serde_json::from_str(first).unwrap();
 
-            while let Some(remaining_event) = guard.pop_front() {
-                let bindings = serde_json::from_str(&remaining_event).unwrap();
+            // while let Some(remaining_event) = guard.pop_front() {
+            for remaining_event in guard.iter() {
+                let bindings = serde_json::from_str(remaining_event).unwrap();
 
                 merge_keys(&mut initial, bindings);
             }
@@ -419,6 +640,14 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     // );
 
     engine.register_fn("enqueue-callback!", CallbackQueue::enqueue);
+    engine.register_fn("helix-current-keymap", get_keymap);
+    engine.register_fn("helix-empty-keymap", empty_keymap);
+    engine.register_fn("helix-default-keymap", default_keymap);
+    engine.register_fn("helix-merge-keybindings", merge_keybindings);
+    engine.register_fn("helix-string->keymap", string_to_embedded_keymap);
+
+    // Use this to get at buffer specific keybindings
+    engine.register_value("*buffer-or-extension-keybindings*", SteelVal::Void);
 
     // Find the workspace
     engine.register_fn("helix-find-workspace", || {
@@ -509,18 +738,18 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
                     let cloned_func = callback_fn.clone();
 
-                    ENGINE
-                        .with(|x| {
-                            x.borrow_mut()
-                                .with_mut_reference::<Context, Context>(&mut ctx)
-                                .consume(move |engine, mut args| {
-                                    // Add the string as an argument to the callback
-                                    args.push(input.into_steelval().unwrap());
+                    if let Err(e) = ENGINE.with(|x| {
+                        x.borrow_mut()
+                            .with_mut_reference::<Context, Context>(&mut ctx)
+                            .consume(move |engine, mut args| {
+                                // Add the string as an argument to the callback
+                                args.push(input.into_steelval().unwrap());
 
-                                    engine.call_function_with_args(cloned_func.clone(), args)
-                                })
-                        })
-                        .unwrap();
+                                engine.call_function_with_args(cloned_func.clone(), args)
+                            })
+                    }) {
+                        present_error(&mut ctx, e);
+                    }
                 },
             );
 
@@ -791,6 +1020,9 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     engine.register_fn("push-component!", push_component);
     engine.register_fn("enqueue-thread-local-callback", enqueue_command);
+
+    // Create directory since we can't do that in the current state
+    engine.register_fn("hx.create-directory", create_directory);
 
     let helix_module_path = helix_loader::helix_module_file();
 
@@ -1131,20 +1363,31 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
 
                 let cloned_func = callback_fn.clone();
 
-                ENGINE
-                    .with(|x| {
-                        x.borrow_mut()
-                            .with_mut_reference::<Context, Context>(&mut ctx)
-                            .consume(move |engine, args| {
-                                engine.call_function_with_args(cloned_func.clone(), args)
-                            })
-                    })
-                    .unwrap();
+                if let Err(e) = ENGINE.with(|x| {
+                    x.borrow_mut()
+                        .with_mut_reference::<Context, Context>(&mut ctx)
+                        .consume(move |engine, args| {
+                            engine.call_function_with_args(cloned_func.clone(), args)
+                        })
+                }) {
+                    present_error(&mut ctx, e);
+                }
             },
         );
         Ok(call)
     };
     cx.jobs.local_callback(callback);
+}
+
+// Check that we successfully created a directory?
+fn create_directory(path: String) {
+    let path = helix_core::path::get_canonicalized_path(&PathBuf::from(path)).unwrap();
+
+    if path.exists() {
+        return;
+    } else {
+        std::fs::create_dir(path).unwrap();
+    }
 }
 
 // fn enqueue_callback(cx: &mut Context, thunk: SteelVal) {

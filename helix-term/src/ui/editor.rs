@@ -1,5 +1,5 @@
 use crate::{
-    commands::{self, OnKeyCallback},
+    commands::{self, engine::ScriptingEngine, OnKeyCallback},
     compositor::{Component, Context, Event, EventResult},
     job::{self, Callback},
     key,
@@ -798,20 +798,26 @@ impl EditorView {
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
         self.pseudo_pending.extend(self.keymaps.pending());
-        let key_result = self.keymaps.get(mode, event);
+
+        // let key_result = self.keymaps.get(mode, event);
+
+        // Check the engine for any buffer specific keybindings first
+        let key_result = ScriptingEngine::get_keymap_for_extension(cxt)
+            .and_then(|map| {
+                if let steel::SteelVal::Custom(inner) = map {
+                    if let Some(underlying) = steel::rvals::as_underlying_type::<
+                        commands::engine::EmbeddedKeyMap,
+                    >(inner.borrow().as_ref())
+                    {
+                        return Some(self.keymaps.get_with_map(&underlying.0, mode, event));
+                    }
+                }
+
+                None
+            })
+            .unwrap_or_else(|| self.keymaps.get(mode, event));
+
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
-
-        // Get the currently activated minor modes
-        // let extension = {
-        //     let current_focus = cxt.editor.tree.focus;
-        //     let view = cxt.editor.tree.get(current_focus);
-        //     let doc = &view.doc;
-        //     let current_doc = cxt.editor.documents.get(doc);
-
-        //     current_doc
-        //         .and_then(|x| x.path())
-        //         .and_then(|x| x.extension());
-        // };
 
         let mut execute_command = |command: &commands::MappableCommand| {
             command.execute(cxt);
@@ -849,20 +855,6 @@ impl EditorView {
 
         match &key_result {
             KeymapResult::Matched(command) => {
-                // TODO: @Matt - check minor modes here.
-                // Check current path:
-
-                // let current_focus = cxt.editor.tree.focus;
-                // let view = cxt.editor.tree.get(current_focus);
-                // let doc = &view.doc;
-                // let current_doc = cxt.editor.documents.get(doc);
-
-                // let extension =
-
-                // current_doc.and_then(|x| x.path().and_then(|x| x.to_str().map(|x| x.to_string())))
-
-                // cxt.editor.
-
                 execute_command(command);
             }
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
