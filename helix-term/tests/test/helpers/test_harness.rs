@@ -41,9 +41,9 @@ where
 macro_rules! test_case {
     (($($arg_1:tt)*), ($($arg_2:tt)*), ($($arg_3:tt)*)) => {
         $crate::test::helpers::test_harness::test((
-            format!($($arg_1)*),
+            $crate::test::helpers::platform_line(&format!($($arg_1)*)),
             format!($($arg_2)*),
-            format!($($arg_3)*)
+            $crate::test::helpers::platform_line(&format!($($arg_3)*))
         ))
     };
 }

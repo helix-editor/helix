@@ -1,100 +1,103 @@
 mod write;
 
-use crate::test::helpers::{
-    self, platform_line,
-    test_harness::{test, test_key_sequences},
-    AppBuilder, TestApplication,
+use crate::{
+    test::helpers::{
+        self,
+        test_harness::{test, test_key_sequences},
+        AppBuilder, TestApplication,
+    },
+    test_case,
 };
 use indoc::indoc;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_selection_duplication() -> anyhow::Result<()> {
     // Forward
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
             #[lo|]#rem
             ipsum
             dolor
             "}),
-        "CC",
-        platform_line(indoc! {"\
+        ("CC"),
+        (indoc! {"\
             #(lo|)#rem
             #(ip|)#sum
             #[do|]#lor
-            "}),
-    ))
+            "})
+    )
     .await?;
 
     // Backward
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
             #[|lo]#rem
             ipsum
             dolor
             "}),
-        "CC",
-        platform_line(indoc! {"\
+        ("CC"),
+        (indoc! {"\
             #(|lo)#rem
             #(|ip)#sum
             #[|do]#lor
-            "}),
-    ))
+            "})
+    )
     .await?;
 
     // Copy the selection to previous line, skipping the first line in the file
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
             test
             #[testitem|]#
             "}),
-        "<A-C>",
-        platform_line(indoc! {"\
+        ("<A-C>"),
+        (indoc! {"\
             test
             #[testitem|]#
-            "}),
-    ))
+            "})
+    )
     .await?;
 
     // Copy the selection to previous line, including the first line in the file
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
             test
             #[test|]#
             "}),
-        "<A-C>",
-        platform_line(indoc! {"\
+        ("<A-C>"),
+        (indoc! {"\
             #[test|]#
             #(test|)#
-            "}),
-    ))
+            "})
+    )
     .await?;
 
     // Copy the selection to next line, skipping the last line in the file
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
             #[testitem|]#
             test
             "}),
-        "C",
-        platform_line(indoc! {"\
+        ("C"),
+        (indoc! {"\
             #[testitem|]#
             test
-            "}),
-    ))
+            "})
+    )
     .await?;
 
     // Copy the selection to next line, including the last line in the file
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
             #[test|]#
             test
             "}),
-        "C",
-        platform_line(indoc! {"\
+        ("C"),
+        (indoc! {"\
             #(test|)#
             #[test|]#
-            "}),
-    ))
+            "})
+    )
     .await
 }
 
@@ -165,79 +168,79 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_multi_selection_paste() -> anyhow::Result<()> {
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
             "}),
-        "yp",
-        platform_line(indoc! {"\
+        ("yp"),
+        (indoc! {"\
             lorem#[|lorem]#
             ipsum#(|ipsum)#
             dolor#(|dolor)#
-            "}),
-    ))
+            "})
+    )
     .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
     // pipe
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
             "}),
-        "|echo foo<ret>",
-        platform_line(indoc! {"\
+        ("|echo foo<ret>"),
+        (indoc! {"\
             #[|foo\n]#
             
             #(|foo\n)#
             
             #(|foo\n)#
             
-            "}),
-    ))
+            "})
+    )
     .await?;
 
     // insert-output
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
             "}),
-        "!echo foo<ret>",
-        platform_line(indoc! {"\
+        ("!echo foo<ret>"),
+        (indoc! {"\
             #[|foo\n]#
             lorem
             #(|foo\n)#
             ipsum
             #(|foo\n)#
             dolor
-            "}),
-    ))
+            "})
+    )
     .await?;
 
     // append-output
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
             "}),
-        "<A-!>echo foo<ret>",
-        platform_line(indoc! {"\
+        ("<A-!>echo foo<ret>"),
+        (indoc! {"\
             lorem#[|foo\n]#
             
             ipsum#(|foo\n)#
             
             dolor#(|foo\n)#
             
-            "}),
-    ))
+            "})
+    )
     .await
 }
 
@@ -270,37 +273,37 @@ async fn test_undo_redo() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_extend_line() -> anyhow::Result<()> {
     // extend with line selected then count
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
             #[l|]#orem
             ipsum
             dolor
             
             "}),
-        "x2x",
-        platform_line(indoc! {"\
+        ("x2x"),
+        (indoc! {"\
             #[lorem
             ipsum
             dolor\n|]#
             
-            "}),
-    ))
+            "})
+    )
     .await?;
 
     // extend with count on partial selection
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
             #[l|]#orem
             ipsum
             
             "}),
-        "2x",
-        platform_line(indoc! {"\
+        ("2x"),
+        (indoc! {"\
             #[lorem
             ipsum\n|]#
             
-            "}),
-    ))
+            "})
+    )
     .await
 }
 
@@ -371,59 +374,44 @@ async fn test_character_info() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_delete_char_backward() -> anyhow::Result<()> {
     // don't panic when deleting overlapping ranges
-    test((
-        platform_line("#(x|)# #[x|]#"),
-        "c<space><backspace><esc>",
-        platform_line("#[\n|]#"),
-    ))
-    .await?;
-    test((
-        platform_line("#( |)##( |)#a#( |)#axx#[x|]#a"),
-        "li<backspace><esc>",
-        platform_line("#(a|)##(|a)#xx#[|a]#"),
-    ))
+    test_case!(("#(x|)# #[x|]#"), ("c<space><backspace><esc>"), ("#[\n|]#")).await?;
+    test_case!(
+        ("#( |)##( |)#a#( |)#axx#[x|]#a"),
+        ("li<backspace><esc>"),
+        ("#(a|)##(|a)#xx#[|a]#")
+    )
     .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_delete_word_backward() -> anyhow::Result<()> {
     // don't panic when deleting overlapping ranges
-    test((
-        platform_line("fo#[o|]#ba#(r|)#"),
-        "a<C-w><esc>",
-        platform_line("#[\n|]#"),
-    ))
-    .await
+    test_case!(("fo#[o|]#ba#(r|)#"), ("a<C-w><esc>"), ("#[\n|]#")).await
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_delete_word_forward() -> anyhow::Result<()> {
     // don't panic when deleting overlapping ranges
-    test((
-        platform_line("fo#[o|]#b#(|ar)#"),
-        "i<A-d><esc>",
-        platform_line("fo#[\n|]#"),
-    ))
-    .await
+    test_case!(("fo#[o|]#b#(|ar)#"), ("i<A-d><esc>"), ("fo#[\n|]#")).await
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_delete_char_forward() -> anyhow::Result<()> {
-    test((
-        platform_line(indoc! {"\
+    test_case!(
+        (indoc! {"\
                 #[abc|]#def
                 #(abc|)#ef
                 #(abc|)#f
                 #(abc|)#
             "}),
-        "a<del><esc>",
-        platform_line(indoc! {"\
+        ("a<del><esc>"),
+        (indoc! {"\
                 #[abc|]#ef
                 #(abc|)#f
                 #(abc|)#
                 #(abc|)#
-            "}),
-    ))
+            "})
+    )
     .await
 }
 

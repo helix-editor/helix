@@ -1,8 +1,11 @@
-use crate::test::helpers::{
-    file::temp_file_with_contents,
-    platform_line,
-    test_harness::{test, test_with_config, TestCase},
-    AppBuilder,
+use crate::{
+    test::helpers::{
+        file::temp_file_with_contents,
+        platform_line,
+        test_harness::{test, test_with_config, TestCase},
+        AppBuilder,
+    },
+    test_case,
 };
 use helix_core::Selection;
 use indoc::indoc;
@@ -385,10 +388,10 @@ async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn cursor_position_append_eof() -> anyhow::Result<()> {
     // Selection is forwards
-    test(("#[foo|]#", "abar<esc>", platform_line("#[foobar|]#\n"))).await?;
+    test_case!(("#[foo|]#"), ("abar<esc>"), ("#[foobar|]#\n")).await?;
 
     // Selection is backwards
-    test(("#[|foo]#", "abar<esc>", platform_line("#[foobar|]#\n"))).await
+    test_case!(("#[|foo]#"), ("abar<esc>"), ("#[foobar|]#\n")).await
 }
 
 #[tokio::test(flavor = "multi_thread")]
