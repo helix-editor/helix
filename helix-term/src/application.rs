@@ -157,12 +157,12 @@ impl<B: Backend> Application<B> {
                 let (view, doc) = current!(editor);
                 align_view(doc, view, Align::Center);
             }
-        } else if stdin().is_tty() || cfg!(feature = "integration") {
-            editor.new_file(Action::VerticalSplit);
-        } else {
+        } else if !stdin().is_tty() {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+        } else {
+            editor.new_file(Action::VerticalSplit);
         }
 
         editor.set_theme(theme);
