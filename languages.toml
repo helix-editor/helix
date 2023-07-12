@@ -1668,6 +1668,7 @@ name = "nu"
 scope = "source.nu"
 injection-regex = "nu"
 file-types = ["nu"]
+shebangs = ["nu"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
