@@ -1665,7 +1665,7 @@ impl Editor {
         }
     }
 
-    /// Closes language servers with timeout. The default timeout is 10000 ms, use
+    /// Closes language servers with timeout. The default timeout is 3000 ms, use
     /// `timeout` parameter to override this.
     pub async fn close_language_servers(
         &self,

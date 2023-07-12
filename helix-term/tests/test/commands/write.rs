@@ -135,7 +135,7 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
         .with_file(file.path(), None)
         .build()?;
 
-    app.event_loop_until_idle(&mut UnboundedReceiverStream::new(
+    app.event_loop(&mut UnboundedReceiverStream::new(
         tokio::sync::mpsc::unbounded_channel().1,
     ))
     .await;

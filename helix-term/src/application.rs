@@ -1,5 +1,5 @@
 use arc_swap::{access::Map, ArcSwap};
-use futures_util::Stream;
+use futures_util::{Stream, StreamExt};
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
@@ -32,7 +32,7 @@ use core::panic;
 use log::{debug, error, warn};
 use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
-use anyhow::{Context, Error};
+use anyhow::{anyhow, Context, Error};
 
 use crossterm::{
     event::{Event as CrosstermEvent, EventStream},
@@ -183,12 +183,9 @@ impl<B: Backend> Application<B> {
             compositor,
             terminal,
             editor,
-
             config,
-
             theme_loader,
             syn_loader,
-
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
@@ -233,20 +230,7 @@ impl<B: Backend> Application<B> {
         self.terminal.draw(pos, kind).unwrap();
     }
 
-    pub async fn event_loop<S>(&mut self, input_stream: &mut S)
-    where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
-    {
-        self.render().await;
-
-        loop {
-            if !self.event_loop_until_idle(input_stream).await {
-                break;
-            }
-        }
-    }
-
-    pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
+    pub async fn event_loop<S>(&mut self, input_stream: &mut S) -> bool
     where
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
@@ -254,8 +238,6 @@ impl<B: Backend> Application<B> {
             if self.editor.should_close() {
                 return false;
             }
-
-            use futures_util::StreamExt;
 
             tokio::select! {
                 biased;
@@ -1074,18 +1056,22 @@ impl<B: Backend> Application<B> {
             std::panic::take_hook()(info);
         }));
 
-        self.event_loop(&mut EventStream::new()).await;
+        self.render().await;
+        while self.event_loop(&mut EventStream::new()).await {}
 
         let close_errs = self.close().await;
 
         self.restore_term()?;
 
-        for err in close_errs {
-            self.editor.exit_code = 1;
-            eprintln!("Error: {}", err);
+        if close_errs.is_empty() {
+            return Ok(self.editor.exit_code);
         }
 
-        Ok(self.editor.exit_code)
+        for err in close_errs {
+            eprintln!("Close error: {}", err);
+        }
+
+        Ok(1)
     }
 
     pub async fn close(&mut self) -> Vec<anyhow::Error> {
@@ -1109,10 +1095,9 @@ impl<B: Backend> Application<B> {
         }
 
         if self.editor.close_language_servers(None).await.is_err() {
-            log::error!("Timed out waiting for language servers to shutdown");
-            errs.push(anyhow::format_err!(
-                "Timed out waiting for language servers to shutdown"
-            ));
+            let error_msg = "Timed out waiting for language servers to shutdown";
+            log::error!("{}", error_msg);
+            errs.push(anyhow!("{}", error_msg));
         }
 
         errs

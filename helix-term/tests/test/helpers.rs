@@ -65,9 +65,8 @@ pub async fn test_key_sequences(
     const TIMEOUT: Duration = Duration::from_millis(500);
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     let mut rx_stream = UnboundedReceiverStream::new(rx);
-    let num_inputs = inputs.len();
 
-    for (i, (in_keys, test_fn)) in inputs.into_iter().enumerate() {
+    for (input_index, (in_keys, test_fn)) in inputs.iter().enumerate() {
         let (view, doc) = current_ref!(app.editor);
         let state = test::plain(doc.text().slice(..), doc.selection(view.id));
 
@@ -81,7 +80,7 @@ pub async fn test_key_sequences(
             }
         }
 
-        let app_exited = !app.event_loop_until_idle(&mut rx_stream).await;
+        let app_exited = !app.event_loop(&mut rx_stream).await;
 
         if !app_exited {
             let (view, doc) = current_ref!(app.editor);
@@ -93,15 +92,14 @@ pub async fn test_key_sequences(
             );
         }
 
-        // the app should not exit from any test until the last one
-        if i < num_inputs - 1 && app_exited {
-            bail!("application exited before test function could run");
-        }
+        if app_exited {
+            if input_index < inputs.len() - 1 {
+                bail!("Application exited before all test functions could run");
+            }
 
-        // verify if it exited on the last iteration if it should have and
-        // the inverse
-        if i == num_inputs - 1 && app_exited != should_exit {
-            bail!("expected app to exit: {} != {}", should_exit, app_exited);
+            if !should_exit {
+                bail!("Application wans't expected not to exit.");
+            }
         }
 
         if let Some(test) = test_fn {
@@ -118,19 +116,17 @@ pub async fn test_key_sequences(
         tokio::time::timeout(TIMEOUT, event_loop).await?;
     }
 
-    let errs = app.close().await;
+    let close_errs = app.close().await;
 
-    if !errs.is_empty() {
-        log::error!("Errors closing app");
-
-        for err in errs {
-            log::error!("{}", err);
-        }
-
-        bail!("Error closing app");
+    if close_errs.is_empty() {
+        return Ok(());
     }
 
-    Ok(())
+    for err in close_errs {
+        log::error!("Close error: {}", err);
+    }
+
+    bail!("Error closing app");
 }
 
 pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(

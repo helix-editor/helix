@@ -85,6 +85,5 @@ async fn main() -> Result<()> {
     )
     .context("unable to create new application")?;
 
-    let exit_code = app.run().await?;
-    std::process::exit(exit_code)
+    std::process::exit(app.run().await?)
 }
