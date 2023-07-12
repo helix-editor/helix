@@ -211,7 +211,7 @@ impl Application {
             }
         } else if stdin().is_tty() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
-        } else if cfg!(target_os = "macos") {
+        } else if cfg!(target_os = "macos") && !cfg!(feature = "macos-piping") {
             // On Linux and Windows, we allow the output of a command to be piped into the new buffer.
             // This doesn't currently work on macOS because of the following issue:
             //   https://github.com/crossterm-rs/crossterm/issues/500

@@ -17,6 +17,7 @@ default = ["git"]
 unicode-lines = ["helix-core/unicode-lines"]
 integration = []
 git = ["helix-vcs/git"]
+macos-piping = ["crossterm/use-dev-tty"]
 
 [[bin]]
 name = "hx"
