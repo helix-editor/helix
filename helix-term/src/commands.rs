@@ -5117,21 +5117,10 @@ fn surround_replace(cx: &mut Context) {
 
         let selection = selection.clone();
         let ranges: SmallVec<[Range; 1]> = change_pos.iter().map(|&p| Range::point(p)).collect();
-        // TODO: Use [`array_chunks`] once stabilized
-        let primary_index = ranges
-            .chunks_exact(2)
-            .enumerate()
-            .find_map(|(i, pair)| {
-                let [from, to] = *pair else { unreachable!() };
-                // The cursor must be somewhere between both matches.
-                if Range::new(from.from(), to.to()).overlaps(&selection.primary()) {
-                    Some(i * 2)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(0);
-        doc.set_selection(view.id, Selection::new(ranges, primary_index));
+        doc.set_selection(
+            view.id,
+            Selection::new(ranges, selection.primary_index() * 2),
+        );
 
         cx.on_next_key(move |cx, event| {
             let (view, doc) = current!(cx.editor);
