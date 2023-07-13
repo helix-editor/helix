@@ -211,11 +211,6 @@ impl Application {
             }
         } else if stdin().is_tty() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
-        } else if cfg!(target_os = "macos") {
-            // On Linux and Windows, we allow the output of a command to be piped into the new buffer.
-            // This doesn't currently work on macOS because of the following issue:
-            //   https://github.com/crossterm-rs/crossterm/issues/500
-            anyhow::bail!("Piping into helix-term is currently not supported on macOS");
         } else {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
