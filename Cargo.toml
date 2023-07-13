@@ -16,6 +16,9 @@ default-members = [
   "helix-term"
 ]
 
+[workspace.dependencies]
+steel-core = { path = "../../steel/crates/steel-core", version = "0.4.0", features = ["modules", "anyhow", "blocking_requests"] }
+
 [profile.release]
 lto = "thin"
 debug = true

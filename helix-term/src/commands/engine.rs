@@ -1,10 +1,14 @@
 use fuzzy_matcher::FuzzyMatcher;
 use helix_core::{graphemes, shellwords::Shellwords, Selection, Tendril};
 use helix_view::{
-    document::Mode, editor::Action, extension::document_id_to_usize, input::KeyEvent, Document,
-    DocumentId, Editor,
+    document::Mode,
+    editor::{Action, ConfigEvent},
+    extension::document_id_to_usize,
+    input::KeyEvent,
+    Document, DocumentId, Editor,
 };
 use once_cell::sync::Lazy;
+use serde_json::Value;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
     rvals::{AsRefMutSteelValFromRef, FromSteelVal, IntoSteelVal},
@@ -16,6 +20,7 @@ use std::{
     borrow::Cow,
     collections::{HashMap, VecDeque},
     marker::PhantomData,
+    ops::Deref,
     path::PathBuf,
     sync::Mutex,
 };
@@ -97,6 +102,14 @@ impl ScriptingEngine {
                 .and_then(|x| x.to_str())
         };
 
+        let doc_id = {
+            let current_focus = cx.editor.tree.focus;
+            let view = cx.editor.tree.get(current_focus);
+            let doc = &view.doc;
+
+            doc
+        };
+
         if let Some(extension) = extension {
             let special_buffer_map = "*buffer-or-extension-keybindings*";
 
@@ -109,6 +122,29 @@ impl ScriptingEngine {
                             inner.borrow().as_ref(),
                         ) {
                             return Some(value.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        // reverse-buffer-map -> label -> keybinding map
+        let value = ENGINE.with(|x| x.borrow().extract_value("*reverse-buffer-map*").clone());
+
+        if let Ok(SteelVal::HashMapV(map)) = value {
+            if let Some(label) = map.get(&SteelVal::IntV(document_id_to_usize(doc_id) as isize)) {
+                let special_buffer_map = "*buffer-or-extension-keybindings*";
+
+                let value = ENGINE.with(|x| x.borrow().extract_value(special_buffer_map).clone());
+
+                if let Ok(SteelVal::HashMapV(map)) = value {
+                    if let Some(value) = map.get(label) {
+                        if let SteelVal::Custom(inner) = value {
+                            if let Some(_) = steel::rvals::as_underlying_type::<EmbeddedKeyMap>(
+                                inner.borrow().as_ref(),
+                            ) {
+                                return Some(value.clone());
+                            }
                         }
                     }
                 }
@@ -686,7 +722,11 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     engine.register_fn("helix-string->keymap", string_to_embedded_keymap);
 
     // Use this to get at buffer specific keybindings
-    engine.register_value("*buffer-or-extension-keybindings*", SteelVal::Void);
+    engine.register_value(
+        "*buffer-or-extension-keybindings*",
+        SteelVal::empty_hashmap(),
+    );
+    engine.register_value("*reverse-buffer-map*", SteelVal::empty_hashmap());
 
     // Find the workspace
     engine.register_fn("helix-find-workspace", || {
@@ -936,6 +976,20 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     engine.register_module(module);
 
     let mut module = BuiltInModule::new("helix/core/typable".to_string());
+
+    {
+        let func = |cx: &mut Context, args: &[Cow<str>], event: PromptEvent| {
+            let mut cx = compositor::Context {
+                editor: cx.editor,
+                scroll: None,
+                jobs: cx.jobs,
+            };
+
+            set_options(&mut cx, args, event)
+        };
+
+        module.register_fn("set-options", func);
+    }
 
     module.register_value(
         "PromptEvent::Validate",
@@ -1438,3 +1492,65 @@ fn create_directory(path: String) {
 //     log::info!("Enqueueing callback!");
 
 // }
+
+/// Change config at runtime. Access nested values by dot syntax, for
+/// example to disable smart case search, use `:set search.smart-case false`.
+fn set_options(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.len() % 2 != 0 {
+        anyhow::bail!("Bad arguments. Usage: `:set key field`");
+    }
+
+    let mut config = serde_json::json!(&cx.editor.config().deref());
+    // let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+    // let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
+
+    for args in args.chunks_exact(2) {
+        let (key, arg) = (&args[0].to_lowercase(), &args[1]);
+
+        let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+        let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
+
+        // let mut config = serde_json::json!(&cx.editor.config().deref());
+        let pointer = format!("/{}", key.replace('.', "/"));
+        let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+
+        *value = if value.is_string() {
+            // JSON strings require quotes, so we can't .parse() directly
+            Value::String(arg.to_string())
+        } else {
+            arg.parse().map_err(field_error)?
+        };
+    }
+
+    // let (key, arg) = (&args[0].to_lowercase(), &args[1]);
+
+    // let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+    // let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
+
+    // let mut config = serde_json::json!(&cx.editor.config().deref());
+    // let pointer = format!("/{}", key.replace('.', "/"));
+    // let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+
+    // *value = if value.is_string() {
+    //     // JSON strings require quotes, so we can't .parse() directly
+    //     Value::String(arg.to_string())
+    // } else {
+    //     arg.parse().map_err(field_error)?
+    // };
+    let config =
+        serde_json::from_value(config).map_err(|_| anyhow::anyhow!("Could not parse config"))?;
+
+    cx.editor
+        .config_events
+        .0
+        .send(ConfigEvent::Update(config))?;
+    Ok(())
+}

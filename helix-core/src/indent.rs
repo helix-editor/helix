@@ -960,16 +960,16 @@ pub fn custom_indent_for_newline(
                 let line = text_up_to_cursor.line(cursor);
 
                 // We want to ignore comments
-                if let Some(l) = line.as_str() {
-                    if l.starts_with(";") {
-                        if cursor == 0 {
-                            break;
-                        }
 
-                        cursor -= 1;
-
-                        continue;
+                let l = std::borrow::Cow::from(line);
+                if l.trim_start().starts_with(";") {
+                    if cursor == 0 {
+                        break;
                     }
+
+                    cursor -= 1;
+
+                    continue;
                 }
 
                 // log::info!("Line: {}", line);
