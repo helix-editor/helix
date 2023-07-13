@@ -23,7 +23,7 @@
 =================================================================
 =                        INTRODUCTION                           =
 =================================================================
-                                                                 
+
  Welcome to the Helix editor! Helix is different from editors
  you might be used to in that it is modal, meaning that it has
  different modes for editing text. The primary modes you will
@@ -941,7 +941,7 @@ lines.
  --> A horse is a horse, of course, of course,
  --> And no one can talk to a horse of course.
 
- Note: * is like a shorthand for "/ y as all it really does is
+ Note: * is like a shorthand for "/y as all it really does is
        copy the selection into the / register.
 
 =================================================================
@@ -1146,13 +1146,13 @@ To uncomment the line, press Ctrl-c again.
 =                 11.2 COMMENTING MULTIPLE LINES                =
 =================================================================
 
-Using the selections and multi-cursor functionality, you can 
+Using the selections and multi-cursor functionality, you can
 comment multiple lines as long as it is under the selection or
-cursors. 
+cursors.
 
 1. Move your cursor to the line marked with '-->' below.
-2. Now try to select or add more cursors the other lines marked 
-   with '-->'. 
+2. Now try to select or add more cursors the other lines marked
+   with '-->'.
 3. Comment those lines.
 
 --> How many are you going to comment?
@@ -1170,7 +1170,7 @@ multiple cursors, they won't be uncommented but commented again.
 
  * Use Ctrl-c to comment a line under your cursor. Press Ctrl-c
    again to uncomment.
- * To comment multiple lines, use the selections 
+ * To comment multiple lines, use the selections
    and multi-cursors before typing Ctrl-c.
    * Commented lines cannot be uncommented but commented again.
 
