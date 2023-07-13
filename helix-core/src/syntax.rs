@@ -1136,6 +1136,7 @@ impl Syntax {
                     RopeProvider(source_slice),
                 );
                 let mut injections = Vec::new();
+                let mut last_injection_end = 0;
                 for mat in matches {
                     let (injection_capture, content_node, included_children) = layer
                         .config
@@ -1155,6 +1156,10 @@ impl Syntax {
                                 intersect_ranges(&layer.ranges, &[content_node], included_children);
 
                             if !ranges.is_empty() {
+                                if content_node.start_byte() < last_injection_end {
+                                    continue;
+                                }
+                                last_injection_end = content_node.end_byte();
                                 injections.push((config, ranges));
                             }
                         }
