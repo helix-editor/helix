@@ -1324,7 +1324,7 @@ source = { git = "https://github.com/the-mikedavis/tree-sitter-git-rebase", rev 
 name = "regex"
 scope = "source.regex"
 injection-regex = "regex"
-file-types = ["regex"]
+file-types = ["regex", ".Rbuildignore"]
 roots = []
 
 [[grammar]]
