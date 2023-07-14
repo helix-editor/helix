@@ -89,7 +89,7 @@
 "ui.virtual.whitespace" = { fg = "dark_gray" }
 "ui.virtual.ruler" = { bg = "borders" }
 "ui.virtual.indent-guide" = { fg = "dark_gray4" }
-"ui.virtual.inlay-hint" = { fg = "white", bg = "#444444" }
+"ui.virtual.inlay-hint" = { fg = "dark_gray5"}
 
 "warning" = { fg = "gold2" }
 "error" = { fg = "red" }
@@ -114,6 +114,7 @@ dark_gray = "#858585"
 dark_gray2 = "#1e1e1e"
 dark_gray3 = "#282828"
 dark_gray4 = "#404040"
+dark_gray5 = "#8b949e"
 blue = "#007acc"
 blue2 = "#569CD6"
 blue3 = "#6796E6"

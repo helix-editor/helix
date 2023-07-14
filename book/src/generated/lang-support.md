@@ -59,6 +59,7 @@
 | graphql | ✓ |  |  |  |
 | hare | ✓ |  |  |  |
 | haskell | ✓ | ✓ |  | `haskell-language-server-wrapper` |
+| haskell-persistent | ✓ |  |  |  |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  | `elixir-ls` |
 | hosts | ✓ |  |  |  |
@@ -88,7 +89,7 @@
 | markdoc | ✓ |  |  | `markdoc-ls` |
 | markdown | ✓ |  |  | `marksman` |
 | markdown.inline | ✓ |  |  |  |
-| matlab | ✓ |  |  |  |
+| matlab | ✓ | ✓ | ✓ |  |
 | mermaid | ✓ |  |  |  |
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |

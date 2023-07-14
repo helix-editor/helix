@@ -397,33 +397,11 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
     let mut buf_out = [0u8; BUF_SIZE];
     let mut builder = RopeBuilder::new();
 
-    // By default, the encoding of the text is auto-detected by
-    // `encoding_rs` for_bom, and if it fails, from `chardetng`
-    // crate which requires sample data from the reader.
-    // As a manual override to this auto-detection is possible, the
-    // same data is read into `buf` to ensure symmetry in the upcoming
-    // loop.
-    let (encoding, has_bom, mut decoder, mut slice, mut is_empty) = {
-        let read = reader.read(&mut buf)?;
-        let is_empty = read == 0;
-        let (encoding, has_bom) = encoding
-            .map(|encoding| (encoding, false))
-            .or_else(|| {
-                encoding::Encoding::for_bom(&buf).map(|(encoding, _bom_size)| (encoding, true))
-            })
-            .unwrap_or_else(|| {
-                let mut encoding_detector = chardetng::EncodingDetector::new();
-                encoding_detector.feed(&buf, is_empty);
-                (encoding_detector.guess(None, true), false)
-            });
+    let (encoding, has_bom, mut decoder, read) =
+        read_and_detect_encoding(reader, encoding, &mut buf)?;
 
-        let decoder = encoding.new_decoder();
-
-        // If the amount of bytes read from the reader is less than
-        // `buf.len()`, it is undesirable to read the bytes afterwards.
-        let slice = &buf[..read];
-        (encoding, has_bom, decoder, slice, is_empty)
-    };
+    let mut slice = &buf[..read];
+    let mut is_empty = read == 0;
 
     // `RopeBuilder::append()` expects a `&str`, so this is the "real"
     // output buffer. When decoding, the number of bytes in the output
@@ -491,6 +469,81 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
     }
     let rope = builder.finish();
     Ok((rope, encoding, has_bom))
+}
+
+pub fn read_to_string<R: std::io::Read + ?Sized>(
+    reader: &mut R,
+    encoding: Option<&'static Encoding>,
+) -> Result<(String, &'static Encoding, bool), Error> {
+    let mut buf = [0u8; BUF_SIZE];
+
+    let (encoding, has_bom, mut decoder, read) =
+        read_and_detect_encoding(reader, encoding, &mut buf)?;
+
+    let mut slice = &buf[..read];
+    let mut is_empty = read == 0;
+    let mut buf_string = String::with_capacity(buf.len());
+
+    loop {
+        let mut total_read = 0usize;
+
+        loop {
+            let (result, read, ..) =
+                decoder.decode_to_string(&slice[total_read..], &mut buf_string, is_empty);
+
+            total_read += read;
+
+            match result {
+                encoding::CoderResult::InputEmpty => {
+                    debug_assert_eq!(slice.len(), total_read);
+                    break;
+                }
+                encoding::CoderResult::OutputFull => {
+                    debug_assert!(slice.len() > total_read);
+                    buf_string.reserve(buf.len())
+                }
+            }
+        }
+
+        if is_empty {
+            debug_assert_eq!(reader.read(&mut buf)?, 0);
+            break;
+        }
+
+        let read = reader.read(&mut buf)?;
+        slice = &buf[..read];
+        is_empty = read == 0;
+    }
+    Ok((buf_string, encoding, has_bom))
+}
+
+/// Reads the first chunk from a Reader into the given buffer
+/// and detects the encoding.
+///
+/// By default, the encoding of the text is auto-detected by
+/// `encoding_rs` for_bom, and if it fails, from `chardetng`
+/// crate which requires sample data from the reader.
+/// As a manual override to this auto-detection is possible, the
+/// same data is read into `buf` to ensure symmetry in the upcoming
+/// loop.
+fn read_and_detect_encoding<R: std::io::Read + ?Sized>(
+    reader: &mut R,
+    encoding: Option<&'static Encoding>,
+    buf: &mut [u8],
+) -> Result<(&'static Encoding, bool, encoding::Decoder, usize), Error> {
+    let read = reader.read(buf)?;
+    let is_empty = read == 0;
+    let (encoding, has_bom) = encoding
+        .map(|encoding| (encoding, false))
+        .or_else(|| encoding::Encoding::for_bom(buf).map(|(encoding, _bom_size)| (encoding, true)))
+        .unwrap_or_else(|| {
+            let mut encoding_detector = chardetng::EncodingDetector::new();
+            encoding_detector.feed(buf, is_empty);
+            (encoding_detector.guess(None, true), false)
+        });
+    let decoder = encoding.new_decoder();
+
+    Ok((encoding, has_bom, decoder, read))
 }
 
 // The documentation and implementation of this function should be up-to-date with
@@ -1121,21 +1174,31 @@ impl Document {
 
             let changes = transaction.changes();
 
+            changes.update_positions(
+                self.diagnostics
+                    .iter_mut()
+                    .map(|diagnostic| (&mut diagnostic.range.start, Assoc::After)),
+            );
+            changes.update_positions(
+                self.diagnostics
+                    .iter_mut()
+                    .map(|diagnostic| (&mut diagnostic.range.end, Assoc::After)),
+            );
             // map state.diagnostics over changes::map_pos too
             for diagnostic in &mut self.diagnostics {
-                diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
-                diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
                 diagnostic.line = self.text.char_to_line(diagnostic.range.start);
             }
+
             self.diagnostics
                 .sort_unstable_by_key(|diagnostic| diagnostic.range);
 
             // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
             let apply_inlay_hint_changes = |annotations: &mut Rc<[InlineAnnotation]>| {
                 if let Some(data) = Rc::get_mut(annotations) {
-                    for inline in data.iter_mut() {
-                        inline.char_idx = changes.map_pos(inline.char_idx, Assoc::After);
-                    }
+                    changes.update_positions(
+                        data.iter_mut()
+                            .map(|annotation| (&mut annotation.char_idx, Assoc::After)),
+                    );
                 }
             };
 
