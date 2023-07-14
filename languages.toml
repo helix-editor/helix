@@ -700,7 +700,7 @@ source = { git = "https://github.com/nix-community/tree-sitter-nix", rev = "1b69
 name = "ruby"
 scope = "source.ruby"
 injection-regex = "ruby"
-file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec", "Rakefile", "Gemfile", "rabl", "jbuilder", "jb", "Podfile", "podspec", "Vagrantfile"]
+file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec", "Rakefile", "Gemfile", "rabl", "jbuilder", "jb", "Podfile", "podspec", "Vagrantfile", "Brewfile"]
 shebangs = ["ruby"]
 roots = []
 comment-token = "#"
