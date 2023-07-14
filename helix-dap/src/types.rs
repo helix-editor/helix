@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_with::skip_serializing_none;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -22,112 +23,71 @@ pub trait Request {
     const COMMAND: &'static str;
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ColumnDescriptor {
     pub attribute_name: String,
     pub label: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub format: Option<String>,
-    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "type")]
     pub ty: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<usize>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExceptionBreakpointsFilter {
     pub filter: String,
     pub label: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub default: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_condition: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub condition_description: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DebuggerCapabilities {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_configuration_done_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_function_breakpoints: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_conditional_breakpoints: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_hit_conditional_breakpoints: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_evaluate_for_hovers: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_step_back: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_set_variable: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_restart_frame: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_goto_targets_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_step_in_targets_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_completions_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_modules_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_restart_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_exception_options: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_value_formatting_options: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_exception_info_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub support_terminate_debuggee: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub support_suspend_debuggee: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_delayed_stack_trace_loading: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_loaded_sources_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_log_points: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_terminate_threads_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_set_expression: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_terminate_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_data_breakpoints: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_read_memory_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_write_memory_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_disassemble_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_cancel_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_breakpoint_locations_request: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_clipboard_context: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_stepping_granularity: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_instruction_breakpoints: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_exception_filter_options: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub exception_breakpoint_filters: Option<Vec<ExceptionBreakpointsFilter>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub completion_trigger_characters: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub additional_module_columns: Option<Vec<ColumnDescriptor>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub supported_checksum_algorithms: Option<Vec<String>>,
 }
 
@@ -138,104 +98,74 @@ pub struct Checksum {
     pub checksum: String,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Source {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<PathBuf>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub source_reference: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub presentation_hint: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub origin: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub sources: Option<Vec<Source>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub adapter_data: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub checksums: Option<Vec<Checksum>>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceBreakpoint {
     pub line: usize,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub column: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub condition: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hit_condition: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub log_message: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Breakpoint {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<usize>,
     pub verified: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<Source>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub line: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub column: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub end_line: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub end_column: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub instruction_reference: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StackFrameFormat {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub parameter_types: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub parameter_names: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub parameter_values: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub line: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub module: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_all: Option<bool>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StackFrame {
     pub id: usize,
     pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<Source>,
     pub line: usize,
     pub column: usize,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub end_line: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub end_column: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub can_restart: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub instruction_pointer_reference: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub module_id: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub presentation_hint: Option<String>,
 }
 
@@ -246,121 +176,93 @@ pub struct Thread {
     pub name: String,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Scope {
     pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub presentation_hint: Option<String>,
     pub variables_reference: usize,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub named_variables: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub indexed_variables: Option<usize>,
     pub expensive: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<Source>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub line: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub column: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub end_line: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub end_column: Option<usize>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ValueFormat {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hex: Option<bool>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VariablePresentationHint {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub attributes: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub visibility: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Variable {
     pub name: String,
     pub value: String,
-    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "type")]
     pub ty: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub presentation_hint: Option<VariablePresentationHint>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub evaluate_name: Option<String>,
     pub variables_reference: usize,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub named_variables: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub indexed_variables: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub memory_reference: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Module {
     pub id: String, // TODO: || number
     pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<PathBuf>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_optimized: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_user_code: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub symbol_status: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub symbol_file_path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub date_time_stamp: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub address_range: Option<String>,
 }
 
 pub mod requests {
     use super::*;
+    #[skip_serializing_none]
     #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct InitializeArguments {
-        #[serde(rename = "clientID", skip_serializing_if = "Option::is_none")]
+        #[serde(rename = "clientID")]
         pub client_id: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub client_name: Option<String>,
         #[serde(rename = "adapterID")]
         pub adapter_id: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub locale: Option<String>,
-        #[serde(rename = "linesStartAt1", skip_serializing_if = "Option::is_none")]
+        #[serde(rename = "linesStartAt1")]
         pub lines_start_at_one: Option<bool>,
-        #[serde(rename = "columnsStartAt1", skip_serializing_if = "Option::is_none")]
+        #[serde(rename = "columnsStartAt1")]
         pub columns_start_at_one: Option<bool>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub path_format: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub supports_variable_type: Option<bool>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub supports_variable_paging: Option<bool>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub supports_run_in_terminal_request: Option<bool>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub supports_memory_references: Option<bool>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub supports_progress_reporting: Option<bool>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub supports_invalidated_event: Option<bool>,
     }
 
@@ -391,14 +293,12 @@ pub mod requests {
         const COMMAND: &'static str = "attach";
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct DisconnectArguments {
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub restart: Option<bool>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub terminate_debuggee: Option<bool>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub suspend_debuggee: Option<bool>,
     }
 
@@ -429,21 +329,20 @@ pub mod requests {
         const COMMAND: &'static str = "configurationDone";
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct SetBreakpointsArguments {
         pub source: Source,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub breakpoints: Option<Vec<SourceBreakpoint>>,
         // lines is deprecated
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub source_modified: Option<bool>,
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct SetBreakpointsResponse {
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub breakpoints: Option<Vec<Breakpoint>>,
     }
 
@@ -462,10 +361,10 @@ pub mod requests {
         pub thread_id: ThreadId,
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ContinueResponse {
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub all_threads_continued: Option<bool>,
     }
 
@@ -478,22 +377,20 @@ pub mod requests {
         const COMMAND: &'static str = "continue";
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StackTraceArguments {
         pub thread_id: ThreadId,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub start_frame: Option<usize>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub levels: Option<usize>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub format: Option<StackFrameFormat>,
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StackTraceResponse {
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub total_frames: Option<usize>,
         pub stack_frames: Vec<StackFrame>,
     }
@@ -543,17 +440,14 @@ pub mod requests {
         const COMMAND: &'static str = "scopes";
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct VariablesArguments {
         pub variables_reference: usize,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub filter: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub start: Option<usize>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub count: Option<usize>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub format: Option<ValueFormat>,
     }
 
@@ -572,13 +466,12 @@ pub mod requests {
         const COMMAND: &'static str = "variables";
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StepInArguments {
         pub thread_id: ThreadId,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub target_id: Option<usize>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub granularity: Option<String>,
     }
 
@@ -591,11 +484,11 @@ pub mod requests {
         const COMMAND: &'static str = "stepIn";
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct StepOutArguments {
         pub thread_id: ThreadId,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub granularity: Option<String>,
     }
 
@@ -608,11 +501,11 @@ pub mod requests {
         const COMMAND: &'static str = "stepOut";
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct NextArguments {
         pub thread_id: ThreadId,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub granularity: Option<String>,
     }
 
@@ -640,32 +533,27 @@ pub mod requests {
         const COMMAND: &'static str = "pause";
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct EvaluateArguments {
         pub expression: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub frame_id: Option<usize>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub context: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub format: Option<ValueFormat>,
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct EvaluateResponse {
         pub result: String,
-        #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+        #[serde(rename = "type")]
         pub ty: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub presentation_hint: Option<VariablePresentationHint>,
         pub variables_reference: usize,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub named_variables: Option<usize>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub indexed_variables: Option<usize>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub memory_reference: Option<String>,
     }
 
@@ -686,10 +574,10 @@ pub mod requests {
         // pub exceptionOptions: Option<Vec<ExceptionOptions>>, // needs capability
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct SetExceptionBreakpointsResponse {
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub breakpoints: Option<Vec<Breakpoint>>,
     }
 
@@ -704,25 +592,22 @@ pub mod requests {
 
     // Reverse Requests
 
+    #[skip_serializing_none]
     #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct RunInTerminalResponse {
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub process_id: Option<u32>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub shell_process_id: Option<u32>,
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct RunInTerminalArguments {
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub kind: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub title: Option<String>,
         pub cwd: String,
         pub args: Vec<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub env: Option<HashMap<String, Option<String>>>,
     }
 
@@ -765,29 +650,24 @@ pub mod events {
         Memory(Memory),
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Stopped {
         pub reason: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub description: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub thread_id: Option<ThreadId>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub preserve_focus_hint: Option<bool>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub text: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub all_threads_stopped: Option<bool>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub hit_breakpoint_ids: Option<Vec<usize>>,
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Continued {
         pub thread_id: ThreadId,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub all_threads_continued: Option<bool>,
     }
 
@@ -797,10 +677,10 @@ pub mod events {
         pub exit_code: usize,
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Terminated {
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub restart: Option<Value>,
     }
 
@@ -811,23 +691,17 @@ pub mod events {
         pub thread_id: ThreadId,
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Output {
         pub output: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub category: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub group: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub line: Option<usize>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub column: Option<usize>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub variables_reference: Option<usize>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub source: Option<Source>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub data: Option<Value>,
     }
 
@@ -852,17 +726,14 @@ pub mod events {
         pub source: super::Source,
     }
 
+    #[skip_serializing_none]
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Process {
         pub name: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub system_process_id: Option<usize>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub is_local_process: Option<bool>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub start_method: Option<String>, // TODO: use enum
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub pointer_size: Option<usize>,
     }
 
