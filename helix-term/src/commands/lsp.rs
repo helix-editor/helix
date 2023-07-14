@@ -1033,7 +1033,7 @@ fn goto_impl(
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    let cwdir = std::env::current_dir().unwrap_or_default();
+    let cwdir = helix_loader::current_working_dir();
 
     match locations.as_slice() {
         [location] => {

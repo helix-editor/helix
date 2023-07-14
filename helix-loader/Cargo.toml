@@ -29,6 +29,7 @@ which = "4.4"
 cc = { version = "1" }
 threadpool = { version = "1.0" }
 tempfile = "3.6.0"
+dunce = "1.0.4"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 libloading = "0.8"

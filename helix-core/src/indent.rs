@@ -19,6 +19,10 @@ pub enum IndentStyle {
     Spaces(u8),
 }
 
+// 16 spaces
+const INDENTS: &str = "                ";
+const MAX_INDENT: u8 = 16;
+
 impl IndentStyle {
     /// Creates an `IndentStyle` from an indentation string.
     ///
@@ -27,10 +31,10 @@ impl IndentStyle {
     #[inline]
     pub fn from_str(indent: &str) -> Self {
         // XXX: do we care about validating the input more than this?  Probably not...?
-        debug_assert!(!indent.is_empty() && indent.len() <= 8);
+        debug_assert!(!indent.is_empty() && indent.len() <= MAX_INDENT as usize);
 
         if indent.starts_with(' ') {
-            IndentStyle::Spaces(indent.len() as u8)
+            IndentStyle::Spaces(indent.len().clamp(1, MAX_INDENT as usize) as u8)
         } else {
             IndentStyle::Tabs
         }
@@ -40,20 +44,13 @@ impl IndentStyle {
     pub fn as_str(&self) -> &'static str {
         match *self {
             IndentStyle::Tabs => "\t",
-            IndentStyle::Spaces(1) => " ",
-            IndentStyle::Spaces(2) => "  ",
-            IndentStyle::Spaces(3) => "   ",
-            IndentStyle::Spaces(4) => "    ",
-            IndentStyle::Spaces(5) => "     ",
-            IndentStyle::Spaces(6) => "      ",
-            IndentStyle::Spaces(7) => "       ",
-            IndentStyle::Spaces(8) => "        ",
-
-            // Unsupported indentation style.  This should never happen,
-            // but just in case fall back to two spaces.
             IndentStyle::Spaces(n) => {
-                debug_assert!(n > 0 && n <= 8); // Always triggers. `debug_panic!()` wanted.
-                "  "
+                // Unsupported indentation style.  This should never happen,
+                debug_assert!(n > 0 && n <= MAX_INDENT);
+
+                // Either way, clamp to the nearest supported value
+                let closest_n = n.clamp(1, MAX_INDENT) as usize;
+                &INDENTS[0..closest_n]
             }
         }
     }
@@ -75,9 +72,9 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
     // Build a histogram of the indentation *increases* between
     // subsequent lines, ignoring lines that are all whitespace.
     //
-    // Index 0 is for tabs, the rest are 1-8 spaces.
-    let histogram: [usize; 9] = {
-        let mut histogram = [0; 9];
+    // Index 0 is for tabs, the rest are 1-MAX_INDENT spaces.
+    let histogram: [usize; MAX_INDENT as usize + 1] = {
+        let mut histogram = [0; MAX_INDENT as usize + 1];
         let mut prev_line_is_tabs = false;
         let mut prev_line_leading_count = 0usize;
 
@@ -136,7 +133,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
                     histogram[0] += 1;
                 } else {
                     let amount = leading_count - prev_line_leading_count;
-                    if amount <= 8 {
+                    if amount <= MAX_INDENT as usize {
                         histogram[amount] += 1;
                     }
                 }
@@ -795,6 +792,22 @@ mod test {
         assert_eq!(
             indent_level_for_line(line.slice(..), tab_width, indent_width),
             3
+        );
+    }
+
+    #[test]
+    fn test_large_indent_level() {
+        let tab_width = 16;
+        let indent_width = 16;
+        let line = Rope::from("                fn new"); // 16 spaces
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            1
+        );
+        let line = Rope::from("                                fn new"); // 32 spaces
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            2
         );
     }
 }

@@ -472,7 +472,7 @@ pub mod completers {
                 match path.parent() {
                     Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
                     // Path::new("h")'s parent is Some("")...
-                    _ => std::env::current_dir().expect("couldn't determine current directory"),
+                    _ => helix_loader::current_working_dir(),
                 }
             };
 
