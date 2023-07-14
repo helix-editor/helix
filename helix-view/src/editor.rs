@@ -393,6 +393,8 @@ pub struct StatusLineConfig {
     pub right: Vec<StatusLineElement>,
     pub separator: String,
     pub mode: ModeConfig,
+    // TODO name suggestions? always_visible?
+    pub under_prompt: bool,
 }
 
 impl Default for StatusLineConfig {
@@ -416,6 +418,7 @@ impl Default for StatusLineConfig {
             ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
+            under_prompt: false,
         }
     }
 }

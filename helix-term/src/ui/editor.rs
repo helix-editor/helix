@@ -212,11 +212,17 @@ impl EditorView {
 
         Self::render_diagnostics(doc, view, inner, surface, theme);
 
-        let statusline_area = view
-            .area
-            .clip_top(view.area.height.saturating_sub(1))
-            .clip_bottom(1); // -1 from bottom to remove commandline
-
+        // if we're not at the bottom of the screen, draw the statusline higher, otherwise
+        // it'll overlap with the next view
+        let statusline_area = if editor.config().statusline.under_prompt == true
+            && (viewport.bottom() - 1) == view.area.bottom()
+        {
+            view.area.clip_top(view.area.height)
+        } else {
+            view.area
+                .clip_top(view.area.height.saturating_sub(1))
+                .clip_bottom(1)
+        };
         let mut context =
             statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
 
@@ -1434,7 +1440,10 @@ impl Component for EditorView {
 
             surface.set_string(
                 area.x,
-                area.y + area.height.saturating_sub(1),
+                area.y
+                    + area
+                        .height
+                        .saturating_sub(cx.editor.config().statusline.under_prompt as u16 + 1),
                 status_msg,
                 style,
             );

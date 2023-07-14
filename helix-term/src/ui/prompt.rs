@@ -375,7 +375,8 @@ impl Prompt {
 
         let completion_area = Rect::new(
             area.x,
-            (area.height - height).saturating_sub(1),
+            (area.height - height)
+                .saturating_sub(cx.editor.config().statusline.under_prompt as u16 + 1),
             area.width,
             height,
         );
@@ -450,7 +451,9 @@ impl Prompt {
             text.render(inner, surface, cx);
         }
 
-        let line = area.height - 1;
+        let line = area
+            .height
+            .saturating_sub(cx.editor.config().statusline.under_prompt as u16 + 1);
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
 
@@ -652,7 +655,8 @@ impl Component for Prompt {
     }
 
     fn cursor(&self, area: Rect, _editor: &Editor) -> (Option<Position>, CursorKind) {
-        let line = area.height as usize - 1;
+        let line = (area.height as usize)
+            .saturating_sub(_editor.config().statusline.under_prompt as usize + 1);
         (
             Some(Position::new(
                 area.y as usize + line,
