@@ -47,7 +47,7 @@ async fn main_impl() -> Result<i32> {
 {}
 
 USAGE:
-    hx [FLAGS] [files]...
+    helix-editor [FLAGS] [files]...
 
 ARGS:
     <files>...    Sets the input file to use, position can also be specified via file[:row[:col]]
