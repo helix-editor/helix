@@ -194,6 +194,7 @@ For everything else (e.g., how to install supported language servers), see the <
 <li><a href="install.html#arch-linux-extra">Arch Linux extra</a></li>
 <li><a href="install.html#nixos">NixOS</a></li>
 <li><a href="install.html#flatpak">Flatpak</a></li>
+<li><a href="install.html#snap">Snap</a></li>
 <li><a href="install.html#appimage">AppImage</a></li>
 </ul>
 </li>
@@ -280,6 +281,15 @@ accepts the new settings on first use.</p>
 <pre><code class="language-sh">flatpak install flathub com.helix_editor.Helix
 flatpak run com.helix_editor.Helix
 </code></pre>
+<h3 id="snap"><a class="header" href="#snap">Snap</a></h3>
+<p>Helix is available on <a href="https://snapcraft.io/helix">Snapcraft</a> and can be installed with:</p>
+<pre><code class="language-sh">snap install --classic helix
+</code></pre>
+<p>This will install Helix as <code>/snap/bin/helix</code> (so make sure <code>/snap/bin</code> is in your <code>PATH</code>), which is not the preferred invocation (<code>hx</code>).
+As a workaround you can manually alias the command globally with:</p>
+<pre><code class="language-sh">snap alias helix hx
+</code></pre>
+<p>Or, otherwise, just alias in your shell's config.</p>
 <h3 id="appimage"><a class="header" href="#appimage">AppImage</a></h3>
 <p>Install Helix using the Linux <a href="https://appimage.org/">AppImage</a> format.
 Download the official Helix AppImage from the <a href="https://github.com/helix-editor/helix/releases/latest">latest releases</a> page.</p>
