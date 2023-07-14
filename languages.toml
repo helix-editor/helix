@@ -26,7 +26,7 @@ erlang-ls = { command = "erlang_ls" }
 forc = { command = "forc", args = ["lsp"] }
 forth-lsp = { command = "forth-lsp" }
 fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
-fsharp = { command = "fsautocomplete" }
+fsharp-ls = { command = "fsautocomplete", config = { AutomaticWorkspaceInit = true } }
 gleam = { command = "gleam", args = ["lsp"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 idris2-lsp = { command = "idris2-lsp" }
@@ -2646,19 +2646,18 @@ source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "
 
 [[language]]
 name = "fsharp"
-scope="source.fs"
+scope = "source.fs"
 roots = ["sln", "fsproj"]
-injection-regex = "^fsharp$"
+injection-regex = "fsharp"
 file-types = ["fs", "fsx"]
 comment-token = "//"
-indent = { tab-width = 4, unit = " " }
+indent = { tab-width = 4, unit = "    " }
 auto-format = true
-language-server = { command = "fsautocomplete", args = [] }
-config = { AutomaticWorkspaceInit = true }
+language-servers = ["fsharp-ls"]
 
 [[grammar]]
 name = "fsharp"
-source = { git = "https://github.com/Nsidorenco/tree-sitter-fsharp.git", rev = "f77763cdb5ab66a265487905c06e5e46ffce3a95" }
+source = { git = "https://github.com/kaashyapan/tree-sitter-fsharp", rev = "1b5a315e003024db6181744f1d25b8f525732665" }
 
 [[language]]
 name = "t32"
