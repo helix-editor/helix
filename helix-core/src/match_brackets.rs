@@ -117,9 +117,6 @@ fn find_pair(
         node = parent;
     }
     let node = tree.root_node().named_descendant_for_byte_range(pos, pos)?;
-    if node.child_count() != 0 {
-        return None;
-    }
     let node_start = doc.byte_to_char(node.start_byte());
     find_matching_bracket_plaintext(doc.byte_slice(node.byte_range()), pos_ - node_start)
         .map(|pos| pos + node_start)
