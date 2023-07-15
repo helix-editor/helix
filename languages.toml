@@ -26,6 +26,7 @@ erlang-ls = { command = "erlang_ls" }
 forc = { command = "forc", args = ["lsp"] }
 forth-lsp = { command = "forth-lsp" }
 fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
+fsharp-ls = { command = "fsautocomplete", config = { AutomaticWorkspaceInit = true } }
 gleam = { command = "gleam", args = ["lsp"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 idris2-lsp = { command = "idris2-lsp" }
@@ -2660,6 +2661,21 @@ indent = { tab-width = 3, unit = "   " }
 [[grammar]]
 name = "forth"
 source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "304ed77beb113e37af38b20ff14e3c37bf350d10" }
+
+[[language]]
+name = "fsharp"
+scope = "source.fs"
+roots = ["sln", "fsproj"]
+injection-regex = "fsharp"
+file-types = ["fs", "fsx"]
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+auto-format = true
+language-servers = ["fsharp-ls"]
+
+[[grammar]]
+name = "fsharp"
+source = { git = "https://github.com/kaashyapan/tree-sitter-fsharp", rev = "1b5a315e003024db6181744f1d25b8f525732665" }
 
 [[language]]
 name = "t32"
