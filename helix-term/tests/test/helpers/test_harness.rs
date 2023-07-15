@@ -1,44 +1,20 @@
-use std::time::Duration;
+mod validation_context;
 
+use super::{platform_line, AppBuilder, TestApplication};
 use anyhow::bail;
-use crossterm::event::{Event, KeyEvent};
-use helix_core::{test, Selection, Transaction};
-use helix_view::{current_ref, doc, input::parse_macro};
-use tokio_stream::wrappers::UnboundedReceiverStream;
-
-use super::{AppBuilder, TestApplication};
-
-#[derive(Clone, Debug)]
-pub struct TestCase {
-    pub in_text: String,
-    pub in_selection: Selection,
-    pub in_keys: String,
-    pub out_text: String,
-    pub out_selection: Selection,
-}
-
-impl<I, K, O> From<(I, K, O)> for TestCase
-where
-    I: AsRef<str>,
-    K: Into<String>,
-    O: AsRef<str>,
-{
-    fn from((input, keys, output): (I, K, O)) -> Self {
-        let (in_text, in_selection) = test::print(input.as_ref());
-        let (out_text, out_selection) = test::print(output.as_ref());
-
-        TestCase {
-            in_text,
-            in_selection,
-            in_keys: keys.into(),
-            out_text,
-            out_selection,
-        }
-    }
-}
+use crossterm::event::Event;
+use helix_core::{
+    test::{self, Content},
+    Transaction,
+};
+use helix_view::{input::parse_macro, input::KeyEvent};
+use std::{path::PathBuf, time::Duration};
+use tokio::sync::mpsc::UnboundedSender;
+use tui::backend::TerminalEventResult;
+use validation_context::ValidationContext;
 
 #[macro_export]
-macro_rules! test_case {
+macro_rules! test {
     ($config:expr, ($($arg_1:tt)*), ($($arg_2:tt)*), ($($arg_3:tt)*)) => {
         $crate::test::helpers::test_harness::test_with_config($config, (
             $crate::test::helpers::platform_line(&indoc::formatdoc!($($arg_1)*)),
@@ -47,7 +23,7 @@ macro_rules! test_case {
         ))
     };
     ($arg_1:tt, $arg_2:tt, $arg_3:tt) => {
-        $crate::test_case!(
+        $crate::test!(
             $crate::test::helpers::AppBuilder::default(),
             $arg_1,
             $arg_2,
@@ -56,133 +32,209 @@ macro_rules! test_case {
     };
 }
 
-pub async fn test<T: Into<TestCase>>(test_case: T) -> anyhow::Result<()> {
+pub async fn test<T: Into<TestCaseSpec>>(test_case: T) -> anyhow::Result<()> {
     test_with_config(AppBuilder::default(), test_case).await
 }
 
 /// Use this for very simple test cases where there is one input
 /// document, selection, and sequence of key presses, and you just
 /// want to verify the resulting document and selection.
-pub async fn test_with_config<T: Into<TestCase>>(
+pub async fn test_with_config<T: Into<TestCaseSpec>>(
     app_builder: AppBuilder,
-    test_case: T,
+    spec: T,
 ) -> anyhow::Result<()> {
-    let test_case = test_case.into();
+    let spec = spec.into();
+    let input = spec.input.clone();
+    let mut test_harness = TestHarness::default().push_test_case(TestCase {
+        spec,
+        validation_fn: Box::new(|cx| {
+            cx.assert_eq_selection();
+            cx.assert_eq_text_current();
+            cx.assert_app_is_ok();
+        }),
+    });
+    test_harness.app_builder = app_builder;
 
-    test_key_sequence_with_input_text(
-        app_builder,
-        test_case.clone(),
-        &|app| {
-            let doc = doc!(app.editor);
-            assert_eq!(&test_case.out_text, doc.text());
-
-            let mut selections: Vec<_> = doc.selections().values().cloned().collect();
-            assert_eq!(1, selections.len());
-
-            let sel = selections.pop().unwrap();
-            assert_eq!(test_case.out_selection, sel);
-        },
-        false,
-    )
-    .await
-}
-
-pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
-    app_builder: AppBuilder,
-    test_case: T,
-    test_fn: &dyn Fn(&TestApplication),
-    should_exit: bool,
-) -> anyhow::Result<()> {
-    let test_case = test_case.into();
-    let mut app = app_builder.build()?;
-    let (view, doc) = helix_view::current!(app.editor);
-    let sel = doc.selection(view.id).clone();
+    let mut active_test_harness = ActiveTestHarness::from(test_harness);
 
     // replace the initial text with the input text
-    let transaction = Transaction::change_by_selection(doc.text(), &sel, |_| {
-        (0, doc.text().len_chars(), Some((&test_case.in_text).into()))
-    })
-    .with_selection(test_case.in_selection.clone());
+    let (view, doc) = helix_view::current!(active_test_harness.app.editor);
+    doc.apply(
+        &Transaction::change_by_selection(doc.text(), &doc.selection(view.id).clone(), |_| {
+            (0, doc.text().len_chars(), Some((&input.text).into()))
+        })
+        .with_selection(input.selection),
+        view.id,
+    );
 
-    doc.apply(&transaction, view.id);
-
-    test_key_sequences(
-        &mut app,
-        &[(Some(&test_case.in_keys), Some(test_fn))],
-        should_exit,
-    )
-    .await
+    active_test_harness.finish().await
 }
 
-#[allow(clippy::type_complexity)]
-pub async fn test_key_sequences(
-    app: &mut TestApplication,
-    inputs: &[(Option<&str>, Option<&dyn Fn(&TestApplication)>)],
+#[derive(Debug, Default)]
+pub struct TestCaseSpec {
+    input: Content,
+    key_events: Vec<KeyEvent>,
+    expected: Content,
+}
+
+impl<I, K, O> From<(I, K, O)> for TestCaseSpec
+where
+    I: AsRef<str>,
+    K: AsRef<str>,
+    O: AsRef<str>,
+{
+    fn from((input, keys, expected): (I, K, O)) -> Self {
+        Self {
+            input: test::print(input.as_ref()).into(),
+            key_events: parse_macro(keys.as_ref()).unwrap(),
+            expected: test::print(expected.as_ref()).into(),
+        }
+    }
+}
+
+pub struct TestCase {
+    spec: TestCaseSpec,
+    validation_fn: Box<dyn Fn(ValidationContext)>,
+}
+
+impl TestCase {
+    pub fn with_keys(mut self, str: &str) -> Self {
+        self.spec.key_events = parse_macro(str).unwrap();
+        self
+    }
+
+    pub fn with_expected_text(mut self, str: &str) -> Self {
+        self.spec.expected.text = platform_line(str);
+        self
+    }
+
+    pub fn with_validation_fn(mut self, f: Box<dyn Fn(ValidationContext)>) -> Self {
+        self.validation_fn = f;
+        self
+    }
+}
+
+impl Default for TestCase {
+    fn default() -> Self {
+        Self {
+            spec: Default::default(),
+            validation_fn: Box::new(|_| {}),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct TestHarness {
+    app_builder: AppBuilder,
+    test_cases: Vec<TestCase>,
     should_exit: bool,
-) -> anyhow::Result<()> {
-    const TIMEOUT: Duration = Duration::from_millis(500);
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    let mut rx_stream = UnboundedReceiverStream::new(rx);
+}
 
-    for (input_index, (in_keys, test_fn)) in inputs.iter().enumerate() {
-        let (view, doc) = current_ref!(app.editor);
-        let state = test::plain(doc.text().slice(..), doc.selection(view.id));
+impl TestHarness {
+    pub fn with_file<P: Into<PathBuf>>(mut self, path: P) -> Self {
+        self.app_builder = self.app_builder.with_file(path);
+        self
+    }
 
-        log::debug!("executing test with document state:\n\n-----\n\n{}", state);
+    pub fn push_test_case(mut self, test_case: TestCase) -> Self {
+        self.test_cases.push(test_case);
+        self
+    }
 
-        if let Some(in_keys) = in_keys {
-            for key_event in parse_macro(in_keys)?.into_iter() {
-                let key = Event::Key(KeyEvent::from(key_event));
-                log::trace!("sending key: {:?}", key);
-                tx.send(Ok(key))?;
+    pub fn should_exit(mut self) -> Self {
+        self.should_exit = true;
+        self
+    }
+
+    pub async fn tick(self) -> ActiveTestHarness {
+        ActiveTestHarness::from(self).tick().await
+    }
+
+    pub async fn run(self) -> anyhow::Result<()> {
+        ActiveTestHarness::from(self).finish().await
+    }
+}
+
+pub struct ActiveTestHarness {
+    app: TestApplication,
+    event_stream_tx: UnboundedSender<TerminalEventResult>,
+    test_cases: Vec<TestCase>,
+    should_exit: bool,
+}
+
+impl From<TestHarness> for ActiveTestHarness {
+    fn from(test_harness: TestHarness) -> Self {
+        let (app, tx) = test_harness.app_builder.build().unwrap();
+        Self {
+            app,
+            event_stream_tx: tx,
+            test_cases: test_harness.test_cases,
+            should_exit: test_harness.should_exit,
+        }
+    }
+}
+
+impl ActiveTestHarness {
+    pub async fn tick(mut self) -> Self {
+        self.app.event_loop().await;
+        self
+    }
+
+    pub async fn finish(mut self) -> anyhow::Result<()> {
+        for (input_index, test_case) in self.test_cases.iter().enumerate() {
+            // TEMP: event_loop call will otherwise stall
+            if test_case.spec.key_events.is_empty() {
+                continue;
             }
-        }
 
-        let app_exited = !app.event_loop(&mut rx_stream).await;
-
-        if !app_exited {
-            let (view, doc) = current_ref!(app.editor);
-            let state = test::plain(doc.text().slice(..), doc.selection(view.id));
-
-            log::debug!(
-                "finished running test with document state:\n\n-----\n\n{}",
-                state
-            );
-        }
-
-        if app_exited {
-            if input_index < inputs.len() - 1 {
-                bail!("Application exited before all test functions could run");
+            for key_event in test_case.spec.key_events.iter() {
+                let key = Event::Key((*key_event).into());
+                self.event_stream_tx.send(Ok(key))?;
             }
 
-            if !should_exit {
-                bail!("Application wans't expected not to exit.");
+            let app_exited = !self.app.event_loop().await;
+
+            if app_exited {
+                if input_index < self.test_cases.len() - 1 {
+                    bail!("Application exited before all test cases were run.");
+                }
+
+                if !self.should_exit {
+                    bail!("Application wasn't expected to exit.");
+                }
             }
+
+            (test_case.validation_fn)(ValidationContext {
+                spec: &test_case.spec,
+                app: &self.app,
+            })
         }
 
-        if let Some(test) = test_fn {
-            test(app);
-        };
-    }
+        const TIMEOUT: Duration = Duration::from_millis(500);
+        if !self.should_exit {
+            // Workaround for sending close event.
+            for key_event in parse_macro("<esc>:q!<ret>")?.into_iter() {
+                self.event_stream_tx
+                    .send(Ok(Event::Key(key_event.into())))?;
+            }
 
-    if !should_exit {
-        for key_event in parse_macro("<esc>:q!<ret>")?.into_iter() {
-            tx.send(Ok(Event::Key(KeyEvent::from(key_event))))?;
+            let event_loop = self.app.event_loop();
+            tokio::time::timeout(TIMEOUT, event_loop).await?;
         }
 
-        let event_loop = app.event_loop(&mut rx_stream);
-        tokio::time::timeout(TIMEOUT, event_loop).await?;
+        // Close
+        {
+            let close_errs = self.app.close().await;
+
+            if close_errs.is_empty() {
+                return Ok(());
+            }
+
+            for err in close_errs {
+                log::error!("Close error: {}", err);
+            }
+
+            bail!("Error closing app");
+        }
     }
-
-    let close_errs = app.close().await;
-
-    if close_errs.is_empty() {
-        return Ok(());
-    }
-
-    for err in close_errs {
-        log::error!("Close error: {}", err);
-    }
-
-    bail!("Error closing app");
 }

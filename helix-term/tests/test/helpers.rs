@@ -4,8 +4,9 @@ pub mod test_harness;
 
 pub use app_builder::AppBuilder;
 
+use super::backend::TestBackend;
 use helix_term::application::Application;
-use tui::backend::TestBackend;
+use std::{fs::File, io::Read};
 
 pub type TestApplication = Application<TestBackend>;
 
@@ -24,4 +25,10 @@ pub fn platform_line(input: &str) -> String {
     }
 
     output
+}
+
+pub fn assert_eq_contents(mut file: File, str: &str) {
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    assert_eq!(contents, platform_line(str));
 }

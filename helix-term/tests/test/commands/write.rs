@@ -1,140 +1,117 @@
-use helpers::{
-    test_harness::{test_key_sequence_with_input_text, test_key_sequences},
-    AppBuilder,
-};
 use std::{
+    fs::File,
     io::{Read, Seek, Write},
     ops::RangeInclusive,
 };
 
-use helix_core::{diagnostic::Severity, path::get_normalized_path};
 use helix_view::doc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::test::helpers::{
+    assert_eq_contents,
     file::{assert_file_has_content, new_readonly_tempfile},
-    test_harness::test_with_config,
 };
 
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
-async fn test_write_quit_fail() -> anyhow::Result<()> {
-    let file = new_readonly_tempfile()?;
-    let mut app = helpers::AppBuilder::default()
-        .with_file(file.path(), None)
-        .build()?;
+async fn test_write_scratch() -> anyhow::Result<()> {
+    test_scratch(false).await
+}
 
-    test_key_sequences(
-        &mut app,
-        &[(
-            Some("ihello<esc>:wq<ret>"),
-            Some(&|app| {
-                let mut docs: Vec<_> = app.editor.documents().collect();
-                assert_eq!(1, docs.len());
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_quit_scratch() -> anyhow::Result<()> {
+    test_scratch(true).await
+}
 
-                let doc = docs.pop().unwrap();
-                assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
-                assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
-            }),
-        )],
-        false,
-    )
-    .await
+async fn test_scratch(should_quit: bool) -> anyhow::Result<()> {
+    let q = match should_quit {
+        true => "q",
+        false => "",
+    };
+
+    TestHarness::default()
+        .push_test_case(
+            TestCase::default()
+                .with_keys(&format!("ihello<esc>:w{}<ret>", q))
+                .with_validation_fn(Box::new(move |cx| {
+                    cx.assert_document_count(1);
+                    cx.assert_app_is_err();
+                    assert!(doc!(cx.app.editor).path().is_none());
+                })),
+        )
+        .run()
+        .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
-    test_key_sequences(
-        &mut helpers::AppBuilder::default().build()?,
-        &[
-            (
-                None,
-                Some(&|app| {
-                    assert_eq!(1, app.editor.documents().count());
-                    assert!(!app.editor.is_err());
-                }),
-            ),
-            (
-                Some("ihello<esc>:new<ret>"),
-                Some(&|app| {
-                    assert_eq!(2, app.editor.documents().count());
-                    assert!(!app.editor.is_err());
-                }),
-            ),
-            (
-                Some(":buffer<minus>close<ret>"),
-                Some(&|app| {
-                    assert_eq!(1, app.editor.documents().count());
-                    assert!(!app.editor.is_err());
-                }),
-            ),
-        ],
-        false,
-    )
-    .await?;
+    TestHarness::default()
+        .push_test_case(TestCase::default().with_validation_fn(Box::new(|cx| {
+            cx.assert_document_count(1);
+            cx.assert_app_is_ok();
+        })))
+        .push_test_case(
+            TestCase::default()
+                .with_keys("ihello<esc>:new<ret>")
+                .with_validation_fn(Box::new(|cx| {
+                    cx.assert_document_count(2);
+                    cx.assert_app_is_ok();
+                })),
+        )
+        .push_test_case(
+            TestCase::default()
+                .with_keys(":buffer<minus>close<ret>")
+                .with_validation_fn(Box::new(|cx| {
+                    cx.assert_document_count(1);
+                    cx.assert_app_is_ok();
+                })),
+        )
+        .run()
+        .await?;
 
     // verify if writes are queued up, it finishes them before closing the buffer
-    let mut file = tempfile::NamedTempFile::new()?;
-    let mut command = String::new();
+    let file = tempfile::NamedTempFile::new()?;
+    let file_handle = File::open(file.path())?;
     const RANGE: RangeInclusive<i32> = 1..=1000;
 
+    let mut command = String::new();
     for i in RANGE {
-        let cmd = format!("%c{}<esc>:w!<ret>", i);
-        command.push_str(&cmd);
+        command.push_str(&format!("%c{}<ret><esc>:w!<ret>", i));
     }
-
     command.push_str(":buffer<minus>close<ret>");
 
-    let mut app = helpers::AppBuilder::default()
-        .with_file(file.path(), None)
-        .build()?;
+    TestHarness::default()
+        .with_file(file.path())
+        .push_test_case(
+            TestCase::default()
+                .with_keys(&command)
+                .with_validation_fn(Box::new(move |cx| {
+                    cx.assert_app_is_ok();
+                    let doc = cx.app.editor.document_by_path(file.path());
+                    assert!(doc.is_none(), "found doc: {:?}", doc);
+                })),
+        )
+        .run()
+        .await?;
 
-    test_key_sequences(
-        &mut app,
-        &[(
-            Some(&command),
-            Some(&|app| {
-                assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());
+    assert_eq_contents(file_handle, &RANGE.end().to_string());
 
-                let doc = app.editor.document_by_path(file.path());
-                assert!(doc.is_none(), "found doc: {:?}", doc);
-            }),
-        )],
-        false,
-    )
-    .await?;
-
-    assert_file_has_content(file.as_file_mut(), &RANGE.end().to_string())
+    Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write() -> anyhow::Result<()> {
-    let mut file = tempfile::NamedTempFile::new()?;
-    let mut app = helpers::AppBuilder::default()
-        .with_file(file.path(), None)
-        .build()?;
+    let file = tempfile::NamedTempFile::new()?;
+    let file_handle = File::open(file.path())?;
+    const CONTENT: &str = "lorem ipsum";
 
-    test_key_sequences(
-        &mut app,
-        &[(
-            Some("ithe gostak distims the doshes<ret><esc>:w<ret>"),
-            None,
-        )],
-        false,
-    )
-    .await?;
+    TestHarness::default()
+        .with_file(file.path())
+        .push_test_case(TestCase::default().with_keys(&format!("i{}<ret><esc>:w<ret>", CONTENT)))
+        .run()
+        .await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
-
-    let mut file_content = String::new();
-    file.as_file_mut().read_to_string(&mut file_content)?;
-
-    assert_eq!(
-        helpers::platform_line("the gostak distims the doshes"),
-        file_content
-    );
+    assert_eq_contents(file_handle, CONTENT);
 
     Ok(())
 }
@@ -142,65 +119,39 @@ async fn test_write() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_overwrite_protection() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
-    let mut app = helpers::AppBuilder::default()
-        .with_file(file.path(), None)
-        .build()?;
 
-    app.event_loop(&mut UnboundedReceiverStream::new(
-        tokio::sync::mpsc::unbounded_channel().1,
-    ))
-    .await;
+    let active_test_harness = TestHarness::default()
+        .with_file(file.path())
+        .push_test_case(TestCase::default().with_keys(":x<ret>"))
+        .tick()
+        .await;
 
-    file.as_file_mut()
-        .write_all(helpers::platform_line("extremely important content").as_bytes())?;
+    const CONTENT: &str = "extremely important content";
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
+    file.write_all(helpers::platform_line(CONTENT).as_bytes())?;
 
-    test_key_sequences(&mut app, &[(Some(":x<ret>"), None)], false).await?;
-
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
+    active_test_harness.finish().await?;
 
     file.rewind()?;
-    let mut file_content = String::new();
-    file.as_file_mut().read_to_string(&mut file_content)?;
-
-    assert_eq!(
-        helpers::platform_line("extremely important content"),
-        file_content
-    );
+    assert_eq_contents(file.reopen().unwrap(), CONTENT);
 
     Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit() -> anyhow::Result<()> {
-    let mut file = tempfile::NamedTempFile::new()?;
-    let mut app = helpers::AppBuilder::default()
-        .with_file(file.path(), None)
-        .build()?;
+    let file = tempfile::NamedTempFile::new()?;
+    let file_handle = File::open(file.path())?;
+    const CONTENT: &str = "lorem ipsum";
 
-    test_key_sequences(
-        &mut app,
-        &[(
-            Some("ithe gostak distims the doshes<ret><esc>:wq<ret>"),
-            None,
-        )],
-        true,
-    )
-    .await?;
+    TestHarness::default()
+        .with_file(file.path())
+        .should_exit()
+        .push_test_case(TestCase::default().with_keys(&format!("i{}<ret><esc>:wq<ret>", CONTENT)))
+        .run()
+        .await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
-
-    let mut file_content = String::new();
-    file.as_file_mut().read_to_string(&mut file_content)?;
-
-    assert_eq!(
-        helpers::platform_line("the gostak distims the doshes"),
-        file_content
-    );
+    assert_eq_contents(file_handle, CONTENT);
 
     Ok(())
 }
@@ -208,18 +159,18 @@ async fn test_write_quit() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_concurrent() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
-    let mut command = String::new();
     const RANGE: RangeInclusive<i32> = 1..=1000;
-    let mut app = helpers::AppBuilder::default()
-        .with_file(file.path(), None)
-        .build()?;
 
+    let mut command = String::new();
     for i in RANGE {
-        let cmd = format!("%c{}<esc>:w!<ret>", i);
-        command.push_str(&cmd);
+        command.push_str(&format!("%c{}<esc>:w!<ret>", i));
     }
 
-    test_key_sequences(&mut app, &[(Some(&command), None)], false).await?;
+    TestHarness::default()
+        .with_file(file.path())
+        .push_test_case(TestCase::default().with_keys(&command))
+        .run()
+        .await?;
 
     file.as_file_mut().flush()?;
     file.as_file_mut().sync_all()?;
@@ -234,84 +185,63 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
     let file = new_readonly_tempfile()?;
-    let mut app = helpers::AppBuilder::default()
-        .with_file(file.path(), None)
-        .build()?;
 
-    test_key_sequences(
-        &mut app,
-        &[
-            (
-                None,
-                Some(&|app| {
-                    let doc = doc!(app.editor);
-                    assert!(!doc.is_modified());
-                }),
-            ),
-            (
-                Some("ihello<esc>"),
-                Some(&|app| {
-                    let doc = doc!(app.editor);
-                    assert!(doc.is_modified());
-                }),
-            ),
-            (
-                Some(":w<ret>"),
-                Some(&|app| {
-                    assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
-
-                    let doc = doc!(app.editor);
-                    assert!(doc.is_modified());
-                }),
-            ),
-        ],
-        false,
-    )
-    .await
+    TestHarness::default()
+        .with_file(file.path())
+        .push_test_case(
+            TestCase::default()
+                .with_validation_fn(Box::new(|cx| assert!(!cx.newest_doc_is_modified()))),
+        )
+        .push_test_case(
+            TestCase::default()
+                .with_keys("ihello<esc>")
+                .with_validation_fn(Box::new(|cx| {
+                    cx.assert_app_is_ok();
+                    assert!(cx.newest_doc_is_modified())
+                })),
+        )
+        .push_test_case(
+            TestCase::default()
+                .with_keys(":w<ret>")
+                .with_validation_fn(Box::new(|cx| {
+                    cx.assert_app_is_err();
+                    assert!(cx.newest_doc_is_modified())
+                })),
+        )
+        .run()
+        .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
-    let mut file = tempfile::NamedTempFile::new()?;
+    let file = tempfile::NamedTempFile::new()?;
+    let file_handle = File::open(file.path())?;
+    const CONTENT: &str = "hello";
 
-    test_key_sequences(
-        &mut AppBuilder::default().build()?,
-        &[(
-            Some(format!("ihello<esc>:w {}<ret>", file.path().to_string_lossy()).as_ref()),
-            Some(&|app| {
-                assert!(!app.editor.is_err());
+    TestHarness::default()
+        .with_file(file.path())
+        .push_test_case(
+            TestCase::default()
+                .with_keys(
+                    format!(
+                        "i{}<ret><esc>:w {}<ret>",
+                        CONTENT,
+                        file.path().to_string_lossy()
+                    )
+                    .as_ref(),
+                )
+                .with_validation_fn(Box::new(move |cx| {
+                    cx.assert_app_is_ok();
+                    cx.assert_document_count(1);
+                    cx.assert_eq_document_path(file.path())
+                })),
+        )
+        .run()
+        .await?;
 
-                let mut docs: Vec<_> = app.editor.documents().collect();
-                assert_eq!(1, docs.len());
+    assert_eq_contents(file_handle, CONTENT);
 
-                let doc = docs.pop().unwrap();
-                assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
-            }),
-        )],
-        false,
-    )
-    .await?;
-
-    assert_file_has_content(file.as_file_mut(), &helpers::platform_line("hello"))
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn test_write_scratch_no_path_fails() -> anyhow::Result<()> {
-    test_key_sequence_with_input_text(
-        AppBuilder::default(),
-        ("#[\n|]#", "ihello<esc>:w<ret>", "hello#[\n|]#"),
-        &|app| {
-            assert!(app.editor.is_err());
-
-            let mut docs: Vec<_> = app.editor.documents().collect();
-            assert_eq!(1, docs.len());
-
-            let doc = docs.pop().unwrap();
-            assert_eq!(None, doc.path());
-        },
-        false,
-    )
-    .await
+    Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -324,11 +254,15 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
             formatter = { command = "bash", args = [ "-c", "exit 1" ] }
         "#};
 
-    test_with_config(
-        helpers::AppBuilder::default()
-            .with_file(file.path(), None)
-            .lang_config_overrides(lang_conf.into()),
-        ("#[l|]#et foo = 0;\n", ":w<ret>", "#[l|]#et foo = 0;\n"),
+    let app_config = helpers::AppBuilder::default()
+        .with_file(file.path())
+        .lang_config_overrides(lang_conf.into());
+
+    test!(
+        app_config,
+        ("#[l|]#et foo = 0;"),
+        (":w<ret>"),
+        ("#[l|]#et foo = 0;")
     )
     .await?;
 
@@ -337,81 +271,60 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_new_path() -> anyhow::Result<()> {
-    let mut file1 = tempfile::NamedTempFile::new().unwrap();
-    let mut file2 = tempfile::NamedTempFile::new().unwrap();
-    let mut app = helpers::AppBuilder::default()
-        .with_file(file1.path(), None)
-        .build()?;
+    let file1 = tempfile::NamedTempFile::new().unwrap();
+    let file2 = tempfile::NamedTempFile::new().unwrap();
 
-    test_key_sequences(
-        &mut app,
-        &[
-            (
-                Some("ii can eat glass, it will not hurt me<ret><esc>:w<ret>"),
-                Some(&|app| {
-                    let doc = doc!(app.editor);
-                    assert!(!app.editor.is_err());
-                    assert_eq!(&get_normalized_path(file1.path()), doc.path().unwrap());
-                }),
-            ),
-            (
-                Some(&format!(":w {}<ret>", file2.path().to_string_lossy())),
-                Some(&|app| {
-                    let doc = doc!(app.editor);
-                    assert!(!app.editor.is_err());
-                    assert_eq!(&get_normalized_path(file2.path()), doc.path().unwrap());
-                    assert!(app.editor.document_by_path(file1.path()).is_none());
-                }),
-            ),
-        ],
-        false,
-    )
-    .await?;
+    let file_handle1 = File::open(file1.path()).unwrap();
+    let file_handle2 = File::open(file2.path()).unwrap();
 
-    assert_file_has_content(
-        file1.as_file_mut(),
-        &helpers::platform_line("i can eat glass, it will not hurt me\n"),
-    )?;
+    const CONTENT: &str = "i can eat glass, it will not hurt me";
 
-    assert_file_has_content(
-        file2.as_file_mut(),
-        &helpers::platform_line("i can eat glass, it will not hurt me\n"),
-    )
+    TestHarness::default()
+        .with_file(file1.path())
+        .push_test_case(
+            TestCase::default()
+                .with_keys(&format!("i{}<ret><esc>:w<ret>", CONTENT))
+                .with_validation_fn(Box::new(move |cx| {
+                    cx.assert_app_is_ok();
+                    cx.assert_eq_document_path(file1.path());
+                })),
+        )
+        .push_test_case(
+            TestCase::default()
+                .with_keys(&format!(":w {}<ret>", file2.path().to_string_lossy()))
+                .with_validation_fn(Box::new(move |cx| {
+                    cx.assert_app_is_ok();
+                    cx.assert_eq_document_path(file2.path());
+                })),
+        )
+        .run()
+        .await?;
+
+    assert_eq_contents(file_handle1, CONTENT);
+    assert_eq_contents(file_handle2, CONTENT);
+
+    Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_fail_new_path() -> anyhow::Result<()> {
     let file = new_readonly_tempfile()?;
 
-    test_key_sequences(
-        &mut AppBuilder::default().build()?,
-        &[
-            (
-                None,
-                Some(&|app| {
-                    let doc = doc!(app.editor);
-                    assert_ne!(
-                        Some(&Severity::Error),
-                        app.editor.get_status().map(|status| status.1)
-                    );
-                    assert_eq!(None, doc.path());
-                }),
-            ),
-            (
-                Some(&format!(":w {}<ret>", file.path().to_string_lossy())),
-                Some(&|app| {
-                    let doc = doc!(app.editor);
-                    assert_eq!(
-                        Some(&Severity::Error),
-                        app.editor.get_status().map(|status| status.1)
-                    );
-                    assert_eq!(None, doc.path());
-                }),
-            ),
-        ],
-        false,
-    )
-    .await
+    TestHarness::default()
+        .push_test_case(TestCase::default().with_validation_fn(Box::new(move |cx| {
+            cx.assert_app_is_ok();
+            assert!(doc!(cx.app.editor).path().is_none())
+        })))
+        .push_test_case(
+            TestCase::default()
+                .with_keys(&format!(":w {}<ret>", file.path().to_string_lossy()))
+                .with_validation_fn(Box::new(move |cx| {
+                    cx.assert_app_is_err();
+                    assert!(doc!(cx.app.editor).path().is_none())
+                })),
+        )
+        .run()
+        .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -433,15 +346,14 @@ async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
 
     file.as_file_mut().write_all(file_content)?;
 
-    test_key_sequences(
-        &mut AppBuilder::default().build()?,
-        &[(
-            Some(&format!(":o {}<ret>:x<ret>", file.path().to_string_lossy())),
-            None,
-        )],
-        true,
-    )
-    .await?;
+    TestHarness::default()
+        .should_exit()
+        .push_test_case(
+            TestCase::default()
+                .with_keys(&format!(":o {}<ret>:x<ret>", file.path().to_string_lossy())),
+        )
+        .run()
+        .await?;
 
     file.rewind()?;
     let mut new_file_content: Vec<u8> = Vec::new();

@@ -2,6 +2,7 @@ use std::io;
 
 use crate::{buffer::Cell, terminal::Config};
 
+use futures_util::Stream;
 use helix_view::graphics::{CursorKind, Rect};
 
 #[cfg(feature = "crossterm")]
@@ -9,10 +10,13 @@ mod crossterm;
 #[cfg(feature = "crossterm")]
 pub use self::crossterm::CrosstermBackend;
 
-mod test;
-pub use self::test::TestBackend;
+use ::crossterm::event::Event;
+
+pub type TerminalEventResult = Result<Event, ::crossterm::ErrorKind>;
 
 pub trait Backend {
+    type Stream: Stream<Item = TerminalEventResult> + Unpin;
+
     fn claim(&mut self, config: Config) -> Result<(), io::Error>;
     fn reconfigure(&mut self, config: Config) -> Result<(), io::Error>;
     fn restore(&mut self, config: Config) -> Result<(), io::Error>;
@@ -27,4 +31,5 @@ pub trait Backend {
     fn clear(&mut self) -> Result<(), io::Error>;
     fn size(&self) -> Result<Rect, io::Error>;
     fn flush(&mut self) -> Result<(), io::Error>;
+    fn event_stream(&mut self) -> &mut Self::Stream;
 }

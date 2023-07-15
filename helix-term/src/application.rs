@@ -1,5 +1,5 @@
 use arc_swap::{access::Map, ArcSwap};
-use futures_util::{Stream, StreamExt};
+use futures_util::StreamExt;
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
@@ -34,10 +34,7 @@ use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
 use anyhow::{anyhow, Context, Error};
 
-use crossterm::{
-    event::{Event as CrosstermEvent, EventStream},
-    tty::IsTty,
-};
+use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
@@ -230,10 +227,8 @@ impl<B: Backend> Application<B> {
         self.terminal.draw(pos, kind).unwrap();
     }
 
-    pub async fn event_loop<S>(&mut self, input_stream: &mut S) -> bool
-    where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
-    {
+    /// TEMP: returns false if application was closed
+    pub async fn event_loop(&mut self) -> bool {
         loop {
             if self.editor.should_close() {
                 return false;
@@ -247,7 +242,7 @@ impl<B: Backend> Application<B> {
                         return false;
                     };
                 }
-                Some(event) = input_stream.next() => {
+                Some(event) = self.terminal.backend_mut().event_stream().next() => {
                     self.handle_terminal_events(event).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
@@ -1057,7 +1052,7 @@ impl<B: Backend> Application<B> {
         }));
 
         self.render().await;
-        while self.event_loop(&mut EventStream::new()).await {}
+        self.event_loop().await;
 
         let close_errs = self.close().await;
 

@@ -1683,6 +1683,7 @@ impl Editor {
         .map(|_| ())
     }
 
+    /// Called in the application event loop.
     pub async fn wait_event(&mut self) -> EditorEvent {
         // the loop only runs once or twice and would be better implemented with a recursion + const generic
         // however due to limitations with async functions that can not be implemented right now
@@ -1705,7 +1706,7 @@ impl Editor {
                 }
 
                 _ = self.redraw_handle.0.notified() => {
-                    if  !self.needs_redraw{
+                    if !self.needs_redraw {
                         self.needs_redraw = true;
                         let timeout = Instant::now() + Duration::from_millis(33);
                         if timeout < self.idle_timer.deadline(){

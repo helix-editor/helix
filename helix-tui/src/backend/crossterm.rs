@@ -3,7 +3,7 @@ use crossterm::{
     cursor::{Hide, MoveTo, SetCursorStyle, Show},
     event::{
         DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, KeyboardEnhancementFlags,
+        EnableFocusChange, EnableMouseCapture, EventStream, KeyboardEnhancementFlags,
         PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
     },
     execute, queue,
@@ -60,6 +60,7 @@ impl Capabilities {
 }
 
 pub struct CrosstermBackend<W: Write> {
+    event_stream: EventStream,
     buffer: W,
     capabilities: Capabilities,
     supports_keyboard_enhancement_protocol: OnceCell<bool>,
@@ -72,6 +73,7 @@ where
 {
     pub fn new(buffer: W, config: &EditorConfig) -> CrosstermBackend<W> {
         CrosstermBackend {
+            event_stream: EventStream::new(),
             buffer,
             capabilities: Capabilities::from_env_or_default(config),
             supports_keyboard_enhancement_protocol: OnceCell::new(),
@@ -114,6 +116,8 @@ impl<W> Backend for CrosstermBackend<W>
 where
     W: Write,
 {
+    type Stream = EventStream;
+
     fn claim(&mut self, config: Config) -> io::Result<()> {
         terminal::enable_raw_mode()?;
         execute!(
@@ -291,6 +295,10 @@ where
 
     fn flush(&mut self) -> io::Result<()> {
         self.buffer.flush()
+    }
+
+    fn event_stream(&mut self) -> &mut Self::Stream {
+        &mut self.event_stream
     }
 }
 

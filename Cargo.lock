@@ -1356,6 +1356,7 @@ dependencies = [
  "bitflags 2.3.3",
  "cassowary",
  "crossterm",
+ "futures-util",
  "helix-core",
  "helix-view",
  "log",

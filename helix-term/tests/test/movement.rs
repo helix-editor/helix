@@ -1,24 +1,12 @@
 use crate::{
-    test::helpers::{
-        file::temp_file_with_contents,
-        test_harness::{test, TestCase},
-        AppBuilder,
-    },
-    test_case,
+    test,
+    test::helpers::{file::temp_file_with_contents, test_harness::test, AppBuilder},
 };
 use helix_core::Selection;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_mode_cursor_position() -> anyhow::Result<()> {
-    test(TestCase {
-        in_text: String::new(),
-        in_selection: Selection::single(0, 0),
-        in_keys: "i".into(),
-        out_text: String::new(),
-        out_selection: Selection::single(0, 0),
-    })
-    .await?;
-
+    test(("#[|]#", "i", "#[|]#")).await?;
     test(("#[\n|]#", "i", "#[|\n]#")).await?;
     test(("#[\n|]#", "i<esc>", "#[|\n]#")).await?;
     test(("#[\n|]#", "i<esc>i", "#[|\n]#")).await
@@ -28,7 +16,7 @@ async fn insert_mode_cursor_position() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
     test(("#[f|]#oo\n", "vll<A-;><esc>", "#[|foo]#\n")).await?;
-    test_case!(
+    test!(
         ("
             #[f|]#oo
             #(b|)#ar
@@ -41,7 +29,7 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
     )
     .await?;
 
-    test_case!(
+    test!(
         ("
             #[f|]#oo
             #(b|)#ar
@@ -54,7 +42,7 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
     )
     .await?;
 
-    test_case!(
+    test!(
         ("
             #[f|]#oo
             #(b|)#ar
@@ -369,7 +357,7 @@ async fn surround_around_pair() -> anyhow::Result<()> {
 async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
     let test = |content: &str, expected_sel: Selection| -> anyhow::Result<()> {
         let file = temp_file_with_contents(content)?;
-        let mut app = AppBuilder::default().with_file(file.path(), None).build()?;
+        let (mut app, _) = AppBuilder::default().with_file(file.path()).build()?;
 
         let (view, doc) = helix_view::current!(app.editor);
         let sel = doc.selection(view.id).clone();
@@ -386,16 +374,16 @@ async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn cursor_position_append_eof() -> anyhow::Result<()> {
     // Selection is forwards
-    test_case!(("#[foo|]#"), ("abar<esc>"), ("#[foobar|]#\n")).await?;
+    test!(("#[foo|]#"), ("abar<esc>"), ("#[foobar|]#\n")).await?;
 
     // Selection is backwards
-    test_case!(("#[|foo]#"), ("abar<esc>"), ("#[foobar|]#\n")).await
+    test!(("#[|foo]#"), ("abar<esc>"), ("#[foobar|]#\n")).await
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::Result<()> {
-    test_case!(
-        AppBuilder::default().with_file("foo.rs", None),
+    test!(
+        AppBuilder::default().with_file("foo.rs"),
         ("
             #[/|]#// Increments
             fn inc(x: usize) -> usize {{ x + 1 }}
@@ -415,8 +403,8 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
 
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Result<()> {
-    test_case!(
-        AppBuilder::default().with_file("foo.rs", None),
+    test!(
+        AppBuilder::default().with_file("foo.rs"),
         ("
             /// Increments
             #[fn inc(x: usize) -> usize {{ x + 1 }}
@@ -437,8 +425,8 @@ async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Res
 #[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> anyhow::Result<()> {
     // Note: the anchor stays put and the head moves back.
-    test_case!(
-        AppBuilder::default().with_file("foo.rs", None),
+    test!(
+        AppBuilder::default().with_file("foo.rs"),
         ("
             /// Increments
             fn inc(x: usize) -> usize {{ x + 1 }}
@@ -459,8 +447,8 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
     )
     .await?;
 
-    test_case!(
-        AppBuilder::default().with_file("foo.rs", None),
+    test!(
+        AppBuilder::default().with_file("foo.rs"),
         ("
             /// Increments
             fn inc(x: usize) -> usize {{ x + 1 }}
