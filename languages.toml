@@ -716,7 +716,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "206c7
 name = "bash"
 scope = "source.bash"
 injection-regex = "(shell|bash|zsh|sh)"
-file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", ".zimrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc", ".bash_aliases"]
+file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", ".zimrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc", ".bash_aliases", "Renviron", ".Renviron"]
 shebangs = ["sh", "bash", "dash", "zsh"]
 roots = []
 comment-token = "#"
@@ -757,7 +757,7 @@ source = { git = "https://github.com/gbprod/tree-sitter-twig", rev = "807b293fec
 name = "latex"
 scope = "source.tex"
 injection-regex = "tex"
-file-types = ["tex", "sty", "cls"]
+file-types = ["tex", "sty", "cls", "Rd"]
 roots = []
 comment-token = "%"
 language-servers = [ "texlab" ]
@@ -1325,7 +1325,7 @@ source = { git = "https://github.com/the-mikedavis/tree-sitter-git-rebase", rev 
 name = "regex"
 scope = "source.regex"
 injection-regex = "regex"
-file-types = ["regex"]
+file-types = ["regex", ".Rbuildignore"]
 roots = []
 
 [[grammar]]
@@ -1556,7 +1556,7 @@ source = { git = "https://github.com/Hubro/tree-sitter-robot", rev = "f1142bfaa6
 name = "r"
 scope = "source.r"
 injection-regex = "(r|R)"
-file-types = ["r", "R"]
+file-types = ["r", "R", ".Rprofile", "Rprofile.site"]
 shebangs = ["r", "R"]
 roots = []
 comment-token = "#"
