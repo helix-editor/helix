@@ -47,8 +47,10 @@ pub fn find_matching_bracket(syntax: &Syntax, doc: RopeSlice, pos: usize) -> Opt
 //
 // If no surrounding scope is found, the function returns `None`.
 #[must_use]
-pub fn find_matching_bracket_fuzzy(syntax: &Syntax, doc: RopeSlice, pos: usize) -> Option<usize> {
-    find_pair(syntax, doc, pos, true)
+pub fn find_matching_bracket_fuzzy(syntax: &Syntax, doc: RopeSlice, pos_: usize) -> Option<usize> {
+    let pos = doc.char_to_byte(pos_);
+    let traverse_parents = !is_valid_bracket(doc.char(pos));
+    find_pair(syntax, doc, pos_, traverse_parents)
 }
 
 fn find_pair(
