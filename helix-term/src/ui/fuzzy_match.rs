@@ -140,7 +140,6 @@ enum QueryAtomKind {
 
 #[derive(Default)]
 pub struct FuzzyQuery {
-    first_fuzzy_atom: Option<String>,
     query_atoms: Vec<QueryAtom>,
 }
 
@@ -178,56 +177,32 @@ impl FuzzyQuery {
     }
 
     pub fn new(query: &str) -> FuzzyQuery {
-        let mut first_fuzzy_query = None;
         let query_atoms = query_atoms(query)
-            .filter_map(|atom| {
-                let atom = QueryAtom::new(atom)?;
-                if atom.kind == QueryAtomKind::Fuzzy && first_fuzzy_query.is_none() {
-                    first_fuzzy_query = Some(atom.atom);
-                    None
-                } else {
-                    Some(atom)
-                }
-            })
+            .filter_map(|atom| Some(QueryAtom::new(atom)?))
             .collect();
-        FuzzyQuery {
-            first_fuzzy_atom: first_fuzzy_query,
-            query_atoms,
-        }
+        FuzzyQuery { query_atoms }
     }
 
     pub fn fuzzy_match(&self, item: &str, matcher: &Matcher) -> Option<i64> {
-        // use the rank of the first fuzzzy query for the rank, because merging ranks is not really possible
-        // this behaviour matches fzf and skim
-        let score = self
-            .first_fuzzy_atom
-            .as_ref()
-            .map_or(Some(0), |atom| matcher.fuzzy_match(item, atom))?;
-        if self
-            .query_atoms
-            .iter()
-            .any(|atom| !atom.matches(matcher, item))
-        {
-            return None;
+        let mut total = 0;
+        for atom in &self.query_atoms {
+            if !atom.matches(matcher, item) {
+                return None;
+            }
+            total += matcher.fuzzy_match(item, &atom.atom)?;
         }
-        Some(score)
+        Some(total)
     }
 
     pub fn fuzzy_indices(&self, item: &str, matcher: &Matcher) -> Option<(i64, Vec<usize>)> {
-        let (score, mut indices) = self.first_fuzzy_atom.as_ref().map_or_else(
-            || Some((0, Vec::new())),
-            |atom| matcher.fuzzy_indices(item, atom),
-        )?;
-
-        // fast path for the common case of just a single atom
-        if self.query_atoms.is_empty() {
-            return Some((score, indices));
-        }
-
+        let mut score = 0;
+        let mut indices = vec![];
         for atom in &self.query_atoms {
             if !atom.indices(matcher, item, &mut indices) {
                 return None;
             }
+            let (atom_score, _) = matcher.fuzzy_indices(item, &atom.atom)?;
+            score += atom_score;
         }
 
         // deadup and remove duplicate matches
