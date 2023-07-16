@@ -430,7 +430,7 @@ impl<T: Item + 'static> Picker<T> {
         }
     }
 
-    fn handle_idle_timeout(&mut self, cx: &mut Context) -> EventResult {
+    fn handle_redraw_request(&mut self, cx: &mut Context) -> EventResult {
         let Some((current_file, _)) = self.current_file(cx.editor) else {
             return EventResult::Consumed(None)
         };
@@ -477,11 +477,10 @@ impl<T: Item + 'static> Picker<T> {
                     };
                     Callback::EditorCompositor(Box::new(callback))
                 });
-                let tmp: compositor::Callback = Box::new(move |_, ctx| {
+                callback = Some(Box::new(move |_, ctx| {
                     ctx.jobs
                         .callback(job.map(|res| res.map_err(anyhow::Error::from)))
-                });
-                callback = Some(Box::new(tmp))
+                }))
             }
         }
 
@@ -779,8 +778,8 @@ impl<T: Item + 'static> Component for Picker<T> {
     }
 
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
-        if let Event::IdleTimeout = event {
-            return self.handle_idle_timeout(ctx);
+        if let Event::RedrawRequest = event {
+            return self.handle_redraw_request(ctx);
         }
         // TODO: keybinds for scrolling preview
 
@@ -934,7 +933,7 @@ impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
         let event_result = self.file_picker.handle_event(event, cx);
         let current_query = self.file_picker.prompt.line();
 
-        if !matches!(event, Event::IdleTimeout) || self.query == *current_query {
+        if event != &Event::RedrawRequest || self.query == *current_query {
             return event_result;
         }
 

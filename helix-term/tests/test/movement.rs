@@ -357,9 +357,9 @@ async fn surround_around_pair() -> anyhow::Result<()> {
 async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
     let test = |content: &str, expected_sel: Selection| -> anyhow::Result<()> {
         let file = temp_file_with_contents(content)?;
-        let (mut app, _) = AppBuilder::default().with_file(file.path()).build()?;
+        let (app, _) = AppBuilder::default().with_file(file.path()).build()?;
 
-        let (view, doc) = helix_view::current!(app.editor);
+        let (view, doc) = helix_view::current_ref!(app.editor);
         let sel = doc.selection(view.id).clone();
         assert_eq!(expected_sel, sel);
 

@@ -1,5 +1,5 @@
 use crossterm::event::Event;
-use helix_term::{args::Args, config::Config, keymap::merge_keys};
+use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
 use helix_view::editor::LspConfig;
 use std::{mem::replace, path::PathBuf};
 use tokio::sync::mpsc::UnboundedSender;
@@ -74,12 +74,12 @@ impl AppBuilder {
         let rx_stream = UnboundedReceiverStream::new(rx);
 
         Ok((
-            TestApplication::new(
+            TestApplication(Application::<TestBackend>::new(
                 TestBackend::new(120, 150, rx_stream),
                 self.args,
                 self.config,
                 language_config.try_into()?,
-            )?,
+            )?),
             tx,
         ))
     }

@@ -1,6 +1,6 @@
 mod validation_context;
 
-use super::{platform_line, AppBuilder, TestApplication};
+use super::{platform_line, AppBuilder, TestApplication, TIMEOUT};
 use anyhow::bail;
 use crossterm::event::Event;
 use helix_core::{
@@ -8,7 +8,7 @@ use helix_core::{
     Transaction,
 };
 use helix_view::{input::parse_macro, input::KeyEvent};
-use std::{path::PathBuf, time::Duration};
+use std::path::PathBuf;
 use tokio::sync::mpsc::UnboundedSender;
 use tui::backend::TerminalEventResult;
 use validation_context::ValidationContext;
@@ -58,7 +58,7 @@ pub async fn test_with_config<T: Into<TestCaseSpec>>(
     let mut active_test_harness = ActiveTestHarness::from(test_harness);
 
     // replace the initial text with the input text
-    let (view, doc) = helix_view::current!(active_test_harness.app.editor);
+    let (view, doc) = helix_view::current!(active_test_harness.app.0.editor);
     doc.apply(
         &Transaction::change_by_selection(doc.text(), &doc.selection(view.id).clone(), |_| {
             (0, doc.text().len_chars(), Some((&input.text).into()))
@@ -146,17 +146,13 @@ impl TestHarness {
         self
     }
 
-    pub async fn tick(self) -> ActiveTestHarness {
-        ActiveTestHarness::from(self).tick().await
-    }
-
     pub async fn run(self) -> anyhow::Result<()> {
         ActiveTestHarness::from(self).finish().await
     }
 }
 
 pub struct ActiveTestHarness {
-    app: TestApplication,
+    pub app: TestApplication,
     event_stream_tx: UnboundedSender<TerminalEventResult>,
     test_cases: Vec<TestCase>,
     should_exit: bool,
@@ -175,11 +171,6 @@ impl From<TestHarness> for ActiveTestHarness {
 }
 
 impl ActiveTestHarness {
-    pub async fn tick(mut self) -> Self {
-        self.app.event_loop().await;
-        self
-    }
-
     pub async fn finish(mut self) -> anyhow::Result<()> {
         for (input_index, test_case) in self.test_cases.iter().enumerate() {
             // TEMP: event_loop call will otherwise stall
@@ -192,7 +183,7 @@ impl ActiveTestHarness {
                 self.event_stream_tx.send(Ok(key))?;
             }
 
-            let app_exited = !self.app.event_loop().await;
+            let app_exited = self.app.tick().await;
 
             if app_exited {
                 if input_index < self.test_cases.len() - 1 {
@@ -210,7 +201,6 @@ impl ActiveTestHarness {
             })
         }
 
-        const TIMEOUT: Duration = Duration::from_millis(500);
         if !self.should_exit {
             // Workaround for sending close event.
             for key_event in parse_macro("<esc>:q!<ret>")?.into_iter() {
@@ -218,8 +208,7 @@ impl ActiveTestHarness {
                     .send(Ok(Event::Key(key_event.into())))?;
             }
 
-            let event_loop = self.app.event_loop();
-            tokio::time::timeout(TIMEOUT, event_loop).await?;
+            tokio::time::timeout(TIMEOUT, self.app.tick()).await?;
         }
 
         // Close

@@ -201,7 +201,6 @@ impl<B: Backend> Application<B> {
         // Acquire mutable access to the redraw_handle lock
         // to ensure that there are no tasks running that want to block rendering
         drop(cx.editor.redraw_handle.1.write().await);
-        cx.editor.needs_redraw = false;
         {
             // exhaust any leftover redraw notifications
             let notify = cx.editor.redraw_handle.0.notified();
@@ -227,51 +226,42 @@ impl<B: Backend> Application<B> {
         self.terminal.draw(pos, kind).unwrap();
     }
 
-    /// TEMP: returns false if application was closed
-    pub async fn event_loop(&mut self) -> bool {
-        loop {
-            if self.editor.should_close() {
-                return false;
+    /// Returns true if application should continue to be ticked
+    /// (false if it should be closed.)
+    pub async fn tick(&mut self) -> bool {
+        if self.editor.should_close() {
+            return false;
+        }
+
+        tokio::select! {
+            biased;
+
+            Some(signal) = self.signals.next() => {
+                if !self.handle_signals(signal).await {
+                    return false;
+                };
             }
-
-            tokio::select! {
-                biased;
-
-                Some(signal) = self.signals.next() => {
-                    if !self.handle_signals(signal).await {
-                        return false;
-                    };
-                }
-                Some(event) = self.terminal.backend_mut().event_stream().next() => {
-                    self.handle_terminal_events(event).await;
-                }
-                Some(callback) = self.jobs.futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render().await;
-                }
-                Some(callback) = self.jobs.wait_futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render().await;
-                }
-                event = self.editor.wait_event() => {
-                    let _idle_handled = self.handle_editor_event(event).await;
-
-                    #[cfg(feature = "integration")]
-                    {
-                        if _idle_handled {
-                            return true;
-                        }
-                    }
-                }
+            Some(event) = self.terminal.backend_mut().event_stream().next() => {
+                self.handle_terminal_events(event).await;
             }
-
-            // for integration tests only, reset the idle timer after every
-            // event to signal when test events are done processing
-            #[cfg(feature = "integration")]
-            {
-                self.editor.reset_idle_timer();
+            Some(callback) = self.jobs.futures.next() => {
+                self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                self.render().await;
+            }
+            Some(callback) = self.jobs.wait_futures.next() => {
+                self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                self.render().await;
+            }
+            event = self.editor.wait_event() => {
+                self.handle_editor_event(event).await;
             }
         }
+
+        true
+    }
+
+    pub async fn event_loop(&mut self) {
+        while self.tick().await {}
     }
 
     pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
@@ -433,18 +423,6 @@ impl<B: Backend> Application<B> {
         true
     }
 
-    pub async fn handle_idle_timeout(&mut self) {
-        let mut cx = crate::compositor::Context {
-            editor: &mut self.editor,
-            jobs: &mut self.jobs,
-            scroll: None,
-        };
-        let should_render = self.compositor.handle_event(&Event::IdleTimeout, &mut cx);
-        if should_render || self.editor.needs_redraw {
-            self.render().await;
-        }
-    }
-
     pub fn handle_document_write(&mut self, doc_save_event: DocumentSavedEventResult) {
         let doc_save_event = match doc_save_event {
             Ok(event) => event,
@@ -508,7 +486,7 @@ impl<B: Backend> Application<B> {
     }
 
     #[inline(always)]
-    pub async fn handle_editor_event(&mut self, event: EditorEvent) -> bool {
+    pub async fn handle_editor_event(&mut self, event: EditorEvent) {
         log::debug!("received editor event: {:?}", event);
 
         match event {
@@ -531,18 +509,17 @@ impl<B: Backend> Application<B> {
                     self.render().await;
                 }
             }
-            EditorEvent::IdleTimer => {
-                self.editor.clear_idle_timer();
-                self.handle_idle_timeout().await;
-
-                #[cfg(feature = "integration")]
-                {
-                    return true;
+            EditorEvent::Redraw => {
+                let mut cx = crate::compositor::Context {
+                    editor: &mut self.editor,
+                    jobs: &mut self.jobs,
+                    scroll: None,
+                };
+                if self.compositor.handle_event(&Event::RedrawRequest, &mut cx) {
+                    self.render().await;
                 }
             }
         }
-
-        false
     }
 
     pub async fn handle_terminal_events(

@@ -9,6 +9,7 @@ use helix_view::doc;
 use crate::test::helpers::{
     assert_eq_contents,
     file::{assert_file_has_content, new_readonly_tempfile},
+    test_harness::ActiveTestHarness,
 };
 
 use super::*;
@@ -120,11 +121,12 @@ async fn test_write() -> anyhow::Result<()> {
 async fn test_overwrite_protection() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
-    let active_test_harness = TestHarness::default()
+    let mut active_test_harness: ActiveTestHarness = TestHarness::default()
         .with_file(file.path())
         .push_test_case(TestCase::default().with_keys(":x<ret>"))
-        .tick()
-        .await;
+        .into();
+
+    active_test_harness.app.tick().await;
 
     const CONTENT: &str = "extremely important content";
 

@@ -3,12 +3,33 @@ pub mod file;
 pub mod test_harness;
 
 pub use app_builder::AppBuilder;
+use tokio::time::Instant;
 
 use super::backend::TestBackend;
+use derive_more::{Deref, DerefMut};
 use helix_term::application::Application;
-use std::{fs::File, io::Read};
+use std::{fs::File, io::Read, time::Duration};
 
-pub type TestApplication = Application<TestBackend>;
+const TIMEOUT: Duration = Duration::from_millis(500);
+
+#[derive(Deref, DerefMut)]
+pub struct TestApplication(Application<TestBackend>);
+
+impl TestApplication {
+    /// Returns true if app exited
+    pub async fn tick(&mut self) -> bool {
+        loop {
+            match tokio::time::timeout_at(Instant::now() + TIMEOUT, self.0.tick()).await {
+                Ok(should_continue) => {
+                    if !should_continue {
+                        return true;
+                    }
+                }
+                Err(_) => return false,
+            }
+        }
+    }
+}
 
 /// Replaces all LF chars with the system's appropriate line feed
 /// character, and if one doesn't exist already, appends the system's

@@ -908,7 +908,6 @@ pub struct Editor {
     /// The `Notify` allows asynchronous tasks to request the editor to perform a redraw
     /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be acquired
     pub redraw_handle: RedrawHandle,
-    pub needs_redraw: bool,
     /// Cached position of the cursor calculated during rendering.
     /// The content of `cursor_cache` is returned by `Editor::cursor` if
     /// set to `Some(_)`. The value will be cleared after it's used.
@@ -942,7 +941,7 @@ pub enum EditorEvent {
     ConfigEvent(ConfigEvent),
     LanguageServerMessage((usize, Call)),
     DebuggerEvent(dap::Payload),
-    IdleTimer,
+    Redraw,
 }
 
 #[derive(Debug, Clone)]
@@ -1034,7 +1033,6 @@ impl Editor {
             exit_code: 0,
             config_events: unbounded_channel(),
             redraw_handle: Default::default(),
-            needs_redraw: false,
             cursor_cache: Cell::new(None),
             completion_request_handle: None,
         }
@@ -1685,39 +1683,25 @@ impl Editor {
 
     /// Called in the application event loop.
     pub async fn wait_event(&mut self) -> EditorEvent {
-        // the loop only runs once or twice and would be better implemented with a recursion + const generic
-        // however due to limitations with async functions that can not be implemented right now
-        loop {
-            tokio::select! {
-                biased;
+        tokio::select! {
+            biased;
 
-                Some(event) = self.save_queue.next() => {
-                    self.write_count -= 1;
-                    return EditorEvent::DocumentSaved(event)
-                }
-                Some(config_event) = self.config_events.1.recv() => {
-                    return EditorEvent::ConfigEvent(config_event)
-                }
-                Some(message) = self.language_servers.incoming.next() => {
-                    return EditorEvent::LanguageServerMessage(message)
-                }
-                Some(event) = self.debugger_events.next() => {
-                    return EditorEvent::DebuggerEvent(event)
-                }
+            Some(event) = self.save_queue.next() => {
+                self.write_count -= 1;
+                EditorEvent::DocumentSaved(event)
+            }
+            Some(config_event) = self.config_events.1.recv() => {
+                EditorEvent::ConfigEvent(config_event)
+            }
+            Some(message) = self.language_servers.incoming.next() => {
+                EditorEvent::LanguageServerMessage(message)
+            }
+            Some(event) = self.debugger_events.next() => {
+                EditorEvent::DebuggerEvent(event)
+            }
 
-                _ = self.redraw_handle.0.notified() => {
-                    if !self.needs_redraw {
-                        self.needs_redraw = true;
-                        let timeout = Instant::now() + Duration::from_millis(33);
-                        if timeout < self.idle_timer.deadline(){
-                            self.idle_timer.as_mut().reset(timeout)
-                        }
-                    }
-                }
-
-                _ = &mut self.idle_timer  => {
-                    return EditorEvent::IdleTimer
-                }
+            _ = self.redraw_handle.0.notified() => {
+                EditorEvent::Redraw
             }
         }
     }
