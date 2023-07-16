@@ -56,15 +56,12 @@ to `cargo install` anything either).
 
 ## Unit tests/Documentation tests
 
-Run `cargo test --workspace` to run unit tests and documentation tests in all packages.
+Run `cargo test --workspace` to run the unit, integration, and documentation
+tests in all packages.
 
-## Integration tests
-
-Integration tests for helix-term can be run with `cargo integration-test`. Code
-contributors are strongly encouraged to write integration tests for their code.
-Existing tests can be used as examples. Helpers can be found in
-[helpers.rs][helpers.rs]. The log level can be set with the `HELIX_LOG_LEVEL`
-environment variable, e.g. `HELIX_LOG_LEVEL=debug cargo integration-test`.
+Code contributors are strongly encouraged to write tests for their code.
+Existing tests can be used as examples. Helpers can be found in `helix_term/
+tests/test/helpers`.
 
 ## Minimum Stable Rust Version (MSRV) Policy
 

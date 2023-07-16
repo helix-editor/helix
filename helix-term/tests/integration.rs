@@ -1,4 +1,3 @@
-#[cfg(feature = "integration")]
 mod test {
 
     #[tokio::test(flavor = "multi_thread")]

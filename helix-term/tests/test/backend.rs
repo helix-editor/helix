@@ -8,7 +8,6 @@ use tui::{
     terminal::Config,
 };
 
-/// A backend used for the integration tests.
 #[derive(Debug)]
 pub struct TestBackend {
     event_stream: UnboundedReceiverStream<Result<Event, ErrorKind>>,

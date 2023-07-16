@@ -15,7 +15,6 @@ rust-version = "1.65"
 [features]
 default = ["git"]
 unicode-lines = ["helix-core/unicode-lines"]
-integration = []
 git = ["helix-vcs/git"]
 
 [[bin]]

@@ -51,9 +51,6 @@ jobs:
       - name: Run cargo test
         run: cargo test --workspace
 
-      - name: Run cargo integration-test
-        run: cargo integration-test
-
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
