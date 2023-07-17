@@ -1,134 +1,75 @@
 # Palette based on https://github.com/NLKNguyen/papercolor-theme
 # Author: Soc Virnyl Estela <socvirnyl.estela@gmail.com>
 
-"ui.linenr.selected" = { fg = "linenr_fg_selected", modifiers = ["bold"] }
-"ui.linenr" = { fg = "bright0" }
-"ui.background" = {bg="background"}
-"ui.text" = "foreground"
-"ui.text.focus" = { fg = "selection_bg", modifiers = ["bold"]}
-"ui.selection" = {bg="selection_secondary_bg", fg="selection_secondary_fg"}
-"ui.selection.primary" = {bg="selection_bg", fg="selection_fg" }
-"ui.highlight" = {bg="cursorline_bg"}
-"ui.cursorline" = {bg="cursorline_bg"}
-"ui.statusline" = {bg="paper_bar_bg", fg="regular0"}
-"ui.statusline.select" = {bg="background", fg="bright7"}
-"ui.statusline.normal" = {bg="background", fg="bright3"}
-"ui.statusline.inactive" = {bg="selection_fg", fg="foreground"}
-"ui.virtual" = {fg = "linenr_fg_selected"}
-"ui.virtual.whitespace" = { fg = "regular5" }
-"ui.virtual.indent-guide" = { fg = "bright0" }
-"ui.virtual.ruler" = {bg = "bright0", fg="bright4"}
-"ui.cursor.match" = {bg = "bright0", fg = "regular0"}
-"ui.cursor" = {bg = "regular5", fg = "background"}
-"ui.cursor.primary" = {bg = "foreground", fg = "background"}
-"ui.window" = {bg = "ui_window_bg", fg = "foreground"}
-"ui.help" = {bg = "background", fg = "bright2"}
-"ui.popup" = {bg = "ui_window_bg", fg = "foreground"}
-"ui.menu" = {bg = "ui_window_bg", fg = "foreground"}
-"ui.menu.selected" = {bg = "selection_bg", fg="selection_fg"}
-
-"markup.heading" = { fg = "regular4", modifiers = ["bold"] }
-"markup.heading.1" = { fg = "bright2", modifiers = ["bold"] }
-"markup.heading.2" = { fg = "bright5", modifiers = ["bold"] }
-"markup.heading.3" = { fg = "bright3", modifiers = ["bold"] }
-"markup.heading.4" = { fg = "bright5", modifiers = ["bold"] }
-"markup.heading.5" = { fg = "bright5", modifiers = ["bold"] }
-"markup.heading.6" = { fg = "bright5", modifiers = ["bold"] }
-"markup.list" = "bright3"
-"markup.bold" = { fg = "foreground", modifiers = ["bold"] }
-"markup.italic" = { fg = "bright0", modifiers = ["italic"] }
-"markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.link.url" = { fg = "bright6", underline.style = "line" }
-"markup.link.text" = "bright2"
-"markup.link.label" = { fg = "regular2", modifiers = ["bold"] }
-"markup.raw" = "foreground"
-
-"string" = "foreground"
-"attribute" = "bright7"
-"keyword" = { fg = "regular4", modifiers = ["bold"]}
-"keyword.directive" = "regular4"
-"keyword.control.conditional" = "bright3"
-"keyword.function" = "regular4"
-"namespace" = "bright1"
-"type" = "bright2"
-"type.builtin" = { fg = "foreground", modifiers = ["bold"]}
-"variable" = "foreground"
-"variable.builtin" = "cyan"
-"variable.other.member" = "cyan"
-"variable.parameter" = "foreground"
-
-"special" = "special"
-"function"  = "bright6"
-"constructor" = "regular4"
-"function.builtin" = { fg = "foreground", modifiers = ["bold"]}
-"function.macro" = { fg = "regular4", modifiers = ["bold"] }
-"comment" = { fg = "regular7", modifiers = ["dim"] }
-"module" = "regular4"
-"constant" = "bright5"
-"constant.builtin" = "bright6"
-"constant.numeric" = "bright5"
-"constant.character.escape" = { fg = "foreground", modifiers = ["bold"]}
-"operator" = { fg = "regular4", modifiers = ["bold"]}
-
-"label" = { fg = "selection_bg", modifiers = ["bold", "italic"] }
-
-"diff.plus" = "regular2"
-"diff.delta" = "regular7"
-"diff.minus" = "regular1"
-
-"warning" = "bright4"
-"error" = "regular1"
-"info" = "bright4"
-
-"diagnostic.warning".underline = { color = "bright4", style = "curl" } 
-"diagnostic.error".underline = { color = "regular1", style = "curl" } 
-"diagnostic.info".underline = { color = "bright4", style = "curl" } 
-"diagnostic.hint".underline = { color = "bright4", style = "curl" } 
-
+inherits = "papercolor-light"
 
 [palette]
-background="#1c1c1c"
-foreground="#d0d0d0"
-regular0="#1c1c1c"
-regular1="#af005f"
-regular2="#5faf00"
-regular3="#d7af5f"
-regular4="#5fafd7"
-regular5="#808080"
-regular6="#d7875f"
-regular7="#d0d0d0"
-bright0="#585858"
-bright1="#5faf5f"
-bright2="#afd700"
-bright3="#af87d7"
-bright4="#ffaf00"
-bright5="#ff5faf"
-bright6="#00afaf"
-bright7="#5f8787"
+background = "#1c1c1c"
+foreground = "#d0d0d0"
 
-selection_fg="#585858"
-selection_bg="#8787AF"
-selection_secondary_bg="#a1a1d6"
-cursorline_bg="#303030"
-paper_bar_bg="#5F8787"
-linenr_fg_selected="#FFFF00"
-special="#3E999F"
-ui_window_bg="#444444"
+regular0 = "#1c1c1c" # color00 "Background"
+regular1 = "#af005f" # color01 "Negative"
+regular2 = "#5faf00" # color02 "Positive"
+regular3 = "#d7af5f" # color03 "Olive"
+regular4 = "#5fafd7" # color04 "Neutral" / Aqua
+regular5 = "#808080" # color05 "Comment"
+regular6 = "#d7875f" # color06 "Navy"
+regular7 = "#d0d0d0" # color07 "Foreground"
+bright0 = "#585858"  # color08 "Nontext"
+bright1 = "#5faf5f"  # color09 "Red"
+bright2 = "#afd700"  # color10 "Pink"
+bright3 = "#af87d7"  # color11 "Purple"
+bright4 = "#ffaf00"  # color12 "Accent"
+bright5 = "#ff5faf"  # color13 "Orange"
+bright6 = "#00afaf"  # color14 "Blue"
+bright7 = "#5f8787"  # color15 "Highlight"
+
+selection_fg = "#000000"
+selection_bg = "#8787af"
+selection_secondary_fg = "#333333"
+selection_secondary_bg = "#707097"
+special = "#3e999f"
+
+cursorline_bg = "#303030"
+cursorline_secondary_bg = "#2a2a2a"
+cursorcolumn_bg = "#303030"
+cursorcolumn_secondary_bg = "#2a2a2a"
+cursorlinenr_fg = "#ffff00"
+popupmenu_fg = "#c6c6c6"
+popupmenu_bg = "#303030"
+linenumber_fg = "#585858"
+vertsplit_fg = "#5f8787"
+statusline_active_fg = "#1c1c1c"
+statusline_active_bg = "#5f8787"
+statusline_inactive_fg = "#bcbcbc"
+statusline_inactive_bg = "#3a3a3a"
+todo_fg = "#ff8700"
+error_fg = "#af005f"
+error_bg = "#5f0000"
+matchparen_bg = "#4e4e4e"
+matchparen_fg = "#c6c6c6"
+wildmenu_fg = "#1c1c1c"
+wildmenu_bg = "#afd700"
+diffadd_fg = "#87d700"
+diffadd_bg = "#005f00"
+diffdelete_fg = "#af005f"
+diffdelete_bg = "#5f0000"
+diffchange_bg = "#005f5f"
 
 # 16 bit ANSI color names
-black="#1c1c1c"
-red="#af005f"
-green="#5faf00"
-yellow="#d7af5f"
-blue="#5fafd7"
-magenta="#808080"
-cyan="#d7875f"
-white="#d0d0d0"
-light-black="#585858"
-light-red="#5faf5f"
-light-green="#afd700"
-light-yellow="#af87d7"
-light-blue="#ffaf00"
-light-magenta="#ff5faf"
-light-cyan="#00afaf"
-light-white="#5f8787"
+black = "#1c1c1c"
+red = "#af005f"
+green = "#5faf00"
+yellow = "#d7af5f"
+blue = "#5fafd7"
+magenta = "#808080"
+cyan = "#d7875f"
+white = "#d0d0d0"
+light-black = "#585858"
+light-red = "#5faf5f"
+light-green = "#afd700"
+light-yellow = "#af87d7"
+light-blue = "#ffaf00"
+light-magenta = "#ff5faf"
+light-cyan = "#00afaf"
+light-white = "#5f8787"
