@@ -5,11 +5,11 @@
 "ui.linenr" = { fg = "bright0" }
 "ui.background" = {bg="background"}
 "ui.text" = "foreground"
-"ui.text.focus" = { fg = "selection_background", modifiers = ["bold"]}
-"ui.selection" = {bg="selection_secondary_background", fg="selection_secondary_foreground"}
-"ui.selection.primary" = {bg="selection_background", fg="selection_foreground" }
-"ui.highlight" = {bg="cursorline_background"}
-"ui.cursorline" = {bg="cursorline_background"}
+"ui.text.focus" = { fg = "selection_bg", modifiers = ["bold"]}
+"ui.selection" = {bg="selection_secondary_bg", fg="selection_secondary_fg"}
+"ui.selection.primary" = {bg="selection_bg", fg="selection_fg" }
+"ui.highlight" = {bg="cursorline_bg"}
+"ui.cursorline" = {bg="cursorline_bg"}
 "ui.statusline" = {bg="paper_bar_bg", fg="regular0"}
 "ui.statusline.select" = {bg="background", fg="bright7"}
 "ui.statusline.normal" = {bg="background", fg="bright3"}
@@ -25,7 +25,7 @@
 "ui.help" = {bg = "background", fg = "bright2"}
 "ui.popup" = {bg = "ui_window_bg", fg = "foreground"}
 "ui.menu" = {bg = "ui_window_bg", fg = "foreground"}
-"ui.menu.selected" = {bg = "selection_background", fg="selection_foreground"}
+"ui.menu.selected" = {bg = "selection_bg", fg="selection_fg"}
 
 "markup.heading" = { fg = "bright7", modifiers = ["bold"] }
 "markup.heading.1" = { fg = "bright2", modifiers = ["bold"] }
@@ -68,21 +68,20 @@
 "constant.character.escape" = { fg = "bright3", modifiers = ["bold"]}
 "operator" = { fg = "regular4", modifiers = ["bold"]}
 
-"label" = { fg = "selection_background", modifiers = ["bold", "italic"] }
+"label" = { fg = "selection_bg", modifiers = ["bold", "italic"] }
 
 "diff.plus" = "regular2"
-"diff.delta" = "bright0"
-"diff.minus" = "bright1"
+"diff.delta" = "regular7"
+"diff.minus" = "regular1"
 
 "warning" = "bright4"
 "error" = "regular1"
-"info" = "#ffaf00"
+"info" = "bright4"
 
 "diagnostic.warning".underline = { color = "bright4", style = "curl" } 
 "diagnostic.error".underline = { color = "regular1", style = "curl" } 
-"diagnostic.info".underline = { color = "#ffaf00", style = "curl" } 
-"diagnostic.hint".underline = { color = "#ffaf00", style = "curl" } 
-
+"diagnostic.info".underline = { color = "bright4", style = "curl" } 
+"diagnostic.hint".underline = { color = "bright4", style = "curl" } 
 
 [palette]
 background="#eeeeee"
@@ -104,11 +103,11 @@ bright5="#d75f00"
 bright6="#005faf"
 bright7="#005f87"
 
-selection_foreground="#eeeeee"
-selection_secondary_foreground="#d9d7d7"
-selection_background="#0087af"
-selection_secondary_background="#2c687a"
-cursorline_background="#e4e4e4"
+selection_fg="#eeeeee"
+selection_secondary_fg="#d9d7d7"
+selection_bg="#0087af"
+selection_secondary_bg="#2c687a"
+cursorline_bg="#e4e4e4"
 paper_bar_bg="#005F87"
 linenr_fg_selected="#AF634D"
 special="#3E999F"
