@@ -113,14 +113,7 @@ Helix is available on [Snapcraft](https://snapcraft.io/helix) and can be install
 snap install --classic helix
 ```
 
-This will install Helix as `/snap/bin/helix` (so make sure `/snap/bin` is in your `PATH`), which is not the preferred invocation (`hx`).
-As a workaround you can manually alias the command globally with:
-
-```sh
-snap alias helix hx
-```
-
-Or, otherwise, just alias in your shell's config.
+This will install Helix as both `/snap/bin/helix` and `/snap/bin/hx`, so make sure `/snap/bin` is in your `PATH`.
 
 ### AppImage
 
