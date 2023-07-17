@@ -346,7 +346,7 @@ function playground_text(playground, hidden = true) {
         }
 
         setTimeout(function () {
-            themeColorMetaTag.content = getComputedStyle(document.body).backgroundColor;
+            themeColorMetaTag.content = getComputedStyle(document.documentElement).backgroundColor;
         }, 1);
 
         if (window.ace && window.editors) {
