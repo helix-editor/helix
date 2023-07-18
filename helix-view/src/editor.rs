@@ -2,7 +2,6 @@ use crate::{
     align_view,
     clipboard::{get_clipboard_provider, ClipboardProvider},
     document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint},
-    file_event::Handler,
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
@@ -871,7 +870,6 @@ pub struct Editor {
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
     pub diff_providers: DiffProviderRegistry,
-    pub file_event_handler: Handler,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -1017,7 +1015,6 @@ impl Editor {
             language_servers,
             diagnostics: BTreeMap::new(),
             diff_providers: DiffProviderRegistry::default(),
-            file_event_handler: Handler::new(),
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
@@ -1542,7 +1539,7 @@ impl Editor {
 
         // When a file is written to, notify the file event handler.
         // Note: This can be removed once proper file watching is implemented.
-        let handler = self.file_event_handler.clone();
+        let handler = self.language_servers.file_event_handler.clone();
         let future = async move {
             let res = doc_save_future.await;
             if let Ok(event) = &res {
@@ -1688,7 +1685,9 @@ impl Editor {
         // Remove all language servers from the file event handler.
         // Note: this is non-blocking.
         for client in self.language_servers.iter_clients() {
-            self.file_event_handler.remove_client(client.id());
+            self.language_servers
+                .file_event_handler
+                .remove_client(client.id());
         }
 
         tokio::time::timeout(

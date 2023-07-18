@@ -991,7 +991,10 @@ impl Application {
                         self.editor.language_servers.remove_by_id(server_id);
 
                         // Remove the language server from the editor's file event watcher.
-                        self.editor.file_event_handler.remove_client(server_id);
+                        self.editor
+                            .language_servers
+                            .file_event_handler
+                            .remove_client(server_id);
                     }
                 }
             }
@@ -1108,7 +1111,7 @@ impl Application {
                                                     continue;
                                                 }
                                             };
-                                        self.editor.file_event_handler.register(
+                                        self.editor.language_servers.file_event_handler.register(
                                             client.id(),
                                             Arc::downgrade(client),
                                             reg.id,
@@ -1135,6 +1138,7 @@ impl Application {
                             match unreg.method.as_str() {
                                 lsp::notification::DidChangeWatchedFiles::METHOD => {
                                     self.editor
+                                        .language_servers
                                         .file_event_handler
                                         .unregister(server_id, unreg.id);
                                 }

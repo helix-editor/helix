@@ -4,7 +4,7 @@ use futures_util::future::join_all;
 use globset::{GlobBuilder, GlobSetBuilder};
 use tokio::sync::mpsc;
 
-use helix_lsp::{lsp, Client};
+use crate::{lsp, Client};
 
 enum Event {
     FileChanged {
@@ -40,7 +40,7 @@ struct ClientState {
 /// weak reference to the LSP client. This is done so that the Handler can have
 /// access to the client without preventing the client from being dropped if it
 /// is closed and the Handler isn't properly notified.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Handler {
     tx: mpsc::UnboundedSender<Event>,
 }

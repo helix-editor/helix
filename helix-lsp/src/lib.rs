@@ -1,9 +1,11 @@
 mod client;
+pub mod file_event;
 pub mod jsonrpc;
 pub mod snippet;
 mod transport;
 
 pub use client::Client;
+use file_event::Handler;
 pub use futures_executor::block_on;
 pub use jsonrpc::Call;
 pub use lsp::{Position, Url};
@@ -634,6 +636,7 @@ pub struct Registry {
     syn_loader: Arc<helix_core::syntax::Loader>,
     counter: usize,
     pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
+    pub file_event_handler: Handler,
 }
 
 impl Registry {
@@ -643,6 +646,7 @@ impl Registry {
             syn_loader,
             counter: 0,
             incoming: SelectAll::new(),
+            file_event_handler: Handler::new(),
         }
     }
 
