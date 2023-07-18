@@ -1,6 +1,5 @@
 use std::{collections::HashMap, path::PathBuf, sync::Weak};
 
-use futures_util::future::join_all;
 use globset::{GlobBuilder, GlobSetBuilder};
 use tokio::sync::mpsc;
 
@@ -96,48 +95,40 @@ impl Handler {
                     log::debug!("Received file event for {:?}", &path);
 
                     let mut dropped_clients = Vec::new();
-
-                    let futures = state
-                        .iter()
-                        .filter(|(_, client_state)| {
-                            client_state
-                                .registered
-                                .values()
-                                .any(|glob| glob.is_match(&path))
-                        })
-                        .filter_map(|(client_id, client_state)| {
-                            client_state.client.upgrade().or_else(|| {
-                                dropped_clients.push(*client_id);
-                                None
-                            })
-                        })
-                        .filter_map(|client| {
-                            let uri = lsp::Url::from_file_path(&path).ok()?;
-                            log::debug!(
-                                "Sending didChangeWatchedFiles notification to client '{}'",
-                                client.name()
-                            );
-                            Some(client.did_change_watched_files(vec![lsp::FileEvent {
-                                uri,
-                                // We currently always send the CHANGED state
-                                // since we don't actually have more context at
-                                // the moment.
-                                typ: lsp::FileChangeType::CHANGED,
-                            }]))
-                        });
-                    for res in join_all(futures).await {
-                        if let Err(err) = res {
-                            log::warn!("Failed to send didChangeWatchedFiles notification to client: {err}");
+                    for (id, client_state) in state.iter() {
+                        if client_state
+                            .registered
+                            .values()
+                            .any(|glob| glob.is_match(&path))
+                        {
+                            let Some(client) = client_state.client.upgrade() else {
+                                log::warn!("LSP client was dropped: {id}");
+                                dropped_clients.push(*id);
+                                continue;
+                            };
+                            if let Ok(uri) = lsp::Url::from_file_path(&path) {
+                                log::debug!(
+                                    "Sending didChangeWatchedFiles notification to client '{}'",
+                                    client.name()
+                                );
+                                if let Err(err) = client
+                                    .did_change_watched_files(vec![lsp::FileEvent {
+                                        uri,
+                                        // We currently always send the CHANGED state
+                                        // since we don't actually have more context at
+                                        // the moment.
+                                        typ: lsp::FileChangeType::CHANGED,
+                                    }])
+                                    .await
+                                {
+                                    log::warn!("Failed to send didChangeWatchedFiles notification to client: {err}");
+                                }
+                            }
                         }
                     }
 
-                    // Remove any clients that've been dropped but we still
-                    // have a weak reference to.
-                    if !dropped_clients.is_empty() {
-                        log::warn!("LSP clients were dropped: {:?}", dropped_clients);
-                        for id in dropped_clients {
-                            state.remove(&id);
-                        }
+                    for id in dropped_clients {
+                        state.remove(&id);
                     }
                 }
                 Event::Register {
