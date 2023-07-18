@@ -1,7 +1,83 @@
 [
-  (comment)
-  (pragma)
-] @comment
+  "sizeof"
+  "typeof"
+  "__typeof"
+  "__typeof__"
+  "@defs"
+  "@selector"
+  "@encode"
+] @keyword.operator
+
+[
+  "enum"
+  "struct"
+  "typedef"
+  "union"
+  "@interface"
+  "@protocol"
+  "@property"
+  "@synthesize"
+  "@implementation"
+  "@class"
+  "@dynamic"
+  "@compatibility_alias"
+] @keyword.storage.type
+
+[
+  "const"
+  "inline"
+  "static"
+  "extern"
+  "register"
+  "volatile"
+  "_Atomic"
+  "volatile"
+  "NS_NOESCAPE"
+  "NS_ENUM"
+  "NS_ERROR_ENUM"
+  "NS_OPTIONS"
+  "NS_SWIFT_NAME"
+  "__covariant"
+  "__contravariant"
+  "__GENERICS"
+  (private)
+  (public)
+  (protected)
+  (package)
+  (optional)
+  (required)
+  (type_qualifier)
+  (storage_class_specifier)
+] @keyword.storage.modifier
+
+[
+  "goto"
+  "break"
+  "continue"
+] @keyword.control
+
+[
+  "do"
+  "for"
+  "while"
+] @keyword.control.repeat
+
+[
+  "if"
+  "else"
+  "switch"
+  "case"
+  "default"
+] @keyword.control.conditional
+ 
+[
+  "@try"
+  "@catch"
+  "@finally"
+  "@throw"
+] @keyword.control.exception
+
+(sizeof_expression value: (parenthesized_expression (identifier) @type))
 
 [
   (self)
@@ -32,68 +108,20 @@
 ] @keyword
 
 [
-  "@interface"
-  "@protocol"
-  "@property"
   "@end"
-  "@implementation"
-  "@compatibility_alias"
-  "@autoreleasepool"
-  "@synchronized"
-  "@class"
-  "@synthesize"
-  "@dynamic"
-  "@defs"
-  "@try"
-  "@catch"
-  "@finally"
-  "@throw"
-  "@selector"
-  "@encode"
-  (private)
-  (public)
-  (protected)
-  (package)
-  (optional)
-  (required)
-  "NS_ENUM"
-  "NS_ERROR_ENUM"
-  "NS_OPTIONS"
-  "NS_SWIFT_NAME"
-  (type_qualifier)
-  (storage_class_specifier)
-  "NS_NOESCAPE"
-  "const"
-  "default"
-  "enum"
-  "extern"
-  "inline"
-  "static"
-  "struct"
-  "typedef"
-  "typeof"
-  "__typeof"
-  "__typeof__"
-  "_Atomic"
-  "union"
-  "volatile"
-  "goto"
-  "register"
-  "__covariant"
-  "__contravariant"
-  "__GENERICS"
+  "@autoreleasepool" ; block directive
+  "@synchronized" ; block directive
 ] @keyword
 
-"sizeof" @keyword.operator
-"return" @keyword.return
+"return" @keyword.control.return
 
-[
-  "while"
-  "for"
-  "do"
-  "continue"
-  "break"
-] @keyword.repeat
+; [
+;   "while"
+;   "for"
+;   "do"
+;   "continue"
+;   "break"
+; ] @keyword.control.repeat
 
 "#define" @constant.macro
 
@@ -105,7 +133,8 @@
   "#elif"
   "#endif"
   (preproc_directive)
-] @keyword
+  (pragma)
+] @keyword.directive
 
 "#include" @include
 "#import" @include
@@ -155,12 +184,12 @@
   "@"
 ] @operator
 
-[
- "if"
- "else"
- "case"
- "switch"
-] @keyword.conditional
+; [
+;  "if"
+;  "else"
+;  "case"
+;  "switch"
+; ] @keyword.conditional
 
 (conditional_expression [ "?" ":" ] @keyword.conditional)
 
@@ -218,7 +247,6 @@
 
 (declaration (type_qualifier) @type)
 (cast_expression type: (type_descriptor) @type)
-(sizeof_expression value: (parenthesized_expression (identifier) @type))
 
 ;; Type Class & Category & Protocol
 (class_interface name: (identifier) @type.class)
@@ -392,4 +420,4 @@ declarator: (identifier) @variable
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z0-9_$]+$"))
 
-(ERROR) @error
+(comment) @comment
