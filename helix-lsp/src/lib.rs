@@ -388,7 +388,7 @@ pub mod util {
         .expect("transaction must be valid for primary selection");
         let removed_text = text.slice(removed_start..removed_end);
 
-        let (transaction, selection) = Transaction::change_by_selection_ignore_overlapping(
+        let (transaction, mut selection) = Transaction::change_by_selection_ignore_overlapping(
             doc,
             selection,
             |range| {
@@ -431,6 +431,11 @@ pub mod util {
             return transaction;
         }
 
+        // Don't normalize to avoid merging/reording selections which would
+        // break the association between tabstops and selections. Most ranges
+        // will be replaced by tabstops anyways and the final selection will be
+        // normalized anyways
+        selection = selection.map_no_normalize(changes);
         let mut mapped_selection = SmallVec::with_capacity(selection.len());
         let mut mapped_primary_idx = 0;
         let primary_range = selection.primary();
@@ -439,7 +444,6 @@ pub mod util {
                 mapped_primary_idx = mapped_selection.len()
             }
 
-            let range = range.map(changes);
             let tabstops = tabstops.first().filter(|tabstops| !tabstops.is_empty());
             let Some(tabstops) = tabstops else{
                 // no tabstop normal mapping
@@ -938,7 +942,7 @@ pub fn find_lsp_workspace(
     let mut file = if file.is_absolute() {
         file.to_path_buf()
     } else {
-        let current_dir = std::env::current_dir().expect("unable to determine current directory");
+        let current_dir = helix_loader::current_working_dir();
         current_dir.join(file)
     };
     file = path::get_normalized_path(&file);

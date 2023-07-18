@@ -44,7 +44,7 @@ pub use helix_core::register::Registers;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig, SoftWrap},
-    Change,
+    Change, LineEnding, NATIVE_LINE_ENDING,
 };
 use helix_core::{Position, Selection};
 use helix_dap as dap;
@@ -251,6 +251,8 @@ pub struct Config {
         deserialize_with = "deserialize_duration_millis"
     )]
     pub idle_timeout: Duration,
+    /// Whether to insert the completion suggestion on hover. Defaults to true.
+    pub preview_completion_insert: bool,
     pub completion_trigger_len: u8,
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
@@ -271,7 +273,7 @@ pub struct Config {
     pub search: SearchConfig,
     pub lsp: LspConfig,
     pub terminal: Option<TerminalConfig>,
-    /// Column numbers at which to draw the rulers. Default to `[]`, meaning no rulers.
+    /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
@@ -286,6 +288,8 @@ pub struct Config {
     pub cursor_word: bool,
     /// Workspace specific lsp ceiling dirs
     pub workspace_lsp_roots: Vec<PathBuf>,
+    /// Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`.
+    pub default_line_ending: LineEndingConfig,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -405,7 +409,13 @@ impl Default for StatusLineConfig {
                 E::FileModificationIndicator,
             ],
             center: vec![],
-            right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
+            right: vec![
+                E::Diagnostics,
+                E::Selections,
+                E::Register,
+                E::Position,
+                E::FileEncoding,
+            ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
         }
@@ -486,6 +496,9 @@ pub enum StatusLineElement {
 
     /// Current version control information
     VersionControl,
+
+    /// Indicator for selected register
+    Register,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -600,7 +613,9 @@ impl std::str::FromStr for GutterType {
             "spacer" => Ok(Self::Spacer),
             "line-numbers" => Ok(Self::LineNumbers),
             "diff" => Ok(Self::Diff),
-            _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
+            _ => anyhow::bail!(
+                "Gutter type can only be `diagnostics`, `spacer`, `line-numbers` or `diff`."
+            ),
         }
     }
 }
@@ -718,6 +733,51 @@ impl Default for IndentGuidesConfig {
     }
 }
 
+/// Line ending configuration.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LineEndingConfig {
+    /// The platform's native line ending.
+    ///
+    /// `crlf` on Windows, otherwise `lf`.
+    Native,
+    /// Line feed.
+    LF,
+    /// Carriage return followed by line feed.
+    Crlf,
+    /// Form feed.
+    #[cfg(feature = "unicode-lines")]
+    FF,
+    /// Carriage return.
+    #[cfg(feature = "unicode-lines")]
+    CR,
+    /// Next line.
+    #[cfg(feature = "unicode-lines")]
+    Nel,
+}
+
+impl Default for LineEndingConfig {
+    fn default() -> Self {
+        LineEndingConfig::Native
+    }
+}
+
+impl From<LineEndingConfig> for LineEnding {
+    fn from(line_ending: LineEndingConfig) -> Self {
+        match line_ending {
+            LineEndingConfig::Native => NATIVE_LINE_ENDING,
+            LineEndingConfig::LF => LineEnding::LF,
+            LineEndingConfig::Crlf => LineEnding::Crlf,
+            #[cfg(feature = "unicode-lines")]
+            LineEndingConfig::FF => LineEnding::FF,
+            #[cfg(feature = "unicode-lines")]
+            LineEndingConfig::CR => LineEnding::CR,
+            #[cfg(feature = "unicode-lines")]
+            LineEndingConfig::Nel => LineEnding::Nel,
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -739,6 +799,7 @@ impl Default for Config {
             auto_format: true,
             auto_save: false,
             idle_timeout: Duration::from_millis(400),
+            preview_completion_insert: true,
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
@@ -762,6 +823,7 @@ impl Default for Config {
             text_width: 80,
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
+            default_line_ending: LineEndingConfig::default(),
         }
     }
 }
@@ -772,18 +834,6 @@ impl Default for SearchConfig {
             wrap_around: true,
             smart_case: true,
         }
-    }
-}
-
-pub struct Motion(pub Box<dyn Fn(&mut Editor)>);
-impl Motion {
-    pub fn run(&self, e: &mut Editor) {
-        (self.0)(e)
-    }
-}
-impl std::fmt::Debug for Motion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("motion")
     }
 }
 
@@ -851,8 +901,7 @@ pub struct Editor {
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
-    pub last_motion: Option<Motion>,
-
+    last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
 
     pub exit_code: i32,
@@ -888,6 +937,8 @@ pub struct Editor {
     /// canceled as a result
     pub completion_request_handle: Option<oneshot::Sender<()>>,
 }
+
+pub type Motion = Box<dyn Fn(&mut Editor)>;
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
 
@@ -996,6 +1047,19 @@ impl Editor {
         }
     }
 
+    pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {
+        motion(self);
+        self.last_motion = Some(Box::new(motion));
+    }
+
+    pub fn repeat_last_motion(&mut self, count: usize) {
+        if let Some(motion) = self.last_motion.take() {
+            for _ in 0..count {
+                motion(self);
+            }
+            self.last_motion = Some(motion);
+        }
+    }
     /// Current editing mode for the [`Editor`].
     pub fn mode(&self) -> Mode {
         self.mode
@@ -1333,11 +1397,22 @@ impl Editor {
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
-        let (rope, encoding, has_bom) = crate::document::from_reader(&mut stdin(), None)?;
-        Ok(self.new_file_from_document(
-            action,
-            Document::from(rope, Some((encoding, has_bom)), self.config.clone()),
-        ))
+        let (stdin, encoding, has_bom) = crate::document::read_to_string(&mut stdin(), None)?;
+        let doc = Document::from(
+            helix_core::Rope::default(),
+            Some((encoding, has_bom)),
+            self.config.clone(),
+        );
+        let doc_id = self.new_file_from_document(action, doc);
+        let doc = doc_mut!(self, &doc_id);
+        let view = view_mut!(self);
+        doc.ensure_view_init(view.id);
+        let transaction =
+            helix_core::Transaction::insert(doc.text(), doc.selection(view.id), stdin.into())
+                .with_selection(Selection::point(0));
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view);
+        Ok(doc_id)
     }
 
     // ??? possible use for integration tests
@@ -1639,7 +1714,7 @@ impl Editor {
                 _ = self.redraw_handle.0.notified() => {
                     if  !self.needs_redraw{
                         self.needs_redraw = true;
-                        let timeout = Instant::now() + Duration::from_millis(96);
+                        let timeout = Instant::now() + Duration::from_millis(33);
                         if timeout < self.idle_timer.deadline(){
                             self.idle_timer.as_mut().reset(timeout)
                         }

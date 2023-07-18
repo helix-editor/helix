@@ -41,7 +41,9 @@ pub use helix_loader::find_workspace;
 pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
     line.chars().position(|ch| !ch.is_whitespace())
 }
+mod rope_reader;
 
+pub use rope_reader::RopeReader;
 pub use ropey::{self, str_utils, Rope, RopeBuilder, RopeSlice};
 
 // pub use tendril::StrTendril as Tendril;
@@ -66,5 +68,5 @@ pub use syntax::Syntax;
 
 pub use diagnostic::Diagnostic;
 
-pub use line_ending::{LineEnding, DEFAULT_LINE_ENDING};
+pub use line_ending::{LineEnding, NATIVE_LINE_ENDING};
 pub use transaction::{Assoc, Change, ChangeSet, Deletion, Operation, Transaction};
