@@ -96,37 +96,41 @@ impl Handler {
 
                     let mut dropped_clients = Vec::new();
                     for (id, client_state) in state.iter() {
-                        if client_state
+                        if !client_state
                             .registered
                             .values()
                             .any(|glob| glob.is_match(&path))
                         {
-                            let Some(client) = client_state.client.upgrade() else {
-                                log::warn!("LSP client was dropped: {id}");
-                                dropped_clients.push(*id);
-                                continue;
-                            };
-                            if let Ok(uri) = lsp::Url::from_file_path(&path) {
-                                log::debug!(
-                                    "Sending didChangeWatchedFiles notification to client '{}'",
-                                    client.name()
-                                );
-                                if let Err(err) = client
-                                    .did_change_watched_files(vec![lsp::FileEvent {
-                                        uri,
-                                        // We currently always send the CHANGED state
-                                        // since we don't actually have more context at
-                                        // the moment.
-                                        typ: lsp::FileChangeType::CHANGED,
-                                    }])
-                                    .await
-                                {
-                                    log::warn!("Failed to send didChangeWatchedFiles notification to client: {err}");
-                                }
-                            }
+                            continue;
+                        }
+                        let Some(client) = client_state.client.upgrade() else {
+                            log::warn!("LSP client was dropped: {id}");
+                            dropped_clients.push(*id);
+                            continue;
+                        };
+                        let Ok(uri) = lsp::Url::from_file_path(&path) else {
+                            continue;
+                        };
+                        log::debug!(
+                            "Sending didChangeWatchedFiles notification to client '{}'",
+                            client.name()
+                        );
+                        if let Err(err) = client
+                            .did_change_watched_files(vec![lsp::FileEvent {
+                                uri,
+                                // We currently always send the CHANGED state
+                                // since we don't actually have more context at
+                                // the moment.
+                                typ: lsp::FileChangeType::CHANGED,
+                            }])
+                            .await
+                        {
+                            log::warn!("Failed to send didChangeWatchedFiles notification to client: {err}");
                         }
                     }
 
+                    // Remove any clients that've been dropped but we still
+                    // have a weak reference to.
                     for id in dropped_clients {
                         state.remove(&id);
                     }
