@@ -48,8 +48,12 @@ pub fn platform_line(input: &str) -> String {
     output
 }
 
-pub fn assert_eq_contents(mut file: File, str: &str) {
+pub fn assert_eq_contents(file: &mut File, str: &str, with_plattform_line: bool) {
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
-    assert_eq!(contents, platform_line(str));
+    let expected = match with_plattform_line {
+        true => platform_line(str),
+        false => str.to_string(),
+    };
+    assert_eq!(expected, contents);
 }

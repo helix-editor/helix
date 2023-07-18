@@ -72,12 +72,12 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
 
     // verify if writes are queued up, it finishes them before closing the buffer
     let file = tempfile::NamedTempFile::new()?;
-    let file_handle = File::open(file.path())?;
+    let mut file_handle = File::open(file.path())?;
     const RANGE: RangeInclusive<i32> = 1..=1000;
 
     let mut command = String::new();
     for i in RANGE {
-        command.push_str(&format!("%c{}<ret><esc>:w!<ret>", i));
+        command.push_str(&format!("%c{}<esc>:w!<ret>", i));
     }
     command.push_str(":buffer<minus>close<ret>");
 
@@ -95,7 +95,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
         .run()
         .await?;
 
-    assert_eq_contents(file_handle, &RANGE.end().to_string());
+    assert_eq_contents(&mut file_handle, &RANGE.end().to_string(), false);
 
     Ok(())
 }
@@ -103,16 +103,16 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write() -> anyhow::Result<()> {
     let file = tempfile::NamedTempFile::new()?;
-    let file_handle = File::open(file.path())?;
+    let mut file_handle = File::open(file.path())?;
     const CONTENT: &str = "lorem ipsum";
 
     TestHarness::default()
         .with_file(file.path())
-        .push_test_case(TestCase::default().with_keys(&format!("i{}<ret><esc>:w<ret>", CONTENT)))
+        .push_test_case(TestCase::default().with_keys(&format!("i{}<esc>:w<ret>", CONTENT)))
         .run()
         .await?;
 
-    assert_eq_contents(file_handle, CONTENT);
+    assert_eq_contents(&mut file_handle, CONTENT, false);
 
     Ok(())
 }
@@ -135,7 +135,7 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
     active_test_harness.finish().await?;
 
     file.rewind()?;
-    assert_eq_contents(file.reopen().unwrap(), CONTENT);
+    assert_eq_contents(file.as_file_mut(), CONTENT, true);
 
     Ok(())
 }
@@ -143,17 +143,17 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit() -> anyhow::Result<()> {
     let file = tempfile::NamedTempFile::new()?;
-    let file_handle = File::open(file.path())?;
+    let mut file_handle = File::open(file.path())?;
     const CONTENT: &str = "lorem ipsum";
 
     TestHarness::default()
         .with_file(file.path())
         .should_exit()
-        .push_test_case(TestCase::default().with_keys(&format!("i{}<ret><esc>:wq<ret>", CONTENT)))
+        .push_test_case(TestCase::default().with_keys(&format!("i{}<esc>:wq<ret>", CONTENT)))
         .run()
         .await?;
 
-    assert_eq_contents(file_handle, CONTENT);
+    assert_eq_contents(&mut file_handle, CONTENT, false);
 
     Ok(())
 }
@@ -174,12 +174,7 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
         .run()
         .await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
-
-    let mut file_content = String::new();
-    file.as_file_mut().read_to_string(&mut file_content)?;
-    assert_eq!(RANGE.end().to_string(), file_content);
+    assert_eq_contents(file.as_file_mut(), &RANGE.end().to_string(), false);
 
     Ok(())
 }
@@ -217,7 +212,7 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
     let file = tempfile::NamedTempFile::new()?;
-    let file_handle = File::open(file.path())?;
+    let mut file_handle = File::open(file.path())?;
     const CONTENT: &str = "hello";
 
     TestHarness::default()
@@ -225,12 +220,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
         .push_test_case(
             TestCase::default()
                 .with_keys(
-                    format!(
-                        "i{}<ret><esc>:w {}<ret>",
-                        CONTENT,
-                        file.path().to_string_lossy()
-                    )
-                    .as_ref(),
+                    format!("i{}<esc>:w {}<ret>", CONTENT, file.path().to_string_lossy()).as_ref(),
                 )
                 .with_validation_fn(Box::new(move |cx| {
                     cx.assert_app_is_ok();
@@ -241,7 +231,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
         .run()
         .await?;
 
-    assert_eq_contents(file_handle, CONTENT);
+    assert_eq_contents(&mut file_handle, CONTENT, false);
 
     Ok(())
 }
@@ -276,8 +266,8 @@ async fn test_write_new_path() -> anyhow::Result<()> {
     let file1 = tempfile::NamedTempFile::new().unwrap();
     let file2 = tempfile::NamedTempFile::new().unwrap();
 
-    let file_handle1 = File::open(file1.path()).unwrap();
-    let file_handle2 = File::open(file2.path()).unwrap();
+    let mut file_handle1 = File::open(file1.path()).unwrap();
+    let mut file_handle2 = File::open(file2.path()).unwrap();
 
     const CONTENT: &str = "i can eat glass, it will not hurt me";
 
@@ -285,7 +275,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
         .with_file(file1.path())
         .push_test_case(
             TestCase::default()
-                .with_keys(&format!("i{}<ret><esc>:w<ret>", CONTENT))
+                .with_keys(&format!("i{}<esc>:w<ret>", CONTENT))
                 .with_validation_fn(Box::new(move |cx| {
                     cx.assert_app_is_ok();
                     cx.assert_eq_document_path(file1.path());
@@ -302,8 +292,8 @@ async fn test_write_new_path() -> anyhow::Result<()> {
         .run()
         .await?;
 
-    assert_eq_contents(file_handle1, CONTENT);
-    assert_eq_contents(file_handle2, CONTENT);
+    assert_eq_contents(&mut file_handle1, CONTENT, false);
+    assert_eq_contents(&mut file_handle2, CONTENT, false);
 
     Ok(())
 }
