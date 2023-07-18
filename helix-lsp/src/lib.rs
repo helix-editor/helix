@@ -547,6 +547,7 @@ pub enum MethodCall {
     WorkspaceFolders,
     WorkspaceConfiguration(lsp::ConfigurationParams),
     RegisterCapability(lsp::RegistrationParams),
+    UnregisterCapability(lsp::UnregistrationParams),
 }
 
 impl MethodCall {
@@ -569,6 +570,10 @@ impl MethodCall {
             lsp::request::RegisterCapability::METHOD => {
                 let params: lsp::RegistrationParams = params.parse()?;
                 Self::RegisterCapability(params)
+            }
+            lsp::request::UnregisterCapability::METHOD => {
+                let params: lsp::UnregistrationParams = params.parse()?;
+                Self::UnregisterCapability(params)
             }
             _ => {
                 return Err(Error::Unhandled);

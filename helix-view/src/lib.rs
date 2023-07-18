@@ -5,6 +5,7 @@ pub mod clipboard;
 pub mod document;
 pub mod editor;
 pub mod env;
+pub mod file_event;
 pub mod graphics;
 pub mod gutter;
 pub mod handlers {
