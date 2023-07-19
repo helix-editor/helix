@@ -967,7 +967,7 @@ impl Client {
     ) -> Option<impl Future<Output = Result<Value>>> {
         let capabilities = self.capabilities.get().unwrap();
 
-        // Return early if the server does not support resolving completion items.
+        // Return early if the server does not support resolving code action.
         match capabilities.completion_provider {
             Some(lsp::CompletionOptions {
                 resolve_provider: Some(true),
