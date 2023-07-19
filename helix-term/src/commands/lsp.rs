@@ -743,18 +743,22 @@ pub fn code_action(cx: &mut Context) {
                     }
                     lsp::CodeActionOrCommand::CodeAction(code_action) => {
                         log::debug!("code action: {:?}", code_action);
-                        if let Some(ref workspace_edit) = code_action.edit {
-                            log::debug!("edit: {:?}", workspace_edit);
-                            let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
-                        } else if let Some(future) = language_server.resolve_code_action(code_action.clone()) {
-                            if let Ok(response) = helix_lsp::block_on(future) {
-                                if let Ok(code_action) = serde_json::from_value::<CodeAction>(response) {
-                                    if let Some(ref workspace_edit) = code_action.edit {
-                                        log::debug!("resolved edit: {:?}", workspace_edit);
-                                        let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                        // we support lsp "codeAction/resolve" for `edit` and `command` fields
+                        let mut resolved_code_action = None;
+                        if code_action.edit.is_none() || code_action.command.is_none() {
+                            if let Some(future) = language_server.resolve_code_action(code_action.clone()) {
+                                if let Ok(response) = helix_lsp::block_on(future) {
+                                    if let Ok(code_action) = serde_json::from_value::<CodeAction>(response) {
+                                        resolved_code_action = Some(code_action);
                                     }
                                 }
                             }
+                        }
+                        let resolved_code_action = resolved_code_action.as_ref().unwrap_or(code_action);
+
+                        if let Some(ref workspace_edit) = resolved_code_action.edit {
+                            log::debug!("edit: {:?}", workspace_edit);
+                            let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
                         }
 
                         // if code action provides both edit and command first the edit
