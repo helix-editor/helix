@@ -7,8 +7,9 @@ use crate::{
 use helix_core::{find_workspace, path, syntax::LanguageServerFeature, ChangeSet, Rope};
 use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp::{
-    notification::DidChangeWorkspaceFolders, DidChangeWorkspaceFoldersParams, OneOf,
-    PositionEncodingKind, WorkspaceFolder, WorkspaceFoldersChangeEvent, CodeActionCapabilityResolveSupport,
+    notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
+    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, WorkspaceFolder,
+    WorkspaceFoldersChangeEvent,
 };
 use lsp_types as lsp;
 use parking_lot::Mutex;
