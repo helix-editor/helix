@@ -954,6 +954,24 @@ impl Client {
         Some(self.call::<lsp::request::ResolveCompletionItem>(completion_item))
     }
 
+    pub fn resolve_code_action(
+        &self,
+        code_action: lsp::CodeAction,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if the server does not support resolving completion items.
+        match capabilities.completion_provider {
+            Some(lsp::CompletionOptions {
+                resolve_provider: Some(true),
+                ..
+            }) => (),
+            _ => return None,
+        }
+
+        Some(self.call::<lsp::request::CodeActionResolveRequest>(code_action))
+    }
+
     pub fn text_document_signature_help(
         &self,
         text_document: lsp::TextDocumentIdentifier,

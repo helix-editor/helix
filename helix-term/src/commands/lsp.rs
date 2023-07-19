@@ -746,6 +746,17 @@ pub fn code_action(cx: &mut Context) {
                         if let Some(ref workspace_edit) = code_action.edit {
                             log::debug!("edit: {:?}", workspace_edit);
                             let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                        } else {
+                            if let Some(future) = language_server.resolve_code_action(code_action.clone()) {
+                                if let Ok(response) = helix_lsp::block_on(future) {
+                                    if let Ok(code_action) = serde_json::from_value::<CodeAction>(response) {
+                                        if let Some(ref workspace_edit) = code_action.edit {
+                                            log::debug!("resolved edit: {:?}", workspace_edit);
+                                            let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         // if code action provides both edit and command first the edit
