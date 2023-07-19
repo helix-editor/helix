@@ -8,7 +8,7 @@ use helix_core::{find_workspace, path, syntax::LanguageServerFeature, ChangeSet,
 use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp::{
     notification::DidChangeWorkspaceFolders, DidChangeWorkspaceFoldersParams, OneOf,
-    PositionEncodingKind, WorkspaceFolder, WorkspaceFoldersChangeEvent,
+    PositionEncodingKind, WorkspaceFolder, WorkspaceFoldersChangeEvent, CodeActionCapabilityResolveSupport,
 };
 use lsp_types as lsp;
 use parking_lot::Mutex;
@@ -608,6 +608,12 @@ impl Client {
                                 .map(|kind| kind.as_str().to_string())
                                 .collect(),
                             },
+                        }),
+                        is_preferred_support: Some(true),
+                        disabled_support: Some(true),
+                        data_support: Some(true),
+                        resolve_support: Some(CodeActionCapabilityResolveSupport {
+                            properties: vec!["edit".to_owned(), "command".to_owned()],
                         }),
                         ..Default::default()
                     }),
