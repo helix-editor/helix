@@ -2474,10 +2474,23 @@ name = "po"
 source = { git = "https://github.com/erasin/tree-sitter-po", rev = "417cee9abb2053ed26b19e7de972398f2da9b29e" }
 
 [[language]]
+name = "asm"
+scope = "source.asm"
+injection-regex = "asm"
+file-types = ["s", "S"]
+comment-token = "#"
+indent = { tab-width = 8, unit = "        " }
+roots = []
+
+[[grammar]]
+name = "asm"
+source = { git = "https://github.com/rush-rs/tree-sitter-asm.git", rev = "36dc26acc7818920de2e103e20a9f42358caf926" }
+
+[[language]]
 name = "nasm"
 scope = "source.nasm"
-file-types = ["asm", "s", "S", "nasm"]
-injection-regex = "n?asm"
+file-types = ["asm", "nasm"]
+injection-regex = "nasm"
 roots = []
 comment-token = ";"
 indent = { tab-width = 8, unit = "        " }
