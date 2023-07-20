@@ -213,15 +213,17 @@ fn jump_to_location(
             return;
         }
     };
-    match editor.open(&path, action) {
-        Ok(_) => (),
+
+    let old_doc_id = doc!(editor).id();
+    let doc = match editor.open(&path, action) {
+        Ok(id) => doc_mut!(editor, &id),
         Err(err) => {
             let err = format!("failed to open path: {:?}: {:?}", location.uri, err);
             editor.set_error(err);
             return;
         }
-    }
-    let (view, doc) = current!(editor);
+    };
+    let view = view_mut!(editor);
     // TODO: convert inside server
     let new_range =
         if let Some(new_range) = lsp_range_to_range(doc.text(), location.range, offset_encoding) {
@@ -233,7 +235,11 @@ fn jump_to_location(
     // we flip the range so that the cursor sits on the start of the symbol
     // (for example start of the function).
     doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
-    align_view(doc, view, Align::Center);
+    // We probably don't want to change the alignment of current file when we open new files in the background (Load).
+    // Except when the new file is the old file
+    if !matches!(action, Action::Load) || old_doc_id == doc.id() {
+        align_view(doc, view, Align::Center);
+    }
 }
 
 type SymbolPicker = Picker<SymbolInformationItem>;
