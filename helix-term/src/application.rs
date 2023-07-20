@@ -5,7 +5,11 @@ use helix_core::{
     path::get_relative_path,
     pos_at_coords, syntax, Selection,
 };
-use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+use helix_lsp::{
+    lsp::{self, MessageType},
+    util::lsp_pos_to_pos,
+    LspProgressMap,
+};
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
@@ -875,7 +879,13 @@ impl Application {
                         };
                     }
                     Notification::ShowMessage(params) => {
-                        log::warn!("unhandled window/showMessage: {:?}", params);
+                        if self.config.load().editor.lsp.display_messages {
+                            match params.typ {
+                                MessageType::ERROR => self.editor.set_error(params.message),
+                                MessageType::WARNING => self.editor.set_warning(params.message),
+                                _ => self.editor.set_status(params.message),
+                            }
+                        }
                     }
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
@@ -959,7 +969,7 @@ impl Application {
                             self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self.config.load().editor.lsp.display_messages {
+                        if self.config.load().editor.lsp.display_progress_messages {
                             self.editor.set_status(status);
                         }
                     }
