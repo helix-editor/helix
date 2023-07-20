@@ -292,6 +292,8 @@ impl Completion {
                     };
                     // if more text was entered, remove it
                     doc.restore(view, &savepoint, true);
+                    // save an undo checkpoint before the completion
+                    doc.append_changes_to_history(view);
                     let transaction = item_to_transaction(
                         doc,
                         view.id,
