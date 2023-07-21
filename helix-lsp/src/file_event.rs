@@ -13,7 +13,7 @@ enum Event {
         client_id: usize,
         client: Weak<Client>,
         registration_id: String,
-        ops: lsp::DidChangeWatchedFilesRegistrationOptions,
+        options: lsp::DidChangeWatchedFilesRegistrationOptions,
     },
     Unregister {
         client_id: usize,
@@ -62,13 +62,13 @@ impl Handler {
         client_id: usize,
         client: Weak<Client>,
         registration_id: String,
-        ops: lsp::DidChangeWatchedFilesRegistrationOptions,
+        options: lsp::DidChangeWatchedFilesRegistrationOptions,
     ) {
         let _ = self.tx.send(Event::Register {
             client_id,
             client,
             registration_id,
-            ops,
+            options,
         });
     }
 
@@ -131,7 +131,7 @@ impl Handler {
                     client_id,
                     client,
                     registration_id,
-                    ops,
+                    options: ops,
                 } => {
                     log::debug!(
                         "Registering didChangeWatchedFiles for client '{}' with id '{}'",
