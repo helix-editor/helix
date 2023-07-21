@@ -5,7 +5,11 @@ use helix_core::{
     path::get_relative_path,
     pos_at_coords, syntax, Selection,
 };
-use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+use helix_lsp::{
+    lsp::{self, notification::Notification},
+    util::lsp_pos_to_pos,
+    LspProgressMap,
+};
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
@@ -1080,15 +1084,63 @@ impl Application {
                             .collect();
                         Ok(json!(result))
                     }
-                    Ok(MethodCall::RegisterCapability(_params)) => {
-                        log::warn!("Ignoring a client/registerCapability request because dynamic capability registration is not enabled. Please report this upstream to the language server");
-                        // Language Servers based on the `vscode-languageserver-node` library often send
-                        // client/registerCapability even though we do not enable dynamic registration
-                        // for any capabilities. We should send a MethodNotFound JSONRPC error in this
-                        // case but that rejects the registration promise in the server which causes an
-                        // exit. So we work around this by ignoring the request and sending back an OK
-                        // response.
+                    Ok(MethodCall::RegisterCapability(params)) => {
+                        if let Some(client) = self
+                            .editor
+                            .language_servers
+                            .iter_clients()
+                            .find(|client| client.id() == server_id)
+                        {
+                            for reg in params.registrations {
+                                match reg.method.as_str() {
+                                    lsp::notification::DidChangeWatchedFiles::METHOD => {
+                                        let Some(options) = reg.register_options else {
+                                            continue;
+                                        };
+                                        let ops: lsp::DidChangeWatchedFilesRegistrationOptions =
+                                            match serde_json::from_value(options) {
+                                                Ok(ops) => ops,
+                                                Err(err) => {
+                                                    log::warn!("Failed to deserialize DidChangeWatchedFilesRegistrationOptions: {err}");
+                                                    continue;
+                                                }
+                                            };
+                                        self.editor.language_servers.file_event_handler.register(
+                                            client.id(),
+                                            Arc::downgrade(client),
+                                            reg.id,
+                                            ops,
+                                        )
+                                    }
+                                    _ => {
+                                        // Language Servers based on the `vscode-languageserver-node` library often send
+                                        // client/registerCapability even though we do not enable dynamic registration
+                                        // for most capabilities. We should send a MethodNotFound JSONRPC error in this
+                                        // case but that rejects the registration promise in the server which causes an
+                                        // exit. So we work around this by ignoring the request and sending back an OK
+                                        // response.
+                                        log::warn!("Ignoring a client/registerCapability request because dynamic capability registration is not enabled. Please report this upstream to the language server");
+                                    }
+                                }
+                            }
+                        }
 
+                        Ok(serde_json::Value::Null)
+                    }
+                    Ok(MethodCall::UnregisterCapability(params)) => {
+                        for unreg in params.unregisterations {
+                            match unreg.method.as_str() {
+                                lsp::notification::DidChangeWatchedFiles::METHOD => {
+                                    self.editor
+                                        .language_servers
+                                        .file_event_handler
+                                        .unregister(server_id, unreg.id);
+                                }
+                                _ => {
+                                    log::warn!("Received unregistration request for unsupported method: {}", unreg.method);
+                                }
+                            }
+                        }
                         Ok(serde_json::Value::Null)
                     }
                 };

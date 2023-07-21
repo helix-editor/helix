@@ -544,6 +544,10 @@ impl Client {
                         normalizes_line_endings: Some(false),
                         change_annotation_support: None,
                     }),
+                    did_change_watched_files: Some(lsp::DidChangeWatchedFilesClientCapabilities {
+                        dynamic_registration: Some(true),
+                        relative_pattern_support: Some(false),
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp::TextDocumentClientCapabilities {
@@ -1452,5 +1456,14 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::ExecuteCommand>(params))
+    }
+
+    pub fn did_change_watched_files(
+        &self,
+        changes: Vec<lsp::FileEvent>,
+    ) -> impl Future<Output = std::result::Result<(), Error>> {
+        self.notify::<lsp::notification::DidChangeWatchedFiles>(lsp::DidChangeWatchedFilesParams {
+            changes,
+        })
     }
 }
