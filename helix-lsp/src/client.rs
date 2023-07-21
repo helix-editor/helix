@@ -7,8 +7,9 @@ use crate::{
 use helix_core::{find_workspace, path, syntax::LanguageServerFeature, ChangeSet, Rope};
 use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp::{
-    notification::DidChangeWorkspaceFolders, DidChangeWorkspaceFoldersParams, OneOf,
-    PositionEncodingKind, WorkspaceFolder, WorkspaceFoldersChangeEvent,
+    notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
+    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, WorkspaceFolder,
+    WorkspaceFoldersChangeEvent,
 };
 use lsp_types as lsp;
 use parking_lot::Mutex;
@@ -609,6 +610,12 @@ impl Client {
                                 .collect(),
                             },
                         }),
+                        is_preferred_support: Some(true),
+                        disabled_support: Some(true),
+                        data_support: Some(true),
+                        resolve_support: Some(CodeActionCapabilityResolveSupport {
+                            properties: vec!["edit".to_owned(), "command".to_owned()],
+                        }),
                         ..Default::default()
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
@@ -952,6 +959,24 @@ impl Client {
         }
 
         Some(self.call::<lsp::request::ResolveCompletionItem>(completion_item))
+    }
+
+    pub fn resolve_code_action(
+        &self,
+        code_action: lsp::CodeAction,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if the server does not support resolving code action.
+        match capabilities.completion_provider {
+            Some(lsp::CompletionOptions {
+                resolve_provider: Some(true),
+                ..
+            }) => (),
+            _ => return None,
+        }
+
+        Some(self.call::<lsp::request::CodeActionResolveRequest>(code_action))
     }
 
     pub fn text_document_signature_help(
