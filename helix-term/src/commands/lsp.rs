@@ -730,7 +730,8 @@ pub fn code_action(cx: &mut Context) {
 
                 // always present here
                 let action = action.unwrap();
-                let Some(language_server) = editor.language_server_by_id(action.language_server_id) else {
+                let Some(language_server) = editor.language_server_by_id(action.language_server_id)
+                else {
                     editor.set_error("Language Server disappeared");
                     return;
                 };
@@ -1173,7 +1174,8 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
         // Do not show the message if signature help was invoked
         // automatically on backspace, trigger characters, etc.
         if invoked == SignatureHelpInvoked::Manual {
-            cx.editor.set_error("No configured language server supports signature-help");
+            cx.editor
+                .set_error("No configured language server supports signature-help");
         }
         return;
     };
@@ -1398,7 +1400,8 @@ pub fn rename_symbol(cx: &mut Context) {
                     .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
                     .find(|ls| language_server_id.map_or(true, |id| id == ls.id()))
                 else {
-                    cx.editor.set_error("No configured language server supports symbol renaming");
+                    cx.editor
+                        .set_error("No configured language server supports symbol renaming");
                     return;
                 };
 

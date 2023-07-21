@@ -273,7 +273,7 @@ impl Markdown {
                             Arc::clone(&self.config_loader),
                             None,
                         );
-                        lines.extend(tui_text.lines.into_iter());
+                        lines.extend(tui_text.lines);
                     } else {
                         let style = if let Some(Tag::Heading(level, ..)) = tags.last() {
                             match level {

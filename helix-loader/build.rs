@@ -40,7 +40,9 @@ fn main() {
         .ok()
         .filter(|output| output.status.success())
         .and_then(|x| String::from_utf8(x.stdout).ok())
-    else{ return; };
+    else {
+        return;
+    };
     // If heads starts pointing at something else (different branch)
     // we need to return
     let head = Path::new(&git_dir).join("HEAD");
@@ -55,7 +57,9 @@ fn main() {
         .ok()
         .filter(|output| output.status.success())
         .and_then(|x| String::from_utf8(x.stdout).ok())
-    else{ return; };
+    else {
+        return;
+    };
     let head_ref = Path::new(&git_dir).join(head_ref);
     if head_ref.exists() {
         println!("cargo:rerun-if-changed={}", head_ref.display());

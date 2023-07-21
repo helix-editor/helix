@@ -285,7 +285,7 @@ mod test {
             Cow::from("$#%^@"),
             Cow::from("%^&(%^"),
             Cow::from(")(*&^%"),
-            Cow::from(r#"a\\b"#),
+            Cow::from(r"a\\b"),
             //last ' just changes to quoted but since we dont have anything after it, it should be ignored
         ];
         assert_eq!(expected, result);
