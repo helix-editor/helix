@@ -658,6 +658,7 @@ impl Registry {
     }
 
     pub fn remove_by_id(&mut self, id: usize) {
+        self.file_event_handler.remove_client(id);
         self.inner.retain(|_, language_servers| {
             language_servers.retain(|ls| id != ls.id());
             !language_servers.is_empty()
@@ -723,6 +724,7 @@ impl Registry {
                         .unwrap();
 
                     for old_client in old_clients {
+                        self.file_event_handler.remove_client(old_client.id());
                         tokio::spawn(async move {
                             let _ = old_client.force_shutdown().await;
                         });
@@ -739,6 +741,7 @@ impl Registry {
     pub fn stop(&mut self, name: &str) {
         if let Some(clients) = self.inner.remove(name) {
             for client in clients {
+                self.file_event_handler.remove_client(client.id());
                 tokio::spawn(async move {
                     let _ = client.force_shutdown().await;
                 });

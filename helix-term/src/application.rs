@@ -989,12 +989,6 @@ impl Application {
 
                         // Remove the language server from the registry.
                         self.editor.language_servers.remove_by_id(server_id);
-
-                        // Remove the language server from the editor's file event watcher.
-                        self.editor
-                            .language_servers
-                            .file_event_handler
-                            .remove_client(server_id);
                     }
                 }
             }
