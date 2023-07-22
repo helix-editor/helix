@@ -7,7 +7,7 @@
 "namespace" = "aqua1"
 "punctuation" = "orange1"
 "punctuation.delimiter" = "orange1"
-"operator" = "purple1"
+"operator" = "brown"
 "special" = "purple0"
 "variable.other.member" = "blue1"
 "variable" = "fg1"
@@ -105,3 +105,4 @@ aqua0 = "#689d6a"
 aqua1 = "#8ec07c"
 orange0 = "#d65d0e"
 orange1 = "#fe8019"
+brown = "#a52a2a" # https://www.w3schools.com/colors/color_tryit.asp?hex=a52a2a
