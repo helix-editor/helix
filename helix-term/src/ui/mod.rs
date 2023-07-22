@@ -485,6 +485,10 @@ pub mod completers {
             .hidden(false)
             .follow_links(false) // We're scanning over depth 1
             .max_depth(Some(1))
+            // perf: we don't need to search for git/ignore because the search have a depth == 1
+            .git_ignore(false)
+            .git_exclude(false)
+            .ignore(false)
             .build()
             .filter_map(|file| {
                 file.ok().and_then(|entry| {
