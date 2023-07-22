@@ -70,10 +70,13 @@ grep-searcher = "0.1.11"
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 libc = "0.2.147"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+crossterm = { version = "0.26", features = ["event-stream", "use-dev-tty"] }
+
 [build-dependencies]
 helix-loader = { version = "0.6", path = "../helix-loader" }
 
 [dev-dependencies]
 smallvec = "1.11"
-indoc = "2.0.2"
+indoc = "2.0.3"
 tempfile = "3.6.0"

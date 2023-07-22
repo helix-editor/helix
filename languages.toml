@@ -26,6 +26,7 @@ erlang-ls = { command = "erlang_ls" }
 forc = { command = "forc", args = ["lsp"] }
 forth-lsp = { command = "forth-lsp" }
 fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
+fsharp-ls = { command = "fsautocomplete", config = { AutomaticWorkspaceInit = true } }
 gleam = { command = "gleam", args = ["lsp"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 idris2-lsp = { command = "idris2-lsp" }
@@ -62,7 +63,6 @@ slint-lsp = { command = "slint-lsp", args = [] }
 solargraph = { command = "solargraph", args = ["stdio"] }
 solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
-svelteserver = { command = "svelteserver", args = ["--stdio"] }
 svlangserver = { command = "svlangserver", args = [] }
 swipl = { command = "swipl", args = [ "-g", "use_module(library(lsp_server))", "-g", "lsp_server:main", "-t", "halt", "--", "stdio" ] }
 taplo = { command = "taplo", args = ["lsp", "stdio"] }
@@ -140,6 +140,25 @@ includeInlayParameterNameHintsWhenArgumentMatchesName = true
 includeInlayPropertyDeclarationTypeHints = true
 includeInlayVariableTypeHints = true
 
+[language-server.svelteserver]
+command = "svelteserver"
+args = ["--stdio"]
+
+[language-server.svelteserver.config.configuration.typescript]
+inlayHints.parameterTypes.enabled = true
+inlayHints.variableTypes.enabled = true
+inlayHints.propertyDeclarationTypes.enabled = true
+inlayHints.functionLikeReturnTypes.enabled = true
+inlayHints.enumMemberValues.enabled = true
+inlayHints.parameterNames.enabled = "all"
+
+[language-server.svelteserver.config.configuration.javascript]
+inlayHints.parameterTypes.enabled = true
+inlayHints.variableTypes.enabled = true
+inlayHints.propertyDeclarationTypes.enabled = true
+inlayHints.functionLikeReturnTypes.enabled = true
+inlayHints.enumMemberValues.enabled = true
+inlayHints.parameterNames.enabled = "all"
 
 [[language]]
 name = "rust"
@@ -568,7 +587,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "typescript"
-source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "6aac031ad88dd6317f02ac0bb27d099a553a7d8c", subpath = "typescript" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "5d20856f34315b068c41edaee2ac8a100081d259", subpath = "typescript" }
 
 [[language]]
 name = "tsx"
@@ -582,7 +601,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "tsx"
-source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "6aac031ad88dd6317f02ac0bb27d099a553a7d8c", subpath = "tsx" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "5d20856f34315b068c41edaee2ac8a100081d259", subpath = "tsx" }
 
 [[language]]
 name = "css"
@@ -682,7 +701,7 @@ source = { git = "https://github.com/nix-community/tree-sitter-nix", rev = "1b69
 name = "ruby"
 scope = "source.ruby"
 injection-regex = "ruby"
-file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec", "Rakefile", "Gemfile", "rabl", "jbuilder", "jb", "Podfile", "podspec", "Vagrantfile"]
+file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec", "Rakefile", "Gemfile", "rabl", "jbuilder", "jb", "Podfile", "podspec", "Vagrantfile", "Brewfile"]
 shebangs = ["ruby"]
 roots = []
 comment-token = "#"
@@ -697,7 +716,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "206c7
 name = "bash"
 scope = "source.bash"
 injection-regex = "(shell|bash|zsh|sh)"
-file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", ".zimrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc", ".bash_aliases"]
+file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", ".zimrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc", ".bash_aliases", "Renviron", ".Renviron"]
 shebangs = ["sh", "bash", "dash", "zsh"]
 roots = []
 comment-token = "#"
@@ -738,7 +757,7 @@ source = { git = "https://github.com/gbprod/tree-sitter-twig", rev = "807b293fec
 name = "latex"
 scope = "source.tex"
 injection-regex = "tex"
-file-types = ["tex", "sty", "cls"]
+file-types = ["tex", "sty", "cls", "Rd"]
 roots = []
 comment-token = "%"
 language-servers = [ "texlab" ]
@@ -912,7 +931,7 @@ language-servers = [ "svelteserver" ]
 
 [[grammar]]
 name = "svelte"
-source = { git = "https://github.com/Himujjal/tree-sitter-svelte", rev = "349a5984513b4a4a9e143a6e746120c6ff6cf6ed" }
+source = { git = "https://github.com/Himujjal/tree-sitter-svelte", rev = "be7f2e7db1fc19f0852265ec60923fc058380739" }
 
 [[language]]
 name = "vue"
@@ -1093,7 +1112,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "perl"
-source = { git = "https://github.com/ganezdragon/tree-sitter-perl", rev = "0ac2c6da562c7a2c26ed7e8691d4a590f7e8b90a" }
+source = { git = "https://github.com/tree-sitter-perl/tree-sitter-perl", rev = "ed21ecbcc128a6688770ebafd3ef68a1c9bc1ea9" }
 
 [[language]]
 name = "racket"
@@ -1306,7 +1325,7 @@ source = { git = "https://github.com/the-mikedavis/tree-sitter-git-rebase", rev 
 name = "regex"
 scope = "source.regex"
 injection-regex = "regex"
-file-types = ["regex"]
+file-types = ["regex", ".Rbuildignore"]
 roots = []
 
 [[grammar]]
@@ -1537,7 +1556,7 @@ source = { git = "https://github.com/Hubro/tree-sitter-robot", rev = "f1142bfaa6
 name = "r"
 scope = "source.r"
 injection-regex = "(r|R)"
-file-types = ["r", "R"]
+file-types = ["r", "R", ".Rprofile", "Rprofile.site"]
 shebangs = ["r", "R"]
 roots = []
 comment-token = "#"
@@ -2642,6 +2661,21 @@ indent = { tab-width = 3, unit = "   " }
 [[grammar]]
 name = "forth"
 source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "304ed77beb113e37af38b20ff14e3c37bf350d10" }
+
+[[language]]
+name = "fsharp"
+scope = "source.fs"
+roots = ["sln", "fsproj"]
+injection-regex = "fsharp"
+file-types = ["fs", "fsx"]
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+auto-format = true
+language-servers = ["fsharp-ls"]
+
+[[grammar]]
+name = "fsharp"
+source = { git = "https://github.com/kaashyapan/tree-sitter-fsharp", rev = "1b5a315e003024db6181744f1d25b8f525732665" }
 
 [[language]]
 name = "t32"

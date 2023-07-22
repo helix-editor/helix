@@ -1540,7 +1540,18 @@ impl Editor {
 
         let path = path.map(|path| path.into());
         let doc = doc_mut!(self, &doc_id);
-        let future = doc.save(path, force)?;
+        let doc_save_future = doc.save(path, force)?;
+
+        // When a file is written to, notify the file event handler.
+        // Note: This can be removed once proper file watching is implemented.
+        let handler = self.language_servers.file_event_handler.clone();
+        let future = async move {
+            let res = doc_save_future.await;
+            if let Ok(event) = &res {
+                handler.file_changed(event.path.clone());
+            }
+            res
+        };
 
         use futures_util::stream;
 
@@ -1676,6 +1687,14 @@ impl Editor {
         &self,
         timeout: Option<u64>,
     ) -> Result<(), tokio::time::error::Elapsed> {
+        // Remove all language servers from the file event handler.
+        // Note: this is non-blocking.
+        for client in self.language_servers.iter_clients() {
+            self.language_servers
+                .file_event_handler
+                .remove_client(client.id());
+        }
+
         tokio::time::timeout(
             Duration::from_millis(timeout.unwrap_or(3000)),
             future::join_all(

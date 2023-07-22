@@ -356,6 +356,7 @@ impl Prompt {
         let completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
         let suggestion_color = theme.get("ui.text.inactive");
+        let background = theme.get("ui.background");
         // completion
 
         let max_len = self
@@ -451,6 +452,7 @@ impl Prompt {
         }
 
         let line = area.height - 1;
+        surface.clear_with(area.clip_top(line), background);
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
 

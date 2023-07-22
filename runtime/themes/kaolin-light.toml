@@ -1,0 +1,60 @@
+# Author : thlsrms <thlsrmsdev@gmail.com>
+
+# Original author: kaolin-dark by Ogden Webb: github.com/ogdenwebb/emacs-kaolin-themes
+# Kaolin Light Theme - Light variant of the original Kaolin Dark Theme
+
+inherits = "kaolin-dark"
+
+"keyword.directive" = "selection0"
+"special" = "ultramarine1"
+"variable.other.member" = { fg = "constant", modifiers = ["italic"] }
+"variable" = "ultramarine1"
+"variable.parameter" = "constant"
+"type.builtin" = "selection0"
+"function" = { fg = "selection0" }
+"function.builtin" = "ultramarine1"
+"tag" = { fg = "hint", modifiers = ["italic"] }
+"constant.builtin" = { fg = "selection0" }
+"string" = "green0"
+"constant.numeric" = "selection0"
+"module" = "selection0"
+
+"ui.linenr.selected" = { fg = "green1", modifiers = ["bold"] }
+"ui.statusline" = { fg = "selection0", bg = "bg1" }
+"ui.statusline.normal" = { fg = "hint", bg = "bg1", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "warn", bg = "bg1", modifiers = ["reversed", "bold"] }
+"ui.statusline.select" = { fg = "constant", bg = "bg1", modifiers = ["reversed", "bold"] }
+"ui.text" = { fg = "fg0" }
+"ui.text.focus" = { fg = "green1", modifiers = ["bold"] }
+"ui.cursor.match" = { fg = "fg1", bg = "gray0" }
+"ui.menu.selected" = { fg = "green1", bg = "bg2", modifiers = ["bold"] }
+"ui.virtual.wrap" = "fg1"
+"ui.virtual.indent-guide" = "fg1"
+"ui.virtual.inlay-hint" = "gray0"
+"ui.virtual.inlay-hint.parameter" = { fg = "gray0", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.type" = { fg = "gray0", modifiers = ["italic"] }
+
+"markup.heading" = { fg = "ultramarine1", modifiers = ["bold"] }
+"markup.link.url" = { fg = "info", underline = { style = "line" } }
+"markup.link.text" = "info"
+"markup.raw" = "constant"
+
+[palette]
+# kaolin-light palette
+bg0  = "#edeeeb" # kaolin-light-bg1
+bg1  = "#dfe1dc" # kaolin-light-bg2
+bg2  = "#d1d4cd" # kaolin-light-bg3
+fg0 = "#383e3f" # gray1
+fg1 = "#bebec4" # white4
+gray0 = "#7c878a" # gray7
+green0 = "#39854c" # erin2
+green1 = "#18a318" # green2
+selection0 = "#4c7a90" # azure4
+selection1 = "#d3e4f0" # azure9
+type = "#e36b3f" # vermilion3
+hint = "#13665f" # teal2
+info = "#3b84cc" # azure1
+warn = "#dbac66" # orange1
+error = "#e84c58" # red3
+constant = "#845A84" # magenta4
+ultramarine1 = "#6d46e3" # ultramarine1

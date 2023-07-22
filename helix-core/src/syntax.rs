@@ -1135,11 +1135,37 @@ impl Syntax {
                     layer.tree().root_node(),
                     RopeProvider(source_slice),
                 );
+                let mut combined_injections = vec![
+                    (None, Vec::new(), IncludedChildren::default());
+                    layer.config.combined_injections_patterns.len()
+                ];
                 let mut injections = Vec::new();
+                let mut last_injection_end = 0;
                 for mat in matches {
                     let (injection_capture, content_node, included_children) = layer
                         .config
                         .injection_for_match(&layer.config.injections_query, &mat, source_slice);
+
+                    // in case this is a combined injection save it for more processing later
+                    if let Some(combined_injection_idx) = layer
+                        .config
+                        .combined_injections_patterns
+                        .iter()
+                        .position(|&pattern| pattern == mat.pattern_index)
+                    {
+                        let entry = &mut combined_injections[combined_injection_idx];
+                        if injection_capture.is_some() {
+                            entry.0 = injection_capture;
+                        }
+                        if let Some(content_node) = content_node {
+                            if content_node.start_byte() >= last_injection_end {
+                                entry.1.push(content_node);
+                                last_injection_end = content_node.end_byte();
+                            }
+                        }
+                        entry.2 = included_children;
+                        continue;
+                    }
 
                     // Explicitly remove this match so that none of its other captures will remain
                     // in the stream of captures.
@@ -1155,49 +1181,23 @@ impl Syntax {
                                 intersect_ranges(&layer.ranges, &[content_node], included_children);
 
                             if !ranges.is_empty() {
+                                if content_node.start_byte() < last_injection_end {
+                                    continue;
+                                }
+                                last_injection_end = content_node.end_byte();
                                 injections.push((config, ranges));
                             }
                         }
                     }
                 }
 
-                // Process combined injections.
-                if let Some(combined_injections_query) = &layer.config.combined_injections_query {
-                    let mut injections_by_pattern_index =
-                        vec![
-                            (None, Vec::new(), IncludedChildren::default());
-                            combined_injections_query.pattern_count()
-                        ];
-                    let matches = cursor.matches(
-                        combined_injections_query,
-                        layer.tree().root_node(),
-                        RopeProvider(source_slice),
-                    );
-                    for mat in matches {
-                        let entry = &mut injections_by_pattern_index[mat.pattern_index];
-                        let (injection_capture, content_node, included_children) = layer
-                            .config
-                            .injection_for_match(combined_injections_query, &mat, source_slice);
-                        if injection_capture.is_some() {
-                            entry.0 = injection_capture;
-                        }
-                        if let Some(content_node) = content_node {
-                            entry.1.push(content_node);
-                        }
-                        entry.2 = included_children;
-                    }
-                    for (lang_name, content_nodes, included_children) in injections_by_pattern_index
-                    {
-                        if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty()) {
-                            if let Some(config) = (injection_callback)(&lang_name) {
-                                let ranges = intersect_ranges(
-                                    &layer.ranges,
-                                    &content_nodes,
-                                    included_children,
-                                );
-                                if !ranges.is_empty() {
-                                    injections.push((config, ranges));
-                                }
+                for (lang_name, content_nodes, included_children) in combined_injections {
+                    if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty()) {
+                        if let Some(config) = (injection_callback)(&lang_name) {
+                            let ranges =
+                                intersect_ranges(&layer.ranges, &content_nodes, included_children);
+                            if !ranges.is_empty() {
+                                injections.push((config, ranges));
                             }
                         }
                     }
@@ -1560,7 +1560,7 @@ pub struct HighlightConfiguration {
     pub language: Grammar,
     pub query: Query,
     injections_query: Query,
-    combined_injections_query: Option<Query>,
+    combined_injections_patterns: Vec<usize>,
     highlights_pattern_index: usize,
     highlight_indices: ArcSwap<Vec<Option<Highlight>>>,
     non_local_variable_patterns: Vec<bool>,
@@ -1676,26 +1676,15 @@ impl HighlightConfiguration {
             }
         }
 
-        let mut injections_query = Query::new(language, injection_query)?;
-
-        // Construct a separate query just for dealing with the 'combined injections'.
-        // Disable the combined injection patterns in the main query.
-        let mut combined_injections_query = Query::new(language, injection_query)?;
-        let mut has_combined_queries = false;
-        for pattern_index in 0..injections_query.pattern_count() {
-            let settings = injections_query.property_settings(pattern_index);
-            if settings.iter().any(|s| &*s.key == "injection.combined") {
-                has_combined_queries = true;
-                injections_query.disable_pattern(pattern_index);
-            } else {
-                combined_injections_query.disable_pattern(pattern_index);
-            }
-        }
-        let combined_injections_query = if has_combined_queries {
-            Some(combined_injections_query)
-        } else {
-            None
-        };
+        let injections_query = Query::new(language, injection_query)?;
+        let combined_injections_patterns = (0..injections_query.pattern_count())
+            .filter(|&i| {
+                injections_query
+                    .property_settings(i)
+                    .iter()
+                    .any(|s| &*s.key == "injection.combined")
+            })
+            .collect();
 
         // Find all of the highlighting patterns that are disabled for nodes that
         // have been identified as local variables.
@@ -1744,7 +1733,7 @@ impl HighlightConfiguration {
             language,
             query,
             injections_query,
-            combined_injections_query,
+            combined_injections_patterns,
             highlights_pattern_index,
             highlight_indices,
             non_local_variable_patterns,
