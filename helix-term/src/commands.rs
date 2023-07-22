@@ -1773,6 +1773,11 @@ fn search_impl(
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
 
+    // Update search_matches, but only if search criteria has changed since
+    // last call to search_impl. If 'n' is being used to traverse matches,
+    // update will be skipped.
+    view.update_search_matches(contents, regex);
+
     // Get the right side of the primary block cursor for forward search, or the
     // grapheme before the start of the selection for reverse search.
     let start = match direction {
@@ -2463,6 +2468,12 @@ fn collapse_selection(cx: &mut Context) {
         Range::new(pos, pos)
     });
     doc.set_selection(view.id, selection);
+
+    // clear highlights on search matches
+    // but set search_matches.old to "" so that if 'n' is pressed
+    // to continue to traverse matches, highlights resume
+    view.search_matches.clear();
+    view.search_matches.old = Regex::new("").unwrap();
 }
 
 fn flip_selections(cx: &mut Context) {

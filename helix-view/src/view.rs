@@ -5,10 +5,10 @@ use crate::{
     graphics::Rect,
     Align, Document, DocumentId, Theme, ViewId,
 };
-
 use helix_core::{
     char_idx_at_visual_offset,
     doc_formatter::TextFormat,
+    regex::Regex,
     syntax::Highlight,
     text_annotations::TextAnnotations,
     visual_offset_from_anchor, visual_offset_from_block, Position, RopeSlice, Selection,
@@ -109,6 +109,28 @@ pub struct ViewPosition {
 }
 
 #[derive(Clone)]
+pub struct SearchMatches {
+    pub matches: Vec<(usize, usize)>,
+    pub new: Regex,
+    pub old: Regex,
+}
+
+impl SearchMatches {
+    pub fn clear(&mut self) {
+        self.matches.clear();
+    }
+
+    pub fn has_changed(&self, regex: &Regex) -> bool {
+        regex.as_str() != self.old.as_str()
+    }
+
+    pub fn update(&mut self, regex: &Regex) {
+        self.old = self.new.clone();
+        self.new = regex.clone();
+    }
+}
+
+#[derive(Clone)]
 pub struct View {
     pub id: ViewId,
     pub offset: ViewPosition,
@@ -131,6 +153,7 @@ pub struct View {
     /// mapping keeps track of the last applied history revision so that only new changes
     /// are applied.
     doc_revisions: HashMap<DocumentId, usize>,
+    pub search_matches: SearchMatches,
 }
 
 impl fmt::Debug for View {
@@ -160,6 +183,11 @@ impl View {
             object_selections: Vec::new(),
             gutters,
             doc_revisions: HashMap::new(),
+            search_matches: SearchMatches {
+                matches: Vec::new(),
+                new: Regex::new("").unwrap(),
+                old: Regex::new("").unwrap(),
+            },
         }
     }
 
@@ -615,6 +643,47 @@ impl View {
 
         if let Some(transaction) = doc.history.get_mut().changes_since(current_revision) {
             self.apply(&transaction, doc);
+        }
+    }
+
+    pub fn get_backup_theme(&self, theme: &Theme) -> usize {
+        theme
+            .find_scope_index("ui.selection")
+            .expect("could not find `ui.selection` scope in the theme!")
+    }
+
+    pub fn get_search_matches(
+        &self,
+        theme: &Theme,
+    ) -> Option<Vec<(usize, std::ops::Range<usize>)>> {
+        // let selection_scope = match theme.find_scope_index("ui.selection.primary") {
+        let selection_scope = match theme.find_scope_index("ui.cursor.match") {
+            Some(theme) => theme,
+            None => self.get_backup_theme(theme),
+        };
+
+        let mut ret = Vec::new();
+        for (start, end) in &self.search_matches.matches {
+            ret.push((selection_scope, *start..*end));
+        }
+
+        if ret.is_empty() {
+            None
+        } else {
+            Some(ret)
+        }
+    }
+
+    pub fn update_search_matches(&mut self, contents: &str, regex: &Regex) {
+        // this is expensive. only update search matches if search criteria has changed
+        if self.search_matches.has_changed(regex) {
+            self.search_matches.update(regex);
+            self.search_matches.clear();
+            for one_match in self.search_matches.new.find_iter(contents) {
+                self.search_matches
+                    .matches
+                    .push((one_match.start(), one_match.end()));
+            }
         }
     }
 }
