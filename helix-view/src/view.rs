@@ -1,7 +1,7 @@
 use crate::{
     align_view,
     document::DocumentInlayHints,
-    editor::{GutterConfig, GutterType},
+    editor::{Action, GutterConfig, GutterType},
     graphics::Rect,
     Align, Document, DocumentId, Theme, ViewId,
 };
@@ -312,6 +312,13 @@ impl View {
 
     pub fn is_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) -> bool {
         self.offset_coords_to_in_view(doc, scrolloff).is_none()
+    }
+
+    /// Whether to change a view alignment of current file. You probably don't want to
+    /// change the alignment of current file when open new files in the background (Load).
+    /// Except when the new file is the old file
+    pub fn change_align_view(action: Action, old_id: DocumentId, new_id: DocumentId) -> bool {
+        !matches!((action, old_id == new_id), (Action::Load, false))
     }
 
     /// Estimates the last visible document line on screen.
@@ -1015,5 +1022,17 @@ mod tests {
             ),
             Some(7)
         );
+    }
+
+    #[test]
+    fn test_change_align_view() {
+        use std::num::NonZeroUsize;
+        let docs = [
+            DocumentId(NonZeroUsize::new(1).unwrap()),
+            DocumentId(NonZeroUsize::new(2).unwrap()),
+        ];
+        assert!(View::change_align_view(Action::Replace, docs[0], docs[1]));
+        assert!(View::change_align_view(Action::Load, docs[0], docs[0]));
+        assert!(!View::change_align_view(Action::Load, docs[0], docs[1]));
     }
 }
