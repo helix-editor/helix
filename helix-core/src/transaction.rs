@@ -388,7 +388,10 @@ impl ChangeSet {
             }
 
             let Some((i, change)) = iter.next() else {
-                map!(|pos, _| (old_pos == pos).then_some(new_pos), self.changes.len());
+                map!(
+                    |pos, _| (old_pos == pos).then_some(new_pos),
+                    self.changes.len()
+                );
                 break;
             };
 

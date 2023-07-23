@@ -106,12 +106,16 @@ fn find_pair(
         for close in
             iter::successors(node.next_sibling(), |node| node.next_sibling()).take(MATCH_LIMIT)
         {
-            let Some(open) = as_close_pair(doc, &close) else { continue; };
+            let Some(open) = as_close_pair(doc, &close) else {
+                continue;
+            };
             if find_pair_end(doc, Some(node), open, Backward).is_some() {
                 return doc.try_byte_to_char(close.start_byte()).ok();
             }
         }
-        let Some(parent) = node.parent() else { break; };
+        let Some(parent) = node.parent() else {
+            break;
+        };
         node = parent;
     }
     let node = tree.root_node().named_descendant_for_byte_range(pos, pos)?;

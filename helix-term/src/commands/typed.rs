@@ -1385,9 +1385,8 @@ fn lsp_workspace_command(
                 .map(|options| (ls.id(), options))
         })
     else {
-        cx.editor.set_status(
-             "No active language servers for this document support workspace commands",
-        );
+        cx.editor
+            .set_status("No active language servers for this document support workspace commands");
         return Ok(());
     };
 
