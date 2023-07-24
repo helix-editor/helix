@@ -1,21 +1,17 @@
-use super::*;
+use crate::{test, test::helpers::AppBuilder};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn auto_indent_c() -> anyhow::Result<()> {
-    test_with_config(
-        AppBuilder::new().with_file("foo.c", None),
+    test!(
+        AppBuilder::default().with_file("foo.c"),
         // switches to append mode?
-        (
-            helpers::platform_line("void foo() {#[|}]#"),
-            "i<ret><esc>",
-            helpers::platform_line(indoc! {"\
-                void foo() {
-                  #[|\n]#\
-                }
-            "}),
-        ),
+        ("void foo() {{#[|}}]#"),
+        ("i<ret><esc>"),
+        ("
+            void foo() {{
+              #[|\n]#
+            }}
+        ")
     )
-    .await?;
-
-    Ok(())
+    .await
 }

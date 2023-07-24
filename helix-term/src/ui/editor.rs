@@ -1368,7 +1368,7 @@ impl Component for EditorView {
             }
 
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
-            Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
+            Event::RedrawRequest => self.handle_idle_timeout(&mut cx),
             Event::FocusGained => EventResult::Ignored(None),
             Event::FocusLost => {
                 if context.editor.config().auto_save {

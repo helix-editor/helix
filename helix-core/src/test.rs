@@ -5,6 +5,21 @@ use smallvec::SmallVec;
 use std::cmp::Reverse;
 use unicode_segmentation::UnicodeSegmentation;
 
+#[derive(Debug, Clone, Default)]
+pub struct Content {
+    pub text: String,
+    pub selection: Selection,
+}
+
+impl From<(String, Selection)> for Content {
+    fn from(content_tuple: (String, Selection)) -> Self {
+        Content {
+            text: content_tuple.0,
+            selection: content_tuple.1,
+        }
+    }
+}
+
 /// Convert annotated test string to test string and selection.
 ///
 /// `#[|` for primary selection with head before anchor followed by `]#`.

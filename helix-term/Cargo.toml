@@ -15,7 +15,6 @@ rust-version = "1.65"
 [features]
 default = ["git"]
 unicode-lines = ["helix-core/unicode-lines"]
-integration = []
 git = ["helix-vcs/git"]
 
 [[bin]]
@@ -80,3 +79,4 @@ helix-loader = { version = "0.6", path = "../helix-loader" }
 smallvec = "1.11"
 indoc = "2.0.3"
 tempfile = "3.6.0"
+derive_more = "0.99"

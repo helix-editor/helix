@@ -47,7 +47,6 @@ pub struct TerminalOptions {
     pub viewport: Viewport,
 }
 
-/// Interface to the terminal backed by Termion
 #[derive(Debug)]
 pub struct Terminal<B>
 where

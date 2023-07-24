@@ -1,6 +1,8 @@
-use super::*;
-
-use helix_core::path::get_normalized_path;
+use crate::test::helpers::{
+    file::assert_file_has_content,
+    platform_line,
+    test_harness::{test, TestCase, TestHarness},
+};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_split_write_quit_all() -> anyhow::Result<()> {
@@ -8,126 +10,78 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
     let mut file2 = tempfile::NamedTempFile::new()?;
     let mut file3 = tempfile::NamedTempFile::new()?;
 
-    let mut app = helpers::AppBuilder::new()
-        .with_file(file1.path(), None)
-        .build()?;
-
-    test_key_sequences(
-        &mut app,
-        vec![
-            (
-                Some(&format!(
+    TestHarness::default()
+        .with_file(file1.path())
+        .should_exit()
+        .push_test_case(
+            TestCase::default()
+                .with_keys(&format!(
                     "ihello1<esc>:sp<ret>:o {}<ret>ihello2<esc>:sp<ret>:o {}<ret>ihello3<esc>",
                     file2.path().to_string_lossy(),
                     file3.path().to_string_lossy()
-                )),
-                Some(&|app| {
-                    let docs: Vec<_> = app.editor.documents().collect();
-                    assert_eq!(3, docs.len());
+                ))
+                .with_validation_fn(Box::new(move |cx| {
+                    cx.assert_app_is_ok();
+                    cx.assert_view_count(3);
+                    cx.assert_document_count(3);
 
-                    let doc1 = docs
-                        .iter()
-                        .find(|doc| doc.path().unwrap() == &get_normalized_path(file1.path()))
-                        .unwrap();
+                    let mut doc_texts = cx
+                        .app
+                        .editor
+                        .documents
+                        .values()
+                        .map(|document| document.text());
 
-                    assert_eq!("hello1", doc1.text().to_string());
+                    assert_eq!("hello1", doc_texts.next().unwrap());
+                    assert_eq!("hello2", doc_texts.next().unwrap());
+                    assert_eq!("hello3", doc_texts.next().unwrap());
+                })),
+        )
+        .push_test_case(
+            TestCase::default()
+                .with_keys(":wqa<ret>")
+                .with_validation_fn(Box::new(move |cx| {
+                    cx.assert_app_is_ok();
+                    cx.assert_view_count(0);
+                })),
+        )
+        .run()
+        .await?;
 
-                    let doc2 = docs
-                        .iter()
-                        .find(|doc| doc.path().unwrap() == &get_normalized_path(file2.path()))
-                        .unwrap();
-
-                    assert_eq!("hello2", doc2.text().to_string());
-
-                    let doc3 = docs
-                        .iter()
-                        .find(|doc| doc.path().unwrap() == &get_normalized_path(file3.path()))
-                        .unwrap();
-
-                    assert_eq!("hello3", doc3.text().to_string());
-
-                    helpers::assert_status_not_error(&app.editor);
-                    assert_eq!(3, app.editor.tree.views().count());
-                }),
-            ),
-            (
-                Some(":wqa<ret>"),
-                Some(&|app| {
-                    helpers::assert_status_not_error(&app.editor);
-                    assert_eq!(0, app.editor.tree.views().count());
-                }),
-            ),
-        ],
-        true,
-    )
-    .await?;
-
-    helpers::assert_file_has_content(file1.as_file_mut(), "hello1")?;
-    helpers::assert_file_has_content(file2.as_file_mut(), "hello2")?;
-    helpers::assert_file_has_content(file3.as_file_mut(), "hello3")?;
-
-    Ok(())
+    assert_file_has_content(file1.as_file_mut(), "hello1")?;
+    assert_file_has_content(file2.as_file_mut(), "hello2")?;
+    assert_file_has_content(file3.as_file_mut(), "hello3")
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
-    let mut app = helpers::AppBuilder::new()
-        .with_file(file.path(), None)
-        .build()?;
 
-    test_key_sequences(
-        &mut app,
-        vec![
-            (
-                Some("O<esc>ihello<esc>:sp<ret>ogoodbye<esc>"),
-                Some(&|app| {
-                    assert_eq!(2, app.editor.tree.views().count());
-                    helpers::assert_status_not_error(&app.editor);
+    TestHarness::default()
+        .with_file(file.path())
+        .push_test_case(split_test_case(
+            "O<esc>ihello<esc>:sp<ret>ogoodbye<esc>",
+            2,
+            true,
+        ))
+        .push_test_case(split_test_case(":wq<ret>", 1, false))
+        .run()
+        .await?;
 
-                    let mut docs: Vec<_> = app.editor.documents().collect();
-                    assert_eq!(1, docs.len());
+    return assert_file_has_content(file.as_file_mut(), &platform_line("hello\ngoodbye"));
 
-                    let doc = docs.pop().unwrap();
-
-                    assert_eq!(
-                        helpers::platform_line("hello\ngoodbye"),
-                        doc.text().to_string()
-                    );
-
-                    assert!(doc.is_modified());
-                }),
-            ),
-            (
-                Some(":wq<ret>"),
-                Some(&|app| {
-                    helpers::assert_status_not_error(&app.editor);
-                    assert_eq!(1, app.editor.tree.views().count());
-
-                    let mut docs: Vec<_> = app.editor.documents().collect();
-                    assert_eq!(1, docs.len());
-
-                    let doc = docs.pop().unwrap();
-
-                    assert_eq!(
-                        helpers::platform_line("hello\ngoodbye"),
-                        doc.text().to_string()
-                    );
-
-                    assert!(!doc.is_modified());
-                }),
-            ),
-        ],
-        false,
-    )
-    .await?;
-
-    helpers::assert_file_has_content(
-        file.as_file_mut(),
-        &helpers::platform_line("hello\ngoodbye"),
-    )?;
-
-    Ok(())
+    fn split_test_case(key_str: &str, view_count: usize, doc_is_modified: bool) -> TestCase {
+        TestCase::default()
+            .with_keys(key_str)
+            .with_expected_text("hello\ngoodbye")
+            .with_validation_fn(Box::new(move |cx| {
+                cx.assert_app_is_ok();
+                cx.assert_view_count(view_count);
+                cx.assert_document_count(1);
+                cx.assert_eq_text_current();
+                assert!(cx.newest_doc_is_modified() == doc_is_modified)
+            }))
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -186,7 +140,5 @@ async fn test_changes_in_splits_apply_to_all_views() -> anyhow::Result<()> {
         "3[<space><C-w>v<C-s><C-w>wuu3[<space><C-w>q%d",
         "#[|]#",
     ))
-    .await?;
-
-    Ok(())
+    .await
 }

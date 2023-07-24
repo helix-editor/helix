@@ -1,23 +1,15 @@
-#[cfg(feature = "integration")]
 mod test {
-    mod helpers;
-
-    use helix_core::{syntax::AutoPairConfig, Selection};
-    use helix_term::config::Config;
-
-    use indoc::indoc;
-
-    use self::helpers::*;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn hello_world() -> anyhow::Result<()> {
-        test(("#[\n|]#", "ihello world<esc>", "hello world#[|\n]#")).await?;
-        Ok(())
+        crate::test!(("#[\n|]#"), ("ihello world<esc>"), ("hello world#[|\n]#")).await
     }
 
     mod auto_indent;
     mod auto_pairs;
+    mod backend;
     mod commands;
+    mod helpers;
     mod movement;
     mod prompt;
     mod splits;

@@ -56,10 +56,6 @@ impl Jobs {
         Self::default()
     }
 
-    pub fn spawn<F: Future<Output = anyhow::Result<()>> + Send + 'static>(&mut self, f: F) {
-        self.add(Job::new(f));
-    }
-
     pub fn callback<F: Future<Output = anyhow::Result<Callback>> + Send + 'static>(
         &mut self,
         f: F,
@@ -82,13 +78,6 @@ impl Jobs {
             Err(e) => {
                 editor.set_error(format!("Async job failed: {}", e));
             }
-        }
-    }
-
-    pub async fn next_job(&mut self) -> Option<anyhow::Result<Option<Callback>>> {
-        tokio::select! {
-            event = self.futures.next() => {  event }
-            event = self.wait_futures.next() => { event }
         }
     }
 

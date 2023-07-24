@@ -1,5 +1,5 @@
 use arc_swap::{access::Map, ArcSwap};
-use futures_util::Stream;
+use futures_util::StreamExt;
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
     path::get_relative_path,
@@ -13,14 +13,14 @@ use helix_lsp::{
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
-    editor::{ConfigEvent, EditorEvent},
+    editor::{Action, ConfigEvent, EditorEvent},
     graphics::Rect,
     theme,
     tree::Layout,
     Align, Editor,
 };
 use serde_json::json;
-use tui::backend::Backend;
+use tui::{backend::Backend, Terminal};
 
 use crate::{
     args::Args,
@@ -32,15 +32,11 @@ use crate::{
     ui::{self, overlay::overlaid},
 };
 
+use core::panic;
 use log::{debug, error, warn};
-use std::{
-    collections::btree_map::Entry,
-    io::{stdin, stdout},
-    path::Path,
-    sync::Arc,
-};
+use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
-use anyhow::{Context, Error};
+use anyhow::{anyhow, Context, Error};
 
 use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
@@ -48,70 +44,25 @@ use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
 
-#[cfg(not(feature = "integration"))]
-use tui::backend::CrosstermBackend;
-
-#[cfg(feature = "integration")]
-use tui::backend::TestBackend;
-
-#[cfg(not(feature = "integration"))]
-type TerminalBackend = CrosstermBackend<std::io::Stdout>;
-
-#[cfg(feature = "integration")]
-type TerminalBackend = TestBackend;
-
-type Terminal = tui::terminal::Terminal<TerminalBackend>;
-
-pub struct Application {
+pub struct Application<B: Backend> {
     compositor: Compositor,
-    terminal: Terminal,
+    terminal: Terminal<B>,
     pub editor: Editor,
-
     config: Arc<ArcSwap<Config>>,
-
-    #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
-    #[allow(dead_code)]
     syn_loader: Arc<syntax::Loader>,
-
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
 }
 
-#[cfg(feature = "integration")]
-fn setup_integration_logging() {
-    let level = std::env::var("HELIX_LOG_LEVEL")
-        .map(|lvl| lvl.parse().unwrap())
-        .unwrap_or(log::LevelFilter::Info);
-
-    // Separate file config so we can include year, month and day in file logs
-    let _ = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .level(level)
-        .chain(std::io::stdout())
-        .apply();
-}
-
-impl Application {
+impl<B: Backend> Application<B> {
     pub fn new(
+        terminal_backend: B,
         args: Args,
         config: Config,
         syn_loader_conf: syntax::Configuration,
     ) -> Result<Self, Error> {
-        #[cfg(feature = "integration")]
-        setup_integration_logging();
-
-        use helix_view::editor::Action;
-
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
@@ -134,13 +85,7 @@ impl Application {
 
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
-        #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout(), &config.editor);
-
-        #[cfg(feature = "integration")]
-        let backend = TestBackend::new(120, 150);
-
-        let terminal = Terminal::new(backend)?;
+        let terminal = Terminal::new(terminal_backend)?;
         let area = terminal.size().expect("couldn't get terminal size");
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
@@ -213,12 +158,12 @@ impl Application {
                 let (view, doc) = current!(editor);
                 align_view(doc, view, Align::Center);
             }
-        } else if stdin().is_tty() || cfg!(feature = "integration") {
-            editor.new_file(Action::VerticalSplit);
-        } else {
+        } else if !stdin().is_tty() {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+        } else {
+            editor.new_file(Action::VerticalSplit);
         }
 
         editor.set_theme(theme);
@@ -239,12 +184,9 @@ impl Application {
             compositor,
             terminal,
             editor,
-
             config,
-
             theme_loader,
             syn_loader,
-
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
@@ -263,7 +205,6 @@ impl Application {
         // Acquire mutable access to the redraw_handle lock
         // to ensure that there are no tasks running that want to block rendering
         drop(cx.editor.redraw_handle.1.write().await);
-        cx.editor.needs_redraw = false;
         {
             // exhaust any leftover redraw notifications
             let notify = cx.editor.redraw_handle.0.notified();
@@ -289,68 +230,42 @@ impl Application {
         self.terminal.draw(pos, kind).unwrap();
     }
 
-    pub async fn event_loop<S>(&mut self, input_stream: &mut S)
-    where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
-    {
-        self.render().await;
+    /// Returns true if application should continue to be ticked
+    /// (false if it should be closed.)
+    pub async fn tick(&mut self) -> bool {
+        if self.editor.should_close() {
+            return false;
+        }
 
-        loop {
-            if !self.event_loop_until_idle(input_stream).await {
-                break;
+        tokio::select! {
+            biased;
+
+            Some(signal) = self.signals.next() => {
+                if !self.handle_signals(signal).await {
+                    return false;
+                };
+            }
+            Some(event) = self.terminal.backend_mut().event_stream().next() => {
+                self.handle_terminal_events(event).await;
+            }
+            Some(callback) = self.jobs.futures.next() => {
+                self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                self.render().await;
+            }
+            Some(callback) = self.jobs.wait_futures.next() => {
+                self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                self.render().await;
+            }
+            event = self.editor.wait_event() => {
+                self.handle_editor_event(event).await;
             }
         }
+
+        true
     }
 
-    pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
-    where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
-    {
-        loop {
-            if self.editor.should_close() {
-                return false;
-            }
-
-            use futures_util::StreamExt;
-
-            tokio::select! {
-                biased;
-
-                Some(signal) = self.signals.next() => {
-                    if !self.handle_signals(signal).await {
-                        return false;
-                    };
-                }
-                Some(event) = input_stream.next() => {
-                    self.handle_terminal_events(event).await;
-                }
-                Some(callback) = self.jobs.futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render().await;
-                }
-                Some(callback) = self.jobs.wait_futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
-                    self.render().await;
-                }
-                event = self.editor.wait_event() => {
-                    let _idle_handled = self.handle_editor_event(event).await;
-
-                    #[cfg(feature = "integration")]
-                    {
-                        if _idle_handled {
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            // for integration tests only, reset the idle timer after every
-            // event to signal when test events are done processing
-            #[cfg(feature = "integration")]
-            {
-                self.editor.reset_idle_timer();
-            }
-        }
+    pub async fn event_loop(&mut self) {
+        while self.tick().await {}
     }
 
     pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
@@ -484,7 +399,7 @@ impl Application {
                 // https://github.com/neovim/neovim/issues/12322
                 // https://github.com/neovim/neovim/pull/13084
                 for retries in 1..=10 {
-                    match self.claim_term().await {
+                    match self.claim_term() {
                         Ok(()) => break,
                         Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
                         Err(_) => continue,
@@ -510,18 +425,6 @@ impl Application {
         }
 
         true
-    }
-
-    pub async fn handle_idle_timeout(&mut self) {
-        let mut cx = crate::compositor::Context {
-            editor: &mut self.editor,
-            jobs: &mut self.jobs,
-            scroll: None,
-        };
-        let should_render = self.compositor.handle_event(&Event::IdleTimeout, &mut cx);
-        if should_render || self.editor.needs_redraw {
-            self.render().await;
-        }
     }
 
     pub fn handle_document_write(&mut self, doc_save_event: DocumentSavedEventResult) {
@@ -587,7 +490,7 @@ impl Application {
     }
 
     #[inline(always)]
-    pub async fn handle_editor_event(&mut self, event: EditorEvent) -> bool {
+    pub async fn handle_editor_event(&mut self, event: EditorEvent) {
         log::debug!("received editor event: {:?}", event);
 
         match event {
@@ -610,18 +513,17 @@ impl Application {
                     self.render().await;
                 }
             }
-            EditorEvent::IdleTimer => {
-                self.editor.clear_idle_timer();
-                self.handle_idle_timeout().await;
-
-                #[cfg(feature = "integration")]
-                {
-                    return true;
+            EditorEvent::Redraw => {
+                let mut cx = crate::compositor::Context {
+                    editor: &mut self.editor,
+                    jobs: &mut self.jobs,
+                    scroll: None,
+                };
+                if self.compositor.handle_event(&Event::RedrawRequest, &mut cx) {
+                    self.render().await;
                 }
             }
         }
-
-        false
     }
 
     pub async fn handle_terminal_events(
@@ -1151,7 +1053,7 @@ impl Application {
         }
     }
 
-    async fn claim_term(&mut self) -> std::io::Result<()> {
+    fn claim_term(&mut self) -> std::io::Result<()> {
         let terminal_config = self.config.load().editor.clone().into();
         self.terminal.claim(terminal_config)
     }
@@ -1166,34 +1068,34 @@ impl Application {
         self.terminal.restore(terminal_config)
     }
 
-    pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
-    where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
-    {
-        self.claim_term().await?;
+    pub async fn run(&mut self) -> Result<i32, Error> {
+        self.claim_term()?;
 
         // Exit the alternate screen and disable raw mode before panicking
-        let hook = std::panic::take_hook();
         std::panic::set_hook(Box::new(move |info| {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`.
-            let _ = TerminalBackend::force_restore();
-            hook(info);
+            let _ = B::force_restore();
+            std::panic::take_hook()(info);
         }));
 
-        self.event_loop(input_stream).await;
+        self.render().await;
+        self.event_loop().await;
 
         let close_errs = self.close().await;
 
         self.restore_term()?;
 
-        for err in close_errs {
-            self.editor.exit_code = 1;
-            eprintln!("Error: {}", err);
+        if close_errs.is_empty() {
+            return Ok(self.editor.exit_code);
         }
 
-        Ok(self.editor.exit_code)
+        for err in close_errs {
+            eprintln!("Close error: {}", err);
+        }
+
+        Ok(1)
     }
 
     pub async fn close(&mut self) -> Vec<anyhow::Error> {
@@ -1217,10 +1119,9 @@ impl Application {
         }
 
         if self.editor.close_language_servers(None).await.is_err() {
-            log::error!("Timed out waiting for language servers to shutdown");
-            errs.push(anyhow::format_err!(
-                "Timed out waiting for language servers to shutdown"
-            ));
+            let error_msg = "Timed out waiting for language servers to shutdown";
+            log::error!("{}", error_msg);
+            errs.push(anyhow!("{}", error_msg));
         }
 
         errs
