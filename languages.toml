@@ -68,6 +68,7 @@ swipl = { command = "swipl", args = [ "-g", "use_module(library(lsp_server))", "
 taplo = { command = "taplo", args = ["lsp", "stdio"] }
 terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
+ucm = { command = "ncat", args = ["localhost", "5757"] } 
 vala-language-server = { command = "vala-language-server" }
 vhdl_ls = { command = "vhdl_ls", args = [] }
 vlang-language-server = { command = "v", args = ["ls"] }
@@ -2698,3 +2699,27 @@ file-types = ["webc"]
 roots = []
 indent = { tab-width = 2, unit = "  " }
 grammar = "html"
+
+[[language]]
+name = "unison"
+scope = "source.unison"
+injection-regex = "unison"
+file-types = ["u"]
+shebangs = []
+roots = []
+auto-format = false
+comment-token = "--"
+indent = { tab-width = 4, unit = "    " }
+language-servers = ["ucm"]
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+
+[[grammar]]
+name = "unison"
+source = { git = "https://github.com/kylegoetz/tree-sitter-unison", rev = "f27f42e8df457508d2dbffd6ca60b289f5d6fe2d" }
+
