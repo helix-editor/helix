@@ -1,0 +1,55 @@
+# Author : Eric Correia <correia.eh@gmail.com>
+
+inherits = "zed_onedark"
+
+"attribute" = { fg = "green" }
+"constant" = { fg = "green" }
+"constant.numeric" = { fg = "gold" }
+"constant.builtin" = { fg = "gold" }
+"constant.builtin.boolean" = { fg = "green" }
+"variable.builtin" = { fg = "gold" }
+"variable.other.member" = { fg = "orange" }
+
+"markup.heading" = { fg = "orange" }
+"markup.list" = { fg = "orange" }
+"markup.quote" = { fg = "green" }
+
+"ui.cursor" = { fg = "dark-blue", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "dark-blue", modifiers = ["reversed"] }
+
+"ui.cursorline.primary" = { bg = "faint-gray" }
+
+"ui.statusline" = { fg = "black", bg = "gray" }
+"ui.statusline.inactive" = { fg = "white", bg = "light-black" }
+"ui.statusline.normal" = { fg = "white", bg = "blue" }
+"ui.statusline.insert" = { fg = "white", bg = "green" }
+"ui.statusline.select" = { fg = "white", bg = "purple" }
+
+"ui.text.focus" = { fg = "ui-text", bg = "gray", modifiers = ["bold"] }
+
+"ui.help" = { fg = "black", bg = "dark-gray" }
+"ui.popup" = { bg = "dark-gray" }
+"ui.window" = { fg = "dark-gray" }
+
+[palette]
+
+yellow = "#dac18c"
+blue = "#5185b5"
+red = "#bd7476"
+dark-blue = "#607bdb"
+orange = "#ca7667"
+purple = "#a160ac"
+green = "#739d60"
+gold = "#a8763c"
+cyan = "#4b80b2"
+light-black = "#2e323a"
+gray = "#dcdcdd"
+dark-gray = "#ebebec"
+light-gray = "#a6a6aa"
+faint-gray = "#efefef"
+linenr = "#4B5263"
+
+black = "#404248"
+white = "#fafafa"
+ui-text = "#404248"
+ui-text-reversed = "#fafafa"

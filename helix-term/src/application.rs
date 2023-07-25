@@ -5,7 +5,11 @@ use helix_core::{
     path::get_relative_path,
     pos_at_coords, syntax, Selection,
 };
-use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+use helix_lsp::{
+    lsp::{self, notification::Notification},
+    util::lsp_pos_to_pos,
+    LspProgressMap,
+};
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
@@ -34,7 +38,6 @@ use std::{
     io::{stdin, stdout},
     path::Path,
     sync::Arc,
-    time::{Duration, Instant},
 };
 
 use anyhow::{Context, Error};
@@ -44,8 +47,6 @@ use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
-
-const LSP_DEADLINE: Duration = Duration::from_millis(16);
 
 #[cfg(not(feature = "integration"))]
 use tui::backend::CrosstermBackend;
@@ -76,7 +77,6 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
-    last_render: Instant,
 }
 
 #[cfg(feature = "integration")]
@@ -167,7 +167,7 @@ impl Application {
         } else if !args.files.is_empty() {
             let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
-                std::env::set_current_dir(first).context("set current dir")?;
+                helix_loader::set_current_working_dir(first.clone())?;
                 editor.new_file(Action::VerticalSplit);
                 let picker = ui::file_picker(".".into(), &config.load().editor);
                 compositor.push(Box::new(overlaid(picker)));
@@ -215,11 +215,6 @@ impl Application {
             }
         } else if stdin().is_tty() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
-        } else if cfg!(target_os = "macos") {
-            // On Linux and Windows, we allow the output of a command to be piped into the new buffer.
-            // This doesn't currently work on macOS because of the following issue:
-            //   https://github.com/crossterm-rs/crossterm/issues/500
-            anyhow::bail!("Piping into helix-term is currently not supported on macOS");
         } else {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
@@ -253,7 +248,6 @@ impl Application {
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
-            last_render: Instant::now(),
         };
 
         Ok(app)
@@ -300,7 +294,6 @@ impl Application {
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
         self.render().await;
-        self.last_render = Instant::now();
 
         loop {
             if !self.event_loop_until_idle(input_stream).await {
@@ -609,12 +602,7 @@ impl Application {
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
                 // limit render calls for fast language server messages
-                let last = self.editor.language_servers.incoming.is_empty();
-
-                if last || self.last_render.elapsed() > LSP_DEADLINE {
-                    self.render().await;
-                    self.last_render = Instant::now();
-                }
+                self.editor.redraw_handle.0.notify_one();
             }
             EditorEvent::DebuggerEvent(payload) => {
                 let needs_render = self.editor.handle_debugger_message(payload).await;
@@ -746,7 +734,12 @@ impl Application {
                                 return;
                             }
                         };
-                        let offset_encoding = language_server!().offset_encoding();
+                        let language_server = language_server!();
+                        if !language_server.is_initialized() {
+                            log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
+                            return;
+                        }
+                        let offset_encoding = language_server.offset_encoding();
                         let doc = self.editor.document_by_path_mut(&path).filter(|doc| {
                             if let Some(version) = params.version {
                                 if version != doc.version() {
@@ -1042,20 +1035,31 @@ impl Application {
                         Ok(serde_json::Value::Null)
                     }
                     Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
-                        let res = apply_workspace_edit(
-                            &mut self.editor,
-                            helix_lsp::OffsetEncoding::Utf8,
-                            &params.edit,
-                        );
+                        let language_server = language_server!();
+                        if language_server.is_initialized() {
+                            let offset_encoding = language_server.offset_encoding();
+                            let res = apply_workspace_edit(
+                                &mut self.editor,
+                                offset_encoding,
+                                &params.edit,
+                            );
 
-                        Ok(json!(lsp::ApplyWorkspaceEditResponse {
-                            applied: res.is_ok(),
-                            failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
-                            failed_change: res
-                                .as_ref()
-                                .err()
-                                .map(|err| err.failed_change_idx as u32),
-                        }))
+                            Ok(json!(lsp::ApplyWorkspaceEditResponse {
+                                applied: res.is_ok(),
+                                failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
+                                failed_change: res
+                                    .as_ref()
+                                    .err()
+                                    .map(|err| err.failed_change_idx as u32),
+                            }))
+                        } else {
+                            Err(helix_lsp::jsonrpc::Error {
+                                code: helix_lsp::jsonrpc::ErrorCode::InvalidRequest,
+                                message: "Server must be initialized to request workspace edits"
+                                    .to_string(),
+                                data: None,
+                            })
+                        }
                     }
                     Ok(MethodCall::WorkspaceFolders) => {
                         Ok(json!(&*language_server!().workspace_folders().await))
@@ -1080,15 +1084,63 @@ impl Application {
                             .collect();
                         Ok(json!(result))
                     }
-                    Ok(MethodCall::RegisterCapability(_params)) => {
-                        log::warn!("Ignoring a client/registerCapability request because dynamic capability registration is not enabled. Please report this upstream to the language server");
-                        // Language Servers based on the `vscode-languageserver-node` library often send
-                        // client/registerCapability even though we do not enable dynamic registration
-                        // for any capabilities. We should send a MethodNotFound JSONRPC error in this
-                        // case but that rejects the registration promise in the server which causes an
-                        // exit. So we work around this by ignoring the request and sending back an OK
-                        // response.
+                    Ok(MethodCall::RegisterCapability(params)) => {
+                        if let Some(client) = self
+                            .editor
+                            .language_servers
+                            .iter_clients()
+                            .find(|client| client.id() == server_id)
+                        {
+                            for reg in params.registrations {
+                                match reg.method.as_str() {
+                                    lsp::notification::DidChangeWatchedFiles::METHOD => {
+                                        let Some(options) = reg.register_options else {
+                                            continue;
+                                        };
+                                        let ops: lsp::DidChangeWatchedFilesRegistrationOptions =
+                                            match serde_json::from_value(options) {
+                                                Ok(ops) => ops,
+                                                Err(err) => {
+                                                    log::warn!("Failed to deserialize DidChangeWatchedFilesRegistrationOptions: {err}");
+                                                    continue;
+                                                }
+                                            };
+                                        self.editor.language_servers.file_event_handler.register(
+                                            client.id(),
+                                            Arc::downgrade(client),
+                                            reg.id,
+                                            ops,
+                                        )
+                                    }
+                                    _ => {
+                                        // Language Servers based on the `vscode-languageserver-node` library often send
+                                        // client/registerCapability even though we do not enable dynamic registration
+                                        // for most capabilities. We should send a MethodNotFound JSONRPC error in this
+                                        // case but that rejects the registration promise in the server which causes an
+                                        // exit. So we work around this by ignoring the request and sending back an OK
+                                        // response.
+                                        log::warn!("Ignoring a client/registerCapability request because dynamic capability registration is not enabled. Please report this upstream to the language server");
+                                    }
+                                }
+                            }
+                        }
 
+                        Ok(serde_json::Value::Null)
+                    }
+                    Ok(MethodCall::UnregisterCapability(params)) => {
+                        for unreg in params.unregisterations {
+                            match unreg.method.as_str() {
+                                lsp::notification::DidChangeWatchedFiles::METHOD => {
+                                    self.editor
+                                        .language_servers
+                                        .file_event_handler
+                                        .unregister(server_id, unreg.id);
+                                }
+                                _ => {
+                                    log::warn!("Received unregistration request for unsupported method: {}", unreg.method);
+                                }
+                            }
+                        }
                         Ok(serde_json::Value::Null)
                     }
                 };
