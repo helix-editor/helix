@@ -151,7 +151,8 @@ pub fn regex_prompt(
                 }
             }
         },
-    );
+    )
+    .with_language("regex", std::sync::Arc::clone(&cx.editor.syn_loader));
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
     // prompt
