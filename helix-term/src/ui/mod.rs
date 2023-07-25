@@ -142,9 +142,6 @@ pub fn regex_prompt(
                                 };
 
                                 cx.jobs.callback(callback);
-                            } else {
-                                // Update
-                                // TODO: mark command line as error
                             }
                         }
                     }
