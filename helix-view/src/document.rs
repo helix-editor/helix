@@ -642,7 +642,7 @@ impl Document {
     ) -> Self {
         let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
         let line_ending = config.load().default_line_ending.into();
-        let changes = ChangeSet::new(&text);
+        let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
 
         Self {
@@ -938,7 +938,7 @@ impl Document {
     ) -> Option<Arc<helix_core::syntax::LanguageConfiguration>> {
         config_loader
             .language_config_for_file_name(self.path.as_ref()?)
-            .or_else(|| config_loader.language_config_for_shebang(self.text()))
+            .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
@@ -1030,7 +1030,7 @@ impl Document {
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
             if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
-                self.syntax = Syntax::new(&self.text, highlight_config, loader);
+                self.syntax = Syntax::new(self.text.slice(..), highlight_config, loader);
             }
 
             self.language = Some(language_config);
@@ -1165,7 +1165,11 @@ impl Document {
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
                 // TODO: no unwrap
-                let res = syntax.update(&old_doc, &self.text, transaction.changes());
+                let res = syntax.update(
+                    old_doc.slice(..),
+                    self.text.slice(..),
+                    transaction.changes(),
+                );
                 if res.is_err() {
                     log::error!("TS parser failed, disabeling TS for the current buffer: {res:?}");
                     self.syntax = None;
@@ -1288,7 +1292,7 @@ impl Document {
 
         if success {
             // reset changeset to fix len
-            self.changes = ChangeSet::new(self.text());
+            self.changes = ChangeSet::new(self.text().slice(..));
             // Sync with changes with the jumplist selections.
             view.sync_changes(self);
         }
@@ -1371,7 +1375,7 @@ impl Document {
         }
         if success {
             // reset changeset to fix len
-            self.changes = ChangeSet::new(self.text());
+            self.changes = ChangeSet::new(self.text().slice(..));
             // Sync with changes with the jumplist selections.
             view.sync_changes(self);
         }
@@ -1394,7 +1398,7 @@ impl Document {
             return;
         }
 
-        let new_changeset = ChangeSet::new(self.text());
+        let new_changeset = ChangeSet::new(self.text().slice(..));
         let changes = std::mem::replace(&mut self.changes, new_changeset);
         // Instead of doing this messy merge we could always commit, and based on transaction
         // annotations either add a new layer or compose into the previous one.

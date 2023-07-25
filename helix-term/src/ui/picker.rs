@@ -453,9 +453,9 @@ impl<T: Item + 'static> Picker<T> {
                 let text = doc.text().clone();
                 let loader = cx.editor.syn_loader.clone();
                 let job = tokio::task::spawn_blocking(move || {
-                    let syntax = language_config
-                        .highlight_config(&loader.scopes())
-                        .and_then(|highlight_config| Syntax::new(&text, highlight_config, loader));
+                    let syntax = language_config.highlight_config(&loader.scopes()).and_then(
+                        |highlight_config| Syntax::new(text.slice(..), highlight_config, loader),
+                    );
                     let callback = move |editor: &mut Editor, compositor: &mut Compositor| {
                         let Some(syntax) = syntax else {
                             log::info!("highlighting picker item failed");
