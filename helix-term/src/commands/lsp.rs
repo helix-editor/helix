@@ -99,6 +99,10 @@ impl ui::menu::Item for lsp::Location {
             .expect("Will only failed if allocating fail");
         res.into()
     }
+
+    fn as_partial_eq(&self) -> Option<&dyn PartialEq<Self>> {
+        Some(self as &dyn PartialEq<Self>)
+    }
 }
 
 struct SymbolInformationItem {
@@ -1027,21 +1031,10 @@ pub fn apply_workspace_edit(
     Ok(())
 }
 
-/// Removes duplicates from the vector, complexity - `O(n^2)`. If your type
-/// implements ([`Hash`] + [`Eq`]) or [`Ord`], you can use faster methods (e.g [`HashSet`]).
-pub fn remove_duplicates_bruteforce<T: PartialEq>(items: Vec<T>) -> Vec<T> {
-    items.into_iter().fold(Vec::new(), |mut accum, item| {
-        if !accum.contains(&item) {
-            accum.push(item);
-        }
-        accum
-    })
-}
-
 fn goto_impl(
     editor: &mut Editor,
     compositor: &mut Compositor,
-    mut locations: Vec<lsp::Location>,
+    locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
     let cwdir = helix_loader::current_working_dir();
@@ -1055,7 +1048,6 @@ fn goto_impl(
         }
         _locations => {
             // lsp::Location doesn't implement Ord or Hash. So we can't compare them faster than brute force
-            locations = remove_duplicates_bruteforce(locations);
             let picker = Picker::new(locations, cwdir, move |cx, location, action| {
                 jump_to_location(cx.editor, location, offset_encoding, action)
             })
@@ -1677,28 +1669,4 @@ fn compute_inlay_hints_for_view(
     );
 
     Some(callback)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_remove_duplicates_bruteforce() {
-        let tests = [
-            (vec![5, 4, 1], vec![5, 4, 1]),
-            (vec![1, 2, 3, 2, 1, 0], vec![1, 2, 3, 0]),
-            (vec![1, 1, 1, 2, 3], vec![1, 2, 3]),
-            (vec![], vec![]),
-        ];
-        for (test, expected) in tests {
-            assert_eq!(
-                remove_duplicates_bruteforce(test.clone()),
-                expected,
-                "{:?} without duplicates must be: {:?}",
-                test,
-                expected
-            );
-        }
-    }
 }

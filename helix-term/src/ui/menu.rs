@@ -29,6 +29,10 @@ pub trait Item {
         let label: String = self.format(data).cell_text().collect();
         label.into()
     }
+
+    fn as_partial_eq(&self) -> Option<&dyn PartialEq<Self>> {
+        None
+    }
 }
 
 impl Item for PathBuf {

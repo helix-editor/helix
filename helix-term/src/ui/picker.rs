@@ -174,6 +174,8 @@ impl<T: Item + 'static> Picker<T> {
             file_fn: None,
         };
 
+        picker.options_dedup_bruteforce();
+
         picker.calculate_column_widths();
 
         // scoring on empty input
@@ -190,6 +192,27 @@ impl<T: Item + 'static> Picker<T> {
             }));
 
         picker
+    }
+
+    /// Removes duplicates from picker options, complexity - `O(n^2)`.
+    /// Pickers usually have no more than 10^5 entries, so it doesn't matter.
+    fn options_dedup_bruteforce(&mut self) {
+        let items_len = self.options.len();
+        if items_len == 0 || self.options[0].as_partial_eq().is_none() {
+            return;
+        }
+        self.options =
+            self.options
+                .drain(..)
+                .fold(Vec::with_capacity(items_len), |mut accum, item| {
+                    if !accum
+                        .iter()
+                        .any(|lhs| lhs.as_partial_eq().unwrap().eq(&item))
+                    {
+                        accum.push(item);
+                    }
+                    accum
+                });
     }
 
     pub fn truncate_start(mut self, truncate_start: bool) -> Self {
@@ -969,5 +992,26 @@ impl<T: Item + Send + 'static> Component for DynamicPicker<T> {
 
     fn id(&self) -> Option<&'static str> {
         Some(Self::ID)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_options_dedup() {
+        impl Item for u64 {
+            type Data = ();
+            fn format(&self, _data: &Self::Data) -> tui::widgets::Row {
+                self.to_string().into()
+            }
+            fn as_partial_eq(&self) -> Option<&dyn PartialEq<Self>> {
+                Some(self as &dyn PartialEq<Self>)
+            }
+        }
+        let items = vec![0, 2, 1, 2, 1];
+        let picker = Picker::new(items, (), |_, _, _| {});
+        assert_eq!(picker.options, vec![0u64, 2, 1]);
     }
 }
