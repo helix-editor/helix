@@ -14,7 +14,8 @@ use fuzzy_matcher::FuzzyMatcher;
 use helix_view::{graphics::Rect, Editor};
 use tui::layout::Constraint;
 
-pub trait Item {
+// PartialEq so we might deduplicate items (e.g in pickers)
+pub trait Item: PartialEq {
     /// Additional editor state that is used for label calculation.
     type Data;
 
@@ -28,10 +29,6 @@ pub trait Item {
     fn filter_text(&self, data: &Self::Data) -> Cow<str> {
         let label: String = self.format(data).cell_text().collect();
         label.into()
-    }
-
-    fn as_partial_eq(&self) -> Option<&dyn PartialEq<Self>> {
-        None
     }
 }
 

@@ -197,22 +197,13 @@ impl<T: Item + 'static> Picker<T> {
     /// Removes duplicates from picker options, complexity - `O(n^2)`.
     /// Pickers usually have no more than 10^5 entries, so it doesn't matter.
     fn options_dedup_bruteforce(&mut self) {
-        let items_len = self.options.len();
-        if items_len == 0 || self.options[0].as_partial_eq().is_none() {
-            return;
+        let mut unique_options = Vec::with_capacity(self.options.len());
+        for item in self.options.drain(..) {
+            if !unique_options.iter().any(|lhs| lhs == &item) {
+                unique_options.push(item);
+            }
         }
-        self.options =
-            self.options
-                .drain(..)
-                .fold(Vec::with_capacity(items_len), |mut accum, item| {
-                    if !accum
-                        .iter()
-                        .any(|lhs| lhs.as_partial_eq().unwrap().eq(&item))
-                    {
-                        accum.push(item);
-                    }
-                    accum
-                });
+        self.options = unique_options;
     }
 
     pub fn truncate_start(mut self, truncate_start: bool) -> Self {
@@ -1005,9 +996,6 @@ mod tests {
             type Data = ();
             fn format(&self, _data: &Self::Data) -> tui::widgets::Row {
                 self.to_string().into()
-            }
-            fn as_partial_eq(&self) -> Option<&dyn PartialEq<Self>> {
-                Some(self as &dyn PartialEq<Self>)
             }
         }
         let items = vec![0, 2, 1, 2, 1];

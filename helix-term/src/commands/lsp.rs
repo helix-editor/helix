@@ -99,12 +99,9 @@ impl ui::menu::Item for lsp::Location {
             .expect("Will only failed if allocating fail");
         res.into()
     }
-
-    fn as_partial_eq(&self) -> Option<&dyn PartialEq<Self>> {
-        Some(self as &dyn PartialEq<Self>)
-    }
 }
 
+#[derive(PartialEq)]
 struct SymbolInformationItem {
     symbol: lsp::SymbolInformation,
     offset_encoding: OffsetEncoding,
@@ -141,6 +138,7 @@ struct DiagnosticStyles {
     error: Style,
 }
 
+#[derive(PartialEq)]
 struct PickerDiagnostic {
     url: lsp::Url,
     diag: lsp::Diagnostic,
@@ -542,6 +540,7 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
+#[derive(PartialEq)]
 struct CodeActionOrCommandItem {
     lsp_item: lsp::CodeActionOrCommand,
     language_server_id: usize,
@@ -1047,7 +1046,6 @@ fn goto_impl(
             editor.set_error("No definition found.");
         }
         _locations => {
-            // lsp::Location doesn't implement Ord or Hash. So we can't compare them faster than brute force
             let picker = Picker::new(locations, cwdir, move |cx, location, action| {
                 jump_to_location(cx.editor, location, offset_encoding, action)
             })
