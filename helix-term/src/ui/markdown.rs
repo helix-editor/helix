@@ -17,7 +17,7 @@ use helix_view::{
     Theme,
 };
 
-fn styled_multiline_text<'a>(text: String, style: Style) -> Text<'a> {
+fn styled_multiline_text<'a>(text: &str, style: Style) -> Text<'a> {
     let spans: Vec<_> = text
         .lines()
         .map(|line| Span::styled(line.to_string(), style))
@@ -27,7 +27,7 @@ fn styled_multiline_text<'a>(text: String, style: Style) -> Text<'a> {
 }
 
 pub fn highlighted_code_block<'a>(
-    text: String,
+    text: &str,
     language: &str,
     theme: Option<&Theme>,
     config_loader: Arc<syntax::Loader>,
@@ -267,7 +267,7 @@ impl Markdown {
                             CodeBlockKind::Indented => "",
                         };
                         let tui_text = highlighted_code_block(
-                            text.to_string(),
+                            &text,
                             language,
                             theme,
                             Arc::clone(&self.config_loader),

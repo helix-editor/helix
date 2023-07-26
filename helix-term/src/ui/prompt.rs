@@ -476,7 +476,7 @@ impl Prompt {
             }
         } else if let Some((language, loader)) = self.language.as_ref() {
             let mut text: ui::text::Text = crate::ui::markdown::highlighted_code_block(
-                self.line.clone(),
+                &self.line,
                 language,
                 Some(&cx.editor.theme),
                 loader.clone(),
