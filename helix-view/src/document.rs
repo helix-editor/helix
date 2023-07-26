@@ -185,6 +185,9 @@ pub struct Document {
 
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
+
+    // logically true when equal to Some(true); None implies we haven't checked yet
+    pub readonly: Option<bool>,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -673,6 +676,7 @@ impl Document {
             config,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
+            readonly: None
         }
     }
 
@@ -1017,6 +1021,15 @@ impl Document {
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
         self.path = path;
+
+        // Check if the file is readonly or not
+        self.readonly = Some(match &self.path {
+            None => false,
+            Some(p) => match std::fs::metadata(p) {
+                Err(_) => false,
+                Ok(metadata) => metadata.permissions().readonly(),
+            },
+        });
 
         Ok(())
     }
@@ -1418,16 +1431,6 @@ impl Document {
 
     pub fn id(&self) -> DocumentId {
         self.id
-    }
-
-    pub fn is_read_only(&self) -> bool {
-        match &self.path {
-            None => false,
-            Some(p) => match std::fs::metadata(p) {
-                Err(_) => false,
-                Ok(metadata) => metadata.permissions().readonly(),
-            },
-        }
     }
 
     /// If there are unsaved modifications.

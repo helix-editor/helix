@@ -432,8 +432,8 @@ fn render_file_modification_indicator<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    debug_assert!(!(context.doc.is_read_only() && context.doc.is_modified()));
-    let title = (if context.doc.is_read_only() {
+    debug_assert!(!(context.doc.readonly.unwrap_or(false) && context.doc.is_modified()));
+    let title = (if context.doc.readonly.unwrap_or(false) {
         "[readonly]"
     } else if context.doc.is_modified() {
         "[+]"
