@@ -1420,6 +1420,16 @@ impl Document {
         self.id
     }
 
+    pub fn is_read_only(&self) -> bool {
+        match &self.path {
+            None => false,
+            Some(p) => match std::fs::metadata(p) {
+                Err(_) => false,
+                Ok(metadata) => metadata.permissions().readonly(),
+            },
+        }
+    }
+
     /// If there are unsaved modifications.
     pub fn is_modified(&self) -> bool {
         let history = self.history.take();
