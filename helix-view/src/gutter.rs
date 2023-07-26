@@ -213,7 +213,10 @@ fn line_numbers_width(view: &View, doc: &Document) -> usize {
     let draw_last = text.line_to_byte(last_line) < text.len_bytes();
     let last_drawn = if draw_last { last_line + 1 } else { last_line };
     let digits = count_digits(last_drawn);
-    let n_min = view.gutters.line_numbers.min_width;
+    let n_min = std::cmp::min(
+        view.gutters.line_numbers.min_width,
+        (view.area.width - 4) as usize,
+    );
     digits.max(n_min)
 }
 
