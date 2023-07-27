@@ -432,14 +432,12 @@ fn render_file_modification_indicator<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    debug_assert!(!(context.doc.readonly.unwrap_or(false) && context.doc.is_modified()));
-    let title = (if context.doc.readonly.unwrap_or(false) {
-        "[readonly]"
-    } else if context.doc.is_modified() {
-        "[+]"
-    } else {
-        "   "
-    }).to_string();
+    let title = match (context.doc.readonly, context.doc.is_modified()) {
+        (false, false) => "   ",
+        (false, true) => "[+]",
+        (true, false) => "[readonly]",
+        (true, true) => "Warning: Changing a readonly file",
+    }.to_string();
 
     write(context, title, None);
 }
