@@ -70,7 +70,7 @@ terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
 vala-language-server = { command = "vala-language-server" }
 vhdl_ls = { command = "vhdl_ls", args = [] }
-vlang-language-server = { command = "v", args = ["ls"] }
+vlang-language-server = {command = "v-analyzer", args = [""]}
 vscode-css-language-server = { command = "vscode-css-language-server", args = ["--stdio"], config = { "provideFormatter" = true }}
 vscode-html-language-server = { command = "vscode-html-language-server", args = ["--stdio"], config = { provideFormatter = true } }
 vscode-json-language-server =  { command = "vscode-json-language-server", args = ["--stdio"], config = { provideFormatter = true } }
@@ -1826,7 +1826,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "v"
-source = { git = "https://github.com/vlang/vls", subpath = "tree_sitter_v", rev = "66cf9d3086fb5ecc827cb32c64c5d812ab17d2c6" }
+source = {git = "https://github.com/v-analyzer/v-analyzer", subpath = "tree_sitter_v", rev = "e14fdf6e661b10edccc744102e4ccf0b187aa8ad"}
 
 [[language]]
 name = "verilog"
