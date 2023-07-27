@@ -155,6 +155,7 @@
 | twig | ✓ |  |  |  |
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | ungrammar | ✓ |  |  |  |
+| unison | ✓ |  |  | `ncat` |
 | uxntal | ✓ |  |  |  |
 | v | ✓ | ✓ | ✓ | `v` |
 | vala | ✓ |  |  | `vala-language-server` |
