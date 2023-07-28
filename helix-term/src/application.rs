@@ -1225,4 +1225,8 @@ impl Application {
 
         errs
     }
+
+    pub fn get_compositor_layers(&self) -> &Vec<Box<dyn crate::compositor::Component>> {
+        &self.compositor.layers
+    }
 }

@@ -30,6 +30,7 @@ pub struct Prompt {
     selection: Option<usize>,
     history_register: Option<char>,
     history_pos: Option<usize>,
+    history_search: Option<String>,
     completion_fn: CompletionFn,
     callback_fn: CallbackFn,
     pub doc_fn: DocFn,
@@ -82,6 +83,7 @@ impl Prompt {
             selection: None,
             history_register,
             history_pos: None,
+            history_search: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
@@ -299,7 +301,7 @@ impl Prompt {
         self.recalculate_completion(editor);
     }
 
-    pub fn change_history(
+    pub fn search_history(
         &mut self,
         cx: &mut Context,
         register: char,
@@ -313,15 +315,77 @@ impl Prompt {
 
         let end = values.len().saturating_sub(1);
 
-        let index = match direction {
-            CompletionDirection::Forward => self.history_pos.map_or(0, |i| i + 1),
-            CompletionDirection::Backward => {
-                self.history_pos.unwrap_or(values.len()).saturating_sub(1)
-            }
-        }
-        .min(end);
+        let (before_cursor, _) = self.line.split_at(self.cursor);
+        let is_search = if self.history_pos.is_some() {
+            self.history_search.is_some()
+        } else {
+            !before_cursor.is_empty()
+        };
 
-        self.line = values[index].clone();
+        // Save initial search input
+        if is_search && self.history_search.is_none() {
+            self.history_search = Some(before_cursor.to_string());
+        }
+
+        let search_term = before_cursor.to_string();
+        let history_search = self.history_search.as_ref().unwrap_or(&search_term);
+
+        let (line, index) = match direction {
+            CompletionDirection::Forward => {
+                if self.history_pos.is_none() {
+                    return;
+                }
+
+                let mut index = self.history_pos.map_or(0, |i| i + 1);
+
+                let search_match = values
+                    .iter()
+                    .enumerate()
+                    .skip(index)
+                    .find(|(_, item)| item.starts_with(history_search))
+                    .map(|(i, _)| i);
+
+                if let Some(search_match) = search_match {
+                    index = search_match;
+                }
+
+                // Go back to initial state
+                if index > end || (is_search && search_match.is_none()) {
+                    let line = if is_search {
+                        history_search.to_string()
+                    } else {
+                        "".to_string()
+                    };
+
+                    self.history_search = None;
+
+                    (line, end)
+                } else {
+                    (values[index].to_string(), index)
+                }
+            }
+            CompletionDirection::Backward => {
+                let mut index = if is_search {
+                    self.history_pos.unwrap_or(values.len())
+                } else {
+                    self.history_pos
+                        .map_or(values.len(), |i| i.saturating_sub(1))
+                };
+
+                index = values
+                    .iter()
+                    .enumerate()
+                    .take(index)
+                    .rev()
+                    .find(|(_, item)| item.starts_with(history_search))
+                    .map(|(i, _)| i)
+                    .unwrap_or(index);
+
+                (values[index].to_string(), index)
+            }
+        };
+
+        self.line = line;
 
         self.history_pos = Some(index);
 
@@ -592,12 +656,12 @@ impl Component for Prompt {
             }
             ctrl!('p') | key!(Up) => {
                 if let Some(register) = self.history_register {
-                    self.change_history(cx, register, CompletionDirection::Backward);
+                    self.search_history(cx, register, CompletionDirection::Backward);
                 }
             }
             ctrl!('n') | key!(Down) => {
                 if let Some(register) = self.history_register {
-                    self.change_history(cx, register, CompletionDirection::Forward);
+                    self.search_history(cx, register, CompletionDirection::Forward);
                 }
             }
             key!(Tab) => {
