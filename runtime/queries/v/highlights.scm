@@ -85,7 +85,7 @@
 
 (string_interpolation
  (braced_interpolation_opening) @punctuation.bracket
- (interpolated_expression) @none
+ (interpolated_expression) @embedded
  (braced_interpolation_closing) @punctuation.bracket)
 
 (attribute) @attribute
