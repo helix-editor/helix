@@ -2460,7 +2460,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "prql"
-source = { git = "https://github.com/PRQL/tree-sitter-prql", rev = "3f27cac466f030ee7d985d91eba5470e01dd21ea" }
+source = { git = "https://github.com/PRQL/tree-sitter-prql", rev = "09e158cd3650581c0af4c49c2e5b10c4834c8646" }
 
 [[language]]
 name = "po"
