@@ -2698,3 +2698,15 @@ file-types = ["webc"]
 roots = []
 indent = { tab-width = 2, unit = "  " }
 grammar = "html"
+
+[[grammar]]
+name = "wren"
+source = { git = "https://git.sr.ht/~jummit/tree-sitter-wren", rev = "7f576e8ccadac226f6a37cbefe95be3fee9f0a66"}
+
+[[language]]
+name = "wren"
+scope = "source.wren"
+injection-regex = "wren"
+file-types = ["wren"]
+roots = []
+indent = { tab-width = 2, unit = "  "}
