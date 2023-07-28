@@ -215,18 +215,21 @@ pub struct Theme {
     styles: HashMap<String, Style>,
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
+    // ids of scopes that are used in selection
+    selection_scopes: Vec<usize>,
     highlights: Vec<Style>,
 }
 
 impl From<Value> for Theme {
     fn from(value: Value) -> Self {
         if let Value::Table(table) = value {
-            let (styles, scopes, highlights) = build_theme_values(table);
+            let (styles, scopes, selection_scopes, highlights) = build_theme_values(table);
 
             Self {
                 styles,
                 scopes,
                 highlights,
+                selection_scopes,
                 ..Default::default()
             }
         } else {
@@ -243,12 +246,13 @@ impl<'de> Deserialize<'de> for Theme {
     {
         let values = Map::<String, Value>::deserialize(deserializer)?;
 
-        let (styles, scopes, highlights) = build_theme_values(values);
+        let (styles, scopes, selection_scopes, highlights) = build_theme_values(values);
 
         Ok(Self {
             styles,
             scopes,
             highlights,
+            selection_scopes,
             ..Default::default()
         })
     }
@@ -256,9 +260,10 @@ impl<'de> Deserialize<'de> for Theme {
 
 fn build_theme_values(
     mut values: Map<String, Value>,
-) -> (HashMap<String, Style>, Vec<String>, Vec<Style>) {
+) -> (HashMap<String, Style>, Vec<String>, Vec<usize>, Vec<Style>) {
     let mut styles = HashMap::new();
     let mut scopes = Vec::new();
+    let mut selection_scopes = Vec::new();
     let mut highlights = Vec::new();
 
     // TODO: alert user of parsing failures in editor
@@ -282,13 +287,17 @@ fn build_theme_values(
             warn!("{}", err);
         }
 
+        if name.starts_with("ui.selection") || name.starts_with("ui.cursor") {
+            selection_scopes.push(scopes.len());
+        }
+
         // these are used both as UI and as highlights
         styles.insert(name.clone(), style);
         scopes.push(name);
         highlights.push(style);
     }
 
-    (styles, scopes, highlights)
+    (styles, scopes, selection_scopes, highlights)
 }
 
 impl Theme {
@@ -323,6 +332,11 @@ impl Theme {
     #[inline]
     pub fn scopes(&self) -> &[String] {
         &self.scopes
+    }
+
+    #[inline]
+    pub fn selection_scopes(&self) -> &[usize] {
+        &self.selection_scopes
     }
 
     pub fn find_scope_index_exact(&self, scope: &str) -> Option<usize> {

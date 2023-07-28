@@ -43,9 +43,25 @@ struct StyleIter<'a, H: Iterator<Item = HighlightEvent>> {
     theme: &'a Theme,
 }
 
+struct StyleIterItem {
+    style: Style,
+    end: usize,
+    is_selection: bool,
+}
+
+impl Default for StyleIterItem {
+    fn default() -> Self {
+        Self {
+            style: Style::default(),
+            end: usize::MAX,
+            is_selection: false,
+        }
+    }
+}
+
 impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
-    type Item = (Style, usize);
-    fn next(&mut self) -> Option<(Style, usize)> {
+    type Item = StyleIterItem;
+    fn next(&mut self) -> Option<Self::Item> {
         while let Some(event) = self.highlight_iter.next() {
             match event {
                 HighlightEvent::HighlightStart(highlights) => {
@@ -58,13 +74,22 @@ impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
                     if start == end {
                         continue;
                     }
+                    let mut is_selection = false;
                     let style = self
                         .active_highlights
                         .iter()
                         .fold(self.text_style, |acc, span| {
+                            // find scoped used in the selection to later determine if text is in a selection
+                            if self.theme.selection_scopes().binary_search(&span.0).is_ok() {
+                                is_selection = true;
+                            }
                             acc.patch(self.theme.highlight(span.0))
                         });
-                    return Some((style, end));
+                    return Some(StyleIterItem {
+                        style,
+                        end,
+                        is_selection,
+                    });
                 }
             }
         }
@@ -150,6 +175,13 @@ fn translate_positions(
     }
 }
 
+/// Additional information about grapheme
+#[derive(Default, Debug, Clone, Copy)]
+pub struct GraphemeInfo {
+    is_selection: bool,
+    is_virtual: bool,
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn render_text<'t>(
     renderer: &mut TextRenderer,
@@ -193,9 +225,7 @@ pub fn render_text<'t>(
     };
     let mut is_in_indent_area = true;
     let mut last_line_indent_level = 0;
-    let mut style_span = styles
-        .next()
-        .unwrap_or_else(|| (Style::default(), usize::MAX));
+    let mut style_span = styles.next().unwrap_or_default();
 
     loop {
         // formattter.line_pos returns to line index of the next grapheme
@@ -221,7 +251,7 @@ pub fn render_text<'t>(
 
         // skip any graphemes on visual lines before the block start
         if pos.row < row_off {
-            if char_pos >= style_span.1 {
+            if char_pos >= style_span.end {
                 style_span = if let Some(style_span) = styles.next() {
                     style_span
                 } else {
@@ -260,8 +290,8 @@ pub fn render_text<'t>(
         }
 
         // acquire the correct grapheme style
-        if char_pos >= style_span.1 {
-            style_span = styles.next().unwrap_or((Style::default(), usize::MAX));
+        if char_pos >= style_span.end {
+            style_span = styles.next().unwrap_or_default();
         }
         char_pos += grapheme.doc_chars();
 
@@ -275,6 +305,7 @@ pub fn render_text<'t>(
             pos,
         );
 
+        let mut grapheme_info = GraphemeInfo::default();
         let grapheme_style = if let GraphemeSource::VirtualText { highlight } = grapheme.source {
             let style = renderer.text_style;
             if let Some(highlight) = highlight {
@@ -283,14 +314,15 @@ pub fn render_text<'t>(
                 style
             }
         } else {
-            style_span.0
+            grapheme_info.is_selection = style_span.is_selection;
+            style_span.style
         };
+        grapheme_info.is_virtual = grapheme.is_virtual();
 
-        let virt = grapheme.is_virtual();
         renderer.draw_grapheme(
             grapheme.grapheme,
             grapheme_style,
-            virt,
+            grapheme_info,
             &mut last_line_indent_level,
             &mut is_in_indent_area,
             pos,
@@ -303,6 +335,32 @@ pub fn render_text<'t>(
     }
 }
 
+/// View of the grapheme depending on a state. Used to show visible whitespaces
+#[derive(Debug)]
+pub struct GraphemeVariants {
+    default: String,
+    selection: String,
+    virtual_text: String,
+}
+
+impl GraphemeVariants {
+    fn new(default: String, selection: String, virtual_text: String) -> Self {
+        Self {
+            default,
+            selection,
+            virtual_text,
+        }
+    }
+
+    fn from_render(default: String, decoration: String, render: WhitespaceRenderValue) -> Self {
+        match render {
+            WhitespaceRenderValue::None => Self::new(default.clone(), default.clone(), default),
+            WhitespaceRenderValue::Selection => Self::new(default.clone(), decoration, default),
+            WhitespaceRenderValue::All => Self::new(decoration.clone(), decoration, default),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct TextRenderer<'a> {
     pub surface: &'a mut Surface,
@@ -310,11 +368,10 @@ pub struct TextRenderer<'a> {
     pub whitespace_style: Style,
     pub indent_guide_char: String,
     pub indent_guide_style: Style,
-    pub newline: String,
-    pub nbsp: String,
-    pub space: String,
-    pub tab: String,
-    pub virtual_tab: String,
+    pub newline: GraphemeVariants,
+    pub nbsp: GraphemeVariants,
+    pub space: GraphemeVariants,
+    pub tab: GraphemeVariants,
     pub indent_width: u16,
     pub starting_indent: usize,
     pub draw_indent_guides: bool,
@@ -337,30 +394,24 @@ impl<'a> TextRenderer<'a> {
         } = &editor_config.whitespace;
 
         let tab_width = doc.tab_width();
-        let tab = if ws_render.tab() == WhitespaceRenderValue::All {
-            std::iter::once(ws_chars.tab)
-                .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 1))
-                .collect()
-        } else {
-            " ".repeat(tab_width)
-        };
-        let virtual_tab = " ".repeat(tab_width);
-        let newline = if ws_render.newline() == WhitespaceRenderValue::All {
-            ws_chars.newline.into()
-        } else {
-            " ".to_owned()
-        };
+        let tab_raw = " ".repeat(tab_width);
+        let tab_show = std::iter::once(ws_chars.tab)
+            .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 1))
+            .collect::<String>();
+        let tab = GraphemeVariants::from_render(tab_raw, tab_show, ws_render.tab());
 
-        let space = if ws_render.space() == WhitespaceRenderValue::All {
-            ws_chars.space.into()
-        } else {
-            " ".to_owned()
-        };
-        let nbsp = if ws_render.nbsp() == WhitespaceRenderValue::All {
-            ws_chars.nbsp.into()
-        } else {
-            " ".to_owned()
-        };
+        let newline_str = ws_chars.newline.to_string();
+        let empty_str = " ".to_string();
+        let newline =
+            GraphemeVariants::from_render(empty_str.clone(), newline_str, ws_render.newline());
+
+        let space = GraphemeVariants::from_render(
+            empty_str.clone(),
+            ws_chars.space.into(),
+            ws_render.space(),
+        );
+
+        let nbsp = GraphemeVariants::from_render(empty_str, ws_chars.nbsp.into(), ws_render.nbsp());
 
         let text_style = theme.get("ui.text");
 
@@ -373,7 +424,6 @@ impl<'a> TextRenderer<'a> {
             nbsp,
             space,
             tab,
-            virtual_tab,
             whitespace_style: theme.get("ui.virtual.whitespace"),
             indent_width,
             starting_indent: col_offset / indent_width as usize
@@ -391,12 +441,23 @@ impl<'a> TextRenderer<'a> {
         }
     }
 
+    /// Decides which grapheme to print depending on the state of the text (virtual, selection, etc)
+    fn draw_decider(grapheme_info: GraphemeInfo, value: &GraphemeVariants) -> &str {
+        if grapheme_info.is_virtual {
+            &value.virtual_text
+        } else if grapheme_info.is_selection {
+            &value.selection
+        } else {
+            &value.default
+        }
+    }
+
     /// Draws a single `grapheme` at the current render position with a specified `style`.
     pub fn draw_grapheme(
         &mut self,
         grapheme: Grapheme,
         mut style: Style,
-        is_virtual: bool,
+        grapheme_info: GraphemeInfo,
         last_indent_level: &mut usize,
         is_in_indent_area: &mut bool,
         position: Position,
@@ -410,13 +471,11 @@ impl<'a> TextRenderer<'a> {
         }
 
         let width = grapheme.width();
-        let space = if is_virtual { " " } else { &self.space };
-        let nbsp = if is_virtual { " " } else { &self.nbsp };
-        let tab = if is_virtual {
-            &self.virtual_tab
-        } else {
-            &self.tab
-        };
+        let space = Self::draw_decider(grapheme_info, &self.space);
+        let nbsp = Self::draw_decider(grapheme_info, &self.nbsp);
+        let tab = Self::draw_decider(grapheme_info, &self.tab);
+        let newline = Self::draw_decider(grapheme_info, &self.newline);
+
         let grapheme = match grapheme {
             Grapheme::Tab { width } => {
                 let grapheme_tab_width = char_to_byte_idx(tab, width);
@@ -426,7 +485,7 @@ impl<'a> TextRenderer<'a> {
             Grapheme::Other { ref g } if g == " " => space,
             Grapheme::Other { ref g } if g == "\u{00A0}" => nbsp,
             Grapheme::Other { ref g } => g,
-            Grapheme::Newline => &self.newline,
+            Grapheme::Newline => newline,
         };
 
         let in_bounds = self.col_offset <= position.col
