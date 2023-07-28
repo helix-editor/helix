@@ -163,11 +163,46 @@ async fn test_multi_selection_paste() -> anyhow::Result<()> {
             #(|ipsum)#
             #(|dolor)#
             "}),
+        "y;P",
+        platform_line(indoc! {"\
+            #[lorem|]#lorem
+            #(ipsum|)#ipsum
+            #(dolor|)#dolor
+            "}),
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_paste_replace() -> anyhow::Result<()> {
+    test((
+        platform_line(indoc! {"\
+            #[lorem|]# ipsum dolor
+            "}),
+        "yebp",
+        platform_line(indoc! {"\
+            lorem #[|lorem]# dolor
+            "}),
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_paste_linewise() -> anyhow::Result<()> {
+    test((
+        platform_line(indoc! {"\
+            #[lorem ipsum dolor\n|]#
+            dolor ipsum lorem
+            "}),
         "yp",
         platform_line(indoc! {"\
-            lorem#[|lorem]#
-            ipsum#(|ipsum)#
-            dolor#(|dolor)#
+            lorem ipsum dolor
+            #[lorem ipsum dolor\n|]#
+            dolor ipsum lorem
             "}),
     ))
     .await?;

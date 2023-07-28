@@ -3936,20 +3936,24 @@ fn paste_impl(
     let mut ranges = SmallVec::with_capacity(selection.len());
 
     let mut transaction = Transaction::change_by_selection(text, selection, |range| {
-        let pos = match (action, linewise) {
+        let replace = range.len() > 1 && !linewise;
+
+        let pos = match (action, linewise, replace) {
             // paste linewise before
-            (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
+            (Paste::Before, true, false) => text.line_to_char(text.char_to_line(range.from())),
             // paste linewise after
-            (Paste::After, true) => {
+            (Paste::After, true, false) => {
                 let line = range.line_range(text.slice(..)).1;
                 text.line_to_char((line + 1).min(text.len_lines()))
             }
             // paste insert
-            (Paste::Before, false) => range.from(),
+            (Paste::Before, false, false) => range.from(),
             // paste append
-            (Paste::After, false) => range.to(),
+            (Paste::After, false, false) => range.to(),
             // paste at cursor
-            (Paste::Cursor, _) => range.cursor(text.slice(..)),
+            (Paste::Cursor, _, _) => range.cursor(text.slice(..)),
+            // paste replacing current selection
+            (_, _, true) => range.from(),
         };
 
         let value = values.next();
@@ -3958,13 +3962,18 @@ fn paste_impl(
             .as_ref()
             .map(|content| content.chars().count())
             .unwrap_or_default();
-        let anchor = offset + pos;
+
+        let anchor = if replace { pos } else { offset + pos };
 
         let new_range = Range::new(anchor, anchor + value_len).with_direction(range.direction());
         ranges.push(new_range);
         offset += value_len;
 
-        (pos, pos, value)
+        if replace {
+            (range.from(), range.to(), value)
+        } else {
+            (pos, pos, value)
+        }
     });
 
     if mode == Mode::Normal {
