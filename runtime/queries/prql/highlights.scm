@@ -131,11 +131,6 @@ alias: (identifier) @variable.other.member
   (keyword_false)
 ] @constant.builtin.boolean
 
-[
- (keyword_and)
- (keyword_or)
-] @keyword.operator
-
 (function_definition
   (keyword_let)
   name: (identifier) @function)
