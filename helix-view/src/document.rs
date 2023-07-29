@@ -186,8 +186,7 @@ pub struct Document {
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
 
-    // logically true when equal to Some(true); None implies we haven't checked yet
-    pub readonly: Option<bool>,
+    pub readonly: bool,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -676,7 +675,7 @@ impl Document {
             config,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
-            readonly: None
+            readonly: false,
         }
     }
 
@@ -959,6 +958,28 @@ impl Document {
         }
     }
 
+    // Detect if the file is readonly and change the readonly field if necessary
+    pub fn detect_readonly(&mut self) -> bool {
+        if cfg!(unix) {
+            use rustix::fs::{access, Access};
+            // Allows setting the flag for files the user cannot modify, like root files
+            self.readonly = match &self.path {
+                None => false,
+                Some(p) => access(p, Access::WRITE_OK).is_err(),
+            }
+        } else {
+            // TODO use windows-sys or https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-accesscheck
+            self.readonly = match &self.path {
+                None => false,
+                Some(p) => match std::fs::metadata(p) {
+                    Err(_) => false,
+                    Ok(metadata) => metadata.permissions().readonly(),
+                },
+            }
+        }
+        self.readonly
+    }
+
     /// Reload the document from its path.
     pub fn reload(
         &mut self,
@@ -972,6 +993,9 @@ impl Document {
             .filter(|path| path.exists())
             .ok_or_else(|| anyhow!("can't find file to reload from {:?}", self.display_name()))?
             .to_owned();
+
+        // Once we have a valid path we check if its readonly status has changed
+        self.detect_readonly();
 
         let mut file = std::fs::File::open(&path)?;
         let (rope, ..) = from_reader(&mut file, Some(encoding))?;
@@ -1022,14 +1046,7 @@ impl Document {
         // and error out when document is saved
         self.path = path;
 
-        // Check if the file is readonly or not
-        self.readonly = Some(match &self.path {
-            None => false,
-            Some(p) => match std::fs::metadata(p) {
-                Err(_) => false,
-                Ok(metadata) => metadata.permissions().readonly(),
-            },
-        });
+        self.detect_readonly();
 
         Ok(())
     }
