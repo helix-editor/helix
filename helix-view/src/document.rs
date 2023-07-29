@@ -968,7 +968,10 @@ impl Document {
                 Some(p) => access(p, Access::WRITE_OK).is_err(),
             }
         } else {
-            // TODO use windows-sys or https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-accesscheck
+            // TODO Use the Windows' function `CreateFileW` to check if a file is readonly
+            // Discussion: https://github.com/helix-editor/helix/pull/7740#issuecomment-1656806459
+            // Vim implementation: https://github.com/vim/vim/blob/4c0089d696b8d1d5dc40568f25ea5738fa5bbffb/src/os_win32.c#L7665
+            // Windows binding: https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/Storage/FileSystem/fn.CreateFileW.html
             self.readonly = match &self.path {
                 None => false,
                 Some(p) => match std::fs::metadata(p) {
