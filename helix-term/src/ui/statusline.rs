@@ -431,9 +431,9 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let title = (if context.doc.is_modified() {
-        "[+] "
+        " [+] "
     } else {
-        " "
+        ""
     })
     .to_string();
 
@@ -445,9 +445,9 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let (title, style) = match (context.doc.readonly, context.doc.is_modified()) {
-        (true, false) => ("[readonly]", None),
+        (true, false) => (" [readonly] ", None),
         (true, true) => (
-            "Warning: Changing a readonly file",
+            " Warning: Changing a readonly file ",
             Some(context.editor.theme.get("warning")),
         ),
         _ => ("", None),
