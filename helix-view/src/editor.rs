@@ -422,6 +422,7 @@ impl Default for StatusLineConfig {
                 E::Spinner,
                 E::FileName,
                 E::FileModificationIndicator,
+                E::ReadOnlyIndicator,
             ],
             center: vec![],
             right: vec![
@@ -472,6 +473,9 @@ pub enum StatusLineElement {
 
     // The file modification indicator
     FileModificationIndicator,
+
+    /// A read only file indicator
+    ReadOnlyIndicator,
 
     /// The file encoding
     FileEncoding,
