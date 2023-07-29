@@ -334,6 +334,10 @@ fn write_impl(
     let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
+    if doc.detect_readonly() && !force {
+        bail!("'readonly' option is set (add ! to overwrite)")
+    }
+
     let fmt = if editor_auto_fmt {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
@@ -673,6 +677,12 @@ pub fn write_all_impl(
             if doc.path().is_none() {
                 if write_scratch {
                     errors.push("cannot write a buffer without a filename\n");
+                }
+                return None;
+            }
+            if doc.detect_readonly() && !force {
+                if write_scratch {
+                    errors.push("'readonly' option is set (add ! to overwrite)");
                 }
                 return None;
             }
