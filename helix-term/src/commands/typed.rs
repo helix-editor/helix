@@ -660,7 +660,8 @@ pub fn write_all_impl(
     force: bool,
     write_scratch: bool,
 ) -> anyhow::Result<()> {
-    let mut errors: Vec<&'static str> = Vec::new();
+    let mut errors: Vec<String> = Vec::new();
+    let mut readonly_errors: Vec<String> = Vec::new();
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     let current_view = view!(cx.editor);
@@ -676,13 +677,17 @@ pub fn write_all_impl(
             }
             if doc.path().is_none() {
                 if write_scratch {
-                    errors.push("cannot write a buffer without a filename\n");
+                    errors.push("cannot write a buffer without a filename".to_string());
                 }
                 return None;
             }
             if doc.detect_readonly() && !force {
                 if write_scratch {
-                    errors.push("'readonly' option is set (add ! to overwrite)");
+                    readonly_errors.push(format!(
+                        "'readonly' option is set for {:?}",
+                        // Safety: doc.path() is checked to not be None in the if statement above
+                        doc.path().unwrap()
+                    ).replace('"', ""));
                 }
                 return None;
             }
@@ -730,8 +735,19 @@ pub fn write_all_impl(
         cx.editor.save::<PathBuf>(id, None, force)?;
     }
 
-    if !errors.is_empty() && !force {
-        bail!("{:?}", errors);
+    if force {
+        return Ok(());
+    }
+
+    let mut error_msg = errors.join(" ");
+    if !readonly_errors.is_empty() {
+        // statusline text will have the form:
+        // ["'readonly' option is set for /home/user/readonly.txt", ...] (add ! to overwrite)
+        error_msg = format!("{:?} (add ! to overwrite)", readonly_errors);
+    }
+
+    if !error_msg.is_empty() && !force {
+        bail!(error_msg);
     }
 
     Ok(())
