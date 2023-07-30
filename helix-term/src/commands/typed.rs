@@ -334,8 +334,9 @@ fn write_impl(
     let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
-    if doc.detect_readonly() && !force {
-        bail!("'readonly' option is set (add ! to overwrite)")
+    // `path.is_none()` allows :w <path> for other files
+    if path.is_none() && doc.detect_readonly() && !force {
+        bail!("file is readonly, use ! to overwrite")
     }
 
     let fmt = if editor_auto_fmt {
@@ -683,11 +684,14 @@ pub fn write_all_impl(
             }
             if doc.detect_readonly() && !force {
                 if write_scratch {
-                    readonly_errors.push(format!(
-                        "'readonly' option is set for {:?}",
-                        // Safety: doc.path() is checked to not be None in the if statement above
-                        doc.path().unwrap()
-                    ).replace('"', ""));
+                    readonly_errors.push(
+                        format!(
+                            "{:?} is readonly",
+                            // Safety: doc.path() cannot be None from the if statement above
+                            doc.path().unwrap()
+                        )
+                        .replace('"', ""),
+                    );
                 }
                 return None;
             }
@@ -742,11 +746,11 @@ pub fn write_all_impl(
     let mut error_msg = errors.join(" ");
     if !readonly_errors.is_empty() {
         // statusline text will have the form:
-        // ["'readonly' option is set for /home/user/readonly.txt", ...] (add ! to overwrite)
-        error_msg = format!("{:?} (add ! to overwrite)", readonly_errors);
+        // [/home/user/readonly.txt is readonly, ..., /readonly2.txt is readonly] add ! to overwrite
+        error_msg = format!("{:?} use ! to overwrite", readonly_errors).replace('"', "");
     }
 
-    if !error_msg.is_empty() && !force {
+    if !error_msg.is_empty() {
         bail!(error_msg);
     }
 
