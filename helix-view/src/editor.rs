@@ -421,8 +421,8 @@ impl Default for StatusLineConfig {
                 E::Mode,
                 E::Spinner,
                 E::FileName,
-                E::FileModificationIndicator,
                 E::ReadOnlyIndicator,
+                E::FileModificationIndicator,
             ],
             center: vec![],
             right: vec![
