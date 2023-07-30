@@ -434,9 +434,9 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let title = (if context.doc.is_modified() {
-        " [+] "
+        "[+]"
     } else {
-        "     "
+        "   "
     })
     .to_string();
 
