@@ -137,28 +137,31 @@ fn get_render_function<F>(element_id: StatusLineElementID) -> impl Fn(&mut Rende
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    use helix_view::editor::StatusLineElement as E;
     match element_id {
-        E::Mode => render_mode,
-        E::Spinner => render_lsp_spinner,
-        E::FileBaseName => render_file_base_name,
-        E::FileName => render_file_name,
-        E::FileModificationIndicator => render_file_modification_indicator,
-        E::ReadOnlyIndicator => render_read_only_indicator,
-        E::FileEncoding => render_file_encoding,
-        E::FileLineEnding => render_file_line_ending,
-        E::FileType => render_file_type,
-        E::Diagnostics => render_diagnostics,
-        E::WorkspaceDiagnostics => render_workspace_diagnostics,
-        E::Selections => render_selections,
-        E::PrimarySelectionLength => render_primary_selection_length,
-        E::Position => render_position,
-        E::PositionPercentage => render_position_percentage,
-        E::TotalLineNumbers => render_total_line_numbers,
-        E::Separator => render_separator,
-        E::Spacer => render_spacer,
-        E::VersionControl => render_version_control,
-        E::Register => render_register,
+        helix_view::editor::StatusLineElement::Mode => render_mode,
+        helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
+        helix_view::editor::StatusLineElement::FileBaseName => render_file_base_name,
+        helix_view::editor::StatusLineElement::FileName => render_file_name,
+        helix_view::editor::StatusLineElement::FileModificationIndicator => {
+            render_file_modification_indicator
+        }
+        helix_view::editor::StatusLineElement::ReadOnlyIndicator => render_read_only_indicator,
+        helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
+        helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
+        helix_view::editor::StatusLineElement::FileType => render_file_type,
+        helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
+        helix_view::editor::StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
+        helix_view::editor::StatusLineElement::Selections => render_selections,
+        helix_view::editor::StatusLineElement::PrimarySelectionLength => {
+            render_primary_selection_length
+        }
+        helix_view::editor::StatusLineElement::Position => render_position,
+        helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
+        helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
+        helix_view::editor::StatusLineElement::Separator => render_separator,
+        helix_view::editor::StatusLineElement::Spacer => render_spacer,
+        helix_view::editor::StatusLineElement::VersionControl => render_version_control,
+        helix_view::editor::StatusLineElement::Register => render_register,
     }
 }
 
