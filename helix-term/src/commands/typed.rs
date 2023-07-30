@@ -5,6 +5,7 @@ use crate::job::Job;
 
 use super::*;
 
+use helix_core::fuzzy::fuzzy_match;
 use helix_core::{encoding, shellwords::Shellwords};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
@@ -1265,12 +1266,10 @@ fn reload(
     }
 
     let scrolloff = cx.editor.config().scrolloff;
-    let redraw_handle = cx.editor.redraw_handle.clone();
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_providers, redraw_handle)
-        .map(|_| {
-            view.ensure_cursor_in_view(doc, scrolloff);
-        })?;
+    doc.reload(view, &cx.editor.diff_providers).map(|_| {
+        view.ensure_cursor_in_view(doc, scrolloff);
+    })?;
     if let Some(path) = doc.path() {
         cx.editor
             .language_servers
@@ -1316,8 +1315,7 @@ fn reload_all(
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
-        let redraw_handle = cx.editor.redraw_handle.clone();
-        doc.reload(view, &cx.editor.diff_providers, redraw_handle)?;
+        doc.reload(view, &cx.editor.diff_providers)?;
         if let Some(path) = doc.path() {
             cx.editor
                 .language_servers
@@ -2902,28 +2900,18 @@ pub(super) fn command_mode(cx: &mut Context) {
         ":".into(),
         Some(':'),
         |editor: &Editor, input: &str| {
-            static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
-                Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
-
             let shellwords = Shellwords::from(input);
             let words = shellwords.words();
 
             if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
-                // If the command has not been finished yet, complete commands.
-                let mut matches: Vec<_> = typed::TYPABLE_COMMAND_LIST
-                    .iter()
-                    .filter_map(|command| {
-                        FUZZY_MATCHER
-                            .fuzzy_match(command.name, input)
-                            .map(|score| (command.name, score))
-                    })
-                    .collect();
-
-                matches.sort_unstable_by_key(|(_file, score)| std::cmp::Reverse(*score));
-                matches
-                    .into_iter()
-                    .map(|(name, _)| (0.., name.into()))
-                    .collect()
+                fuzzy_match(
+                    input,
+                    TYPABLE_COMMAND_LIST.iter().map(|command| command.name),
+                    false,
+                )
+                .into_iter()
+                .map(|(name, _)| (0.., name.into()))
+                .collect()
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.

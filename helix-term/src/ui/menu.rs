@@ -1,22 +1,21 @@
-use std::{borrow::Cow, path::PathBuf};
+use std::{borrow::Cow, cmp::Reverse, path::PathBuf};
 
 use crate::{
     compositor::{Callback, Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
 };
+use helix_core::fuzzy::MATCHER;
+use nucleo::{CaseMatching, MatcherConfig, Pattern, PatternKind, Utf32Str};
 use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
-use fuzzy_matcher::skim::SkimMatcherV2 as Matcher;
-use fuzzy_matcher::FuzzyMatcher;
-
 use helix_view::{editor::SmartTabConfig, graphics::Rect, Editor};
 use tui::layout::Constraint;
 
-pub trait Item {
+pub trait Item: Sync + Send + 'static {
     /// Additional editor state that is used for label calculation.
-    type Data;
+    type Data: Sync + Send + 'static;
 
     fn format(&self, data: &Self::Data) -> Row;
 
@@ -51,9 +50,8 @@ pub struct Menu<T: Item> {
 
     cursor: Option<usize>,
 
-    matcher: Box<Matcher>,
     /// (index, score)
-    matches: Vec<(usize, i64)>,
+    matches: Vec<(u32, u32)>,
 
     widths: Vec<Constraint>,
 
@@ -75,11 +73,10 @@ impl<T: Item> Menu<T> {
         editor_data: <T as Item>::Data,
         callback_fn: impl Fn(&mut Editor, Option<&T>, MenuEvent) + 'static,
     ) -> Self {
-        let matches = (0..options.len()).map(|i| (i, 0)).collect();
+        let matches = (0..options.len() as u32).map(|i| (i, 0)).collect();
         Self {
             options,
             editor_data,
-            matcher: Box::new(Matcher::default().ignore_case()),
             matches,
             cursor: None,
             widths: Vec::new(),
@@ -94,20 +91,20 @@ impl<T: Item> Menu<T> {
     pub fn score(&mut self, pattern: &str) {
         // reuse the matches allocation
         self.matches.clear();
-        self.matches.extend(
-            self.options
-                .iter()
-                .enumerate()
-                .filter_map(|(index, option)| {
-                    let text = option.filter_text(&self.editor_data);
-                    // TODO: using fuzzy_indices could give us the char idx for match highlighting
-                    self.matcher
-                        .fuzzy_match(&text, pattern)
-                        .map(|score| (index, score))
-                }),
-        );
-        // Order of equal elements needs to be preserved as LSP preselected items come in order of high to low priority
-        self.matches.sort_by_key(|(_, score)| -score);
+        let mut matcher = MATCHER.lock();
+        matcher.config = MatcherConfig::DEFAULT;
+        let mut pattern_ = Pattern::new(&matcher.config, CaseMatching::Ignore);
+        pattern_.set_literal(pattern, PatternKind::Fuzzy, false);
+        let mut buf = Vec::new();
+        let matches = self.options.iter().enumerate().filter_map(|(i, option)| {
+            let text = option.filter_text(&self.editor_data);
+            pattern_
+                .score(Utf32Str::new(&text, &mut buf), &mut matcher)
+                .map(|score| (i as u32, score))
+        });
+        self.matches.extend(matches);
+        self.matches
+            .sort_unstable_by_key(|&(i, score)| (Reverse(score), i));
 
         // reset cursor position
         self.cursor = None;
@@ -201,7 +198,7 @@ impl<T: Item> Menu<T> {
         self.cursor.and_then(|cursor| {
             self.matches
                 .get(cursor)
-                .map(|(index, _score)| &self.options[*index])
+                .map(|(index, _score)| &self.options[*index as usize])
         })
     }
 
@@ -209,7 +206,7 @@ impl<T: Item> Menu<T> {
         self.cursor.and_then(|cursor| {
             self.matches
                 .get(cursor)
-                .map(|(index, _score)| &mut self.options[*index])
+                .map(|(index, _score)| &mut self.options[*index as usize])
         })
     }
 
@@ -332,7 +329,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             .iter()
             .map(|(index, _score)| {
                 // (index, self.options.get(*index).unwrap()) // get_unchecked
-                &self.options[*index] // get_unchecked
+                &self.options[*index as usize] // get_unchecked
             })
             .collect();
 

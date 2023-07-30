@@ -246,10 +246,59 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e496a50fda8aacccc86d7529e2c1e0892dbd0f898a6b5645b5561b89c3210efa"
 
 [[package]]
+name = "cov-mark"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ffa3d3e0138386cd4361f63537765cac7ee40698028844635a54495a92f67f3"
+
+[[package]]
 name = "crc32fast"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b540bd8bc810d3885c6ea91e2018302f68baba2129ab3e88f32389ee9370880d"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
+name = "crossbeam-channel"
+version = "0.5.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a33c2bf77f2df06183c3aa30d1e96c0695a313d4f9c453cc3762a6db39f99200"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-deque"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce6fd6f855243022dcecf8702fef0c297d4338e226845fe067f6341ad9fa0cef"
+dependencies = [
+ "cfg-if",
+ "crossbeam-epoch",
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-epoch"
+version = "0.9.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae211234986c545741a7dc064309f67ee1e5ad243d0e48335adc0484d960bcc7"
+dependencies = [
+ "autocfg",
+ "cfg-if",
+ "crossbeam-utils",
+ "memoffset",
+ "scopeguard",
+]
+
+[[package]]
+name = "crossbeam-utils"
+version = "0.8.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a22b2d63d4d1dc0b7f1b6b2747dd0088008a9be28b6ddf0b1e7d335e3037294"
 dependencies = [
  "cfg-if",
 ]
@@ -500,15 +549,6 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
-]
-
-[[package]]
-name = "fuzzy-matcher"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54614a3312934d066701a80f20f15fa3b56d67ac7722b39eea5b4c9dd1d66c94"
-dependencies = [
- "thread_local",
 ]
 
 [[package]]
@@ -1224,7 +1264,9 @@ dependencies = [
  "imara-diff",
  "indoc",
  "log",
+ "nucleo",
  "once_cell",
+ "parking_lot",
  "quickcheck",
  "regex",
  "ropey",
@@ -1254,6 +1296,14 @@ dependencies = [
  "thiserror",
  "tokio",
  "which",
+]
+
+[[package]]
+name = "helix-event"
+version = "0.6.0"
+dependencies = [
+ "parking_lot",
+ "tokio",
 ]
 
 [[package]]
@@ -1312,11 +1362,11 @@ dependencies = [
  "crossterm",
  "fern",
  "futures-util",
- "fuzzy-matcher",
  "grep-regex",
  "grep-searcher",
  "helix-core",
  "helix-dap",
+ "helix-event",
  "helix-loader",
  "helix-lsp",
  "helix-tui",
@@ -1326,6 +1376,7 @@ dependencies = [
  "indoc",
  "libc",
  "log",
+ "nucleo",
  "once_cell",
  "pulldown-cmark",
  "serde",
@@ -1364,6 +1415,7 @@ dependencies = [
  "arc-swap",
  "gix",
  "helix-core",
+ "helix-event",
  "imara-diff",
  "log",
  "parking_lot",
@@ -1384,6 +1436,7 @@ dependencies = [
  "futures-util",
  "helix-core",
  "helix-dap",
+ "helix-event",
  "helix-loader",
  "helix-lsp",
  "helix-tui",
@@ -1652,6 +1705,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "memoffset"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a634b1c61a95585bd15607c6ab0c4e5b226e695ff2800ba0cdccddf208c406c"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1695,6 +1757,26 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
+]
+
+[[package]]
+name = "nucleo"
+version = "0.1.0"
+source = "git+https://github.com/helix-editor/nucleo.git#9c4b71027f0389ec59fd0f6d2d48fa4ed76fdc6b"
+dependencies = [
+ "nucleo-matcher",
+ "parking_lot",
+ "rayon",
+]
+
+[[package]]
+name = "nucleo-matcher"
+version = "0.1.0"
+source = "git+https://github.com/helix-editor/nucleo.git#9c4b71027f0389ec59fd0f6d2d48fa4ed76fdc6b"
+dependencies = [
+ "cov-mark",
+ "memchr",
+ "unicode-segmentation",
 ]
 
 [[package]]
@@ -1841,6 +1923,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
  "getrandom",
+]
+
+[[package]]
+name = "rayon"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d2df5196e37bcc87abebc0053e20787d73847bb33134a69841207dd0a47f03b"
+dependencies = [
+ "either",
+ "rayon-core",
+]
+
+[[package]]
+name = "rayon-core"
+version = "1.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b8f95bd6966f5c87776639160a66bd8ab9895d9d4ab01ddba9fc60661aebe8d"
+dependencies = [
+ "crossbeam-channel",
+ "crossbeam-deque",
+ "crossbeam-utils",
+ "num_cpus",
 ]
 
 [[package]]

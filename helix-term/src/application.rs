@@ -257,16 +257,8 @@ impl Application {
             scroll: None,
         };
 
-        // Acquire mutable access to the redraw_handle lock
-        // to ensure that there are no tasks running that want to block rendering
-        drop(cx.editor.redraw_handle.1.write().await);
+        helix_event::start_frame();
         cx.editor.needs_redraw = false;
-        {
-            // exhaust any leftover redraw notifications
-            let notify = cx.editor.redraw_handle.0.notified();
-            tokio::pin!(notify);
-            notify.enable();
-        }
 
         let area = self
             .terminal
@@ -590,7 +582,7 @@ impl Application {
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
                 // limit render calls for fast language server messages
-                self.editor.redraw_handle.0.notify_one();
+                helix_event::request_redraw();
             }
             EditorEvent::DebuggerEvent(payload) => {
                 let needs_render = self.editor.handle_debugger_message(payload).await;
