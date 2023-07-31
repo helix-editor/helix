@@ -1,7 +1,9 @@
 use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
+use helix_core::syntax;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
+use std::sync::Arc;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
 use tui::widgets::{Block, Borders, Widget};
@@ -32,6 +34,7 @@ pub struct Prompt {
     callback_fn: CallbackFn,
     pub doc_fn: DocFn,
     next_char_handler: Option<PromptCharHandler>,
+    language: Option<(&'static str, Arc<syntax::Loader>)>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -83,6 +86,7 @@ impl Prompt {
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
             next_char_handler: None,
+            language: None,
         }
     }
 
@@ -96,6 +100,10 @@ impl Prompt {
 
     pub fn prompt(&self) -> &str {
         self.prompt.as_ref()
+    }
+    pub fn with_language(mut self, language: &'static str, loader: Arc<syntax::Loader>) -> Self {
+        self.language = Some((language, loader));
+        self
     }
 
     pub fn line(&self) -> &String {
@@ -460,30 +468,28 @@ impl Prompt {
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
 
-        let (input, is_suggestion): (Cow<str>, bool) = if self.line.is_empty() {
-            // latest value in the register list
-            match self
+        let line_area = area.clip_left(self.prompt.len() as u16).clip_top(line);
+        if self.line.is_empty() {
+            // Show the most recently entered value as a suggestion.
+            if let Some(suggestion) = self
                 .history_register
                 .and_then(|reg| cx.editor.registers.last(reg))
-                .map(|entry| entry.into())
             {
-                Some(value) => (value, true),
-                None => (Cow::from(""), false),
+                surface.set_string(line_area.x, line_area.y, suggestion, suggestion_color);
             }
+        } else if let Some((language, loader)) = self.language.as_ref() {
+            let mut text: ui::text::Text = crate::ui::markdown::highlighted_code_block(
+                &self.line,
+                language,
+                Some(&cx.editor.theme),
+                loader.clone(),
+                None,
+            )
+            .into();
+            text.render(line_area, surface, cx);
         } else {
-            (self.line.as_str().into(), false)
-        };
-
-        surface.set_string(
-            area.x + self.prompt.len() as u16,
-            area.y + line,
-            &input,
-            if is_suggestion {
-                suggestion_color
-            } else {
-                prompt_color
-            },
-        );
+            surface.set_string(line_area.x, line_area.y, self.line.clone(), prompt_color);
+        }
     }
 }
 

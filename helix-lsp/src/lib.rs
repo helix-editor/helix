@@ -435,7 +435,7 @@ pub mod util {
             }
 
             let tabstops = tabstops.first().filter(|tabstops| !tabstops.is_empty());
-            let Some(tabstops) = tabstops else{
+            let Some(tabstops) = tabstops else {
                 // no tabstop normal mapping
                 mapped_selection.push(range);
                 continue;

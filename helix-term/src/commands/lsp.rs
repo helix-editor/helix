@@ -730,7 +730,8 @@ pub fn code_action(cx: &mut Context) {
 
                 // always present here
                 let action = action.unwrap();
-                let Some(language_server) = editor.language_server_by_id(action.language_server_id) else {
+                let Some(language_server) = editor.language_server_by_id(action.language_server_id)
+                else {
                     editor.set_error("Language Server disappeared");
                     return;
                 };
@@ -746,15 +747,20 @@ pub fn code_action(cx: &mut Context) {
                         // we support lsp "codeAction/resolve" for `edit` and `command` fields
                         let mut resolved_code_action = None;
                         if code_action.edit.is_none() || code_action.command.is_none() {
-                            if let Some(future) = language_server.resolve_code_action(code_action.clone()) {
+                            if let Some(future) =
+                                language_server.resolve_code_action(code_action.clone())
+                            {
                                 if let Ok(response) = helix_lsp::block_on(future) {
-                                    if let Ok(code_action) = serde_json::from_value::<CodeAction>(response) {
+                                    if let Ok(code_action) =
+                                        serde_json::from_value::<CodeAction>(response)
+                                    {
                                         resolved_code_action = Some(code_action);
                                     }
                                 }
                             }
                         }
-                        let resolved_code_action = resolved_code_action.as_ref().unwrap_or(code_action);
+                        let resolved_code_action =
+                            resolved_code_action.as_ref().unwrap_or(code_action);
 
                         if let Some(ref workspace_edit) = resolved_code_action.edit {
                             log::debug!("edit: {:?}", workspace_edit);
@@ -1186,7 +1192,8 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
         // Do not show the message if signature help was invoked
         // automatically on backspace, trigger characters, etc.
         if invoked == SignatureHelpInvoked::Manual {
-            cx.editor.set_error("No configured language server supports signature-help");
+            cx.editor
+                .set_error("No configured language server supports signature-help");
         }
         return;
     };
@@ -1411,7 +1418,8 @@ pub fn rename_symbol(cx: &mut Context) {
                     .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
                     .find(|ls| language_server_id.map_or(true, |id| id == ls.id()))
                 else {
-                    cx.editor.set_error("No configured language server supports symbol renaming");
+                    cx.editor
+                        .set_error("No configured language server supports symbol renaming");
                     return;
                 };
 

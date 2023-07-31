@@ -432,7 +432,7 @@ impl<T: Item + 'static> Picker<T> {
 
     fn handle_idle_timeout(&mut self, cx: &mut Context) -> EventResult {
         let Some((current_file, _)) = self.current_file(cx.editor) else {
-            return EventResult::Consumed(None)
+            return EventResult::Consumed(None);
         };
 
         // Try to find a document in the cache
@@ -453,17 +453,20 @@ impl<T: Item + 'static> Picker<T> {
                 let text = doc.text().clone();
                 let loader = cx.editor.syn_loader.clone();
                 let job = tokio::task::spawn_blocking(move || {
-                    let syntax = language_config
-                        .highlight_config(&loader.scopes())
-                        .and_then(|highlight_config| Syntax::new(&text, highlight_config, loader));
+                    let syntax = language_config.highlight_config(&loader.scopes()).and_then(
+                        |highlight_config| Syntax::new(text.slice(..), highlight_config, loader),
+                    );
                     let callback = move |editor: &mut Editor, compositor: &mut Compositor| {
                         let Some(syntax) = syntax else {
                             log::info!("highlighting picker item failed");
-                            return
+                            return;
                         };
-                        let Some(Overlay { content: picker, .. }) = compositor.find::<Overlay<Self>>() else {
+                        let Some(Overlay {
+                            content: picker, ..
+                        }) = compositor.find::<Overlay<Self>>()
+                        else {
                             log::info!("picker closed before syntax highlighting finished");
-                            return
+                            return;
                         };
                         // Try to find a document in the cache
                         let doc = match current_file {

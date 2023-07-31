@@ -4,7 +4,7 @@ use crate::{
     diagnostic::Severity,
     regex::Regex,
     transaction::{ChangeSet, Operation},
-    Rope, RopeSlice, Tendril,
+    RopeSlice, Tendril,
 };
 
 use ahash::RandomState;
@@ -818,7 +818,10 @@ impl Loader {
         // TODO: content_regex handling conflict resolution
     }
 
-    pub fn language_config_for_shebang(&self, source: &Rope) -> Option<Arc<LanguageConfiguration>> {
+    pub fn language_config_for_shebang(
+        &self,
+        source: RopeSlice,
+    ) -> Option<Arc<LanguageConfiguration>> {
         let line = Cow::from(source.line(0));
         static SHEBANG_REGEX: Lazy<Regex> =
             Lazy::new(|| Regex::new(&["^", SHEBANG].concat()).unwrap());
@@ -928,7 +931,7 @@ fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<st
 
 impl Syntax {
     pub fn new(
-        source: &Rope,
+        source: RopeSlice,
         config: Arc<HighlightConfiguration>,
         loader: Arc<Loader>,
     ) -> Option<Self> {
@@ -967,8 +970,8 @@ impl Syntax {
 
     pub fn update(
         &mut self,
-        old_source: &Rope,
-        source: &Rope,
+        old_source: RopeSlice,
+        source: RopeSlice,
         changeset: &ChangeSet,
     ) -> Result<(), Error> {
         let mut queue = VecDeque::new();
@@ -1387,7 +1390,7 @@ impl LanguageLayer {
         self.tree.as_ref().unwrap()
     }
 
-    fn parse(&mut self, parser: &mut Parser, source: &Rope) -> Result<(), Error> {
+    fn parse(&mut self, parser: &mut Parser, source: RopeSlice) -> Result<(), Error> {
         parser
             .set_included_ranges(&self.ranges)
             .map_err(|_| Error::InvalidRanges)?;
@@ -1418,7 +1421,7 @@ impl LanguageLayer {
 }
 
 pub(crate) fn generate_edits(
-    old_text: &Rope,
+    old_text: RopeSlice,
     changeset: &ChangeSet,
 ) -> Vec<tree_sitter::InputEdit> {
     use Operation::*;
@@ -1434,7 +1437,7 @@ pub(crate) fn generate_edits(
 
     // TODO; this is a lot easier with Change instead of Operation.
 
-    fn point_at_pos(text: &Rope, pos: usize) -> (usize, Point) {
+    fn point_at_pos(text: RopeSlice, pos: usize) -> (usize, Point) {
         let byte = text.char_to_byte(pos); // <- attempted to index past end
         let line = text.char_to_line(pos);
         let line_start_byte = text.line_to_byte(line);
@@ -2529,7 +2532,7 @@ mod test {
         let mut cursor = QueryCursor::new();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
+        let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
 
         let root = syntax.tree().root_node();
         let mut test = |capture, range| {
@@ -2603,7 +2606,7 @@ mod test {
             fn main() {}
         ",
         );
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
+        let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
         let tree = syntax.tree();
         let root = tree.root_node();
         assert_eq!(root.kind(), "source_file");
@@ -2630,7 +2633,7 @@ mod test {
             &doc,
             vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
         );
-        let edits = generate_edits(&doc, transaction.changes());
+        let edits = generate_edits(doc.slice(..), transaction.changes());
         // transaction.apply(&mut state);
 
         assert_eq!(
@@ -2659,7 +2662,7 @@ mod test {
         let mut doc = Rope::from("fn test() {}");
         let transaction =
             Transaction::change(&doc, vec![(8, 8, Some("a: u32".into()))].into_iter());
-        let edits = generate_edits(&doc, transaction.changes());
+        let edits = generate_edits(doc.slice(..), transaction.changes());
         transaction.apply(&mut doc);
 
         assert_eq!(doc, "fn test(a: u32) {}");
@@ -2693,7 +2696,7 @@ mod test {
         let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
+        let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
 
         let root = syntax
             .tree()

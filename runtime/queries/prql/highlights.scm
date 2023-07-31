@@ -9,7 +9,7 @@
   (keyword_window)
   (keyword_join)
   (keyword_select)
-  (keyword_switch)
+  (keyword_case)
   (keyword_append)
   (keyword_remove)
   (keyword_intersect)
@@ -19,6 +19,7 @@
   (keyword_let)
   (keyword_prql)
   (keyword_from_text)
+  (keyword_loop)
 ] @keyword
 
 (literal) @string
@@ -32,8 +33,6 @@ alias: (identifier) @variable.other.member
 (s_string) @string.special
 
 (comment) @comment
-
-(keyword_func) @keyword.function
 
 (function_call
   (identifier) @function)
@@ -50,21 +49,25 @@ alias: (identifier) @variable.other.member
   "!="
   ">="
   ">"
-  "->"
+  "&&"
+  "||"
+  "//"
+  "~="
   (bang)
 ] @operator
 
 [
   "("
   ")"
-  "["
-  "]"
+  "{"
+  "}"
 ] @punctuation.bracket
 
 [
   ","
   "."
   (pipe)
+  "->"
 ] @punctuation.delimiter
 
 (literal
@@ -87,6 +90,15 @@ alias: (identifier) @variable.other.member
   (keyword_sum)
   (keyword_stddev)
   (keyword_count)
+  (keyword_lag)
+  (keyword_lead)
+  (keyword_first)
+  (keyword_last)
+  (keyword_rank)
+  (keyword_row_number)
+  (keyword_round)
+  (keyword_all)
+  (keyword_map)
 ] @function
 
 [
@@ -119,13 +131,8 @@ alias: (identifier) @variable.other.member
   (keyword_false)
 ] @constant.builtin.boolean
 
-[
- (keyword_and)
- (keyword_or)
-] @keyword.operator
-
 (function_definition
-  (keyword_func)
+  (keyword_let)
   name: (identifier) @function)
 
 (parameter
