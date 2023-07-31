@@ -432,8 +432,9 @@ fn render_file_modification_indicator<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
+    let indicator = &context.editor.config().file_modification_indicator;
     let title = (if context.doc.is_modified() {
-        "[+]"
+        indicator
     } else {
         "   "
     })
