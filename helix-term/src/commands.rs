@@ -2187,9 +2187,8 @@ fn global_search(cx: &mut Context) {
                     all_matches,
                     current_path,
                     move |cx, FileResult { path, line_num }, action| {
-                        let old_doc_id = doc!(cx.editor).id();
-                        let doc_id = match cx.editor.open(path, action) {
-                            Ok(id) => id,
+                        let doc = match cx.editor.open(path, action) {
+                            Ok(id) => doc_mut!(cx.editor, &id),
                             Err(e) => {
                                 cx.editor.set_error(format!(
                                     "Failed to open file '{}': {}",
@@ -2200,7 +2199,7 @@ fn global_search(cx: &mut Context) {
                             }
                         };
                         let line_num = *line_num;
-                        let (view, doc) = (view_mut!(cx.editor), doc_mut!(cx.editor, &doc_id));
+                        let view = view_mut!(cx.editor);
                         let text = doc.text();
                         if line_num >= text.len_lines() {
                             cx.editor.set_error("The line you jumped to does not exist anymore because the file has changed.");
@@ -2210,7 +2209,7 @@ fn global_search(cx: &mut Context) {
                         let end = text.line_to_char((line_num + 1).min(text.len_lines()));
 
                         doc.set_selection(view.id, Selection::single(start, end));
-                        if View::change_align_view(action, old_doc_id, doc_id) {
+                        if action.align_view(view, doc.id()){
                             align_view(doc, view, Align::Center);
                         }
                     }).with_preview(|_editor, FileResult { path, line_num }| {
@@ -2723,12 +2722,11 @@ fn jumplist_picker(cx: &mut Context) {
             .collect(),
         (),
         |cx, meta, action| {
-            let old_doc_id = doc!(cx.editor).id();
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
             let (view, doc) = (view_mut!(cx.editor), doc_mut!(cx.editor, &meta.id));
             doc.set_selection(view.id, meta.selection.clone());
-            if View::change_align_view(action, old_doc_id, doc.id()) {
+            if action.align_view(view, doc.id()) {
                 view.ensure_cursor_in_view_center(doc, config.scrolloff);
             }
         },

@@ -213,7 +213,6 @@ fn jump_to_location(
         }
     };
 
-    let old_doc_id = doc!(editor).id();
     let doc = match editor.open(&path, action) {
         Ok(id) => doc_mut!(editor, &id),
         Err(err) => {
@@ -234,7 +233,7 @@ fn jump_to_location(
     // we flip the range so that the cursor sits on the start of the symbol
     // (for example start of the function).
     doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
-    if View::change_align_view(action, old_doc_id, doc.id()) {
+    if action.align_view(view, doc.id()) {
         align_view(doc, view, Align::Center);
     }
 }

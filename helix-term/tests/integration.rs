@@ -1,4 +1,5 @@
-#[cfg(feature = "integration")]
+// XXX remove before PR
+// #[cfg(feature = "integration")]
 mod test {
     mod helpers;
 
