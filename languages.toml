@@ -2092,6 +2092,20 @@ name = "jsonnet"
 source = { git = "https://github.com/sourcegraph/tree-sitter-jsonnet", rev = "0475a5017ad7dc84845d1d33187f2321abcb261d" }
 
 [[language]]
+name = "ada"
+scope = "source.ada"
+injection-regex = "ada"
+file-types = ["adb", "ads"]
+roots = ["alire.toml"]
+comment-token = "--"
+indent = { tab-width = 3, unit = " " }
+language-server = { command = "ada_language_server" }
+
+[[grammar]]
+name = "ada"
+source = { git = "https://github.com/briot/tree-sitter-ada", rev = "ba7951a8f3fb08f9ea923625153e7670c89f30b4" }
+
+[[language]]
 name = "astro"
 scope = "source.astro"
 injection-regex = "astro"
