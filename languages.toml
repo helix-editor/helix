@@ -7,6 +7,7 @@ awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
 bass = { command = "bass", args = ["--lsp"] }
 bicep-langserver = { command = "bicep-langserver" }
+bufls = { command = "bufls", args = ["serve"] }
 cairo-language-server = { command = "cairo-language-server", args = [] }
 cl-lsp = { command = "cl-lsp", args = [ "stdio" ] }
 clangd = { command = "clangd" }
@@ -258,6 +259,7 @@ name = "protobuf"
 scope = "source.proto"
 injection-regex = "protobuf"
 file-types = ["proto"]
+language-servers = [ "bufls" ]
 roots = []
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
