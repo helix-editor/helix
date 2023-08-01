@@ -3,6 +3,7 @@
 
 [language-server]
 
+ada-language-server = { command = "ada_language_server" }
 awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
 bass = { command = "bass", args = ["--lsp"] }
@@ -2099,7 +2100,7 @@ file-types = ["adb", "ads"]
 roots = ["alire.toml"]
 comment-token = "--"
 indent = { tab-width = 3, unit = " " }
-language-server = { command = "ada_language_server" }
+language-servers = [ "ada-language-server" ]
 
 [[grammar]]
 name = "ada"
