@@ -20,11 +20,6 @@ pub trait Item {
 
     fn format(&self, data: &Self::Data) -> Row;
 
-    fn sort_text(&self, data: &Self::Data) -> Cow<str> {
-        let label: String = self.format(data).cell_text().collect();
-        label.into()
-    }
-
     fn filter_text(&self, data: &Self::Data) -> Cow<str> {
         let label: String = self.format(data).cell_text().collect();
         label.into()

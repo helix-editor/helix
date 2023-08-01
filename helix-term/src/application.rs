@@ -32,17 +32,16 @@ use crate::{
     ui::{self, overlay::overlaid},
 };
 
+use core::panic;
 use log::{debug, error, warn};
-use std::{
-    collections::btree_map::Entry,
-    io::{stdin, stdout},
-    path::Path,
-    sync::Arc,
-};
+use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
 use anyhow::{Context, Error};
 
-use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
+use crossterm::{
+    event::{Event as CrosstermEvent, EventStream},
+    tty::IsTty,
+};
 #[cfg(not(windows))]
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
@@ -79,28 +78,6 @@ pub struct Application {
     lsp_progress: LspProgressMap,
 }
 
-#[cfg(feature = "integration")]
-fn setup_integration_logging() {
-    let level = std::env::var("HELIX_LOG_LEVEL")
-        .map(|lvl| lvl.parse().unwrap())
-        .unwrap_or(log::LevelFilter::Info);
-
-    // Separate file config so we can include year, month and day in file logs
-    let _ = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .level(level)
-        .chain(std::io::stdout())
-        .apply();
-}
-
 impl Application {
     pub fn new(
         args: Args,
@@ -108,7 +85,9 @@ impl Application {
         syn_loader_conf: syntax::Configuration,
     ) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
-        setup_integration_logging();
+        // Unwrap will be error error if logging system has been
+        // initialized by another test.
+        let _ = crate::log::setup_logging(std::io::stdout(), None);
 
         use helix_view::editor::Action;
 
@@ -135,7 +114,7 @@ impl Application {
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout(), &config.editor);
+        let backend = CrosstermBackend::new(std::io::stdout(), &config.editor);
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
@@ -484,7 +463,7 @@ impl Application {
                 // https://github.com/neovim/neovim/issues/12322
                 // https://github.com/neovim/neovim/pull/13084
                 for retries in 1..=10 {
-                    match self.claim_term().await {
+                    match self.claim_term() {
                         Ok(()) => break,
                         Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
                         Err(_) => continue,
@@ -1151,7 +1130,7 @@ impl Application {
         }
     }
 
-    async fn claim_term(&mut self) -> std::io::Result<()> {
+    fn claim_term(&mut self) -> std::io::Result<()> {
         let terminal_config = self.config.load().editor.clone().into();
         self.terminal.claim(terminal_config)
     }
@@ -1166,23 +1145,19 @@ impl Application {
         self.terminal.restore(terminal_config)
     }
 
-    pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
-    where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
-    {
-        self.claim_term().await?;
+    pub async fn run(&mut self) -> Result<i32, Error> {
+        self.claim_term()?;
 
         // Exit the alternate screen and disable raw mode before panicking
-        let hook = std::panic::take_hook();
         std::panic::set_hook(Box::new(move |info| {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`.
             let _ = TerminalBackend::force_restore();
-            hook(info);
+            std::panic::take_hook()(info);
         }));
 
-        self.event_loop(input_stream).await;
+        self.event_loop(&mut EventStream::new()).await;
 
         let close_errs = self.close().await;
 

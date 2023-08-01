@@ -43,11 +43,6 @@ pub trait Component: Any + AnyComponent {
     }
     // , args: ()
 
-    /// Should redraw? Useful for saving redraw cycles if we know component didn't change.
-    fn should_update(&self) -> bool {
-        true
-    }
-
     /// Render the component onto the provided surface.
     fn render(&mut self, area: Rect, frame: &mut Surface, ctx: &mut Context);
 
