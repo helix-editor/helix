@@ -7,6 +7,7 @@ pub use git::Git;
 #[cfg(not(feature = "git"))]
 pub use Dummy as Git;
 
+mod file;
 #[cfg(feature = "git")]
 mod git;
 
@@ -72,7 +73,8 @@ impl Default for DiffProviderRegistry {
         // currently only git is supported
         // TODO make this configurable when more providers are added
         let git: Box<dyn DiffProvider> = Box::new(Git);
-        let providers = vec![git];
+        let file: Box<dyn DiffProvider> = Box::new(file::File);
+        let providers = vec![git, file];
         DiffProviderRegistry { providers }
     }
 }
