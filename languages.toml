@@ -7,6 +7,7 @@ awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
 bass = { command = "bass", args = ["--lsp"] }
 bicep-langserver = { command = "bicep-langserver" }
+bufls = { command = "bufls", args = ["serve"] }
 cairo-language-server = { command = "cairo-language-server", args = [] }
 cl-lsp = { command = "cl-lsp", args = [ "stdio" ] }
 clangd = { command = "clangd" }
@@ -48,6 +49,7 @@ ols = { command = "ols", args = [] }
 omnisharp = { command = "OmniSharp", args = [ "--languageserver" ] }
 openscad-lsp = { command = "openscad-lsp", args = ["--stdio"] }
 pasls = { command = "pasls", args = [] }
+pbkit = { command = "pb", args = [ "lsp" ] }
 perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
 prisma-language-server = { command = "prisma-language-server", args = ["--stdio"] }
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
@@ -258,6 +260,7 @@ name = "protobuf"
 scope = "source.proto"
 injection-regex = "protobuf"
 file-types = ["proto"]
+language-servers = [ "bufls", "pbkit" ]
 roots = []
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
