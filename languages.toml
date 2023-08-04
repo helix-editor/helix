@@ -2691,7 +2691,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "t32"
-source = { git = "https://codeberg.org/xasc/tree-sitter-t32", rev = "1dd98248b01e4a3933c1b85b58bab0875e2ba437" }
+source = { git = "https://gitlab.com/xasc/tree-sitter-t32", rev = "6da5e3cbabd376b566d04282005e52ffe67ef74a" }
 
 [[language]]
 name = "webc"
