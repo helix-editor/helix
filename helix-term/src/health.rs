@@ -270,9 +270,6 @@ pub fn language(lang_str: String, display_heading: bool) -> std::io::Result<()> 
     };
 
     if display_heading {
-        let stdout = std::io::stdout();
-        let mut stdout = stdout.lock();
-
         writeln!(stdout, "\n{}", &lang_str.clone().white())?;
     }
 
