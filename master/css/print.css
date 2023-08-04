@@ -22,14 +22,6 @@
     overflow-y: initial;
 }
 
-code {
-    background-color: #666666;
-    border-radius: 5px;
-
-    /* Force background to be printed in Chrome */
-    -webkit-print-color-adjust: exact;
-}
-
 pre > .buttons {
     z-index: 2;
 }
