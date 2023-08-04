@@ -725,12 +725,6 @@ pub fn write_all_impl(
     }
 
     let error_msg = errors.join(" ");
-    // if !readonly_errors.is_empty() {
-    //     // statusline text will have the form:
-    //     // [/home/user/readonly.txt is readonly, ..., /readonly2.txt is readonly] add ! to overwrite
-    //     error_msg = format!("{:?} use ! to overwrite", readonly_errors).replace('"', "");
-    // }
-
     if !error_msg.is_empty() {
         bail!(error_msg);
     }
