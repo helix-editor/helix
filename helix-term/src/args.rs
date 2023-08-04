@@ -42,7 +42,7 @@ impl Args {
                 },
                 "--health" => {
                     args.health = true;
-                    // Helix exists after printin health so we don't care about files
+                    // Treat all arguments after `--health' as language names
                     while let Some(item) = argv.next_if(|opt| !opt.starts_with('-')) {
                         args.health_arg.push(item);
                     }

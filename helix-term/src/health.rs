@@ -276,7 +276,6 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
         }
     };
 
-    // TODO multiple language servers
     probe_protocol(
         "language server",
         lang.language_servers
@@ -358,9 +357,10 @@ pub fn print_health(health_args: Vec<String>) -> std::io::Result<()> {
         print_all()?;
         return Ok(());
     }
+
     for (idx, health_arg) in health_args.into_iter().enumerate() {
         if idx != 0 {
-            // Empty line
+            // New line
             let mut stdout = std::io::stdout().lock();
             writeln!(stdout)?;
         }
