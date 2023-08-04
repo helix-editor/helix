@@ -270,7 +270,7 @@ pub fn language(lang_str: String, display_heading: bool) -> std::io::Result<()> 
     };
 
     if display_heading {
-        writeln!(stdout, "\n{}", &lang_str.clone().white())?;
+        writeln!(stdout, "\n{}", &lang_str)?;
     }
 
     // TODO multiple language servers
