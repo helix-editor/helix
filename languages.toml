@@ -1724,7 +1724,7 @@ indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "hare"
-source = { git = "https://git.sr.ht/~ecmma/tree-sitter-hare", rev = "bc26a6a949f2e0d98b7bfc437d459b250900a165" }
+source = { git = "https://git.sr.ht/~ecmma/tree-sitter-hare", rev = "2495958aaf3f93581c87ec020164255e80655331" }
 
 [[language]]
 name = "devicetree"
