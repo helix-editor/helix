@@ -676,19 +676,6 @@ pub fn write_all_impl(
                 }
                 return None;
             }
-            // if doc.detect_readonly() && !force {
-            //     if write_scratch {
-            //         readonly_errors.push(
-            //             format!(
-            //                 "{:?} is readonly",
-            //                 // Safety: doc.path() cannot be None from the if statement above
-            //                 doc.path().unwrap()
-            //             )
-            //             .replace('"', ""),
-            //         );
-            //     }
-            //     return None;
-            // }
 
             // Look for a view to apply the formatting change to. If the document
             // is in the current view, just use that. Otherwise, since we don't
