@@ -447,15 +447,12 @@ fn render_read_only_indicator<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let (title, style) = match (context.doc.readonly, context.doc.is_modified()) {
-        (true, false) => (" [readonly] ", None),
-        (true, true) => (
-            " Warning: Changing a readonly file ",
-            Some(context.editor.theme.get("warning")),
-        ),
-        _ => ("", None),
-    };
-    write(context, title.to_string(), style);
+    let title = if context.doc.readonly {
+        " [readonly] "
+    } else {
+        ""
+    }.to_string();
+    write(context, title, None);
 }
 
 fn render_file_base_name<F>(context: &mut RenderContext, write: F)

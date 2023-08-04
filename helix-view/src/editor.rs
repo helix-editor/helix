@@ -474,7 +474,7 @@ pub enum StatusLineElement {
     // The file modification indicator
     FileModificationIndicator,
 
-    /// A read only file indicator
+    /// An indicator that shows `"[readonly]"` when a file cannot be written
     ReadOnlyIndicator,
 
     /// The file encoding
