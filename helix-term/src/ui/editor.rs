@@ -163,15 +163,18 @@ impl EditorView {
             Box::new(highlights)
         };
 
-        Self::render_gutter(
-            editor,
-            doc,
-            view,
-            view.area,
-            theme,
-            is_focused,
-            &mut line_decorations,
-        );
+        let gutter_overflow = view.gutter_offset(doc) == 0;
+        if !gutter_overflow {
+            Self::render_gutter(
+                editor,
+                doc,
+                view,
+                view.area,
+                theme,
+                is_focused,
+                &mut line_decorations,
+            );
+        }
 
         if is_focused {
             let cursor = doc
