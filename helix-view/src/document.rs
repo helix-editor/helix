@@ -960,19 +960,18 @@ impl Document {
 
     #[cfg(unix)]
     // Detect if the file is readonly and change the readonly field if necessary (unix only)
-    pub fn detect_readonly(&mut self) -> bool {
+    pub fn detect_readonly(&mut self) {
         use rustix::fs::{access, Access};
         // Allows setting the flag for files the user cannot modify, like root files
         self.readonly = match &self.path {
             None => false,
             Some(p) => access(p, Access::WRITE_OK).is_err(),
         };
-        self.readonly
     }
 
     #[cfg(not(unix))]
     // Detect if the file is readonly and change the readonly field if necessary (non-unix os)
-    pub fn detect_readonly(&mut self) -> bool {
+    pub fn detect_readonly(&mut self) {
         // TODO Use the Windows' function `CreateFileW` to check if a file is readonly
         // Discussion: https://github.com/helix-editor/helix/pull/7740#issuecomment-1656806459
         // Vim implementation: https://github.com/vim/vim/blob/4c0089d696b8d1d5dc40568f25ea5738fa5bbffb/src/os_win32.c#L7665
@@ -984,7 +983,6 @@ impl Document {
                 Ok(metadata) => metadata.permissions().readonly(),
             },
         };
-        self.readonly
     }
 
     /// Reload the document from its path.

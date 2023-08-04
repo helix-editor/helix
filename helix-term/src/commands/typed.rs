@@ -334,11 +334,6 @@ fn write_impl(
     let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
-    // `path.is_none()` allows :w <path> for other files
-    if path.is_none() && doc.detect_readonly() && !force {
-        bail!("file is readonly, use ! to overwrite")
-    }
-
     let fmt = if editor_auto_fmt {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
@@ -662,7 +657,6 @@ pub fn write_all_impl(
     write_scratch: bool,
 ) -> anyhow::Result<()> {
     let mut errors: Vec<String> = Vec::new();
-    let mut readonly_errors: Vec<String> = Vec::new();
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     let current_view = view!(cx.editor);
@@ -682,19 +676,19 @@ pub fn write_all_impl(
                 }
                 return None;
             }
-            if doc.detect_readonly() && !force {
-                if write_scratch {
-                    readonly_errors.push(
-                        format!(
-                            "{:?} is readonly",
-                            // Safety: doc.path() cannot be None from the if statement above
-                            doc.path().unwrap()
-                        )
-                        .replace('"', ""),
-                    );
-                }
-                return None;
-            }
+            // if doc.detect_readonly() && !force {
+            //     if write_scratch {
+            //         readonly_errors.push(
+            //             format!(
+            //                 "{:?} is readonly",
+            //                 // Safety: doc.path() cannot be None from the if statement above
+            //                 doc.path().unwrap()
+            //             )
+            //             .replace('"', ""),
+            //         );
+            //     }
+            //     return None;
+            // }
 
             // Look for a view to apply the formatting change to. If the document
             // is in the current view, just use that. Otherwise, since we don't
@@ -743,12 +737,12 @@ pub fn write_all_impl(
         return Ok(());
     }
 
-    let mut error_msg = errors.join(" ");
-    if !readonly_errors.is_empty() {
-        // statusline text will have the form:
-        // [/home/user/readonly.txt is readonly, ..., /readonly2.txt is readonly] add ! to overwrite
-        error_msg = format!("{:?} use ! to overwrite", readonly_errors).replace('"', "");
-    }
+    let error_msg = errors.join(" ");
+    // if !readonly_errors.is_empty() {
+    //     // statusline text will have the form:
+    //     // [/home/user/readonly.txt is readonly, ..., /readonly2.txt is readonly] add ! to overwrite
+    //     error_msg = format!("{:?} use ! to overwrite", readonly_errors).replace('"', "");
+    // }
 
     if !error_msg.is_empty() {
         bail!(error_msg);
