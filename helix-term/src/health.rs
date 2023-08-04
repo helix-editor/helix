@@ -192,15 +192,15 @@ pub fn languages_all() -> std::io::Result<()> {
     for lang in &syn_loader_conf.language {
         column(&lang.language_id, Color::Reset);
 
-        // TODO multiple language servers (check binary for each supported language server, not just the first)
-
-        let lsp = lang.language_servers.first().and_then(|ls| {
+        // All supported servers for language
+        let mut servers = lang.language_servers.iter().filter_map(|ls| {
             syn_loader_conf
                 .language_server
                 .get(&ls.name)
                 .map(|config| config.command.clone())
         });
-        check_binary(lsp);
+
+        check_binary(servers.next());
 
         let dap = lang.debugger.as_ref().map(|dap| dap.command.to_string());
         check_binary(dap);
@@ -213,6 +213,14 @@ pub fn languages_all() -> std::io::Result<()> {
         }
 
         writeln!(stdout)?;
+
+        // Add other language servers binary to the column
+        for ls in servers {
+            // Skip lang name
+            column("", Color::Reset);
+            check_binary(Some(ls));
+            writeln!(stdout)?;
+        }
     }
 
     Ok(())
@@ -271,17 +279,24 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     // TODO multiple language servers
     probe_protocol(
         "language server",
-        lang.language_servers.first().and_then(|ls| {
-            syn_loader_conf
-                .language_server
-                .get(&ls.name)
-                .map(|config| config.command.clone())
-        }),
+        lang.language_servers
+            .iter()
+            .filter_map(|ls| {
+                syn_loader_conf
+                    .language_server
+                    .get(&ls.name)
+                    .map(|config| config.command.clone())
+            })
+            .collect(),
     )?;
 
     probe_protocol(
         "debug adapter",
-        lang.debugger.as_ref().map(|dap| dap.command.to_string()),
+        lang.debugger
+            .as_ref()
+            .map(|dap| dap.command.to_owned())
+            .into_iter()
+            .collect(),
     )?;
 
     for ts_feat in TsFeature::all() {
@@ -292,18 +307,20 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
 }
 
 /// Display diagnostics about LSP and DAP.
-fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::Result<()> {
+fn probe_protocol(protocol_name: &str, server_cmds: Vec<String>) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let cmd_name = match server_cmd {
-        Some(ref cmd) => cmd.as_str().green(),
-        None => "None".yellow(),
-    };
-    writeln!(stdout, "Configured {}: {}", protocol_name, cmd_name)?;
+    if server_cmds.is_empty() {
+        writeln!(stdout, "Configured {}: {}", protocol_name, "None".yellow())?;
+        return Ok(());
+    }
 
-    if let Some(cmd) = server_cmd {
-        let path = match which::which(&cmd) {
+    for server_cmd in server_cmds {
+        let cmd = server_cmd.as_str();
+        writeln!(stdout, "Configured {}: {}", protocol_name, cmd.green())?;
+
+        let path = match which::which(cmd) {
             Ok(path) => path.display().to_string().green(),
             Err(_) => format!("'{}' not found in $PATH", cmd).red(),
         };
