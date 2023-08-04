@@ -2704,7 +2704,7 @@ grammar = "html"
 
 [[grammar]]
 name = "wren"
-source = { git = "https://git.sr.ht/~jummit/tree-sitter-wren", rev = "7f576e8ccadac226f6a37cbefe95be3fee9f0a66"}
+source = { git = "https://git.sr.ht/~jummit/tree-sitter-wren", rev = "793d58266924e6efcc40e411663393e9d72bec87"}
 
 [[language]]
 name = "wren"
