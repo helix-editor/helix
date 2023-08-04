@@ -328,17 +328,31 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
     Ok(())
 }
 
-pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
-    match health_arg.as_deref() {
-        Some("languages") => languages_all()?,
-        Some("clipboard") => clipboard()?,
-        None | Some("all") => {
-            general()?;
-            clipboard()?;
-            writeln!(std::io::stdout().lock())?;
-            languages_all()?;
+pub fn print_health(health_args: Vec<String>) -> std::io::Result<()> {
+    fn print_all() -> std::io::Result<()> {
+        general()?;
+        clipboard()?;
+        writeln!(std::io::stdout().lock())?;
+        languages_all()?;
+        Ok(())
+    }
+
+    if health_args.is_empty() {
+        print_all()?;
+        return Ok(());
+    }
+    for (idx, health_arg) in health_args.into_iter().enumerate() {
+        if idx != 0 {
+            // Empty line
+            let mut stdout = std::io::stdout().lock();
+            writeln!(stdout)?;
         }
-        Some(lang) => language(lang.to_string())?,
+        match health_arg.as_str() {
+            "languages" => languages_all()?,
+            "clipboard" => clipboard()?,
+            "all" => print_all()?,
+            lang => language(lang.into())?,
+        }
     }
     Ok(())
 }

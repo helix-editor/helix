@@ -8,7 +8,7 @@ pub struct Args {
     pub display_help: bool,
     pub display_version: bool,
     pub health: bool,
-    pub health_arg: Option<String>,
+    pub health_arg: Vec<String>,
     pub load_tutor: bool,
     pub fetch_grammars: bool,
     pub build_grammars: bool,
@@ -42,7 +42,10 @@ impl Args {
                 },
                 "--health" => {
                     args.health = true;
-                    args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));
+                    // Helix exists after printin health so we don't care about files
+                    while let Some(item) = argv.next_if(|opt| !opt.starts_with('-')) {
+                        args.health_arg.push(item);
+                    }
                 }
                 "-g" | "--grammar" => match argv.next().as_deref() {
                     Some("fetch") => args.fetch_grammars = true,
