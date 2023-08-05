@@ -16,7 +16,7 @@ use crate::{
     syntax::LanguageConfiguration,
     text_annotations::TextAnnotations,
     textobject::TextObject,
-    visual_offset_from_block, Range, RopeSlice,
+    visual_offset_from_block, Range, RopeSlice, Selection, Syntax,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -554,6 +554,85 @@ pub fn goto_treesitter_object(
         }
     }
     last_range
+}
+
+fn find_parent_start(mut node: Node) -> Option<Node> {
+    let start = node.start_byte();
+
+    while node.start_byte() >= start || !node.is_named() {
+        node = node.parent()?;
+    }
+
+    Some(node)
+}
+
+pub fn move_parent_node_end(
+    syntax: &Syntax,
+    text: RopeSlice,
+    selection: Selection,
+    dir: Direction,
+    movement: Movement,
+) -> Selection {
+    let tree = syntax.tree();
+
+    selection.transform(|range| {
+        let start_from = text.char_to_byte(range.from());
+        let start_to = text.char_to_byte(range.to());
+
+        let mut node = match tree
+            .root_node()
+            .named_descendant_for_byte_range(start_from, start_to)
+        {
+            Some(node) => node,
+            None => {
+                log::debug!(
+                    "no descendant found for byte range: {} - {}",
+                    start_from,
+                    start_to
+                );
+                return range;
+            }
+        };
+
+        let mut end_head = match dir {
+            // moving forward, we always want to move one past the end of the
+            // current node, so use the end byte of the current node, which is an exclusive
+            // end of the range
+            Direction::Forward => text.byte_to_char(node.end_byte()),
+
+            // moving backward, we want the cursor to land on the start char of
+            // the current node, or if it is already at the start of a node, to traverse up to
+            // the parent
+            Direction::Backward => {
+                let end_head = text.byte_to_char(node.start_byte());
+
+                // if we're already on the beginning, look up to the parent
+                if end_head == range.cursor(text) {
+                    node = find_parent_start(node).unwrap_or(node);
+                    text.byte_to_char(node.start_byte())
+                } else {
+                    end_head
+                }
+            }
+        };
+
+        if movement == Movement::Move {
+            // preserve direction of original range
+            if range.direction() == Direction::Forward {
+                Range::new(end_head, end_head + 1)
+            } else {
+                Range::new(end_head + 1, end_head)
+            }
+        } else {
+            // if we end up with a forward range, then adjust it to be one past
+            // where we want
+            if end_head >= range.anchor {
+                end_head += 1;
+            }
+
+            Range::new(range.anchor, end_head)
+        }
+    })
 }
 
 #[cfg(test)]

@@ -72,9 +72,9 @@ fn test_treesitter_indent(file_name: &str, lang_scope: &str) {
 
     let language_config = loader.language_config_for_scope(lang_scope).unwrap();
     let highlight_config = language_config.highlight_config(&[]).unwrap();
-    let syntax = Syntax::new(&doc, highlight_config, std::sync::Arc::new(loader)).unwrap();
-    let indent_query = language_config.indent_query().unwrap();
     let text = doc.slice(..);
+    let syntax = Syntax::new(text, highlight_config, std::sync::Arc::new(loader)).unwrap();
+    let indent_query = language_config.indent_query().unwrap();
 
     for i in 0..doc.len_lines() {
         let line = text.line(i);

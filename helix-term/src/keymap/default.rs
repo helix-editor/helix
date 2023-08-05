@@ -88,6 +88,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-i" | "A-down" => shrink_selection,
         "A-p" | "A-left" => select_prev_sibling,
         "A-n" | "A-right" => select_next_sibling,
+        "A-e" => move_parent_node_end,
+        "A-b" => move_parent_node_start,
 
         "%" => select_all,
         "x" => extend_line_below,
@@ -265,7 +267,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                     "C-v" | "v" => vsplit_new,
                 },
             },
-            "y" => yank_joined_to_clipboard,
+            "y" => yank_to_clipboard,
             "Y" => yank_main_selection_to_clipboard,
             "p" => paste_clipboard_after,
             "P" => paste_clipboard_before,
@@ -336,6 +338,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "B" => extend_prev_long_word_start,
         "E" => extend_next_long_word_end,
 
+        "A-e" => extend_parent_node_end,
+        "A-b" => extend_parent_node_start,
+
         "n" => extend_search_next,
         "N" => extend_search_prev,
 
@@ -368,7 +373,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-h" | "backspace" | "S-backspace" => delete_char_backward,
         "C-d" | "del" => delete_char_forward,
         "C-j" | "ret" => insert_newline,
-        "tab" => insert_tab,
+        "tab" => smart_tab,
+        "S-tab" => insert_tab,
 
         "up" => move_visual_line_up,
         "down" => move_visual_line_down,

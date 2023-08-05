@@ -1,10 +1,10 @@
 use crate::{
     align_view,
-    clipboard::{get_clipboard_provider, ClipboardProvider},
     document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
+    register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
     view::ViewPosition,
@@ -40,7 +40,6 @@ use tokio::{
 use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
-pub use helix_core::register::Registers;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig, SoftWrap},
@@ -288,6 +287,24 @@ pub struct Config {
     pub workspace_lsp_roots: Vec<PathBuf>,
     /// Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`.
     pub default_line_ending: LineEndingConfig,
+    /// Enables smart tab
+    pub smart_tab: Option<SmartTabConfig>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "kebab-case", default)]
+pub struct SmartTabConfig {
+    pub enable: bool,
+    pub supersede_menu: bool,
+}
+
+impl Default for SmartTabConfig {
+    fn default() -> Self {
+        SmartTabConfig {
+            enable: true,
+            supersede_menu: false,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -821,6 +838,7 @@ impl Default for Config {
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
+            smart_tab: Some(SmartTabConfig::default()),
         }
     }
 }
@@ -874,8 +892,6 @@ pub struct Editor {
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
-
-    pub clipboard_provider: Box<dyn ClipboardProvider>,
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
@@ -1023,7 +1039,6 @@ impl Editor {
             last_theme: None,
             last_selection: None,
             registers: Registers::default(),
-            clipboard_provider: get_clipboard_provider(),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
