@@ -27,7 +27,7 @@ use std::{collections::HashMap, io::Read, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
-    movement::Direction, text_annotations::TextAnnotations,
+    char_idx_at_visual_offset, movement::Direction, text_annotations::TextAnnotations,
     unicode::segmentation::UnicodeSegmentation, Position, Syntax,
 };
 use helix_view::{
@@ -690,20 +690,20 @@ impl<T: Item + 'static> Picker<T> {
                 }
             };
 
-            // align to middle
-            let first_line = range
-                .map(|(start, end)| {
-                    let height = end.saturating_sub(start) + 1;
-                    let middle = start + (height.saturating_sub(1) / 2);
-                    middle.saturating_sub(inner.height as usize / 2).min(start)
-                })
-                .unwrap_or(0);
-
-            let offset = ViewPosition {
-                anchor: doc.text().line_to_char(first_line),
-                horizontal_offset: 0,
-                vertical_offset: 0,
-            };
+            let mut offset = ViewPosition::default();
+            if let Some(range) = range {
+                let text_fmt = doc.text_format(inner.width, None);
+                let annotations = TextAnnotations::default();
+                (offset.anchor, offset.vertical_offset) = char_idx_at_visual_offset(
+                    doc.text().slice(..),
+                    doc.text().line_to_char(range.0),
+                    // align to middle
+                    -(inner.height as isize / 2),
+                    0,
+                    &text_fmt,
+                    &annotations,
+                );
+            }
 
             let mut highlights = EditorView::doc_syntax_highlights(
                 doc,
