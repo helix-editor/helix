@@ -4,10 +4,10 @@
 # Version: 1.0
 # This theme is based on Nathaniel Webb's VSCodePopTheme <https://github.com/ArtisanByteCrafter/VSCodePopTheme>
 
-info = { fg = 'yellowH', bg = 'brownD' }
-hint = { fg = 'brownD', bg = 'yellowH', modifiers = ['bold'] }
-warning = { fg = 'brownD', bg = 'orangeW', modifiers = ['bold'] }
-error = { fg = 'brownD', bg = 'redE', modifiers = ['bold'] }
+info = { fg = 'brownD' }
+hint = { fg = 'yellowH', modifiers = ['bold'] }
+warning = { fg = 'orangeW', modifiers = ['bold'] }
+error = { fg = 'redE', modifiers = ['bold'] }
 'diagnostic.info'.underline = { color = 'yellowH', style = 'curl' } 
 'diagnostic.hint'.underline = { color = 'yellowH', style = 'curl' } 
 'diagnostic.warning'.underline = { color = 'orangeW', style = 'curl' } 

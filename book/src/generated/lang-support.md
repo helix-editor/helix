@@ -115,7 +115,7 @@
 | ponylang | ✓ | ✓ | ✓ |  |
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
-| protobuf | ✓ |  | ✓ |  |
+| protobuf | ✓ |  | ✓ | `bufls`, `pb` |
 | prql | ✓ |  |  |  |
 | purescript | ✓ |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `pylsp` |
@@ -156,7 +156,7 @@
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | ungrammar | ✓ |  |  |  |
 | uxntal | ✓ |  |  |  |
-| v | ✓ | ✓ | ✓ | `v` |
+| v | ✓ | ✓ | ✓ | `v-analyzer` |
 | vala | ✓ |  |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
 | vhdl | ✓ |  |  | `vhdl_ls` |
@@ -167,6 +167,7 @@
 | webc | ✓ |  |  |  |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
 | wit | ✓ |  | ✓ |  |
+| wren | ✓ | ✓ | ✓ |  |
 | xit | ✓ |  |  |  |
 | xml | ✓ |  | ✓ |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |

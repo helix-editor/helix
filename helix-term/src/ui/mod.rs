@@ -142,16 +142,14 @@ pub fn regex_prompt(
                                 };
 
                                 cx.jobs.callback(callback);
-                            } else {
-                                // Update
-                                // TODO: mark command line as error
                             }
                         }
                     }
                 }
             }
         },
-    );
+    )
+    .with_language("regex", std::sync::Arc::clone(&cx.editor.syn_loader));
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
     // prompt
