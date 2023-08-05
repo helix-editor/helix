@@ -451,7 +451,8 @@ where
         " [readonly] "
     } else {
         ""
-    }.to_string();
+    }
+    .to_string();
     write(context, title, None);
 }
 
