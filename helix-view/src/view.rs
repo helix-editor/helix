@@ -39,6 +39,10 @@ impl JumpList {
         Self { jumps, current: 0 }
     }
 
+    pub fn clear(&mut self) {
+        self.jumps = VecDeque::with_capacity(JUMP_LIST_CAPACITY);
+    }
+
     pub fn push(&mut self, jump: Jump) {
         self.jumps.truncate(self.current);
         // don't push duplicates

@@ -1747,6 +1747,16 @@ pub(super) fn goto_line_number(
     Ok(())
 }
 
+pub(super) fn clear_jump_list(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    let (view, doc) = current!(cx.editor);
+    view.jumps.clear();
+    Ok(())
+}
+
 // Fetch the current value of a config option and output as status.
 fn get_option(
     cx: &mut compositor::Context,
@@ -2735,6 +2745,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Goto line number.",
             fun: goto_line_number,
             signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "clear-jumplist",
+            aliases: &["cjl"],
+            doc: "Clears the jumplist",
+            fun: clear_jump_list,
+            completer: None,
         },
         TypableCommand {
             name: "set-language",
