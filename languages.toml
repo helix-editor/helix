@@ -2734,5 +2734,5 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "unison"
-source = { git = "https://github.com/kylegoetz/tree-sitter-unison", branch = "deploy", rev = "1df9e35477b4261abb7cd9d3ab5b2f565fc3fd8a" }
+source = { git = "https://github.com/kylegoetz/tree-sitter-unison", rev = "98c4e8bc5c9f5989814a720457cf36963cf4043d" }
 
