@@ -70,7 +70,6 @@ swipl = { command = "swipl", args = [ "-g", "use_module(library(lsp_server))", "
 taplo = { command = "taplo", args = ["lsp", "stdio"] }
 terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
-ucm = { command = "ncat", args = ["localhost", "5757"] } 
 vala-language-server = { command = "vala-language-server" }
 vhdl_ls = { command = "vhdl_ls", args = [] }
 vlang-language-server = { command = "v-analyzer" }
@@ -2725,7 +2724,6 @@ roots = []
 auto-format = false
 comment-token = "--"
 indent = { tab-width = 4, unit = "    " }
-language-servers = ["ucm"]
 
 [language.auto-pairs]
 '(' = ')'
