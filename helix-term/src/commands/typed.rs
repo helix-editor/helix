@@ -1993,7 +1993,12 @@ fn reflow(
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(rope, selection, |range| {
         let fragment = range.fragment(rope.slice(..));
-        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, text_width);
+        let reflowed_text = helix_core::wrap::reflow_hard_wrap(
+            &fragment,
+            text_width,
+            doc.indent_style,
+            doc.tab_width(),
+        );
 
         (range.from(), range.to(), Some(reflowed_text))
     });
