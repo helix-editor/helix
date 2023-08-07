@@ -855,12 +855,11 @@ impl Loader {
         source: RopeSlice,
     ) -> Option<Arc<LanguageConfiguration>> {
         let line = Cow::from(source.line(0));
-        for (regex, id) in &self.language_config_ids_by_first_line_regex {
-            if regex.is_match(&line) {
-                return self.language_configs.get(*id).cloned();
-            }
-        }
-        None
+        self.language_config_ids_by_first_line_regex
+            .iter()
+            .find(|(regex, _)| regex.is_match(&line))
+            .map(|(_, id)| self.language_configs.get(*id).cloned())
+            .flatten()
     }
 
     pub fn language_config_for_scope(&self, scope: &str) -> Option<Arc<LanguageConfiguration>> {
