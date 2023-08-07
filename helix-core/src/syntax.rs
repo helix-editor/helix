@@ -38,6 +38,15 @@ where
         .map(|buf| Regex::new(&buf).map_err(serde::de::Error::custom))
         .transpose()
 }
+fn deserialize_regex_vec<'de, D>(deserializer: D) -> Result<Vec<Regex>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Vec::<String>::deserialize(deserializer)?
+        .into_iter()
+        .map(|buf| Regex::new(&buf).map_err(serde::de::Error::custom))
+        .collect()
+}
 
 fn deserialize_lsp_config<'de, D>(deserializer: D) -> Result<Option<serde_json::Value>, D::Error>
 where
@@ -101,6 +110,8 @@ pub struct LanguageConfiguration {
     pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_regex_vec")]
+    pub first_line_regexs: Vec<Regex>, // interpreter(s) associated with the first line of the document
     pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
     pub text_width: Option<usize>,
@@ -738,6 +749,25 @@ pub struct SoftWrap {
 
 // Expose loader as Lazy<> global since it's always static?
 
+#[derive(Clone, Debug)]
+struct Regex2(Regex);
+impl Eq for Regex2 {}
+impl PartialEq for Regex2 {
+    fn eq(&self, other: &Regex2) -> bool {
+        self.0.as_str() == other.0.as_str()
+    }
+}
+impl std::hash::Hash for Regex2 {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.as_str().hash(state);
+    }
+}
+impl From<Regex> for Regex2 {
+    fn from(regex: Regex) -> Self {
+        Self(regex)
+    }
+}
+
 #[derive(Debug)]
 pub struct Loader {
     // highlight_names ?
@@ -745,6 +775,7 @@ pub struct Loader {
     language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
     language_config_ids_by_suffix: HashMap<String, usize>,
     language_config_ids_by_shebang: HashMap<String, usize>,
+    language_config_ids_by_first_line_regex: HashMap<Regex2, usize>,
 
     language_server_configs: HashMap<String, LanguageServerConfiguration>,
 
@@ -759,6 +790,7 @@ impl Loader {
             language_config_ids_by_extension: HashMap::new(),
             language_config_ids_by_suffix: HashMap::new(),
             language_config_ids_by_shebang: HashMap::new(),
+            language_config_ids_by_first_line_regex: HashMap::new(),
             scopes: ArcSwap::from_pointee(Vec::new()),
         };
 
@@ -781,6 +813,11 @@ impl Loader {
                 loader
                     .language_config_ids_by_shebang
                     .insert(shebang.clone(), language_id);
+            }
+            for first_line_regex in &config.first_line_regexs {
+                loader
+                    .language_config_ids_by_first_line_regex
+                    .insert(first_line_regex.clone().into(), language_id);
             }
 
             loader.language_configs.push(Arc::new(config));
@@ -830,6 +867,20 @@ impl Loader {
             .and_then(|cap| self.language_config_ids_by_shebang.get(&cap[1]));
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
+    }
+    
+    pub fn language_config_for_first_line_regex(
+        &self,
+        source: RopeSlice,
+    ) -> Option<Arc<LanguageConfiguration>> {
+        let line = Cow::from(source.line(0));
+        for (regex,id) in &self.language_config_ids_by_first_line_regex {
+            dbg!(&regex,&id,&regex.0.is_match(&line));
+            if regex.0.is_match(&line) {
+                return self.language_configs.get(*id).cloned()
+            }
+        }
+        None
     }
 
     pub fn language_config_for_scope(&self, scope: &str) -> Option<Arc<LanguageConfiguration>> {
