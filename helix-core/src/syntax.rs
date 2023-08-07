@@ -111,7 +111,7 @@ pub struct LanguageConfiguration {
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex_vec")]
-    pub first_line_regexs: Vec<Regex>, // interpreter(s) associated with the first line of the document
+    pub first_line_regexs: Vec<Regex>, // regex patterns that will be tested against the first line of a file in order to determine whether this language applies to the file
     pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
     pub text_width: Option<usize>,
