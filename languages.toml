@@ -833,7 +833,7 @@ injection-regex = "java"
 file-types = ["java"]
 roots = ["pom.xml", "build.gradle", "build.gradle.kts"]
 language-servers = [ "jdtls" ]
-indent = { tab-width = 4, unit = "    " }
+indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "java"
