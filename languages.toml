@@ -1053,7 +1053,7 @@ language-servers = [ "swipl" ]
 [[language]]
 name = "tsq"
 scope = "source.tsq"
-file-types = ["scm"]
+file-types = ["tsq"]
 roots = []
 comment-token = ";"
 injection-regex = "tsq"
