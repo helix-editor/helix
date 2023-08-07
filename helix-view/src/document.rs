@@ -940,7 +940,6 @@ impl Document {
             .language_config_for_file_name(self.path.as_ref()?)
             .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
             .or_else(|| config_loader.language_config_for_first_line_regex(self.text().slice(..)))
-
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation

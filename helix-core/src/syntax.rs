@@ -112,7 +112,7 @@ pub struct LanguageConfiguration {
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex_vec")]
     pub first_line_regexs: Vec<Regex>, // interpreter(s) associated with the first line of the document
-    pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
+    pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
     pub text_width: Option<usize>,
     pub soft_wrap: Option<SoftWrap>,
@@ -868,15 +868,15 @@ impl Loader {
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
     }
-    
+
     pub fn language_config_for_first_line_regex(
         &self,
         source: RopeSlice,
     ) -> Option<Arc<LanguageConfiguration>> {
         let line = Cow::from(source.line(0));
-        for (regex,id) in &self.language_config_ids_by_first_line_regex {
+        for (regex, id) in &self.language_config_ids_by_first_line_regex {
             if regex.0.is_match(&line) {
-                return self.language_configs.get(*id).cloned()
+                return self.language_configs.get(*id).cloned();
             }
         }
         None
