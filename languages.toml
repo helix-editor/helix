@@ -1807,14 +1807,14 @@ source = { git = "https://github.com/metio/tree-sitter-ssh-client-config", rev =
 name = "scheme"
 scope = "source.scheme"
 injection-regex = "scheme"
-file-types = ["ss"] # "scm",
+file-types = ["ss", "scm"]
 roots = []
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "scheme"
-source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "c0741320bfca6b7b5b7a13b5171275951e96a842" }
+source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "af3af6c9356b936f8a515a1e449c32e804c2b1a8" }
 
 [[language]]
 name = "v"
