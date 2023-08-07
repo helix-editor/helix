@@ -2807,4 +2807,61 @@ mod test {
         let results = load_runtime_file("rust", "does-not-exist");
         assert!(results.is_err());
     }
+
+    #[test]
+    fn test_detect_file_with_first_line_regex() {
+        let loader = Loader::new(Configuration {
+            language: vec![LanguageConfiguration {
+                language_id: "strace".into(),
+                language_server_language_id: None,
+                scope: "scope.strace".into(),
+                file_types: vec![],
+                shebangs: vec![],
+                first_line_regexs: vec![
+                    Regex::new("execve").unwrap(),
+                    Regex::new("^[0-9:.]* *execve").unwrap(),
+                ],
+                roots: vec![],
+                comment_token: None,
+                text_width: None,
+                soft_wrap: None,
+                auto_format: false,
+                formatter: None,
+                diagnostic_severity: Severity::Info,
+                grammar: None,
+                injection_regex: None,
+                highlight_config: OnceCell::new(),
+                language_servers: vec![],
+                indent: None,
+                indent_query: OnceCell::new(),
+                textobject_query: OnceCell::new(),
+                debugger: None,
+                auto_pairs: None,
+                rulers: None,
+                workspace_lsp_roots: None,
+            }],
+            language_server: HashMap::new(),
+        });
+        assert!(loader
+            .language_config_for_first_line_regex(
+                ["execve", "arch_prctl(0x3001"].join("\n").as_str().into()
+            )
+            .is_some());
+        assert!(loader
+            .language_config_for_first_line_regex(
+                ["447845 execve", "arch_prctl(0x3001"]
+                    .join("\n")
+                    .as_str()
+                    .into()
+            )
+            .is_some());
+        assert!(loader
+            .language_config_for_first_line_regex(
+                ["random", "arch_prctl(0x3001"].join("\n").as_str().into()
+            )
+            .is_none());
+        assert!(loader
+            .language_config_for_first_line_regex(["random", "execve"].join("\n").as_str().into())
+            .is_none());
+    }
 }
