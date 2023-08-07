@@ -798,7 +798,7 @@ impl Loader {
             for first_line_regex in &config.first_line_regexs {
                 loader
                     .language_config_ids_by_first_line_regex
-                    .push((first_line_regex.clone().into(), language_id));
+                    .push((first_line_regex.clone(), language_id));
             }
 
             loader.language_configs.push(Arc::new(config));
