@@ -875,7 +875,6 @@ impl Loader {
     ) -> Option<Arc<LanguageConfiguration>> {
         let line = Cow::from(source.line(0));
         for (regex,id) in &self.language_config_ids_by_first_line_regex {
-            dbg!(&regex,&id,&regex.0.is_match(&line));
             if regex.0.is_match(&line) {
                 return self.language_configs.get(*id).cloned()
             }
