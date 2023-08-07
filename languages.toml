@@ -563,7 +563,7 @@ args = { program = "{0}" }
 
 [[grammar]]
 name = "javascript"
-source = { git = "https://github.com/tree-sitter/tree-sitter-javascript", rev = "4a95461c4761c624f2263725aca79eeaefd36cad" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-javascript", rev = "f772967f7b7bc7c28f845be2420a38472b16a8ee" }
 
 [[language]]
 name = "jsx"
@@ -590,7 +590,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "typescript"
-source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "5d20856f34315b068c41edaee2ac8a100081d259", subpath = "typescript" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "b1bf4825d9eaa0f3bdeb1e52f099533328acfbdf", subpath = "typescript" }
 
 [[language]]
 name = "tsx"
@@ -604,7 +604,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "tsx"
-source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "5d20856f34315b068c41edaee2ac8a100081d259", subpath = "tsx" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "b1bf4825d9eaa0f3bdeb1e52f099533328acfbdf", subpath = "tsx" }
 
 [[language]]
 name = "css"
