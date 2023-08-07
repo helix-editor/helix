@@ -749,25 +749,6 @@ pub struct SoftWrap {
 
 // Expose loader as Lazy<> global since it's always static?
 
-#[derive(Clone, Debug)]
-struct Regex2(Regex);
-impl Eq for Regex2 {}
-impl PartialEq for Regex2 {
-    fn eq(&self, other: &Regex2) -> bool {
-        self.0.as_str() == other.0.as_str()
-    }
-}
-impl std::hash::Hash for Regex2 {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.as_str().hash(state);
-    }
-}
-impl From<Regex> for Regex2 {
-    fn from(regex: Regex) -> Self {
-        Self(regex)
-    }
-}
-
 #[derive(Debug)]
 pub struct Loader {
     // highlight_names ?
@@ -775,7 +756,7 @@ pub struct Loader {
     language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
     language_config_ids_by_suffix: HashMap<String, usize>,
     language_config_ids_by_shebang: HashMap<String, usize>,
-    language_config_ids_by_first_line_regex: HashMap<Regex2, usize>,
+    language_config_ids_by_first_line_regex: Vec<(Regex, usize)>,
 
     language_server_configs: HashMap<String, LanguageServerConfiguration>,
 
@@ -790,7 +771,7 @@ impl Loader {
             language_config_ids_by_extension: HashMap::new(),
             language_config_ids_by_suffix: HashMap::new(),
             language_config_ids_by_shebang: HashMap::new(),
-            language_config_ids_by_first_line_regex: HashMap::new(),
+            language_config_ids_by_first_line_regex: Vec::new(),
             scopes: ArcSwap::from_pointee(Vec::new()),
         };
 
@@ -817,7 +798,7 @@ impl Loader {
             for first_line_regex in &config.first_line_regexs {
                 loader
                     .language_config_ids_by_first_line_regex
-                    .insert(first_line_regex.clone().into(), language_id);
+                    .push((first_line_regex.clone().into(), language_id));
             }
 
             loader.language_configs.push(Arc::new(config));
@@ -875,7 +856,7 @@ impl Loader {
     ) -> Option<Arc<LanguageConfiguration>> {
         let line = Cow::from(source.line(0));
         for (regex, id) in &self.language_config_ids_by_first_line_regex {
-            if regex.0.is_match(&line) {
+            if regex.is_match(&line) {
                 return self.language_configs.get(*id).cloned();
             }
         }
