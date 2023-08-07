@@ -858,8 +858,7 @@ impl Loader {
         self.language_config_ids_by_first_line_regex
             .iter()
             .find(|(regex, _)| regex.is_match(&line))
-            .map(|(_, id)| self.language_configs.get(*id).cloned())
-            .flatten()
+            .and_then(|(_, id)| self.language_configs.get(*id).cloned())
     }
 
     pub fn language_config_for_scope(&self, scope: &str) -> Option<Arc<LanguageConfiguration>> {
