@@ -711,22 +711,38 @@ mod test {
             width: 180,
             height: 80,
         });
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
 
         let l0 = tree.focus;
-        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            GutterConfig::from(Vec::new()),
+        );
         tree.split(view, Layout::Vertical);
         let r0 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            GutterConfig::from(Vec::new()),
+        );
         tree.split(view, Layout::Horizontal);
         let l1 = tree.focus;
 
         tree.focus = l0;
-        let view = View::new(DocumentId::default(), GutterConfig::default());
+        let view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            GutterConfig::from(Vec::new()),
+        );
         tree.split(view, Layout::Vertical);
 
         // Tree in test
@@ -767,28 +783,44 @@ mod test {
         });
 
         let doc_l0 = DocumentId::default();
-        let mut view = View::new(doc_l0, GutterConfig::default());
+        let mut view = View::new(
+            doc_l0,
+            GutterConfig::default(),
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
 
         let l0 = tree.focus;
 
         let doc_r0 = DocumentId::default();
-        let view = View::new(doc_r0, GutterConfig::default());
+        let view = View::new(
+            doc_r0,
+            GutterConfig::default(),
+            GutterConfig::from(Vec::new()),
+        );
         tree.split(view, Layout::Vertical);
         let r0 = tree.focus;
 
         tree.focus = l0;
 
         let doc_l1 = DocumentId::default();
-        let view = View::new(doc_l1, GutterConfig::default());
+        let view = View::new(
+            doc_l1,
+            GutterConfig::default(),
+            GutterConfig::from(Vec::new()),
+        );
         tree.split(view, Layout::Horizontal);
         let l1 = tree.focus;
 
         tree.focus = l0;
 
         let doc_l2 = DocumentId::default();
-        let view = View::new(doc_l2, GutterConfig::default());
+        let view = View::new(
+            doc_l2,
+            GutterConfig::default(),
+            GutterConfig::from(Vec::new()),
+        );
         tree.split(view, Layout::Vertical);
         let l2 = tree.focus;
 

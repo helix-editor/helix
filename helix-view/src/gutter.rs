@@ -33,6 +33,7 @@ impl GutterType {
             GutterType::LineNumbers => line_numbers(editor, doc, view, theme, is_focused),
             GutterType::Spacer => padding(editor, doc, view, theme, is_focused),
             GutterType::Diff => diff(editor, doc, view, theme, is_focused),
+            GutterType::Scrollbar => scrollbar(editor, doc, view, theme, is_focused),
         }
     }
 
@@ -42,6 +43,7 @@ impl GutterType {
             GutterType::LineNumbers => line_numbers_width(view, doc),
             GutterType::Spacer => 1,
             GutterType::Diff => 1,
+            GutterType::Scrollbar => 1,
         }
     }
 }
@@ -139,6 +141,47 @@ pub fn diff<'doc>(
     }
 }
 
+pub fn scrollbar<'doc>(
+    _editor: &'doc Editor,
+    doc: &'doc Document,
+    view: &View,
+    theme: &Theme,
+    is_focused: bool,
+) -> GutterFn<'doc> {
+    let total_lines = doc.text().len_lines();
+    let view_height = view.inner_height();
+    let view_vertical_offset = doc.text().char_to_line(view.offset.anchor);
+
+    // Scrollbar will only be rendered on focused views where contents exceed the view height
+    if !is_focused || view_height >= total_lines {
+        return Box::new(move |_, _, _, _| None);
+    }
+
+    let height =
+        ((view_height.pow(2) as f32 / total_lines as f32).ceil() as usize).saturating_sub(1);
+
+    let scrollable_view_height = view_height.saturating_sub(height);
+    let scroll_percentage =
+        view_vertical_offset as f32 / total_lines.saturating_sub(view_height) as f32;
+
+    let start_line = view_vertical_offset
+        .saturating_add((scroll_percentage * scrollable_view_height as f32).ceil() as usize);
+
+    let style = theme.get("ui.menu.scroll");
+    Box::new(
+        move |line: usize, _selected: bool, _first_visual_line: bool, out: &mut String| {
+            let icon = if line >= start_line && line <= start_line.saturating_add(height) {
+                "▐"
+            } else {
+                ""
+            };
+
+            write!(out, "{}", icon).unwrap();
+            Some(style)
+        },
+    )
+}
+
 pub fn line_numbers<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
@@ -167,7 +210,9 @@ pub fn line_numbers<'doc>(
 
     Box::new(
         move |line: usize, selected: bool, first_visual_line: bool, out: &mut String| {
-            if line == last_line_in_view && !draw_last {
+            if line > last_line_in_view {
+                None
+            } else if line == last_line_in_view && !draw_last {
                 write!(out, "{:>1$}", '~', width).unwrap();
                 Some(linenr)
             } else {
@@ -347,7 +392,11 @@ mod tests {
 
     #[test]
     fn test_default_gutter_widths() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
@@ -372,7 +421,11 @@ mod tests {
             ..Default::default()
         };
 
-        let mut view = View::new(DocumentId::default(), gutters);
+        let mut view = View::new(
+            DocumentId::default(),
+            gutters,
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
@@ -390,7 +443,11 @@ mod tests {
             line_numbers: GutterLineNumbersConfig { min_width: 10 },
         };
 
-        let mut view = View::new(DocumentId::default(), gutters);
+        let mut view = View::new(
+            DocumentId::default(),
+            gutters,
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
@@ -412,7 +469,11 @@ mod tests {
             line_numbers: GutterLineNumbersConfig { min_width: 1 },
         };
 
-        let mut view = View::new(DocumentId::default(), gutters);
+        let mut view = View::new(
+            DocumentId::default(),
+            gutters,
+            GutterConfig::from(Vec::new()),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("a\nb");
@@ -432,5 +493,35 @@ mod tests {
         assert_eq!(view.gutters.layout.len(), 2);
         assert_eq!(view.gutters.layout[1].width(&view, &doc_short), 1);
         assert_eq!(view.gutters.layout[1].width(&view, &doc_long), 2);
+    }
+
+    #[test]
+    fn test_left_gutters_with_right_gutters() {
+        let gutters = GutterConfig {
+            layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            line_numbers: GutterLineNumbersConfig { min_width: 10 },
+        };
+        let gutters_right = GutterConfig {
+            layout: vec![GutterType::Diff, GutterType::LineNumbers],
+            line_numbers: GutterLineNumbersConfig::default(),
+        };
+        let mut view = View::new(DocumentId::default(), gutters, gutters_right);
+        view.area = Rect::new(40, 40, 40, 40);
+
+        let rope = Rope::from_str("abc\n\tdef");
+        let doc = Document::from(
+            rope,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
+
+        assert_eq!(view.gutters.layout.len(), 2);
+        assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
+        assert_eq!(view.gutters.layout[1].width(&view, &doc), 10);
+
+        assert_eq!(view.gutters_right.layout.len(), 2);
+        assert_eq!(view.gutters_right.layout[0].width(&view, &doc), 1);
+        // TODO: Allow separate configuration for line numbers within right gutter
+        assert_eq!(view.gutters_right.layout[1].width(&view, &doc), 10);
     }
 }

@@ -215,6 +215,25 @@ pub fn render_text<'t>(
                     renderer,
                     last_pos,
                 );
+
+                // allow rendering any additional line decorations within the viewport
+                let remaining_viewport_lines =
+                    last_pos.row.saturating_add(1)..renderer.viewport.height as usize;
+                let top_visible_line = text.char_to_line(offset.anchor);
+                let mut extra_line_pos = LinePos {
+                    first_visual_line: false,
+                    doc_line: usize::MAX,
+                    visual_line: u16::MAX,
+                    start_char_idx: usize::MAX,
+                };
+                for extra_line_index in remaining_viewport_lines {
+                    extra_line_pos.doc_line = top_visible_line.saturating_add(extra_line_index);
+                    extra_line_pos.visual_line = extra_line_index as u16;
+                    for line_decoration in &mut *line_decorations {
+                        line_decoration.render_foreground(renderer, extra_line_pos, char_pos);
+                        line_decoration.render_background(renderer, extra_line_pos);
+                    }
+                }
             }
             break;
         };

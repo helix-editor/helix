@@ -23,7 +23,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, CursorShapeConfig, GutterType},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -163,7 +163,7 @@ impl EditorView {
             Box::new(highlights)
         };
 
-        Self::render_gutter(
+        Self::render_gutters(
             editor,
             doc,
             view,
@@ -566,7 +566,7 @@ impl EditorView {
         }
     }
 
-    pub fn render_gutter<'d>(
+    pub fn render_gutters<'d>(
         editor: &'d Editor,
         doc: &'d Document,
         view: &View,
@@ -582,14 +582,15 @@ impl EditorView {
             .map(|range| range.cursor_line(text))
             .collect();
 
-        let mut offset = 0;
+        let mut left_offset = 0;
+        let mut right_offset = 0;
 
         let gutter_style = theme.get("ui.gutter");
         let gutter_selected_style = theme.get("ui.gutter.selected");
         let gutter_style_virtual = theme.get("ui.gutter.virtual");
         let gutter_selected_style_virtual = theme.get("ui.gutter.selected.virtual");
 
-        for gutter_type in view.gutters() {
+        let render_gutter_item = move |viewport: Rect, offset: u16, gutter_type: &GutterType| {
             let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
             let width = gutter_type.width(view, doc);
             // avoid lots of small allocations by reusing a text buffer for each line
@@ -627,9 +628,30 @@ impl EditorView {
                 }
                 text.clear();
             };
-            line_decorations.push(Box::new(gutter_decoration));
+            Box::new(gutter_decoration)
+        };
 
-            offset += width as u16;
+        for gutter_type in view.gutters() {
+            let width = gutter_type.width(view, doc);
+            let gutter_decoration = render_gutter_item(viewport, left_offset, gutter_type);
+            line_decorations.push(gutter_decoration);
+
+            left_offset += width as u16;
+        }
+
+        for gutter_type in view.gutters_right() {
+            let width = gutter_type.width(view, doc);
+
+            // Offset is moved prior to rendering right-hand gutter items
+            // since string rendering happens from left to right
+            right_offset += width as u16;
+
+            let gutter_decoration = render_gutter_item(
+                viewport,
+                viewport.width.saturating_sub(right_offset),
+                gutter_type,
+            );
+            line_decorations.push(gutter_decoration);
         }
     }
 
