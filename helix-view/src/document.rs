@@ -965,7 +965,11 @@ impl Document {
         // Allows setting the flag for files the user cannot modify, like root files
         self.readonly = match &self.path {
             None => false,
-            Some(p) => access(p, Access::WRITE_OK).is_err(),
+            Some(p) => match access(p, Access::WRITE_OK) {
+                Ok(_) => false,
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
+                Err(_) => true,
+            },
         };
     }
 
@@ -979,6 +983,7 @@ impl Document {
         self.readonly = match &self.path {
             None => false,
             Some(p) => match std::fs::metadata(p) {
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
                 Err(_) => false,
                 Ok(metadata) => metadata.permissions().readonly(),
             },
