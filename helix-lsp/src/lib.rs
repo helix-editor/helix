@@ -755,7 +755,7 @@ impl Registry {
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
         enable_snippets: bool,
-    ) -> Result<HashMap<LanguageServerName, Arc<Client>>> {
+    ) -> HashMap<LanguageServerName, Result<Arc<Client>>> {
         language_config
             .language_servers
             .iter()
@@ -764,19 +764,22 @@ impl Registry {
                     if let Some((_, client)) = clients.iter().enumerate().find(|(i, client)| {
                         client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
                     }) {
-                        return Ok((name.to_owned(), client.clone()));
+                        return (name.to_owned(), Ok(client.clone()));
                     }
                 }
-                let client = self.start_client(
+                let client = match self.start_client(
                     name.clone(),
                     language_config,
                     doc_path,
                     root_dirs,
                     enable_snippets,
-                )?;
+                ) {
+                    Ok(client) => client,
+                    Err(err) => return (name.to_owned(), Err(err)),
+                };
                 let clients = self.inner.entry(name.clone()).or_default();
                 clients.push(client.clone());
-                Ok((name.clone(), client))
+                (name.clone(), Ok(client))
             })
             .collect()
     }

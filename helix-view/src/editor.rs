@@ -1204,21 +1204,27 @@ impl Editor {
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
 
-        // try to find language servers based on the language name
-        let language_servers = lang.as_ref().and_then(|language| {
+        // store only successfully started language servers
+        let language_servers = lang.as_ref().map_or_else(HashMap::default, |language| {
             self.language_servers
                 .get(language, path.as_ref(), root_dirs, config.lsp.snippets)
-                .map_err(|e| {
-                    log::error!(
-                        "Failed to initialize the language servers for `{}` {{ {} }}",
-                        language.scope(),
-                        e
-                    )
+                .into_iter()
+                .filter_map(|(lang, client)| match client {
+                    Ok(client) => Some((lang, client)),
+                    Err(err) => {
+                        log::error!(
+                            "Failed to initialize the language servers for `{}` - `{}` {{ {} }}",
+                            language.scope(),
+                            lang,
+                            err
+                        );
+                        None
+                    }
                 })
-                .ok()
+                .collect::<HashMap<_, _>>()
         });
 
-        if let Some(language_servers) = language_servers {
+        if !language_servers.is_empty() {
             let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
             // only spawn new language servers if the servers aren't the same
