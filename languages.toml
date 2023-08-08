@@ -563,7 +563,7 @@ args = { program = "{0}" }
 
 [[grammar]]
 name = "javascript"
-source = { git = "https://github.com/tree-sitter/tree-sitter-javascript", rev = "4a95461c4761c624f2263725aca79eeaefd36cad" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-javascript", rev = "f772967f7b7bc7c28f845be2420a38472b16a8ee" }
 
 [[language]]
 name = "jsx"
@@ -590,7 +590,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "typescript"
-source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "5d20856f34315b068c41edaee2ac8a100081d259", subpath = "typescript" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "b1bf4825d9eaa0f3bdeb1e52f099533328acfbdf", subpath = "typescript" }
 
 [[language]]
 name = "tsx"
@@ -604,7 +604,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "tsx"
-source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "5d20856f34315b068c41edaee2ac8a100081d259", subpath = "tsx" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-typescript", rev = "b1bf4825d9eaa0f3bdeb1e52f099533328acfbdf", subpath = "tsx" }
 
 [[language]]
 name = "css"
@@ -833,7 +833,7 @@ injection-regex = "java"
 file-types = ["java"]
 roots = ["pom.xml", "build.gradle", "build.gradle.kts"]
 language-servers = [ "jdtls" ]
-indent = { tab-width = 4, unit = "    " }
+indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "java"
@@ -1053,7 +1053,7 @@ language-servers = [ "swipl" ]
 [[language]]
 name = "tsq"
 scope = "source.tsq"
-file-types = ["scm"]
+file-types = ["tsq"]
 roots = []
 comment-token = ";"
 injection-regex = "tsq"
@@ -1296,7 +1296,7 @@ text-width = 72
 
 [[grammar]]
 name = "git-commit"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "db88cffa3952dd2328b741af5d0fc69bdb76704f" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev = "6f193a66e9aa872760823dff020960c6cedc37b3" }
 
 [[language]]
 name = "diff"
@@ -1807,14 +1807,14 @@ source = { git = "https://github.com/metio/tree-sitter-ssh-client-config", rev =
 name = "scheme"
 scope = "source.scheme"
 injection-regex = "scheme"
-file-types = ["ss"] # "scm",
+file-types = ["ss", "scm"]
 roots = []
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "scheme"
-source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "c0741320bfca6b7b5b7a13b5171275951e96a842" }
+source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "af3af6c9356b936f8a515a1e449c32e804c2b1a8" }
 
 [[language]]
 name = "v"
