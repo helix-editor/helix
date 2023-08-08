@@ -995,6 +995,13 @@ pub enum Action {
     VerticalSplit,
 }
 
+impl Action {
+    /// Whether to align the view to the cursor after executing this action
+    pub fn align_view(&self, view: &View, new_doc: DocumentId) -> bool {
+        !matches!((self, view.doc == new_doc), (Action::Load, false))
+    }
+}
+
 /// Error thrown on failed document closed
 pub enum CloseError {
     /// Document doesn't exist
