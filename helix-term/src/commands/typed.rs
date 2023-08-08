@@ -1856,14 +1856,29 @@ fn toggle_option(
                     .to_string(),
             )
         }
-        Value::Null | Value::Object(_) | Value::Array(_) | Value::Number(_) => {
+        Value::Number(ref value) => {
+            ensure!(
+                args.len() > 2,
+                "Bad arguments. For number configurations use: `:toggle key val1 val2 ...`",
+            );
+
+            Value::Number(
+                args[1..]
+                    .iter()
+                    .skip_while(|&e| value.to_string() != *e.to_string())
+                    .nth(1)
+                    .unwrap_or_else(|| &args[1])
+                    .parse()?,
+            )
+        }
+        Value::Null | Value::Object(_) | Value::Array(_) => {
             anyhow::bail!("Configuration {key} does not support toggle yet")
         }
     };
 
     let status = format!("'{key}' is now set to {value}");
     let config = serde_json::from_value(config)
-        .map_err(|_| anyhow::anyhow!("Could not parse field: `{:?}`", &args))?;
+        .map_err(|err| anyhow::anyhow!("Cannot parse `{:?}`, {}", &args, err))?;
 
     cx.editor
         .config_events
