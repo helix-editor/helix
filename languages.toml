@@ -2713,3 +2713,26 @@ injection-regex = "wren"
 file-types = ["wren"]
 roots = []
 indent = { tab-width = 2, unit = "  "}
+
+[[language]]
+name = "unison"
+scope = "source.unison"
+injection-regex = "unison"
+file-types = ["u"]
+shebangs = []
+roots = []
+auto-format = false
+comment-token = "--"
+indent = { tab-width = 4, unit = "    " }
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+
+[[grammar]]
+name = "unison"
+source = { git = "https://github.com/kylegoetz/tree-sitter-unison", rev = "98c4e8bc5c9f5989814a720457cf36963cf4043d" }
+
