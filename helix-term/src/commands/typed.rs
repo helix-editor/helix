@@ -656,7 +656,7 @@ pub fn write_all_impl(
     force: bool,
     write_scratch: bool,
 ) -> anyhow::Result<()> {
-    let mut errors: Vec<String> = Vec::new();
+    let mut errors: Vec<&'static str> = Vec::new();
     let auto_format = cx.editor.config().auto_format;
     let jobs = &mut cx.jobs;
     let current_view = view!(cx.editor);
@@ -672,7 +672,7 @@ pub fn write_all_impl(
             }
             if doc.path().is_none() {
                 if write_scratch {
-                    errors.push("cannot write a buffer without a filename".to_string());
+                    errors.push("cannot write a buffer without a filename");
                 }
                 return None;
             }
