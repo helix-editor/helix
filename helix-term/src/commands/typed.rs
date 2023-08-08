@@ -720,13 +720,8 @@ pub fn write_all_impl(
         cx.editor.save::<PathBuf>(id, None, force)?;
     }
 
-    if force {
-        return Ok(());
-    }
-
-    let error_msg = errors.join(" ");
-    if !error_msg.is_empty() {
-        bail!(error_msg);
+    if !errors.is_empty() && !force {
+        bail!("{:?}", errors);
     }
 
     Ok(())
