@@ -67,7 +67,7 @@
 "ui.debug.active"                 = { fg = "green" }
 "ui.gutter"                       = { fg = "light_gray" }
 "ui.gutter.selected"              = { fg = "light_gray" }
-"ui.highlight.frameline"          = { fg = "cursor_line" }
+"ui.highlight.frameline"          = { fg = "gray" }
 "ui.linenr"                       = { fg = "light_gray" }
 "ui.linenr.selected"              = { fg = "yellow" }
 "ui.statusline"                   = { fg = "text", bg = "gray" }
@@ -123,7 +123,7 @@ blue        = "#008DFF"
 menu        = "#202020"
 selection   = "#3f3f3f"
 
-# syntaxe
+# syntax
 text        = "#FFFFFF"
 comment     = "#6b6b6b"
 string      = "#378b1d"
