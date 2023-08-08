@@ -37,7 +37,7 @@ async fn test_picker_alt_ret() -> anyhow::Result<()> {
     fs::write(&paths[1], "first\nsecond")?;
 
     log::debug!(
-        "created and writed two temporary files: {:?} & {:?}",
+        "created and wrote two temporary files: {:?} & {:?}",
         paths[0],
         paths[1]
     );
