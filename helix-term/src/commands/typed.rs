@@ -2157,6 +2157,29 @@ fn pipe_impl(
     Ok(())
 }
 
+fn set_register(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    ensure!(args.len() == 2, ":set-register <reg> <value>");
+
+    match args[0].chars().next() {
+        None => cx.editor.set_status("Pass a character for the register!"),
+        Some(register) => {
+            let value = args[1].to_string();
+            cx.editor
+                .set_status(format!("register {register} set to {value}"));
+            cx.editor.registers.push(register, value);
+        }
+    }
+
+    Ok(())
+}
+
 fn run_shell_command(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2303,6 +2326,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             doc: "Open a file from disk into the current view.",
             fun: open,
             signature: CommandSignature::all(completers::filename),
+        },
+        TypableCommand {
+            name: "set-register",
+            aliases: &["sr"],
+            doc: "Set the value of a register",
+            fun: set_register,
+            signature: CommandSignature::none(),
         },
         TypableCommand {
             name: "buffer-close",
