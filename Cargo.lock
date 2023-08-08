@@ -1392,6 +1392,7 @@ dependencies = [
  "log",
  "once_cell",
  "parking_lot",
+ "rustix 0.38.4",
  "serde",
  "serde_json",
  "slotmap",

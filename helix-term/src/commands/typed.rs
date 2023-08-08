@@ -672,7 +672,7 @@ pub fn write_all_impl(
             }
             if doc.path().is_none() {
                 if write_scratch {
-                    errors.push("cannot write a buffer without a filename\n");
+                    errors.push("cannot write a buffer without a filename");
                 }
                 return None;
             }
