@@ -15,12 +15,12 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-      - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
-        with:
-          profile: minimal
-          override: true
 
+      - name: Remove rust-toolchain.toml file
+        run: rm rust-toolchain.toml
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@1.65
       - uses: Swatinem/rust-cache@v2
 
       - name: Run cargo check
@@ -35,6 +35,9 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
+
+      - name: Remove rust-toolchain.toml file
+        run: rm rust-toolchain.toml
 
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@1.65
@@ -65,6 +68,9 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
+      - name: Remove rust-toolchain.toml file
+        run: rm rust-toolchain.toml
+
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@1.65
         with:
@@ -90,6 +96,9 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
+      - name: Remove rust-toolchain.toml file
+        run: rm rust-toolchain.toml
+
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@1.65
 
@@ -103,6 +112,7 @@ jobs:
 
       - name: Check uncommitted documentation changes
         run: |
+          git restore rust-toolchain.toml
           git diff
           git diff-files --quiet \
             || (echo "Run 'cargo xtask docgen', commit the changes and push again" \
