@@ -2,7 +2,7 @@ use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_core::{
     diagnostic::{DiagnosticTag, NumberOrString},
-    path::get_relative_path,
+    path::{get_canonicalized_path, get_relative_path},
     pos_at_coords, syntax, Selection,
 };
 use helix_lsp::{
@@ -724,7 +724,11 @@ impl Application {
                         }
                     }
                     Notification::PublishDiagnostics(params) => {
-                        let path = match params.uri.to_file_path() {
+                        let path = match params
+                            .uri
+                            .to_file_path()
+                            .and_then(|path| get_canonicalized_path(&path).map_err(|_| ()))
+                        {
                             Ok(path) => path,
                             Err(_) => {
                                 log::error!("Unsupported file URI: {}", params.uri);
