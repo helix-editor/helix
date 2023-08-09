@@ -2736,3 +2736,14 @@ indent = { tab-width = 4, unit = "    " }
 name = "unison"
 source = { git = "https://github.com/kylegoetz/tree-sitter-unison", rev = "98c4e8bc5c9f5989814a720457cf36963cf4043d" }
 
+[[language]]
+name = "todotxt"
+scope = "text.todotxt"
+file-types = [{ suffix = ".todo.txt" }, "todotxt"]
+roots = []
+formatter = { command = "sort" }
+auto-format = true
+
+[[grammar]]
+name = "todotxt"
+source = { git = "https://github.com/arnarg/tree-sitter-todotxt", rev = "0207f6a4ab6aeafc4b091914d31d8235049a2578" }
