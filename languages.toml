@@ -1697,7 +1697,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nu"
-source = { git = "https://github.com/LhKipp/tree-sitter-nu", rev = "eb95bdac3abd73ef47e53f19c63e74a31405ebd2" }
+source = { git = "https://github.com/nushell/tree-sitter-nu", rev = "98c11c491e3405c75affa1cf004097692da3dda2" }
 
 [[language]]
 name = "vala"
