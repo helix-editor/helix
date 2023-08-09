@@ -2702,6 +2702,28 @@ roots = []
 indent = { tab-width = 2, unit = "  " }
 grammar = "html"
 
+[[language]]
+name = "nunjucks"
+scope = "text.html.nunjucks"
+injection-regex = "nunjucks"
+file-types = ["njk"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+grammar = "jinja2"
+
+[[language]]
+name = "jinja"
+scope = "text.html.jinja"
+injection-regex = "jinja"
+file-types = ["jinja", "jinja2", "j2"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+grammar = "jinja2"
+
+[[grammar]]
+name = "jinja2"
+source = { git = "https://github.com/varpeti/tree-sitter-jinja2", rev = "a533cd3c33aea6acb0f9bf9a56f35dcfe6a8eb53" }
+
 [[grammar]]
 name = "wren"
 source = { git = "https://git.sr.ht/~jummit/tree-sitter-wren", rev = "793d58266924e6efcc40e411663393e9d72bec87"}
