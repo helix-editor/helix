@@ -4,9 +4,8 @@ use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
-use std::path::PathBuf;
 
-fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
+fn setup_logging(verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
 
     base_config = match verbosity {
@@ -27,7 +26,7 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
                 message
             ))
         })
-        .chain(fern::log_file(logpath)?);
+        .chain(fern::log_file(helix_loader::log_file())?);
 
     base_config.chain(file_config).apply()?;
 
@@ -41,12 +40,6 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let logpath = helix_loader::log_file();
-    let parent = logpath.parent().unwrap();
-    if !parent.exists() {
-        std::fs::create_dir_all(parent).ok();
-    }
-
     let help = format!(
         "\
 {} {}
@@ -78,10 +71,13 @@ FLAGS:
         VERSION_AND_GIT_HASH,
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
-        logpath.display(),
+        helix_loader::default_log_file().display(),
     );
 
     let args = Args::parse_args().context("could not parse arguments")?;
+
+    helix_loader::initialize_config_file(args.config_file.clone());
+    helix_loader::initialize_log_file(args.log_file.clone());
 
     // Help has a higher priority and should be handled separately.
     if args.display_help {
@@ -116,15 +112,7 @@ FLAGS:
         return Ok(0);
     }
 
-    let logpath = args.log_file.as_ref().cloned().unwrap_or(logpath);
-    setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
-
-    let config_dir = helix_loader::config_dir();
-    if !config_dir.exists() {
-        std::fs::create_dir_all(&config_dir).ok();
-    }
-
-    helix_loader::initialize_config_file(args.config_file.clone());
+    setup_logging(args.verbosity).context("failed to initialize logging")?;
 
     let config = match Config::load_default() {
         Ok(config) => config,

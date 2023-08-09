@@ -19,6 +19,7 @@ mod test {
     mod auto_pairs;
     mod commands;
     mod movement;
+    mod picker;
     mod prompt;
     mod splits;
 }

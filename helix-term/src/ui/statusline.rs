@@ -145,6 +145,7 @@ where
         helix_view::editor::StatusLineElement::FileModificationIndicator => {
             render_file_modification_indicator
         }
+        helix_view::editor::StatusLineElement::ReadOnlyIndicator => render_read_only_indicator,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
@@ -439,6 +440,19 @@ where
     })
     .to_string();
 
+    write(context, title, None);
+}
+
+fn render_read_only_indicator<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = if context.doc.readonly {
+        " [readonly] "
+    } else {
+        ""
+    }
+    .to_string();
     write(context, title, None);
 }
 

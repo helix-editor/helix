@@ -160,7 +160,7 @@ jobs:
 
       - name: Build AppImage
         shell: bash
-        if: matrix.build == 'aarch64-linux' || matrix.build == 'x86_64-linux'
+        if: matrix.build == 'x86_64-linux'
         run: |
           # Required as of 22.x https://github.com/AppImage/AppImageKit/wiki/FUSE
           sudo add-apt-repository universe
@@ -263,7 +263,7 @@ jobs:
               mv bins-$platform/hx$exe $pkgname
               chmod +x $pkgname/hx$exe
 
-              if [[ "$platform" = "aarch64-linux" || "$platform" = "x86_64-linux" ]]; then
+              if [[ "$platform" = "x86_64-linux" ]]; then
                   mv bins-$platform/helix-*.AppImage* dist/
               fi
 

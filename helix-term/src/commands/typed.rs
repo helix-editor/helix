@@ -672,7 +672,7 @@ pub fn write_all_impl(
             }
             if doc.path().is_none() {
                 if write_scratch {
-                    errors.push("cannot write a buffer without a filename\n");
+                    errors.push("cannot write a buffer without a filename");
                 }
                 return None;
             }
@@ -737,6 +737,18 @@ fn write_all(
     }
 
     write_all_impl(cx, false, true)
+}
+
+fn force_write_all(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_all_impl(cx, true, true)
 }
 
 fn write_all_quit(
@@ -892,7 +904,8 @@ fn yank_main_selection_to_clipboard(
         return Ok(());
     }
 
-    yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Clipboard)
+    yank_primary_selection_impl(cx.editor, '*');
+    Ok(())
 }
 
 fn yank_joined(
@@ -926,7 +939,8 @@ fn yank_joined_to_clipboard(
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_to_clipboard_impl(cx.editor, separator, ClipboardType::Clipboard)
+    yank_joined_impl(cx.editor, separator, '*');
+    Ok(())
 }
 
 fn yank_main_selection_to_primary_clipboard(
@@ -938,7 +952,8 @@ fn yank_main_selection_to_primary_clipboard(
         return Ok(());
     }
 
-    yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Selection)
+    yank_primary_selection_impl(cx.editor, '+');
+    Ok(())
 }
 
 fn yank_joined_to_primary_clipboard(
@@ -953,7 +968,8 @@ fn yank_joined_to_primary_clipboard(
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_to_clipboard_impl(cx.editor, separator, ClipboardType::Selection)
+    yank_joined_impl(cx.editor, separator, '+');
+    Ok(())
 }
 
 fn paste_clipboard_after(
@@ -965,7 +981,8 @@ fn paste_clipboard_after(
         return Ok(());
     }
 
-    paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard, 1)
+    paste(cx.editor, '*', Paste::After, 1);
+    Ok(())
 }
 
 fn paste_clipboard_before(
@@ -977,7 +994,8 @@ fn paste_clipboard_before(
         return Ok(());
     }
 
-    paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Clipboard, 1)
+    paste(cx.editor, '*', Paste::Before, 1);
+    Ok(())
 }
 
 fn paste_primary_clipboard_after(
@@ -989,7 +1007,8 @@ fn paste_primary_clipboard_after(
         return Ok(());
     }
 
-    paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection, 1)
+    paste(cx.editor, '+', Paste::After, 1);
+    Ok(())
 }
 
 fn paste_primary_clipboard_before(
@@ -1001,30 +1020,8 @@ fn paste_primary_clipboard_before(
         return Ok(());
     }
 
-    paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Selection, 1)
-}
-
-fn replace_selections_with_clipboard_impl(
-    cx: &mut compositor::Context,
-    clipboard_type: ClipboardType,
-) -> anyhow::Result<()> {
-    let scrolloff = cx.editor.config().scrolloff;
-    let (view, doc) = current!(cx.editor);
-
-    match cx.editor.clipboard_provider.get_contents(clipboard_type) {
-        Ok(contents) => {
-            let selection = doc.selection(view.id);
-            let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-                (range.from(), range.to(), Some(contents.as_str().into()))
-            });
-
-            doc.apply(&transaction, view.id);
-            doc.append_changes_to_history(view);
-            view.ensure_cursor_in_view(doc, scrolloff);
-            Ok(())
-        }
-        Err(e) => Err(e.context("Couldn't get system clipboard contents")),
-    }
+    paste(cx.editor, '+', Paste::Before, 1);
+    Ok(())
 }
 
 fn replace_selections_with_clipboard(
@@ -1036,7 +1033,8 @@ fn replace_selections_with_clipboard(
         return Ok(());
     }
 
-    replace_selections_with_clipboard_impl(cx, ClipboardType::Clipboard)
+    replace_with_yanked_impl(cx.editor, '*', 1);
+    Ok(())
 }
 
 fn replace_selections_with_primary_clipboard(
@@ -1048,7 +1046,8 @@ fn replace_selections_with_primary_clipboard(
         return Ok(());
     }
 
-    replace_selections_with_clipboard_impl(cx, ClipboardType::Selection)
+    replace_with_yanked_impl(cx.editor, '+', 1);
+    Ok(())
 }
 
 fn show_clipboard_provider(
@@ -1061,7 +1060,7 @@ fn show_clipboard_provider(
     }
 
     cx.editor
-        .set_status(cx.editor.clipboard_provider.name().to_string());
+        .set_status(cx.editor.registers.clipboard_provider_name().to_string());
     Ok(())
 }
 
@@ -1081,14 +1080,11 @@ fn change_current_directory(
             .as_ref(),
     );
 
-    if let Err(e) = std::env::set_current_dir(dir) {
-        bail!("Couldn't change the current working directory: {}", e);
-    }
+    helix_loader::set_current_working_dir(dir)?;
 
-    let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
     cx.editor.set_status(format!(
         "Current working directory is now {}",
-        cwd.display()
+        helix_loader::current_working_dir().display()
     ));
     Ok(())
 }
@@ -1102,9 +1098,14 @@ fn show_current_directory(
         return Ok(());
     }
 
-    let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
-    cx.editor
-        .set_status(format!("Current working directory is {}", cwd.display()));
+    let cwd = helix_loader::current_working_dir();
+    let message = format!("Current working directory is {}", cwd.display());
+
+    if cwd.exists() {
+        cx.editor.set_status(message);
+    } else {
+        cx.editor.set_error(format!("{} (deleted)", message));
+    }
     Ok(())
 }
 
@@ -1269,7 +1270,14 @@ fn reload(
     doc.reload(view, &cx.editor.diff_providers, redraw_handle)
         .map(|_| {
             view.ensure_cursor_in_view(doc, scrolloff);
-        })
+        })?;
+    if let Some(path) = doc.path() {
+        cx.editor
+            .language_servers
+            .file_event_handler
+            .file_changed(path.clone());
+    }
+    Ok(())
 }
 
 fn reload_all(
@@ -1310,6 +1318,12 @@ fn reload_all(
 
         let redraw_handle = cx.editor.redraw_handle.clone();
         doc.reload(view, &cx.editor.diff_providers, redraw_handle)?;
+        if let Some(path) = doc.path() {
+            cx.editor
+                .language_servers
+                .file_event_handler
+                .file_changed(path.clone());
+        }
 
         for view_id in view_ids {
             let view = view_mut!(cx.editor, view_id);
@@ -1358,9 +1372,8 @@ fn lsp_workspace_command(
                 .map(|options| (ls.id(), options))
         })
     else {
-        cx.editor.set_status(
-             "No active language servers for this document support workspace commands",
-        );
+        cx.editor
+            .set_status("No active language servers for this document support workspace commands");
         return Ok(());
     };
 
@@ -1843,14 +1856,29 @@ fn toggle_option(
                     .to_string(),
             )
         }
-        Value::Null | Value::Object(_) | Value::Array(_) | Value::Number(_) => {
+        Value::Number(ref value) => {
+            ensure!(
+                args.len() > 2,
+                "Bad arguments. For number configurations use: `:toggle key val1 val2 ...`",
+            );
+
+            Value::Number(
+                args[1..]
+                    .iter()
+                    .skip_while(|&e| value.to_string() != *e.to_string())
+                    .nth(1)
+                    .unwrap_or_else(|| &args[1])
+                    .parse()?,
+            )
+        }
+        Value::Null | Value::Object(_) | Value::Array(_) => {
             anyhow::bail!("Configuration {key} does not support toggle yet")
         }
     };
 
     let status = format!("'{key}' is now set to {value}");
     let config = serde_json::from_value(config)
-        .map_err(|_| anyhow::anyhow!("Could not parse field: `{:?}`", &args))?;
+        .map_err(|err| anyhow::anyhow!("Cannot parse `{:?}`, {}", &args, err))?;
 
     cx.editor
         .config_events
@@ -2259,13 +2287,12 @@ fn clear_register(
         format!("Invalid register {}", args[0])
     );
     let register = args[0].chars().next().unwrap_or_default();
-    match cx.editor.registers.remove(register) {
-        Some(_) => cx
-            .editor
-            .set_status(format!("Register {} cleared", register)),
-        None => cx
-            .editor
-            .set_error(format!("Register {} not found", register)),
+    if cx.editor.registers.remove(register) {
+        cx.editor
+            .set_status(format!("Register {} cleared", register));
+    } else {
+        cx.editor
+            .set_error(format!("Register {} not found", register));
     }
     Ok(())
 }
@@ -2442,6 +2469,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             aliases: &["wa"],
             doc: "Write changes from all buffers to disk.",
             fun: write_all,
+            signature: CommandSignature::none(),
+        },
+        TypableCommand {
+            name: "write-all!",
+            aliases: &["wa!"],
+            doc: "Forcefully write changes from all buffers to disk creating necessary subdirectories.",
+            fun: force_write_all,
             signature: CommandSignature::none(),
         },
         TypableCommand {

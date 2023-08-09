@@ -1,9 +1,3 @@
-[
-  (jsx_fragment)
-  (jsx_element)
-  (jsx_self_closing_element)
-] @indent
+; See runtime/queries/ecma/README.md for more info.
 
-(parenthesized_expression) @indent
-
-; inherits: ecma
+; inherits: _jsx,_javascript,ecma

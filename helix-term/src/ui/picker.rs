@@ -27,7 +27,7 @@ use std::{collections::HashMap, io::Read, path::PathBuf};
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
-    movement::Direction, text_annotations::TextAnnotations,
+    char_idx_at_visual_offset, movement::Direction, text_annotations::TextAnnotations,
     unicode::segmentation::UnicodeSegmentation, Position, Syntax,
 };
 use helix_view::{
@@ -432,7 +432,7 @@ impl<T: Item + 'static> Picker<T> {
 
     fn handle_idle_timeout(&mut self, cx: &mut Context) -> EventResult {
         let Some((current_file, _)) = self.current_file(cx.editor) else {
-            return EventResult::Consumed(None)
+            return EventResult::Consumed(None);
         };
 
         // Try to find a document in the cache
@@ -453,17 +453,20 @@ impl<T: Item + 'static> Picker<T> {
                 let text = doc.text().clone();
                 let loader = cx.editor.syn_loader.clone();
                 let job = tokio::task::spawn_blocking(move || {
-                    let syntax = language_config
-                        .highlight_config(&loader.scopes())
-                        .and_then(|highlight_config| Syntax::new(&text, highlight_config, loader));
+                    let syntax = language_config.highlight_config(&loader.scopes()).and_then(
+                        |highlight_config| Syntax::new(text.slice(..), highlight_config, loader),
+                    );
                     let callback = move |editor: &mut Editor, compositor: &mut Compositor| {
                         let Some(syntax) = syntax else {
                             log::info!("highlighting picker item failed");
-                            return
+                            return;
                         };
-                        let Some(Overlay { content: picker, .. }) = compositor.find::<Overlay<Self>>() else {
+                        let Some(Overlay {
+                            content: picker, ..
+                        }) = compositor.find::<Overlay<Self>>()
+                        else {
                             log::info!("picker closed before syntax highlighting finished");
-                            return
+                            return;
                         };
                         // Try to find a document in the cache
                         let doc = match current_file {
@@ -687,20 +690,20 @@ impl<T: Item + 'static> Picker<T> {
                 }
             };
 
-            // align to middle
-            let first_line = range
-                .map(|(start, end)| {
-                    let height = end.saturating_sub(start) + 1;
-                    let middle = start + (height.saturating_sub(1) / 2);
-                    middle.saturating_sub(inner.height as usize / 2).min(start)
-                })
-                .unwrap_or(0);
-
-            let offset = ViewPosition {
-                anchor: doc.text().line_to_char(first_line),
-                horizontal_offset: 0,
-                vertical_offset: 0,
-            };
+            let mut offset = ViewPosition::default();
+            if let Some(range) = range {
+                let text_fmt = doc.text_format(inner.width, None);
+                let annotations = TextAnnotations::default();
+                (offset.anchor, offset.vertical_offset) = char_idx_at_visual_offset(
+                    doc.text().slice(..),
+                    doc.text().line_to_char(range.0),
+                    // align to middle
+                    -(inner.height as isize / 2),
+                    0,
+                    &text_fmt,
+                    &annotations,
+                );
+            }
 
             let mut highlights = EditorView::doc_syntax_highlights(
                 doc,

@@ -163,15 +163,18 @@ impl EditorView {
             Box::new(highlights)
         };
 
-        Self::render_gutter(
-            editor,
-            doc,
-            view,
-            view.area,
-            theme,
-            is_focused,
-            &mut line_decorations,
-        );
+        let gutter_overflow = view.gutter_offset(doc) == 0;
+        if !gutter_overflow {
+            Self::render_gutter(
+                editor,
+                doc,
+                view,
+                view.area,
+                theme,
+                is_focused,
+                &mut line_decorations,
+            );
+        }
 
         if is_focused {
             let cursor = doc
@@ -501,7 +504,9 @@ impl EditorView {
             use helix_core::match_brackets;
             let pos = doc.selection(view.id).primary().cursor(text);
 
-            if let Some(pos) = match_brackets::find_matching_bracket(syntax, doc.text(), pos) {
+            if let Some(pos) =
+                match_brackets::find_matching_bracket(syntax, doc.text().slice(..), pos)
+            {
                 // ensure col is on screen
                 if let Some(highlight) = theme.find_scope_index_exact("ui.cursor.match") {
                     return vec![(highlight, pos..pos + 1)];

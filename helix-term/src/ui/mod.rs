@@ -142,16 +142,14 @@ pub fn regex_prompt(
                                 };
 
                                 cx.jobs.callback(callback);
-                            } else {
-                                // Update
-                                // TODO: mark command line as error
                             }
                         }
                     }
                 }
             }
         },
-    );
+    )
+    .with_language("regex", std::sync::Arc::clone(&cx.editor.syn_loader));
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
     // prompt
@@ -472,7 +470,7 @@ pub mod completers {
                 match path.parent() {
                     Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
                     // Path::new("h")'s parent is Some("")...
-                    _ => std::env::current_dir().expect("couldn't determine current directory"),
+                    _ => helix_loader::current_working_dir(),
                 }
             };
 
