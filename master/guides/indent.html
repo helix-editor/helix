@@ -177,68 +177,241 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="adding-indent-queries"><a class="header" href="#adding-indent-queries">Adding indent queries</a></h1>
-<p>Helix uses tree-sitter to correctly indent new lines. This requires
-a tree-sitter grammar and an <code>indent.scm</code> query file placed in
-<code>runtime/queries/{language}/indents.scm</code>. The indentation for a line
-is calculated by traversing the syntax tree from the lowest node at the
-beginning of the new line. Each of these nodes contributes to the total
-indent when it is captured by the query (in what way depends on the name
-of the capture).</p>
+<p>Helix uses tree-sitter to correctly indent new lines. This requires a tree-
+sitter grammar and an <code>indent.scm</code> query file placed in <code>runtime/queries/ {language}/indents.scm</code>. The indentation for a line is calculated by traversing
+the syntax tree from the lowest node at the beginning of the new line (see
+<a href="#indent-queries">Indent queries</a>). Each of these nodes contributes to the total
+indent when it is captured by the query (in what way depends on the name of
+the capture.</p>
 <p>Note that it matters where these added indents begin. For example,
 multiple indent level increases that start on the same line only increase
-the total indent level by 1.</p>
-<h2 id="scopes"><a class="header" href="#scopes">Scopes</a></h2>
-<p>Added indents don't always apply to the whole node. For example, in most
-cases when a node should be indented, we actually only want everything
-except for its first line to be indented. For this, there are several
-scopes (more scopes may be added in the future if required):</p>
+the total indent level by 1. See <a href="#capture-types">Capture types</a>.</p>
+<h2 id="indent-queries"><a class="header" href="#indent-queries">Indent queries</a></h2>
+<p>When Helix is inserting a new line through <code>o</code>, <code>O</code>, or <code>&lt;ret&gt;</code>, to determine
+the indent level for the new line, the query in <code>indents.scm</code> is run on the
+document. The starting position of the query is the end of the line above where
+a new line will be inserted.</p>
+<p>For <code>o</code>, the inserted line is the line below the cursor, so that starting
+position of the query is the end of the current line.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn need_hero(some_hero: Hero, life: Life) -&gt; {
+    matches!(some_hero, Hero { // ←─────────────────╮
+        strong: true,//←╮  ↑  ↑                     │
+        fast: true,  // │  │  ╰── query start       │
+        sure: true,  // │  ╰───── cursor            ├─ traversal 
+        soon: true,  // ╰──────── new line inserted │  start node
+    }) &amp;&amp;            //                             │
+//  ↑                                               │
+//  ╰───────────────────────────────────────────────╯
+    some_hero &gt; life
+}
+<span class="boring">}</span></code></pre></pre>
+<p>For <code>O</code>, the newly inserted line is the <em>current</em> line, so the starting position
+of the query is the end of the line above the cursor.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn need_hero(some_hero: Hero, life: Life) -&gt; { // ←─╮
+    matches!(some_hero, Hero { // ←╮          ↑     │
+        strong: true,//    ↑   ╭───╯          │     │
+        fast: true,  //    │   │ query start ─╯     │
+        sure: true,  //    ╰───┼ cursor             ├─ traversal
+        soon: true,  //        ╰ new line inserted  │  start node
+    }) &amp;&amp;            //                             │
+    some_hero &gt; life //                             │
+} // ←──────────────────────────────────────────────╯
+<span class="boring">}</span></code></pre></pre>
+<p>From this starting node, the syntax tree is traversed up until the root node.
+Each indent capture is collected along the way, and then combined according to
+their <a href="#capture-types">capture types</a> and <a href="#scopes">scopes</a> to a final indent
+level for the line.</p>
+<h3 id="capture-types"><a class="header" href="#capture-types">Capture types</a></h3>
 <ul>
-<li>
-<p><code>all</code>:
-This scope applies to the whole captured node. This is only different from
-<code>tail</code> when the captured node is the first node on its line.</p>
-</li>
-<li>
-<p><code>tail</code>:
-This scope applies to everything except for the first line of the
-captured node.</p>
-</li>
-</ul>
-<p>Every capture type has a default scope which should do the right thing
-in most situations. When a different scope is required, this can be
-changed by using a <code>#set!</code> declaration anywhere in the pattern:</p>
-<pre><code class="language-scm">(assignment_expression
-  right: (_) @indent
-  (#set! &quot;scope&quot; &quot;all&quot;))
-</code></pre>
-<h2 id="capture-types"><a class="header" href="#capture-types">Capture types</a></h2>
-<ul>
-<li>
-<p><code>@indent</code> (default scope <code>tail</code>):
-Increase the indent level by 1. Multiple occurrences in the same line
-don't stack. If there is at least one <code>@indent</code> and one <code>@outdent</code>
-capture on the same line, the indent level isn't changed at all.</p>
-</li>
-<li>
-<p><code>@outdent</code> (default scope <code>all</code>):
-Decrease the indent level by 1. The same rules as for <code>@indent</code> apply.</p>
-</li>
-<li>
-<p><code>@extend</code>:
-Extend the range of this node to the end of the line and to lines that
-are indented more than the line that this node starts on. This is useful
-for languages like Python, where for the purpose of indentation some nodes
-(like functions or classes) should also contain indented lines that follow them.</p>
-</li>
-<li>
-<p><code>@extend.prevent-once</code>:
+<li><code>@indent</code> (default scope <code>tail</code>):
+Increase the indent level by 1. Multiple occurrences in the same line <em>do not</em>
+stack. If there is at least one <code>@indent</code> and one <code>@outdent</code> capture on the
+same line, the indent level isn't changed at all.</li>
+<li><code>@outdent</code> (default scope <code>all</code>):
+Decrease the indent level by 1. The same rules as for <code>@indent</code> apply.</li>
+<li><code>@indent.always</code> (default scope <code>tail</code>):
+Increase the indent level by 1. Multiple occurrences on the same line <em>do</em>
+stack. The final indent level is <code>@indent.always</code> – <code>@outdent.always</code>. If
+an <code>@indent</code> and an <code>@indent.always</code> are on the same line, the <code>@indent</code> is
+ignored.</li>
+<li><code>@outdent.always</code> (default scope <code>all</code>):
+Decrease the indent level by 1. The same rules as for <code>@indent.always</code> apply.</li>
+<li><code>@extend</code>:
+Extend the range of this node to the end of the line and to lines that are
+indented more than the line that this node starts on. This is useful for
+languages like Python, where for the purpose of indentation some nodes (like
+functions or classes) should also contain indented lines that follow them.</li>
+<li><code>@extend.prevent-once</code>:
 Prevents the first extension of an ancestor of this node. For example, in Python
-a return expression always ends the block that it is in. Note that this only stops the
-extension of the next <code>@extend</code> capture. If multiple ancestors are captured,
-only the extension of the innermost one is prevented. All other ancestors are unaffected
-(regardless of whether the innermost ancestor would actually have been extended).</p>
-</li>
+a return expression always ends the block that it is in. Note that this only
+stops the extension of the next <code>@extend</code> capture. If multiple ancestors are
+captured, only the extension of the innermost one is prevented. All other
+ancestors are unaffected (regardless of whether the innermost ancestor would
+actually have been extended).</li>
 </ul>
+<h4 id="indent--outdent"><a class="header" href="#indent--outdent"><code>@indent</code> / <code>@outdent</code></a></h4>
+<p>Consider this example:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn shout(things: Vec&lt;Thing&gt;) {
+    //                       ↑
+    //                       ├───────────────────────╮ indent level
+    //                    @indent                    ├┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+    //                                               │
+    let it_all = |out| { things.filter(|thing| { //  │      1
+    //                 ↑                       ↑     │
+    //                 ├───────────────────────┼─────┼┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+    //              @indent                 @indent  │
+    //                                               │      2
+        thing.can_do_with(out) //                    │
+    })}; //                                          ├┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  //↑↑↑                                              │      1
+} //╰┼┴──────────────────────────────────────────────┴┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+// 3x @outdent
+<span class="boring">}</span></code></pre></pre>
+<pre><code class="language-scm">((block) @indent)
+[&quot;}&quot; &quot;)&quot;] @outdent
+</code></pre>
+<p>Note how on the second line, we have two blocks begin on the same line. In this
+case, since both captures occur on the same line, they are combined and only
+result in a net increase of 1. Also note that the closing <code>}</code>s are part of the
+<code>@indent</code> captures, but the 3 <code>@outdent</code>s also combine into 1 and result in that
+line losing one indent level.</p>
+<h4 id="extend--extendprevent-once"><a class="header" href="#extend--extendprevent-once"><code>@extend</code> / <code>@extend.prevent-once</code></a></h4>
+<p>For an example of where <code>@extend</code> can be useful, consider Python, which is
+whitespace-sensitive.</p>
+<pre><code class="language-scm">]
+  (parenthesized_expression)
+  (function_definition)
+  (class_definition)
+] @indent
+
+</code></pre>
+<pre><code class="language-python">class Hero:
+    def __init__(self, strong, fast, sure, soon):#  ←─╮
+        self.is_strong = strong #                     │
+        self.is_fast = fast     # ╭─── query start    │
+        self.is_sure = sure     # │ ╭─ cursor         │
+        self.is_soon = soon     # │ │                 │
+        #     ↑            ↑      │ │                 │
+        #     │            ╰──────╯ │                 │
+        #     ╰─────────────────────╯                 │
+        #                                             ├─ traversal
+    def need_hero(self, life):         #              │  start node
+        return (                       #              │
+            self.is_strong             #              │
+            and self.is_fast           #              │
+            and self.is_sure           #              │
+            and self.is_soon           #              │
+            and self &gt; life            #              │
+        ) # ←─────────────────────────────────────────╯
+</code></pre>
+<p>Without braces to catch the scope of the function, the smallest descendant of
+the cursor on a line feed ends up being the entire inside of the class. Because
+of this, it will miss the entire function node and its indent capture, leading
+to an indent level one too small.</p>
+<p>To address this case, <code>@extend</code> tells helix to &quot;extend&quot; the captured node's span
+to the line feed and every consecutive line that has a greater indent level than
+the line of the node.</p>
+<pre><code class="language-scm">(parenthesized_expression) @indent
+
+]
+  (function_definition)
+  (class_definition)
+] @indent @extend
+
+</code></pre>
+<pre><code class="language-python">class Hero:
+    def __init__(self, strong, fast, sure, soon):#  ←─╮
+        self.is_strong = strong #                     │
+        self.is_fast = fast     # ╭─── query start    ├─ traversal
+        self.is_sure = sure     # │ ╭─ cursor         │  start node
+        self.is_soon = soon     # │ │ ←───────────────╯
+        #     ↑            ↑      │ │                 
+        #     │            ╰──────╯ │
+        #     ╰─────────────────────╯
+    def need_hero(self, life):
+        return (
+            self.is_strong
+            and self.is_fast
+            and self.is_sure
+            and self.is_soon
+            and self &gt; life
+        )
+</code></pre>
+<p>Furthermore, there are some cases where extending to everything with a greater
+indent level may not be desirable. Consider the <code>need_hero</code> function above. If
+our cursor is on the last line of the returned expression.</p>
+<pre><code class="language-python">class Hero:
+    def __init__(self, strong, fast, sure, soon):
+        self.is_strong = strong
+        self.is_fast = fast
+        self.is_sure = sure
+        self.is_soon = soon
+
+    def need_hero(self, life):
+        return (
+            self.is_strong
+            and self.is_fast
+            and self.is_sure
+            and self.is_soon
+            and self &gt; life
+        ) # ←─── cursor
+    #←────────── where cursor should go on new line
+</code></pre>
+<p>In Python, the are a few tokens that will always end a scope, such as a return
+statement. Since the scope ends, so should the indent level. But because the
+function span is extended to every line with a greater indent level, a new line
+would just continue on the same level. And an <code>@outdent</code> would not help us here
+either, since it would cause everything in the parentheses to become outdented
+as well.</p>
+<p>To help, we need to signal an end to the extension. We can do this with
+<code>@extend.prevent-once</code>.</p>
+<pre><code class="language-scm">(parenthesized_expression) @indent
+
+]
+  (function_definition)
+  (class_definition)
+] @indent @extend
+
+(return_statement) @extend.prevent-once
+</code></pre>
+<h4 id="indentalways--outdentalways"><a class="header" href="#indentalways--outdentalways"><code>@indent.always</code> / <code>@outdent.always</code></a></h4>
+<p>As mentioned before, normally if there is more than one <code>@indent</code> or <code>@outdent</code>
+capture on the same line, they are combined.</p>
+<p>Sometimes, there are cases when you may want to ensure that every indent capture
+is additive, regardless of how many occur on the same line. Consider this
+example in YAML.</p>
+<pre><code class="language-yaml">  - foo: bar
+# ↑ ↑
+# │ ╰─────────────── start of map
+# ╰───────────────── start of list element
+    baz: quux # ←─── cursor
+    # ←───────────── where the cursor should go on a new line
+    garply: waldo
+  - quux:
+      bar: baz
+    xyzzy: thud
+    fred: plugh
+</code></pre>
+<p>In YAML, you often have lists of maps. In these cases, the syntax is such that
+the list element and the map both start on the same line. But we really do want
+to start an indentation for each of these so that subsequent keys in the map
+hang over the list and align properly. This is where <code>@indent.always</code> helps.</p>
+<pre><code class="language-scm">((block_sequence_item) @item @indent.always @extend
+  (#not-one-line? @item))
+
+((block_mapping_pair
+    key: (_) @key
+    value: (_) @val
+    (#not-same-line? @key @val)
+  ) @indent.always @extend
+)
+</code></pre>
 <h2 id="predicates"><a class="header" href="#predicates">Predicates</a></h2>
 <p>In some cases, an S-expression cannot express exactly what pattern should be matched.
 For that, tree-sitter allows for predicates to appear anywhere within a pattern,
@@ -274,7 +447,46 @@ argument (a string).</p>
 <p><code>#same-line?</code>/<code>#not-same-line?</code>:
 The captures given by the 2 arguments must/must not start on the same line.</p>
 </li>
+<li>
+<p><code>#one-line?</code>/<code>#not-one-line?</code>:
+The captures given by the fist argument must/must span a total of one line.</p>
+</li>
 </ul>
+<h3 id="scopes"><a class="header" href="#scopes">Scopes</a></h3>
+<p>Added indents don't always apply to the whole node. For example, in most
+cases when a node should be indented, we actually only want everything
+except for its first line to be indented. For this, there are several
+scopes (more scopes may be added in the future if required):</p>
+<ul>
+<li><code>tail</code>:
+This scope applies to everything except for the first line of the
+captured node.</li>
+<li><code>all</code>:
+This scope applies to the whole captured node. This is only different from
+<code>tail</code> when the captured node is the first node on its line.</li>
+</ul>
+<p>For example, imagine we have the following function</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn aha() { // ←─────────────────────────────────────╮
+  let take = &quot;on me&quot;;  // ←──────────────╮  scope:  │
+  let take = &quot;me on&quot;;             //     ├─ &quot;tail&quot;  ├─ (block) @indent
+  let ill = be_gone_days(1 || 2); //     │          │
+} // ←───────────────────────────────────┴──────────┴─ &quot;}&quot; @outdent
+                                         //                scope: &quot;all&quot;
+<span class="boring">}</span></code></pre></pre>
+<p>We can write the following query with the <code>#set!</code> declaration:</p>
+<pre><code class="language-scm">((block) @indent
+ (#set! &quot;scope&quot; &quot;tail&quot;))
+(&quot;}&quot; @outdent
+ (#set! &quot;scope&quot; &quot;all&quot;))
+</code></pre>
+<p>As we can see, the &quot;tail&quot; scope covers the node, except for the first line.
+Everything up to and including the closing brace gets an indent level of 1.
+Then, on the closing brace, we encounter an outdent with a scope of &quot;all&quot;, which
+means the first line is included, and the indent level is cancelled out on this
+line. (Note these scopes are the defaults for <code>@indent</code> and <code>@outdent</code>—they are
+written explicitly for demonstration.)</p>
 
                     </main>
 
