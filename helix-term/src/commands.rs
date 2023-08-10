@@ -10,7 +10,7 @@ use tui::widgets::Row;
 pub use typed::*;
 
 use helix_core::{
-    char_idx_at_visual_offset, comment,
+    char_idx_at_visual_offset, comment, coords_at_pos,
     doc_formatter::TextFormat,
     encoding, find_first_non_whitespace_char, find_workspace, graphemes,
     history::UndoKind,
@@ -3505,15 +3505,22 @@ pub mod insert {
 
     pub fn insert_tab(cx: &mut Context) {
         let (view, doc) = current!(cx.editor);
-        // TODO: round out to nearest indentation level (for example a line with 3 spaces should
-        // indent by one to reach 4 spaces).
+        let doc_indent = Tendril::from(doc.indent_style.as_str());
+        let selection = doc.selection(view.id).clone();
+        let text = doc.text().slice(..);
+        let is_spaces = matches!(doc_indent.chars().next(), Some(' '));
 
-        let indent = Tendril::from(doc.indent_style.as_str());
-        let transaction = Transaction::insert(
-            doc.text(),
-            &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
-            indent,
-        );
+        let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+            let indent = if is_spaces {
+                let column = coords_at_pos(text, range.cursor(text)).col;
+                let diff = doc_indent.len() - (column % doc_indent.len());
+                Tendril::from(&doc_indent[0..diff])
+            } else {
+                doc_indent.clone()
+            };
+
+            (range.head, range.head, Some(indent))
+        });
         doc.apply(&transaction, view.id);
     }
 
