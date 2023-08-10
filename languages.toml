@@ -656,7 +656,7 @@ scope = "source.python"
 injection-regex = "python"
 file-types = ["py","pyi","py3","pyw","ptl",".pythonstartup",".pythonrc","SConstruct"]
 shebangs = ["python"]
-roots = []
+roots = ["pyproject.toml", "setup.py", "poetry.lock","pyrightconfig.json"]
 comment-token = "#"
 language-servers = [ "pylsp" ]
 # TODO: pyls needs utf-8 offsets
