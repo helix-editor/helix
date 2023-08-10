@@ -127,7 +127,7 @@ FLAGS:
     helix_loader::initialize_config_file(args.config_file.clone());
 
     // Initialize the engine before we boot up!
-    helix_term::commands::initialize_engine();
+    helix_term::commands::ScriptingEngine::initialize();
 
     let config = match Config::load_default() {
         Ok(config) => config,

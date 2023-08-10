@@ -636,6 +636,8 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = editor
         .documents()
         .filter(|doc| doc.is_modified())
+        // Named scratch documents should not be included here
+        .filter(|doc| doc.name.is_none())
         .map(|doc| (doc.id(), doc.display_name()))
         .unzip();
     if let Some(first) = modified_ids.first() {

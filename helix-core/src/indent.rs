@@ -960,7 +960,6 @@ pub fn custom_indent_for_newline(
                 let line = text_up_to_cursor.line(cursor);
 
                 // We want to ignore comments
-
                 let l = std::borrow::Cow::from(line);
                 if l.trim_start().starts_with(";") {
                     if cursor == 0 {
@@ -971,8 +970,6 @@ pub fn custom_indent_for_newline(
 
                     continue;
                 }
-
-                // log::info!("Line: {}", line);
 
                 for (index, char) in line.chars_at(line.len_chars()).reversed().enumerate() {
                     match char {

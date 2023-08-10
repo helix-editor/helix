@@ -266,7 +266,7 @@ impl Application {
                 jobs: &mut app.jobs,
             };
 
-            crate::commands::run_initialization_script(&mut cx);
+            crate::commands::ScriptingEngine::run_initialization_script(&mut cx);
         }
 
         Ok(app)

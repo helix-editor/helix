@@ -77,6 +77,125 @@ pub trait PluginSystem {
     fn get_doc_for_identifier(ident: &str) -> Option<String>;
 }
 
+// APIs / Modules that need to be accepted by the plugin system
+// Without these, the core functionality cannot operate
+pub struct DocumentApi;
+pub struct EditorApi;
+pub struct ComponentApi;
+pub struct TypedCommandsApi;
+pub struct StaticCommandsApi;
+
+pub struct KeyMapApi {
+    get_keymap: fn() -> EmbeddedKeyMap,
+    default_keymap: fn() -> EmbeddedKeyMap,
+    empty_keymap: fn() -> EmbeddedKeyMap,
+    string_to_embedded_keymap: fn(String) -> EmbeddedKeyMap,
+    merge_keybindings: fn(&mut EmbeddedKeyMap, EmbeddedKeyMap),
+}
+
+impl KeyMapApi {
+    fn new() -> Self {
+        KeyMapApi {
+            get_keymap,
+            default_keymap,
+            empty_keymap,
+            string_to_embedded_keymap,
+            merge_keybindings,
+        }
+    }
+}
+
+thread_local! {
+    pub static BUFFER_OR_EXTENSION_KEYBINDING_MAP: SteelVal =
+        SteelVal::boxed(SteelVal::empty_hashmap());
+
+    pub static REVERSE_BUFFER_MAP: SteelVal =
+        SteelVal::boxed(SteelVal::empty_hashmap());
+}
+
+fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
+    let mut module = BuiltInModule::new("helix/core/keymaps");
+
+    module.register_fn("helix-current-keymap", api.get_keymap);
+    module.register_fn("helix-empty-keymap", api.empty_keymap);
+    module.register_fn("helix-default-keymap", api.default_keymap);
+    module.register_fn("helix-merge-keybindings", api.merge_keybindings);
+    module.register_fn("helix-string->keymap", api.string_to_embedded_keymap);
+
+    // This should be associated with a corresponding scheme module to wrap this up
+    module.register_value(
+        "*buffer-or-extension-keybindings*",
+        BUFFER_OR_EXTENSION_KEYBINDING_MAP.with(|x| x.clone()),
+    );
+    module.register_value(
+        "*reverse-buffer-map*",
+        REVERSE_BUFFER_MAP.with(|x| x.clone()),
+    );
+
+    engine.register_module(module);
+}
+
+fn load_static_commands(engine: &mut Engine) {
+    let mut module = BuiltInModule::new("helix/core/static");
+
+    for command in TYPABLE_COMMAND_LIST {
+        let func = |cx: &mut Context| {
+            let mut cx = compositor::Context {
+                editor: cx.editor,
+                scroll: None,
+                jobs: cx.jobs,
+            };
+
+            (command.fun)(&mut cx, &[], PromptEvent::Validate)
+        };
+
+        module.register_fn(command.name, func);
+    }
+
+    // Register everything in the static command list as well
+    // These just accept the context, no arguments
+    for command in MappableCommand::STATIC_COMMAND_LIST {
+        if let MappableCommand::Static { name, fun, .. } = command {
+            module.register_fn(name, fun);
+        }
+    }
+
+    engine.register_module(module);
+}
+
+fn load_typed_commands(engine: &mut Engine) {
+    let mut module = BuiltInModule::new("helix/core/typable".to_string());
+
+    // Register everything in the typable command list. Now these are all available
+    for command in TYPABLE_COMMAND_LIST {
+        let func = |cx: &mut Context, args: &[Cow<str>], event: PromptEvent| {
+            let mut cx = compositor::Context {
+                editor: cx.editor,
+                scroll: None,
+                jobs: cx.jobs,
+            };
+
+            (command.fun)(&mut cx, args, event)
+        };
+
+        module.register_fn(command.name, func);
+    }
+
+    engine.register_module(module);
+}
+
+fn load_editor_api(engine: &mut Engine, api: EditorApi) {
+    todo!()
+}
+
+fn load_document_api(engine: &mut Engine, api: DocumentApi) {
+    todo!()
+}
+
+fn load_component_api(engine: &mut Engine, api: ComponentApi) {
+    todo!()
+}
+
 impl ScriptingEngine {
     pub fn initialize() {
         initialize_engine();
@@ -111,11 +230,8 @@ impl ScriptingEngine {
         };
 
         if let Some(extension) = extension {
-            let special_buffer_map = "*buffer-or-extension-keybindings*";
-
-            let value = ENGINE.with(|x| x.borrow().extract_value(special_buffer_map).clone());
-
-            if let Ok(SteelVal::HashMapV(map)) = value {
+            if let SteelVal::HashMapV(map) = BUFFER_OR_EXTENSION_KEYBINDING_MAP.with(|x| x.clone())
+            {
                 if let Some(value) = map.get(&SteelVal::StringV(extension.into())) {
                     if let SteelVal::Custom(inner) = value {
                         if let Some(_) = steel::rvals::as_underlying_type::<EmbeddedKeyMap>(
@@ -128,16 +244,12 @@ impl ScriptingEngine {
             }
         }
 
-        // reverse-buffer-map -> label -> keybinding map
-        let value = ENGINE.with(|x| x.borrow().extract_value("*reverse-buffer-map*").clone());
-
-        if let Ok(SteelVal::HashMapV(map)) = value {
+        // TODO: Remove these clones
+        if let SteelVal::HashMapV(map) = REVERSE_BUFFER_MAP.with(|x| x.clone()) {
             if let Some(label) = map.get(&SteelVal::IntV(document_id_to_usize(doc_id) as isize)) {
-                let special_buffer_map = "*buffer-or-extension-keybindings*";
-
-                let value = ENGINE.with(|x| x.borrow().extract_value(special_buffer_map).clone());
-
-                if let Ok(SteelVal::HashMapV(map)) = value {
+                if let SteelVal::HashMapV(map) =
+                    BUFFER_OR_EXTENSION_KEYBINDING_MAP.with(|x| x.clone())
+                {
                     if let Some(value) = map.get(label) {
                         if let SteelVal::Custom(inner) = value {
                             if let Some(_) = steel::rvals::as_underlying_type::<EmbeddedKeyMap>(
@@ -154,7 +266,11 @@ impl ScriptingEngine {
         None
     }
 
-    pub fn call_function_if_global_exists(cx: &mut Context, name: &str, args: Vec<Cow<str>>) {
+    pub fn call_function_if_global_exists(
+        cx: &mut Context,
+        name: &str,
+        args: Vec<Cow<str>>,
+    ) -> bool {
         if ENGINE.with(|x| x.borrow().global_exists(name)) {
             let args = steel::List::from(
                 args.iter()
@@ -181,6 +297,9 @@ impl ScriptingEngine {
             }) {
                 cx.editor.set_error(format!("{}", e));
             }
+            true
+        } else {
+            false
         }
     }
 
@@ -230,20 +349,8 @@ impl ScriptingEngine {
 
                         guard.register_value("_helix_args", steel::rvals::SteelVal::Void);
 
-                        // if let Some(callback) = cx.callback.take() {
-                        //     panic!("Found a callback!");
-                        //     maybe_callback = Some(callback);
-                        // }
-
                         res
                     };
-
-                    // TODO: Recursively (or otherwise) keep retrying until we're back
-                    // into the engine context, executing a function. We might need to set up
-                    // some sort of fuel or something
-                    // if let Some(callback) = maybe_callback {
-                    // (callback)(_, cx);
-                    // }
 
                     res
                 }) {
@@ -431,7 +538,7 @@ pub fn merge_keybindings(left: &mut EmbeddedKeyMap, right: EmbeddedKeyMap) {
 
 /// Run the initialization script located at `$helix_config/init.scm`
 /// This runs the script in the global environment, and does _not_ load it as a module directly
-pub fn run_initialization_script(cx: &mut Context) {
+fn run_initialization_script(cx: &mut Context) {
     log::info!("Loading init.scm...");
 
     let helix_module_path = helix_loader::steel_init_file();
@@ -440,7 +547,12 @@ pub fn run_initialization_script(cx: &mut Context) {
     if let Ok(contents) = std::fs::read_to_string(&helix_module_path) {
         let res = ENGINE.with(|x| {
             x.borrow_mut()
-                .run_with_reference::<Context, Context>(cx, "*helix.cx*", &contents)
+                .run_with_reference_from_path::<Context, Context>(
+                    cx,
+                    "*helix.cx*",
+                    &contents,
+                    helix_module_path,
+                )
         });
 
         match res {
@@ -452,17 +564,10 @@ pub fn run_initialization_script(cx: &mut Context) {
     } else {
         log::info!("No init.scm found, skipping loading.")
     }
-
-    // Start the worker thread - i.e. message passing to the workers
-    // configure_background_thread()
 }
-
-// pub static MINOR_MODES: Lazy<Arc<RwLock<HashMap<String,
 
 pub static KEYBINDING_QUEUE: Lazy<SharedKeyBindingsEventQueue> =
     Lazy::new(|| SharedKeyBindingsEventQueue::new());
-
-// pub static CALLBACK_QUEUE: Lazy<CallBackQueue> = Lazy::new(|| )
 
 pub static CALLBACK_QUEUE: Lazy<CallbackQueue> = Lazy::new(|| CallbackQueue::new());
 
@@ -715,6 +820,9 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     // );
 
     engine.register_fn("enqueue-callback!", CallbackQueue::enqueue);
+
+    load_keymap_api(&mut engine, KeyMapApi::new());
+
     engine.register_fn("helix-current-keymap", get_keymap);
     engine.register_fn("helix-empty-keymap", empty_keymap);
     engine.register_fn("helix-default-keymap", default_keymap);
@@ -776,21 +884,21 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     // engine.register_fn("WrappedComponent", WrappedDynComponent::new)
 
-    engine.register_fn(
-        "Popup::new",
-        |contents: &mut WrappedDynComponent,
-         position: helix_core::Position|
-         -> WrappedDynComponent {
-            let inner = contents.inner.take().unwrap(); // Panic, for now
+    // engine.register_fn(
+    //     "Popup::new",
+    //     |contents: &mut WrappedDynComponent,
+    //      position: helix_core::Position|
+    //      -> WrappedDynComponent {
+    //         let inner = contents.inner.take().unwrap(); // Panic, for now
 
-            WrappedDynComponent {
-                inner: Some(Box::new(
-                    Popup::<BoxDynComponent>::new("popup", BoxDynComponent::new(inner))
-                        .position(Some(position)),
-                )),
-            }
-        },
-    );
+    //         WrappedDynComponent {
+    //             inner: Some(Box::new(
+    //                 Popup::<BoxDynComponent>::new("popup", BoxDynComponent::new(inner))
+    //                     .position(Some(position)),
+    //             )),
+    //         }
+    //     },
+    // );
 
     engine.register_fn(
         "Prompt::new",
@@ -915,6 +1023,8 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
         helix_view::Editor,
     >::register_fn(&mut engine, "cx-editor!", get_editor);
 
+    engine.register_fn("set-scratch-buffer-name!", set_scratch_buffer_name);
+
     engine.register_fn("editor-focus", current_focus);
     engine.register_fn("editor->doc-id", get_document_id);
     engine.register_fn("doc-id->usize", document_id_to_usize);
@@ -1015,58 +1125,6 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
         module.register_fn(command.name, func);
     }
 
-    // // Load the plugins with respect to the extensions directory.
-    // EXTERNAL_DYLIBS
-    //     .write()
-    //     .unwrap()
-    //     .load_modules_from_directory(Some(
-    //         helix_loader::config_dir()
-    //             .join("extensions")
-    //             .to_str()tor    //             .unwrap()
-    //             .to_string(),
-    //     ));
-
-    // let commands = EXTERNAL_DYLIBS.read().unwrap().create_commands();
-
-    // TODO: @Matt - these commands need to get loaded into their _own_ module, and registered as such.
-    // for dylib in &EXTERNAL_DYLIBS.read().unwrap().modules {
-    //     let mut module = BuiltInModule::new(dylib.name.to_string());
-
-    //     println!("{}", dylib.get_name());
-
-    //     // println!("{}", dylib.name);
-
-    //     for command in dylib.commands.iter() {
-    //         // TODO: The name needs to be registered for static - but we shouldn't _need_ it to be
-    //         // registered for static. We can probably get away with accepting an owned string and pay the price,
-    //         // if need be.
-
-    //         let inner = command.fun.clone();
-
-    //         let func = move |cx: &mut Context,
-    //                          args: Box<[Box<str>]>,
-    //                          event: PromptEvent|
-    //               -> anyhow::Result<()> {
-    //             // Ensure the lifetime of these variables
-    //             let _config = cx.editor.config.clone();
-    //             let _theme_loader = cx.editor.theme_loader.clone();
-    //             let _syn_loader = cx.editor.syn_loader.clone();
-
-    //             println!("{}", Arc::strong_count(&_config));
-    //             println!("{}", Arc::strong_count(&_theme_loader));
-    //             println!("{}", Arc::strong_count(&_syn_loader));
-    //             // println!("{:p}", _theme_loader);
-    //             // println!("{:p}", _syn_loader);
-
-    //             (inner)(cx, &_theme_loader, &_syn_loader, args, &event)
-    //         };
-
-    //         module.register_owned_fn(command.name.to_string(), func);
-    //     }
-
-    //     engine.register_module(module);
-    // }
-
     engine.register_module(module);
 
     let mut module = BuiltInModule::new("helix/core/static".to_string());
@@ -1113,6 +1171,12 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     engine.register_fn("push-component!", push_component);
     engine.register_fn("enqueue-thread-local-callback", enqueue_command);
+    engine.register_fn(
+        "enqueue-thread-local-callback-with-delay",
+        enqueue_command_with_delay,
+    );
+
+    engine.register_fn("helix-await-callback", await_value);
 
     // Create directory since we can't do that in the current state
     engine.register_fn("hx.create-directory", create_directory);
@@ -1343,6 +1407,18 @@ fn current_path(cx: &mut Context) -> Option<String> {
     current_doc.and_then(|x| x.path().and_then(|x| x.to_str().map(|x| x.to_string())))
 }
 
+fn set_scratch_buffer_name(cx: &mut Context, name: String) {
+    let current_focus = cx.editor.tree.focus;
+    let view = cx.editor.tree.get(current_focus);
+    let doc = &view.doc;
+    // Lifetime of this needs to be tied to the existing document
+    let current_doc = cx.editor.documents.get_mut(doc);
+
+    if let Some(current_doc) = current_doc {
+        current_doc.name = Some(name);
+    }
+}
+
 fn cx_current_focus(cx: &mut Context) -> helix_view::ViewId {
     cx.editor.tree.focus
 }
@@ -1477,6 +1553,87 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
     cx.jobs.local_callback(callback);
 }
 
+// Apply arbitrary delay for update rate...
+fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: SteelVal) {
+    let callback = async move {
+        let delay = delay.int_or_else(|| panic!("FIX ME")).unwrap();
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(delay as u64)).await;
+
+        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+            move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
+                let mut ctx = Context {
+                    register: None,
+                    count: None,
+                    editor,
+                    callback: None,
+                    on_next_key_callback: None,
+                    jobs,
+                };
+
+                let cloned_func = callback_fn.clone();
+
+                if let Err(e) = ENGINE.with(|x| {
+                    x.borrow_mut()
+                        .with_mut_reference::<Context, Context>(&mut ctx)
+                        .consume(move |engine, args| {
+                            engine.call_function_with_args(cloned_func.clone(), args)
+                        })
+                }) {
+                    present_error(&mut ctx, e);
+                }
+            },
+        );
+        Ok(call)
+    };
+    cx.jobs.local_callback(callback);
+}
+
+// value _must_ be a future here. Otherwise awaiting will cause problems!
+fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
+    if !value.is_future() {
+        return;
+    }
+    let callback = async move {
+        let future_value = value.as_future().unwrap().await;
+
+        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+            move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
+                let mut ctx = Context {
+                    register: None,
+                    count: None,
+                    editor,
+                    callback: None,
+                    on_next_key_callback: None,
+                    jobs,
+                };
+
+                let cloned_func = callback_fn.clone();
+
+                match future_value {
+                    Ok(inner) => {
+                        let callback = move |engine: &mut Engine, mut args: Vec<SteelVal>| {
+                            args.push(inner);
+                            engine.call_function_with_args(cloned_func.clone(), args)
+                        };
+                        if let Err(e) = ENGINE.with(|x| {
+                            x.borrow_mut()
+                                .with_mut_reference::<Context, Context>(&mut ctx)
+                                .consume_once(callback)
+                        }) {
+                            present_error(&mut ctx, e);
+                        }
+                    }
+                    Err(e) => {
+                        present_error(&mut ctx, e);
+                    }
+                }
+            },
+        );
+        Ok(call)
+    };
+    cx.jobs.local_callback(callback);
+}
 // Check that we successfully created a directory?
 fn create_directory(path: String) {
     let path = helix_core::path::get_canonicalized_path(&PathBuf::from(path)).unwrap();

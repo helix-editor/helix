@@ -8,8 +8,7 @@ pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
 
-pub use engine::{initialize_engine, run_initialization_script};
-use steel::rvals::IntoSteelVal;
+pub use engine::ScriptingEngine;
 use tokio::sync::oneshot;
 use tui::widgets::Row;
 pub use typed::*;
@@ -55,7 +54,6 @@ use movement::Movement;
 
 use crate::{
     args,
-    commands::engine::{CallbackQueue, ScriptingEngine},
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
@@ -214,7 +212,7 @@ impl MappableCommand {
                         cx.editor.set_error(format!("{}", e));
                     }
                 } else {
-                    ScriptingEngine::call_function_if_global_exists(cx, name, args)
+                    ScriptingEngine::call_function_if_global_exists(cx, name, args);
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
@@ -2558,6 +2556,7 @@ fn buffer_picker(cx: &mut Context) {
     struct BufferMeta {
         id: DocumentId,
         path: Option<PathBuf>,
+        name: Option<String>,
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
@@ -2571,7 +2570,11 @@ fn buffer_picker(cx: &mut Context) {
                 .path
                 .as_deref()
                 .map(helix_core::path::get_relative_path);
-            let path = match path.as_deref().and_then(Path::to_str) {
+            let path = match path
+                .as_deref()
+                .and_then(Path::to_str)
+                .or_else(|| self.name.as_ref().map(|x| x.as_str()))
+            {
                 Some(path) => path,
                 None => SCRATCH_BUFFER_NAME,
             };
@@ -2591,6 +2594,7 @@ fn buffer_picker(cx: &mut Context) {
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
         path: doc.path().cloned(),
+        name: doc.name.clone(),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,

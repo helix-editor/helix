@@ -221,6 +221,13 @@ impl EditorView {
             statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
 
         statusline::render(&mut context, statusline_area, surface);
+
+        // Custom rendering table?
+        // for x in 0..20 {
+        //     if let Some(cell) = surface.get_mut(x, 0) {
+        //         cell.fg = Color::Green;
+        //     }
+        // }
     }
 
     pub fn render_rulers(
