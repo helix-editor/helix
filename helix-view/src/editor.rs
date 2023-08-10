@@ -21,7 +21,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use std::{
     borrow::Cow,
     cell::Cell,
-    collections::{BTreeMap, HashMap},
+    collections::{btree_map::Entry, BTreeMap, HashMap},
     io::stdin,
     num::NonZeroUsize,
     path::{Path, PathBuf},
@@ -1725,6 +1725,34 @@ impl Editor {
         )
         .await
         .map(|_| ())
+    }
+
+    /// Insert the original [`lsp::Diagnostic`].
+    ///
+    /// We may have no open document for diagnosic message and so we are going to
+    /// use them later in the diagnostics picker.
+    pub fn add_diagnostics(
+        &mut self,
+        diagnostics: Vec<lsp::Diagnostic>,
+        path: lsp::Url,
+        server_id: usize,
+    ) {
+        let mut diagnostics = diagnostics.into_iter().map(|d| (d, server_id)).collect();
+        match self.diagnostics.entry(path) {
+            Entry::Occupied(o) => {
+                let current_diagnostics = o.into_mut();
+                // there may entries of other language servers, which is why we can't overwrite the whole entry
+                current_diagnostics.retain(|(_, lsp_id)| *lsp_id != server_id);
+                current_diagnostics.append(&mut diagnostics);
+                // Sort diagnostics first by severity and then by line numbers.
+                // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
+                current_diagnostics.sort_unstable_by_key(|(d, _)| (d.severity, d.range.start));
+            }
+            Entry::Vacant(v) => {
+                diagnostics.sort_unstable_by_key(|(d, _)| (d.severity, d.range.start));
+                v.insert(diagnostics);
+            }
+        };
     }
 
     pub async fn wait_event(&mut self) -> EditorEvent {

@@ -120,6 +120,97 @@ pub mod util {
         }
     }
 
+    /// Converts a [`lsp::Diagnostic`] to [`helix_core::Diagnostic`].
+    pub fn lsp_diagnostic_to_diagnostic(
+        params: &[lsp::Diagnostic],
+        text: &helix_core::Rope,
+        offset_encoding: OffsetEncoding,
+        lang_conf: Option<&helix_core::syntax::LanguageConfiguration>,
+        server_id: usize,
+    ) -> Vec<helix_core::Diagnostic> {
+        params
+            .iter()
+            .filter_map(|diagnostic| {
+                use helix_core::diagnostic::{Diagnostic, Range, Severity::*};
+                use lsp::DiagnosticSeverity;
+
+                // TODO: convert inside server
+                let start = if let Some(start) =
+                    lsp_pos_to_pos(text, diagnostic.range.start, offset_encoding)
+                {
+                    start
+                } else {
+                    log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                    return None;
+                };
+
+                let end = if let Some(end) =
+                    lsp_pos_to_pos(text, diagnostic.range.end, offset_encoding)
+                {
+                    end
+                } else {
+                    log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                    return None;
+                };
+
+                let severity = diagnostic.severity.map(|severity| match severity {
+                    DiagnosticSeverity::ERROR => Error,
+                    DiagnosticSeverity::WARNING => Warning,
+                    DiagnosticSeverity::INFORMATION => Info,
+                    DiagnosticSeverity::HINT => Hint,
+                    severity => unreachable!("unrecognized diagnostic severity: {:?}", severity),
+                });
+
+                if let Some(lang_conf) = lang_conf {
+                    if let Some(severity) = severity {
+                        if severity < lang_conf.diagnostic_severity {
+                            return None;
+                        }
+                    }
+                };
+
+                let code = match diagnostic.code.clone() {
+                    Some(x) => match x {
+                        lsp::NumberOrString::Number(x) => Some(NumberOrString::Number(x)),
+                        lsp::NumberOrString::String(x) => Some(NumberOrString::String(x)),
+                    },
+                    None => None,
+                };
+
+                let tags = if let Some(tags) = &diagnostic.tags {
+                    let new_tags = tags
+                        .iter()
+                        .filter_map(|tag| match *tag {
+                            lsp::DiagnosticTag::DEPRECATED => {
+                                Some(helix_core::diagnostic::DiagnosticTag::Deprecated)
+                            }
+                            lsp::DiagnosticTag::UNNECESSARY => {
+                                Some(helix_core::diagnostic::DiagnosticTag::Unnecessary)
+                            }
+                            _ => None,
+                        })
+                        .collect();
+
+                    new_tags
+                } else {
+                    Vec::new()
+                };
+
+                Some(Diagnostic {
+                    range: Range { start, end },
+                    line: diagnostic.range.start.line as usize,
+                    message: diagnostic.message.clone(),
+                    severity,
+                    code,
+                    tags,
+                    source: diagnostic.source.clone(),
+                    data: diagnostic.data.clone(),
+                    language_server_id: server_id,
+                })
+            })
+            .collect()
+    }
+
     /// Converts [`lsp::Position`] to a position in the document.
     ///
     /// Returns `None` if position.line is out of bounds or an overflow occurs

@@ -15,13 +15,13 @@ use lsp_types as lsp;
 use parking_lot::Mutex;
 use serde::Deserialize;
 use serde_json::Value;
-use std::future::Future;
-use std::process::Stdio;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
 };
 use std::{collections::HashMap, path::PathBuf};
+use std::{future::Future, sync::atomic::AtomicBool};
+use std::{process::Stdio, sync::atomic};
 use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},
@@ -57,6 +57,9 @@ pub struct Client {
     initialize_notify: Arc<Notify>,
     /// workspace folders added while the server is still initializing
     req_timeout: u64,
+    // there is no server capability to know if server supports it
+    // set to true on first PublishDiagnostic notification
+    supports_publish_diagnostic: AtomicBool,
 }
 
 impl Client {
@@ -238,6 +241,7 @@ impl Client {
             root_uri,
             workspace_folders: Mutex::new(workspace_folders),
             initialize_notify: initialize_notify.clone(),
+            supports_publish_diagnostic: AtomicBool::new(false),
         };
 
         Ok((client, server_rx, initialize_notify))
@@ -275,6 +279,17 @@ impl Client {
         self.capabilities
             .get()
             .expect("language server not yet initialized!")
+    }
+
+    pub fn set_publish_diagnostic(&self, val: bool) {
+        self.supports_publish_diagnostic
+            .fetch_or(val, atomic::Ordering::Relaxed);
+    }
+
+    /// Whether the server supports Publish Diagnostic
+    pub fn publish_diagnostic(&self) -> bool {
+        self.supports_publish_diagnostic
+            .load(atomic::Ordering::Relaxed)
     }
 
     /// Client has to be initialized otherwise this function panics
@@ -346,7 +361,12 @@ impl Client {
                 capabilities.workspace_symbol_provider,
                 Some(OneOf::Left(true) | OneOf::Right(_))
             ),
-            LanguageServerFeature::Diagnostics => true, // there's no extra server capability
+            LanguageServerFeature::Diagnostics => {
+                self.publish_diagnostic() || matches!(capabilities.diagnostic_provider, Some(_))
+            }
+            LanguageServerFeature::PullDiagnostics => {
+                matches!(capabilities.diagnostic_provider, Some(_))
+            }
             LanguageServerFeature::RenameSymbol => matches!(
                 capabilities.rename_provider,
                 Some(OneOf::Left(true)) | Some(OneOf::Right(_))
@@ -629,6 +649,10 @@ impl Client {
                     inlay_hint: Some(lsp::InlayHintClientCapabilities {
                         dynamic_registration: Some(false),
                         resolve_support: None,
+                    }),
+                    diagnostic: Some(lsp::DiagnosticClientCapabilities {
+                        dynamic_registration: Some(false),
+                        related_document_support: Some(true),
                     }),
                     ..Default::default()
                 }),
@@ -1139,6 +1163,32 @@ impl Client {
             let response: Option<Vec<lsp::TextEdit>> = serde_json::from_value(json)?;
             Ok(response.unwrap_or_default())
         })
+    }
+
+    pub fn text_document_diagnostic(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        previous_result_id: Option<String>,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if the server does not support pull diagnostic.
+        let identifier = match capabilities.diagnostic_provider.as_ref()? {
+            lsp::DiagnosticServerCapabilities::Options(cap) => cap.identifier.clone(),
+            lsp::DiagnosticServerCapabilities::RegistrationOptions(cap) => {
+                cap.diagnostic_options.identifier.clone()
+            }
+        };
+
+        let params = lsp::DocumentDiagnosticParams {
+            text_document,
+            identifier,
+            previous_result_id,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        Some(self.call::<lsp::request::DocumentDiagnosticRequest>(params))
     }
 
     pub fn text_document_document_highlight(

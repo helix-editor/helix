@@ -5,7 +5,10 @@ use helix_lsp::{
         self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
         NumberOrString,
     },
-    util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
+    util::{
+        diagnostic_to_lsp_diagnostic, lsp_diagnostic_to_diagnostic, lsp_range_to_range,
+        range_to_lsp_range,
+    },
     Client, OffsetEncoding,
 };
 use serde_json::Value;
@@ -38,7 +41,7 @@ use crate::{
 
 use std::{
     cmp::Ordering,
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt::Write,
     future::Future,
     path::PathBuf,
@@ -1492,6 +1495,110 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
             doc.set_selection(view.id, selection);
         },
     );
+}
+
+pub fn pull_diagnostic_for_current_doc(editor: &Editor, jobs: &mut crate::job::Jobs) {
+    let doc = doc!(editor);
+    let Some(language_server) = doc
+        .language_servers_with_feature(LanguageServerFeature::PullDiagnostics)
+        .next()
+    else {
+        return;
+    };
+    // Specialization does not say whether it is possible to have both types of diagnostics.
+    // Assume we should prefer PublishDiagnostic if possible
+    if language_server.publish_diagnostic() {
+        return;
+    }
+
+    let future = language_server
+        .text_document_diagnostic(doc.identifier(), doc.previous_diagnostic_id.clone());
+
+    let server_id = language_server.id();
+    let original_path = doc
+        .path()
+        .expect("safety: the file has a path if there is a running language server")
+        .to_owned();
+
+    let callback = super::make_job_callback(
+        future.expect("safety: language server supports pull diagnostics"),
+        move |editor, _compositor, response: Option<lsp::DocumentDiagnosticReport>| {
+            let doc = match editor.document_by_path_mut(&original_path) {
+                Some(doc) => doc,
+                None => return,
+            };
+            let Some(language_server) = doc.language_servers().find(|ls| ls.id() == server_id)
+            else {
+                return;
+            };
+            // Pass them separately to satisfy borrow-checker
+            let offset_encoding = language_server.offset_encoding();
+            let server_id = language_server.id();
+
+            let parse_diagnostic = |editor: &mut Editor,
+                                    path,
+                                    report: Vec<lsp::Diagnostic>,
+                                    result_id: Option<String>| {
+                if let Some(doc) = editor.document_by_path_mut(&path) {
+                    let diagnostics = lsp_diagnostic_to_diagnostic(
+                        &report,
+                        doc.text(),
+                        offset_encoding,
+                        doc.language_config(),
+                        server_id,
+                    );
+                    doc.previous_diagnostic_id = result_id;
+                    doc.replace_diagnostics(diagnostics, server_id);
+                }
+                let url = lsp::Url::from_file_path(&path).unwrap();
+                editor.add_diagnostics(report, url, server_id);
+            };
+
+            let handle_document_diagnostic_report_kind = |editor: &mut Editor,
+                                                          report: Option<
+                HashMap<lsp::Url, lsp::DocumentDiagnosticReportKind>,
+            >| {
+                for (url, report) in report.into_iter().flatten() {
+                    match report {
+                        lsp::DocumentDiagnosticReportKind::Full(report) => {
+                            let path = url.to_file_path().unwrap();
+                            parse_diagnostic(editor, path, report.items, report.result_id);
+                        }
+                        lsp::DocumentDiagnosticReportKind::Unchanged(report) => {
+                            let Some(doc) = editor.document_by_path_mut(url.path()) else {
+                                return;
+                            };
+                            doc.previous_diagnostic_id = Some(report.result_id);
+                        }
+                    }
+                }
+            };
+
+            if let Some(response) = response {
+                match response {
+                    lsp::DocumentDiagnosticReport::Full(report) => {
+                        // Original file diagnostic
+                        parse_diagnostic(
+                            editor,
+                            original_path,
+                            report.full_document_diagnostic_report.items,
+                            report.full_document_diagnostic_report.result_id,
+                        );
+
+                        // Related files diagnostic
+                        handle_document_diagnostic_report_kind(editor, report.related_documents);
+                    }
+                    lsp::DocumentDiagnosticReport::Unchanged(report) => {
+                        doc.previous_diagnostic_id =
+                            Some(report.unchanged_document_diagnostic_report.result_id);
+                        handle_document_diagnostic_report_kind(editor, report.related_documents);
+                    }
+                }
+            }
+        },
+    );
+
+    jobs.callback(callback);
 }
 
 pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::job::Jobs) {
