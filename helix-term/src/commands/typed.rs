@@ -324,7 +324,7 @@ fn buffer_previous(
     Ok(())
 }
 
-fn write_implmat(
+fn write_impl(
     cx: &mut compositor::Context,
     path: Option<&Cow<str>>,
     force: bool,
@@ -367,7 +367,7 @@ fn write(
         return Ok(());
     }
 
-    write_implmat(cx, args.first(), false)
+    write_impl(cx, args.first(), false)
 }
 
 fn force_write(
@@ -379,7 +379,7 @@ fn force_write(
         return Ok(());
     }
 
-    write_implmat(cx, args.first(), true)
+    write_impl(cx, args.first(), true)
 }
 
 fn write_buffer_close(
@@ -391,7 +391,7 @@ fn write_buffer_close(
         return Ok(());
     }
 
-    write_implmat(cx, args.first(), false)?;
+    write_impl(cx, args.first(), false)?;
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
@@ -406,7 +406,7 @@ fn force_write_buffer_close(
         return Ok(());
     }
 
-    write_implmat(cx, args.first(), true)?;
+    write_impl(cx, args.first(), true)?;
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
@@ -621,7 +621,7 @@ fn write_quit(
         return Ok(());
     }
 
-    write_implmat(cx, args.first(), false)?;
+    write_impl(cx, args.first(), false)?;
     cx.block_try_flush_writes()?;
     quit(cx, &[], event)
 }
@@ -635,7 +635,7 @@ fn force_write_quit(
         return Ok(());
     }
 
-    write_implmat(cx, args.first(), true)?;
+    write_impl(cx, args.first(), true)?;
     cx.block_try_flush_writes()?;
     force_quit(cx, &[], event)
 }
