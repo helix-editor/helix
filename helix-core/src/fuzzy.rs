@@ -1,6 +1,7 @@
 use std::ops::DerefMut;
 
-use nucleo::{CaseMatching, MatcherConfig};
+use nucleo::pattern::{AtomKind, CaseMatching, Pattern};
+use nucleo::Config;
 use parking_lot::Mutex;
 
 pub struct LazyMutex<T> {
@@ -33,9 +34,10 @@ pub fn fuzzy_match<T: AsRef<str>>(
     path: bool,
 ) -> Vec<(T, u32)> {
     let mut matcher = MATCHER.lock();
-    matcher.config = MatcherConfig::DEFAULT;
+    matcher.config = Config::DEFAULT;
     if path {
         matcher.config.set_match_paths();
     }
-    nucleo::fuzzy_match(&mut matcher, pattern, items, CaseMatching::Smart)
+    let pattern = Pattern::new(pattern, CaseMatching::Smart, AtomKind::Fuzzy);
+    pattern.match_list(items, &mut matcher)
 }

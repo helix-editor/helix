@@ -11,7 +11,8 @@ use crate::{
     },
 };
 use futures_util::{future::BoxFuture, FutureExt};
-use nucleo::{CaseMatching, MatcherConfig, Nucleo, Utf32String};
+use nucleo::pattern::CaseMatching;
+use nucleo::{Config, Nucleo, Utf32String};
 use tui::{
     buffer::Buffer as Surface,
     layout::Constraint,
@@ -124,7 +125,7 @@ impl Preview<'_, '_> {
 fn item_to_nucleo<T: Item>(item: T, editor_data: &T::Data) -> Option<(T, Utf32String)> {
     let row = item.format(editor_data);
     let mut cells = row.cells.iter();
-    let mut text = Utf32String::default();
+    let mut text = String::with_capacity(row.cell_text().map(|cell| cell.len()).sum());
     let cell = cells.next()?;
     if let Some(cell) = cell.content.lines.first() {
         for span in &cell.0 {
@@ -140,7 +141,7 @@ fn item_to_nucleo<T: Item>(item: T, editor_data: &T::Data) -> Option<(T, Utf32St
             }
         }
     }
-    Some((item, text))
+    Some((item, text.into()))
 }
 
 pub struct Injector<T: Item> {
@@ -204,10 +205,9 @@ pub struct Picker<T: Item> {
 impl<T: Item + 'static> Picker<T> {
     pub fn stream(editor_data: T::Data) -> (Nucleo<T>, Injector<T>) {
         let matcher = Nucleo::new(
-            MatcherConfig::DEFAULT,
+            Config::DEFAULT,
             Arc::new(helix_event::request_redraw),
             None,
-            CaseMatching::Smart,
             1,
         );
         let streamer = Injector {
@@ -224,10 +224,9 @@ impl<T: Item + 'static> Picker<T> {
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         let matcher = Nucleo::new(
-            MatcherConfig::DEFAULT,
+            Config::DEFAULT,
             Arc::new(helix_event::request_redraw),
             None,
-            CaseMatching::Smart,
             1,
         );
         let injector = matcher.injector();
@@ -303,8 +302,7 @@ impl<T: Item + 'static> Picker<T> {
         self.file_fn = Some(Box::new(preview_fn));
         // assumption: if we have a preview we are matching paths... If this is ever
         // not true this could be a separate builder function
-        self.matcher
-            .update_config(MatcherConfig::DEFAULT.match_paths());
+        self.matcher.update_config(Config::DEFAULT.match_paths());
         self
     }
 
@@ -377,8 +375,12 @@ impl<T: Item + 'static> Picker<T> {
             let pattern = self.prompt.line();
             // TODO: better track how the pattern has changed
             if pattern != &self.previous_pattern {
-                self.matcher.pattern.cols[0]
-                    .parse_from(pattern, pattern.starts_with(&self.previous_pattern));
+                self.matcher.pattern.reparse(
+                    0,
+                    pattern,
+                    CaseMatching::Smart,
+                    pattern.starts_with(&self.previous_pattern),
+                );
                 self.previous_pattern = pattern.clone();
             }
         }
@@ -570,13 +572,13 @@ impl<T: Item + 'static> Picker<T> {
             .min(snapshot.matched_item_count());
         let mut indices = Vec::new();
         let mut matcher = MATCHER.lock();
-        matcher.config = MatcherConfig::DEFAULT;
+        matcher.config = Config::DEFAULT;
         if self.file_fn.is_some() {
             matcher.config.set_match_paths()
         }
 
         let options = snapshot.matched_items(offset..end).map(|item| {
-            snapshot.pattern().cols[0].indices(
+            snapshot.pattern().column_pattern(0).indices(
                 item.matcher_columns[0].slice(..),
                 &mut matcher,
                 &mut indices,

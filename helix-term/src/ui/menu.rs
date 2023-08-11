@@ -5,7 +5,8 @@ use crate::{
     ctrl, key, shift,
 };
 use helix_core::fuzzy::MATCHER;
-use nucleo::{CaseMatching, MatcherConfig, Pattern, PatternKind, Utf32Str};
+use nucleo::pattern::{AtomKind, CaseMatching, Pattern};
+use nucleo::{Config, Utf32Str};
 use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
@@ -92,13 +93,12 @@ impl<T: Item> Menu<T> {
         // reuse the matches allocation
         self.matches.clear();
         let mut matcher = MATCHER.lock();
-        matcher.config = MatcherConfig::DEFAULT;
-        let mut pattern_ = Pattern::new(&matcher.config, CaseMatching::Ignore);
-        pattern_.set_literal(pattern, PatternKind::Fuzzy, false);
+        matcher.config = Config::DEFAULT;
+        let pattern = Pattern::new(pattern, CaseMatching::Ignore, AtomKind::Fuzzy);
         let mut buf = Vec::new();
         let matches = self.options.iter().enumerate().filter_map(|(i, option)| {
             let text = option.filter_text(&self.editor_data);
-            pattern_
+            pattern
                 .score(Utf32Str::new(&text, &mut buf), &mut matcher)
                 .map(|score| (i as u32, score))
         });
