@@ -240,6 +240,12 @@ an <code>@indent</code> and an <code>@indent.always</code> are on the same line,
 ignored.</li>
 <li><code>@outdent.always</code> (default scope <code>all</code>):
 Decrease the indent level by 1. The same rules as for <code>@indent.always</code> apply.</li>
+<li><code>@align</code> (default scope <code>all</code>):
+Align everything inside this node to some anchor. The anchor is given
+by the start of the node captured by <code>@anchor</code> in the same pattern.
+Every pattern with an <code>@align</code> should contain exactly one <code>@anchor</code>.
+Indent (and outdent) for nodes below (in terms of their starting line)
+the <code>@align</code> node is added to the indentation required for alignment.</li>
 <li><code>@extend</code>:
 Extend the range of this node to the end of the line and to lines that are
 indented more than the line that this node starts on. This is useful for
