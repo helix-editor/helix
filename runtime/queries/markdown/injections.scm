@@ -1,6 +1,10 @@
 ; From nvim-treesitter/nvim-treesitter
 
 (fenced_code_block
+  (code_fence_content) @injection.shebang @injection.content
+  (#set! injection.include-unnamed-children))
+
+(fenced_code_block
   (info_string
     (language) @injection.language)
   (code_fence_content) @injection.content (#set! injection.include-unnamed-children))

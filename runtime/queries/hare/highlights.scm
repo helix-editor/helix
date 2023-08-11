@@ -36,7 +36,10 @@
   "break"
 ] @keyword.control.repeat
 
-"return" @keyword.control.return
+[
+  "return"
+  "yield"
+] @keyword.control.return
 
 [
   "abort"

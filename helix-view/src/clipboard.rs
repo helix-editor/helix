@@ -68,7 +68,7 @@ macro_rules! command_provider {
 
 #[cfg(windows)]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    Box::new(provider::WindowsProvider::default())
+    Box::<provider::WindowsProvider>::default()
 }
 
 #[cfg(target_os = "macos")]

@@ -5,9 +5,9 @@ use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
-use helix_core::syntax::Highlight;
+use helix_core::encoding::Encoding;
+use helix_core::syntax::{Highlight, LanguageServerFeature, FormatterConfiguration};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
-use helix_core::Range;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
 use ::parking_lot::Mutex;
@@ -30,8 +30,7 @@ use helix_core::{
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, Syntax, Transaction,
-    DEFAULT_LINE_ENDING,
+    ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
 use crate::editor::{Config, RedrawHandle};
@@ -113,6 +112,19 @@ pub struct SavePoint {
     /// The view this savepoint is associated with
     pub view: ViewId,
     revert: Mutex<Transaction>,
+    pub text: Rope,
+}
+
+impl SavePoint {
+    pub fn cursor(&self) -> usize {
+        // we always create transactions with selections
+        self.revert
+            .lock()
+            .selection()
+            .unwrap()
+            .primary()
+            .cursor(self.text.slice(..))
+    }
 }
 
 pub struct Document {
@@ -130,6 +142,7 @@ pub struct Document {
 
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
+    has_bom: bool,
 
     pub restore_cursor: bool,
 
@@ -139,9 +152,9 @@ pub struct Document {
     /// The document's default line ending.
     pub line_ending: LineEnding,
 
-    syntax: Option<Syntax>,
+    pub syntax: Option<Syntax>,
     /// Corresponding language scope name. Usually `source.<lang>`.
-    pub(crate) language: Option<Arc<LanguageConfiguration>>,
+    pub language: Option<Arc<LanguageConfiguration>>,
 
     /// Pending changes since last history commit.
     changes: ChangeSet,
@@ -164,11 +177,15 @@ pub struct Document {
     version: i32, // should be usize?
     pub(crate) modified_since_accessed: bool,
 
-    diagnostics: Vec<Diagnostic>,
-    language_server: Option<Arc<helix_lsp::Client>>,
+    pub(crate) diagnostics: Vec<Diagnostic>,
+    pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
+
 
     diff_handle: Option<DiffHandle>,
     version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
+
+    // when document was used for most-recent-used buffer picker
+    pub focused_at: std::time::Instant,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -274,16 +291,104 @@ impl fmt::Debug for DocumentInlayHintsId {
     }
 }
 
+enum Encoder {
+    Utf16Be,
+    Utf16Le,
+    EncodingRs(encoding::Encoder),
+}
+
+impl Encoder {
+    fn from_encoding(encoding: &'static encoding::Encoding) -> Self {
+        if encoding == encoding::UTF_16BE {
+            Self::Utf16Be
+        } else if encoding == encoding::UTF_16LE {
+            Self::Utf16Le
+        } else {
+            Self::EncodingRs(encoding.new_encoder())
+        }
+    }
+
+    fn encode_from_utf8(
+        &mut self,
+        src: &str,
+        dst: &mut [u8],
+        is_empty: bool,
+    ) -> (encoding::CoderResult, usize, usize) {
+        if src.is_empty() {
+            return (encoding::CoderResult::InputEmpty, 0, 0);
+        }
+        let mut write_to_buf = |convert: fn(u16) -> [u8; 2]| {
+            let to_write = src.char_indices().map(|(indice, char)| {
+                let mut encoded: [u16; 2] = [0, 0];
+                (
+                    indice,
+                    char.encode_utf16(&mut encoded)
+                        .iter_mut()
+                        .flat_map(|char| convert(*char))
+                        .collect::<Vec<u8>>(),
+                )
+            });
+
+            let mut total_written = 0usize;
+
+            for (indice, utf16_bytes) in to_write {
+                let character_size = utf16_bytes.len();
+
+                if dst.len() <= (total_written + character_size) {
+                    return (encoding::CoderResult::OutputFull, indice, total_written);
+                }
+
+                for character in utf16_bytes {
+                    dst[total_written] = character;
+                    total_written += 1;
+                }
+            }
+
+            (encoding::CoderResult::InputEmpty, src.len(), total_written)
+        };
+
+        match self {
+            Self::Utf16Be => write_to_buf(u16::to_be_bytes),
+            Self::Utf16Le => write_to_buf(u16::to_le_bytes),
+            Self::EncodingRs(encoder) => {
+                let (code_result, read, written, ..) = encoder.encode_from_utf8(src, dst, is_empty);
+
+                (code_result, read, written)
+            }
+        }
+    }
+}
+
+// Apply BOM if encoding permit it, return the number of bytes written at the start of buf
+fn apply_bom(encoding: &'static encoding::Encoding, buf: &mut [u8; BUF_SIZE]) -> usize {
+    if encoding == encoding::UTF_8 {
+        buf[0] = 0xef;
+        buf[1] = 0xbb;
+        buf[2] = 0xbf;
+        3
+    } else if encoding == encoding::UTF_16BE {
+        buf[0] = 0xfe;
+        buf[1] = 0xff;
+        2
+    } else if encoding == encoding::UTF_16LE {
+        buf[0] = 0xff;
+        buf[1] = 0xfe;
+        2
+    } else {
+        0
+    }
+}
+
 // The documentation and implementation of this function should be up-to-date with
 // its sibling function, `to_writer()`.
 //
 /// Decodes a stream of bytes into UTF-8, returning a `Rope` and the
-/// encoding it was decoded as. The optional `encoding` parameter can
-/// be used to override encoding auto-detection.
+/// encoding it was decoded as with BOM information. The optional `encoding`
+/// parameter can be used to override encoding auto-detection.
 pub fn from_reader<R: std::io::Read + ?Sized>(
     reader: &mut R,
-    encoding: Option<&'static encoding::Encoding>,
-) -> Result<(Rope, &'static encoding::Encoding), Error> {
+    encoding: Option<&'static Encoding>,
+) -> Result<(Rope, &'static Encoding, bool), Error> {
     // These two buffers are 8192 bytes in size each and are used as
     // intermediaries during the decoding process. Text read into `buf`
     // from `reader` is decoded into `buf_out` as UTF-8. Once either
@@ -293,26 +398,11 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
     let mut buf_out = [0u8; BUF_SIZE];
     let mut builder = RopeBuilder::new();
 
-    // By default, the encoding of the text is auto-detected via the
-    // `chardetng` crate which requires sample data from the reader.
-    // As a manual override to this auto-detection is possible, the
-    // same data is read into `buf` to ensure symmetry in the upcoming
-    // loop.
-    let (encoding, mut decoder, mut slice, mut is_empty) = {
-        let read = reader.read(&mut buf)?;
-        let is_empty = read == 0;
-        let encoding = encoding.unwrap_or_else(|| {
-            let mut encoding_detector = chardetng::EncodingDetector::new();
-            encoding_detector.feed(&buf, is_empty);
-            encoding_detector.guess(None, true)
-        });
-        let decoder = encoding.new_decoder();
+    let (encoding, has_bom, mut decoder, read) =
+        read_and_detect_encoding(reader, encoding, &mut buf)?;
 
-        // If the amount of bytes read from the reader is less than
-        // `buf.len()`, it is undesirable to read the bytes afterwards.
-        let slice = &buf[..read];
-        (encoding, decoder, slice, is_empty)
-    };
+    let mut slice = &buf[..read];
+    let mut is_empty = read == 0;
 
     // `RopeBuilder::append()` expects a `&str`, so this is the "real"
     // output buffer. When decoding, the number of bytes in the output
@@ -379,7 +469,82 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
         is_empty = read == 0;
     }
     let rope = builder.finish();
-    Ok((rope, encoding))
+    Ok((rope, encoding, has_bom))
+}
+
+pub fn read_to_string<R: std::io::Read + ?Sized>(
+    reader: &mut R,
+    encoding: Option<&'static Encoding>,
+) -> Result<(String, &'static Encoding, bool), Error> {
+    let mut buf = [0u8; BUF_SIZE];
+
+    let (encoding, has_bom, mut decoder, read) =
+        read_and_detect_encoding(reader, encoding, &mut buf)?;
+
+    let mut slice = &buf[..read];
+    let mut is_empty = read == 0;
+    let mut buf_string = String::with_capacity(buf.len());
+
+    loop {
+        let mut total_read = 0usize;
+
+        loop {
+            let (result, read, ..) =
+                decoder.decode_to_string(&slice[total_read..], &mut buf_string, is_empty);
+
+            total_read += read;
+
+            match result {
+                encoding::CoderResult::InputEmpty => {
+                    debug_assert_eq!(slice.len(), total_read);
+                    break;
+                }
+                encoding::CoderResult::OutputFull => {
+                    debug_assert!(slice.len() > total_read);
+                    buf_string.reserve(buf.len())
+                }
+            }
+        }
+
+        if is_empty {
+            debug_assert_eq!(reader.read(&mut buf)?, 0);
+            break;
+        }
+
+        let read = reader.read(&mut buf)?;
+        slice = &buf[..read];
+        is_empty = read == 0;
+    }
+    Ok((buf_string, encoding, has_bom))
+}
+
+/// Reads the first chunk from a Reader into the given buffer
+/// and detects the encoding.
+///
+/// By default, the encoding of the text is auto-detected by
+/// `encoding_rs` for_bom, and if it fails, from `chardetng`
+/// crate which requires sample data from the reader.
+/// As a manual override to this auto-detection is possible, the
+/// same data is read into `buf` to ensure symmetry in the upcoming
+/// loop.
+fn read_and_detect_encoding<R: std::io::Read + ?Sized>(
+    reader: &mut R,
+    encoding: Option<&'static Encoding>,
+    buf: &mut [u8],
+) -> Result<(&'static Encoding, bool, encoding::Decoder, usize), Error> {
+    let read = reader.read(buf)?;
+    let is_empty = read == 0;
+    let (encoding, has_bom) = encoding
+        .map(|encoding| (encoding, false))
+        .or_else(|| encoding::Encoding::for_bom(buf).map(|(encoding, _bom_size)| (encoding, true)))
+        .unwrap_or_else(|| {
+            let mut encoding_detector = chardetng::EncodingDetector::new();
+            encoding_detector.feed(buf, is_empty);
+            (encoding_detector.guess(None, true), false)
+        });
+    let decoder = encoding.new_decoder();
+
+    Ok((encoding, has_bom, decoder, read))
 }
 
 // The documentation and implementation of this function should be up-to-date with
@@ -390,7 +555,7 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
 /// replacement characters may appear in the encoded text.
 pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     writer: &'a mut W,
-    encoding: &'static encoding::Encoding,
+    encoding_with_bom_info: (&'static Encoding, bool),
     rope: &'a Rope,
 ) -> Result<(), Error> {
     // Text inside a `Rope` is stored as non-contiguous blocks of data called
@@ -399,13 +564,22 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     // determined by filtering the iterator to remove all empty chunks and then
     // appending an empty chunk to it. This is valuable for detecting when all
     // chunks in the `Rope` have been iterated over in the subsequent loop.
+    let (encoding, has_bom) = encoding_with_bom_info;
+
     let iter = rope
         .chunks()
         .filter(|c| !c.is_empty())
         .chain(std::iter::once(""));
     let mut buf = [0u8; BUF_SIZE];
-    let mut encoder = encoding.new_encoder();
-    let mut total_written = 0usize;
+
+    let mut total_written = if has_bom {
+        apply_bom(encoding, &mut buf)
+    } else {
+        0
+    };
+
+    let mut encoder = Encoder::from_encoding(encoding);
+
     for chunk in iter {
         let is_empty = chunk.is_empty();
         let mut total_read = 0usize;
@@ -446,6 +620,7 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
             break;
         }
     }
+
     Ok(())
 }
 
@@ -457,29 +632,31 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
-use helix_lsp::lsp;
+use helix_lsp::{lsp, Client, LanguageServerName};
 use url::Url;
 
 impl Document {
     pub fn from(
         text: Rope,
-        encoding: Option<&'static encoding::Encoding>,
+        encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
-        let encoding = encoding.unwrap_or(encoding::UTF_8);
-        let changes = ChangeSet::new(&text);
+        let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
+        let line_ending = config.load().default_line_ending.into();
+        let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
 
         Self {
             id: DocumentId::default(),
             path: None,
             encoding,
+            has_bom,
             text,
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
             indent_style: DEFAULT_INDENT,
-            line_ending: DEFAULT_LINE_ENDING,
+            line_ending,
             restore_cursor: false,
             syntax: None,
             language: None,
@@ -492,36 +669,41 @@ impl Document {
             last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
             modified_since_accessed: false,
-            language_server: None,
+            language_servers: HashMap::new(),
             diff_handle: None,
             config,
             version_control_head: None,
+            focused_at: std::time::Instant::now(),
         }
     }
+
     pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
-        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
+        let line_ending: LineEnding = config.load().default_line_ending.into();
+        let text = Rope::from(line_ending.as_str());
         Self::from(text, None, config)
     }
+
     // TODO: async fn?
     /// Create a new document from `path`. Encoding is auto-detected, but it can be manually
     /// overwritten with the `encoding` parameter.
     pub fn open(
         path: &Path,
-        encoding: Option<&'static encoding::Encoding>,
+        encoding: Option<&'static Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
-        let (rope, encoding) = if path.exists() {
+        let (rope, encoding, has_bom) = if path.exists() {
             let mut file =
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
             from_reader(&mut file, encoding)?
         } else {
+            let line_ending: LineEnding = config.load().default_line_ending.into();
             let encoding = encoding.unwrap_or(encoding::UTF_8);
-            (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding)
+            (Rope::from(line_ending.as_str()), encoding, false)
         };
 
-        let mut doc = Self::from(rope, Some(encoding), config);
+        let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
 
         // set the path and try detecting the language
         doc.set_path(Some(path))?;
@@ -549,95 +731,107 @@ impl Document {
     // We can't use anyhow::Result here since the output of the future has to be
     // clonable to be used as shared future. So use a custom error type.
     pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
-        if let Some(formatter) = self
-            .language_config()
+        if let Some(formatter) = self.get_formatter() {
+            return self.format_with_formatter(formatter);
+        }
+
+        if let Some(language_server) = self.get_language_server_to_format() {
+            return self.format_with_language_server(language_server);
+        }
+
+        None
+    }
+
+    pub fn get_formatter(&self) -> Option<FormatterConfiguration> {
+        self.language_config()
             .and_then(|c| c.formatter.clone())
             .filter(|formatter| which::which(&formatter.command).is_ok())
-        {
-            use std::process::Stdio;
-            let text = self.text().clone();
-            let mut process = tokio::process::Command::new(&formatter.command);
-            process
-                .args(&formatter.args)
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped());
+    }
 
-            let formatting_future = async move {
-                let mut process = process
-                    .spawn()
-                    .map_err(|e| FormatterError::SpawningFailed {
-                        command: formatter.command.clone(),
-                        error: e.kind(),
-                    })?;
-                {
-                    let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
-                    to_writer(&mut stdin, encoding::UTF_8, &text)
-                        .await
-                        .map_err(|_| FormatterError::BrokenStdin)?;
-                }
+    pub fn get_language_server_to_format(&self) -> Option<&helix_lsp::Client> {
+        self.language_servers_with_feature(LanguageServerFeature::Format).next()
+    }
 
-                let output = process
-                    .wait_with_output()
+    pub fn format_with_formatter(&self, formatter: FormatterConfiguration) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+        use std::process::Stdio;
+        let text = self.text().clone();
+        let mut process = tokio::process::Command::new(&formatter.command);
+        process
+            .args(&formatter.args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        let formatting_future = async move {
+            let mut process = process
+                .spawn()
+                .map_err(|e| FormatterError::SpawningFailed {
+                    command: formatter.command.clone(),
+                    error: e.kind(),
+                })?;
+            {
+                let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
+                to_writer(&mut stdin, (encoding::UTF_8, false), &text)
                     .await
-                    .map_err(|_| FormatterError::WaitForOutputFailed)?;
+                    .map_err(|_| FormatterError::BrokenStdin)?;
+            }
 
-                if !output.status.success() {
-                    if !output.stderr.is_empty() {
-                        let err = String::from_utf8_lossy(&output.stderr).to_string();
-                        log::error!("Formatter error: {}", err);
-                        return Err(FormatterError::NonZeroExitStatus(Some(err)));
-                    }
+            let output = process
+                .wait_with_output()
+                .await
+                .map_err(|_| FormatterError::WaitForOutputFailed)?;
 
-                    return Err(FormatterError::NonZeroExitStatus(None));
-                } else if !output.stderr.is_empty() {
-                    log::debug!(
-                        "Formatter printed to stderr: {}",
-                        String::from_utf8_lossy(&output.stderr).to_string()
-                    );
+            if !output.status.success() {
+                if !output.stderr.is_empty() {
+                    let err = String::from_utf8_lossy(&output.stderr).to_string();
+                    log::error!("Formatter error: {}", err);
+                    return Err(FormatterError::NonZeroExitStatus(Some(err)));
                 }
 
-                let str = std::str::from_utf8(&output.stdout)
-                    .map_err(|_| FormatterError::InvalidUtf8Output)?;
+                return Err(FormatterError::NonZeroExitStatus(None));
+            } else if !output.stderr.is_empty() {
+                log::debug!(
+                    "Formatter printed to stderr: {}",
+                    String::from_utf8_lossy(&output.stderr).to_string()
+                );
+            }
 
-                Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
-            };
-            return Some(formatting_future.boxed());
+            let str = std::str::from_utf8(&output.stdout)
+                .map_err(|_| FormatterError::InvalidUtf8Output)?;
+
+            Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
         };
 
-        match self.language_server() {
-            Some(language_server) => {
-                let text = self.text.clone();
-                let offset_encoding = language_server.offset_encoding();
-
-                let request = language_server.text_document_formatting(
-                    self.identifier(),
-                    lsp::FormattingOptions {
-                        tab_size: self.tab_width() as u32,
-                        insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
-                        ..Default::default()
-                    },
-                    None,
-                )?;
-
-                let fut = async move {
-                    let edits = request.await.unwrap_or_else(|e| {
-                        log::warn!("LSP formatting failed: {}", e);
-                        Default::default()
-                    });
-                    Ok(helix_lsp::util::generate_transaction_from_edits(
-                        &text,
-                        edits,
-                        offset_encoding,
-                    ))
-                };
-                    Some(fut.boxed())
-            },
-            None => {
-                Some(async move { return Err(FormatterError::LanguageServerNotInitialized) }.boxed())
-            }
-        }
+        Some(formatting_future.boxed())
     }
+
+    pub fn format_with_language_server(&self, language_server: &Client) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+        let text = self.text.clone();
+        let offset_encoding = language_server.offset_encoding();
+        let request = language_server.text_document_formatting(
+            self.identifier(),
+            lsp::FormattingOptions {
+                tab_size: self.tab_width() as u32,
+                insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
+                ..Default::default()
+            },
+            None,
+        )?;
+
+        let fut = async move {
+            let edits = request.await.unwrap_or_else(|e| {
+                log::warn!("LSP formatting failed: {}", e);
+                Default::default()
+            });
+            Ok(helix_lsp::util::generate_transaction_from_edits(
+                &text,
+                edits,
+                offset_encoding,
+            ))
+        };
+
+        Some(fut.boxed())
+    } 
 
     pub fn save<P: Into<PathBuf>>(
         &mut self,
@@ -678,20 +872,18 @@ impl Document {
                 if self.path.is_none() {
                     bail!("Can't save with no path set!");
                 }
-
                 self.path.as_ref().unwrap().clone()
             }
         };
 
         let identifier = self.path().map(|_| self.identifier());
-        let language_server = self.language_server.clone();
+        let language_servers = self.language_servers.clone();
 
         // mark changes up to now as saved
         let current_rev = self.get_current_revision();
         let doc_id = self.id();
 
-        let encoding = self.encoding;
-
+        let encoding_with_bom_info = (self.encoding, self.has_bom);
         let last_saved_time = self.last_saved_time;
 
         // We encode the file according to the `Document`'s encoding.
@@ -703,7 +895,7 @@ impl Document {
                     if force {
                         std::fs::DirBuilder::new().recursive(true).create(parent)?;
                     } else {
-                        bail!("can't save file, parent directory does not exist");
+                        bail!("can't save file, parent directory does not exist (use :w! to create it)");
                     }
                 }
             }
@@ -720,7 +912,7 @@ impl Document {
             }
 
             let mut file = File::create(&path).await?;
-            to_writer(&mut file, encoding, &text).await?;
+            to_writer(&mut file, encoding_with_bom_info, &text).await?;
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
@@ -729,14 +921,13 @@ impl Document {
                 text: text.clone(),
             };
 
-            if let Some(language_server) = language_server {
+            for (_, language_server) in language_servers {
                 if !language_server.is_initialized() {
                     return Ok(event);
                 }
-
-                if let Some(identifier) = identifier {
+                if let Some(identifier) = &identifier {
                     if let Some(notification) =
-                        language_server.text_document_did_save(identifier, &text)
+                        language_server.text_document_did_save(identifier.clone(), &text)
                     {
                         notification.await?;
                     }
@@ -751,24 +942,34 @@ impl Document {
 
     /// Detect the programming language based on the file type.
     pub fn detect_language(&mut self, config_loader: Arc<syntax::Loader>) {
-        if let Some(path) = &self.path {
-            let language_config = config_loader
-                .language_config_for_file_name(path)
-                .or_else(|| config_loader.language_config_for_shebang(self.text()));
-            self.set_language(language_config, Some(config_loader));
-        }
+        self.set_language(
+            self.detect_language_config(&config_loader),
+            Some(config_loader),
+        );
+    }
+
+    /// Detect the programming language based on the file type.
+    pub fn detect_language_config(
+        &self,
+        config_loader: &syntax::Loader,
+    ) -> Option<Arc<helix_core::syntax::LanguageConfiguration>> {
+        config_loader
+            .language_config_for_file_name(self.path.as_ref()?)
+            .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
     /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
-    /// is likewise auto-detected, and will fallback to the default OS line ending.
+    /// is likewise auto-detected, and will remain unchanged if no line endings were detected.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
             self.language_config()
                 .and_then(|config| config.indent.as_ref())
                 .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
         });
-        self.line_ending = auto_detect_line_ending(&self.text).unwrap_or(DEFAULT_LINE_ENDING);
+        if let Some(line_ending) = auto_detect_line_ending(&self.text) {
+            self.line_ending = line_ending;
+        }
     }
 
     /// Reload the document from its path.
@@ -778,7 +979,7 @@ impl Document {
         provider_registry: &DiffProviderRegistry,
         redraw_handle: RedrawHandle,
     ) -> Result<(), Error> {
-        let encoding = &self.encoding;
+        let encoding = self.encoding;
         let path = self
             .path()
             .filter(|path| path.exists())
@@ -812,13 +1013,16 @@ impl Document {
 
     /// Sets the [`Document`]'s encoding with the encoding correspondent to `label`.
     pub fn set_encoding(&mut self, label: &str) -> Result<(), Error> {
-        self.encoding = encoding::Encoding::for_label(label.as_bytes())
-            .ok_or_else(|| anyhow!("unknown encoding"))?;
+        let encoding =
+            Encoding::for_label(label.as_bytes()).ok_or_else(|| anyhow!("unknown encoding"))?;
+
+        self.encoding = encoding;
+
         Ok(())
     }
 
     /// Returns the [`Document`]'s current encoding.
-    pub fn encoding(&self) -> &'static encoding::Encoding {
+    pub fn encoding(&self) -> &'static Encoding {
         self.encoding
     }
 
@@ -843,8 +1047,7 @@ impl Document {
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
             if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
-                let syntax = Syntax::new(&self.text, highlight_config, loader);
-                self.syntax = Some(syntax);
+                self.syntax = Syntax::new(self.text.slice(..), highlight_config, loader);
             }
 
             self.language = Some(language_config);
@@ -874,11 +1077,6 @@ impl Document {
             .ok_or_else(|| anyhow!("invalid language id: {}", language_id))?;
         self.set_language(Some(language_config), Some(config_loader));
         Ok(())
-    }
-
-    /// Set the LSP.
-    pub fn set_language_server(&mut self, language_server: Option<Arc<helix_lsp::Client>>) {
-        self.language_server = language_server;
     }
 
     /// Select text within the [`Document`].
@@ -914,6 +1112,11 @@ impl Document {
         }
     }
 
+    /// Mark document as recent used for MRU sorting
+    pub fn mark_as_focused(&mut self) {
+        self.focused_at = std::time::Instant::now();
+    }
+
     /// Remove a view's selection and inlay hints from this document.
     pub fn remove_view(&mut self, view_id: ViewId) {
         self.selections.remove(&view_id);
@@ -921,7 +1124,12 @@ impl Document {
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
-    fn apply_impl(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+    fn apply_impl(
+        &mut self,
+        transaction: &Transaction,
+        view_id: ViewId,
+        emit_lsp_notification: bool,
+    ) -> bool {
         use helix_core::Assoc;
 
         let old_doc = self.text().clone();
@@ -974,28 +1182,44 @@ impl Document {
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
                 // TODO: no unwrap
-                syntax
-                    .update(&old_doc, &self.text, transaction.changes())
-                    .unwrap();
+                let res = syntax.update(
+                    old_doc.slice(..),
+                    self.text.slice(..),
+                    transaction.changes(),
+                );
+                if res.is_err() {
+                    log::error!("TS parser failed, disabeling TS for the current buffer: {res:?}");
+                    self.syntax = None;
+                }
             }
 
             let changes = transaction.changes();
 
+            changes.update_positions(
+                self.diagnostics
+                    .iter_mut()
+                    .map(|diagnostic| (&mut diagnostic.range.start, Assoc::After)),
+            );
+            changes.update_positions(
+                self.diagnostics
+                    .iter_mut()
+                    .map(|diagnostic| (&mut diagnostic.range.end, Assoc::After)),
+            );
             // map state.diagnostics over changes::map_pos too
             for diagnostic in &mut self.diagnostics {
-                diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
-                diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
                 diagnostic.line = self.text.char_to_line(diagnostic.range.start);
             }
+
             self.diagnostics
                 .sort_unstable_by_key(|diagnostic| diagnostic.range);
 
             // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
             let apply_inlay_hint_changes = |annotations: &mut Rc<[InlineAnnotation]>| {
                 if let Some(data) = Rc::get_mut(annotations) {
-                    for inline in data.iter_mut() {
-                        inline.char_idx = changes.map_pos(inline.char_idx, Assoc::After);
-                    }
+                    changes.update_positions(
+                        data.iter_mut()
+                            .map(|annotation| (&mut annotation.char_idx, Assoc::After)),
+                    );
                 }
             };
 
@@ -1017,25 +1241,31 @@ impl Document {
                 apply_inlay_hint_changes(padding_after_inlay_hints);
             }
 
-            // emit lsp notification
-            if let Some(language_server) = self.language_server() {
-                let notify = language_server.text_document_did_change(
-                    self.versioned_identifier(),
-                    &old_doc,
-                    self.text(),
-                    changes,
-                );
+            if emit_lsp_notification {
+                // emit lsp notification
+                for language_server in self.language_servers() {
+                    let notify = language_server.text_document_did_change(
+                        self.versioned_identifier(),
+                        &old_doc,
+                        self.text(),
+                        changes,
+                    );
 
-                if let Some(notify) = notify {
-                    tokio::spawn(notify);
+                    if let Some(notify) = notify {
+                        tokio::spawn(notify);
+                    }
                 }
             }
         }
         success
     }
 
-    /// Apply a [`Transaction`] to the [`Document`] to change its text.
-    pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+    fn apply_inner(
+        &mut self,
+        transaction: &Transaction,
+        view_id: ViewId,
+        emit_lsp_notification: bool,
+    ) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
         if self.changes.is_empty() && !transaction.changes().is_empty() {
@@ -1045,7 +1275,7 @@ impl Document {
             });
         }
 
-        let success = self.apply_impl(transaction, view_id);
+        let success = self.apply_impl(transaction, view_id, emit_lsp_notification);
 
         if !transaction.changes().is_empty() {
             // Compose this transaction with the previous one
@@ -1055,12 +1285,23 @@ impl Document {
         }
         success
     }
+    /// Apply a [`Transaction`] to the [`Document`] to change its text.
+    pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+        self.apply_inner(transaction, view_id, true)
+    }
+
+    /// Apply a [`Transaction`] to the [`Document`] to change its text
+    /// without notifying the language servers. This is useful for temporary transactions
+    /// that must not influence the server.
+    pub fn apply_temporary(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+        self.apply_inner(transaction, view_id, false)
+    }
 
     fn undo_redo_impl(&mut self, view: &mut View, undo: bool) -> bool {
         let mut history = self.history.take();
         let txn = if undo { history.undo() } else { history.redo() };
         let success = if let Some(txn) = txn {
-            self.apply_impl(txn, view.id)
+            self.apply_impl(txn, view.id, true)
         } else {
             false
         };
@@ -1068,7 +1309,7 @@ impl Document {
 
         if success {
             // reset changeset to fix len
-            self.changes = ChangeSet::new(self.text());
+            self.changes = ChangeSet::new(self.text().slice(..));
             // Sync with changes with the jumplist selections.
             view.sync_changes(self);
         }
@@ -1092,15 +1333,32 @@ impl Document {
     /// the state it had when this function was called.
     pub fn savepoint(&mut self, view: &View) -> Arc<SavePoint> {
         let revert = Transaction::new(self.text()).with_selection(self.selection(view.id).clone());
+        // check if there is already an existing (identical) savepoint around
+        if let Some(savepoint) = self
+            .savepoints
+            .iter()
+            .rev()
+            .find_map(|savepoint| savepoint.upgrade())
+        {
+            let transaction = savepoint.revert.lock();
+            if savepoint.view == view.id
+                && transaction.changes().is_empty()
+                && transaction.selection() == revert.selection()
+            {
+                drop(transaction);
+                return savepoint;
+            }
+        }
         let savepoint = Arc::new(SavePoint {
             view: view.id,
             revert: Mutex::new(revert),
+            text: self.text.clone(),
         });
         self.savepoints.push(Arc::downgrade(&savepoint));
         savepoint
     }
 
-    pub fn restore(&mut self, view: &mut View, savepoint: &SavePoint) {
+    pub fn restore(&mut self, view: &mut View, savepoint: &SavePoint, emit_lsp_notification: bool) {
         assert_eq!(
             savepoint.view, view.id,
             "Savepoint must not be used with a different view!"
@@ -1115,7 +1373,7 @@ impl Document {
 
         let savepoint_ref = self.savepoints.remove(savepoint_idx);
         let mut revert = savepoint.revert.lock();
-        self.apply(&revert, view.id);
+        self.apply_inner(&revert, view.id, emit_lsp_notification);
         *revert = Transaction::new(self.text()).with_selection(self.selection(view.id).clone());
         self.savepoints.push(savepoint_ref)
     }
@@ -1128,13 +1386,13 @@ impl Document {
         };
         let mut success = false;
         for txn in txns {
-            if self.apply_impl(&txn, view.id) {
+            if self.apply_impl(&txn, view.id, true) {
                 success = true;
             }
         }
         if success {
             // reset changeset to fix len
-            self.changes = ChangeSet::new(self.text());
+            self.changes = ChangeSet::new(self.text().slice(..));
             // Sync with changes with the jumplist selections.
             view.sync_changes(self);
         }
@@ -1157,7 +1415,7 @@ impl Document {
             return;
         }
 
-        let new_changeset = ChangeSet::new(self.text());
+        let new_changeset = ChangeSet::new(self.text().slice(..));
         let changes = std::mem::replace(&mut self.changes, new_changeset);
         // Instead of doing this messy merge we could always commit, and based on transaction
         // annotations either add a new layer or compose into the previous one.
@@ -1241,18 +1499,13 @@ impl Document {
             .map(|language| language.language_id.as_str())
     }
 
-    /// Language ID for the document. Either the `language-id` from the
-    /// `language-server` configuration, or the document language if no
-    /// `language-id` has been specified.
+    /// Language ID for the document. Either the `language-id`,
+    /// or the document language name if no `language-id` has been specified.
     pub fn language_id(&self) -> Option<&str> {
-        let language_config = self.language.as_deref()?;
-
-        language_config
-            .language_server
-            .as_ref()?
-            .language_id
+        self.language_config()?
+            .language_server_language_id
             .as_deref()
-            .or(Some(language_config.language_id.as_str()))
+            .or_else(|| self.language_name())
     }
 
     /// Corresponding [`LanguageConfiguration`].
@@ -1265,10 +1518,45 @@ impl Document {
         self.version
     }
 
-    /// Language server if it has been initialized.
-    pub fn language_server(&self) -> Option<&helix_lsp::Client> {
-        let server = self.language_server.as_deref()?;
-        server.is_initialized().then_some(server)
+    /// maintains the order as configured in the language_servers TOML array
+    pub fn language_servers(&self) -> impl Iterator<Item = &helix_lsp::Client> {
+        self.language_config().into_iter().flat_map(move |config| {
+            config.language_servers.iter().filter_map(move |features| {
+                let ls = &**self.language_servers.get(&features.name)?;
+                if ls.is_initialized() {
+                    Some(ls)
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
+    pub fn remove_language_server_by_name(&mut self, name: &str) -> Option<Arc<Client>> {
+        self.language_servers.remove(name)
+    }
+
+    pub fn language_servers_with_feature(
+        &self,
+        feature: LanguageServerFeature,
+    ) -> impl Iterator<Item = &helix_lsp::Client> {
+        self.language_config().into_iter().flat_map(move |config| {
+            config.language_servers.iter().filter_map(move |features| {
+                let ls = &**self.language_servers.get(&features.name)?;
+                if ls.is_initialized()
+                    && ls.supports_feature(feature)
+                    && features.has_feature(feature)
+                {
+                    Some(ls)
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
+    pub fn supports_language_server(&self, id: usize) -> bool {
+        self.language_servers().any(|l| l.id() == id)
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
@@ -1277,7 +1565,7 @@ impl Document {
 
     /// Intialize/updates the differ for this document with a new base.
     pub fn set_diff_base(&mut self, diff_base: Vec<u8>, redraw_handle: RedrawHandle) {
-        if let Ok((diff_base, _)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
+        if let Ok((diff_base, ..)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
             if let Some(differ) = &self.diff_handle {
                 differ.update_diff_base(diff_base);
                 return;
@@ -1391,10 +1679,27 @@ impl Document {
         &self.diagnostics
     }
 
-    pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
-        self.diagnostics = diagnostics;
+    pub fn shown_diagnostics(&self) -> impl Iterator<Item = &Diagnostic> + DoubleEndedIterator {
+        self.diagnostics.iter().filter(|d| {
+            self.language_servers_with_feature(LanguageServerFeature::Diagnostics)
+                .any(|ls| ls.id() == d.language_server_id)
+        })
+    }
+
+    pub fn replace_diagnostics(
+        &mut self,
+        mut diagnostics: Vec<Diagnostic>,
+        language_server_id: usize,
+    ) {
+        self.clear_diagnostics(language_server_id);
+        self.diagnostics.append(&mut diagnostics);
         self.diagnostics
             .sort_unstable_by_key(|diagnostic| diagnostic.range);
+    }
+
+    pub fn clear_diagnostics(&mut self, language_server_id: usize) {
+        self.diagnostics
+            .retain(|d| d.language_server_id != language_server_id);
     }
 
     /// Get the document's auto pairs. If the document has a recognized
@@ -1515,7 +1820,6 @@ pub enum FormatterError {
     InvalidUtf8Output,
     DiskReloadError(String),
     NonZeroExitStatus(Option<String>),
-    LanguageServerNotInitialized,
 }
 
 impl std::error::Error for FormatterError {}
@@ -1534,7 +1838,6 @@ impl Display for FormatterError {
             Self::NonZeroExitStatus(None) => {
                 write!(f, "Formatter exited with non zero exit status")
             }
-            Self::LanguageServerNotInitialized => write!(f, "Language server is not initialized"),
         }
     }
 }
@@ -1707,7 +2010,7 @@ mod test {
             Document::default(Arc::new(ArcSwap::new(Arc::new(Config::default()))))
                 .text()
                 .to_string(),
-            DEFAULT_LINE_ENDING.as_str()
+            helix_core::NATIVE_LINE_ENDING.as_str()
         );
     }
 
@@ -1723,7 +2026,7 @@ mod test {
                 assert!(ref_path.exists());
 
                 let mut file = std::fs::File::open(path).unwrap();
-                let text = from_reader(&mut file, Some(encoding))
+                let text = from_reader(&mut file, Some(encoding.into()))
                     .unwrap()
                     .0
                     .to_string();
@@ -1749,7 +2052,7 @@ mod test {
 
                 let text = Rope::from_str(&std::fs::read_to_string(path).unwrap());
                 let mut buf: Vec<u8> = Vec::new();
-                helix_lsp::block_on(to_writer(&mut buf, encoding, &text)).unwrap();
+                helix_lsp::block_on(to_writer(&mut buf, (encoding, false), &text)).unwrap();
 
                 let expectation = std::fs::read(ref_path).unwrap();
                 assert_eq!(buf, expectation);
