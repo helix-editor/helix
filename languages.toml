@@ -1118,6 +1118,17 @@ name = "perl"
 source = { git = "https://github.com/tree-sitter-perl/tree-sitter-perl", rev = "ed21ecbcc128a6688770ebafd3ef68a1c9bc1ea9" }
 
 [[language]]
+name = "pod"
+scope = "source.pod"
+injection-regex = "pod"
+roots = []
+file-types = ["pod"]
+
+[[grammar]]
+name = "pod"
+source = { git = "https://github.com/tree-sitter-perl/tree-sitter-pod", rev = "d466b84009a63986834498073ec05d58d727d55f" }
+
+[[language]]
 name = "racket"
 scope = "source.racket"
 roots = []
