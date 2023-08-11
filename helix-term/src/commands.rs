@@ -1190,8 +1190,13 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     for sel in paths {
         let p = sel.trim();
         if !p.is_empty() {
-            if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
-                cx.editor.set_error(format!("Open file failed: {:?}", e));
+            let path = Path::new(p);
+            if let Ok(path) = helix_core::path::get_canonicalized_path(path) {
+                if path.is_dir() {
+                    file_picker_in(cx, path);
+                } else if let Err(e) = cx.editor.open(&path, action) {
+                    cx.editor.set_error(format!("Open file failed: {:?}", e));
+                }
             }
         }
     }
@@ -2561,14 +2566,18 @@ fn append_mode(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+fn file_picker_in(cx: &mut Context, root: PathBuf) {
+    let picker = ui::file_picker(root, &cx.editor.config());
+    cx.push_layer(Box::new(overlaid(picker)));
+}
+
 fn file_picker(cx: &mut Context) {
     let root = find_workspace().0;
     if !root.exists() {
         cx.editor.set_error("Workspace directory does not exist");
         return;
     }
-    let picker = ui::file_picker(root, &cx.editor.config());
-    cx.push_layer(Box::new(overlaid(picker)));
+    file_picker_in(cx, root)
 }
 
 fn file_picker_in_current_buffer_directory(cx: &mut Context) {
@@ -2584,9 +2593,9 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
         }
     };
 
-    let picker = ui::file_picker(path, &cx.editor.config());
-    cx.push_layer(Box::new(overlaid(picker)));
+    file_picker_in(cx, path)
 }
+
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = helix_loader::current_working_dir();
     if !cwd.exists() {
@@ -2594,8 +2603,7 @@ fn file_picker_in_current_directory(cx: &mut Context) {
             .set_error("Current working directory does not exist");
         return;
     }
-    let picker = ui::file_picker(cwd, &cx.editor.config());
-    cx.push_layer(Box::new(overlaid(picker)));
+    file_picker_in(cx, cwd)
 }
 
 fn buffer_picker(cx: &mut Context) {
