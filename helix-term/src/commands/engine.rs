@@ -11,7 +11,9 @@ use once_cell::sync::Lazy;
 use serde_json::Value;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
-    rvals::{AsRefMutSteelValFromRef, FromSteelVal, IntoSteelVal},
+    rvals::{
+        as_underlying_type, AsRefMutSteelValFromRef, AsRefSteelVal, FromSteelVal, IntoSteelVal,
+    },
     steel_vm::{engine::Engine, register_fn::RegisterFn},
     SteelErr, SteelVal,
 };
@@ -91,6 +93,7 @@ pub struct KeyMapApi {
     empty_keymap: fn() -> EmbeddedKeyMap,
     string_to_embedded_keymap: fn(String) -> EmbeddedKeyMap,
     merge_keybindings: fn(&mut EmbeddedKeyMap, EmbeddedKeyMap),
+    is_keymap: fn(SteelVal) -> bool,
 }
 
 impl KeyMapApi {
@@ -101,6 +104,7 @@ impl KeyMapApi {
             empty_keymap,
             string_to_embedded_keymap,
             merge_keybindings,
+            is_keymap,
         }
     }
 }
@@ -121,6 +125,7 @@ fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
     module.register_fn("helix-default-keymap", api.default_keymap);
     module.register_fn("helix-merge-keybindings", api.merge_keybindings);
     module.register_fn("helix-string->keymap", api.string_to_embedded_keymap);
+    module.register_fn("keymap?", api.is_keymap);
 
     // This should be associated with a corresponding scheme module to wrap this up
     module.register_value(
@@ -536,6 +541,14 @@ pub fn merge_keybindings(left: &mut EmbeddedKeyMap, right: EmbeddedKeyMap) {
     merge_keys(&mut left.0, right.0)
 }
 
+pub fn is_keymap(keymap: SteelVal) -> bool {
+    if let SteelVal::Custom(underlying) = keymap {
+        as_underlying_type::<EmbeddedKeyMap>(underlying.borrow().as_ref()).is_some()
+    } else {
+        false
+    }
+}
+
 /// Run the initialization script located at `$helix_config/init.scm`
 /// This runs the script in the global environment, and does _not_ load it as a module directly
 fn run_initialization_script(cx: &mut Context) {
@@ -807,6 +820,8 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     log::info!("Loading engine!");
 
+    engine.register_fn("hx.context?", |_: &mut Context| true);
+
     // Load native modules from the directory. Another idea - have a separate dlopen loading system
     // in place that does not use the type id, and instead we generate the module after the dylib
     // is added. That way functions _must_ have a specific signature, and then we add the integration
@@ -823,18 +838,18 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     load_keymap_api(&mut engine, KeyMapApi::new());
 
-    engine.register_fn("helix-current-keymap", get_keymap);
-    engine.register_fn("helix-empty-keymap", empty_keymap);
-    engine.register_fn("helix-default-keymap", default_keymap);
-    engine.register_fn("helix-merge-keybindings", merge_keybindings);
-    engine.register_fn("helix-string->keymap", string_to_embedded_keymap);
+    // engine.register_fn("helix-current-keymap", get_keymap);
+    // engine.register_fn("helix-empty-keymap", empty_keymap);
+    // engine.register_fn("helix-default-keymap", default_keymap);
+    // engine.register_fn("helix-merge-keybindings", merge_keybindings);
+    // engine.register_fn("helix-string->keymap", string_to_embedded_keymap);
 
     // Use this to get at buffer specific keybindings
-    engine.register_value(
-        "*buffer-or-extension-keybindings*",
-        SteelVal::empty_hashmap(),
-    );
-    engine.register_value("*reverse-buffer-map*", SteelVal::empty_hashmap());
+    // engine.register_value(
+    // "*buffer-or-extension-keybindings*",
+    // SteelVal::empty_hashmap(),
+    // );
+    // engine.register_value("*reverse-buffer-map*", SteelVal::empty_hashmap());
 
     // Find the workspace
     engine.register_fn("helix-find-workspace", || {
@@ -1687,21 +1702,6 @@ fn set_options(
         };
     }
 
-    // let (key, arg) = (&args[0].to_lowercase(), &args[1]);
-
-    // let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
-    // let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
-
-    // let mut config = serde_json::json!(&cx.editor.config().deref());
-    // let pointer = format!("/{}", key.replace('.', "/"));
-    // let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
-
-    // *value = if value.is_string() {
-    //     // JSON strings require quotes, so we can't .parse() directly
-    //     Value::String(arg.to_string())
-    // } else {
-    //     arg.parse().map_err(field_error)?
-    // };
     let config =
         serde_json::from_value(config).map_err(|_| anyhow::anyhow!("Could not parse config"))?;
 
