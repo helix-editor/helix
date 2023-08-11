@@ -73,3 +73,12 @@
 (else_clause
   "else" @outdent)
 
+(parameters
+  .
+  (identifier) @anchor
+  (#set! "scope" "tail")) @align
+(argument_list
+  .
+  (_) @anchor
+  (#set! "scope" "tail")) @align
+
