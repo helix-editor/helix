@@ -6,7 +6,7 @@ use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
-use helix_core::syntax::{Highlight, LanguageServerFeature, FormatterConfiguration};
+use helix_core::syntax::{FormatterConfiguration, Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
@@ -179,7 +179,6 @@ pub struct Document {
 
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
-
 
     diff_handle: Option<DiffHandle>,
     version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
@@ -752,10 +751,14 @@ impl Document {
     }
 
     pub fn get_language_server_to_format(&self) -> Option<&helix_lsp::Client> {
-        self.language_servers_with_feature(LanguageServerFeature::Format).next()
+        self.language_servers_with_feature(LanguageServerFeature::Format)
+            .next()
     }
 
-    pub fn format_with_formatter(&self, formatter: FormatterConfiguration) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+    pub fn format_with_formatter(
+        &self,
+        formatter: FormatterConfiguration,
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         use std::process::Stdio;
         let text = self.text().clone();
         let mut process = tokio::process::Command::new(&formatter.command);
@@ -808,7 +811,10 @@ impl Document {
         Some(formatting_future.boxed())
     }
 
-    pub fn format_with_language_server(&self, language_server: &Client) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+    pub fn format_with_language_server(
+        &self,
+        language_server: &Client,
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         let text = self.text.clone();
         let offset_encoding = language_server.offset_encoding();
         let request = language_server.text_document_formatting(
@@ -834,7 +840,7 @@ impl Document {
         };
 
         Some(fut.boxed())
-    } 
+    }
 
     pub fn save<P: Into<PathBuf>>(
         &mut self,

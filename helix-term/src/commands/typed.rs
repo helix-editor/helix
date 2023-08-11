@@ -452,7 +452,7 @@ fn format(
             let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
             cx.jobs.callback(callback);
         }
-    } 
+    }
 
     Ok(())
 }
