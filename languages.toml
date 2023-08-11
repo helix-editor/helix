@@ -1697,7 +1697,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "nu"
-source = { git = "https://github.com/LhKipp/tree-sitter-nu", rev = "eb95bdac3abd73ef47e53f19c63e74a31405ebd2" }
+source = { git = "https://github.com/nushell/tree-sitter-nu", rev = "98c11c491e3405c75affa1cf004097692da3dda2" }
 
 [[language]]
 name = "vala"
@@ -2702,6 +2702,28 @@ roots = []
 indent = { tab-width = 2, unit = "  " }
 grammar = "html"
 
+[[language]]
+name = "nunjucks"
+scope = "text.html.nunjucks"
+injection-regex = "nunjucks"
+file-types = ["njk"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+grammar = "jinja2"
+
+[[language]]
+name = "jinja"
+scope = "text.html.jinja"
+injection-regex = "jinja"
+file-types = ["jinja", "jinja2", "j2"]
+roots = []
+indent = { tab-width = 2, unit = "  " }
+grammar = "jinja2"
+
+[[grammar]]
+name = "jinja2"
+source = { git = "https://github.com/varpeti/tree-sitter-jinja2", rev = "a533cd3c33aea6acb0f9bf9a56f35dcfe6a8eb53" }
+
 [[grammar]]
 name = "wren"
 source = { git = "https://git.sr.ht/~jummit/tree-sitter-wren", rev = "793d58266924e6efcc40e411663393e9d72bec87"}
@@ -2713,3 +2735,37 @@ injection-regex = "wren"
 file-types = ["wren"]
 roots = []
 indent = { tab-width = 2, unit = "  "}
+
+[[language]]
+name = "unison"
+scope = "source.unison"
+injection-regex = "unison"
+file-types = ["u"]
+shebangs = []
+roots = []
+auto-format = false
+comment-token = "--"
+indent = { tab-width = 4, unit = "    " }
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+
+[[grammar]]
+name = "unison"
+source = { git = "https://github.com/kylegoetz/tree-sitter-unison", rev = "98c4e8bc5c9f5989814a720457cf36963cf4043d" }
+
+[[language]]
+name = "todotxt"
+scope = "text.todotxt"
+file-types = [{ suffix = ".todo.txt" }, "todotxt"]
+roots = []
+formatter = { command = "sort" }
+auto-format = true
+
+[[grammar]]
+name = "todotxt"
+source = { git = "https://github.com/arnarg/tree-sitter-todotxt", rev = "0207f6a4ab6aeafc4b091914d31d8235049a2578" }

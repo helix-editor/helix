@@ -237,38 +237,58 @@ fn get_first_in_line(mut node: Node, new_line_byte_pos: Option<usize>) -> Vec<bo
 /// This is usually constructed in one of 2 ways:
 /// - Successively add indent captures to get the (added) indent from a single line
 /// - Successively add the indent results for each line
-#[derive(Default)]
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
 pub struct Indentation {
     /// The total indent (the number of indent levels) is defined as max(0, indent-outdent).
     /// The string that this results in depends on the indent style (spaces or tabs, etc.)
     indent: usize,
+    indent_always: usize,
     outdent: usize,
+    outdent_always: usize,
 }
 impl Indentation {
     /// Add some other [Indentation] to this.
     /// The added indent should be the total added indent from one line
     fn add_line(&mut self, added: &Indentation) {
-        if added.indent > 0 && added.outdent == 0 {
-            self.indent += 1;
-        } else if added.outdent > 0 && added.indent == 0 {
-            self.outdent += 1;
-        }
+        self.indent += added.indent;
+        self.indent_always += added.indent_always;
+        self.outdent += added.outdent;
+        self.outdent_always += added.outdent_always;
     }
+
     /// Add an indent capture to this indent.
     /// All the captures that are added in this way should be on the same line.
     fn add_capture(&mut self, added: IndentCaptureType) {
         match added {
             IndentCaptureType::Indent => {
-                self.indent = 1;
+                if self.indent_always == 0 {
+                    self.indent = 1;
+                }
+            }
+            IndentCaptureType::IndentAlways => {
+                // any time we encounter an `indent.always` on the same line, we
+                // want to cancel out all regular indents
+                self.indent_always += 1;
+                self.indent = 0;
             }
             IndentCaptureType::Outdent => {
-                self.outdent = 1;
+                if self.outdent_always == 0 {
+                    self.outdent = 1;
+                }
+            }
+            IndentCaptureType::OutdentAlways => {
+                self.outdent_always += 1;
+                self.outdent = 0;
             }
         }
     }
+
     fn as_string(&self, indent_style: &IndentStyle) -> String {
-        let indent_level = if self.indent >= self.outdent {
-            self.indent - self.outdent
+        let indent = self.indent_always + self.indent;
+        let outdent = self.outdent_always + self.outdent;
+
+        let indent_level = if indent >= outdent {
+            indent - outdent
         } else {
             log::warn!("Encountered more outdent than indent nodes while calculating indentation: {} outdent, {} indent", self.outdent, self.indent);
             0
@@ -278,27 +298,32 @@ impl Indentation {
 }
 
 /// An indent definition which corresponds to a capture from the indent query
+#[derive(Debug)]
 struct IndentCapture {
     capture_type: IndentCaptureType,
     scope: IndentScope,
 }
-#[derive(Clone, Copy)]
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum IndentCaptureType {
     Indent,
+    IndentAlways,
     Outdent,
+    OutdentAlways,
 }
+
 impl IndentCaptureType {
     fn default_scope(&self) -> IndentScope {
         match self {
-            IndentCaptureType::Indent => IndentScope::Tail,
-            IndentCaptureType::Outdent => IndentScope::All,
+            IndentCaptureType::Indent | IndentCaptureType::IndentAlways => IndentScope::Tail,
+            IndentCaptureType::Outdent | IndentCaptureType::OutdentAlways => IndentScope::All,
         }
     }
 }
 /// This defines which part of a node an [IndentCapture] applies to.
 /// Each [IndentCaptureType] has a default scope, but the scope can be changed
 /// with `#set!` property declarations.
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 enum IndentScope {
     /// The indent applies to the whole node
     All,
@@ -308,6 +333,7 @@ enum IndentScope {
 
 /// A capture from the indent query which does not define an indent but extends
 /// the range of a node. This is used before the indent is calculated.
+#[derive(Debug)]
 enum ExtendCapture {
     Extend,
     PreventOnce,
@@ -316,6 +342,7 @@ enum ExtendCapture {
 /// The result of running a tree-sitter indent query. This stores for
 /// each node (identified by its ID) the relevant captures (already filtered
 /// by predicates).
+#[derive(Debug)]
 struct IndentQueryResult {
     indent_captures: HashMap<usize, Vec<IndentCapture>>,
     extend_captures: HashMap<usize, Vec<ExtendCapture>>,
@@ -334,6 +361,33 @@ fn query_indents(
     let mut indent_captures: HashMap<usize, Vec<IndentCapture>> = HashMap::new();
     let mut extend_captures: HashMap<usize, Vec<ExtendCapture>> = HashMap::new();
     cursor.set_byte_range(range);
+
+    let get_node_start_line = |node: Node| {
+        let mut node_line = node.start_position().row;
+
+        // Adjust for the new line that will be inserted
+        if let Some((line, byte)) = new_line_break {
+            if node_line == line && node.start_byte() >= byte {
+                node_line += 1;
+            }
+        }
+
+        node_line
+    };
+
+    let get_node_end_line = |node: Node| {
+        let mut node_line = node.end_position().row;
+
+        // Adjust for the new line that will be inserted
+        if let Some((line, byte)) = new_line_break {
+            if node_line == line && node.end_byte() < byte {
+                node_line += 1;
+            }
+        }
+
+        node_line
+    };
+
     // Iterate over all captures from the query
     for m in cursor.matches(query, syntax.tree().root_node(), RopeProvider(text)) {
         // Skip matches where not all custom predicates are fulfilled
@@ -360,21 +414,13 @@ fn query_indents(
                             Some(QueryPredicateArg::Capture(capt1)),
                             Some(QueryPredicateArg::Capture(capt2))
                         ) => {
-                            let get_line_num = |node: Node| {
-                                let mut node_line = node.start_position().row;
-                                // Adjust for the new line that will be inserted
-                                if let Some((line, byte)) = new_line_break {
-                                    if node_line==line && node.start_byte()>=byte {
-                                        node_line += 1;
-                                    }
-                                }
-                                node_line
-                            };
                             let n1 = m.nodes_for_capture_index(*capt1).next();
                             let n2 = m.nodes_for_capture_index(*capt2).next();
                             match (n1, n2) {
                                 (Some(n1), Some(n2)) => {
-                                    let same_line = get_line_num(n1)==get_line_num(n2);
+                                    let n1_line = get_node_start_line(n1);
+                                    let n2_line = get_node_start_line(n2);
+                                    let same_line = n1_line == n2_line;
                                     same_line==(pred.operator.as_ref()=="same-line?")
                                 }
                                 _ => true,
@@ -385,6 +431,23 @@ fn query_indents(
                         }
                     }
                 }
+                "one-line?" | "not-one-line?" => match pred.args.get(0) {
+                    Some(QueryPredicateArg::Capture(capture_idx)) => {
+                        let node = m.nodes_for_capture_index(*capture_idx).next();
+
+                        match node {
+                            Some(node) => {
+                                let (start_line, end_line) = (get_node_start_line(node), get_node_end_line(node));
+                                let one_line = end_line == start_line;
+                                one_line != (pred.operator.as_ref() == "not-one-line?")
+                            },
+                            _ => true,
+                        }
+                    }
+                    _ => {
+                        panic!("Invalid indent query: Arguments to \"not-kind-eq?\" must be a capture and a string");
+                    }
+                },
                 _ => {
                     panic!(
                         "Invalid indent query: Unknown predicate (\"{}\")",
@@ -399,7 +462,9 @@ fn query_indents(
             let capture_name = query.capture_names()[capture.index as usize].as_str();
             let capture_type = match capture_name {
                 "indent" => IndentCaptureType::Indent,
+                "indent.always" => IndentCaptureType::IndentAlways,
                 "outdent" => IndentCaptureType::Outdent,
+                "outdent.always" => IndentCaptureType::OutdentAlways,
                 "extend" => {
                     extend_captures
                         .entry(capture.node.id())
@@ -456,10 +521,15 @@ fn query_indents(
                 .push(indent_capture);
         }
     }
-    IndentQueryResult {
+
+    let result = IndentQueryResult {
         indent_captures,
         extend_captures,
-    }
+    };
+
+    log::trace!("indent result = {:?}", result);
+
+    result
 }
 
 /// Handle extend queries. deepest_preceding is the deepest descendant of node that directly precedes the cursor position.
@@ -584,6 +654,7 @@ pub fn treesitter_indent_for_pos(
         .tree()
         .root_node()
         .descendant_for_byte_range(byte_pos, byte_pos)?;
+
     let (query_result, deepest_preceding) = {
         // The query range should intersect with all nodes directly preceding
         // the position of the indent query in case one of them is extended.
@@ -642,10 +713,12 @@ pub fn treesitter_indent_for_pos(
     // even if there are multiple "indent" nodes on the same line
     let mut indent_for_line = Indentation::default();
     let mut indent_for_line_below = Indentation::default();
+
     loop {
         // This can safely be unwrapped because `first_in_line` contains
         // one entry for each ancestor of the node (which is what we iterate over)
         let is_first = *first_in_line.last().unwrap();
+
         // Apply all indent definitions for this node
         if let Some(definitions) = indent_captures.get(&node.id()) {
             for definition in definitions {
@@ -667,6 +740,7 @@ pub fn treesitter_indent_for_pos(
         if let Some(parent) = node.parent() {
             let mut node_line = node.start_position().row;
             let mut parent_line = parent.start_position().row;
+
             if node_line == line && new_line {
                 // Also consider the line that will be inserted
                 if node.start_byte() >= byte_pos {
@@ -676,17 +750,20 @@ pub fn treesitter_indent_for_pos(
                     parent_line += 1;
                 }
             };
+
             if node_line != parent_line {
+                // Don't add indent for the line below the line of the query
                 if node_line < line + (new_line as usize) {
-                    // Don't add indent for the line below the line of the query
                     result.add_line(&indent_for_line_below);
                 }
+
                 if node_line == parent_line + 1 {
                     indent_for_line_below = indent_for_line;
                 } else {
                     result.add_line(&indent_for_line);
                     indent_for_line_below = Indentation::default();
                 }
+
                 indent_for_line = Indentation::default();
             }
 
@@ -700,6 +777,7 @@ pub fn treesitter_indent_for_pos(
             {
                 result.add_line(&indent_for_line_below);
             }
+
             result.add_line(&indent_for_line);
             break;
         }
@@ -808,6 +886,124 @@ mod test {
         assert_eq!(
             indent_level_for_line(line.slice(..), tab_width, indent_width),
             2
+        );
+    }
+
+    #[test]
+    fn add_capture() {
+        let indent = || Indentation {
+            indent: 1,
+            ..Default::default()
+        };
+        let indent_always = || Indentation {
+            indent_always: 1,
+            ..Default::default()
+        };
+        let outdent = || Indentation {
+            outdent: 1,
+            ..Default::default()
+        };
+        let outdent_always = || Indentation {
+            outdent_always: 1,
+            ..Default::default()
+        };
+
+        let add_capture = |mut indent: Indentation, capture| {
+            indent.add_capture(capture);
+            indent
+        };
+
+        // adding an indent to no indent makes an indent
+        assert_eq!(
+            indent(),
+            add_capture(Indentation::default(), IndentCaptureType::Indent)
+        );
+        assert_eq!(
+            indent_always(),
+            add_capture(Indentation::default(), IndentCaptureType::IndentAlways)
+        );
+        assert_eq!(
+            outdent(),
+            add_capture(Indentation::default(), IndentCaptureType::Outdent)
+        );
+        assert_eq!(
+            outdent_always(),
+            add_capture(Indentation::default(), IndentCaptureType::OutdentAlways)
+        );
+
+        // adding an indent to an already indented has no effect
+        assert_eq!(indent(), add_capture(indent(), IndentCaptureType::Indent));
+        assert_eq!(
+            outdent(),
+            add_capture(outdent(), IndentCaptureType::Outdent)
+        );
+
+        // adding an always to a regular makes it always
+        assert_eq!(
+            indent_always(),
+            add_capture(indent(), IndentCaptureType::IndentAlways)
+        );
+        assert_eq!(
+            outdent_always(),
+            add_capture(outdent(), IndentCaptureType::OutdentAlways)
+        );
+
+        // adding an always to an always is additive
+        assert_eq!(
+            Indentation {
+                indent_always: 2,
+                ..Default::default()
+            },
+            add_capture(indent_always(), IndentCaptureType::IndentAlways)
+        );
+        assert_eq!(
+            Indentation {
+                outdent_always: 2,
+                ..Default::default()
+            },
+            add_capture(outdent_always(), IndentCaptureType::OutdentAlways)
+        );
+
+        // adding regular to always should be associative
+        assert_eq!(
+            Indentation {
+                indent_always: 1,
+                ..Default::default()
+            },
+            add_capture(
+                add_capture(indent(), IndentCaptureType::Indent),
+                IndentCaptureType::IndentAlways
+            )
+        );
+        assert_eq!(
+            Indentation {
+                indent_always: 1,
+                ..Default::default()
+            },
+            add_capture(
+                add_capture(indent(), IndentCaptureType::IndentAlways),
+                IndentCaptureType::Indent
+            )
+        );
+        assert_eq!(
+            Indentation {
+                outdent_always: 1,
+                ..Default::default()
+            },
+            add_capture(
+                add_capture(outdent(), IndentCaptureType::Outdent),
+                IndentCaptureType::OutdentAlways
+            )
+        );
+        assert_eq!(
+            Indentation {
+                outdent_always: 1,
+                ..Default::default()
+            },
+            add_capture(
+                add_capture(outdent(), IndentCaptureType::OutdentAlways),
+                IndentCaptureType::Outdent
+            )
         );
     }
 }

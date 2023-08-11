@@ -2199,8 +2199,8 @@ fn global_search(cx: &mut Context) {
                     all_matches,
                     current_path,
                     move |cx, FileResult { path, line_num }, action| {
-                        match cx.editor.open(path, action) {
-                            Ok(_) => {}
+                        let doc = match cx.editor.open(path, action) {
+                            Ok(id) => doc_mut!(cx.editor, &id),
                             Err(e) => {
                                 cx.editor.set_error(format!(
                                     "Failed to open file '{}': {}",
@@ -2209,10 +2209,9 @@ fn global_search(cx: &mut Context) {
                                 ));
                                 return;
                             }
-                        }
-
+                        };
                         let line_num = *line_num;
-                        let (view, doc) = current!(cx.editor);
+                        let view = view_mut!(cx.editor);
                         let text = doc.text();
                         if line_num >= text.len_lines() {
                             cx.editor.set_error("The line you jumped to does not exist anymore because the file has changed.");
@@ -2222,7 +2221,9 @@ fn global_search(cx: &mut Context) {
                         let end = text.line_to_char((line_num + 1).min(text.len_lines()));
 
                         doc.set_selection(view.id, Selection::single(start, end));
-                        align_view(doc, view, Align::Center);
+                        if action.align_view(view, doc.id()){
+                            align_view(doc, view, Align::Center);
+                        }
                     }).with_preview(|_editor, FileResult { path, line_num }| {
                         Some((path.clone().into(), Some((*line_num, *line_num))))
                     });
@@ -2742,9 +2743,11 @@ fn jumplist_picker(cx: &mut Context) {
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
-            let (view, doc) = current!(cx.editor);
+            let (view, doc) = (view_mut!(cx.editor), doc_mut!(cx.editor, &meta.id));
             doc.set_selection(view.id, meta.selection.clone());
-            view.ensure_cursor_in_view_center(doc, config.scrolloff);
+            if action.align_view(view, doc.id()) {
+                view.ensure_cursor_in_view_center(doc, config.scrolloff);
+            }
         },
     )
     .with_preview(|editor, meta| {
@@ -2996,6 +2999,7 @@ fn open(cx: &mut Context, open: Open) {
             Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
             Open::Above => range.from(),
         });
+
         let new_line = match open {
             // adjust position to the end of the line (next line - 1)
             Open::Below => cursor_line + 1,
@@ -3003,13 +3007,15 @@ fn open(cx: &mut Context, open: Open) {
             Open::Above => cursor_line,
         };
 
+        let line_num = new_line.saturating_sub(1);
+
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
         let (line_end_index, line_end_offset_width) = if new_line == 0 {
             (0, 0)
         } else {
             (
-                line_end_char_index(&doc.text().slice(..), new_line.saturating_sub(1)),
+                line_end_char_index(&text, line_num),
                 doc.line_ending.len_chars(),
             )
         };
@@ -3020,10 +3026,11 @@ fn open(cx: &mut Context, open: Open) {
             &doc.indent_style,
             doc.tab_width(),
             text,
-            new_line.saturating_sub(1),
+            line_num,
             line_end_index,
             cursor_line,
         );
+
         let indent_len = indent.len();
         let mut text = String::with_capacity(1 + indent_len);
         text.push_str(doc.line_ending.as_str());
