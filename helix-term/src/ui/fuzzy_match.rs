@@ -42,13 +42,21 @@ impl QueryAtom {
             }
         }
 
+        atom = atom.replace('\\', "");
+
+        if std::env::consts::OS == "windows" {
+            atom = atom.replace('/', "\\");
+        }
+
+        // not ideal but fuzzy_matches only knows ascii uppercase so more consistent
+        // to behave the same
+        let ignore_case =
+            kind != QueryAtomKind::Fuzzy && atom.chars().all(|c| c.is_ascii_lowercase());
+
         Some(QueryAtom {
             kind,
-            atom: atom.replace('\\', ""),
-            // not ideal but fuzzy_matches only knows ascii uppercase so more consistent
-            // to behave the same
-            ignore_case: kind != QueryAtomKind::Fuzzy
-                && atom.chars().all(|c| c.is_ascii_lowercase()),
+            atom,
+            ignore_case,
             inverse,
         })
     }
