@@ -1660,11 +1660,6 @@ fn create_directory(path: String) {
     }
 }
 
-// fn enqueue_callback(cx: &mut Context, thunk: SteelVal) {
-//     log::info!("Enqueueing callback!");
-
-// }
-
 /// Change config at runtime. Access nested values by dot syntax, for
 /// example to disable smart case search, use `:set search.smart-case false`.
 fn set_options(
