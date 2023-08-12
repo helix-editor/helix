@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use crate::line_ending::line_end_char_index;
 use crate::{movement::Direction, search, Range, Selection};
 use ropey::RopeSlice;
 
@@ -146,10 +147,8 @@ pub fn find_nth_pairs_pos(
             // we should be searching on.
             return Err(Error::CursorOnAmbiguousPair);
         }
-        (
-            search::find_nth_prev(text, open, pos, n),
-            search::find_nth_next(text, close, pos, n),
-        )
+        // Pairs with the same open and close char are only detected in the current line
+        find_nth_surrounding_char_pair_in_line(&text, n, open, pos)
     } else {
         (
             find_nth_open_pair(text, open, close, pos, n),
@@ -158,6 +157,80 @@ pub fn find_nth_pairs_pos(
     };
 
     Option::zip(open, close).ok_or(Error::PairNotFound)
+}
+
+/// Find the position of surround pairs of `ch` - either ones that surround the cursor, or ones
+/// that appear later in the text. pairs with the same open and close char are only detected in
+/// the current line to avoid ambiguity (e.g. closing a pair of quotes in one line and opening
+/// another pair of quotes in the next line).
+pub fn find_nth_textobject_pairs_pos(
+    text: RopeSlice,
+    ch: char,
+    range: Range,
+    n: usize,
+) -> Result<(usize, usize)> {
+    match find_nth_pairs_pos(text, ch, range, n) {
+        Ok(pair) => Ok(pair),
+        Err(Error::PairNotFound) if n == 1 => {
+            // No surrounding pair found, we try to find the next pair of `ch` in the text.
+            // n > 1 makes no sense in this context. (see test_one_surround_two_next)
+            let (open, close) = get_pair(ch);
+            let pos = range.cursor(text);
+
+            let (open, close) = if open == close {
+                // The cursor is not surrounded by a pair of `ch` in the current line. Search
+                // for the nth next pair of `ch` in the current line
+                find_nth_next_char_pair_in_line(&text, n, close, pos)
+            } else {
+                // The cursor is not surrounded by the pair we are looking for. Search for the
+                // nth next pair in the rest of the text
+                let nth_next_open = search::find_nth_next(text, open, pos, n);
+                (
+                    nth_next_open,
+                    nth_next_open.and_then(|next_open_pos| {
+                        find_nth_close_pair(text, open, close, next_open_pos, n)
+                    }),
+                )
+            };
+
+            Option::zip(open, close).ok_or(Error::PairNotFound)
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// Find the position of surround pairs of `ch` in that is after `pos` but still in the same line
+fn find_nth_next_char_pair_in_line(
+    text: &RopeSlice,
+    n: usize,
+    ch: char,
+    pos: usize,
+) -> (Option<usize>, Option<usize>) {
+    let line_idx = text.char_to_line(pos);
+    let line_end = line_end_char_index(text, line_idx);
+    let lookup_slice = text.slice(pos..line_end);
+    (
+        search::find_nth_next(lookup_slice, ch, 0, n).map(|p| p + pos),
+        search::find_nth_next(lookup_slice, ch, 0, n + 1).map(|p| p + pos),
+    )
+}
+
+/// Find the position of the nth surround pair of `ch` that surrounds the cursor in the current line
+fn find_nth_surrounding_char_pair_in_line(
+    text: &RopeSlice,
+    n: usize,
+    ch: char,
+    pos: usize,
+) -> (Option<usize>, Option<usize>) {
+    let line_idx = text.char_to_line(pos);
+    let line_start = text.line_to_char(line_idx);
+    let line_end = line_end_char_index(text, line_idx);
+    let inline_pos = pos - line_start;
+    let lookup_slice = text.slice(line_start..line_end);
+    (
+        search::find_nth_prev(lookup_slice, ch, inline_pos, n).map(|p| p + line_start),
+        search::find_nth_next(lookup_slice, ch, inline_pos, n).map(|p| p + line_start),
+    )
 }
 
 fn find_nth_open_pair(
@@ -379,6 +452,117 @@ mod test {
         assert_eq!(
             find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 1),
             Err(Error::CursorOnAmbiguousPair)
+        )
+    }
+
+    #[test]
+    fn test_find_only_same_line_quote() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            // We want to find 'value2', not '\nkey2='
+            rope_with_selections_and_expectations(
+                "key='value'\nkey2='value2'",
+                "           \n^    _      _",
+            );
+
+        assert_eq!(
+            find_nth_textobject_pairs_pos(doc.slice(..), '\'', selection.primary(), 1)
+                .expect("find should succeed"),
+            (expectations[0], expectations[1])
+        )
+    }
+
+    #[test]
+    fn test_find_multiline_parentheses_block() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations(
+                "some (parentheses \n content) here",
+                "     _            \n^       _     ",
+            );
+
+        assert_eq!(
+            find_nth_textobject_pairs_pos(doc.slice(..), '(', selection.primary(), 1)
+                .expect("find should succeed"),
+            (expectations[0], expectations[1])
+        )
+    }
+
+    #[test]
+    fn test_find_pair_after_cursor() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations(
+                "some (parentheses content) here",
+                "^    _                   _     ",
+            );
+
+        assert_eq!(
+            find_nth_textobject_pairs_pos(doc.slice(..), '(', selection.primary(), 1)
+                .expect("find should succeed"),
+            (expectations[0], expectations[1])
+        )
+    }
+
+    #[test]
+    fn test_find_quotes_after_cursor() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations(
+                "some 'quoted text'",
+                "^    _           _",
+            );
+
+        assert_eq!(
+            find_nth_textobject_pairs_pos(doc.slice(..), '\'', selection.primary(), 1)
+                .expect("find should succeed"),
+            (expectations[0], expectations[1])
+        )
+    }
+
+    #[test]
+    fn test_do_not_find_next_line_quote() {
+        #[rustfmt::skip]
+        let (doc, selection, _) =
+            rope_with_selections_and_expectations(
+                "this line has no quotes\n'this line does'",
+                "^                      \n                ",
+            );
+
+        assert_eq!(
+            find_nth_textobject_pairs_pos(doc.slice(..), '\'', selection.primary(), 1),
+            Err(Error::PairNotFound)
+        )
+    }
+
+    #[test]
+    fn test_find_next_line_parentheses() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations(
+                "this line has no parentheses\n(this line does)",
+                "^                           \n_              _",
+            );
+
+        assert_eq!(
+            find_nth_textobject_pairs_pos(doc.slice(..), '(', selection.primary(), 1)
+                .expect("find should succeed"),
+            (expectations[0], expectations[1])
+        )
+    }
+
+    #[test]
+    fn test_one_surround_two_next() {
+        #[rustfmt::skip]
+        let (doc, selection, _) =
+            rope_with_selections_and_expectations(
+                "(hello) ((world))",
+                " ^               ",
+            );
+
+        assert_eq!(
+            find_nth_textobject_pairs_pos(doc.slice(..), '(', selection.primary(), 2),
+            Err(Error::PairNotFound)
         )
     }
 
