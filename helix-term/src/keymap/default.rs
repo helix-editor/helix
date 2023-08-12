@@ -115,6 +115,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "c" => goto_prev_comment,
             "T" => goto_prev_test,
             "p" => goto_prev_paragraph,
+            "[" => goto_prev_in_last_picker,
             "space" => add_newline_above,
         },
         "]" => { "Right bracket"
@@ -128,6 +129,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "c" => goto_next_comment,
             "T" => goto_next_test,
             "p" => goto_next_paragraph,
+            "]" => goto_next_in_last_picker,
             "space" => add_newline_below,
         },
 
