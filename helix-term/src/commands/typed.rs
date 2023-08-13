@@ -2976,8 +2976,16 @@ pub(super) fn command_mode(cx: &mut Context) {
                 let shellwords = Shellwords::from(input);
                 let args = shellwords.words();
 
-                if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
-                    cx.editor.set_error(format!("{}", e));
+                if cmd.name == "run-shell-command" {
+                    // Pass all input except command
+                    let (_, shell_input) = input.split_once(' ').unwrap_or((input, ""));
+                    if let Err(e) = (cmd.fun)(cx, &[Cow::from(shell_input)], event) {
+                        cx.editor.set_error(format!("{}", e));
+                    }
+                } else {
+                    if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
+                        cx.editor.set_error(format!("{}", e));
+                    }
                 }
             } else if event == PromptEvent::Validate {
                 cx.editor
