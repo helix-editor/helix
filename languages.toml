@@ -15,6 +15,7 @@ clojure-lsp = { command = "clojure-lsp" }
 cmake-language-server = { command = "cmake-language-server" }
 crystalline = { command = "crystalline", args = ["--stdio"] }
 cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
+csharp-ls = { command = "csharp-ls" }
 cuelsp = { command = "cuelsp" }
 dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
 dhall-lsp-server = { command = "dhall-lsp-server" }
@@ -54,6 +55,8 @@ perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
 prisma-language-server = { command = "prisma-language-server", args = ["--stdio"] }
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
 pylsp = { command = "pylsp" }
+pyright = { command = "pyright-langserver", args = ["--stdio"] }
+pylyzer = { command = "pylyzer", args = ["--server"] }
 qmlls = { command = "qmlls" }
 r = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
 racket = { command = "racket", args = ["-l", "racket-langserver"] }
@@ -654,7 +657,7 @@ scope = "source.python"
 injection-regex = "python"
 file-types = ["py","pyi","py3","pyw","ptl",".pythonstartup",".pythonrc","SConstruct"]
 shebangs = ["python"]
-roots = []
+roots = ["pyproject.toml", "setup.py", "poetry.lock","pyrightconfig.json"]
 comment-token = "#"
 language-servers = [ "pylsp" ]
 # TODO: pyls needs utf-8 offsets
