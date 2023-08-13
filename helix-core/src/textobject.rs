@@ -122,23 +122,24 @@ pub fn textobject_whitespace(
 ) -> Range {
     let pos = range.cursor(slice);
 
-    // find the number of consecutive whitespace chars in front of the cursor
-    let whitespace_start = pos
-        - slice
-            .chars_at(slice.len_chars())
-            .reversed()
-            .skip(slice.len_chars() - pos - 1)
-            .take_while(|c| c.is_whitespace())
-            .count()
-        + 1;
+    // Check if cursor is just after end of file or not on a whitespace character
+    if pos == slice.len_chars() || !slice.char(pos).is_whitespace() {
+        // If so, do nothing
+        return range;
+    }
 
-    let whitespace_end = pos
-        + slice
-            .chars_at(pos)
-            .take_while(|c| c.is_whitespace())
-            .count();
+    let whitespaces_before = slice
+        .chars_at(pos)
+        .reversed()
+        .take_while(|c| c.is_whitespace())
+        .count();
 
-    Range::new(whitespace_start, whitespace_end)
+    let whitespaces_after = slice
+        .chars_at(pos)
+        .take_while(|c| c.is_whitespace())
+        .count();
+
+    Range::new(pos - whitespaces_before, pos + whitespaces_after)
 }
 
 pub fn textobject_paragraph(
@@ -612,6 +613,79 @@ mod test {
                     case
                 );
             }
+        }
+    }
+
+    #[test]
+    fn test_textobject_whitespace() {
+        // (text, (char position, final range))
+        let tests = &[
+            // Single whitespace
+            (" cursor on single whitespace at start of doc", (0, (0, 1))),
+            ("cursor on single whitespace at end of doc ", (41, (41, 42))),
+            // Multiple whitespaces
+            (
+                "   cursor at beginning of whitespace series at start of doc",
+                (0, (0, 3)),
+            ),
+            (
+                "   cursor at middle of whitespace series at start of doc",
+                (1, (0, 3)),
+            ),
+            (
+                "   cursor at end of whitespace series at start of doc",
+                (2, (0, 3)),
+            ),
+            (
+                "cursor at beginning of whitespace     series at middle of doc",
+                (33, (33, 38)),
+            ),
+            (
+                "   cursor at middle of whitespace     series at middle of doc",
+                (35, (33, 38)),
+            ),
+            (
+                "      cursor at end of whitespace     series at middle of doc",
+                (37, (33, 38)),
+            ),
+            (
+                "cursor at beginning of whitespace series at end of doc      ",
+                (54, (54, 60)),
+            ),
+            (
+                "   cursor at middle of whitespace series at end of doc      ",
+                (56, (54, 60)),
+            ),
+            (
+                "      cursor at end of whitespace series at end of doc      ",
+                (59, (54, 60)),
+            ),
+            // With newline
+            (
+                "cursor in the middle of whitespace  \n  with newline",
+                (35, (34, 39)),
+            ),
+            // With tab
+            (
+                "cursor in the middle of  \twhitespace with tab",
+                (25, (23, 26)),
+            ),
+            // Not on whitespace
+            ("cursor at non-whitespace start of doc", (0, (0, 1))),
+            ("cursor at non-whitespace start of word", (25, (25, 26))),
+            ("cursor at non-whitespace middle of word", (27, (27, 28))),
+            ("cursor at non-whitespace end of word", (27, (27, 28))),
+            ("cursor at non-whitespace end of doc", (34, (34, 35))),
+        ];
+
+        for (sample, case) in tests {
+            let doc = Rope::from(*sample);
+            let slice = doc.slice(..);
+            let (pos, expected_range) = *case;
+            // cursor is a single width selection
+            let range = Range::new(pos, pos + 1);
+            let result = textobject_whitespace(slice, range, Inside, 0);
+            assert_eq!(result, expected_range.into(), "\nCase failed: {:?}", sample,);
         }
     }
 }
