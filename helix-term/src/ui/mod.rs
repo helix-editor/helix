@@ -439,7 +439,7 @@ pub mod completers {
     }
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
-    fn filename_impl<F>(_editor: &Editor, input: &str, filter_fn: F) -> Vec<Completion>
+    fn filename_impl<F>(editor: &Editor, input: &str, filter_fn: F) -> Vec<Completion>
     where
         F: Fn(&ignore::DirEntry) -> FileMatch,
     {
@@ -479,10 +479,14 @@ pub mod completers {
 
         let end = input.len()..;
 
+        let config = editor.config();
         let mut files: Vec<_> = WalkBuilder::new(&dir)
             .hidden(false)
             .follow_links(false) // We're scanning over depth 1
             .max_depth(Some(1))
+            .ignore(config.file_picker.ignore)
+            .git_ignore(config.file_picker.git_ignore)
+            .git_exclude(config.file_picker.git_exclude)
             .build()
             .filter_map(|file| {
                 file.ok().and_then(|entry| {
