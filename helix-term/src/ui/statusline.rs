@@ -8,6 +8,7 @@ use helix_view::{
 };
 
 use crate::ui::ProgressSpinners;
+use crate::ui::Spinner;
 
 use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
@@ -179,20 +180,13 @@ fn render_mode<'a>(context: &RenderContext) -> Spans<'a> {
 
 // TODO think about handling multiple language servers
 fn render_lsp_spinner<'a>(context: &RenderContext) -> Spans<'a> {
-    let language_server = context.doc.language_servers().next();
-    Span::raw(
-        language_server
-            .and_then(|srv| {
-                context
-                    .spinners
-                    .get(srv.id())
-                    .and_then(|spinner| spinner.frame())
-            })
-            // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
-            .unwrap_or(" ")
-            .to_string(),
-    )
-    .into()
+    context
+        .doc
+        .language_servers()
+        .next()
+        .and_then(|srv| context.spinners.get(srv.id()).and_then(Spinner::frame))
+        .map(|frame| Span::raw(frame.to_string()).into())
+        .unwrap_or_else(Spans::default)
 }
 
 fn render_diagnostics<'a>(context: &RenderContext) -> Spans<'a> {
@@ -216,15 +210,18 @@ fn render_diagnostics<'a>(context: &RenderContext) -> Spans<'a> {
             "●".to_string(),
             context.editor.theme.get("warning"),
         ));
-        output.0.push(Span::raw(format!(" {} ", warnings)));
+        output.0.push(Span::raw(format!(" {}", warnings)));
     }
 
     if errors > 0 {
+        if warnings > 0 {
+            output.0.push(Span::raw(" "));
+        }
         output.0.push(Span::styled(
             "●".to_string(),
             context.editor.theme.get("error"),
         ));
-        output.0.push(Span::raw(format!(" {} ", errors)));
+        output.0.push(Span::raw(format!(" {}", errors)));
     }
 
     output
@@ -249,23 +246,25 @@ fn render_workspace_diagnostics<'a>(context: &RenderContext) -> Spans<'a> {
     let mut output = Spans::default();
 
     if warnings > 0 || errors > 0 {
-        output.0.push(Span::raw(" W "));
+        output.0.push(Span::raw("W"));
     }
 
     if warnings > 0 {
+        output.0.push(Span::raw(" "));
         output.0.push(Span::styled(
             "●".to_string(),
             context.editor.theme.get("warning"),
         ));
-        output.0.push(Span::raw(format!(" {} ", warnings)));
+        output.0.push(Span::raw(format!(" {}", warnings)));
     }
 
     if errors > 0 {
+        output.0.push(Span::raw(" "));
         output.0.push(Span::styled(
             "●".to_string(),
             context.editor.theme.get("error"),
         ));
-        output.0.push(Span::raw(format!(" {} ", errors)));
+        output.0.push(Span::raw(format!(" {}", errors)));
     }
 
     output
@@ -274,7 +273,7 @@ fn render_workspace_diagnostics<'a>(context: &RenderContext) -> Spans<'a> {
 fn render_selections<'a>(context: &RenderContext) -> Spans<'a> {
     let count = context.doc.selection(context.view.id).len();
     Span::raw(format!(
-        " {} sel{} ",
+        "{} sel{}",
         count,
         if count == 1 { "" } else { "s" }
     ))
@@ -284,7 +283,7 @@ fn render_selections<'a>(context: &RenderContext) -> Spans<'a> {
 fn render_primary_selection_length<'a>(context: &RenderContext) -> Spans<'a> {
     let tot_sel = context.doc.selection(context.view.id).primary().len();
     Span::raw(format!(
-        " {} char{} ",
+        "{} char{}",
         tot_sel,
         if tot_sel == 1 { "" } else { "s" }
     ))
@@ -304,12 +303,12 @@ fn get_position(context: &RenderContext) -> Position {
 
 fn render_position<'a>(context: &RenderContext) -> Spans<'a> {
     let position = get_position(context);
-    Span::raw(format!(" {}:{} ", position.row + 1, position.col + 1)).into()
+    Span::raw(format!("{}:{}", position.row + 1, position.col + 1)).into()
 }
 
 fn render_total_line_numbers<'a>(context: &RenderContext) -> Spans<'a> {
     let total_line_numbers = context.doc.text().len_lines();
-    Span::raw(format!(" {} ", total_line_numbers)).into()
+    Span::raw(format!("{}", total_line_numbers)).into()
 }
 
 fn render_position_percentage<'a>(context: &RenderContext) -> Spans<'a> {
@@ -322,7 +321,7 @@ fn render_file_encoding<'a>(context: &RenderContext) -> Spans<'a> {
     let enc = context.doc.encoding();
 
     if enc != encoding::UTF_8 {
-        Span::raw(format!(" {} ", enc.name())).into()
+        Span::raw(enc.name()).into()
     } else {
         Spans::default()
     }
@@ -347,13 +346,13 @@ fn render_file_line_ending<'a>(context: &RenderContext) -> Spans<'a> {
         PS => "PS", // U+2029 -- ParagraphSeparator
     };
 
-    Span::raw(format!(" {} ", line_ending)).into()
+    Span::raw(line_ending).into()
 }
 
 fn render_file_type<'a>(context: &RenderContext) -> Spans<'a> {
     let file_type = context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
 
-    Span::raw(format!(" {} ", file_type)).into()
+    Span::raw(file_type.to_string()).into()
 }
 
 fn render_file_name<'a>(context: &RenderContext) -> Spans<'a> {
@@ -363,31 +362,26 @@ fn render_file_name<'a>(context: &RenderContext) -> Spans<'a> {
             .as_ref()
             .map(|p| p.to_string_lossy())
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-        format!(" {} ", path)
+        format!("{}", path)
     };
 
     Span::raw(title).into()
 }
 
 fn render_file_modification_indicator<'a>(context: &RenderContext) -> Spans<'a> {
-    let title = (if context.doc.is_modified() {
-        "[+]"
+    if context.doc.is_modified() {
+        Span::raw("[+]").into()
     } else {
-        "   "
-    })
-    .to_string();
-
-    Span::raw(title).into()
+        Spans::default()
+    }
 }
 
 fn render_read_only_indicator<'a>(context: &RenderContext) -> Spans<'a> {
-    let title = if context.doc.readonly {
-        " [readonly] "
+    if context.doc.readonly {
+        Span::raw("[readonly]").into()
     } else {
-        ""
+        Spans::default()
     }
-    .to_string();
-    Span::raw(title).into()
 }
 
 fn render_file_base_name<'a>(context: &RenderContext) -> Spans<'a> {
@@ -397,7 +391,7 @@ fn render_file_base_name<'a>(context: &RenderContext) -> Spans<'a> {
             .as_ref()
             .and_then(|p| p.as_path().file_name().map(|s| s.to_string_lossy()))
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-        format!(" {} ", path)
+        format!("{}", path)
     };
 
     Span::raw(title).into()
@@ -429,7 +423,7 @@ fn render_version_control<'a>(context: &RenderContext) -> Spans<'a> {
 
 fn render_register<'a>(context: &RenderContext) -> Spans<'a> {
     if let Some(reg) = context.editor.selected_register {
-        Span::raw(format!(" reg={} ", reg)).into()
+        Span::raw(format!("reg={}", reg)).into()
     } else {
         Spans::default()
     }
