@@ -8,7 +8,7 @@
 # Author: Jens Getreu <getreu at web.de>
 
 "ui.background" = { bg = "my_gray0" }
-"ui.menu" = { fg = "my_white", bg = "my_gray2" }
+"ui.menu" = { fg = "my_white1", bg = "my_gray2" }
 "ui.menu.selected" = { fg = "my_gray2", bg = "my_gray6" }
 "ui.linenr" = { fg = "my_gray3", bg = "my_gray0" }
 "ui.popup" = { bg = "my_gray2" }
@@ -23,15 +23,15 @@
 "ui.statusline.normal" = {fg = "my_gray7", bg = "my_gray2"}
 "ui.statusline.select" = {fg = "my_gray7", bg = "my_black", modifiers = ["bold"]}
 "ui.cursor" = { bg = "my_white4", fg = "my_black" }
-"ui.cursor.primary" = { fg = "my_white", modifiers = ["reversed"] }
-"ui.cursor.match" = { fg = "my_white", modifiers = ["bold"], underline = { style = "double_line", color = "my_white" }, bg = "my_black"}
+"ui.cursor.primary" = { fg = "my_white1", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "my_white1", modifiers = ["bold"], underline = { style = "double_line", color = "my_white1" }, bg = "my_black"}
 "ui.cursorline.primary" = { bg = "my_black" }
 "ui.cursorline.secondary" = { bg = "my_black" }
 "ui.highlight.frameline" = { bg = "#8b6904" }
 "ui.debug" = { fg = "my_yellow1", bg = "my_gray0" }
-"ui.text" = "my_white"
-"operator" = "my_white"
-"ui.text.focus" = "my_white"
+"ui.text" = "my_white1"
+"operator" = "my_white1"
+"ui.text.focus" = "my_white1"
 "variable" = "my_white3"
 "constant.numeric" = "my_turquoise"
 "constant" = "my_white3"
@@ -91,7 +91,7 @@ my_gray5      = "#646f69" # Comments, Invisibles, Line Highlighting
 my_gray6      = "#a8a8a8" # Dark Foreground (Used for status bars)
 my_gray7      = "#c8c8c8" # Light Foreground
 my_gray8      = "#e8e8e8" # Light Background
-my_white      = "#F3F2CC" # Default Foreground, Caret, Delimiters, Operators
+my_white1     = "#F3F2CC" # Default Foreground, Caret, Delimiters, Operators
 my_white2     = "#F3F2CC" # Variables, XML Tags, Markup Link Text, Markup Lists, Diff Deleted
 my_white3     = "#F3F2CC" # Classes, Markup Bold, Search Text Background
 my_white4     = "#7e7d6a" # Cursor match
