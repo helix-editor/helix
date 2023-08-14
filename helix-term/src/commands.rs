@@ -10,7 +10,7 @@ use tui::widgets::Row;
 pub use typed::*;
 
 use helix_core::{
-    char_idx_at_visual_offset, comment,
+    char_idx_at_visual_offset, comment, coords_at_pos,
     doc_formatter::TextFormat,
     encoding, find_first_non_whitespace_char, find_workspace, graphemes,
     history::UndoKind,
@@ -382,6 +382,18 @@ impl MappableCommand {
         yank, "Yank selection",
         yank_to_clipboard, "Yank selections to clipboard",
         yank_to_primary_clipboard, "Yank selections to primary clipboard",
+        yank_absolute_filepath, "Yank the absolute filepath of the current buffer.",
+        yank_absolute_filepath_with_line, "Yank the absolute filepath with line number of the current buffer.",
+        yank_absolute_filepath_with_line_column, "Yank the absolute filepath with line and column numbers of the current buffer.",
+        yank_absolute_filepath_to_clipboard, "Yank the absolute filepath of the current buffer to the clipboard.",
+        yank_absolute_filepath_with_line_to_clipboard, "Yank the absolute filepath with line number of the current buffer to the clipboard.",
+        yank_absolute_filepath_with_line_column_to_clipboard, "Yank the absolute filepath with line and column numbers of the current buffer to the clipboard.",
+        yank_relative_filepath, "Yank the relative filepath of the current buffer.",
+        yank_relative_filepath_with_line, "Yank the relative filepath with line number of the current buffer.",
+        yank_relative_filepath_with_line_column, "Yank the relative filepath with line and column numbers of the current buffer.",
+        yank_relative_filepath_to_clipboard, "Yank the relative filepath of the current buffer to the clipboard.",
+        yank_relative_filepath_with_line_to_clipboard, "Yank the relative filepath and line number of the current buffer to the clipboard.",
+        yank_relative_filepath_with_line_column_to_clipboard, "Yank the relative filepath with line and column numbers of the current buffer to the clipboard.",
         yank_joined, "Join and yank selections",
         yank_joined_to_clipboard, "Join and yank selections to clipboard",
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
@@ -3899,6 +3911,154 @@ fn yank_main_selection_to_clipboard(cx: &mut Context) {
 fn yank_main_selection_to_primary_clipboard(cx: &mut Context) {
     yank_primary_selection_impl(cx.editor, '+');
     exit_select_mode(cx);
+}
+
+#[derive(Copy, Clone)]
+enum PathType {
+    Absolute,
+    Relative,
+}
+
+#[derive(Copy, Clone)]
+enum PathCursor {
+    Line,
+    LineColumn,
+}
+
+fn yank_filepath_impl(
+    editor: &mut Editor,
+    register: char,
+    path_type: PathType,
+    path_cursor: Option<PathCursor>,
+) {
+    let (view, doc) = current!(editor);
+    let relative_path = doc.relative_path();
+
+    let path = match path_type {
+        PathType::Absolute => doc.path(),
+        PathType::Relative => relative_path.as_ref(),
+    }
+    .map(|p| p.to_string_lossy());
+
+    if let Some(path) = path {
+        let mut path = path.to_string();
+
+        // Append line and column numbers to path
+        if let Some(path_cursor) = path_cursor {
+            let position = coords_at_pos(
+                doc.text().slice(..),
+                doc.selection(view.id)
+                    .primary()
+                    .cursor(doc.text().slice(..)),
+            );
+            path = match path_cursor {
+                PathCursor::Line => format!("{}:{}", path.to_string(), position.row + 1),
+                PathCursor::LineColumn => {
+                    format!(
+                        "{}:{}:{}",
+                        path.to_string(),
+                        position.row + 1,
+                        position.col + 1
+                    )
+                }
+            }
+        }
+
+        match editor.registers.write(register, vec![path.clone()]) {
+            Ok(_) => editor.set_status(format!("yanked {path} to register {register}")),
+            Err(err) => editor.set_error(err.to_string()),
+        }
+    } else {
+        editor.set_error("Current buffer has not yet been written to the filesystem".to_string());
+    }
+}
+
+fn yank_absolute_filepath(cx: &mut Context) {
+    yank_filepath_impl(
+        cx.editor,
+        cx.register.unwrap_or('"'),
+        PathType::Absolute,
+        None,
+    );
+}
+
+fn yank_absolute_filepath_with_line(cx: &mut Context) {
+    yank_filepath_impl(
+        cx.editor,
+        cx.register.unwrap_or('"'),
+        PathType::Absolute,
+        Some(PathCursor::Line),
+    );
+}
+
+fn yank_absolute_filepath_with_line_column(cx: &mut Context) {
+    yank_filepath_impl(
+        cx.editor,
+        cx.register.unwrap_or('"'),
+        PathType::Absolute,
+        Some(PathCursor::LineColumn),
+    );
+}
+
+fn yank_absolute_filepath_to_clipboard(cx: &mut Context) {
+    yank_filepath_impl(cx.editor, '*', PathType::Absolute, None);
+}
+
+fn yank_absolute_filepath_with_line_to_clipboard(cx: &mut Context) {
+    yank_filepath_impl(cx.editor, '*', PathType::Absolute, Some(PathCursor::Line));
+}
+
+fn yank_absolute_filepath_with_line_column_to_clipboard(cx: &mut Context) {
+    yank_filepath_impl(
+        cx.editor,
+        '*',
+        PathType::Absolute,
+        Some(PathCursor::LineColumn),
+    );
+}
+
+fn yank_relative_filepath(cx: &mut Context) {
+    yank_filepath_impl(
+        cx.editor,
+        cx.register.unwrap_or('"'),
+        PathType::Relative,
+        None,
+    );
+}
+
+fn yank_relative_filepath_with_line(cx: &mut Context) {
+    yank_filepath_impl(
+        cx.editor,
+        cx.register.unwrap_or('"'),
+        PathType::Relative,
+        Some(PathCursor::Line),
+    );
+}
+
+fn yank_relative_filepath_with_line_column(cx: &mut Context) {
+    yank_filepath_impl(
+        cx.editor,
+        cx.register.unwrap_or('"'),
+        PathType::Relative,
+        Some(PathCursor::LineColumn),
+    );
+}
+
+fn yank_relative_filepath_to_clipboard(cx: &mut Context) {
+    yank_filepath_impl(cx.editor, '*', PathType::Relative, None);
+}
+
+fn yank_relative_filepath_with_line_to_clipboard(cx: &mut Context) {
+    yank_filepath_impl(cx.editor, '*', PathType::Relative, Some(PathCursor::Line));
+}
+
+fn yank_relative_filepath_with_line_column_to_clipboard(cx: &mut Context) {
+    yank_filepath_impl(
+        cx.editor,
+        '*',
+        PathType::Relative,
+        Some(PathCursor::LineColumn),
+    );
 }
 
 #[derive(Copy, Clone)]

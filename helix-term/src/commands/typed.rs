@@ -895,6 +895,202 @@ fn theme(
     Ok(())
 }
 
+fn yank_absolute_filepath(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    yank_filepath_impl(
+        cx.editor,
+        cx.editor.selected_register.unwrap_or('"'),
+        PathType::Absolute,
+        None,
+    );
+    Ok(())
+}
+
+fn yank_absolute_filepath_with_line(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    yank_filepath_impl(
+        cx.editor,
+        cx.editor.selected_register.unwrap_or('"'),
+        PathType::Absolute,
+        Some(PathCursor::Line),
+    );
+    Ok(())
+}
+
+fn yank_absolute_filepath_with_line_column(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    yank_filepath_impl(
+        cx.editor,
+        cx.editor.selected_register.unwrap_or('"'),
+        PathType::Absolute,
+        Some(PathCursor::LineColumn),
+    );
+    Ok(())
+}
+
+fn yank_absolute_filepath_to_clipboard(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    yank_filepath_impl(cx.editor, '*', PathType::Absolute, None);
+    Ok(())
+}
+
+fn yank_absolute_filepath_with_line_to_clipboard(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    yank_filepath_impl(cx.editor, '*', PathType::Absolute, Some(PathCursor::Line));
+    Ok(())
+}
+
+fn yank_absolute_filepath_with_line_column_to_clipboard(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    yank_filepath_impl(
+        cx.editor,
+        '*',
+        PathType::Absolute,
+        Some(PathCursor::LineColumn),
+    );
+    Ok(())
+}
+
+fn yank_relative_filepath(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    yank_filepath_impl(
+        cx.editor,
+        cx.editor.selected_register.unwrap_or('"'),
+        PathType::Relative,
+        None,
+    );
+    Ok(())
+}
+
+fn yank_relative_filepath_with_line(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    yank_filepath_impl(
+        cx.editor,
+        cx.editor.selected_register.unwrap_or('"'),
+        PathType::Relative,
+        Some(PathCursor::Line),
+    );
+    Ok(())
+}
+
+fn yank_relative_filepath_with_line_column(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    yank_filepath_impl(
+        cx.editor,
+        cx.editor.selected_register.unwrap_or('"'),
+        PathType::Relative,
+        Some(PathCursor::LineColumn),
+    );
+    Ok(())
+}
+
+fn yank_relative_filepath_to_clipboard(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    yank_filepath_impl(cx.editor, '*', PathType::Relative, None);
+    Ok(())
+}
+
+fn yank_relative_filepath_with_line_to_clipboard(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    yank_filepath_impl(cx.editor, '*', PathType::Relative, Some(PathCursor::Line));
+    Ok(())
+}
+
+fn yank_relative_filepath_with_line_column_to_clipboard(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    yank_filepath_impl(
+        cx.editor,
+        '*',
+        PathType::Relative,
+        Some(PathCursor::LineColumn),
+    );
+    Ok(())
+}
+
 fn yank_main_selection_to_clipboard(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -2535,6 +2731,48 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: CommandSignature::none(),
     },
     TypableCommand {
+        name: "yank-filepath-absolute",
+        aliases: &[],
+        doc: "Yank the absolute filepath of the current document.",
+        fun: yank_absolute_filepath,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "yank-filepath-absolute-line",
+        aliases: &[],
+        doc: "Yank the absolute filepath and line number of the current document.",
+        fun: yank_absolute_filepath_with_line,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "yank-filepath-absolute-line-column",
+        aliases: &[],
+        doc: "Yank the absolute filepath, line and column numbers of the current document.",
+        fun: yank_absolute_filepath_with_line_column,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "yank-filepath-relative",
+        aliases: &[],
+        doc: "Yank the relative filepath of the current document.",
+        fun: yank_relative_filepath,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "yank-filepath-relative-line",
+        aliases: &[],
+        doc: "Yank the relative filepath and line number of the current document.",
+        fun: yank_relative_filepath_with_line,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "yank-filepath-relative-line-column",
+        aliases: &[],
+        doc: "Yank the relative filepath, line and column numbers of the current document.",
+        fun: yank_relative_filepath_with_line_column,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
         name: "clipboard-yank",
         aliases: &[],
         doc: "Yank main selection into system clipboard.",
@@ -2553,6 +2791,48 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Yank main selection into system primary clipboard.",
         fun: yank_main_selection_to_primary_clipboard,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "clipboard-yank-filepath-absolute",
+        aliases: &[],
+        doc: "Yank the absolute filepath of the current document into the system clipboard.",
+        fun: yank_absolute_filepath_to_clipboard,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "clipboard-yank-filepath-absolute-line",
+        aliases: &[],
+        doc: "Yank the absolute filepath and line number of the current document into the system clipboard.",
+        fun: yank_absolute_filepath_with_line_to_clipboard,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "clipboard-yank-filepath-absolute-line-column",
+        aliases: &[],
+        doc: "Yank the absolute filepath, line and column numbers of the current document into the system clipboard.",
+        fun: yank_absolute_filepath_with_line_column_to_clipboard,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "clipboard-yank-filepath-relative",
+        aliases: &[],
+        doc: "Yank the relative filepath of the current document into the system clipboard.",
+        fun: yank_relative_filepath_to_clipboard,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "clipboard-yank-filepath-relative-line",
+        aliases: &[],
+        doc: "Yank the relative filepath and line number of the current document into the system clipboard.",
+        fun: yank_relative_filepath_with_line_to_clipboard,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "clipboard-yank-filepath-relative-line-column",
+        aliases: &[],
+        doc: "Yank the relative filepath, line and column numbers of the current document into the system clipboard.",
+        fun: yank_relative_filepath_with_line_column_to_clipboard,
         signature: CommandSignature::none(),
     },
     TypableCommand {
