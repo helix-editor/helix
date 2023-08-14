@@ -33,13 +33,13 @@
 "operator" = "my_white1"
 "ui.text.focus" = "my_white1"
 "variable" = "my_white3"
-"constant.numeric" = "my_turquoise"
+"constant.numeric" = "my_turquoise1"
 "constant" = "my_white3"
-"attribute" = "my_turquoise"
+"attribute" = "my_turquoise1"
 "type" = { fg = "my_white3", modifiers = ["italic"] }
 "string"  = "my_green"
 "variable.other.member" = "my_brown"
-"constant.character.escape" = "my_turquoise"
+"constant.character.escape" = "my_turquoise1"
 "function" = "my_yellow1"
 "constructor" = "my_yellow1"
 "special" = "my_yellow1"
@@ -95,7 +95,7 @@ my_white1     = "#F3F2CC" # Default Foreground, Caret, Delimiters, Operators
 my_white2     = "#F3F2CC" # Variables, XML Tags, Markup Link Text, Markup Lists, Diff Deleted
 my_white3     = "#F3F2CC" # Classes, Markup Bold, Search Text Background
 my_white4     = "#7e7d6a" # Cursor match
-my_turquoise  = "#86c1b9" # Support, Regular Expressions, Escape Characters
+my_turquoise1 = "#86c1b9" # Support, Regular Expressions, Escape Characters
 my_turquoise2 = "#72a59e" # URL
 my_green      = "#99be70" # Strings, Inherited Class, Markup Code, Diff Inserted
 my_brown      = "#cfba8b" # Member variables, Quotes
