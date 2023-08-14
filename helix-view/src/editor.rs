@@ -465,10 +465,10 @@ pub enum StatusLineElement {
     /// The LSP activity spinner
     Spinner,
 
-    /// The base file name, including a dirty flag if it's unsaved
+    /// The file basename (the leaf of the open file's path)
     FileBaseName,
 
-    /// The relative file path, including a dirty flag if it's unsaved
+    /// The relative file path
     FileName,
 
     // The file modification indicator
