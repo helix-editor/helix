@@ -452,6 +452,8 @@ impl MappableCommand {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
+        select_textobject_around_vim_like, "Select around object",
+        select_textobject_inner_vim_like, "Select inside object",
         goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
         goto_next_class, "Goto next type definition",
@@ -5011,14 +5013,22 @@ fn goto_prev_test(cx: &mut Context) {
 }
 
 fn select_textobject_around(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Around);
+    select_textobject(cx, textobject::TextObject::Around, false);
 }
 
 fn select_textobject_inner(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Inside);
+    select_textobject(cx, textobject::TextObject::Inside, false);
 }
 
-fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
+fn select_textobject_around_vim_like(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Around, true);
+}
+
+fn select_textobject_inner_vim_like(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Inside, true);
+}
+
+fn select_textobject(cx: &mut Context, objtype: textobject::TextObject, vim_like: bool) {
     let count = cx.count();
 
     cx.on_next_key(move |cx, event| {
@@ -5080,9 +5090,9 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         ),
                         'g' => textobject_change(range),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
-                        ch if !ch.is_ascii_alphanumeric() => {
-                            textobject::textobject_pair_surround(text, range, objtype, ch, count)
-                        }
+                        ch if !ch.is_ascii_alphanumeric() => textobject::textobject_pair_surround(
+                            text, range, objtype, ch, count, vim_like,
+                        ),
                         _ => range,
                     }
                 });

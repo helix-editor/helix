@@ -124,11 +124,15 @@ pub fn find_nth_closest_pairs_pos(
 /// Find the position of surround pairs of `ch` which can be either a closing
 /// or opening pair. `n` will skip n - 1 pairs (eg. n=2 will discard (only)
 /// the first pair found and keep looking)
-pub fn find_nth_pairs_pos(
+/// Vim-like surround pair detection:
+/// - can detect surround pairs ahead of the cursor
+/// - only detects same-char surround pairs (e.g. quotes) in the current line to avoid ambiguity
+fn find_nth_pairs_pos_inner(
     text: RopeSlice,
     ch: char,
     range: Range,
     n: usize,
+    vim_like: bool,
 ) -> Result<(usize, usize)> {
     if text.len_chars() < 2 {
         return Err(Error::PairNotFound);
@@ -147,8 +151,14 @@ pub fn find_nth_pairs_pos(
             // we should be searching on.
             return Err(Error::CursorOnAmbiguousPair);
         }
-        // Pairs with the same open and close char are only detected in the current line
-        find_nth_surrounding_char_pair_in_line(&text, n, open, pos)
+        if vim_like {
+            find_nth_surrounding_char_pair_in_line(&text, n, open, pos)
+        } else {
+            (
+                search::find_nth_prev(text, open, pos, n),
+                search::find_nth_next(text, close, pos, n),
+            )
+        }
     } else {
         (
             find_nth_open_pair(text, open, close, pos, n),
@@ -159,17 +169,26 @@ pub fn find_nth_pairs_pos(
     Option::zip(open, close).ok_or(Error::PairNotFound)
 }
 
-/// Find the position of surround pairs of `ch` - either ones that surround the cursor, or ones
-/// that appear later in the text. pairs with the same open and close char are only detected in
-/// the current line to avoid ambiguity (e.g. closing a pair of quotes in one line and opening
-/// another pair of quotes in the next line).
-pub fn find_nth_textobject_pairs_pos(
+pub fn find_nth_pairs_pos(
     text: RopeSlice,
     ch: char,
     range: Range,
     n: usize,
 ) -> Result<(usize, usize)> {
-    match find_nth_pairs_pos(text, ch, range, n) {
+    find_nth_pairs_pos_inner(text, ch, range, n, false)
+}
+
+/// Find the position of surround pairs of `ch` - either ones that surround the cursor, or ones
+/// that appear later in the text. pairs with the same open and close char are only detected in
+/// the current line to avoid ambiguity (e.g. closing a pair of quotes in one line and opening
+/// another pair of quotes in the next line).
+pub fn find_nth_pairs_pos_vim_like(
+    text: RopeSlice,
+    ch: char,
+    range: Range,
+    n: usize,
+) -> Result<(usize, usize)> {
+    match find_nth_pairs_pos_inner(text, ch, range, n, true) {
         Ok(pair) => Ok(pair),
         Err(Error::PairNotFound) if n == 1 => {
             // No surrounding pair found, we try to find the next pair of `ch` in the text.
@@ -466,7 +485,7 @@ mod test {
             );
 
         assert_eq!(
-            find_nth_textobject_pairs_pos(doc.slice(..), '\'', selection.primary(), 1)
+            find_nth_pairs_pos_vim_like(doc.slice(..), '\'', selection.primary(), 1)
                 .expect("find should succeed"),
             (expectations[0], expectations[1])
         )
@@ -482,7 +501,7 @@ mod test {
             );
 
         assert_eq!(
-            find_nth_textobject_pairs_pos(doc.slice(..), '(', selection.primary(), 1)
+            find_nth_pairs_pos_vim_like(doc.slice(..), '(', selection.primary(), 1)
                 .expect("find should succeed"),
             (expectations[0], expectations[1])
         )
@@ -498,7 +517,7 @@ mod test {
             );
 
         assert_eq!(
-            find_nth_textobject_pairs_pos(doc.slice(..), '(', selection.primary(), 1)
+            find_nth_pairs_pos_vim_like(doc.slice(..), '(', selection.primary(), 1)
                 .expect("find should succeed"),
             (expectations[0], expectations[1])
         )
@@ -514,7 +533,7 @@ mod test {
             );
 
         assert_eq!(
-            find_nth_textobject_pairs_pos(doc.slice(..), '\'', selection.primary(), 1)
+            find_nth_pairs_pos_vim_like(doc.slice(..), '\'', selection.primary(), 1)
                 .expect("find should succeed"),
             (expectations[0], expectations[1])
         )
@@ -530,7 +549,7 @@ mod test {
             );
 
         assert_eq!(
-            find_nth_textobject_pairs_pos(doc.slice(..), '\'', selection.primary(), 1),
+            find_nth_pairs_pos_vim_like(doc.slice(..), '\'', selection.primary(), 1),
             Err(Error::PairNotFound)
         )
     }
@@ -545,7 +564,7 @@ mod test {
             );
 
         assert_eq!(
-            find_nth_textobject_pairs_pos(doc.slice(..), '(', selection.primary(), 1)
+            find_nth_pairs_pos_vim_like(doc.slice(..), '(', selection.primary(), 1)
                 .expect("find should succeed"),
             (expectations[0], expectations[1])
         )
@@ -561,7 +580,7 @@ mod test {
             );
 
         assert_eq!(
-            find_nth_textobject_pairs_pos(doc.slice(..), '(', selection.primary(), 2),
+            find_nth_pairs_pos_vim_like(doc.slice(..), '(', selection.primary(), 2),
             Err(Error::PairNotFound)
         )
     }

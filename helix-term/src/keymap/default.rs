@@ -104,6 +104,14 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "a" => select_textobject_around,
             "i" => select_textobject_inner,
         },
+        "M" => { "Match"
+            "m" => match_brackets,
+            "s" => surround_add,
+            "r" => surround_replace,
+            "d" => surround_delete,
+            "a" => select_textobject_around_vim_like,
+            "i" => select_textobject_inner_vim_like,
+        },
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
