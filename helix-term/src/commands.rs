@@ -1895,7 +1895,9 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 .collect()
         },
         move |editor, regex, event| {
-            if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
+            if event == PromptEvent::Validate {
+                editor.registers.last_search_register = reg;
+            } else if event != PromptEvent::Update {
                 return;
             }
             search_impl(
@@ -1914,7 +1916,9 @@ fn searcher(cx: &mut Context, direction: Direction) {
 
 fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
     let count = cx.count();
-    let register = cx.register.unwrap_or('/');
+    let register = cx
+        .register
+        .unwrap_or(cx.editor.registers.last_search_register);
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
     if let Some(query) = cx.editor.registers.first(register, cx.editor) {
@@ -1982,13 +1986,21 @@ fn search_selection(cx: &mut Context) {
 
     let msg = format!("register '{}' set to '{}'", register, &regex);
     match cx.editor.registers.push(register, regex) {
-        Ok(_) => cx.editor.set_status(msg),
+        Ok(_) => {
+            cx.editor.registers.last_search_register = register;
+            cx.editor.set_status(msg)
+        }
         Err(err) => cx.editor.set_error(err.to_string()),
     }
 }
 
 fn make_search_word_bounded(cx: &mut Context) {
-    let register = cx.register.unwrap_or('/');
+    // Defaults to the active search register instead `/` to be more ergonomic assuming most people
+    // would use this command following `search_selection`. This avoids selecting the register
+    // twice.
+    let register = cx
+        .register
+        .unwrap_or(cx.editor.registers.last_search_register);
     let regex = match cx.editor.registers.first(register, cx.editor) {
         Some(regex) => regex,
         None => return,
@@ -2014,7 +2026,10 @@ fn make_search_word_bounded(cx: &mut Context) {
 
     let msg = format!("register '{}' set to '{}'", register, &new_regex);
     match cx.editor.registers.push(register, new_regex) {
-        Ok(_) => cx.editor.set_status(msg),
+        Ok(_) => {
+            cx.editor.registers.last_search_register = register;
+            cx.editor.set_status(msg)
+        }
         Err(err) => cx.editor.set_error(err.to_string()),
     }
 }
@@ -2078,6 +2093,7 @@ fn global_search(cx: &mut Context) {
             if event != PromptEvent::Validate {
                 return;
             }
+            editor.registers.last_search_register = reg;
 
             let documents: Vec<_> = editor
                 .documents()

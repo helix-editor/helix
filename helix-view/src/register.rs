@@ -29,6 +29,7 @@ pub struct Registers {
     /// efficiently prepend new values in `Registers::push`.
     inner: HashMap<char, Vec<String>>,
     clipboard_provider: Box<dyn ClipboardProvider>,
+    pub last_search_register: char,
 }
 
 impl Default for Registers {
@@ -36,6 +37,7 @@ impl Default for Registers {
         Self {
             inner: Default::default(),
             clipboard_provider: get_clipboard_provider(),
+            last_search_register: '/',
         }
     }
 }
