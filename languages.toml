@@ -2783,3 +2783,13 @@ auto-format = true
 [[grammar]]
 name = "todotxt"
 source = { git = "https://github.com/arnarg/tree-sitter-todotxt", rev = "0207f6a4ab6aeafc4b091914d31d8235049a2578" }
+
+[[language]]
+name = "strace"
+scope = "source.strace"
+file-types = ["strace"]
+roots = []
+
+[[grammar]]
+name = "strace"
+source = { git = "https://github.com/sigmaSd/tree-sitter-strace", rev = "a0f6c50ae4087a9299f055d0f30fe94fd98189a4" }
