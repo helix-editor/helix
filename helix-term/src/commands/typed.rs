@@ -1537,15 +1537,16 @@ fn vsplit(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+    if can_do_vsplit(cx.editor) {
+        let id = view!(cx.editor).doc;
 
-    let id = view!(cx.editor).doc;
-
-    if args.is_empty() {
-        cx.editor.switch(id, Action::VerticalSplit);
-    } else {
-        for arg in args {
-            cx.editor
-                .open(&PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
+        if args.is_empty() {
+            cx.editor.switch(id, Action::VerticalSplit);
+        } else {
+            for arg in args {
+                cx.editor
+                    .open(&PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
+            }
         }
     }
 
@@ -1583,8 +1584,9 @@ fn vsplit_new(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    cx.editor.new_file(Action::VerticalSplit);
+    if can_do_vsplit(cx.editor) {
+        cx.editor.new_file(Action::VerticalSplit);
+    }
 
     Ok(())
 }
@@ -1597,10 +1599,24 @@ fn hsplit_new(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     cx.editor.new_file(Action::HorizontalSplit);
 
     Ok(())
+}
+
+pub fn can_do_vsplit(editor: &mut Editor) -> bool {
+    // check if there are views with an inner area of 1 (1 character per line gets drawn)
+    // if there are, it's not feasible to create any more vertical splits
+    let current = view!(editor).doc;
+    if editor.tree.views().any(|(view, _focused)| {
+        view.inner_area(editor.document(current).unwrap()).width == 1
+            && editor.tree.is_child(&view.id)
+    }) {
+        editor.set_error("Max number of splits reached");
+        false
+    } else {
+        true
+    }
 }
 
 fn debug_eval(

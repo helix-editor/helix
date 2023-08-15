@@ -214,6 +214,19 @@ impl Tree {
         node
     }
 
+    pub fn is_child(&self, child_id: &ViewId) -> bool {
+        let focus = self.focus;
+        let parent = self.nodes[focus].parent;
+
+        match &self.nodes[parent] {
+            Node {
+                content: Content::Container(container),
+                ..
+            } => container.children.contains(child_id),
+            _ => unreachable!(),
+        }
+    }
+
     pub fn remove(&mut self, index: ViewId) {
         let mut stack = Vec::new();
 
@@ -384,11 +397,9 @@ impl Tree {
                         }
                         Layout::Vertical => {
                             let len = container.children.len();
+                            let inner_gap = 1u16;
 
                             let width = area.width / len as u16;
-
-                            let inner_gap = 1u16;
-                            // let total_gap = inner_gap * (len as u16 - 1);
 
                             let mut child_x = area.x;
 
@@ -396,10 +407,11 @@ impl Tree {
                                 let mut area = Rect::new(
                                     child_x,
                                     container.area.y,
-                                    width,
+                                    // we subtract inner gap here to accommodate for the width that inner gaps take
+                                    width - inner_gap,
                                     container.area.height,
                                 );
-                                child_x += width + inner_gap;
+                                child_x += width;
 
                                 // last child takes the remaining width because we can get uneven
                                 // space from rounding

@@ -4845,11 +4845,15 @@ fn hsplit_new(cx: &mut Context) {
 }
 
 fn vsplit(cx: &mut Context) {
-    split(cx, Action::VerticalSplit);
+    if typed::can_do_vsplit(cx.editor) {
+        split(cx, Action::VerticalSplit);
+    }
 }
 
 fn vsplit_new(cx: &mut Context) {
-    cx.editor.new_file(Action::VerticalSplit);
+    if typed::can_do_vsplit(cx.editor) {
+        cx.editor.new_file(Action::VerticalSplit);
+    }
 }
 
 fn wclose(cx: &mut Context) {
