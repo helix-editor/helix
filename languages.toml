@@ -1929,7 +1929,7 @@ source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e57c569
 name = "starlark"
 scope = "source.starlark"
 injection-regex = "(starlark|bzl|bazel)"
-file-types = ["bzl", "bazel", "BUILD"]
+file-types = ["bzl", "bazel", "BUILD", "star"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
