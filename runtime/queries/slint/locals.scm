@@ -1,3 +1,3 @@
 ; locals.scm
 
-(component_definition) @local.scope
+(component_item) @local.scope

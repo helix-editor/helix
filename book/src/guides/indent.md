@@ -71,6 +71,12 @@ level for the line.
   ignored.
 - `@outdent.always` (default scope `all`):
   Decrease the indent level by 1. The same rules as for `@indent.always` apply.
+- `@align` (default scope `all`):
+  Align everything inside this node to some anchor. The anchor is given
+  by the start of the node captured by `@anchor` in the same pattern.
+  Every pattern with an `@align` should contain exactly one `@anchor`.
+  Indent (and outdent) for nodes below (in terms of their starting line)
+  the `@align` node is added to the indentation required for alignment.
 - `@extend`:
   Extend the range of this node to the end of the line and to lines that are
   indented more than the line that this node starts on. This is useful for

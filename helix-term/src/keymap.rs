@@ -401,14 +401,14 @@ mod tests {
     fn merge_partial_keys() {
         let keymap = hashmap! {
             Mode::Normal => keymap!({ "Normal mode"
-                    "i" => normal_mode,
-                    "无" => insert_mode,
-                    "z" => jump_backward,
-                    "g" => { "Merge into goto mode"
-                        "$" => goto_line_end,
-                        "g" => delete_char_forward,
-                    },
-                })
+                "i" => normal_mode,
+                "无" => insert_mode,
+                "z" => jump_backward,
+                "g" => { "Merge into goto mode"
+                    "$" => goto_line_end,
+                    "g" => delete_char_forward,
+                },
+            })
         };
         let mut merged_keyamp = default();
         merge_keys(&mut merged_keyamp, keymap.clone());
@@ -474,13 +474,13 @@ mod tests {
     fn order_should_be_set() {
         let keymap = hashmap! {
             Mode::Normal => keymap!({ "Normal mode"
-                    "space" => { ""
-                        "s" => { ""
-                            "v" => vsplit,
-                            "c" => hsplit,
-                        },
+                "space" => { ""
+                    "s" => { ""
+                        "v" => vsplit,
+                        "c" => hsplit,
                     },
-                })
+                },
+            })
         };
         let mut merged_keyamp = default();
         merge_keys(&mut merged_keyamp, keymap.clone());
