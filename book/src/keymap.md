@@ -411,19 +411,20 @@ you to selectively add search terms to your selections.
 
 Keys to use within picker. Remapping currently not supported.
 
-| Key                          | Description       |
-| -----                        | -------------     |
-| `Shift-Tab`, `Up`, `Ctrl-p`  | Previous entry    |
-| `Tab`, `Down`, `Ctrl-n`      | Next entry        |
-| `PageUp`, `Ctrl-u`           | Page up           |
-| `PageDown`, `Ctrl-d`         | Page down         |
-| `Home`                       | Go to first entry |
-| `End`                        | Go to last entry  |
-| `Enter`                      | Open selected     |
-| `Ctrl-s`                     | Open horizontally |
-| `Ctrl-v`                     | Open vertically   |
-| `Ctrl-t`                     | Toggle preview    |
-| `Escape`, `Ctrl-c`           | Close picker      |
+| Key                          | Description                                                |
+| -----                        | -------------                                              |
+| `Shift-Tab`, `Up`, `Ctrl-p`  | Previous entry                                             |
+| `Tab`, `Down`, `Ctrl-n`      | Next entry                                                 |
+| `PageUp`, `Ctrl-u`           | Page up                                                    |
+| `PageDown`, `Ctrl-d`         | Page down                                                  |
+| `Home`                       | Go to first entry                                          |
+| `End`                        | Go to last entry                                           |
+| `Enter`                      | Open selected                                              |
+| `Alt-Enter`                  | Open selected in the background without closing the picker |
+| `Ctrl-s`                     | Open horizontally                                          |
+| `Ctrl-v`                     | Open vertically                                            |
+| `Ctrl-t`                     | Toggle preview                                             |
+| `Escape`, `Ctrl-c`           | Close picker                                               |
 
 ## Prompt
 
