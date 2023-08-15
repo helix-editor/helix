@@ -176,8 +176,7 @@ pub fn line_numbers<'doc>(
                 let relative = line_number == LineNumber::Relative
                     && mode != Mode::Insert
                     && is_focused
-                    && current_line != line
-                    && editor.focused_in_terminal;
+                    && current_line != line;
 
                 let display_num = if relative {
                     abs_diff(current_line, line)

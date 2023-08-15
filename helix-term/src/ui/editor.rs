@@ -43,6 +43,8 @@ pub struct EditorView {
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
+    /// Tracks if the terminal window is focused by reaction to terminal focus events
+    terminal_focused: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -71,6 +73,7 @@ impl EditorView {
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
+            terminal_focused: true,
         }
     }
 
@@ -171,7 +174,7 @@ impl EditorView {
                 view,
                 view.area,
                 theme,
-                is_focused,
+                is_focused & self.terminal_focused,
                 &mut line_decorations,
             );
         }
@@ -1373,7 +1376,7 @@ impl Component for EditorView {
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
             Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
             Event::FocusGained => {
-                context.editor.focused_in_terminal = true;
+                self.terminal_focused = true;
                 EventResult::Consumed(None)
             }
             Event::FocusLost => {
@@ -1382,7 +1385,7 @@ impl Component for EditorView {
                         context.editor.set_error(format!("{}", e));
                     }
                 }
-                context.editor.focused_in_terminal = false;
+                self.terminal_focused = false;
                 EventResult::Consumed(None)
             }
         }

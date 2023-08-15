@@ -929,7 +929,6 @@ pub struct Editor {
     /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be acquired
     pub redraw_handle: RedrawHandle,
     pub needs_redraw: bool,
-    pub focused_in_terminal: bool,
     /// Cached position of the cursor calculated during rendering.
     /// The content of `cursor_cache` is returned by `Editor::cursor` if
     /// set to `Some(_)`. The value will be cleared after it's used.
@@ -1064,7 +1063,6 @@ impl Editor {
             needs_redraw: false,
             cursor_cache: Cell::new(None),
             completion_request_handle: None,
-            focused_in_terminal: true,
         }
     }
 
