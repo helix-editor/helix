@@ -1190,7 +1190,11 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     for sel in paths {
         let p = sel.trim();
         if !p.is_empty() {
-            if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
+            let path = Path::new(p);
+            if path.is_dir() {
+                let picker = ui::file_picker(path.into(), &cx.editor.config());
+                cx.push_layer(Box::new(overlaid(picker)));
+            } else if let Err(e) = cx.editor.open(path, action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
         }
@@ -2603,6 +2607,7 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
     let picker = ui::file_picker(path, &cx.editor.config());
     cx.push_layer(Box::new(overlaid(picker)));
 }
+
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = helix_loader::current_working_dir();
     if !cwd.exists() {
