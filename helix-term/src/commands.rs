@@ -36,7 +36,7 @@ use helix_view::{
     editor::{Action, CompleteAction},
     info::Info,
     input::KeyEvent,
-    keyboard::{KeyCode,KeyModifiers},
+    keyboard::{KeyCode, KeyModifiers},
     tree,
     view::View,
     Document, DocumentId, Editor, ViewId,
@@ -1262,9 +1262,10 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } | KeyEvent {
+            }
+            | KeyEvent {
                 code: KeyCode::Char('j'),
-                modifiers: KeyModifiers::CONTROL
+                modifiers: KeyModifiers::CONTROL,
             } =>
             // TODO: this isn't quite correct when CRLF is involved.
             // This hack will work in most cases, since documents don't
@@ -1419,9 +1420,10 @@ fn replace(cx: &mut Context) {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } | KeyEvent {
+            }
+            | KeyEvent {
                 code: KeyCode::Char('j'),
-                modifiers: KeyModifiers::CONTROL
+                modifiers: KeyModifiers::CONTROL,
             } => Some(doc.line_ending.as_str()),
             KeyEvent {
                 code: KeyCode::Char(ch),
@@ -5148,9 +5150,10 @@ fn surround_add(cx: &mut Context) {
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } | KeyEvent {
+            }
+            | KeyEvent {
                 code: KeyCode::Char('j'),
-                modifiers: KeyModifiers::CONTROL
+                modifiers: KeyModifiers::CONTROL,
             } => (
                 doc.line_ending.as_str().into(),
                 doc.line_ending.as_str().into(),
