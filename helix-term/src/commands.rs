@@ -36,7 +36,7 @@ use helix_view::{
     editor::{Action, CompleteAction},
     info::Info,
     input::KeyEvent,
-    keyboard::KeyCode,
+    keyboard::{KeyCode,KeyModifiers},
     tree,
     view::View,
     Document, DocumentId, Editor, ViewId,
@@ -1262,6 +1262,9 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
+            } | KeyEvent {
+                code: KeyCode::Char('j'),
+                modifiers: KeyModifiers::CONTROL
             } =>
             // TODO: this isn't quite correct when CRLF is involved.
             // This hack will work in most cases, since documents don't
@@ -1414,13 +1417,16 @@ fn replace(cx: &mut Context) {
         let (view, doc) = current!(cx.editor);
         let ch: Option<&str> = match event {
             KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } | KeyEvent {
+                code: KeyCode::Char('j'),
+                modifiers: KeyModifiers::CONTROL
+            } => Some(doc.line_ending.as_str()),
+            KeyEvent {
                 code: KeyCode::Char(ch),
                 ..
             } => Some(ch.encode_utf8(&mut buf[..])),
-            KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            } => Some(doc.line_ending.as_str()),
             KeyEvent {
                 code: KeyCode::Tab, ..
             } => Some("\t"),
@@ -5138,8 +5144,23 @@ fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         let (view, doc) = current!(cx.editor);
         // surround_len is the number of new characters being added.
-        let (open, close, surround_len) = match event.char() {
-            Some(ch) => {
+        let (open, close, surround_len) = match event {
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } | KeyEvent {
+                code: KeyCode::Char('j'),
+                modifiers: KeyModifiers::CONTROL
+            } => (
+                doc.line_ending.as_str().into(),
+                doc.line_ending.as_str().into(),
+                2 * doc.line_ending.len_chars(),
+            ),
+
+            KeyEvent {
+                code: KeyCode::Char(ch),
+                ..
+            } => {
                 let (o, c) = surround::get_pair(ch);
                 let mut open = Tendril::new();
                 open.push(o);
@@ -5147,12 +5168,7 @@ fn surround_add(cx: &mut Context) {
                 close.push(c);
                 (open, close, 2)
             }
-            None if event.code == KeyCode::Enter => (
-                doc.line_ending.as_str().into(),
-                doc.line_ending.as_str().into(),
-                2 * doc.line_ending.len_chars(),
-            ),
-            None => return,
+            _ => return,
         };
 
         let selection = doc.selection(view.id);

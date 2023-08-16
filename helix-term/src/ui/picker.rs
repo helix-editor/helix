@@ -830,7 +830,7 @@ impl<T: Item + 'static> Component for Picker<T> {
                     (self.callback_fn)(ctx, option, Action::Load);
                 }
             }
-            key!(Enter) => {
+            key!(Enter) | ctrl!('j') => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, Action::Replace);
                 }
