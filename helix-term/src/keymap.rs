@@ -106,7 +106,7 @@ impl KeyTrieNode {
                 (events.join(", "), desc)
             })
             .collect();
-        Info::new(&self.name, &body)
+        Info::from_kv_pairs(&self.name, &body)
     }
 }
 

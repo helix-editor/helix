@@ -5131,7 +5131,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         (" ", "... or any character acting as a pair"),
     ];
 
-    cx.editor.autoinfo = Some(Info::new(title, &help_text));
+    cx.editor.autoinfo = Some(Info::from_kv_pairs(title, &help_text));
 }
 
 fn surround_add(cx: &mut Context) {
