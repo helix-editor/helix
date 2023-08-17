@@ -1,1 +1,2 @@
-; inherits: haskell
+((comment) @injection.content
+ (#set! injection.language "comment"))
