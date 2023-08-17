@@ -82,7 +82,7 @@ pub struct Context<'a> {
     pub count: Option<NonZeroUsize>,
     pub editor: &'a mut Editor,
 
-    pub callback: Option<crate::compositor::Callback>,
+    pub callback: Vec<crate::compositor::Callback>,
     pub on_next_key_callback: Option<OnKeyCallback>,
     pub jobs: &'a mut Jobs,
 }
@@ -90,16 +90,18 @@ pub struct Context<'a> {
 impl<'a> Context<'a> {
     /// Push a new component onto the compositor.
     pub fn push_layer(&mut self, component: Box<dyn Component>) {
-        self.callback = Some(Box::new(|compositor: &mut Compositor, _| {
-            compositor.push(component)
-        }));
+        self.callback
+            .push(Box::new(|compositor: &mut Compositor, _| {
+                compositor.push(component)
+            }));
     }
 
     /// Call `replace_or_push` on the Compositor
     pub fn replace_or_push_layer<T: Component>(&mut self, id: &'static str, component: T) {
-        self.callback = Some(Box::new(move |compositor: &mut Compositor, _| {
-            compositor.replace_or_push(id, component);
-        }));
+        self.callback
+            .push(Box::new(move |compositor: &mut Compositor, _| {
+                compositor.replace_or_push(id, component);
+            }));
     }
 
     #[inline]
@@ -2874,7 +2876,7 @@ pub fn command_palette(cx: &mut Context) {
     let register = cx.register;
     let count = cx.count;
 
-    cx.callback = Some(Box::new(
+    cx.callback.push(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
             let keymap = compositor.find::<ui::EditorView>().unwrap().keymaps.map()
                 [&cx.editor.mode]
@@ -2894,7 +2896,7 @@ pub fn command_palette(cx: &mut Context) {
                     register,
                     count,
                     editor: cx.editor,
-                    callback: None,
+                    callback: Vec::new(),
                     on_next_key_callback: None,
                     jobs: cx.jobs,
                 };
@@ -2922,7 +2924,7 @@ pub fn command_palette(cx: &mut Context) {
 
 fn last_picker(cx: &mut Context) {
     // TODO: last picker does not seem to work well with buffer_picker
-    cx.callback = Some(Box::new(|compositor, cx| {
+    cx.callback.push(Box::new(|compositor, cx| {
         if let Some(picker) = compositor.last_picker.take() {
             compositor.push(picker);
         } else {
@@ -3430,6 +3432,7 @@ fn hunk_range(hunk: Hunk, text: RopeSlice) -> Range {
 }
 
 pub mod insert {
+    use crate::events::PostInsertChar;
     use super::*;
     pub type Hook = fn(&Rope, &Selection, char) -> Option<Transaction>;
     pub type PostHook = fn(&mut Context, char);
@@ -3563,6 +3566,7 @@ pub mod insert {
         for hook in &[language_server_completion, signature_help] {
             hook(cx, c);
         }
+        helix_event::dispatch(PostInsertChar { c, cx });
     }
 
     pub fn smart_tab(cx: &mut Context) {
@@ -5731,7 +5735,7 @@ fn replay_macro(cx: &mut Context) {
     cx.editor.macro_replaying.push(reg);
 
     let count = cx.count();
-    cx.callback = Some(Box::new(move |compositor, cx| {
+    cx.callback.push(Box::new(move |compositor, cx| {
         for _ in 0..count {
             for &key in keys.iter() {
                 compositor.handle_event(&compositor::Event::Key(key), cx);
