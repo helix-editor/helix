@@ -1,10 +1,10 @@
 use crate::{
     align_view,
-    clipboard::{get_clipboard_provider, ClipboardProvider},
-    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode},
+    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint},
     graphics::{CursorKind, Rect},
     info::Info,
     input::KeyEvent,
+    register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
     view::ViewPosition,
@@ -40,11 +40,10 @@ use tokio::{
 use anyhow::{anyhow, bail, Error};
 
 pub use helix_core::diagnostic::Severity;
-pub use helix_core::register::Registers;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig, SoftWrap},
-    Change,
+    Change, LineEnding, NATIVE_LINE_ENDING,
 };
 use helix_core::{Position, Selection};
 use helix_dap as dap;
@@ -251,6 +250,8 @@ pub struct Config {
         deserialize_with = "deserialize_duration_millis"
     )]
     pub idle_timeout: Duration,
+    /// Whether to insert the completion suggestion on hover. Defaults to true.
+    pub preview_completion_insert: bool,
     pub completion_trigger_len: u8,
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
@@ -271,7 +272,7 @@ pub struct Config {
     pub search: SearchConfig,
     pub lsp: LspConfig,
     pub terminal: Option<TerminalConfig>,
-    /// Column numbers at which to draw the rulers. Default to `[]`, meaning no rulers.
+    /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
@@ -284,6 +285,26 @@ pub struct Config {
     pub soft_wrap: SoftWrap,
     /// Workspace specific lsp ceiling dirs
     pub workspace_lsp_roots: Vec<PathBuf>,
+    /// Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`.
+    pub default_line_ending: LineEndingConfig,
+    /// Enables smart tab
+    pub smart_tab: Option<SmartTabConfig>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "kebab-case", default)]
+pub struct SmartTabConfig {
+    pub enable: bool,
+    pub supersede_menu: bool,
+}
+
+impl Default for SmartTabConfig {
+    fn default() -> Self {
+        SmartTabConfig {
+            enable: true,
+            supersede_menu: false,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -354,6 +375,8 @@ pub struct LspConfig {
     pub display_inlay_hints: bool,
     /// Whether to enable snippet support
     pub snippets: bool,
+    /// Whether to include declaration in the goto reference query
+    pub goto_reference_include_declaration: bool,
 }
 
 impl Default for LspConfig {
@@ -365,6 +388,7 @@ impl Default for LspConfig {
             display_signature_help_docs: true,
             display_inlay_hints: false,
             snippets: true,
+            goto_reference_include_declaration: true,
         }
     }
 }
@@ -397,10 +421,17 @@ impl Default for StatusLineConfig {
                 E::Mode,
                 E::Spinner,
                 E::FileName,
+                E::ReadOnlyIndicator,
                 E::FileModificationIndicator,
             ],
             center: vec![],
-            right: vec![E::Diagnostics, E::Selections, E::Position, E::FileEncoding],
+            right: vec![
+                E::Diagnostics,
+                E::Selections,
+                E::Register,
+                E::Position,
+                E::FileEncoding,
+            ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
         }
@@ -434,14 +465,17 @@ pub enum StatusLineElement {
     /// The LSP activity spinner
     Spinner,
 
-    /// The base file name, including a dirty flag if it's unsaved
+    /// The file basename (the leaf of the open file's path)
     FileBaseName,
 
-    /// The relative file path, including a dirty flag if it's unsaved
+    /// The relative file path
     FileName,
 
     // The file modification indicator
     FileModificationIndicator,
+
+    /// An indicator that shows `"[readonly]"` when a file cannot be written
+    ReadOnlyIndicator,
 
     /// The file encoding
     FileEncoding,
@@ -481,6 +515,9 @@ pub enum StatusLineElement {
 
     /// Current version control information
     VersionControl,
+
+    /// Indicator for selected register
+    Register,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -595,7 +632,9 @@ impl std::str::FromStr for GutterType {
             "spacer" => Ok(Self::Spacer),
             "line-numbers" => Ok(Self::LineNumbers),
             "diff" => Ok(Self::Diff),
-            _ => anyhow::bail!("Gutter type can only be `diagnostics` or `line-numbers`."),
+            _ => anyhow::bail!(
+                "Gutter type can only be `diagnostics`, `spacer`, `line-numbers` or `diff`."
+            ),
         }
     }
 }
@@ -713,6 +752,51 @@ impl Default for IndentGuidesConfig {
     }
 }
 
+/// Line ending configuration.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LineEndingConfig {
+    /// The platform's native line ending.
+    ///
+    /// `crlf` on Windows, otherwise `lf`.
+    Native,
+    /// Line feed.
+    LF,
+    /// Carriage return followed by line feed.
+    Crlf,
+    /// Form feed.
+    #[cfg(feature = "unicode-lines")]
+    FF,
+    /// Carriage return.
+    #[cfg(feature = "unicode-lines")]
+    CR,
+    /// Next line.
+    #[cfg(feature = "unicode-lines")]
+    Nel,
+}
+
+impl Default for LineEndingConfig {
+    fn default() -> Self {
+        LineEndingConfig::Native
+    }
+}
+
+impl From<LineEndingConfig> for LineEnding {
+    fn from(line_ending: LineEndingConfig) -> Self {
+        match line_ending {
+            LineEndingConfig::Native => NATIVE_LINE_ENDING,
+            LineEndingConfig::LF => LineEnding::LF,
+            LineEndingConfig::Crlf => LineEnding::Crlf,
+            #[cfg(feature = "unicode-lines")]
+            LineEndingConfig::FF => LineEnding::FF,
+            #[cfg(feature = "unicode-lines")]
+            LineEndingConfig::CR => LineEnding::CR,
+            #[cfg(feature = "unicode-lines")]
+            LineEndingConfig::Nel => LineEnding::Nel,
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -734,6 +818,7 @@ impl Default for Config {
             auto_format: true,
             auto_save: false,
             idle_timeout: Duration::from_millis(400),
+            preview_completion_insert: true,
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
@@ -749,10 +834,15 @@ impl Default for Config {
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,
-            soft_wrap: SoftWrap::default(),
+            soft_wrap: SoftWrap {
+                enable: Some(false),
+                ..SoftWrap::default()
+            },
             text_width: 80,
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
+            default_line_ending: LineEndingConfig::default(),
+            smart_tab: Some(SmartTabConfig::default()),
         }
     }
 }
@@ -763,18 +853,6 @@ impl Default for SearchConfig {
             wrap_around: true,
             smart_case: true,
         }
-    }
-}
-
-pub struct Motion(pub Box<dyn Fn(&mut Editor)>);
-impl Motion {
-    pub fn run(&self, e: &mut Editor) {
-        (self.0)(e)
-    }
-}
-impl std::fmt::Debug for Motion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("motion")
     }
 }
 
@@ -812,14 +890,12 @@ pub struct Editor {
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
-    pub diagnostics: BTreeMap<lsp::Url, Vec<lsp::Diagnostic>>,
+    pub diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
     pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
-
-    pub clipboard_provider: Box<dyn ClipboardProvider>,
 
     pub syn_loader: Arc<syntax::Loader>,
     pub theme_loader: Arc<theme::Loader>,
@@ -842,8 +918,7 @@ pub struct Editor {
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
-    pub last_motion: Option<Motion>,
-
+    last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
 
     pub exit_code: i32,
@@ -851,7 +926,7 @@ pub struct Editor {
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
     /// Allows asynchronous tasks to control the rendering
     /// The `Notify` allows asynchronous tasks to request the editor to perform a redraw
-    /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be aquired
+    /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be acquired
     pub redraw_handle: RedrawHandle,
     pub needs_redraw: bool,
     /// Cached position of the cursor calculated during rendering.
@@ -868,7 +943,7 @@ pub struct Editor {
     /// times during rendering and should not be set by other functions.
     pub cursor_cache: Cell<Option<Option<Position>>>,
     /// When a new completion request is sent to the server old
-    /// unifinished request must be dropped. Each completion
+    /// unfinished request must be dropped. Each completion
     /// request is associated with a channel that cancels
     /// when the channel is dropped. That channel is stored
     /// here. When a new completion request is sent this
@@ -876,6 +951,8 @@ pub struct Editor {
     /// canceled as a result
     pub completion_request_handle: Option<oneshot::Sender<()>>,
 }
+
+pub type Motion = Box<dyn Fn(&mut Editor)>;
 
 pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
 
@@ -900,9 +977,14 @@ enum ThemeAction {
 }
 
 #[derive(Debug, Clone)]
-pub struct CompleteAction {
-    pub trigger_offset: usize,
-    pub changes: Vec<Change>,
+pub enum CompleteAction {
+    Applied {
+        trigger_offset: usize,
+        changes: Vec<Change>,
+    },
+    /// A savepoint of the currently selected completion. The savepoint
+    /// MUST be restored before sending any event to the LSP
+    Selected { savepoint: Arc<SavePoint> },
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -911,6 +993,13 @@ pub enum Action {
     Replace,
     HorizontalSplit,
     VerticalSplit,
+}
+
+impl Action {
+    /// Whether to align the view to the cursor after executing this action
+    pub fn align_view(&self, view: &View, new_doc: DocumentId) -> bool {
+        !matches!((self, view.doc == new_doc), (Action::Load, false))
+    }
 }
 
 /// Error thrown on failed document closed
@@ -930,6 +1019,7 @@ impl Editor {
         syn_loader: Arc<syntax::Loader>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
+        let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
 
@@ -949,7 +1039,7 @@ impl Editor {
             macro_recording: None,
             macro_replaying: Vec::new(),
             theme: theme_loader.default(),
-            language_servers: helix_lsp::Registry::new(),
+            language_servers,
             diagnostics: BTreeMap::new(),
             diff_providers: DiffProviderRegistry::default(),
             debugger: None,
@@ -960,7 +1050,6 @@ impl Editor {
             last_theme: None,
             last_selection: None,
             registers: Registers::default(),
-            clipboard_provider: get_clipboard_provider(),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
@@ -977,6 +1066,19 @@ impl Editor {
         }
     }
 
+    pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {
+        motion(self);
+        self.last_motion = Some(Box::new(motion));
+    }
+
+    pub fn repeat_last_motion(&mut self, count: usize) {
+        if let Some(motion) = self.last_motion.take() {
+            for _ in 0..count {
+                motion(self);
+            }
+            self.last_motion = Some(motion);
+        }
+    }
     /// Current editing mode for the [`Editor`].
     pub fn mode(&self) -> Mode {
         self.mode
@@ -1081,60 +1183,75 @@ impl Editor {
         self._refresh();
     }
 
+    #[inline]
+    pub fn language_server_by_id(&self, language_server_id: usize) -> Option<&helix_lsp::Client> {
+        self.language_servers.get_by_id(language_server_id)
+    }
+
     /// Refreshes the language server for a given document
-    pub fn refresh_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
-        self.launch_language_server(doc_id)
+    pub fn refresh_language_servers(&mut self, doc_id: DocumentId) -> Option<()> {
+        self.launch_language_servers(doc_id)
     }
 
     /// Launch a language server for a given document
-    fn launch_language_server(&mut self, doc_id: DocumentId) -> Option<()> {
+    fn launch_language_servers(&mut self, doc_id: DocumentId) -> Option<()> {
         if !self.config().lsp.enable {
             return None;
         }
-
         // if doc doesn't have a URL it's a scratch buffer, ignore it
-        let doc = self.document(doc_id)?;
+        let doc = self.documents.get_mut(&doc_id)?;
+        let doc_url = doc.url()?;
         let (lang, path) = (doc.language.clone(), doc.path().cloned());
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
 
-        // try to find a language server based on the language name
-        let language_server = lang.as_ref().and_then(|language| {
+        // try to find language servers based on the language name
+        let language_servers = lang.as_ref().and_then(|language| {
             self.language_servers
                 .get(language, path.as_ref(), root_dirs, config.lsp.snippets)
                 .map_err(|e| {
                     log::error!(
-                        "Failed to initialize the LSP for `{}` {{ {} }}",
+                        "Failed to initialize the language servers for `{}` {{ {} }}",
                         language.scope(),
                         e
                     )
                 })
                 .ok()
-                .flatten()
         });
 
-        let doc = self.document_mut(doc_id)?;
-        let doc_url = doc.url()?;
+        if let Some(language_servers) = language_servers {
+            let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
-        if let Some(language_server) = language_server {
-            // only spawn a new lang server if the servers aren't the same
-            if Some(language_server.id()) != doc.language_server().map(|server| server.id()) {
-                if let Some(language_server) = doc.language_server() {
-                    tokio::spawn(language_server.text_document_did_close(doc.identifier()));
-                }
+            // only spawn new language servers if the servers aren't the same
 
-                let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
+            let doc_language_servers_not_in_registry =
+                doc.language_servers.iter().filter(|(name, doc_ls)| {
+                    language_servers
+                        .get(*name)
+                        .map_or(true, |ls| ls.id() != doc_ls.id())
+                });
 
+            for (_, language_server) in doc_language_servers_not_in_registry {
+                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+            }
+
+            let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
+                doc.language_servers
+                    .get(*name)
+                    .map_or(true, |doc_ls| ls.id() != doc_ls.id())
+            });
+
+            for (_, language_server) in language_servers_not_in_doc {
                 // TODO: this now races with on_init code if the init happens too quickly
                 tokio::spawn(language_server.text_document_did_open(
-                    doc_url,
+                    doc_url.clone(),
                     doc.version(),
                     doc.text(),
-                    language_id,
+                    language_id.clone(),
                 ));
-
-                doc.set_language_server(Some(language_server));
             }
+
+            doc.language_servers = language_servers;
         }
         Some(())
     }
@@ -1170,6 +1287,7 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
         doc.ensure_view_init(view.id);
         view.sync_changes(doc);
+        doc.mark_as_focused();
 
         align_view(doc, view, Align::Center);
     }
@@ -1240,6 +1358,7 @@ impl Editor {
                 let view_id = view!(self).id;
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
+                doc.mark_as_focused();
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
@@ -1261,6 +1380,7 @@ impl Editor {
                 // initialize selection for view
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
+                doc.mark_as_focused();
             }
         }
 
@@ -1296,11 +1416,22 @@ impl Editor {
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
-        let (rope, encoding) = crate::document::from_reader(&mut stdin(), None)?;
-        Ok(self.new_file_from_document(
-            action,
-            Document::from(rope, Some(encoding), self.config.clone()),
-        ))
+        let (stdin, encoding, has_bom) = crate::document::read_to_string(&mut stdin(), None)?;
+        let doc = Document::from(
+            helix_core::Rope::default(),
+            Some((encoding, has_bom)),
+            self.config.clone(),
+        );
+        let doc_id = self.new_file_from_document(action, doc);
+        let doc = doc_mut!(self, &doc_id);
+        let view = view_mut!(self);
+        doc.ensure_view_init(view.id);
+        let transaction =
+            helix_core::Transaction::insert(doc.text(), doc.selection(view.id), stdin.into())
+                .with_selection(Selection::point(0));
+        doc.apply(&transaction, view.id);
+        doc.append_changes_to_history(view);
+        Ok(doc_id)
     }
 
     // ??? possible use for integration tests
@@ -1324,7 +1455,7 @@ impl Editor {
             doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
             let id = self.new_document(doc);
-            let _ = self.launch_language_server(id);
+            let _ = self.launch_language_servers(id);
 
             id
         };
@@ -1354,7 +1485,7 @@ impl Editor {
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
 
-        if let Some(language_server) = doc.language_server() {
+        for language_server in doc.language_servers() {
             // TODO: track error
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
@@ -1411,6 +1542,7 @@ impl Editor {
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);
+            doc.mark_as_focused();
         }
 
         self._refresh();
@@ -1429,7 +1561,18 @@ impl Editor {
 
         let path = path.map(|path| path.into());
         let doc = doc_mut!(self, &doc_id);
-        let future = doc.save(path, force)?;
+        let doc_save_future = doc.save(path, force)?;
+
+        // When a file is written to, notify the file event handler.
+        // Note: This can be removed once proper file watching is implemented.
+        let handler = self.language_servers.file_event_handler.clone();
+        let future = async move {
+            let res = doc_save_future.await;
+            if let Ok(event) = &res {
+                handler.file_changed(event.path.clone());
+            }
+            res
+        };
 
         use futures_util::stream;
 
@@ -1465,6 +1608,10 @@ impl Editor {
                 view.sync_changes(doc);
             }
         }
+
+        let view = view!(self, view_id);
+        let doc = doc_mut!(self, &view.doc);
+        doc.mark_as_focused();
     }
 
     pub fn focus_next(&mut self) {
@@ -1561,6 +1708,14 @@ impl Editor {
         &self,
         timeout: Option<u64>,
     ) -> Result<(), tokio::time::error::Elapsed> {
+        // Remove all language servers from the file event handler.
+        // Note: this is non-blocking.
+        for client in self.language_servers.iter_clients() {
+            self.language_servers
+                .file_event_handler
+                .remove_client(client.id());
+        }
+
         tokio::time::timeout(
             Duration::from_millis(timeout.unwrap_or(3000)),
             future::join_all(
@@ -1597,7 +1752,7 @@ impl Editor {
                 _ = self.redraw_handle.0.notified() => {
                     if  !self.needs_redraw{
                         self.needs_redraw = true;
-                        let timeout = Instant::now() + Duration::from_millis(96);
+                        let timeout = Instant::now() + Duration::from_millis(33);
                         if timeout < self.idle_timer.deadline(){
                             self.idle_timer.as_mut().reset(timeout)
                         }

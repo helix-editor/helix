@@ -65,20 +65,6 @@ where
     viewport: Viewport,
 }
 
-impl<B> Drop for Terminal<B>
-where
-    B: Backend,
-{
-    fn drop(&mut self) {
-        // Attempt to restore the cursor state
-        if self.cursor_kind == CursorKind::Hidden {
-            if let Err(err) = self.show_cursor(CursorKind::Block) {
-                eprintln!("Failed to show the cursor: {}", err);
-            }
-        }
-    }
-}
-
 impl<B> Terminal<B>
 where
     B: Backend,
@@ -114,6 +100,10 @@ where
 
     pub fn claim(&mut self, config: Config) -> io::Result<()> {
         self.backend.claim(config)
+    }
+
+    pub fn reconfigure(&mut self, config: Config) -> io::Result<()> {
+        self.backend.reconfigure(config)
     }
 
     pub fn restore(&mut self, config: Config) -> io::Result<()> {

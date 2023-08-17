@@ -1,4 +1,5 @@
 mod client;
+pub mod file_event;
 pub mod jsonrpc;
 pub mod snippet;
 mod transport;
@@ -10,23 +11,23 @@ pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::syntax::{LanguageConfiguration, LanguageServerConfiguration};
+use helix_core::{
+    path,
+    syntax::{LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures},
+};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::HashMap,
     path::{Path, PathBuf},
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
+    sync::Arc,
 };
 
 use thiserror::Error;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 pub type Result<T> = core::result::Result<T, Error>;
-type LanguageId = String;
+pub type LanguageServerName = String;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -46,7 +47,7 @@ pub enum Error {
     Other(#[from] anyhow::Error),
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum OffsetEncoding {
     /// UTF-8 code units aka bytes
     Utf8,
@@ -129,7 +130,11 @@ pub mod util {
     ) -> Option<usize> {
         let pos_line = pos.line as usize;
         if pos_line > doc.len_lines() - 1 {
-            return None;
+            // If it extends past the end, truncate it to the end. This is because the
+            // way the LSP describes the range including the last newline is by
+            // specifying a line number after what we would call the last line.
+            log::warn!("LSP position {pos:?} out of range assuming EOF");
+            return Some(doc.len_chars());
         }
 
         // We need to be careful here to fully comply ith the LSP spec.
@@ -145,10 +150,10 @@ pub mod util {
         // > ‘\n’, ‘\r\n’ and ‘\r’. Positions are line end character agnostic.
         // > So you can not specify a position that denotes \r|\n or \n| where | represents the character offset.
         //
-        // This means that while the line must be in bounds the `charater`
+        // This means that while the line must be in bounds the `character`
         // must be capped to the end of the line.
         // Note that the end of the line here is **before** the line terminator
-        // so we must use `line_end_char_index` istead of `doc.line_to_char(pos_line + 1)`
+        // so we must use `line_end_char_index` instead of `doc.line_to_char(pos_line + 1)`
         //
         // FIXME: Helix does not fully comply with the LSP spec for line terminators.
         // The LSP standard requires that line terminators are ['\n', '\r\n', '\r'].
@@ -239,9 +244,20 @@ pub mod util {
 
     pub fn lsp_range_to_range(
         doc: &Rope,
-        range: lsp::Range,
+        mut range: lsp::Range,
         offset_encoding: OffsetEncoding,
     ) -> Option<Range> {
+        // This is sort of an edgecase. It's not clear from the spec how to deal with
+        // ranges where end < start. They don't make much sense but vscode simply caps start to end
+        // and because it's not specified quite a few LS rely on this as a result (for example the TS server)
+        if range.start > range.end {
+            log::error!(
+                "Invalid LSP range start {:?} > end {:?}, using an empty range at the end instead",
+                range.start,
+                range.end
+            );
+            range.start = range.end;
+        }
         let start = lsp_pos_to_pos(doc, range.start, offset_encoding)?;
         let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
 
@@ -362,7 +378,7 @@ pub mod util {
         .expect("transaction must be valid for primary selection");
         let removed_text = text.slice(removed_start..removed_end);
 
-        let (transaction, selection) = Transaction::change_by_selection_ignore_overlapping(
+        let (transaction, mut selection) = Transaction::change_by_selection_ignore_overlapping(
             doc,
             selection,
             |range| {
@@ -405,6 +421,11 @@ pub mod util {
             return transaction;
         }
 
+        // Don't normalize to avoid merging/reording selections which would
+        // break the association between tabstops and selections. Most ranges
+        // will be replaced by tabstops anyways and the final selection will be
+        // normalized anyways
+        selection = selection.map_no_normalize(changes);
         let mut mapped_selection = SmallVec::with_capacity(selection.len());
         let mut mapped_primary_idx = 0;
         let primary_range = selection.primary();
@@ -413,9 +434,8 @@ pub mod util {
                 mapped_primary_idx = mapped_selection.len()
             }
 
-            let range = range.map(changes);
             let tabstops = tabstops.first().filter(|tabstops| !tabstops.is_empty());
-            let Some(tabstops) = tabstops else{
+            let Some(tabstops) = tabstops else {
                 // no tabstop normal mapping
                 mapped_selection.push(range);
                 continue;
@@ -528,6 +548,7 @@ pub enum MethodCall {
     WorkspaceFolders,
     WorkspaceConfiguration(lsp::ConfigurationParams),
     RegisterCapability(lsp::RegistrationParams),
+    UnregisterCapability(lsp::UnregistrationParams),
 }
 
 impl MethodCall {
@@ -550,6 +571,10 @@ impl MethodCall {
             lsp::request::RegisterCapability::METHOD => {
                 let params: lsp::RegistrationParams = params.parse()?;
                 Self::RegisterCapability(params)
+            }
+            lsp::request::UnregisterCapability::METHOD => {
+                let params: lsp::UnregistrationParams = params.parse()?;
+                Self::UnregisterCapability(params)
             }
             _ => {
                 return Err(Error::Unhandled);
@@ -606,24 +631,21 @@ impl Notification {
 
 #[derive(Debug)]
 pub struct Registry {
-    inner: HashMap<LanguageId, Vec<(usize, Arc<Client>)>>,
-
-    counter: AtomicUsize,
+    inner: HashMap<LanguageServerName, Vec<Arc<Client>>>,
+    syn_loader: Arc<helix_core::syntax::Loader>,
+    counter: usize,
     pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
-}
-
-impl Default for Registry {
-    fn default() -> Self {
-        Self::new()
-    }
+    pub file_event_handler: file_event::Handler,
 }
 
 impl Registry {
-    pub fn new() -> Self {
+    pub fn new(syn_loader: Arc<helix_core::syntax::Loader>) -> Self {
         Self {
             inner: HashMap::new(),
-            counter: AtomicUsize::new(0),
+            syn_loader,
+            counter: 0,
             incoming: SelectAll::new(),
+            file_event_handler: file_event::Handler::new(),
         }
     }
 
@@ -631,65 +653,95 @@ impl Registry {
         self.inner
             .values()
             .flatten()
-            .find(|(client_id, _)| client_id == &id)
-            .map(|(_, client)| client.as_ref())
+            .find(|client| client.id() == id)
+            .map(|client| &**client)
     }
 
     pub fn remove_by_id(&mut self, id: usize) {
-        self.inner.retain(|_, clients| {
-            clients.retain(|&(client_id, _)| client_id != id);
-            !clients.is_empty()
-        })
+        self.file_event_handler.remove_client(id);
+        self.inner.retain(|_, language_servers| {
+            language_servers.retain(|ls| id != ls.id());
+            !language_servers.is_empty()
+        });
     }
 
+    fn start_client(
+        &mut self,
+        name: String,
+        ls_config: &LanguageConfiguration,
+        doc_path: Option<&std::path::PathBuf>,
+        root_dirs: &[PathBuf],
+        enable_snippets: bool,
+    ) -> Result<Arc<Client>> {
+        let config = self
+            .syn_loader
+            .language_server_configs()
+            .get(&name)
+            .ok_or_else(|| anyhow::anyhow!("Language server '{name}' not defined"))?;
+        let id = self.counter;
+        self.counter += 1;
+        let NewClient(client, incoming) = start_client(
+            id,
+            name,
+            ls_config,
+            config,
+            doc_path,
+            root_dirs,
+            enable_snippets,
+        )?;
+        self.incoming.push(UnboundedReceiverStream::new(incoming));
+        Ok(client)
+    }
+
+    /// If this method is called, all documents that have a reference to language servers used by the language config have to refresh their language servers,
+    /// as it could be that language servers of these documents were stopped by this method.
+    /// See helix_view::editor::Editor::refresh_language_servers
     pub fn restart(
         &mut self,
         language_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
         enable_snippets: bool,
-    ) -> Result<Option<Arc<Client>>> {
-        let config = match &language_config.language_server {
-            Some(config) => config,
-            None => return Ok(None),
-        };
+    ) -> Result<Vec<Arc<Client>>> {
+        language_config
+            .language_servers
+            .iter()
+            .filter_map(|LanguageServerFeatures { name, .. }| {
+                if self.inner.contains_key(name) {
+                    let client = match self.start_client(
+                        name.clone(),
+                        language_config,
+                        doc_path,
+                        root_dirs,
+                        enable_snippets,
+                    ) {
+                        Ok(client) => client,
+                        error => return Some(error),
+                    };
+                    let old_clients = self
+                        .inner
+                        .insert(name.clone(), vec![client.clone()])
+                        .unwrap();
 
-        let scope = language_config.scope.clone();
+                    for old_client in old_clients {
+                        self.file_event_handler.remove_client(old_client.id());
+                        tokio::spawn(async move {
+                            let _ = old_client.force_shutdown().await;
+                        });
+                    }
 
-        match self.inner.entry(scope) {
-            Entry::Vacant(_) => Ok(None),
-            Entry::Occupied(mut entry) => {
-                // initialize a new client
-                let id = self.counter.fetch_add(1, Ordering::Relaxed);
-
-                let NewClientResult(client, incoming) = start_client(
-                    id,
-                    language_config,
-                    config,
-                    doc_path,
-                    root_dirs,
-                    enable_snippets,
-                )?;
-                self.incoming.push(UnboundedReceiverStream::new(incoming));
-
-                let old_clients = entry.insert(vec![(id, client.clone())]);
-
-                for (_, old_client) in old_clients {
-                    tokio::spawn(async move {
-                        let _ = old_client.force_shutdown().await;
-                    });
+                    Some(Ok(client))
+                } else {
+                    None
                 }
-
-                Ok(Some(client))
-            }
-        }
+            })
+            .collect()
     }
 
-    pub fn stop(&mut self, language_config: &LanguageConfiguration) {
-        let scope = language_config.scope.clone();
-
-        if let Some(clients) = self.inner.remove(&scope) {
-            for (_, client) in clients {
+    pub fn stop(&mut self, name: &str) {
+        if let Some(clients) = self.inner.remove(name) {
+            for client in clients {
+                self.file_event_handler.remove_client(client.id());
                 tokio::spawn(async move {
                     let _ = client.force_shutdown().await;
                 });
@@ -703,37 +755,34 @@ impl Registry {
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
         enable_snippets: bool,
-    ) -> Result<Option<Arc<Client>>> {
-        let config = match &language_config.language_server {
-            Some(config) => config,
-            None => return Ok(None),
-        };
-
-        let clients = self.inner.entry(language_config.scope.clone()).or_default();
-        // check if we already have a client for this documents root that we can reuse
-        if let Some((_, client)) = clients.iter_mut().enumerate().find(|(i, (_, client))| {
-            client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
-        }) {
-            return Ok(Some(client.1.clone()));
-        }
-        // initialize a new client
-        let id = self.counter.fetch_add(1, Ordering::Relaxed);
-
-        let NewClientResult(client, incoming) = start_client(
-            id,
-            language_config,
-            config,
-            doc_path,
-            root_dirs,
-            enable_snippets,
-        )?;
-        clients.push((id, client.clone()));
-        self.incoming.push(UnboundedReceiverStream::new(incoming));
-        Ok(Some(client))
+    ) -> Result<HashMap<LanguageServerName, Arc<Client>>> {
+        language_config
+            .language_servers
+            .iter()
+            .map(|LanguageServerFeatures { name, .. }| {
+                if let Some(clients) = self.inner.get(name) {
+                    if let Some((_, client)) = clients.iter().enumerate().find(|(i, client)| {
+                        client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
+                    }) {
+                        return Ok((name.to_owned(), client.clone()));
+                    }
+                }
+                let client = self.start_client(
+                    name.clone(),
+                    language_config,
+                    doc_path,
+                    root_dirs,
+                    enable_snippets,
+                )?;
+                let clients = self.inner.entry(name.clone()).or_default();
+                clients.push(client.clone());
+                Ok((name.clone(), client))
+            })
+            .collect()
     }
 
     pub fn iter_clients(&self) -> impl Iterator<Item = &Arc<Client>> {
-        self.inner.values().flatten().map(|(_, client)| client)
+        self.inner.values().flatten()
     }
 }
 
@@ -815,26 +864,28 @@ impl LspProgressMap {
     }
 }
 
-struct NewClientResult(Arc<Client>, UnboundedReceiver<(usize, Call)>);
+struct NewClient(Arc<Client>, UnboundedReceiver<(usize, Call)>);
 
 /// start_client takes both a LanguageConfiguration and a LanguageServerConfiguration to ensure that
 /// it is only called when it makes sense.
 fn start_client(
     id: usize,
+    name: String,
     config: &LanguageConfiguration,
     ls_config: &LanguageServerConfiguration,
     doc_path: Option<&std::path::PathBuf>,
     root_dirs: &[PathBuf],
     enable_snippets: bool,
-) -> Result<NewClientResult> {
+) -> Result<NewClient> {
     let (client, incoming, initialize_notify) = Client::start(
         &ls_config.command,
         &ls_config.args,
-        config.config.clone(),
+        ls_config.config.clone(),
         ls_config.environment.clone(),
         &config.roots,
         config.workspace_lsp_roots.as_deref().unwrap_or(root_dirs),
         id,
+        name,
         ls_config.timeout,
         doc_path,
     )?;
@@ -868,14 +919,14 @@ fn start_client(
         initialize_notify.notify_one();
     });
 
-    Ok(NewClientResult(client, incoming))
+    Ok(NewClient(client, incoming))
 }
 
 /// Find an LSP workspace of a file using the following mechanism:
 /// * if the file is outside `workspace` return `None`
 /// * start at `file` and search the file tree upward
 /// * stop the search at the first `root_dirs` entry that contains `file`
-/// * if no `root_dirs` matchs `file` stop at workspace
+/// * if no `root_dirs` matches `file` stop at workspace
 /// * Returns the top most directory that contains a `root_marker`
 /// * If no root marker and we stopped at a `root_dirs` entry, return the directory we stopped at
 /// * If we stopped at `workspace` instead and `workspace_is_cwd == false` return `None`
@@ -888,12 +939,13 @@ pub fn find_lsp_workspace(
     workspace_is_cwd: bool,
 ) -> Option<PathBuf> {
     let file = std::path::Path::new(file);
-    let file = if file.is_absolute() {
+    let mut file = if file.is_absolute() {
         file.to_path_buf()
     } else {
-        let current_dir = std::env::current_dir().expect("unable to determine current directory");
+        let current_dir = helix_loader::current_working_dir();
         current_dir.join(file)
     };
+    file = path::get_normalized_path(&file);
 
     if !file.starts_with(workspace) {
         return None;
@@ -910,7 +962,7 @@ pub fn find_lsp_workspace(
 
         if root_dirs
             .iter()
-            .any(|root_dir| root_dir == ancestor.strip_prefix(workspace).unwrap())
+            .any(|root_dir| path::get_normalized_path(&workspace.join(root_dir)) == ancestor)
         {
             // if the worskapce is the cwd do not search any higher for workspaces
             // but specify
@@ -947,16 +999,16 @@ mod tests {
 
         test_case!("", (0, 0) => Some(0));
         test_case!("", (0, 1) => Some(0));
-        test_case!("", (1, 0) => None);
+        test_case!("", (1, 0) => Some(0));
         test_case!("\n\n", (0, 0) => Some(0));
         test_case!("\n\n", (1, 0) => Some(1));
         test_case!("\n\n", (1, 1) => Some(1));
         test_case!("\n\n", (2, 0) => Some(2));
-        test_case!("\n\n", (3, 0) => None);
+        test_case!("\n\n", (3, 0) => Some(2));
         test_case!("test\n\n\n\ncase", (4, 3) => Some(11));
         test_case!("test\n\n\n\ncase", (4, 4) => Some(12));
         test_case!("test\n\n\n\ncase", (4, 5) => Some(12));
-        test_case!("", (u32::MAX, u32::MAX) => None);
+        test_case!("", (u32::MAX, u32::MAX) => Some(0));
     }
 
     #[test]

@@ -18,7 +18,9 @@ mod test {
     mod auto_indent;
     mod auto_pairs;
     mod commands;
+    mod languages;
     mod movement;
+    mod picker;
     mod prompt;
     mod splits;
 }

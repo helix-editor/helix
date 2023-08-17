@@ -1,8 +1,3 @@
-; inherits: ecma
+; See runtime/queries/ecma/README.md for more info.
 
-[
-  (interface_declaration 
-    body:(_) @class.inside)
-  (type_alias_declaration 
-    value: (_) @class.inside)
-] @class.around
+; inherits: _typescript,ecma

@@ -5,7 +5,11 @@ use helix_core::{
     path::get_relative_path,
     pos_at_coords, syntax, Selection,
 };
-use helix_lsp::{lsp, util::lsp_pos_to_pos, LspProgressMap};
+use helix_lsp::{
+    lsp::{self, notification::Notification},
+    util::lsp_pos_to_pos,
+    LspProgressMap,
+};
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
@@ -25,16 +29,13 @@ use crate::{
     config::Config,
     job::Jobs,
     keymap::Keymaps,
-    ui::{self, overlay::overlayed},
+    ui::{self, overlay::overlaid},
 };
 
 use log::{debug, error, warn};
-use std::{
-    io::{stdin, stdout},
-    path::Path,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+#[cfg(not(feature = "integration"))]
+use std::io::stdout;
+use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
 use anyhow::{Context, Error};
 
@@ -43,8 +44,6 @@ use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(windows)]
 type Signals = futures_util::stream::Empty<()>;
-
-const LSP_DEADLINE: Duration = Duration::from_millis(16);
 
 #[cfg(not(feature = "integration"))]
 use tui::backend::CrosstermBackend;
@@ -75,7 +74,6 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
-    last_render: Instant,
 }
 
 #[cfg(feature = "integration")]
@@ -166,10 +164,10 @@ impl Application {
         } else if !args.files.is_empty() {
             let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
-                std::env::set_current_dir(first).context("set current dir")?;
+                helix_loader::set_current_working_dir(first.clone())?;
                 editor.new_file(Action::VerticalSplit);
                 let picker = ui::file_picker(".".into(), &config.load().editor);
-                compositor.push(Box::new(overlayed(picker)));
+                compositor.push(Box::new(overlaid(picker)));
             } else {
                 let nr_of_files = args.files.len();
                 for (i, (file, pos)) in args.files.into_iter().enumerate() {
@@ -214,11 +212,6 @@ impl Application {
             }
         } else if stdin().is_tty() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
-        } else if cfg!(target_os = "macos") {
-            // On Linux and Windows, we allow the output of a command to be piped into the new buffer.
-            // This doesn't currently work on macOS because of the following issue:
-            //   https://github.com/crossterm-rs/crossterm/issues/500
-            anyhow::bail!("Piping into helix-term is currently not supported on macOS");
         } else {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
@@ -230,8 +223,14 @@ impl Application {
         #[cfg(windows)]
         let signals = futures_util::stream::empty();
         #[cfg(not(windows))]
-        let signals = Signals::new([signal::SIGTSTP, signal::SIGCONT, signal::SIGUSR1])
-            .context("build signal handler")?;
+        let signals = Signals::new([
+            signal::SIGTSTP,
+            signal::SIGCONT,
+            signal::SIGUSR1,
+            signal::SIGTERM,
+            signal::SIGINT,
+        ])
+        .context("build signal handler")?;
 
         let app = Self {
             compositor,
@@ -246,7 +245,6 @@ impl Application {
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
-            last_render: Instant::now(),
         };
 
         Ok(app)
@@ -293,7 +291,6 @@ impl Application {
         S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
     {
         self.render().await;
-        self.last_render = Instant::now();
 
         loop {
             if !self.event_loop_until_idle(input_stream).await {
@@ -317,7 +314,9 @@ impl Application {
                 biased;
 
                 Some(signal) = self.signals.next() => {
-                    self.handle_signals(signal).await;
+                    if !self.handle_signals(signal).await {
+                        return false;
+                    };
                 }
                 Some(event) = input_stream.next() => {
                     self.handle_terminal_events(event).await;
@@ -361,6 +360,9 @@ impl Application {
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = *editor_config;
+                if let Err(err) = self.terminal.reconfigure(app_config.editor.clone().into()) {
+                    self.editor.set_error(err.to_string());
+                };
                 self.config.store(Arc::new(app_config));
             }
         }
@@ -419,6 +421,8 @@ impl Application {
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
             self.refresh_language_config()?;
             self.refresh_theme(&default_config)?;
+            self.terminal
+                .reconfigure(default_config.editor.clone().into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())
@@ -436,10 +440,12 @@ impl Application {
 
     #[cfg(windows)]
     // no signal handling available on windows
-    pub async fn handle_signals(&mut self, _signal: ()) {}
+    pub async fn handle_signals(&mut self, _signal: ()) -> bool {
+        true
+    }
 
     #[cfg(not(windows))]
-    pub async fn handle_signals(&mut self, signal: i32) {
+    pub async fn handle_signals(&mut self, signal: i32) -> bool {
         match signal {
             signal::SIGTSTP => {
                 self.restore_term().unwrap();
@@ -471,7 +477,17 @@ impl Application {
                 }
             }
             signal::SIGCONT => {
-                self.claim_term().await.unwrap();
+                // Copy/Paste from same issue from neovim:
+                // https://github.com/neovim/neovim/issues/12322
+                // https://github.com/neovim/neovim/pull/13084
+                for retries in 1..=10 {
+                    match self.claim_term().await {
+                        Ok(()) => break,
+                        Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
+                        Err(_) => continue,
+                    }
+                }
+
                 // redraw the terminal
                 let area = self.terminal.size().expect("couldn't get terminal size");
                 self.compositor.resize(area);
@@ -483,8 +499,14 @@ impl Application {
                 self.refresh_config();
                 self.render().await;
             }
+            signal::SIGTERM | signal::SIGINT => {
+                self.restore_term().unwrap();
+                return false;
+            }
             _ => unreachable!(),
         }
+
+        true
     }
 
     pub async fn handle_idle_timeout(&mut self) {
@@ -549,7 +571,7 @@ impl Application {
             let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
             let id = doc.id();
             doc.detect_language(loader);
-            let _ = self.editor.refresh_language_server(id);
+            self.editor.refresh_language_servers(id);
         }
 
         // TODO: fix being overwritten by lsp
@@ -577,12 +599,7 @@ impl Application {
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
                 // limit render calls for fast language server messages
-                let last = self.editor.language_servers.incoming.is_empty();
-
-                if last || self.last_render.elapsed() > LSP_DEADLINE {
-                    self.render().await;
-                    self.last_render = Instant::now();
-                }
+                self.editor.redraw_handle.0.notify_one();
             }
             EditorEvent::DebuggerEvent(payload) => {
                 let needs_render = self.editor.handle_debugger_message(payload).await;
@@ -647,6 +664,18 @@ impl Application {
     ) {
         use helix_lsp::{Call, MethodCall, Notification};
 
+        macro_rules! language_server {
+            () => {
+                match self.editor.language_server_by_id(server_id) {
+                    Some(language_server) => language_server,
+                    None => {
+                        warn!("can't find language server with id `{}`", server_id);
+                        return;
+                    }
+                }
+            };
+        }
+
         match call {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
                 let notification = match Notification::parse(&method, params) {
@@ -662,14 +691,7 @@ impl Application {
 
                 match notification {
                     Notification::Initialized => {
-                        let language_server =
-                            match self.editor.language_servers.get_by_id(server_id) {
-                                Some(language_server) => language_server,
-                                None => {
-                                    warn!("can't find language server with id `{}`", server_id);
-                                    return;
-                                }
-                            };
+                        let language_server = language_server!();
 
                         // Trigger a workspace/didChangeConfiguration notification after initialization.
                         // This might not be required by the spec but Neovim does this as well, so it's
@@ -678,9 +700,10 @@ impl Application {
                             tokio::spawn(language_server.did_change_configuration(config.clone()));
                         }
 
-                        let docs = self.editor.documents().filter(|doc| {
-                            doc.language_server().map(|server| server.id()) == Some(server_id)
-                        });
+                        let docs = self
+                            .editor
+                            .documents()
+                            .filter(|doc| doc.supports_language_server(server_id));
 
                         // trigger textDocument/didOpen for docs that are already open
                         for doc in docs {
@@ -700,7 +723,7 @@ impl Application {
                             ));
                         }
                     }
-                    Notification::PublishDiagnostics(mut params) => {
+                    Notification::PublishDiagnostics(params) => {
                         let path = match params.uri.to_file_path() {
                             Ok(path) => path,
                             Err(_) => {
@@ -708,6 +731,12 @@ impl Application {
                                 return;
                             }
                         };
+                        let language_server = language_server!();
+                        if !language_server.is_initialized() {
+                            log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
+                            return;
+                        }
+                        let offset_encoding = language_server.offset_encoding();
                         let doc = self.editor.document_by_path_mut(&path).filter(|doc| {
                             if let Some(version) = params.version {
                                 if version != doc.version() {
@@ -730,18 +759,11 @@ impl Application {
                                     use helix_core::diagnostic::{Diagnostic, Range, Severity::*};
                                     use lsp::DiagnosticSeverity;
 
-                                    let language_server = if let Some(language_server) = doc.language_server() {
-                                        language_server
-                                    } else {
-                                        log::warn!("Discarding diagnostic because language server is not initialized: {:?}", diagnostic);
-                                        return None;
-                                    };
-
                                     // TODO: convert inside server
                                     let start = if let Some(start) = lsp_pos_to_pos(
                                         text,
                                         diagnostic.range.start,
-                                        language_server.offset_encoding(),
+                                        offset_encoding,
                                     ) {
                                         start
                                     } else {
@@ -749,11 +771,9 @@ impl Application {
                                         return None;
                                     };
 
-                                    let end = if let Some(end) = lsp_pos_to_pos(
-                                        text,
-                                        diagnostic.range.end,
-                                        language_server.offset_encoding(),
-                                    ) {
+                                    let end = if let Some(end) =
+                                        lsp_pos_to_pos(text, diagnostic.range.end, offset_encoding)
+                                    {
                                         end
                                     } else {
                                         log::warn!("lsp position out of bounds - {:?}", diagnostic);
@@ -792,14 +812,19 @@ impl Application {
                                         None => None,
                                     };
 
-                                    let tags = if let Some(ref tags) = diagnostic.tags {
-                                        let new_tags = tags.iter().filter_map(|tag| {
-                                            match *tag {
-                                                lsp::DiagnosticTag::DEPRECATED => Some(DiagnosticTag::Deprecated),
-                                                lsp::DiagnosticTag::UNNECESSARY => Some(DiagnosticTag::Unnecessary),
-                                                _ => None
-                                            }
-                                        }).collect();
+                                    let tags = if let Some(tags) = &diagnostic.tags {
+                                        let new_tags = tags
+                                            .iter()
+                                            .filter_map(|tag| match *tag {
+                                                lsp::DiagnosticTag::DEPRECATED => {
+                                                    Some(DiagnosticTag::Deprecated)
+                                                }
+                                                lsp::DiagnosticTag::UNNECESSARY => {
+                                                    Some(DiagnosticTag::Unnecessary)
+                                                }
+                                                _ => None,
+                                            })
+                                            .collect();
 
                                         new_tags
                                     } else {
@@ -815,25 +840,40 @@ impl Application {
                                         tags,
                                         source: diagnostic.source.clone(),
                                         data: diagnostic.data.clone(),
+                                        language_server_id: server_id,
                                     })
                                 })
                                 .collect();
 
-                            doc.set_diagnostics(diagnostics);
+                            doc.replace_diagnostics(diagnostics, server_id);
                         }
 
-                        // Sort diagnostics first by severity and then by line numbers.
-                        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-                        params
+                        let mut diagnostics = params
                             .diagnostics
-                            .sort_unstable_by_key(|d| (d.severity, d.range.start));
+                            .into_iter()
+                            .map(|d| (d, server_id))
+                            .collect();
 
                         // Insert the original lsp::Diagnostics here because we may have no open document
                         // for diagnosic message and so we can't calculate the exact position.
                         // When using them later in the diagnostics picker, we calculate them on-demand.
-                        self.editor
-                            .diagnostics
-                            .insert(params.uri, params.diagnostics);
+                        match self.editor.diagnostics.entry(params.uri) {
+                            Entry::Occupied(o) => {
+                                let current_diagnostics = o.into_mut();
+                                // there may entries of other language servers, which is why we can't overwrite the whole entry
+                                current_diagnostics.retain(|(_, lsp_id)| *lsp_id != server_id);
+                                current_diagnostics.append(&mut diagnostics);
+                                // Sort diagnostics first by severity and then by line numbers.
+                                // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
+                                current_diagnostics
+                                    .sort_unstable_by_key(|(d, _)| (d.severity, d.range.start));
+                            }
+                            Entry::Vacant(v) => {
+                                diagnostics
+                                    .sort_unstable_by_key(|(d, _)| (d.severity, d.range.start));
+                                v.insert(diagnostics);
+                            }
+                        };
                     }
                     Notification::ShowMessage(params) => {
                         log::warn!("unhandled window/showMessage: {:?}", params);
@@ -930,24 +970,18 @@ impl Application {
                     Notification::Exit => {
                         self.editor.set_status("Language server exited");
 
-                        // Clear any diagnostics for documents with this server open.
-                        let urls: Vec<_> = self
-                            .editor
-                            .documents_mut()
-                            .filter_map(|doc| {
-                                if doc.language_server().map(|server| server.id())
-                                    == Some(server_id)
-                                {
-                                    doc.set_diagnostics(Vec::new());
-                                    doc.url()
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect();
+                        // LSPs may produce diagnostics for files that haven't been opened in helix,
+                        // we need to clear those and remove the entries from the list if this leads to
+                        // an empty diagnostic list for said files
+                        for diags in self.editor.diagnostics.values_mut() {
+                            diags.retain(|(_, lsp_id)| *lsp_id != server_id);
+                        }
 
-                        for url in urls {
-                            self.editor.diagnostics.remove(&url);
+                        self.editor.diagnostics.retain(|_, diags| !diags.is_empty());
+
+                        // Clear any diagnostics for documents with this server open.
+                        for doc in self.editor.documents_mut() {
+                            doc.clear_diagnostics(server_id);
                         }
 
                         // Remove the language server from the registry.
@@ -998,48 +1032,48 @@ impl Application {
                         Ok(serde_json::Value::Null)
                     }
                     Ok(MethodCall::ApplyWorkspaceEdit(params)) => {
-                        let res = apply_workspace_edit(
-                            &mut self.editor,
-                            helix_lsp::OffsetEncoding::Utf8,
-                            &params.edit,
-                        );
+                        let language_server = language_server!();
+                        if language_server.is_initialized() {
+                            let offset_encoding = language_server.offset_encoding();
+                            let res = apply_workspace_edit(
+                                &mut self.editor,
+                                offset_encoding,
+                                &params.edit,
+                            );
 
-                        Ok(json!(lsp::ApplyWorkspaceEditResponse {
-                            applied: res.is_ok(),
-                            failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
-                            failed_change: res
-                                .as_ref()
-                                .err()
-                                .map(|err| err.failed_change_idx as u32),
-                        }))
+                            Ok(json!(lsp::ApplyWorkspaceEditResponse {
+                                applied: res.is_ok(),
+                                failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
+                                failed_change: res
+                                    .as_ref()
+                                    .err()
+                                    .map(|err| err.failed_change_idx as u32),
+                            }))
+                        } else {
+                            Err(helix_lsp::jsonrpc::Error {
+                                code: helix_lsp::jsonrpc::ErrorCode::InvalidRequest,
+                                message: "Server must be initialized to request workspace edits"
+                                    .to_string(),
+                                data: None,
+                            })
+                        }
                     }
                     Ok(MethodCall::WorkspaceFolders) => {
-                        let language_server =
-                            self.editor.language_servers.get_by_id(server_id).unwrap();
-
-                        Ok(json!(&*language_server.workspace_folders().await))
+                        Ok(json!(&*language_server!().workspace_folders().await))
                     }
                     Ok(MethodCall::WorkspaceConfiguration(params)) => {
+                        let language_server = language_server!();
                         let result: Vec<_> = params
                             .items
                             .iter()
                             .map(|item| {
-                                let mut config = match &item.scope_uri {
-                                    Some(scope) => {
-                                        let path = scope.to_file_path().ok()?;
-                                        let doc = self.editor.document_by_path(path)?;
-                                        doc.language_config()?.config.as_ref()?
-                                    }
-                                    None => self
-                                        .editor
-                                        .language_servers
-                                        .get_by_id(server_id)
-                                        .unwrap()
-                                        .config()?,
-                                };
+                                let mut config = language_server.config()?;
                                 if let Some(section) = item.section.as_ref() {
-                                    for part in section.split('.') {
-                                        config = config.get(part)?;
+                                    // for some reason some lsps send an empty string (observed in 'vscode-eslint-language-server')
+                                    if !section.is_empty() {
+                                        for part in section.split('.') {
+                                            config = config.get(part)?;
+                                        }
                                     }
                                 }
                                 Some(config)
@@ -1047,28 +1081,68 @@ impl Application {
                             .collect();
                         Ok(json!(result))
                     }
-                    Ok(MethodCall::RegisterCapability(_params)) => {
-                        log::warn!("Ignoring a client/registerCapability request because dynamic capability registration is not enabled. Please report this upstream to the language server");
-                        // Language Servers based on the `vscode-languageserver-node` library often send
-                        // client/registerCapability even though we do not enable dynamic registration
-                        // for any capabilities. We should send a MethodNotFound JSONRPC error in this
-                        // case but that rejects the registration promise in the server which causes an
-                        // exit. So we work around this by ignoring the request and sending back an OK
-                        // response.
+                    Ok(MethodCall::RegisterCapability(params)) => {
+                        if let Some(client) = self
+                            .editor
+                            .language_servers
+                            .iter_clients()
+                            .find(|client| client.id() == server_id)
+                        {
+                            for reg in params.registrations {
+                                match reg.method.as_str() {
+                                    lsp::notification::DidChangeWatchedFiles::METHOD => {
+                                        let Some(options) = reg.register_options else {
+                                            continue;
+                                        };
+                                        let ops: lsp::DidChangeWatchedFilesRegistrationOptions =
+                                            match serde_json::from_value(options) {
+                                                Ok(ops) => ops,
+                                                Err(err) => {
+                                                    log::warn!("Failed to deserialize DidChangeWatchedFilesRegistrationOptions: {err}");
+                                                    continue;
+                                                }
+                                            };
+                                        self.editor.language_servers.file_event_handler.register(
+                                            client.id(),
+                                            Arc::downgrade(client),
+                                            reg.id,
+                                            ops,
+                                        )
+                                    }
+                                    _ => {
+                                        // Language Servers based on the `vscode-languageserver-node` library often send
+                                        // client/registerCapability even though we do not enable dynamic registration
+                                        // for most capabilities. We should send a MethodNotFound JSONRPC error in this
+                                        // case but that rejects the registration promise in the server which causes an
+                                        // exit. So we work around this by ignoring the request and sending back an OK
+                                        // response.
+                                        log::warn!("Ignoring a client/registerCapability request because dynamic capability registration is not enabled. Please report this upstream to the language server");
+                                    }
+                                }
+                            }
+                        }
 
+                        Ok(serde_json::Value::Null)
+                    }
+                    Ok(MethodCall::UnregisterCapability(params)) => {
+                        for unreg in params.unregisterations {
+                            match unreg.method.as_str() {
+                                lsp::notification::DidChangeWatchedFiles::METHOD => {
+                                    self.editor
+                                        .language_servers
+                                        .file_event_handler
+                                        .unregister(server_id, unreg.id);
+                                }
+                                _ => {
+                                    log::warn!("Received unregistration request for unsupported method: {}", unreg.method);
+                                }
+                            }
+                        }
                         Ok(serde_json::Value::Null)
                     }
                 };
 
-                let language_server = match self.editor.language_servers.get_by_id(server_id) {
-                    Some(language_server) => language_server,
-                    None => {
-                        warn!("can't find language server with id `{}`", server_id);
-                        return;
-                    }
-                };
-
-                tokio::spawn(language_server.reply(id, reply));
+                tokio::spawn(language_server!().reply(id, reply));
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }

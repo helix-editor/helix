@@ -37,19 +37,35 @@ If a register is selected before invoking a change or delete command, the select
 - `"hc` - Store the selection in register `h` and then change it (delete and enter insert mode).
 - `"md` - Store the selection in register `m` and delete it.
 
-### Special registers
+### Default registers
+
+Commands that use registers, like yank (`y`), use a default register if none is specified.
+These registers are used as defaults:
 
 | Register character | Contains              |
 | ---                | ---                   |
 | `/`                | Last search           |
 | `:`                | Last executed command |
 | `"`                | Last yanked text      |
-| `_`                | Black hole            |
+| `@`                | Last recorded macro   |
 
-The system clipboard is not directly supported by a special register. Instead, special commands and keybindings are provided. Refer to the
-[key map](keymap.md#space-mode) for more details.
+### Special registers
 
-The black hole register is a no-op register, meaning that no data will be read or written to it.
+Some registers have special behavior when read from and written to.
+
+| Register character | When read              | When written             |
+| ---                | ---                    | ---                      |
+| `_`                | No values are returned | All values are discarded |
+| `#`                | Selection indices (first selection is `1`, second is `2`, etc.) | This register is not writable |
+| `.`                | Contents of the current selections | This register is not writable |
+| `%`                | Name of the current file | This register is not writable |
+| `*`                | Reads from the system clipboard | Joins and yanks to the system clipboard |
+| `+`                | Reads from the primary clipboard | Joins and yanks to the primary clipboard |
+
+When yanking multiple selections to the clipboard registers, the selections
+are joined with newlines. Pasting from these registers will paste multiple
+selections if the clipboard was last yanked to by the Helix session. Otherwise
+the clipboard contents are pasted as one selection.
 
 ## Surround
 
@@ -96,13 +112,13 @@ function or block of code.
 | `(`, `[`, `'`, etc.    | Specified surround pairs |
 | `m`                    | The closest surround pair    |
 | `f`                    | Function                 |
-| `c`                    | Class                    |
+| `t`                    | Type (or Class)          |
 | `a`                    | Argument/parameter       |
-| `o`                    | Comment                  |
-| `t`                    | Test                     |
+| `c`                    | Comment                  |
+| `T`                    | Test                     |
 | `g`                    | Change                   |
 
-> 💡 `f`, `c`, etc. need a tree-sitter grammar active for the current
+> 💡 `f`, `t`, etc. need a tree-sitter grammar active for the current
 document and a special tree-sitter query file to work properly. [Only
 some grammars][lang-support] currently have the query file implemented.
 Contributions are welcome!
@@ -112,7 +128,7 @@ Contributions are welcome!
 Navigating between functions, classes, parameters, and other elements is
 possible using tree-sitter and textobject queries. For
 example to move to the next function use `]f`, to move to previous
-class use `[c`, and so on.
+type use `[t`, and so on.
 
 ![Tree-sitter-nav-demo][tree-sitter-nav-demo]
 

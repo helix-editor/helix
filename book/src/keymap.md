@@ -15,7 +15,7 @@
       - [Popup](#popup)
     - [Unimpaired](#unimpaired)
 - [Insert mode](#insert-mode)
-- [Select / extend mode](#select-extend-mode)
+- [Select / extend mode](#select--extend-mode)
 - [Picker](#picker)
 - [Prompt](#prompt)
 
@@ -25,6 +25,8 @@
 
 ## Normal mode
 
+Normal mode is the default mode when you launch helix. Return to it from other modes by typing `Escape`.
+
 ### Movement
 
 > NOTE: Unlike Vim, `f`, `F`, `t` and `T` are not confined to the current line.
@@ -32,8 +34,8 @@
 | Key                   | Description                                        | Command                     |
 | -----                 | -----------                                        | -------                     |
 | `h`, `Left`           | Move left                                          | `move_char_left`            |
-| `j`, `Down`           | Move down                                          | `move_line_down`            |
-| `k`, `Up`             | Move up                                            | `move_line_up`              |
+| `j`, `Down`           | Move down                                          | `move_visual_line_down`     |
+| `k`, `Up`             | Move up                                            | `move_visual_line_up`       |
 | `l`, `Right`          | Move right                                         | `move_char_right`           |
 | `w`                   | Move next word start                               | `move_next_word_start`      |
 | `b`                   | Move previous word start                           | `move_prev_word_start`      |
@@ -111,7 +113,8 @@
 | `s`                   | Select all regex matches inside selections                        | `select_regex`                       |
 | `S`                   | Split selection into sub selections on regex matches              | `split_selection`                    |
 | `Alt-s`               | Split selection on newlines                                       | `split_selection_on_newline`         |
-| `Alt-_ `              | Merge consecutive selections                                      | `merge_consecutive_selections`       |
+| `Alt-minus`           | Merge selections                                                  | `merge_selections`                   |
+| `Alt-_`               | Merge consecutive selections                                      | `merge_consecutive_selections`       |
 | `&`                   | Align selection in columns                                        | `align_selections`                   |
 | `_`                   | Trim whitespace from the selection                                | `trim_selections`                    |
 | `;`                   | Collapse selection onto a single cursor                           | `collapse_selection`                 |
@@ -218,6 +221,8 @@ Jumps to various locations.
 | `n`   | Go to next buffer                                | `goto_next_buffer`         |
 | `p`   | Go to previous buffer                            | `goto_previous_buffer`     |
 | `.`   | Go to last modification in current file          | `goto_last_modification`   |
+| `j`   | Move down textual (instead of visual) line       | `move_line_down`           |
+| `k`   | Move up textual (instead of visual) line         | `move_line_up`             |
 
 #### Match mode
 
@@ -286,7 +291,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `w`     | Enter [window mode](#window-mode)                                       | N/A                                        |
 | `p`     | Paste system clipboard after selections                                 | `paste_clipboard_after`                    |
 | `P`     | Paste system clipboard before selections                                | `paste_clipboard_before`                   |
-| `y`     | Join and yank selections to clipboard                                   | `yank_joined_to_clipboard`                 |
+| `y`     | Yank selections to clipboard                                            | `yank_to_clipboard`                        |
 | `Y`     | Yank main selection to clipboard                                        | `yank_main_selection_to_clipboard`         |
 | `R`     | Replace selections by clipboard contents                                | `replace_selections_with_clipboard`        |
 | `/`     | Global search in workspace folder                                       | `global_search`                            |
@@ -333,6 +338,8 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 | `[Space` | Add newline above                            | `add_newline_above`   |
 
 ## Insert mode
+
+Accessed by typing `i` in [normal mode](#normal-mode).
 
 Insert mode bindings are minimal by default. Helix is designed to
 be a modal editor, and this is reflected in the user experience and internal
@@ -387,9 +394,11 @@ end = "no_op"
 
 ## Select / extend mode
 
+Accessed by typing `v` in [normal mode](#normal-mode).
+
 Select mode echoes Normal mode, but changes any movements to extend
 selections rather than replace them. Goto motions are also changed to
-extend, so that `vgl` for example extends the selection to the end of
+extend, so that `vgl`, for example, extends the selection to the end of
 the line.
 
 Search is also affected. By default, `n` and `N` will remove the current
@@ -402,19 +411,20 @@ you to selectively add search terms to your selections.
 
 Keys to use within picker. Remapping currently not supported.
 
-| Key                          | Description       |
-| -----                        | -------------     |
-| `Shift-Tab`, `Up`, `Ctrl-p`  | Previous entry    |
-| `Tab`, `Down`, `Ctrl-n`      | Next entry        |
-| `PageUp`, `Ctrl-u`           | Page up           |
-| `PageDown`, `Ctrl-d`         | Page down         |
-| `Home`                       | Go to first entry |
-| `End`                        | Go to last entry  |
-| `Enter`                      | Open selected     |
-| `Ctrl-s`                     | Open horizontally |
-| `Ctrl-v`                     | Open vertically   |
-| `Ctrl-t`                     | Toggle preview    |
-| `Escape`, `Ctrl-c`           | Close picker      |
+| Key                          | Description                                                |
+| -----                        | -------------                                              |
+| `Shift-Tab`, `Up`, `Ctrl-p`  | Previous entry                                             |
+| `Tab`, `Down`, `Ctrl-n`      | Next entry                                                 |
+| `PageUp`, `Ctrl-u`           | Page up                                                    |
+| `PageDown`, `Ctrl-d`         | Page down                                                  |
+| `Home`                       | Go to first entry                                          |
+| `End`                        | Go to last entry                                           |
+| `Enter`                      | Open selected                                              |
+| `Alt-Enter`                  | Open selected in the background without closing the picker |
+| `Ctrl-s`                     | Open horizontally                                          |
+| `Ctrl-v`                     | Open vertically                                            |
+| `Ctrl-t`                     | Toggle preview                                             |
+| `Escape`, `Ctrl-c`           | Close picker                                               |
 
 ## Prompt
 

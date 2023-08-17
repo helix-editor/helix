@@ -391,7 +391,7 @@ async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn cursor_position_append_eof() -> anyhow::Result<()> {
-    // Selection is fowards
+    // Selection is forwards
     test((
         "#[foo|]#",
         "abar<esc>",
