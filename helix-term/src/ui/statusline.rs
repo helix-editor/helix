@@ -339,11 +339,20 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let position = get_position(context);
-    write(
-        context,
-        format!(" {}:{} ", position.row + 1, position.col + 1),
-        None,
-    );
+    let total_line_numbers = context.doc.text().len_lines();
+
+    let res: String = match context.editor.config().statusline.position_format.as_str() {
+        "" => format!(" {}:{} ", position.row + 1, position.col + 1),
+        _ => {
+            let mut formatted: String = context.editor.config().statusline.position_format.clone();
+            formatted = formatted.replacen("{column}", &format!("{}", position.col + 1), 1);
+            formatted = formatted.replacen("{line}", &format!("{}", position.row + 1), 1);
+            formatted = formatted.replacen("{lines_count}", &format!("{}", total_line_numbers), 1);
+            formatted
+        }
+    };
+
+    write(context, res, None);
 }
 
 fn render_total_line_numbers<F>(context: &mut RenderContext, write: F)

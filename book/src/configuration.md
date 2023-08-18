@@ -81,21 +81,23 @@ left = ["mode", "spinner"]
 center = ["file-name"]
 right = ["diagnostics", "selections", "position", "file-encoding", "file-line-ending", "file-type"]
 separator = "│"
+position-format = "{column}:{line}/{lines_count}"
 mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
 ```
 The `[editor.statusline]` key takes the following sub-keys:
 
-| Key           | Description | Default |
-| ---           | ---         | ---     |
-| `left`        | A list of elements aligned to the left of the statusline | `["mode", "spinner", "file-name", "read-only-indicator", "file-modification-indicator"]` |
-| `center`      | A list of elements aligned to the middle of the statusline | `[]` |
-| `right`       | A list of elements aligned to the right of the statusline | `["diagnostics", "selections", "register", "position", "file-encoding"]` |
-| `separator`   | The character used to separate elements in the statusline | `"│"` |
-| `mode.normal` | The text shown in the `mode` element for normal mode | `"NOR"` |
-| `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
-| `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
+| Key               | Description | Default |
+| ---               | ---         | ---     |
+| `left`            | A list of elements aligned to the left of the statusline | `["mode", "spinner", "file-name", "read-only-indicator", "file-modification-indicator"]` |
+| `center`          | A list of elements aligned to the middle of the statusline | `[]` |
+| `right`           | A list of elements aligned to the right of the statusline | `["diagnostics", "selections", "register", "position", "file-encoding"]` |
+| `separator`       | The character used to separate elements in the statusline | `"│"` |
+| `position-format` | The format of the position information. The first instances of `{line}`, `{column}` and `{lines_count}` will be replaced with the corresponding values. |
+| `mode.normal`     | The text shown in the `mode` element for normal mode | `"NOR"` |
+| `mode.insert`     | The text shown in the `mode` element for insert mode | `"INS"` |
+| `mode.select`     | The text shown in the `mode` element for select mode | `"SEL"` |
 
 The following statusline elements can be configured:
 
@@ -116,6 +118,7 @@ The following statusline elements can be configured:
 | `selections` | The number of active selections |
 | `primary-selection-length` | The number of characters currently in primary selection |
 | `position` | The cursor position |
+| `position-format` | The format used to display the position of the cursor (defaults to `""`, which is equivalent to `"{row}:{column}"`) |
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
 | `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |

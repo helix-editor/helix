@@ -410,6 +410,7 @@ pub struct StatusLineConfig {
     pub right: Vec<StatusLineElement>,
     pub separator: String,
     pub mode: ModeConfig,
+    pub position_format: String,
 }
 
 impl Default for StatusLineConfig {
@@ -434,6 +435,7 @@ impl Default for StatusLineConfig {
             ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
+            position_format: String::new(),
         }
     }
 }
