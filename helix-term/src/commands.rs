@@ -34,7 +34,7 @@ use helix_core::{
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, CompleteAction},
-    info::Info,
+    info::{Info, Location},
     input::KeyEvent,
     keyboard::KeyCode,
     tree,
@@ -5131,7 +5131,11 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         (" ", "... or any character acting as a pair"),
     ];
 
-    cx.editor.autoinfo = Some(Info::from_kv_pairs(title, &help_text));
+    cx.editor.autoinfo = Some(Info::from_kv_pairs(
+        title,
+        &help_text,
+        Location::BottomRight,
+    ));
 }
 
 fn surround_add(cx: &mut Context) {

@@ -1,6 +1,17 @@
 use crate::register::Registers;
 use helix_core::unicode::width::UnicodeWidthStr;
 
+use crate::graphics::Rect;
+
+#[derive(Debug)]
+pub enum Location {
+    TopRight,
+    TopLeft,
+    BottomRight,
+    BottomLeft,
+    Center,
+}
+
 #[derive(Debug)]
 /// Info box used in editor. Rendering logic will be in other crate.
 pub struct Info {
@@ -12,17 +23,23 @@ pub struct Info {
     pub width: u16,
     /// Body height.
     pub height: u16,
+    /// Info box location
+    pub location: Location,
 }
 
 impl Info {
-    pub fn new<T>(title: &str, body: T) -> Self
+    pub fn new<T>(title: &str, body: T, location: Location) -> Self
     where
         T: AsRef<str>,
     {
-        Self::from_lines(title, &body.as_ref().split('\n').collect::<Vec<_>>())
+        Self::from_lines(
+            title,
+            &body.as_ref().split('\n').collect::<Vec<_>>(),
+            location,
+        )
     }
 
-    pub fn from_lines<T>(title: &str, lines: &[T]) -> Self
+    pub fn from_lines<T>(title: &str, lines: &[T], location: Location) -> Self
     where
         T: AsRef<str>,
     {
@@ -32,6 +49,7 @@ impl Info {
                 text: "".to_string(),
                 width: title.len() as u16,
                 height: 1,
+                location,
             };
         }
 
@@ -43,10 +61,11 @@ impl Info {
             text: lines.join("\n"),
             width: width as u16,
             height: lines.len() as u16,
+            location,
         }
     }
 
-    pub fn from_kv_pairs<T, U>(title: &str, kv_pairs: &[(T, U)]) -> Self
+    pub fn from_kv_pairs<T, U>(title: &str, kv_pairs: &[(T, U)], location: Location) -> Self
     where
         T: AsRef<str>,
         U: AsRef<str>,
@@ -69,7 +88,7 @@ impl Info {
             })
             .collect::<Vec<_>>();
 
-        Self::from_lines(title, &x)
+        Self::from_lines(title, &x, location)
     }
 
     pub fn from_registers(registers: &Registers) -> Self {
@@ -78,8 +97,39 @@ impl Info {
             .map(|(ch, preview)| (ch.to_string(), preview))
             .collect();
 
-        let mut infobox = Self::from_kv_pairs("Registers", &body);
+        let mut infobox = Self::from_kv_pairs("Registers", &body, Location::BottomRight);
         infobox.width = 30; // copied content could be very long
         infobox
+    }
+
+    pub fn get_intersecting_area(&self, viewport: Rect) -> Rect {
+        let width = self.width + 2 + 2; // +2 for border, +2 for margin
+        let height = self.height + 2; // +2 for border
+
+        let (x, y) = match self.location {
+            // Top variants don't take into consideration bufferline height
+            Location::TopRight => (viewport.width.saturating_sub(width), 0),
+            Location::TopLeft => (0, 0),
+            Location::BottomRight => (
+                viewport.width.saturating_sub(width),
+                viewport.height.saturating_sub(height + 2), // +2 for statusline
+            ),
+            Location::BottomLeft => (
+                0,
+                viewport.height.saturating_sub(height + 2), // +2 for statusline
+            ),
+            Location::Center => (
+                viewport
+                    .width
+                    .saturating_div(2)
+                    .saturating_sub(width.saturating_div(2)),
+                viewport
+                    .height
+                    .saturating_div(2)
+                    .saturating_sub(height.saturating_div(2)),
+            ),
+        };
+
+        viewport.intersection(Rect::new(x, y, width, height))
     }
 }

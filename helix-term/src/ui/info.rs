@@ -9,17 +9,7 @@ impl Component for Info {
         let text_style = cx.editor.theme.get("ui.text.info");
         let popup_style = cx.editor.theme.get("ui.popup.info");
 
-        // Calculate the area of the terminal to modify. Because we want to
-        // render at the bottom right, we use the viewport's width and height
-        // which evaluate to the most bottom right coordinate.
-        let width = self.width + 2 + 2; // +2 for border, +2 for margin
-        let height = self.height + 2; // +2 for border
-        let area = viewport.intersection(Rect::new(
-            viewport.width.saturating_sub(width),
-            viewport.height.saturating_sub(height + 2), // +2 for statusline
-            width,
-            height,
-        ));
+        let area = self.get_intersecting_area(viewport);
         surface.clear_with(area, popup_style);
 
         let block = Block::default()

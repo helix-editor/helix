@@ -6,7 +6,11 @@ use arc_swap::{
     access::{DynAccess, DynGuard},
     ArcSwap,
 };
-use helix_view::{document::Mode, info::Info, input::KeyEvent};
+use helix_view::{
+    document::Mode,
+    info::{Info, Location},
+    input::KeyEvent,
+};
 use serde::Deserialize;
 use std::{
     borrow::Cow,
@@ -106,7 +110,7 @@ impl KeyTrieNode {
                 (events.join(", "), desc)
             })
             .collect();
-        Info::from_kv_pairs(&self.name, &body)
+        Info::from_kv_pairs(&self.name, &body, Location::BottomRight)
     }
 }
 
