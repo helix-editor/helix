@@ -2662,11 +2662,13 @@ fn change_picker(cx: &mut Context) {
 
             items
         }
-        _ => {
-            cx.editor.set_status("No changes in the current buffer.");
-            return;
-        }
+        _ => vec![],
     };
+
+    if items.is_empty() {
+        cx.editor.set_status("No changes in the current buffer.");
+        return;
+    }
 
     let picker = Picker::new(items, (), |cx, item, action| {
         let config = cx.editor.config();
