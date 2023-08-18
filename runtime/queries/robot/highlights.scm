@@ -1,7 +1,7 @@
 [
   (comment)
   (extra_text)
-] @comment.single
+] @comment
 
 [
   (section_header)
