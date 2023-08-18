@@ -316,6 +316,7 @@ impl MappableCommand {
         select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
         diagnostics_picker, "Open diagnostic picker",
+        change_picker, "Open change picker",
         workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
         insert_at_line_start, "Insert at start of line",
@@ -2619,6 +2620,79 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
+fn change_picker(cx: &mut Context) {
+    struct ChangeMeta {
+        document_id: DocumentId,
+        line_number: usize,
+        text: String,
+        range: Range,
+    }
+
+    impl ui::menu::Item for ChangeMeta {
+        type Data = ();
+
+        fn format(&self, _data: &Self::Data) -> Row {
+            Row::new([self.line_number.to_string(), self.text.to_owned()])
+        }
+    }
+
+    let doc_id = view!(cx.editor).doc;
+    let document = cx.editor.documents.get(&doc_id);
+
+    let items = match (document, document.map(|d| d.diff_handle()).flatten()) {
+        (Some(document), Some(handle)) => {
+            let diff = handle.load();
+            let hunks_count = diff.len();
+            let mut items: Vec<ChangeMeta> = vec![];
+
+            for i in 0..hunks_count {
+                let current_hunk = diff.nth_hunk(i);
+                let text = document.text().slice(..);
+                let range = hunk_range(current_hunk.clone(), text);
+                let pos = range.cursor(text);
+                let current_line = text.char_to_line(pos);
+
+                items.push(ChangeMeta {
+                    document_id: document.id(),
+                    line_number: current_line + 1,
+                    text: document.text().line(current_line).to_string(),
+                    range: range.clone(),
+                })
+            }
+
+            items
+        }
+        _ => {
+            cx.editor.set_status("No changes in the current buffer.");
+            return;
+        }
+    };
+
+    let picker = Picker::new(items, (), |cx, item, action| {
+        let config = cx.editor.config();
+        let (view, doc) = current!(cx.editor);
+
+        doc.set_selection(
+            view.id,
+            Selection::single(item.range.anchor, item.range.head),
+        );
+
+        if action.align_view(view, doc.id()) {
+            view.ensure_cursor_in_view_center(doc, config.scrolloff);
+        }
+    })
+    .with_preview(|editor, meta| {
+        let doc = &editor.documents.get(&meta.document_id)?;
+        let text = doc.text().slice(..);
+        let line_number_start = text.char_to_line(meta.range.from());
+        let line_number_end = text.char_to_line(meta.range.to()) - 1;
+
+        Some((doc.id().into(), Some((line_number_start, line_number_end))))
+    });
+
+    cx.push_layer(Box::new(overlaid(picker)));
+}
+
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
@@ -2859,7 +2933,7 @@ pub fn command_palette(cx: &mut Context) {
 }
 
 fn last_picker(cx: &mut Context) {
-    // TODO: last picker does not seem to work well with buffer_picker
+    // TODO: last picker does not seem to work well with buffer_picker and change_picker
     cx.callback = Some(Box::new(|compositor, cx| {
         if let Some(picker) = compositor.last_picker.take() {
             compositor.push(picker);

@@ -284,6 +284,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`                  |
 | `d`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                       |
 | `D`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`             |
+| `c`     | Open change picker                                                      | `change_picker`                            |
 | `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                            |
 | `a`     | Apply code action (**LSP**)                                             | `code_action`                              |
 | `h`     | Select symbol references (**LSP**)                                      | `select_references_to_symbol_under_cursor` |
