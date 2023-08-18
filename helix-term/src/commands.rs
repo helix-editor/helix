@@ -2639,7 +2639,7 @@ fn change_picker(cx: &mut Context) {
     let doc_id = view!(cx.editor).doc;
     let document = cx.editor.documents.get(&doc_id);
 
-    let items = match (document, document.map(|d| d.diff_handle()).flatten()) {
+    let items = match (document, document.and_then(|d| d.diff_handle())) {
         (Some(document), Some(handle)) => {
             let diff = handle.load();
             let hunks_count = diff.len();
@@ -2648,15 +2648,15 @@ fn change_picker(cx: &mut Context) {
             for i in 0..hunks_count {
                 let current_hunk = diff.nth_hunk(i);
                 let text = document.text().slice(..);
-                let range = hunk_range(current_hunk.clone(), text);
-                let pos = range.cursor(text);
-                let current_line = text.char_to_line(pos);
+                let current_range = hunk_range(current_hunk.clone(), text);
+                let position = current_range.cursor(text);
+                let current_line = text.char_to_line(position);
 
                 items.push(ChangeMeta {
                     document_id: document.id(),
                     line_number: current_line + 1,
                     text: document.text().line(current_line).to_string(),
-                    range: range.clone(),
+                    range: current_range,
                 })
             }
 
