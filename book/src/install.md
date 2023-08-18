@@ -45,6 +45,7 @@ Download pre-built binaries from the
 line.
 
 ## Linux, macOS, Windows and OpenBSD packaging status
+Packages found outside the [GitHub Releases page](https://github.com/helix-editor/helix/releases) are outside the control of the Helix team. If you have an issue with a specific package, it may be necessary to contact the package maintainers.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
 
