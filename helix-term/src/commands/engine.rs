@@ -1,5 +1,10 @@
 use fuzzy_matcher::FuzzyMatcher;
-use helix_core::{graphemes, shellwords::Shellwords, Selection, Tendril};
+use helix_core::{
+    extensions::{rope_slice_module, SRopeSlice},
+    graphemes,
+    shellwords::Shellwords,
+    Selection, Tendril,
+};
 use helix_view::{
     document::Mode,
     editor::{Action, ConfigEvent},
@@ -14,7 +19,10 @@ use steel::{
     rvals::{
         as_underlying_type, AsRefMutSteelValFromRef, AsRefSteelVal, FromSteelVal, IntoSteelVal,
     },
-    steel_vm::{engine::Engine, register_fn::RegisterFn},
+    steel_vm::{
+        engine::Engine,
+        register_fn::{RegisterFn, RegisterFnBorrowed},
+    },
     SteelErr, SteelVal,
 };
 
@@ -235,32 +243,41 @@ impl ScriptingEngine {
         };
 
         if let Some(extension) = extension {
-            if let SteelVal::HashMapV(map) = BUFFER_OR_EXTENSION_KEYBINDING_MAP.with(|x| x.clone())
+            if let SteelVal::Boxed(boxed_map) =
+                BUFFER_OR_EXTENSION_KEYBINDING_MAP.with(|x| x.clone())
             {
-                if let Some(value) = map.get(&SteelVal::StringV(extension.into())) {
-                    if let SteelVal::Custom(inner) = value {
-                        if let Some(_) = steel::rvals::as_underlying_type::<EmbeddedKeyMap>(
-                            inner.borrow().as_ref(),
-                        ) {
-                            return Some(value.clone());
+                if let SteelVal::HashMapV(map) = boxed_map.borrow().clone() {
+                    if let Some(value) = map.get(&SteelVal::StringV(extension.into())) {
+                        if let SteelVal::Custom(inner) = value {
+                            if let Some(_) = steel::rvals::as_underlying_type::<EmbeddedKeyMap>(
+                                inner.borrow().as_ref(),
+                            ) {
+                                return Some(value.clone());
+                            }
                         }
                     }
                 }
             }
         }
 
-        // TODO: Remove these clones
-        if let SteelVal::HashMapV(map) = REVERSE_BUFFER_MAP.with(|x| x.clone()) {
-            if let Some(label) = map.get(&SteelVal::IntV(document_id_to_usize(doc_id) as isize)) {
-                if let SteelVal::HashMapV(map) =
-                    BUFFER_OR_EXTENSION_KEYBINDING_MAP.with(|x| x.clone())
+        if let SteelVal::Boxed(boxed_map) = REVERSE_BUFFER_MAP.with(|x| x.clone()) {
+            if let SteelVal::HashMapV(map) = boxed_map.borrow().clone() {
+                if let Some(label) = map.get(&SteelVal::IntV(document_id_to_usize(doc_id) as isize))
                 {
-                    if let Some(value) = map.get(label) {
-                        if let SteelVal::Custom(inner) = value {
-                            if let Some(_) = steel::rvals::as_underlying_type::<EmbeddedKeyMap>(
-                                inner.borrow().as_ref(),
-                            ) {
-                                return Some(value.clone());
+                    if let SteelVal::Boxed(boxed_map) =
+                        BUFFER_OR_EXTENSION_KEYBINDING_MAP.with(|x| x.clone())
+                    {
+                        if let SteelVal::HashMapV(map) = boxed_map.borrow().clone() {
+                            if let Some(value) = map.get(label) {
+                                if let SteelVal::Custom(inner) = value {
+                                    if let Some(_) =
+                                        steel::rvals::as_underlying_type::<EmbeddedKeyMap>(
+                                            inner.borrow().as_ref(),
+                                        )
+                                    {
+                                        return Some(value.clone());
+                                    }
+                                }
                             }
                         }
                     }
@@ -425,32 +442,32 @@ impl ScriptingEngine {
 
 // External modules that can load via rust dylib. These can then be consumed from
 // steel as needed, via the standard FFI for plugin functions.
-pub(crate) static EXTERNAL_DYLIBS: Lazy<Arc<RwLock<ExternalContainersAndModules>>> =
-    Lazy::new(|| {
-        let mut containers = DylibContainers::new();
+// pub(crate) static EXTERNAL_DYLIBS: Lazy<Arc<RwLock<ExternalContainersAndModules>>> =
+//     Lazy::new(|| {
+//         let mut containers = DylibContainers::new();
 
-        // Load the plugins with respect to the extensions directory.
-        // containers.load_modules_from_directory(Some(
-        //     helix_loader::config_dir()
-        //         .join("extensions")
-        //         .to_str()
-        //         .unwrap()
-        //         .to_string(),
-        // ));
+//         // Load the plugins with respect to the extensions directory.
+//         // containers.load_modules_from_directory(Some(
+//         //     helix_loader::config_dir()
+//         //         .join("extensions")
+//         //         .to_str()
+//         //         .unwrap()
+//         //         .to_string(),
+//         // ));
 
-        println!("Found dylibs: {}", containers.containers.len());
+//         println!("Found dylibs: {}", containers.containers.len());
 
-        let modules = containers.create_commands();
+//         let modules = containers.create_commands();
 
-        println!("Modules length: {}", modules.len());
+//         println!("Modules length: {}", modules.len());
 
-        Arc::new(RwLock::new(ExternalContainersAndModules {
-            containers,
-            modules,
-        }))
+//         Arc::new(RwLock::new(ExternalContainersAndModules {
+//             containers,
+//             modules,
+//         }))
 
-        // Arc::new(RwLock::new(containers))
-    });
+//         // Arc::new(RwLock::new(containers))
+//     });
 
 pub fn initialize_engine() {
     ENGINE.with(|x| x.borrow().globals().first().copied());
@@ -837,6 +854,25 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     engine.register_fn("enqueue-callback!", CallbackQueue::enqueue);
 
     load_keymap_api(&mut engine, KeyMapApi::new());
+
+    let mut rope_slice_module = rope_slice_module();
+
+    // Load the ropes + slice module
+    // engine.register_module(rope_slice_module());
+    // rope_slice_module.register_fn("document->slice", document_to_text);
+
+    RegisterFnBorrowed::<
+        _,
+        steel::steel_vm::register_fn::MarkerWrapper9<(
+            Document,
+            Document,
+            SRopeSlice<'_>,
+            SRopeSlice<'static>,
+        )>,
+        SRopeSlice,
+    >::register_fn_borrowed(&mut rope_slice_module, "document->slice", document_to_text);
+
+    engine.register_module(rope_slice_module);
 
     // engine.register_fn("helix-current-keymap", get_keymap);
     // engine.register_fn("helix-empty-keymap", empty_keymap);
@@ -1452,6 +1488,10 @@ fn get_document_id(editor: &mut Editor, view_id: helix_view::ViewId) -> Document
 // Get the document from the document id - TODO: Add result type here
 fn get_document(editor: &mut Editor, doc_id: DocumentId) -> &Document {
     editor.documents.get(&doc_id).unwrap()
+}
+
+fn document_to_text(doc: &Document) -> SRopeSlice<'_> {
+    SRopeSlice::new(doc.text().slice(..))
 }
 
 fn is_document_in_view(editor: &mut Editor, doc_id: DocumentId) -> Option<helix_view::ViewId> {
