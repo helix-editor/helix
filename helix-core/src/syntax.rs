@@ -164,9 +164,11 @@ pub enum FileType {
     /// The extension of the file, either the `Path::extension` or the full
     /// filename if the file does not have an extension.
     Extension(String),
-    /// The suffix of a file. This is compared to a given file's absolute
-    /// path, so it can be used to detect files based on their directories.
-    Suffix(String),
+    /// A Unix-style path glob. This is compared to the file's absolute path, so
+    /// it can be used to detect files based on their directories. If the glob
+    /// is not an absolute path and does not already start with a glob pattern,
+    /// a glob pattern will be prepended to it.
+    Glob(globset::Glob),
 }
 
 impl Serialize for FileType {
@@ -178,9 +180,9 @@ impl Serialize for FileType {
 
         match self {
             FileType::Extension(extension) => serializer.serialize_str(extension),
-            FileType::Suffix(suffix) => {
+            FileType::Glob(glob) => {
                 let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry("suffix", &suffix.replace(std::path::MAIN_SEPARATOR, "/"))?;
+                map.serialize_entry("glob", glob.glob())?;
                 map.end()
             }
         }
@@ -213,9 +215,20 @@ impl<'de> Deserialize<'de> for FileType {
                 M: serde::de::MapAccess<'de>,
             {
                 match map.next_entry::<String, String>()? {
-                    Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix({
-                        suffix.replace('/', std::path::MAIN_SEPARATOR_STR)
-                    })),
+                    Some((key, mut glob)) if key == "glob" => {
+                        // If the glob isn't an absolute path or already starts
+                        // with a glob pattern, add a leading glob so we
+                        // properly match relative paths.
+                        if !glob.starts_with('/') && !glob.starts_with("*/") {
+                            glob.insert_str(0, "*/");
+                        }
+
+                        globset::Glob::new(glob.as_str())
+                            .map(FileType::Glob)
+                            .map_err(|err| {
+                                serde::de::Error::custom(format!("invalid `glob` pattern: {}", err))
+                            })
+                    }
                     Some((key, _value)) => Err(serde::de::Error::custom(format!(
                         "unknown key in `file-types` list: {}",
                         key
@@ -759,7 +772,7 @@ pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
     language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
-    language_config_ids_by_suffix: HashMap<String, usize>,
+    language_config_ids_by_glob: HashMap<globset::Glob, usize>,
     language_config_ids_by_shebang: HashMap<String, usize>,
 
     language_server_configs: HashMap<String, LanguageServerConfiguration>,
@@ -773,7 +786,7 @@ impl Loader {
             language_configs: Vec::new(),
             language_server_configs: config.language_server,
             language_config_ids_by_extension: HashMap::new(),
-            language_config_ids_by_suffix: HashMap::new(),
+            language_config_ids_by_glob: HashMap::new(),
             language_config_ids_by_shebang: HashMap::new(),
             scopes: ArcSwap::from_pointee(Vec::new()),
         };
@@ -788,9 +801,9 @@ impl Loader {
                     FileType::Extension(extension) => loader
                         .language_config_ids_by_extension
                         .insert(extension.clone(), language_id),
-                    FileType::Suffix(suffix) => loader
-                        .language_config_ids_by_suffix
-                        .insert(suffix.clone(), language_id),
+                    FileType::Glob(glob) => loader
+                        .language_config_ids_by_glob
+                        .insert(glob.to_owned(), language_id),
                 };
             }
             for shebang in &config.shebangs {
@@ -813,20 +826,20 @@ impl Loader {
             .and_then(|n| n.to_str())
             .and_then(|file_name| self.language_config_ids_by_extension.get(file_name))
             .or_else(|| {
-                path.extension()
-                    .and_then(|extension| extension.to_str())
-                    .and_then(|extension| self.language_config_ids_by_extension.get(extension))
-            })
-            .or_else(|| {
-                self.language_config_ids_by_suffix
+                self.language_config_ids_by_glob
                     .iter()
-                    .find_map(|(file_type, id)| {
-                        if path.to_str()?.ends_with(file_type) {
+                    .find_map(|(glob, id)| {
+                        if glob.compile_matcher().is_match(path) {
                             Some(id)
                         } else {
                             None
                         }
                     })
+            })
+            .or_else(|| {
+                path.extension()
+                    .and_then(|extension| extension.to_str())
+                    .and_then(|extension| self.language_config_ids_by_extension.get(extension))
             });
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
