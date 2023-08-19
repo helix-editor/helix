@@ -4,6 +4,7 @@ pub(crate) mod editor;
 mod fuzzy_match;
 mod info;
 pub mod lsp;
+pub mod lsp_info;
 mod markdown;
 pub mod menu;
 pub mod overlay;
