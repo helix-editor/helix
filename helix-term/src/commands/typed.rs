@@ -333,8 +333,13 @@ fn write_impl(
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
+    let language_auto_fmt = if let Some(language_config) = doc.language_config() {
+        language_config.auto_format
+    } else {
+        editor_auto_fmt
+    };
 
-    let fmt = if editor_auto_fmt {
+    let fmt = if language_auto_fmt {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
@@ -692,7 +697,12 @@ pub fn write_all_impl(
                 current_view.id
             };
 
-            let fmt = if auto_format {
+            let language_auto_fmt = if let Some(language_config) = doc.language_config() {
+                language_config.auto_format
+            } else {
+                auto_format
+            };
+            let fmt = if language_auto_fmt {
                 doc.auto_format().map(|fmt| {
                     let callback = make_format_callback(
                         doc.id(),
