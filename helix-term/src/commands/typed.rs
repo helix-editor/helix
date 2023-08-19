@@ -1496,6 +1496,31 @@ fn lsp_stop(
     Ok(())
 }
 
+fn lsp_info(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let picker = ui::lsp_info::LspInfo::new(editor);
+                // compositor.push(Box::new(overlaid(picker)));
+                compositor.push(Box::new(picker));
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 fn tree_sitter_scopes(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -2679,6 +2704,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Stops the language servers that are used by the current doc",
         fun: lsp_stop,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "lsp-info",
+        aliases: &[],
+        doc: "Displays a popup with infos on the language servers that are used by the current doc",
+        fun: lsp_info,
         signature: CommandSignature::none(),
     },
     TypableCommand {
