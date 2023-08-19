@@ -845,7 +845,7 @@ lines.
  * Type < and > to indent / outdent lines.
 
  * Press Ctrl-a to increment the selected number.
-   * Press Ctrl-x to decrement the selected number.
+ * Press Ctrl-x to decrement the selected number.
 
 
 
