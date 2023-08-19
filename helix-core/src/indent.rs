@@ -814,8 +814,7 @@ pub fn custom_indent_for_newline(
 
                                 let offset = line.len_chars() - index;
 
-                                let mut char_iter_from_paren =
-                                    line.chars_at(line.len_chars() - index).enumerate();
+                                let mut char_iter_from_paren = line.chars_at(offset).enumerate();
 
                                 let end;
 
