@@ -540,9 +540,8 @@ impl EditorView {
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
         let mut current_doc_idx = None;
-        let width = viewport.right();
-
         let mut needed_width = 0;
+
         let entries: Vec<String> = editor
             .documents()
             .enumerate()
@@ -567,7 +566,7 @@ impl EditorView {
             })
             .collect();
 
-        let mut to_trim = needed_width.saturating_sub(width as usize);
+        let mut to_trim = needed_width.saturating_sub(viewport.width as usize);
         for (idx, filename) in entries.iter().enumerate() {
             let mut text = filename.as_str();
             if to_trim > 0 {
@@ -585,12 +584,12 @@ impl EditorView {
                 bufferline_inactive
             };
 
-            let rem_width = width.saturating_sub(x);
+            let rem_width = viewport.right().saturating_sub(x);
             x = surface
                 .set_stringn(x, viewport.y, text, rem_width as usize, style)
                 .0;
 
-            if x >= width {
+            if x >= viewport.right() {
                 break;
             }
         }
