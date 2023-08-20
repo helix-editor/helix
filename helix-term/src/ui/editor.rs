@@ -539,31 +539,58 @@ impl EditorView {
 
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
+        let mut current_doc_idx = None;
+        let width = viewport.right();
 
-        for doc in editor.documents() {
-            let fname = doc
-                .path()
-                .unwrap_or(&scratch)
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
+        let mut needed_width = 0;
+        let entries: Vec<String> = editor
+            .documents()
+            .enumerate()
+            .map(|(idx, doc)| {
+                let fname = doc
+                    .path()
+                    .unwrap_or(&scratch)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default();
 
-            let style = if current_doc == doc.id() {
+                let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+
+                if doc.id() == current_doc {
+                    current_doc_idx = Some(idx);
+                    needed_width += text.len();
+                } else if current_doc_idx.is_none() {
+                    needed_width += text.len();
+                }
+                text
+            })
+            .collect();
+
+        let mut to_trim = needed_width.saturating_sub(width as usize);
+        for (idx, filename) in entries.iter().enumerate() {
+            let mut text = filename.as_str();
+            if to_trim > 0 {
+                if text.len() > to_trim {
+                    text = &filename[to_trim..];
+                    to_trim = 0;
+                } else if to_trim > text.len() {
+                    to_trim -= text.len();
+                    continue;
+                }
+            }
+            let style = if idx == current_doc_idx.unwrap() {
                 bufferline_active
             } else {
                 bufferline_inactive
             };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let used_width = viewport.x.saturating_sub(x);
-            let rem_width = surface.area.width.saturating_sub(used_width);
-
+            let rem_width = width.saturating_sub(x);
             x = surface
                 .set_stringn(x, viewport.y, text, rem_width as usize, style)
                 .0;
 
-            if x >= surface.area.right() {
+            if x >= width {
                 break;
             }
         }
