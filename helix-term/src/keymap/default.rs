@@ -178,8 +178,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "esc" => normal_mode,
         "C-b" | "pageup" => page_up,
         "C-f" | "pagedown" => page_down,
-        "C-u" => half_page_up,
-        "C-d" => half_page_down,
+        "C-u" => page_cursor_half_up,
+        "C-d" => page_cursor_half_down,
 
         "C-w" => { "Window"
             "C-w" | "w" => rotate_view,
@@ -287,8 +287,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" | "down" => scroll_down,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
-            "C-u" | "backspace" => half_page_up,
-            "C-d" | "space" => half_page_down,
+            "C-u" => page_cursor_half_up,
+            "C-d" => page_cursor_half_down,
 
             "/" => search,
             "?" => rsearch,
@@ -304,9 +304,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" | "down" => scroll_down,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
-            "C-u" | "backspace" => half_page_up,
-            "C-d" | "space" => half_page_down,
-
+            "C-u" => page_cursor_half_up,
+            "C-d" => page_cursor_half_down,
             "/" => search,
             "?" => rsearch,
             "n" => search_next,
