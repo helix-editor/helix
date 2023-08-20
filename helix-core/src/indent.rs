@@ -760,144 +760,150 @@ static LISP_WORDS: Lazy<std::collections::HashSet<&'static str>> = Lazy::new(|| 
 
 /// TODO: Come up with some elegant enough FFI for this, so that Steel can expose an API for this.
 /// Problem is - the issues with the `Any` type and using things with type id.
-#[allow(clippy::too_many_arguments)]
-pub fn custom_indent_for_newline(
-    language_config: Option<&LanguageConfiguration>,
-    text: RopeSlice,
-    line_before: usize,
-    line_before_end_pos: usize,
-) -> Option<String> {
-    if let Some(config) = language_config {
-        // TODO: If possible, this would be very cool to be implemented in steel itself. If not,
-        // a rust native method that is embedded in a dylib that this uses would also be helpful
-        if config.language_id == "scheme" {
-            log::info!("Implement better scheme indent mode!");
+// #[allow(clippy::too_many_arguments)]
+// pub fn custom_indent_for_newline(
+//     language_config: Option<&LanguageConfiguration>,
+//     text: RopeSlice,
+//     line_before: usize,
+//     line_before_end_pos: usize,
+// ) -> Option<String> {
+//     if let Some(config) = language_config {
+//         // TODO: If possible, this would be very cool to be implemented in steel itself. If not,
+//         // a rust native method that is embedded in a dylib that this uses would also be helpful
+//         if config.language_id == "scheme" {
+//             log::info!("Implement better scheme indent mode!");
 
-            let byte_pos = text.char_to_byte(line_before_end_pos);
+//             let byte_pos = text.char_to_byte(line_before_end_pos);
 
-            let text_up_to_cursor = text.byte_slice(0..byte_pos);
+//             let text_up_to_cursor = text.byte_slice(0..byte_pos);
 
-            let mut cursor = line_before;
-            let mut depth = 0;
+//             let mut cursor = line_before;
+//             let mut depth = 0;
 
-            loop {
-                let line = text_up_to_cursor.line(cursor);
+//             loop {
+//                 let line = text_up_to_cursor.line(cursor);
 
-                // We want to ignore comments
-                let l = std::borrow::Cow::from(line);
-                if l.trim_start().starts_with(";") {
-                    if cursor == 0 {
-                        break;
-                    }
+//                 // We want to ignore comments
+//                 let l = std::borrow::Cow::from(line);
+//                 if l.trim_start().starts_with(";") {
+//                     if cursor == 0 {
+//                         break;
+//                     }
 
-                    cursor -= 1;
+//                     cursor -= 1;
 
-                    continue;
-                }
+//                     continue;
+//                 }
 
-                for (index, char) in line.chars_at(line.len_chars()).reversed().enumerate() {
-                    match char {
-                        ')' | ']' | '}' => {
-                            depth += 1;
-                        }
-                        '(' | '[' | '{' => {
-                            if depth == 0 {
-                                log::info!(
-                                    "Found unmatched paren on line, index: {}, {}",
-                                    line,
-                                    index
-                                );
+//                 for (index, char) in line.chars_at(line.len_chars()).reversed().enumerate() {
+//                     // log::info!("Char: {}, Index: {}", char, index);
 
-                                // Here, then walk FORWARD, parsing the identifiers until there is a thing to line up with, for example:
-                                // (define (foo-bar) RET) <-
-                                //     ^probably indent to here
+//                     match char {
+//                         ')' | ']' | '}' => {
+//                             depth += 1;
+//                         }
+//                         '(' | '[' | '{' => {
+//                             if depth == 0 {
+//                                 log::info!(
+//                                     "Found unmatched paren on line, index: {}, {}",
+//                                     line,
+//                                     index
+//                                 );
 
-                                let offset = line.len_chars() - index;
+//                                 // Here, then walk FORWARD, parsing the identifiers until there is a thing to line up with, for example:
+//                                 // (define (foo-bar) RET) <-
+//                                 //     ^probably indent to here
 
-                                let mut char_iter_from_paren = line.chars_at(offset).enumerate();
+//                                 let offset = line.len_chars() - index;
 
-                                let end;
+//                                 log::info!("Offset: {}", offset);
 
-                                // Walk until we've found whitespace, and then crunch the whitespace until the start of the next symbol
-                                // if there is _no_ symbol after that, we should just default to the default behavior
-                                while let Some((index, char)) = char_iter_from_paren.next() {
-                                    if char.is_whitespace() {
-                                        let mut last = index;
+//                                 let mut char_iter_from_paren = line.chars_at(offset).enumerate();
 
-                                        // This is the end of our range
-                                        end = index;
+//                                 let end;
 
-                                        // If we have multiple parens in a row, match to the start:
-                                        // for instance, (cond [(equal? x 10) RET])
-                                        //                     ^ We want to line up to this
-                                        //
-                                        // To do so, just create an indent that is the width of the offset.
-                                        match line.get_char(offset) {
-                                            Some('(' | '[' | '{') => {
-                                                return Some(" ".repeat(offset));
-                                            }
-                                            _ => {}
-                                        }
+//                                 // Walk until we've found whitespace, and then crunch the whitespace until the start of the next symbol
+//                                 // if there is _no_ symbol after that, we should just default to the default behavior
+//                                 while let Some((index, char)) = char_iter_from_paren.next() {
+//                                     if char.is_whitespace() {
+//                                         let mut last = index;
 
-                                        if line
-                                            .slice(offset..offset + end)
-                                            .as_str()
-                                            .map(|x| LISP_WORDS.contains(x))
-                                            .unwrap_or_default()
-                                        {
-                                            return Some(" ".repeat(offset + 1));
-                                        }
+//                                         // This is the end of our range
+//                                         end = index;
 
-                                        for _ in char_iter_from_paren
-                                            .take_while(|(_, x)| x.is_whitespace())
-                                        {
-                                            last += 1;
-                                        }
+//                                         // If we have multiple parens in a row, match to the start:
+//                                         // for instance, (cond [(equal? x 10) RET])
+//                                         //                     ^ We want to line up to this
+//                                         //
+//                                         // To do so, just create an indent that is the width of the offset.
+//                                         match line.get_char(offset) {
+//                                             Some('(' | '[' | '{') => {
+//                                                 return Some(" ".repeat(offset));
+//                                             }
+//                                             _ => {}
+//                                         }
 
-                                        // If we have something like (list RET)
-                                        // We want the result to look like:
-                                        // (list
-                                        //   )
-                                        //
-                                        // So we special case the lack of an additional word after
-                                        // the first symbol
-                                        if line.len_chars() == last + offset + 1 {
-                                            if let Some(c) = line.get_char(last + offset) {
-                                                if c.is_whitespace() {
-                                                    return Some(" ".repeat(offset + 1));
-                                                }
-                                            }
-                                        }
+//                                         if line
+//                                             .slice(offset..offset + end)
+//                                             .as_str()
+//                                             .map(|x| LISP_WORDS.contains(x))
+//                                             .unwrap_or_default()
+//                                         {
+//                                             return Some(" ".repeat(offset + 1));
+//                                         }
 
-                                        return Some(" ".repeat(last + offset + 1));
-                                    }
-                                }
+//                                         for _ in char_iter_from_paren
+//                                             .take_while(|(_, x)| x.is_whitespace())
+//                                         {
+//                                             last += 1;
+//                                         }
 
-                                log::info!("Found no symbol after the initial opening symbol");
+//                                         // If we have something like (list RET)
+//                                         // We want the result to look like:
+//                                         // (list
+//                                         //   )
+//                                         //
+//                                         // So we special case the lack of an additional word after
+//                                         // the first symbol
+//                                         if line.len_chars() == last + offset + 1 {
+//                                             if let Some(c) = line.get_char(last + offset) {
+//                                                 if c.is_whitespace() {
+//                                                     return Some(" ".repeat(offset + 1));
+//                                                 }
+//                                             }
+//                                         }
 
-                                return Some(" ".repeat(offset + 1));
-                            }
+//                                         log::info!("Last + offset + 1: {}", last + offset + 1);
 
-                            depth -= 1;
-                        }
-                        _ => {}
-                    }
-                }
+//                                         return Some(" ".repeat(last + offset + 1));
+//                                     }
+//                                 }
 
-                if cursor == 0 {
-                    break;
-                }
+//                                 log::info!("Found no symbol after the initial opening symbol");
 
-                cursor -= 1;
-            }
+//                                 return Some(" ".repeat(offset + 1));
+//                             }
 
-            // TODO: Implement heuristic for large files so we don't necessarily traverse the entire file backwards to check the matched parens?
-            return Some("".to_string());
-        }
-    }
+//                             depth -= 1;
+//                         }
+//                         _ => {}
+//                     }
+//                 }
 
-    None
-}
+//                 if cursor == 0 {
+//                     break;
+//                 }
+
+//                 cursor -= 1;
+//             }
+
+//             // TODO: Implement heuristic for large files so we don't necessarily traverse the entire file backwards to check the matched parens?
+//             return Some("".to_string());
+//         }
+//     }
+
+//     None
+// }
 
 /// Returns the indentation for a new line.
 /// This is done either using treesitter, or if that's not available by copying the indentation from the current line
@@ -935,11 +941,11 @@ pub fn indent_for_newline(
     // TODO: @Matt - see if we can shell out to the steel plugin to identify indentation length
     // Something naive for steel could work, use the parser and
 
-    if let Some(indent_level) =
-        custom_indent_for_newline(language_config, text, line_before, line_before_end_pos)
-    {
-        return indent_level;
-    }
+    // if let Some(indent_level) =
+    //     custom_indent_for_newline(language_config, text, line_before, line_before_end_pos)
+    // {
+    //     return indent_level;
+    // }
 
     let indent_level = indent_level_for_line(text.line(current_line), tab_width, indent_width);
     indent_style.as_str().repeat(indent_level)

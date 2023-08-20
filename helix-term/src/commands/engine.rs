@@ -1,9 +1,9 @@
 use fuzzy_matcher::FuzzyMatcher;
 use helix_core::{
-    extensions::{rope_slice_module, SRopeSlice},
+    extensions::{rope_module, rope_slice_module, SRopeSlice, SteelRopeSlice},
     graphemes,
     shellwords::Shellwords,
-    Selection, Tendril,
+    Range, Selection, Tendril,
 };
 use helix_view::{
     document::Mode,
@@ -52,6 +52,7 @@ use crate::{
 use self::components::SteelDynamicComponent;
 
 use super::{
+    indent,
     insert::{insert_char, insert_string},
     plugin::{DylibContainers, ExternalModule},
     shell_impl, Context, MappableCommand, TYPABLE_COMMAND_LIST,
@@ -839,6 +840,11 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     engine.register_fn("hx.context?", |_: &mut Context| true);
 
+    engine.register_fn("log::info!", |message: String| log::info!("{}", message));
+
+    engine.register_fn("hx.custom-insert-newline", custom_insert_newline);
+    engine.register_fn("hx.cx->pos", cx_pos_within_text);
+
     // Load native modules from the directory. Another idea - have a separate dlopen loading system
     // in place that does not use the type id, and instead we generate the module after the dylib
     // is added. That way functions _must_ have a specific signature, and then we add the integration
@@ -855,22 +861,24 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     load_keymap_api(&mut engine, KeyMapApi::new());
 
-    let mut rope_slice_module = rope_slice_module();
+    let mut rope_slice_module = rope_module();
+
+    rope_slice_module.register_fn("document->slice", document_to_text);
 
     // Load the ropes + slice module
     // engine.register_module(rope_slice_module());
     // rope_slice_module.register_fn("document->slice", document_to_text);
 
-    RegisterFnBorrowed::<
-        _,
-        steel::steel_vm::register_fn::MarkerWrapper9<(
-            Document,
-            Document,
-            SRopeSlice<'_>,
-            SRopeSlice<'static>,
-        )>,
-        SRopeSlice,
-    >::register_fn_borrowed(&mut rope_slice_module, "document->slice", document_to_text);
+    // RegisterFnBorrowed::<
+    //     _,
+    //     steel::steel_vm::register_fn::MarkerWrapper9<(
+    //         Document,
+    //         Document,
+    //         SRopeSlice<'_>,
+    //         SRopeSlice<'static>,
+    //     )>,
+    //     SRopeSlice,
+    // >::register_fn_borrowed(&mut rope_slice_module, "document->slice", document_to_text);
 
     engine.register_module(rope_slice_module);
 
@@ -1490,8 +1498,8 @@ fn get_document(editor: &mut Editor, doc_id: DocumentId) -> &Document {
     editor.documents.get(&doc_id).unwrap()
 }
 
-fn document_to_text(doc: &Document) -> SRopeSlice<'_> {
-    SRopeSlice::new(doc.text().slice(..))
+fn document_to_text(doc: &Document) -> SteelRopeSlice {
+    SteelRopeSlice::new(doc.text().clone())
 }
 
 fn is_document_in_view(editor: &mut Editor, doc_id: DocumentId) -> Option<helix_view::ViewId> {
@@ -1745,4 +1753,144 @@ fn set_options(
         .0
         .send(ConfigEvent::Update(config))?;
     Ok(())
+}
+
+pub fn cx_pos_within_text(cx: &mut Context) -> usize {
+    let (view, doc) = current_ref!(cx.editor);
+
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone();
+
+    let pos = selection.primary().cursor(text);
+
+    pos
+}
+
+// Special newline...
+pub fn custom_insert_newline(cx: &mut Context, indent: String) {
+    let (view, doc) = current_ref!(cx.editor);
+
+    // let rope = doc.text().clone();
+
+    let text = doc.text().slice(..);
+
+    let contents = doc.text();
+    let selection = doc.selection(view.id).clone();
+    let mut ranges = helix_core::SmallVec::with_capacity(selection.len());
+
+    // TODO: this is annoying, but we need to do it to properly calculate pos after edits
+    let mut global_offs = 0;
+
+    let mut transaction =
+        helix_core::Transaction::change_by_selection(contents, &selection, |range| {
+            let pos = range.cursor(text);
+
+            let prev = if pos == 0 {
+                ' '
+            } else {
+                contents.char(pos - 1)
+            };
+            let curr = contents.get_char(pos).unwrap_or(' ');
+
+            let current_line = text.char_to_line(pos);
+            let line_is_only_whitespace = text
+                .line(current_line)
+                .chars()
+                .all(|char| char.is_ascii_whitespace());
+
+            let mut new_text = String::new();
+
+            // If the current line is all whitespace, insert a line ending at the beginning of
+            // the current line. This makes the current line empty and the new line contain the
+            // indentation of the old line.
+            let (from, to, local_offs) = if line_is_only_whitespace {
+                let line_start = text.line_to_char(current_line);
+                new_text.push_str(doc.line_ending.as_str());
+
+                (line_start, line_start, new_text.chars().count())
+            } else {
+                // let indent = indent::indent_for_newline(
+                //     doc.language_config(),
+                //     doc.syntax(),
+                //     &doc.indent_style,
+                //     doc.tab_width(),
+                //     text,
+                //     current_line,
+                //     pos,
+                //     current_line,
+                // );
+
+                // let cloned_func = thunk.clone();
+                // let steel_rope = SteelRopeSlice::new(rope.clone()).into_steelval().unwrap();
+
+                // let indent = if let Ok(result) = ENGINE.with(|x| {
+                //     x.borrow_mut().call_function_with_args(
+                //         cloned_func,
+                //         vec![
+                //             steel_rope,
+                //             current_line.into_steelval().unwrap(),
+                //             pos.into_steelval().unwrap(),
+                //         ],
+                //     )
+                // }) {
+                //     result.as_string().unwrap().to_string()
+                // } else {
+                //     "".to_string()
+                // };
+
+                // If we are between pairs (such as brackets), we want to
+                // insert an additional line which is indented one level
+                // more and place the cursor there
+                let on_auto_pair = doc
+                    .auto_pairs(cx.editor)
+                    .and_then(|pairs| pairs.get(prev))
+                    .map_or(false, |pair| pair.open == prev && pair.close == curr);
+
+                let local_offs = if on_auto_pair {
+                    let inner_indent = indent.clone() + doc.indent_style.as_str();
+                    new_text.reserve_exact(2 + indent.len() + inner_indent.len());
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&inner_indent);
+                    let local_offs = new_text.chars().count();
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&indent);
+                    local_offs
+                } else {
+                    new_text.reserve_exact(1 + indent.len());
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&indent);
+                    new_text.chars().count()
+                };
+
+                (pos, pos, local_offs)
+            };
+
+            let new_range = if doc.restore_cursor {
+                // when appending, extend the range by local_offs
+                Range::new(
+                    range.anchor + global_offs,
+                    range.head + local_offs + global_offs,
+                )
+            } else {
+                // when inserting, slide the range by local_offs
+                Range::new(
+                    range.anchor + local_offs + global_offs,
+                    range.head + local_offs + global_offs,
+                )
+            };
+
+            // TODO: range replace or extend
+            // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
+            // can be used with cx.mode to do replace or extend on most changes
+            ranges.push(new_range);
+            global_offs += new_text.chars().count();
+
+            (from, to, Some(new_text.into()))
+        });
+
+    transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
+
+    let (view, doc) = current!(cx.editor);
+    doc.apply(&transaction, view.id);
 }
