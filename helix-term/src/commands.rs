@@ -276,6 +276,10 @@ impl MappableCommand {
         page_down, "Move page down",
         half_page_up, "Move half page up",
         half_page_down, "Move half page down",
+        page_cursor_up, "Move page and cursor up",
+        page_cursor_down, "Move page and cursor down",
+        page_cursor_half_up, "Move page and cursor half up",
+        page_cursor_half_down, "Move page and cursor half down",
         select_all, "Select whole document",
         select_regex, "Select all regex matches inside selections",
         split_selection, "Split selections on regex matches",
@@ -1652,6 +1656,30 @@ fn half_page_down(cx: &mut Context) {
     let view = view!(cx.editor);
     let offset = view.inner_height() / 2;
     scroll(cx, offset, Direction::Forward);
+}
+
+fn page_cursor_up(cx: &mut Context) {
+    let view = view!(cx.editor);
+    let offset = view.inner_height();
+    scroll_page_and_cursor(cx, offset, Direction::Backward);
+}
+
+fn page_cursor_down(cx: &mut Context) {
+    let view = view!(cx.editor);
+    let offset = view.inner_height();
+    scroll_page_and_cursor(cx, offset, Direction::Forward);
+}
+
+fn page_cursor_half_up(cx: &mut Context) {
+    let view = view!(cx.editor);
+    let offset = view.inner_height() / 2;
+    scroll_page_and_cursor(cx, offset, Direction::Backward);
+}
+
+fn page_cursor_half_down(cx: &mut Context) {
+    let view = view!(cx.editor);
+    let offset = view.inner_height() / 2;
+    scroll_page_and_cursor(cx, offset, Direction::Forward);
 }
 
 #[allow(deprecated)]
