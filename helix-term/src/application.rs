@@ -160,7 +160,7 @@ impl Application {
             let path = helix_loader::runtime_file(Path::new("tutor"));
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
-            doc_mut!(editor).set_path(None)?;
+            doc_mut!(editor).set_path(None);
         } else if !args.files.is_empty() {
             let first = &args.files[0].0; // we know it's not empty
             if first.is_dir() {
@@ -554,16 +554,7 @@ impl Application {
         let bytes = doc_save_event.text.len_bytes();
 
         if doc.path() != Some(&doc_save_event.path) {
-            if let Err(err) = doc.set_path(Some(&doc_save_event.path)) {
-                log::error!(
-                    "error setting path for doc '{:?}': {}",
-                    doc.path(),
-                    err.to_string(),
-                );
-
-                self.editor.set_error(err.to_string());
-                return;
-            }
+            doc.set_path(Some(&doc_save_event.path));
 
             let loader = self.editor.syn_loader.clone();
 
