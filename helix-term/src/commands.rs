@@ -595,6 +595,7 @@ fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movem
     let text = doc.text().slice(..);
     let text_fmt = doc.text_format(view.inner_area(doc).width, None);
     let mut annotations = view.text_annotations(doc, None);
+    annotations.clear_line_annotations();
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         move_fn(
