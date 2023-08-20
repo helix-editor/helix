@@ -598,6 +598,9 @@ impl Application {
                     self.render().await;
                 }
             }
+            EditorEvent::Redraw => {
+                self.render().await;
+            }
             EditorEvent::IdleTimer => {
                 self.editor.clear_idle_timer();
                 self.handle_idle_timeout().await;
