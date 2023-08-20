@@ -287,8 +287,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" | "down" => scroll_down,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
-            "C-u" => page_cursor_half_up,
-            "C-d" => page_cursor_half_down,
+            "C-u" | "backspace" => page_cursor_half_up,
+            "C-d" | "space" => page_cursor_half_down,
 
             "/" => search,
             "?" => rsearch,
@@ -304,8 +304,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" | "down" => scroll_down,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
-            "C-u" => page_cursor_half_up,
-            "C-d" => page_cursor_half_down,
+            "C-u" | "backspace" => page_cursor_half_up,
+            "C-d" | "space" => page_cursor_half_down,
+
             "/" => search,
             "?" => rsearch,
             "n" => search_next,
