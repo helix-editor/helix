@@ -1233,7 +1233,7 @@ version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
 dependencies = [
- "ahash 0.8.3",
+ "ahash",
 ]
 
 [[package]]
@@ -1300,7 +1300,7 @@ dependencies = [
 name = "helix-event"
 version = "0.6.0"
 dependencies = [
- "ahash 0.8.3",
+ "ahash",
  "anyhow",
  "futures-executor",
  "hashbrown 0.13.2",

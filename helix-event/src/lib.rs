@@ -16,8 +16,8 @@
 //! they only receive immutable references. For handler that want to track state, do
 //! expensive background computations or debouncing an [`AsyncHook`] is preferable.
 //! Async hooks are based around a channels that receive events specific to
-//! that `AsyncHook` (usually an enum). These events can be send by synchronous
-//! [`Hook`]s. Due to some limtations around tokio channels the [`send_blocking`]
+//! that `AsyncHook` (usually an enum). These events can be sent by synchronous
+//! hooks. Due to some limtations around tokio channels the [`send_blocking`]
 //! function exported in this crate should be used instead of the builtin
 //! `blocking_send`.
 //!
