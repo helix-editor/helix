@@ -375,7 +375,7 @@ impl<T: Item + 'static> Picker<T> {
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
         self.selection()
             .and_then(|current| (self.file_fn.as_ref()?)(editor, current))
-            .and_then(|(path_or_id, line)| Some(path_or_id.get_canonicalized()).zip(Some(line)))
+            .map(|(path_or_id, line)| (path_or_id.get_canonicalized(), line))
     }
 
     /// Get (cached) preview for a given path. If a document corresponding
