@@ -70,6 +70,22 @@ to be used as typed commands. For example:
 ;; Adds the current file to git	
 (define (git-add cx)
   (shell cx "git" "add" "%"))
+
+
+;; Functions to assist with the above
+
+(define (editor-get-doc-if-exists editor doc-id)
+  (if (editor-doc-exists? editor doc-id) (editor->get-document editor doc-id) #f))
+
+(define (current-path cx)
+  (let* ([editor (cx-editor! cx)]
+         [focus (editor-focus editor)]
+         [focus-doc-id (editor->doc-id editor focus)]
+         [document (editor-get-doc-if-exists editor focus-doc-id)])
+
+    (if document (Document-path document) #f)))
+
+  
 	
 ```
 
