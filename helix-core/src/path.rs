@@ -85,7 +85,7 @@ pub fn get_normalized_path(path: &Path) -> PathBuf {
 ///
 /// This function is used instead of `std::fs::canonicalize` because we don't want to verify
 /// here if the path exists, just normalize it's components.
-pub fn get_canonicalized_path(path: &Path) -> std::io::Result<PathBuf> {
+pub fn get_canonicalized_path(path: &Path) -> PathBuf {
     let path = expand_tilde(path);
     let path = if path.is_relative() {
         helix_loader::current_working_dir().join(path)
@@ -93,7 +93,7 @@ pub fn get_canonicalized_path(path: &Path) -> std::io::Result<PathBuf> {
         path
     };
 
-    Ok(get_normalized_path(path.as_path()))
+    get_normalized_path(path.as_path())
 }
 
 pub fn get_relative_path(path: &Path) -> PathBuf {

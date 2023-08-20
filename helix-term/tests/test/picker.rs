@@ -30,7 +30,7 @@ async fn test_picker_alt_ret() -> anyhow::Result<()> {
     ];
     let paths = files
         .iter()
-        .map(|f| get_canonicalized_path(f.path()).unwrap())
+        .map(|f| get_canonicalized_path(f.path()))
         .collect::<Vec<_>>();
 
     fs::write(&paths[0], "1\n2\n3\n4")?;
