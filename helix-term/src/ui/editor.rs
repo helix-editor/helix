@@ -1139,7 +1139,7 @@ impl EditorView {
                 }
 
                 let offset = config.scroll_lines.unsigned_abs();
-                commands::scroll(cxt, offset, direction);
+                commands::scroll(cxt, offset, direction, false);
 
                 cxt.editor.tree.focus = current_view;
                 cxt.editor.ensure_cursor_in_view(current_view);
