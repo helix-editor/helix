@@ -64,6 +64,28 @@ pub fn move_vertically_visual(
     if !text_fmt.soft_wrap {
         return move_vertically(slice, range, dir, count, behaviour, text_fmt, annotations);
     }
+    annotations.clear_line_annotations();
+
+    return _move_vertically_visual(
+        slice,
+        range,
+        dir,
+        count,
+        behaviour,
+        text_fmt,
+        annotations,
+    );
+}
+
+pub fn _move_vertically_visual(
+    slice: RopeSlice,
+    range: Range,
+    dir: Direction,
+    count: usize,
+    behaviour: Movement,
+    text_fmt: &TextFormat,
+    annotations: &mut TextAnnotations
+) -> Range {
     let pos = range.cursor(slice);
 
     // Compute the current position's 2d coordinates.
@@ -111,6 +133,7 @@ pub fn move_vertically(
     text_fmt: &TextFormat,
     annotations: &mut TextAnnotations,
 ) -> Range {
+    annotations.clear_line_annotations();
     let pos = range.cursor(slice);
     let line_idx = slice.char_to_line(pos);
     let line_start = slice.line_to_char(line_idx);
