@@ -2645,7 +2645,7 @@ file-types = ["typst", "typ"]
 roots = []
 comment-token = "//"
 language-servers = ["typst-lsp"]
-indent = { tab-width = 4, unit = "    " }
+indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "typst"
