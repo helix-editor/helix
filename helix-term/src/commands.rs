@@ -18,7 +18,7 @@ use helix_core::{
     indent::IndentStyle,
     line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
     match_brackets,
-    movement::{self, move_vertically_visual, _move_vertically_visual, Direction},
+    movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
     search::{self, CharMatcher},
@@ -599,6 +599,7 @@ fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movem
     let text = doc.text().slice(..);
     let text_fmt = doc.text_format(view.inner_area(doc).width, None);
     let mut annotations = view.text_annotations(doc, None);
+    annotations.clear_line_annotations();
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         move_fn(
@@ -1543,7 +1544,7 @@ pub fn scroll_page_and_cursor(cx: &mut Context, offset: usize, direction: Direct
     }
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-            _move_vertically_visual(
+            move_vertically_visual(
                 doc_text,
                 range,
                 direction,
