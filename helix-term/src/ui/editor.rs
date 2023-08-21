@@ -575,11 +575,10 @@ impl EditorView {
                         text = &filename[to_trim..];
                         to_trim = 0;
                     }
-                    Ordering::Greater => {
+                    _ => {
                         to_trim -= text.len();
                         continue;
                     }
-                    _ => {}
                 }
             }
             let style = if idx == current_doc_idx.unwrap() {
