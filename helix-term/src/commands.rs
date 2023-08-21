@@ -1160,6 +1160,10 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
     let selections = doc.selection(view.id);
+    let rel_path = doc
+        .relative_path()
+        .map(|path| path.parent().unwrap().to_path_buf())
+        .unwrap_or_default();
     let mut paths: Vec<_> = selections
         .iter()
         .map(|r| text.slice(r.from()..r.to()).to_string())
@@ -1190,7 +1194,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     for sel in paths {
         let p = sel.trim();
         if !p.is_empty() {
-            let path = Path::new(p);
+            let path = &rel_path.join(p);
             if path.is_dir() {
                 let picker = ui::file_picker(path.into(), &cx.editor.config());
                 cx.push_layer(Box::new(overlaid(picker)));
