@@ -1542,7 +1542,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
         };
         // TODO: When inline diagnostics gets merged- 1. move_vertically_visual removes
         // line annotations/diagnostics so the cursor may jump further than the view.
-        // 2. If the cursor lands on a complete line of virtual text, the cursor will 
+        // 2. If the cursor lands on a complete line of virtual text, the cursor will
         // jump a different distance than the view.
         let selection = doc.selection(view.id).clone().transform(|range| {
             move_vertically_visual(
@@ -1558,7 +1558,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
         doc.set_selection(view.id, selection);
         return;
     }
-    
+
     let mut head;
     match direction {
         Forward => {
