@@ -1549,7 +1549,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
                 doc_text,
                 range,
                 direction,
-                offset.abs() as usize,
+                offset.unsigned_abs(),
                 movement,
                 &text_fmt,
                 &mut annotations,
