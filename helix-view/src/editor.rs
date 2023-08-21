@@ -918,6 +918,7 @@ pub struct Editor {
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
+    redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
 
@@ -963,6 +964,7 @@ pub enum EditorEvent {
     LanguageServerMessage((usize, Call)),
     DebuggerEvent(dap::Payload),
     IdleTimer,
+    Redraw,
 }
 
 #[derive(Debug, Clone)]
@@ -1053,6 +1055,7 @@ impl Editor {
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
+            redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
             last_completion: None,
             config,
@@ -1753,12 +1756,16 @@ impl Editor {
                     if  !self.needs_redraw{
                         self.needs_redraw = true;
                         let timeout = Instant::now() + Duration::from_millis(33);
-                        if timeout < self.idle_timer.deadline(){
-                            self.idle_timer.as_mut().reset(timeout)
+                        if timeout < self.idle_timer.deadline() && timeout < self.redraw_timer.deadline(){
+                            self.redraw_timer.as_mut().reset(timeout)
                         }
                     }
                 }
 
+                _ = &mut self.redraw_timer  => {
+                    self.redraw_timer.as_mut().reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
+                    return EditorEvent::Redraw
+                }
                 _ = &mut self.idle_timer  => {
                     return EditorEvent::IdleTimer
                 }
