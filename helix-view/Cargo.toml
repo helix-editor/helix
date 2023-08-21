@@ -20,7 +20,7 @@ helix-core = { version = "0.6", path = "../helix-core" }
 helix-loader = { version = "0.6", path = "../helix-loader" }
 helix-lsp = { version = "0.6", path = "../helix-lsp" }
 helix-dap = { version = "0.6", path = "../helix-dap" }
-crossterm = { version = "0.26", optional = true }
+crossterm = { version = "0.27", optional = true }
 helix-vcs = { version = "0.6", path = "../helix-vcs" }
 
 # Conversion traits
