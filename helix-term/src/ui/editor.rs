@@ -29,7 +29,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{cmp::Ordering, mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
+use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -569,17 +569,12 @@ impl EditorView {
         let mut to_trim = needed_width.saturating_sub(viewport.width as usize);
         for (idx, filename) in entries.iter().enumerate() {
             let mut text = filename.as_str();
-            if to_trim > 0 {
-                match to_trim.cmp(&text.len()) {
-                    Ordering::Less => {
-                        text = &filename[to_trim..];
-                        to_trim = 0;
-                    }
-                    _ => {
-                        to_trim -= text.len();
-                        continue;
-                    }
-                }
+            if to_trim > 0 && to_trim < text.len() {
+                text = &filename[to_trim..];
+                to_trim = 0;
+            } else if to_trim > 0 {
+                to_trim -= text.len();
+                continue;
             }
             let style = if idx == current_doc_idx.unwrap() {
                 bufferline_active
