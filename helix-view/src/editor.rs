@@ -918,7 +918,7 @@ pub struct Editor {
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
-    pub redraw_timer: Pin<Box<Sleep>>,
+    redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
 
