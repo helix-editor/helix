@@ -1542,6 +1542,10 @@ pub fn scroll_page_and_cursor(cx: &mut Context, offset: usize, direction: Direct
         offset += scrolloff - cursor_pos.row + 1;
     }
 
+    // TODO: When inline diagnostics gets merged- 1. move_vertically_visual removes
+    // line annotations/diagnostics so the cursor may jump further than the view.
+    // 2. If the cursor lands on a complete line of virtual text, the cursor will 
+    // jump a different distance than the view.
     let selection = doc.selection(view.id).clone().transform(|range| {
             move_vertically_visual(
                 doc_text,
