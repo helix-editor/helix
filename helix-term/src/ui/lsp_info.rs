@@ -6,9 +6,7 @@ use helix_view::input::Event;
 use helix_view::Editor;
 use tui::buffer::Buffer as Surface;
 
-pub struct LspInfo {
-    info: Info,
-}
+pub struct LspInfo(Info);
 
 impl LspInfo {
     pub fn new(editor: &Editor) -> Self {
@@ -37,25 +35,23 @@ impl LspInfo {
             })
             .unwrap_or_default();
 
-        LspInfo {
-            info: Info::new(
-                "Lsp Info",
-                format!(
-                    "Server status:\n\
+        LspInfo(Info::new(
+            "Lsp Info",
+            format!(
+                "Server status:\n\
                     {}\n\
                     \n\
                     Press q or Esc to close",
-                    configured_names.join("\n")
-                ),
-                Location::Center,
+                configured_names.join("\n")
             ),
-        }
+            Location::Center,
+        ))
     }
 }
 
 impl Component for LspInfo {
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
-        self.info.render(viewport, surface, cx)
+        self.0.render(viewport, surface, cx)
     }
 
     fn handle_event(&mut self, event: &Event, _ctx: &mut Context) -> EventResult {
