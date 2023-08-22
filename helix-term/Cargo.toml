@@ -71,7 +71,7 @@ signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 libc = "0.2.147"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-crossterm = { version = "0.26", features = ["event-stream", "use-dev-tty"] }
+crossterm = { version = "0.27", features = ["event-stream", "use-dev-tty"] }
 
 [build-dependencies]
 helix-loader = { version = "0.6", path = "../helix-loader" }
