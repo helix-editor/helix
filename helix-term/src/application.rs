@@ -288,7 +288,7 @@ impl Application {
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
     where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
     {
         self.render().await;
 
@@ -301,7 +301,7 @@ impl Application {
 
     pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
     where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
     {
         loop {
             if self.editor.should_close() {
@@ -615,10 +615,7 @@ impl Application {
         false
     }
 
-    pub async fn handle_terminal_events(
-        &mut self,
-        event: Result<CrosstermEvent, crossterm::ErrorKind>,
-    ) {
+    pub async fn handle_terminal_events(&mut self, event: std::io::Result<CrosstermEvent>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -1159,7 +1156,7 @@ impl Application {
 
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
     where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
     {
         self.claim_term().await?;
 
