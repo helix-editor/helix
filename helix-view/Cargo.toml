@@ -14,7 +14,7 @@ default = []
 term = ["crossterm"]
 
 [dependencies]
-bitflags = "2.3"
+bitflags = "2.4"
 anyhow = "1"
 helix-core = { version = "0.6", path = "../helix-core" }
 helix-loader = { version = "0.6", path = "../helix-loader" }
@@ -51,6 +51,7 @@ clipboard-win = { version = "4.5", features = ["std"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+rustix = { version = "0.38", features = ["fs"] }
 
 [dev-dependencies]
 helix-tui = { path = "../helix-tui" }

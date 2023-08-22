@@ -2,7 +2,7 @@
 | --- | --- | --- | --- | --- |
 | astro | ✓ |  |  |  |
 | awk | ✓ | ✓ |  | `awk-language-server` |
-| bash | ✓ |  | ✓ | `bash-language-server` |
+| bash | ✓ | ✓ | ✓ | `bash-language-server` |
 | bass | ✓ |  |  | `bass` |
 | beancount | ✓ |  |  |  |
 | bibtex | ✓ |  |  | `texlab` |
@@ -69,8 +69,9 @@
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | ini | ✓ |  |  |  |
-| java | ✓ | ✓ |  | `jdtls` |
+| java | ✓ | ✓ | ✓ | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
+| jinja | ✓ |  |  |  |
 | jsdoc | ✓ |  |  |  |
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |
@@ -100,6 +101,7 @@
 | nim | ✓ | ✓ | ✓ | `nimlangserver` |
 | nix | ✓ |  |  | `nil` |
 | nu | ✓ |  |  |  |
+| nunjucks | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
 | odin | ✓ |  | ✓ | `ols` |
@@ -112,10 +114,11 @@
 | perl | ✓ |  |  | `perlnavigator` |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | po | ✓ | ✓ |  |  |
+| pod | ✓ |  |  |  |
 | ponylang | ✓ | ✓ | ✓ |  |
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
-| protobuf | ✓ |  | ✓ |  |
+| protobuf | ✓ |  | ✓ | `bufls`, `pb` |
 | prql | ✓ |  |  |  |
 | purescript | ✓ |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `pylsp` |
@@ -142,6 +145,7 @@
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |
 | starlark | ✓ | ✓ |  |  |
+| strace | ✓ |  |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ | `forc` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
@@ -149,12 +153,14 @@
 | tablegen | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
+| todotxt | ✓ |  |  |  |
 | toml | ✓ |  |  | `taplo` |
 | tsq | ✓ |  |  |  |
 | tsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | ungrammar | ✓ |  |  |  |
+| unison | ✓ |  |  |  |
 | uxntal | ✓ |  |  |  |
 | v | ✓ | ✓ | ✓ | `v-analyzer` |
 | vala | ✓ |  |  | `vala-language-server` |
@@ -167,7 +173,7 @@
 | webc | ✓ |  |  |  |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
 | wit | ✓ |  | ✓ |  |
-| wren | ✓ | ✓ |  |  |
+| wren | ✓ | ✓ | ✓ |  |
 | xit | ✓ |  |  |  |
 | xml | ✓ |  | ✓ |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server` |

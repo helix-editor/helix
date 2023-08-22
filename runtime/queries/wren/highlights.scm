@@ -1,11 +1,11 @@
-((identifier) @variable.builtin
+((name) @variable.builtin
  (#match? @variable.builtin "^(Bool|Class|Fiber|Fn|List|Map|Null|Num|Object|Range|Sequence|String|System)$"))
 
 (call_expression
-  (identifier) @function)
+  (name) @function)
 
 (method_definition
-  (identifier) @function.method)
+  (name) @function.method)
 
 ((parameter) @variable.parameter)
 
@@ -13,7 +13,9 @@
 (string) @string
 (raw_string) @string
 (number) @constant.numeric.integer
-(identifier) @variable
+(name) @variable
+(field) @variable
+(static_field) @variable
 (null) @constant.builtin
 (boolean) @constant.builtin.boolean
 
