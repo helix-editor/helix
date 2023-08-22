@@ -43,6 +43,10 @@ pub enum MouseEventKind {
     ScrollDown,
     /// Scrolled mouse wheel upwards (away from the user).
     ScrollUp,
+    /// Scrolled mouse wheel leftwards.
+    ScrollLeft,
+    /// Scrolled mouse wheel rightwards.
+    ScrollRight,
 }
 
 /// Represents a mouse button.
@@ -458,6 +462,8 @@ impl From<crossterm::event::MouseEventKind> for MouseEventKind {
             crossterm::event::MouseEventKind::Moved => Self::Moved,
             crossterm::event::MouseEventKind::ScrollDown => Self::ScrollDown,
             crossterm::event::MouseEventKind::ScrollUp => Self::ScrollUp,
+            crossterm::event::MouseEventKind::ScrollLeft => Self::ScrollLeft,
+            crossterm::event::MouseEventKind::ScrollRight => Self::ScrollRight,
         }
     }
 }
