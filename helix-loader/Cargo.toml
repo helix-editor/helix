@@ -28,7 +28,7 @@ which = "4.4"
 # cloning/compiling tree-sitter grammars
 cc = { version = "1" }
 threadpool = { version = "1.0" }
-tempfile = "3.7.1"
+tempfile = "3.8.0"
 dunce = "1.0.4"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
