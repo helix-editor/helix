@@ -675,7 +675,13 @@ pub fn write_all_impl(
             if !doc.is_modified() {
                 return None;
             }
-            if doc.path().is_none() {
+
+            // This is a named buffer. We'll skip it in the saves for now
+            if doc.name.is_some() {
+                return None;
+            }
+
+            if doc.path().is_none() && doc.name.is_none() {
                 if write_scratch {
                     errors.push("cannot write a buffer without a filename\n");
                 }
