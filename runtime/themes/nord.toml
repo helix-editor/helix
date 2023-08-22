@@ -125,7 +125,7 @@
 # Virtual/invisable text
 "ui.virtual.indent-guide" = "nord3"
 "ui.virtual.inlay-hint" = { fg = "nord3", modifiers = ["italic"] }
-"ui.virtual.ruler" = "nord3"
+"ui.virtual.ruler" = { bg = "nord1" }
 "ui.virtual.whitespace" = "nord3"
 "ui.virtual.wrap" = "nord3"
 

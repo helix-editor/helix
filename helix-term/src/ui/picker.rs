@@ -51,12 +51,12 @@ pub enum PathOrId {
 }
 
 impl PathOrId {
-    fn get_canonicalized(self) -> std::io::Result<Self> {
+    fn get_canonicalized(self) -> Self {
         use PathOrId::*;
-        Ok(match self {
-            Path(path) => Path(helix_core::path::get_canonicalized_path(&path)?),
+        match self {
+            Path(path) => Path(helix_core::path::get_canonicalized_path(&path)),
             Id(id) => Id(id),
-        })
+        }
     }
 }
 
@@ -375,7 +375,7 @@ impl<T: Item + 'static> Picker<T> {
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
         self.selection()
             .and_then(|current| (self.file_fn.as_ref()?)(editor, current))
-            .and_then(|(path_or_id, line)| path_or_id.get_canonicalized().ok().zip(Some(line)))
+            .map(|(path_or_id, line)| (path_or_id.get_canonicalized(), line))
     }
 
     /// Get (cached) preview for a given path. If a document corresponding

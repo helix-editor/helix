@@ -1679,7 +1679,7 @@ fn tutor(
     let path = helix_loader::runtime_file(Path::new("tutor"));
     cx.editor.open(&path, Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
-    doc_mut!(cx.editor).set_path(None)?;
+    doc_mut!(cx.editor).set_path(None);
     Ok(())
 }
 
@@ -2408,9 +2408,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["n"],
         doc: "Create a new scratch buffer.",
         fun: new_file,
-        // TODO: This seems to complete with a filename, but doesn't use that filename to
-        //       set the path of the newly created buffer.
-        signature: CommandSignature::positional(&[completers::filename]),
+        signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "format",
