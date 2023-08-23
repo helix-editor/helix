@@ -1263,7 +1263,7 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     // mangler/home/matt/Documents/steel/cogs/logging/log.scmlog/warn!__doc__
 
-    let module_prefix = "mangler".to_string() + helix_module_path.as_os_str().to_str().unwrap();
+    // let module_prefix = "mangler".to_string() + helix_module_path.as_os_str().to_str().unwrap();
 
     let module = engine.extract_value(&helix_path).unwrap();
 
@@ -1283,13 +1283,26 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
         let docs = exported
             .iter()
             .filter_map(|x| {
-                if let Ok(steel::rvals::SteelVal::StringV(d)) =
-                    engine.extract_value(&(module_prefix.to_string() + x.as_str() + "__doc__"))
-                {
-                    Some((x.to_string(), d.to_string()))
+                if let Ok(value) = engine.run(&format!(
+                    "(#%function-ptr-table-get #%function-ptr-table {})",
+                    x
+                )) {
+                    if let Some(SteelVal::StringV(doc)) = value.first() {
+                        Some((x.to_string(), doc.to_string()))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
+
+                // if let Ok(steel::rvals::SteelVal::StringV(d)) =
+                //     engine.extract_value(&(module_prefix.to_string() + x.as_str() + "__doc__"))
+                // {
+                //     Some((x.to_string(), d.to_string()))
+                // } else {
+                //     None
+                // }
             })
             .collect::<HashMap<_, _>>();
 
