@@ -23,12 +23,13 @@ use helix_core::{
 };
 use helix_view::{
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, CursorShapeConfig, DiagnosticsConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
+// use helix_tui::layout::Alignment;
 use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
@@ -213,7 +214,14 @@ impl EditorView {
             }
         }
 
-        Self::render_diagnostics(doc, view, inner, surface, theme);
+        Self::render_diagnostics(
+            doc,
+            view,
+            inner,
+            surface,
+            theme,
+            &editor.config().diagnostics,
+        );
 
         let statusline_area = view
             .area
@@ -642,6 +650,7 @@ impl EditorView {
         viewport: Rect,
         surface: &mut Surface,
         theme: &Theme,
+        diagnostics_config: &DiagnosticsConfig,
     ) {
         use helix_core::diagnostic::Severity;
         use tui::{
@@ -675,7 +684,8 @@ impl EditorView {
                     Some(Severity::Info) => info,
                     Some(Severity::Hint) => hint,
                 });
-            let text = Text::styled(&diagnostic.message, style);
+            let msg = format!("{}\n", diagnostic.message).to_owned();
+            let text = Text::styled(msg, style);
             lines.extend(text.lines);
             let code = diagnostic.code.as_ref().map(|x| match x {
                 NumberOrString::Number(n) => format!("({n})"),
@@ -690,12 +700,11 @@ impl EditorView {
         let paragraph = Paragraph::new(lines)
             .alignment(Alignment::Right)
             .wrap(Wrap { trim: true });
-        let width = 100.min(viewport.width);
-        let height = 15.min(viewport.height);
-        paragraph.render(
-            Rect::new(viewport.right() - width, viewport.y + 1, width, height),
-            surface,
-        );
+        let width = diagnostics_config.width.min(viewport.width);
+        let height = diagnostics_config.height.min(viewport.height);
+        let right = viewport.right() - width - diagnostics_config.right_margin;
+        let top = viewport.y + diagnostics_config.top_margin;
+        paragraph.render(Rect::new(right, top, width, height), surface);
     }
 
     /// Apply the highlighting on the lines where a cursor is active

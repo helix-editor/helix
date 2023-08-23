@@ -263,6 +263,8 @@ pub struct Config {
     pub statusline: StatusLineConfig,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
+    /// Configuration of the diagnostics rendering
+    pub diagnostics: DiagnosticsConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
     pub true_color: bool,
     /// Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative. Defaults to `false`.
@@ -434,6 +436,26 @@ impl Default for StatusLineConfig {
             ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct DiagnosticsConfig {
+    pub top_margin: u16,
+    pub right_margin: u16,
+    pub width: u16,
+    pub height: u16,
+}
+
+impl Default for DiagnosticsConfig {
+    fn default() -> Self {
+        Self {
+            top_margin: 1,
+            right_margin: 0,
+            width: 100,
+            height: 15,
         }
     }
 }
@@ -824,6 +846,7 @@ impl Default for Config {
             file_picker: FilePickerConfig::default(),
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
+            diagnostics: DiagnosticsConfig::default(),
             true_color: false,
             undercurl: false,
             search: SearchConfig::default(),
