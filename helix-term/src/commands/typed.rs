@@ -2520,6 +2520,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: CommandSignature::none(),
     },
     TypableCommand {
+        name: "write-all!",
+        aliases: &["wa!"],
+        doc: "Forcefully write changes from all buffers to disk creating necessary subdirectories.",
+        fun: force_write_all,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
         name: "write-quit-all",
         aliases: &["wqa", "xa"],
         doc: "Write changes from all buffers to disk and close all views.",
