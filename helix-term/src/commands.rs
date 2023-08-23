@@ -1160,6 +1160,10 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
     let selections = doc.selection(view.id);
+    let rel_path = doc
+        .relative_path()
+        .map(|path| path.parent().unwrap().to_path_buf())
+        .unwrap_or_default();
     let mut paths: Vec<_> = selections
         .iter()
         .map(|r| text.slice(r.from()..r.to()).to_string())
@@ -1190,7 +1194,11 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     for sel in paths {
         let p = sel.trim();
         if !p.is_empty() {
-            if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
+            let path = &rel_path.join(p);
+            if path.is_dir() {
+                let picker = ui::file_picker(path.into(), &cx.editor.config());
+                cx.push_layer(Box::new(overlaid(picker)));
+            } else if let Err(e) = cx.editor.open(path, action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
         }
@@ -1895,7 +1903,9 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 .collect()
         },
         move |editor, regex, event| {
-            if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
+            if event == PromptEvent::Validate {
+                editor.registers.last_search_register = reg;
+            } else if event != PromptEvent::Update {
                 return;
             }
             search_impl(
@@ -1914,7 +1924,9 @@ fn searcher(cx: &mut Context, direction: Direction) {
 
 fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
     let count = cx.count();
-    let register = cx.register.unwrap_or('/');
+    let register = cx
+        .register
+        .unwrap_or(cx.editor.registers.last_search_register);
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
     if let Some(query) = cx.editor.registers.first(register, cx.editor) {
@@ -1982,13 +1994,21 @@ fn search_selection(cx: &mut Context) {
 
     let msg = format!("register '{}' set to '{}'", register, &regex);
     match cx.editor.registers.push(register, regex) {
-        Ok(_) => cx.editor.set_status(msg),
+        Ok(_) => {
+            cx.editor.registers.last_search_register = register;
+            cx.editor.set_status(msg)
+        }
         Err(err) => cx.editor.set_error(err.to_string()),
     }
 }
 
 fn make_search_word_bounded(cx: &mut Context) {
-    let register = cx.register.unwrap_or('/');
+    // Defaults to the active search register instead `/` to be more ergonomic assuming most people
+    // would use this command following `search_selection`. This avoids selecting the register
+    // twice.
+    let register = cx
+        .register
+        .unwrap_or(cx.editor.registers.last_search_register);
     let regex = match cx.editor.registers.first(register, cx.editor) {
         Some(regex) => regex,
         None => return,
@@ -2014,7 +2034,10 @@ fn make_search_word_bounded(cx: &mut Context) {
 
     let msg = format!("register '{}' set to '{}'", register, &new_regex);
     match cx.editor.registers.push(register, new_regex) {
-        Ok(_) => cx.editor.set_status(msg),
+        Ok(_) => {
+            cx.editor.registers.last_search_register = register;
+            cx.editor.set_status(msg)
+        }
         Err(err) => cx.editor.set_error(err.to_string()),
     }
 }
@@ -2078,6 +2101,7 @@ fn global_search(cx: &mut Context) {
             if event != PromptEvent::Validate {
                 return;
             }
+            editor.registers.last_search_register = reg;
 
             let documents: Vec<_> = editor
                 .documents()
@@ -2199,8 +2223,8 @@ fn global_search(cx: &mut Context) {
                     all_matches,
                     current_path,
                     move |cx, FileResult { path, line_num }, action| {
-                        match cx.editor.open(path, action) {
-                            Ok(_) => {}
+                        let doc = match cx.editor.open(path, action) {
+                            Ok(id) => doc_mut!(cx.editor, &id),
                             Err(e) => {
                                 cx.editor.set_error(format!(
                                     "Failed to open file '{}': {}",
@@ -2209,10 +2233,9 @@ fn global_search(cx: &mut Context) {
                                 ));
                                 return;
                             }
-                        }
-
+                        };
                         let line_num = *line_num;
-                        let (view, doc) = current!(cx.editor);
+                        let view = view_mut!(cx.editor);
                         let text = doc.text();
                         if line_num >= text.len_lines() {
                             cx.editor.set_error("The line you jumped to does not exist anymore because the file has changed.");
@@ -2222,7 +2245,9 @@ fn global_search(cx: &mut Context) {
                         let end = text.line_to_char((line_num + 1).min(text.len_lines()));
 
                         doc.set_selection(view.id, Selection::single(start, end));
-                        align_view(doc, view, Align::Center);
+                        if action.align_view(view, doc.id()){
+                            align_view(doc, view, Align::Center);
+                        }
                     }).with_preview(|_editor, FileResult { path, line_num }| {
                         Some((path.clone().into(), Some((*line_num, *line_num))))
                     });
@@ -2586,6 +2611,7 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
     let picker = ui::file_picker(path, &cx.editor.config());
     cx.push_layer(Box::new(overlaid(picker)));
 }
+
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = helix_loader::current_working_dir();
     if !cwd.exists() {
@@ -2742,9 +2768,11 @@ fn jumplist_picker(cx: &mut Context) {
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
-            let (view, doc) = current!(cx.editor);
+            let (view, doc) = (view_mut!(cx.editor), doc_mut!(cx.editor, &meta.id));
             doc.set_selection(view.id, meta.selection.clone());
-            view.ensure_cursor_in_view_center(doc, config.scrolloff);
+            if action.align_view(view, doc.id()) {
+                view.ensure_cursor_in_view_center(doc, config.scrolloff);
+            }
         },
     )
     .with_preview(|editor, meta| {
@@ -2996,6 +3024,7 @@ fn open(cx: &mut Context, open: Open) {
             Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
             Open::Above => range.from(),
         });
+
         let new_line = match open {
             // adjust position to the end of the line (next line - 1)
             Open::Below => cursor_line + 1,
@@ -3003,13 +3032,15 @@ fn open(cx: &mut Context, open: Open) {
             Open::Above => cursor_line,
         };
 
+        let line_num = new_line.saturating_sub(1);
+
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
         let (line_end_index, line_end_offset_width) = if new_line == 0 {
             (0, 0)
         } else {
             (
-                line_end_char_index(&doc.text().slice(..), new_line.saturating_sub(1)),
+                line_end_char_index(&text, line_num),
                 doc.line_ending.len_chars(),
             )
         };
@@ -3020,10 +3051,11 @@ fn open(cx: &mut Context, open: Open) {
             &doc.indent_style,
             doc.tab_width(),
             text,
-            new_line.saturating_sub(1),
+            line_num,
             line_end_index,
             cursor_line,
         );
+
         let indent_len = indent.len();
         let mut text = String::with_capacity(1 + indent_len);
         text.push_str(doc.line_ending.as_str());

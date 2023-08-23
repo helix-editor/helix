@@ -41,8 +41,6 @@
 (eof_marker) @keyword.directive
 (data_section) @comment
 
-(pod) @comment.block.documentation
-
 (number) @constant.numeric
 (version) @constant
 
