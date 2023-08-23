@@ -3550,9 +3550,8 @@ pub mod insert {
             indent,
         );
         doc.apply(&transaction, view.id);
-
     }
-    
+
     pub fn smart_tab(cx: &mut Context) {
         let (view, doc) = current_ref!(cx.editor);
         let view_id = view.id;

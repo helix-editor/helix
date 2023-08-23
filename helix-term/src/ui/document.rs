@@ -6,7 +6,7 @@ use helix_core::str_utils::char_to_byte_idx;
 use helix_core::syntax::Highlight;
 use helix_core::syntax::HighlightEvent;
 use helix_core::text_annotations::TextAnnotations;
-use helix_core::{visual_offset_from_block, Position, RopeSlice, Range};
+use helix_core::{visual_offset_from_block, Position, Range, RopeSlice};
 use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
 use helix_view::graphics::Rect;
 use helix_view::theme::Style;
@@ -73,7 +73,6 @@ impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
     }
 }
 
-
 /// A wrapper around a HighlightIterator
 /// that merges the layered highlights to create the final text style
 /// and yields the active text style and the char_idx where the active
@@ -89,33 +88,32 @@ impl<H: Iterator<Item = (Range, Style)>> Iterator for RawStyleIter<'_, H> {
     type Item = (Style, usize);
     fn next(&mut self) -> Option<(Style, usize)> {
         while let Some(event) = self.highlight_iter.next() {
-
             // let style = self.active_highlights.iter().fold(self.text_style, |acc, span| {
             //     acc.patch(event.1)
             // });
 
-            return Some((self.text_style.patch(event.1), event.0.head))
-            
-            // match event {
-                // HighlightEvent::HighlightStart(highlights) => {
-                //     self.active_highlights.push(highlights)
-                // }
-                // HighlightEvent::HighlightEnd => {
-                //     self.active_highlights.pop();
-                // }
-                // HighlightEvent::Source { start, end } => {
-                //     if start == end {
-                //         continue;
-                //     }
-                //     let style = self
-                //         .active_highlights
-                //         .iter()
-                //         .fold(self.text_style, |acc, span| {
-                //             acc.patch(self.theme.highlight(span.0))
-                //         });
+            return Some((self.text_style.patch(event.1), event.0.head));
 
-                //     return Some((style, end));
-                // }
+            // match event {
+            // HighlightEvent::HighlightStart(highlights) => {
+            //     self.active_highlights.push(highlights)
+            // }
+            // HighlightEvent::HighlightEnd => {
+            //     self.active_highlights.pop();
+            // }
+            // HighlightEvent::Source { start, end } => {
+            //     if start == end {
+            //         continue;
+            //     }
+            //     let style = self
+            //         .active_highlights
+            //         .iter()
+            //         .fold(self.text_style, |acc, span| {
+            //             acc.patch(self.theme.highlight(span.0))
+            //         });
+
+            //     return Some((style, end));
+            // }
             // }
         }
         None
@@ -231,7 +229,7 @@ pub fn render_text<'t>(
 
     let (mut formatter, mut first_visible_char_idx) =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, offset.anchor);
-    
+
     let mut styles = StyleIter {
         text_style: renderer.text_style,
         active_highlights: Vec::with_capacity(64),
@@ -364,7 +362,7 @@ pub fn render_text<'t>(
     // }
 
     // {
-        
+
     //     let (
     //         Position {
     //             row: mut row_off, ..
@@ -381,7 +379,7 @@ pub fn render_text<'t>(
 
     //     let (mut formatter, mut first_visible_char_idx) =
     //         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, offset.anchor);
-    
+
     //     let mut styles = RawStyleIter {
     //             text_style: renderer.text_style,
     //             active_highlights: Vec::with_capacity(64),
@@ -433,7 +431,7 @@ pub fn render_text<'t>(
     //                     renderer,
     //                     last_pos,
     //                 );
-    //             }          
+    //             }
     //             break;
     //         };
 
@@ -518,9 +516,8 @@ pub fn render_text<'t>(
     //     renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
     //     for line_decoration in &mut *line_decorations {
     //         line_decoration.render_foreground(renderer, last_line_pos, char_pos);
-    //     }   
+    //     }
     // }
-
 }
 
 #[derive(Debug)]
