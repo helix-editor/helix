@@ -26,7 +26,7 @@ pub struct Popup<T: Component> {
     ignore_escape_key: bool,
     id: &'static str,
     has_scrollbar: bool,
-    allow_modify_position: bool,
+    allow_modify_viewport: bool,
 }
 
 impl<T: Component> Popup<T> {
@@ -43,7 +43,7 @@ impl<T: Component> Popup<T> {
             ignore_escape_key: false,
             id,
             has_scrollbar: true,
-            allow_modify_position: true,
+            allow_modify_viewport: true,
         }
     }
 
@@ -91,8 +91,8 @@ impl<T: Component> Popup<T> {
         self
     }
 
-    pub fn allow_modify_position(mut self, allow: bool) -> Self {
-        self.allow_modify_position = allow;
+    pub fn allow_modify_viewport(mut self, allow: bool) -> Self {
+        self.allow_modify_viewport = allow;
         self
     }
 
@@ -172,7 +172,7 @@ impl<T: Component> Popup<T> {
 
         let (mut rel_x, mut rel_y) = (viewport.x, viewport.y);
 
-        if self.allow_modify_position {
+        if self.allow_modify_viewport {
             (rel_x, rel_y) = self.get_rel_position(viewport, editor);
         }
 
@@ -243,10 +243,14 @@ impl<T: Component> Component for Popup<T> {
             .expect("Component needs required_size implemented in order to be embedded in a popup");
 
         self.child_size = (width, height);
-        self.size = (
-            (width + self.margin.width()).min(max_width),
-            (height + self.margin.height()).min(max_height),
-        );
+        if self.allow_modify_viewport {
+            self.size = (
+                (width + self.margin.width()).min(max_width),
+                (height + self.margin.height()).min(max_height),
+            );
+        } else {
+            self.size = viewport;
+        }
 
         // re-clamp scroll offset
         let max_offset = self.child_size.1.saturating_sub(self.size.1);

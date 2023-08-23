@@ -593,7 +593,7 @@ impl Component for Completion {
             }
         }
         let mut popup =
-            Popup::new("completion-hover-doc", markdown_doc).allow_modify_position(false);
+            Popup::new("completion-hover-doc", markdown_doc).allow_modify_viewport(false);
         popup.render(doc_area, surface, cx);
         self.set_doc_popup(Some(popup));
     }
