@@ -29,7 +29,6 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-// use helix_tui::layout::Alignment;
 use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
@@ -684,8 +683,7 @@ impl EditorView {
                     Some(Severity::Info) => info,
                     Some(Severity::Hint) => hint,
                 });
-            let msg = format!("{}\n", diagnostic.message).to_owned();
-            let text = Text::styled(msg, style);
+            let text = Text::styled(&diagnostic.message, style);
             lines.extend(text.lines);
             let code = diagnostic.code.as_ref().map(|x| match x {
                 NumberOrString::Number(n) => format!("({n})"),
