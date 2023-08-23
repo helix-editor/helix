@@ -46,7 +46,7 @@
 | fsharp | ✓ |  |  | `fsautocomplete` |
 | gdscript | ✓ | ✓ | ✓ |  |
 | git-attributes | ✓ |  |  |  |
-| git-commit | ✓ | ✓ |  | `ltex-ls` |
+| git-commit | ✓ | ✓ |  |  |
 | git-config | ✓ |  |  |  |
 | git-ignore | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |

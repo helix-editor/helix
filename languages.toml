@@ -1294,7 +1294,6 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 rulers = [51, 73]
 text-width = 72
-language-servers = [ "ltex-ls" ]
 
 [[grammar]]
 name = "git-commit"
