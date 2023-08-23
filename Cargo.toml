@@ -18,6 +18,7 @@ default-members = [
 
 [workspace.dependencies]
 steel-core = { path = "../../steel/crates/steel-core", version = "0.5.0", features = ["modules", "anyhow", "dylibs", "colors"] }
+tree-sitter = { version = "0.20", git = "https://github.com/tree-sitter/tree-sitter", rev = "ab09ae20d640711174b8da8a654f6b3dec93da1a" }
 
 [profile.release]
 lto = "thin"

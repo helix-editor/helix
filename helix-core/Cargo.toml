@@ -18,18 +18,18 @@ integration = []
 helix-loader = { version = "0.6", path = "../helix-loader" }
 
 ropey = { version = "1.6.0", default-features = false, features = ["simd"] }
-smallvec = "1.10"
+smallvec = "1.11"
 smartstring = "1.0.1"
 unicode-segmentation = "1.10"
 unicode-width = "0.1"
 unicode-general-category = "0.6"
 # slab = "0.4.2"
 slotmap = "1.0"
-tree-sitter = "0.20"
+tree-sitter.workspace = true
 once_cell = "1.18"
 arc-swap = "1"
 regex = "1"
-bitflags = "2.3"
+bitflags = "2.4"
 ahash = "0.8.3"
 hashbrown = { version = "0.14.0", features = ["raw"] }
 dunce = "1.0"
@@ -52,4 +52,4 @@ steel-core = { workspace = true }
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
-indoc = "2.0.1"
+indoc = "2.0.3"

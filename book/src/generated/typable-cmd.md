@@ -24,6 +24,7 @@
 | `:write-quit`, `:wq`, `:x` | Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt) |
 | `:write-quit!`, `:wq!`, `:x!` | Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt) |
 | `:write-all`, `:wa` | Write changes from all buffers to disk. |
+| `:write-all!`, `:wa!` | Forcefully write changes from all buffers to disk creating necessary subdirectories. |
 | `:write-quit-all`, `:wqa`, `:xa` | Write changes from all buffers to disk and close all views. |
 | `:write-quit-all!`, `:wqa!`, `:xa!` | Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes). |
 | `:quit-all`, `:qa` | Close all views. |

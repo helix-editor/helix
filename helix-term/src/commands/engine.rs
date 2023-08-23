@@ -1712,7 +1712,7 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
 }
 // Check that we successfully created a directory?
 fn create_directory(path: String) {
-    let path = helix_core::path::get_canonicalized_path(&PathBuf::from(path)).unwrap();
+    let path = helix_core::path::get_canonicalized_path(&PathBuf::from(path));
 
     if path.exists() {
         return;
