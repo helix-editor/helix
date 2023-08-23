@@ -38,6 +38,7 @@ jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "-
 julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
 kotlin-language-server = { command = "kotlin-language-server" }
 lean = { command = "lean", args = [ "--server" ] }
+ltex-ls = { command = "ltex-ls" }
 markdoc-ls = { command = "markdoc-ls", args = ["--stdio"] }
 marksman = { command = "marksman", args = ["server"] }
 metals = { command = "metals", config = { "isHttpEnabled" = true } }
