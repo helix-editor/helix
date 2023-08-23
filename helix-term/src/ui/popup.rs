@@ -26,6 +26,7 @@ pub struct Popup<T: Component> {
     ignore_escape_key: bool,
     id: &'static str,
     has_scrollbar: bool,
+    allow_modify_position: bool,
 }
 
 impl<T: Component> Popup<T> {
@@ -42,6 +43,7 @@ impl<T: Component> Popup<T> {
             ignore_escape_key: false,
             id,
             has_scrollbar: true,
+            allow_modify_position: true,
         }
     }
 
@@ -86,6 +88,11 @@ impl<T: Component> Popup<T> {
     /// would be required to exit insert mode.
     pub fn ignore_escape_key(mut self, ignore: bool) -> Self {
         self.ignore_escape_key = ignore;
+        self
+    }
+
+    pub fn allow_modify_position(mut self, allow: bool) -> Self {
+        self.allow_modify_position = allow;
         self
     }
 
@@ -163,7 +170,11 @@ impl<T: Component> Popup<T> {
         // trigger required_size so we recalculate if the child changed
         self.required_size((viewport.width, viewport.height));
 
-        let (rel_x, rel_y) = self.get_rel_position(viewport, editor);
+        let (mut rel_x, mut rel_y) = (viewport.x, viewport.y);
+
+        if self.allow_modify_position {
+            (rel_x, rel_y) = self.get_rel_position(viewport, editor);
+        }
 
         // clip to viewport
         viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1))

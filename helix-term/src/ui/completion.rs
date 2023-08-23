@@ -94,6 +94,8 @@ pub struct CompletionItem {
 /// Wraps a Menu.
 pub struct Completion {
     popup: Popup<Menu<CompletionItem>>,
+    doc_popup: Option<Popup<Markdown>>,
+    rerender_doc_popup: bool,
     start_offset: usize,
     #[allow(dead_code)]
     trigger_offset: usize,
@@ -333,12 +335,19 @@ impl Completion {
             popup,
             start_offset,
             trigger_offset,
+            doc_popup: None,
+            rerender_doc_popup: false,
         };
 
         // need to recompute immediately in case start_offset != trigger_offset
         completion.recompute_filter(editor);
 
         completion
+    }
+
+    fn set_doc_popup(&mut self, doc_popup: Option<Popup<Markdown>>) {
+        self.doc_popup = doc_popup;
+        self.rerender_doc_popup = false;
     }
 
     fn resolve_completion_item(
@@ -462,6 +471,14 @@ impl Completion {
 
 impl Component for Completion {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
+        if let Some(hover_doc) = &mut self.doc_popup {
+            let handled = hover_doc.handle_event(event, cx);
+            if let EventResult::Consumed(_) = handled {
+                self.rerender_doc_popup = true;
+                return handled;
+            }
+        }
+        self.rerender_doc_popup = false;
         self.popup.handle_event(event, cx)
     }
 
@@ -475,7 +492,10 @@ impl Component for Completion {
         // if we have a selection, render a markdown popup on top/below with info
         let option = match self.popup.contents().selection() {
             Some(option) => option,
-            None => return,
+            None => {
+                self.set_doc_popup(None);
+                return;
+            }
         };
         // need to render:
         // option.detail
@@ -566,9 +586,15 @@ impl Component for Completion {
             Rect::new(0, y, area.width, avail_height.min(15))
         };
 
-        // clear area
-        let background = cx.editor.theme.get("ui.popup");
-        surface.clear_with(doc_area, background);
-        markdown_doc.render(doc_area, surface, cx);
+        if self.rerender_doc_popup {
+            if let Some(hover_doc) = &mut self.doc_popup {
+                hover_doc.render(doc_area, surface, cx);
+                return;
+            }
+        }
+        let mut popup =
+            Popup::new("completion-hover-doc", markdown_doc).allow_modify_position(false);
+        popup.render(doc_area, surface, cx);
+        self.set_doc_popup(Some(popup));
     }
 }
