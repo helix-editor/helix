@@ -4846,11 +4846,19 @@ fn split(cx: &mut Context, action: Action) {
 }
 
 fn hsplit(cx: &mut Context) {
+    let view_id = view!(cx.editor).id;
+
     split(cx, Action::HorizontalSplit);
+
+    typed::hsplit_limit_check(view_id, cx.editor);
 }
 
 fn hsplit_new(cx: &mut Context) {
+    let view_id = view!(cx.editor).id;
+
     cx.editor.new_file(Action::HorizontalSplit);
+
+    typed::hsplit_limit_check(view_id, cx.editor);
 }
 
 fn vsplit(cx: &mut Context) {

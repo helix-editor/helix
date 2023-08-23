@@ -214,6 +214,20 @@ impl Tree {
         node
     }
 
+    pub fn is_child(&self, child_id: &ViewId) -> bool {
+        let focus = self.focus;
+        let parent = self.nodes[focus].parent;
+
+        let container_children: Vec<ViewId> = match &self.nodes[parent] {
+            Node {
+                content: Content::Container(container),
+                ..
+            } => container.children.clone(),
+            _ => unimplemented!(),
+        };
+        container_children.contains(child_id)
+    }
+
     pub fn remove(&mut self, index: ViewId) {
         let mut stack = Vec::new();
 
