@@ -16,6 +16,7 @@ use once_cell::sync::Lazy;
 use serde_json::Value;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
+    rerrs::ErrorKind,
     rvals::{
         as_underlying_type, AsRefMutSteelValFromRef, AsRefSteelVal, FromSteelVal, IntoSteelVal,
     },
@@ -572,29 +573,94 @@ pub fn is_keymap(keymap: SteelVal) -> bool {
 fn run_initialization_script(cx: &mut Context) {
     log::info!("Loading init.scm...");
 
-    let helix_module_path = helix_loader::steel_init_file();
+    let helix_module_path = helix_loader::helix_module_file();
 
-    // These contents need to be registered with the path?
-    if let Ok(contents) = std::fs::read_to_string(&helix_module_path) {
-        let res = ENGINE.with(|x| {
-            x.borrow_mut()
+    // TODO: Report the error from requiring the file!
+    ENGINE.with(|engine| {
+        let res = engine.borrow_mut().run(&format!(
+            r#"(require "{}")"#,
+            helix_module_path.to_str().unwrap()
+        ));
+
+        // Present the error in the helix.scm loading
+        if let Err(e) = res {
+            present_error(cx, e);
+            return;
+        }
+
+        let helix_path =
+            "__module-mangler".to_string() + helix_module_path.as_os_str().to_str().unwrap();
+
+        if let Ok(module) = engine.borrow_mut().extract_value(&helix_path) {
+            if let steel::rvals::SteelVal::HashMapV(m) = module {
+                let exported = m
+                    .iter()
+                    .filter(|(_, v)| v.is_function())
+                    .map(|(k, _)| {
+                        if let steel::rvals::SteelVal::SymbolV(s) = k {
+                            s.to_string()
+                        } else {
+                            panic!("Found a non symbol!")
+                        }
+                    })
+                    .collect::<HashSet<_>>();
+
+                let docs = exported
+                    .iter()
+                    .filter_map(|x| {
+                        if let Ok(value) = engine.borrow_mut().run(&format!(
+                            "(#%function-ptr-table-get #%function-ptr-table {})",
+                            x
+                        )) {
+                            if let Some(SteelVal::StringV(doc)) = value.first() {
+                                Some((x.to_string(), doc.to_string()))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<HashMap<_, _>>();
+
+                *EXPORTED_IDENTIFIERS.identifiers.write().unwrap() = exported;
+                *EXPORTED_IDENTIFIERS.docs.write().unwrap() = docs;
+            } else {
+                present_error(
+                    cx,
+                    SteelErr::new(
+                        ErrorKind::Generic,
+                        "Unable to parse exported identifiers from helix module!".to_string(),
+                    ),
+                );
+
+                return;
+            }
+        }
+
+        let helix_module_path = helix_loader::steel_init_file();
+
+        // These contents need to be registered with the path?
+        if let Ok(contents) = std::fs::read_to_string(&helix_module_path) {
+            let res = engine
+                .borrow_mut()
                 .run_with_reference_from_path::<Context, Context>(
                     cx,
                     "*helix.cx*",
                     &contents,
                     helix_module_path,
-                )
-        });
+                );
 
-        match res {
-            Ok(_) => {}
-            Err(e) => present_error(cx, e),
+            match res {
+                Ok(_) => {}
+                Err(e) => present_error(cx, e),
+            }
+
+            log::info!("Finished loading init.scm!")
+        } else {
+            log::info!("No init.scm found, skipping loading.")
         }
-
-        log::info!("Finished loading init.scm!")
-    } else {
-        log::info!("No init.scm found, skipping loading.")
-    }
+    });
 }
 
 pub static KEYBINDING_QUEUE: Lazy<SharedKeyBindingsEventQueue> =
@@ -1239,78 +1305,6 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     // Create directory since we can't do that in the current state
     engine.register_fn("hx.create-directory", create_directory);
-
-    let helix_module_path = helix_loader::helix_module_file();
-
-    engine
-        .run(&format!(
-            r#"(require "{}")"#,
-            helix_module_path.to_str().unwrap()
-        ))
-        .unwrap();
-
-    // __module-mangler/home/matt/Documents/steel/cogs/logging/log.scm
-
-    // TODO: Use the helix.scm file located in the configuration directory instead
-    // let mut working_directory = std::env::current_dir().unwrap();
-
-    // working_directory.push("helix.scm");
-
-    // working_directory = working_directory.canonicalize().unwrap();
-
-    let helix_path =
-        "__module-mangler".to_string() + helix_module_path.as_os_str().to_str().unwrap();
-
-    // mangler/home/matt/Documents/steel/cogs/logging/log.scmlog/warn!__doc__
-
-    // let module_prefix = "mangler".to_string() + helix_module_path.as_os_str().to_str().unwrap();
-
-    let module = engine.extract_value(&helix_path).unwrap();
-
-    if let steel::rvals::SteelVal::HashMapV(m) = module {
-        let exported = m
-            .iter()
-            .filter(|(_, v)| v.is_function())
-            .map(|(k, _)| {
-                if let steel::rvals::SteelVal::SymbolV(s) = k {
-                    s.to_string()
-                } else {
-                    panic!("Found a non symbol!")
-                }
-            })
-            .collect::<HashSet<_>>();
-
-        let docs = exported
-            .iter()
-            .filter_map(|x| {
-                if let Ok(value) = engine.run(&format!(
-                    "(#%function-ptr-table-get #%function-ptr-table {})",
-                    x
-                )) {
-                    if let Some(SteelVal::StringV(doc)) = value.first() {
-                        Some((x.to_string(), doc.to_string()))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-
-                // if let Ok(steel::rvals::SteelVal::StringV(d)) =
-                //     engine.extract_value(&(module_prefix.to_string() + x.as_str() + "__doc__"))
-                // {
-                //     Some((x.to_string(), d.to_string()))
-                // } else {
-                //     None
-                // }
-            })
-            .collect::<HashMap<_, _>>();
-
-        *EXPORTED_IDENTIFIERS.identifiers.write().unwrap() = exported;
-        *EXPORTED_IDENTIFIERS.docs.write().unwrap() = docs;
-    } else {
-        panic!("Unable to parse exported identifiers from helix module!")
-    }
 
     std::rc::Rc::new(std::cell::RefCell::new(engine))
 }
