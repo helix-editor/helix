@@ -708,7 +708,7 @@ impl Document {
         let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
 
         // set the path and try detecting the language
-        doc.set_path(Some(path))?;
+        doc.set_path(Some(path));
         if let Some(loader) = config_loader {
             doc.detect_language(loader);
         }
@@ -853,7 +853,7 @@ impl Document {
         let text = self.text().clone();
 
         let path = match path {
-            Some(path) => helix_core::path::get_canonicalized_path(&path)?,
+            Some(path) => helix_core::path::get_canonicalized_path(&path),
             None => {
                 if self.path.is_none() {
                     bail!("Can't save with no path set!");
@@ -1047,18 +1047,14 @@ impl Document {
         self.encoding
     }
 
-    pub fn set_path(&mut self, path: Option<&Path>) -> Result<(), std::io::Error> {
-        let path = path
-            .map(helix_core::path::get_canonicalized_path)
-            .transpose()?;
+    pub fn set_path(&mut self, path: Option<&Path>) {
+        let path = path.map(helix_core::path::get_canonicalized_path);
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
         self.path = path;
 
         self.detect_readonly();
-
-        Ok(())
     }
 
     /// Set the programming language for the file and load associated data (e.g. highlighting)

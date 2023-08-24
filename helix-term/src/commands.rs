@@ -1160,6 +1160,10 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
     let selections = doc.selection(view.id);
+    let rel_path = doc
+        .relative_path()
+        .map(|path| path.parent().unwrap().to_path_buf())
+        .unwrap_or_default();
     let mut paths: Vec<_> = selections
         .iter()
         .map(|r| text.slice(r.from()..r.to()).to_string())
@@ -1190,7 +1194,11 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     for sel in paths {
         let p = sel.trim();
         if !p.is_empty() {
-            if let Err(e) = cx.editor.open(&PathBuf::from(p), action) {
+            let path = &rel_path.join(p);
+            if path.is_dir() {
+                let picker = ui::file_picker(path.into(), &cx.editor.config());
+                cx.push_layer(Box::new(overlaid(picker)));
+            } else if let Err(e) = cx.editor.open(path, action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
         }
@@ -1895,7 +1903,9 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 .collect()
         },
         move |editor, regex, event| {
-            if !matches!(event, PromptEvent::Update | PromptEvent::Validate) {
+            if event == PromptEvent::Validate {
+                editor.registers.last_search_register = reg;
+            } else if event != PromptEvent::Update {
                 return;
             }
             search_impl(
@@ -1914,7 +1924,9 @@ fn searcher(cx: &mut Context, direction: Direction) {
 
 fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Direction) {
     let count = cx.count();
-    let register = cx.register.unwrap_or('/');
+    let register = cx
+        .register
+        .unwrap_or(cx.editor.registers.last_search_register);
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
     if let Some(query) = cx.editor.registers.first(register, cx.editor) {
@@ -1982,13 +1994,21 @@ fn search_selection(cx: &mut Context) {
 
     let msg = format!("register '{}' set to '{}'", register, &regex);
     match cx.editor.registers.push(register, regex) {
-        Ok(_) => cx.editor.set_status(msg),
+        Ok(_) => {
+            cx.editor.registers.last_search_register = register;
+            cx.editor.set_status(msg)
+        }
         Err(err) => cx.editor.set_error(err.to_string()),
     }
 }
 
 fn make_search_word_bounded(cx: &mut Context) {
-    let register = cx.register.unwrap_or('/');
+    // Defaults to the active search register instead `/` to be more ergonomic assuming most people
+    // would use this command following `search_selection`. This avoids selecting the register
+    // twice.
+    let register = cx
+        .register
+        .unwrap_or(cx.editor.registers.last_search_register);
     let regex = match cx.editor.registers.first(register, cx.editor) {
         Some(regex) => regex,
         None => return,
@@ -2014,7 +2034,10 @@ fn make_search_word_bounded(cx: &mut Context) {
 
     let msg = format!("register '{}' set to '{}'", register, &new_regex);
     match cx.editor.registers.push(register, new_regex) {
-        Ok(_) => cx.editor.set_status(msg),
+        Ok(_) => {
+            cx.editor.registers.last_search_register = register;
+            cx.editor.set_status(msg)
+        }
         Err(err) => cx.editor.set_error(err.to_string()),
     }
 }
@@ -2078,6 +2101,7 @@ fn global_search(cx: &mut Context) {
             if event != PromptEvent::Validate {
                 return;
             }
+            editor.registers.last_search_register = reg;
 
             let documents: Vec<_> = editor
                 .documents()
@@ -2587,6 +2611,7 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
     let picker = ui::file_picker(path, &cx.editor.config());
     cx.push_layer(Box::new(overlaid(picker)));
 }
+
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = helix_loader::current_working_dir();
     if !cwd.exists() {

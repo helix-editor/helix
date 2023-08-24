@@ -55,7 +55,7 @@ perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
 prisma-language-server = { command = "prisma-language-server", args = ["--stdio"] }
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
 pylsp = { command = "pylsp" }
-pyright = { command = "pyright-langserver", args = ["--stdio"] }
+pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
 pylyzer = { command = "pylyzer", args = ["--server"] }
 qmlls = { command = "qmlls" }
 r = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
@@ -657,7 +657,7 @@ scope = "source.python"
 injection-regex = "python"
 file-types = ["py","pyi","py3","pyw","ptl",".pythonstartup",".pythonrc","SConstruct"]
 shebangs = ["python"]
-roots = ["pyproject.toml", "setup.py", "poetry.lock","pyrightconfig.json"]
+roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
 language-servers = [ "pylsp" ]
 # TODO: pyls needs utf-8 offsets
@@ -722,7 +722,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "206c7
 name = "bash"
 scope = "source.bash"
 injection-regex = "(shell|bash|zsh|sh)"
-file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", ".zlogin", ".zlogout", ".zprofile", ".zshrc", ".zimrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc", ".bash_aliases", "Renviron", ".Renviron"]
+file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", "zshenv", ".zlogin", "zlogin", ".zlogout", "zlogout", ".zprofile", "zprofile", ".zshrc", "zshrc", ".zimrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc", ".bash_aliases", "Renviron", ".Renviron"]
 shebangs = ["sh", "bash", "dash", "zsh"]
 roots = []
 comment-token = "#"
@@ -1567,7 +1567,7 @@ language-servers = [ "robotframework_ls" ]
 
 [[grammar]]
 name = "robot"
-source = { git = "https://github.com/Hubro/tree-sitter-robot", rev = "f1142bfaa6acfce95e25d2c6d18d218f4f533927" }
+source = { git = "https://github.com/Hubro/tree-sitter-robot", rev = "322e4cc65754d2b3fdef4f2f8a71e0762e3d13af" }
 
 [[language]]
 name = "r"
@@ -1929,7 +1929,7 @@ source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e57c569
 name = "starlark"
 scope = "source.starlark"
 injection-regex = "(starlark|bzl|bazel)"
-file-types = ["bzl", "bazel", "BUILD"]
+file-types = ["bzl", "bazel", "BUILD", "star"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
@@ -2692,7 +2692,7 @@ language-servers = ["fsharp-ls"]
 
 [[grammar]]
 name = "fsharp"
-source = { git = "https://github.com/kaashyapan/tree-sitter-fsharp", rev = "1b5a315e003024db6181744f1d25b8f525732665" }
+source = { git = "https://github.com/kaashyapan/tree-sitter-fsharp", rev = "18da392fd9bd5e79f357abcce13f61f3a15e3951" }
 
 [[language]]
 name = "t32"
@@ -2783,3 +2783,13 @@ auto-format = true
 [[grammar]]
 name = "todotxt"
 source = { git = "https://github.com/arnarg/tree-sitter-todotxt", rev = "0207f6a4ab6aeafc4b091914d31d8235049a2578" }
+
+[[language]]
+name = "strace"
+scope = "source.strace"
+file-types = ["strace"]
+roots = []
+
+[[grammar]]
+name = "strace"
+source = { git = "https://github.com/sigmaSd/tree-sitter-strace", rev = "a0f6c50ae4087a9299f055d0f30fe94fd98189a4" }
