@@ -1,0 +1,30 @@
+# Author: Luke Halasy <lhalasy@gmail.com>
+# Idea adapted from https://github.com/tonsky/sublime-scheme-alabaster
+# Colors adapted from Apple Books Light Focus Theme.
+
+"comment" = { bg = "yellow" }
+"constant" = { fg = "green_title" }
+
+"ui.background" = { fg = "fg", bg = "bg" }
+
+
+"ui.cursor" = { bg = "selection_anchors", fg = "bg" }
+"ui.selection" = { bg = "selection_blue" }
+
+[palette]
+# taken from Apple Books Light Focus Theme
+bg                = "#fffcf5"
+fg                = "#141203"
+
+green             = "#add396"
+blue              = "#b4ccef"
+yellow            = "#f7d463"
+purple            = "#d6c0ef"
+pink              = "#f1b2bc"
+underline_red     = "#ec6b5d"
+
+selection_blue    = "#d0dff2"
+selection_anchors = "#588fec"
+# selection_anchors = "#7CA4EF"
+title_green       = "#4b8248"
+title_red         = "#da5938"
