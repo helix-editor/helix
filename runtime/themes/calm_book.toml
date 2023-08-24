@@ -4,7 +4,7 @@
 # TODO: rstrst
 # FIXME: 
 
-"comment" = { bg = "yellow" }
+"comment" = { bg = "yellow", modifiers = ["italic"]}
 "constant" = { fg = "title_green", modifiers = ["bold"] }
 "string" = { bg = "green" }
 "punctuation.delimiter" = { fg = "fg_bg_average" }
@@ -17,10 +17,10 @@
 
 "ui.background" = { fg = "fg", bg = "bg" }
 
-"ui.cursor" = { bg = "fg", fg = "bg" }
-"ui.selection" = { bg = "selection_blue" }
+"ui.cursor" = { bg = "#4B361B", fg = "bg" }
+"ui.selection" = { bg = "#BCA787" }
 
-"diagonstic" = { bg = "bg", underline = { color = "purple", style = "doubleline" } }
+"diagnostic" = { bg = "bg", underline = { color = "purple", style = "doubleline" } }
 
 "diagnostic.hint" = { underline = { color = "#000000", style = "double_line" } }
 "diagnostic.info" = { underline = { color = "#000000", style = "double_line" } }
@@ -44,10 +44,12 @@ bg                = "#EEE2CB"
 fg                = "#111D34"
 fg_bg_average     = "#7F7F7F"
 
-green             = "#A2C689"
-blue              = "#A4BCC8"
-yellow            = "#E8BC5A"
-purple            = "#C0ADC5"
+# averaged the original green with the bg color with 3x weight
+green             = "#DBDBBB"
+# averaged the original blue with the bg color with 3x weight
+blue              = "#D2D4CA"
+yellow            = "#E2D3BA"
+purple            = "#DDCEC9"
 pink              = "#DD9FAA"
 
 underline_red     = "#ec3824"
