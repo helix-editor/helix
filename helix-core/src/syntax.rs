@@ -689,24 +689,13 @@ impl LanguageConfiguration {
     }
 
     fn load_query(&self, kind: &str) -> Option<Query> {
-        log::warn!("Loading tree sitter for {}", kind);
-
         let query_text = read_query(&self.language_id, kind);
         if query_text.is_empty() {
-            log::warn!("Query text is empty, returning early");
-
             return None;
         }
         let lang = self.highlight_config.get()?.as_ref()?.language;
         Query::new(lang, &query_text)
             .map_err(|e| {
-                log::warn!(
-                    "Failed to parse {} queries for {}: {}",
-                    kind,
-                    self.language_id,
-                    e
-                );
-
                 log::error!(
                     "Failed to parse {} queries for {}: {}",
                     kind,
