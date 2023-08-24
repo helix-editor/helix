@@ -1,7 +1,6 @@
 pub(crate) mod dap;
 pub(crate) mod engine;
 pub(crate) mod lsp;
-pub mod plugin;
 pub(crate) mod typed;
 
 pub use dap::*;

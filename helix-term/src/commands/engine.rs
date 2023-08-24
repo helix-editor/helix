@@ -55,17 +55,11 @@ use self::components::SteelDynamicComponent;
 use super::{
     indent,
     insert::{insert_char, insert_string},
-    plugin::{DylibContainers, ExternalModule},
     shell_impl, Context, MappableCommand, TYPABLE_COMMAND_LIST,
 };
 
 thread_local! {
     pub static ENGINE: std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> = configure_engine();
-}
-
-pub struct ExternalContainersAndModules {
-    containers: DylibContainers,
-    modules: Vec<ExternalModule>,
 }
 
 mod components;
@@ -577,7 +571,6 @@ fn run_initialization_script(cx: &mut Context) {
 
     // TODO: Report the error from requiring the file!
     ENGINE.with(|engine| {
-
         let mut guard = engine.borrow_mut();
 
         let res = guard.run(&format!(
@@ -645,13 +638,12 @@ fn run_initialization_script(cx: &mut Context) {
 
         // These contents need to be registered with the path?
         if let Ok(contents) = std::fs::read_to_string(&helix_module_path) {
-            let res = guard
-                .run_with_reference_from_path::<Context, Context>(
-                    cx,
-                    "*helix.cx*",
-                    &contents,
-                    helix_module_path,
-                );
+            let res = guard.run_with_reference_from_path::<Context, Context>(
+                cx,
+                "*helix.cx*",
+                &contents,
+                helix_module_path,
+            );
 
             match res {
                 Ok(_) => {}
