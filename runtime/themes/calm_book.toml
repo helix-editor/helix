@@ -1,10 +1,15 @@
 # Author: Luke Halasy <lhalasy@gmail.com>
 # Idea adapted from https://github.com/tonsky/sublime-scheme-alabaster
 # Colors adapted from Apple Books Light Calm Theme.
+# TODO: rstrst
+# FIXME: 
 
 "comment" = { bg = "yellow" }
 "constant" = { fg = "title_green", modifiers = ["bold"] }
 "string" = { bg = "green" }
+"punctuation.delimiter" = { fg = "fg_bg_average" }
+"operator" = { fg = "fg_bg_average" }
+# "keyword" = { modifiers = ["dim"] }
 
 
 "function.declaration" = { bg = "blue" }
@@ -12,7 +17,7 @@
 
 "ui.background" = { fg = "fg", bg = "bg" }
 
-"ui.cursor" = { bg = "selection_anchors", fg = "bg" }
+"ui.cursor" = { bg = "fg", fg = "bg" }
 "ui.selection" = { bg = "selection_blue" }
 
 "diagonstic" = { bg = "bg", underline = { color = "purple", style = "doubleline" } }
@@ -22,7 +27,9 @@
 "diagnostic.warning" = { underline = { color = "#000000", style = "double_line" } }
 "diagnostic.error" = { underline = { color = "#000000", style = "double_line" }}
 
-"error" = { fg = "underline_red" }
+"hint" = { bg = "blue", fg = "fg", modifiers = ["bold"]}
+"info" = { bg = "blue", fg = "fg", modifiers = ["bold"]}
+"error" = { bg = "pink", fg = "fg", modifiers = ["bold"] }
 "warning" = { fg = "underline_yellow" }
 
 "diff.plus" = { fg = "green" }
@@ -33,31 +40,21 @@
 # "type" = { bg = "purple" }
 
 [palette]
-# taken from Apple Books Light Focus Theme
-# bg                = "#fffcf5"
 bg                = "#EEE2CB"
-# fg                = "#141203"
-fg                = "#32281E"
+fg                = "#111D34"
+fg_bg_average     = "#7F7F7F"
 
-# green             = "#add396"
 green             = "#A2C689"
-# green             = "#C5D3BC"
-# blue              = "#b4ccef"
 blue              = "#A4BCC8"
-# yellow            = "#f7d463"
 yellow            = "#E8BC5A"
-# purple            = "#d6c0ef"
 purple            = "#C0ADC5"
-# pink              = "#f1b2bc"
 pink              = "#DD9FAA"
 
 underline_red     = "#ec3824"
 underline_orange     = "#EC9023"
 
-# selection_blue    = "#d0dff2"
 selection_blue    = "#C2CBCA"
-# selection_anchors = "#588fec"
 selection_anchors = "#5181C4"
-# title_green       = "#4b8248"
+
 title_green       = "#45753E"
 title_red         = "#da5938"
