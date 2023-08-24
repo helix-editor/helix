@@ -73,52 +73,6 @@ impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
     }
 }
 
-/// A wrapper around a HighlightIterator
-/// that merges the layered highlights to create the final text style
-/// and yields the active text style and the char_idx where the active
-/// style will have to be recomputed.
-struct RawStyleIter<'a, H: Iterator<Item = (Range, Style)>> {
-    text_style: Style,
-    active_highlights: Vec<Highlight>,
-    highlight_iter: H,
-    theme: &'a Theme,
-}
-
-impl<H: Iterator<Item = (Range, Style)>> Iterator for RawStyleIter<'_, H> {
-    type Item = (Style, usize);
-    fn next(&mut self) -> Option<(Style, usize)> {
-        while let Some(event) = self.highlight_iter.next() {
-            // let style = self.active_highlights.iter().fold(self.text_style, |acc, span| {
-            //     acc.patch(event.1)
-            // });
-
-            return Some((self.text_style.patch(event.1), event.0.head));
-
-            // match event {
-            // HighlightEvent::HighlightStart(highlights) => {
-            //     self.active_highlights.push(highlights)
-            // }
-            // HighlightEvent::HighlightEnd => {
-            //     self.active_highlights.pop();
-            // }
-            // HighlightEvent::Source { start, end } => {
-            //     if start == end {
-            //         continue;
-            //     }
-            //     let style = self
-            //         .active_highlights
-            //         .iter()
-            //         .fold(self.text_style, |acc, span| {
-            //             acc.patch(self.theme.highlight(span.0))
-            //         });
-
-            //     return Some((style, end));
-            // }
-            // }
-        }
-        None
-    }
-}
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct LinePos {
@@ -162,7 +116,6 @@ pub fn render_document(
         theme,
         line_decoration,
         translated_positions,
-        &doc.highlights,
     )
 }
 
@@ -211,7 +164,6 @@ pub fn render_text<'t>(
     theme: &Theme,
     line_decorations: &mut [Box<dyn LineDecoration + '_>],
     translated_positions: &mut [TranslatedPosition],
-    highlight_overrides: &[(helix_core::Range, Style)],
 ) {
     let (
         Position {
@@ -355,169 +307,6 @@ pub fn render_text<'t>(
     for line_decoration in &mut *line_decorations {
         line_decoration.render_foreground(renderer, last_line_pos, char_pos);
     }
-
-    // If we have nothing... don't continue
-    // if highlight_overrides.is_empty() {
-    //     return;
-    // }
-
-    // {
-
-    //     let (
-    //         Position {
-    //             row: mut row_off, ..
-    //         },
-    //         mut char_pos,
-    //     ) = visual_offset_from_block(
-    //         text,
-    //         offset.anchor,
-    //         offset.anchor,
-    //         text_fmt,
-    //         text_annotations,
-    //     );
-    //     row_off += offset.vertical_offset;
-
-    //     let (mut formatter, mut first_visible_char_idx) =
-    //         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, offset.anchor);
-
-    //     let mut styles = RawStyleIter {
-    //             text_style: renderer.text_style,
-    //             active_highlights: Vec::with_capacity(64),
-    //             highlight_iter: std::iter::once((
-    //                     helix_core::Range::new(0, highlight_overrides[0].0.anchor),
-    //                     Style::default(),
-    //                 )).chain(highlight_overrides.iter().cloned()),
-    //             theme
-    //         };
-    //     //         StyleIter {
-    //     //     text_style: renderer.text_style,
-    //     //     active_highlights: Vec::with_capacity(64),
-    //     //     highlight_iter,
-    //     //     theme,
-    //     // };
-    //     // .chain(
-    //         // highlight_overrides
-    //         //     .iter()
-    //         //     .map(|(range, style)| (*style, range.anchor));
-    //     // );
-
-    //     let mut last_line_pos = LinePos {
-    //         first_visual_line: false,
-    //         doc_line: usize::MAX,
-    //         visual_line: u16::MAX,
-    //         start_char_idx: usize::MAX,
-    //     };
-    //     let mut is_in_indent_area = true;
-    //     let mut last_line_indent_level = 0;
-    //     let mut style_span = styles
-    //         .next()
-    //         .unwrap_or_else(|| (Style::default(), usize::MAX));
-
-    //     loop {
-    //         // formattter.line_pos returns to line index of the next grapheme
-    //         // so it must be called before formatter.next
-    //         let doc_line = formatter.line_pos();
-    //         let Some((grapheme, mut pos)) = formatter.next() else {
-    //             let mut last_pos = formatter.visual_pos();
-    //             if last_pos.row >= row_off {
-    //                 last_pos.col -= 1;
-    //                 last_pos.row -= row_off;
-    //                 // check if any positions translated on the fly (like cursor) are at the EOF
-    //                 translate_positions(
-    //                     char_pos + 1,
-    //                     first_visible_char_idx,
-    //                     translated_positions,
-    //                     text_fmt,
-    //                     renderer,
-    //                     last_pos,
-    //                 );
-    //             }
-    //             break;
-    //         };
-
-    //         // skip any graphemes on visual lines before the block start
-    //         if pos.row < row_off {
-    //             if char_pos >= style_span.1 {
-    //                 style_span = if let Some(style_span) = styles.next() {
-    //                     style_span
-    //                 } else {
-    //                     break;
-    //                 }
-    //             }
-    //             char_pos += grapheme.doc_chars();
-    //             first_visible_char_idx = char_pos + 1;
-    //             continue;
-    //         }
-    //         pos.row -= row_off;
-
-    //         // if the end of the viewport is reached stop rendering
-    //         if pos.row as u16 >= renderer.viewport.height {
-    //             break;
-    //         }
-
-    //         // apply decorations before rendering a new line
-    //         if pos.row as u16 != last_line_pos.visual_line {
-    //             if pos.row > 0 {
-    //                 renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
-    //                 is_in_indent_area = true;
-    //                 for line_decoration in &mut *line_decorations {
-    //                     line_decoration.render_foreground(renderer, last_line_pos, char_pos);
-    //                 }
-    //             }
-    //             last_line_pos = LinePos {
-    //                 first_visual_line: doc_line != last_line_pos.doc_line,
-    //                 doc_line,
-    //                 visual_line: pos.row as u16,
-    //                 start_char_idx: char_pos,
-    //             };
-    //             for line_decoration in &mut *line_decorations {
-    //                 line_decoration.render_background(renderer, last_line_pos);
-    //             }
-    //         }
-
-    //         // acquire the correct grapheme style
-    //         if char_pos >= style_span.1 {
-    //             style_span = styles.next().unwrap_or((Style::default(), usize::MAX));
-    //         }
-    //         char_pos += grapheme.doc_chars();
-
-    //         // check if any positions translated on the fly (like cursor) has been reached
-    //         translate_positions(
-    //             char_pos,
-    //             first_visible_char_idx,
-    //             translated_positions,
-    //             text_fmt,
-    //             renderer,
-    //             pos,
-    //         );
-
-    //         let grapheme_style = if let GraphemeSource::VirtualText { highlight } = grapheme.source {
-    //             let style = renderer.text_style;
-    //             if let Some(highlight) = highlight {
-    //                 style.patch(theme.highlight(highlight.0))
-    //             } else {
-    //                 style
-    //             }
-    //         } else {
-    //             style_span.0
-    //         };
-
-    //         let virt = grapheme.is_virtual();
-    //         renderer.draw_grapheme(
-    //             grapheme.grapheme,
-    //             grapheme_style,
-    //             virt,
-    //             &mut last_line_indent_level,
-    //             &mut is_in_indent_area,
-    //             pos,
-    //         );
-    //     }
-
-    //     renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
-    //     for line_decoration in &mut *line_decorations {
-    //         line_decoration.render_foreground(renderer, last_line_pos, char_pos);
-    //     }
-    // }
 }
 
 #[derive(Debug)]

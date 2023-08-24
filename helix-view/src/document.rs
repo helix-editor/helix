@@ -186,11 +186,6 @@ pub struct Document {
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
 
-    // TODO: This is not really something we _want_, but more seeing if it is
-    // enough to get away with custom applications of colors.
-    // Selection -> Style to apply for that selection AFTER rendering.
-    pub highlights: Vec<(Range, crate::graphics::Style)>,
-
     // A name separate from the file name
     pub name: Option<String>,
     pub readonly: bool,
@@ -643,25 +638,6 @@ where
 use helix_lsp::{lsp, Client, LanguageServerName};
 use url::Url;
 
-#[derive(Clone, PartialEq, Eq)]
-struct RawHighlight {
-    pub start: usize,
-    pub end: usize,
-    pub style: crate::graphics::Style,
-}
-
-impl PartialOrd for RawHighlight {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.end.partial_cmp(&other.start)
-    }
-}
-
-impl Ord for RawHighlight {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.end.cmp(&other.start)
-    }
-}
-
 impl Document {
     pub fn from(
         text: Rope,
@@ -701,10 +677,6 @@ impl Document {
             config,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
-            highlights: vec![(
-                helix_core::Range::new(10, 20),
-                crate::graphics::Style::default().fg(crate::graphics::Color::Green),
-            )],
             name: None,
             readonly: false,
         }

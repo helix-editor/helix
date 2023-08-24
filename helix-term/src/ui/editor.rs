@@ -224,13 +224,6 @@ impl EditorView {
             statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
 
         statusline::render(&mut context, statusline_area, surface);
-
-        // Custom rendering table?
-        // for x in 0..20 {
-        //     if let Some(cell) = surface.get_mut(x, 0) {
-        //         cell.fg = Color::Green;
-        //     }
-        // }
     }
 
     pub fn render_rulers(
@@ -808,8 +801,6 @@ impl EditorView {
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
         self.pseudo_pending.extend(self.keymaps.pending());
-
-        // let key_result = self.keymaps.get(mode, event);
 
         // Check the engine for any buffer specific keybindings first
         let key_result = ScriptingEngine::get_keymap_for_extension(cxt)
