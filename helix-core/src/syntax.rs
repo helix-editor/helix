@@ -117,6 +117,9 @@ pub struct LanguageConfiguration {
 
     pub grammar: Option<String>, // tree-sitter grammar name, defaults to language_id
 
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub indent_guides: Option<IndentGuidesConfig>, // override global indent_guides
+
     // content_regex
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]
     pub injection_regex: Option<Regex>,
@@ -154,6 +157,24 @@ pub struct LanguageConfiguration {
     /// Hardcoded LSP root directories relative to the workspace root, like `examples` or `tools/fuzz`.
     /// Falling back to the current working directory if none are configured.
     pub workspace_lsp_roots: Option<Vec<PathBuf>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case")]
+pub struct IndentGuidesConfig {
+    pub render: bool,
+    pub character: char,
+    pub skip_levels: u8,
+}
+
+impl Default for IndentGuidesConfig {
+    fn default() -> Self {
+        Self {
+            skip_levels: 0,
+            render: false,
+            character: '│',
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]

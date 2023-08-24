@@ -331,6 +331,10 @@ impl<'a> TextRenderer<'a> {
         viewport: Rect,
     ) -> TextRenderer<'a> {
         let editor_config = doc.config.load();
+        let indent_guides_config = doc
+            .language_config()
+            .and_then(|config| config.indent_guides.as_ref())
+            .unwrap_or(&editor_config.indent_guides);
         let WhitespaceConfig {
             render: ws_render,
             characters: ws_chars,
@@ -368,7 +372,7 @@ impl<'a> TextRenderer<'a> {
 
         TextRenderer {
             surface,
-            indent_guide_char: editor_config.indent_guides.character.into(),
+            indent_guide_char: indent_guides_config.character.into(),
             newline,
             nbsp,
             space,
@@ -378,14 +382,14 @@ impl<'a> TextRenderer<'a> {
             indent_width,
             starting_indent: col_offset / indent_width as usize
                 + (col_offset % indent_width as usize != 0) as usize
-                + editor_config.indent_guides.skip_levels as usize,
+                + indent_guides_config.skip_levels as usize,
             indent_guide_style: text_style.patch(
                 theme
                     .try_get("ui.virtual.indent-guide")
                     .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
             ),
             text_style,
-            draw_indent_guides: editor_config.indent_guides.render,
+            draw_indent_guides: indent_guides_config.render,
             viewport,
             col_offset,
         }

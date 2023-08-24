@@ -42,7 +42,7 @@ use anyhow::{anyhow, bail, Error};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
-    syntax::{self, AutoPairConfig, SoftWrap},
+    syntax::{self, AutoPairConfig, IndentGuidesConfig, SoftWrap},
     Change, LineEnding, NATIVE_LINE_ENDING,
 };
 use helix_core::{Position, Selection};
@@ -730,24 +730,6 @@ impl Default for WhitespaceCharacters {
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
             tabpad: ' ',
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default, rename_all = "kebab-case")]
-pub struct IndentGuidesConfig {
-    pub render: bool,
-    pub character: char,
-    pub skip_levels: u8,
-}
-
-impl Default for IndentGuidesConfig {
-    fn default() -> Self {
-        Self {
-            skip_levels: 0,
-            render: false,
-            character: '│',
         }
     }
 }
