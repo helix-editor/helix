@@ -946,6 +946,7 @@ pub fn find_lsp_workspace(
         current_dir.join(file)
     };
     file = path::get_normalized_path(&file);
+    workspace = true;
 
     if !file.starts_with(workspace) {
         return None;

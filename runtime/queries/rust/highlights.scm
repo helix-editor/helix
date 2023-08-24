@@ -253,10 +253,10 @@
   ])
 
 (function_item
-  name: (identifier) @function)
+  name: (identifier) @function.declaration)
 
 (function_signature_item
-  name: (identifier) @function)
+  name: (identifier) @function.declaration)
 
 ; ---
 ; Macros

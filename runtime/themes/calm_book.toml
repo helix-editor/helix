@@ -3,13 +3,23 @@
 # Colors adapted from Apple Books Light Focus Theme.
 
 "comment" = { bg = "yellow" }
-"constant" = { fg = "green_title" }
+"constant" = { fg = "title_green", modifiers = ["bold"] }
+"string" = { bg = "green" }
+
+"function.declaration" = { bg = "blue" }
+# "enum.declaration" = { bg = "blue" }
 
 "ui.background" = { fg = "fg", bg = "bg" }
 
-
 "ui.cursor" = { bg = "selection_anchors", fg = "bg" }
 "ui.selection" = { bg = "selection_blue" }
+
+"diff.plus" = { fg = "green" }
+"diff.delta" = { fg = "yellow" }
+"diff.minus" = { fg = "underline_red" }
+
+# TOML file keys
+# "type" = { bg = "purple" }
 
 [palette]
 # taken from Apple Books Light Focus Theme
@@ -17,6 +27,7 @@ bg                = "#fffcf5"
 fg                = "#141203"
 
 green             = "#add396"
+# green             = "#C5D3BC"
 blue              = "#b4ccef"
 yellow            = "#f7d463"
 purple            = "#d6c0ef"

@@ -7,6 +7,12 @@
   (quoted_key)
 ] @type)
 
+(table [
+  (bare_key)
+  (dotted_key)
+  (quoted_key)
+] @key.declaration)
+
 (table_array_element [
   (bare_key)
   (dotted_key)
