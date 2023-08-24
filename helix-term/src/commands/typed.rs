@@ -421,14 +421,16 @@ fn new_file(
         return Ok(());
     }
 
-    cx.editor.new_file(Action::Replace);
     if let Some(arg) = _args.first() {
         let path = PathBuf::from(arg.to_string());
         if !path.exists() {
+            cx.editor.new_file(Action::Replace);
             write_impl(cx, Some(arg), false)?;
         } else {
             cx.editor.set_error("File already exists!")
         }
+    } else {
+        cx.editor.new_file(Action::Replace);
     }
 
     Ok(())
