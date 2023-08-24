@@ -1,10 +1,11 @@
 # Author: Luke Halasy <lhalasy@gmail.com>
 # Idea adapted from https://github.com/tonsky/sublime-scheme-alabaster
-# Colors adapted from Apple Books Light Focus Theme.
+# Colors adapted from Apple Books Light Calm Theme.
 
 "comment" = { bg = "yellow" }
 "constant" = { fg = "title_green", modifiers = ["bold"] }
 "string" = { bg = "green" }
+
 
 "function.declaration" = { bg = "blue" }
 # "enum.declaration" = { bg = "blue" }
@@ -16,13 +17,16 @@
 
 "diagonstic" = { bg = "bg", underline = { color = "purple", style = "doubleline" } }
 
-"diagnostic.hint" = { underline = { color = "fg", style = "double_line" } }
-"diagnostic.info" = { underline = { color = "fg", style = "double_line" } }
-"diagnostic.warning" = { underline = { color = "fg", style = "double_line" } }
-"diagnostic.error" = { underline = { color = "fg", style = "double_line" }}
+"diagnostic.hint" = { underline = { color = "#000000", style = "double_line" } }
+"diagnostic.info" = { underline = { color = "#000000", style = "double_line" } }
+"diagnostic.warning" = { underline = { color = "#000000", style = "double_line" } }
+"diagnostic.error" = { underline = { color = "#000000", style = "double_line" }}
+
+"error" = { fg = "underline_red" }
+"warning" = { fg = "underline_yellow" }
 
 "diff.plus" = { fg = "green" }
-"diff.delta" = { fg = "yellow" }
+"diff.delta" = { fg = "fg" }
 "diff.minus" = { fg = "underline_red" }
 
 # TOML file keys
@@ -45,9 +49,10 @@ yellow            = "#E8BC5A"
 # purple            = "#d6c0ef"
 purple            = "#C0ADC5"
 # pink              = "#f1b2bc"
-pink              = "#45753E"
+pink              = "#DD9FAA"
 
 underline_red     = "#ec3824"
+underline_orange     = "#EC9023"
 
 # selection_blue    = "#d0dff2"
 selection_blue    = "#C2CBCA"
