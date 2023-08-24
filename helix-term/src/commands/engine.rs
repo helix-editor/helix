@@ -577,7 +577,10 @@ fn run_initialization_script(cx: &mut Context) {
 
     // TODO: Report the error from requiring the file!
     ENGINE.with(|engine| {
-        let res = engine.borrow_mut().run(&format!(
+
+        let mut guard = engine.borrow_mut();
+
+        let res = guard.run(&format!(
             r#"(require "{}")"#,
             helix_module_path.to_str().unwrap()
         ));
@@ -591,7 +594,7 @@ fn run_initialization_script(cx: &mut Context) {
         let helix_path =
             "__module-mangler".to_string() + helix_module_path.as_os_str().to_str().unwrap();
 
-        if let Ok(module) = engine.borrow_mut().extract_value(&helix_path) {
+        if let Ok(module) = guard.extract_value(&helix_path) {
             if let steel::rvals::SteelVal::HashMapV(m) = module {
                 let exported = m
                     .iter()
@@ -608,7 +611,7 @@ fn run_initialization_script(cx: &mut Context) {
                 let docs = exported
                     .iter()
                     .filter_map(|x| {
-                        if let Ok(value) = engine.borrow_mut().run(&format!(
+                        if let Ok(value) = guard.run(&format!(
                             "(#%function-ptr-table-get #%function-ptr-table {})",
                             x
                         )) {
@@ -642,8 +645,7 @@ fn run_initialization_script(cx: &mut Context) {
 
         // These contents need to be registered with the path?
         if let Ok(contents) = std::fs::read_to_string(&helix_module_path) {
-            let res = engine
-                .borrow_mut()
+            let res = guard
                 .run_with_reference_from_path::<Context, Context>(
                     cx,
                     "*helix.cx*",
