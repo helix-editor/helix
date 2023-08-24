@@ -436,13 +436,27 @@ fn format(
     }
 
     let (view, doc) = current!(cx.editor);
-    if let Some(format) = doc.format() {
-        let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
-        cx.jobs.callback(callback);
+
+    if let Some(language_config) = doc.language_config() {
+        let format = if let Some(formatter) = doc.get_formatter() {
+            doc.format_with_formatter(formatter)
+        } else if let Some(language_server) = doc.get_language_server_to_format() {
+            doc.format_with_language_server(language_server)
+        } else {
+            let error_message = format!("Formatting failed, run 'hx --health {}' to check whether formatter/language server is installed", language_config.language_id);
+            cx.editor.set_error(error_message);
+            return Ok(());
+        };
+
+        if let Some(format) = format {
+            let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
+            cx.jobs.callback(callback);
+        }
     }
 
     Ok(())
 }
+
 fn set_indent_style(
     cx: &mut compositor::Context,
     args: &[Cow<str>],

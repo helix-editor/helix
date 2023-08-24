@@ -6,7 +6,7 @@ use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
-use helix_core::syntax::{Highlight, LanguageServerFeature};
+use helix_core::syntax::{FormatterConfiguration, Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
@@ -733,67 +733,89 @@ impl Document {
     // We can't use anyhow::Result here since the output of the future has to be
     // clonable to be used as shared future. So use a custom error type.
     pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
-        if let Some(formatter) = self
-            .language_config()
+        if let Some(formatter) = self.get_formatter() {
+            return self.format_with_formatter(formatter);
+        }
+
+        if let Some(language_server) = self.get_language_server_to_format() {
+            return self.format_with_language_server(language_server);
+        }
+
+        None
+    }
+
+    pub fn get_formatter(&self) -> Option<FormatterConfiguration> {
+        self.language_config()
             .and_then(|c| c.formatter.clone())
             .filter(|formatter| which::which(&formatter.command).is_ok())
-        {
-            use std::process::Stdio;
-            let text = self.text().clone();
-            let mut process = tokio::process::Command::new(&formatter.command);
-            process
-                .args(&formatter.args)
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped());
+    }
 
-            let formatting_future = async move {
-                let mut process = process
-                    .spawn()
-                    .map_err(|e| FormatterError::SpawningFailed {
-                        command: formatter.command.clone(),
-                        error: e.kind(),
-                    })?;
-                {
-                    let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
-                    to_writer(&mut stdin, (encoding::UTF_8, false), &text)
-                        .await
-                        .map_err(|_| FormatterError::BrokenStdin)?;
-                }
+    pub fn get_language_server_to_format(&self) -> Option<&helix_lsp::Client> {
+        self.language_servers_with_feature(LanguageServerFeature::Format)
+            .next()
+    }
 
-                let output = process
-                    .wait_with_output()
+    pub fn format_with_formatter(
+        &self,
+        formatter: FormatterConfiguration,
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+        use std::process::Stdio;
+        let text = self.text().clone();
+        let mut process = tokio::process::Command::new(&formatter.command);
+        process
+            .args(&formatter.args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        let formatting_future = async move {
+            let mut process = process
+                .spawn()
+                .map_err(|e| FormatterError::SpawningFailed {
+                    command: formatter.command.clone(),
+                    error: e.kind(),
+                })?;
+            {
+                let mut stdin = process.stdin.take().ok_or(FormatterError::BrokenStdin)?;
+                to_writer(&mut stdin, (encoding::UTF_8, false), &text)
                     .await
-                    .map_err(|_| FormatterError::WaitForOutputFailed)?;
+                    .map_err(|_| FormatterError::BrokenStdin)?;
+            }
 
-                if !output.status.success() {
-                    if !output.stderr.is_empty() {
-                        let err = String::from_utf8_lossy(&output.stderr).to_string();
-                        log::error!("Formatter error: {}", err);
-                        return Err(FormatterError::NonZeroExitStatus(Some(err)));
-                    }
+            let output = process
+                .wait_with_output()
+                .await
+                .map_err(|_| FormatterError::WaitForOutputFailed)?;
 
-                    return Err(FormatterError::NonZeroExitStatus(None));
-                } else if !output.stderr.is_empty() {
-                    log::debug!(
-                        "Formatter printed to stderr: {}",
-                        String::from_utf8_lossy(&output.stderr).to_string()
-                    );
+            if !output.status.success() {
+                if !output.stderr.is_empty() {
+                    let err = String::from_utf8_lossy(&output.stderr).to_string();
+                    log::error!("Formatter error: {}", err);
+                    return Err(FormatterError::NonZeroExitStatus(Some(err)));
                 }
 
-                let str = std::str::from_utf8(&output.stdout)
-                    .map_err(|_| FormatterError::InvalidUtf8Output)?;
+                return Err(FormatterError::NonZeroExitStatus(None));
+            } else if !output.stderr.is_empty() {
+                log::debug!(
+                    "Formatter printed to stderr: {}",
+                    String::from_utf8_lossy(&output.stderr).to_string()
+                );
+            }
 
-                Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
-            };
-            return Some(formatting_future.boxed());
+            let str = std::str::from_utf8(&output.stdout)
+                .map_err(|_| FormatterError::InvalidUtf8Output)?;
+
+            Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
         };
 
+        Some(formatting_future.boxed())
+    }
+
+    pub fn format_with_language_server(
+        &self,
+        language_server: &Client,
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         let text = self.text.clone();
-        // finds first language server that supports formatting and then formats
-        let language_server = self
-            .language_servers_with_feature(LanguageServerFeature::Format)
-            .next()?;
         let offset_encoding = language_server.offset_encoding();
         let request = language_server.text_document_formatting(
             self.identifier(),
@@ -816,6 +838,7 @@ impl Document {
                 offset_encoding,
             ))
         };
+
         Some(fut.boxed())
     }
 
