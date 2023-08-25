@@ -424,6 +424,7 @@ impl Default for StatusLineConfig {
 
         Self {
             left: vec![
+                E::Spacer,
                 E::Mode,
                 E::Spinner,
                 E::FileName,
@@ -437,6 +438,7 @@ impl Default for StatusLineConfig {
                 E::Register,
                 E::Position,
                 E::FileEncoding,
+                E::Spacer,
             ],
             separator: String::from("│"),
             mode: ModeConfig::default(),

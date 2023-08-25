@@ -49,6 +49,17 @@ pub struct RenderBuffer<'a> {
     pub right: Spans<'a>,
 }
 
+fn join_with_spaces<'a, I: Iterator<Item = Span<'a>>>(iter: I) -> Spans<'a> {
+    let mut spans = Vec::new();
+    for elem in iter {
+        if !spans.is_empty() {
+            spans.push(Span::raw("  "));
+        }
+        spans.push(elem);
+    }
+    spans.into()
+}
+
 pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface) {
     let base_style = if context.focused {
         context.editor.theme.get("ui.statusline")
@@ -63,12 +74,12 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
     let config = context.editor.config();
 
     let element_ids = &config.statusline.left;
-    context.parts.left = element_ids
-        .iter()
-        .map(|element_id| get_render_function(*element_id))
-        .flat_map(|render| render(context).0)
-        .collect::<Vec<Span>>()
-        .into();
+    context.parts.left = join_with_spaces(
+        element_ids
+            .iter()
+            .map(|element_id| get_render_function(*element_id))
+            .flat_map(|render| render(context).0),
+    );
 
     surface.set_spans(
         viewport.x,
@@ -80,12 +91,12 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
     // Right side of the status line.
 
     let element_ids = &config.statusline.right;
-    context.parts.right = element_ids
-        .iter()
-        .map(|element_id| get_render_function(*element_id))
-        .flat_map(|render| render(context).0)
-        .collect::<Vec<Span>>()
-        .into();
+    context.parts.right = join_with_spaces(
+        element_ids
+            .iter()
+            .map(|element_id| get_render_function(*element_id))
+            .flat_map(|render| render(context).0),
+    );
 
     surface.set_spans(
         viewport.x
@@ -100,12 +111,12 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
     // Center of the status line.
 
     let element_ids = &config.statusline.center;
-    context.parts.center = element_ids
-        .iter()
-        .map(|element_id| get_render_function(*element_id))
-        .flat_map(|render| render(context).0)
-        .collect::<Vec<Span>>()
-        .into();
+    context.parts.center = join_with_spaces(
+        element_ids
+            .iter()
+            .map(|element_id| get_render_function(*element_id))
+            .flat_map(|render| render(context).0),
+    );
 
     // Width of the empty space between the left and center area and between the center and right area.
     let spacing = 1u16;
@@ -408,7 +419,7 @@ fn render_separator<'a>(context: &RenderContext) -> Spans<'a> {
 }
 
 fn render_spacer<'a>(_context: &RenderContext) -> Spans<'a> {
-    Span::raw(" ").into()
+    Span::raw("").into()
 }
 
 fn render_version_control<'a>(context: &RenderContext) -> Spans<'a> {
