@@ -8,10 +8,7 @@ use helix_view::{
     Document, Editor, View,
 };
 
-use crate::{
-    commands::engine::{StatusLineMessage, STATUS_LINE_MESSAGE},
-    ui::ProgressSpinners,
-};
+use crate::ui::ProgressSpinners;
 
 use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
@@ -515,9 +512,9 @@ fn render_custom_text<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    if let Some(message) = StatusLineMessage::get() {
-        write(context, message, None);
-    }
+    // if let Some(message) = StatusLineMessage::get() {
+    //     write(context, message, None);
+    // }
 }
 
 fn render_register<F>(context: &mut RenderContext, write: F)

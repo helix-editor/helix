@@ -13,10 +13,12 @@ default-run = "hx"
 rust-version = "1.65"
 
 [features]
-default = ["git"]
+default = ["git", "steel"]
+# default = ["git"]
 unicode-lines = ["helix-core/unicode-lines"]
 integration = []
 git = ["helix-vcs/git"]
+steel = ["dep:steel-core", "helix-core/steel", "helix-view/steel", "tui/steel"]
 
 [[bin]]
 name = "hx"
@@ -67,7 +69,7 @@ grep-regex = "0.1.11"
 grep-searcher = "0.1.11"
 
 # plugin support
-steel-core = { workspace = true }
+steel-core = { workspace = true, optional = true }
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }

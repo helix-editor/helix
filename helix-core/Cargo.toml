@@ -13,6 +13,7 @@ include = ["src/**/*", "README.md"]
 [features]
 unicode-lines = ["ropey/unicode_lines"]
 integration = []
+steel = ["dep:steel-core"]
 
 [dependencies]
 helix-loader = { version = "0.6", path = "../helix-loader" }
@@ -48,7 +49,7 @@ chrono = { version = "0.4", default-features = false, features = ["alloc", "std"
 etcetera = "0.8"
 textwrap = "0.16.0"
 
-steel-core = { workspace = true }
+steel-core = { workspace = true, optional = true }
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }

@@ -156,14 +156,6 @@ pub fn log_file() -> PathBuf {
     LOG_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }
 
-pub fn helix_module_file() -> PathBuf {
-    config_dir().join("helix.scm")
-}
-
-pub fn steel_init_file() -> PathBuf {
-    config_dir().join("init.scm")
-}
-
 pub fn workspace_config_file() -> PathBuf {
     find_workspace().0.join(".helix").join("config.toml")
 }

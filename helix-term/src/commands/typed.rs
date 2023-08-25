@@ -2,7 +2,6 @@ use std::ops::Deref;
 
 use crate::job::Job;
 
-use super::engine::{compositor_present_error, present_error};
 use super::*;
 
 use helix_core::{encoding, shellwords::Shellwords};

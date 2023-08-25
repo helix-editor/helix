@@ -8,7 +8,7 @@ use steel::{
 };
 
 use crate::{
-    commands::{engine::ENGINE, Context},
+    commands::{engine::scheme::ENGINE, Context},
     compositor::{self, Component},
     ui::{Popup, Prompt, PromptEvent},
 };
@@ -72,6 +72,7 @@ pub fn helix_component_module() -> BuiltInModule {
             }
         },
     );
+
     // prompt: Cow<'static, str>,
     // history_register: Option<char>,
     // completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,

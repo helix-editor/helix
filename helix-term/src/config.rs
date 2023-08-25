@@ -134,7 +134,11 @@ impl Config {
         let local_config = fs::read_to_string(helix_loader::workspace_config_file())
             .map_err(ConfigLoadError::Error);
 
-        let bindings = crate::commands::engine::SharedKeyBindingsEventQueue::get();
+        #[cfg(feature = "steel")]
+        let bindings = crate::commands::engine::scheme::SharedKeyBindingsEventQueue::get();
+
+        #[cfg(not(feature = "steel"))]
+        let bindings = None;
 
         Config::load(global_config, local_config, bindings)
     }

@@ -803,20 +803,7 @@ impl EditorView {
         self.pseudo_pending.extend(self.keymaps.pending());
 
         // Check the engine for any buffer specific keybindings first
-        let key_result = ScriptingEngine::get_keymap_for_extension(cxt)
-            .and_then(|map| {
-                if let steel::SteelVal::Custom(inner) = map {
-                    if let Some(underlying) = steel::rvals::as_underlying_type::<
-                        commands::engine::EmbeddedKeyMap,
-                    >(inner.borrow().as_ref())
-                    {
-                        return Some(self.keymaps.get_with_map(&underlying.0, mode, event));
-                    }
-                }
-
-                None
-            })
-            .unwrap_or_else(|| self.keymaps.get(mode, event));
+        let key_result = ScriptingEngine::handle_keymap_event(self, mode, cxt, event);
 
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 

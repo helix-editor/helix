@@ -1,7 +1,11 @@
-use crate::{buffer::Buffer, widgets::Widget};
+#[cfg(feature = "steel")]
+mod steel_implementations {
 
-use steel::{gc::unsafe_erased_pointers::CustomReference, rvals::Custom};
+    use crate::{buffer::Buffer, widgets::Widget};
 
-impl CustomReference for Buffer {}
+    use steel::{gc::unsafe_erased_pointers::CustomReference, rvals::Custom};
 
-steel::custom_reference!(Buffer);
+    impl CustomReference for Buffer {}
+
+    steel::custom_reference!(Buffer);
+}

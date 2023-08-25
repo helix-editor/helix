@@ -10,8 +10,8 @@ repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 
 [features]
-default = []
 term = ["crossterm"]
+steel = ["dep:steel-core", "helix-core/steel"]
 
 [dependencies]
 bitflags = "2.4"
@@ -46,7 +46,7 @@ which = "4.4"
 parking_lot = "0.12.1"
 
 # plugin support
-steel-core = { workspace = true }
+steel-core = { workspace = true, optional = true }
 
 
 [target.'cfg(windows)'.dependencies]

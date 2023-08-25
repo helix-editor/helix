@@ -874,11 +874,6 @@ pub struct Breakpoint {
 
 use futures_util::stream::{Flatten, Once};
 
-impl steel::gc::unsafe_erased_pointers::CustomReference for Editor {}
-steel::custom_reference!(Editor);
-
-impl steel::rvals::Custom for Mode {}
-
 #[repr(C)]
 pub struct Editor {
     /// Current editing mode.
