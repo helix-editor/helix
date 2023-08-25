@@ -13,8 +13,7 @@ default-run = "hx"
 rust-version = "1.65"
 
 [features]
-default = ["git", "steel"]
-# default = ["git"]
+default = ["git", "steel"] # Remove steel if you don't want it
 unicode-lines = ["helix-core/unicode-lines"]
 integration = []
 git = ["helix-vcs/git"]
