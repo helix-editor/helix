@@ -1,8 +1,6 @@
 use fuzzy_matcher::FuzzyMatcher;
 use helix_core::{
-    extensions::steel_implementations::{
-        rope_module, rope_slice_module, SRopeSlice, SteelRopeSlice,
-    },
+    extensions::steel_implementations::{rope_module, SteelRopeSlice},
     graphemes,
     shellwords::Shellwords,
     Range, Selection, Tendril,
@@ -19,20 +17,14 @@ use serde_json::Value;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
     rerrs::ErrorKind,
-    rvals::{
-        as_underlying_type, AsRefMutSteelValFromRef, AsRefSteelVal, FromSteelVal, IntoSteelVal,
-    },
-    steel_vm::{
-        engine::Engine,
-        register_fn::{RegisterFn, RegisterFnBorrowed},
-    },
+    rvals::{as_underlying_type, AsRefMutSteelValFromRef, FromSteelVal, IntoSteelVal},
+    steel_vm::{engine::Engine, register_fn::RegisterFn},
     SteelErr, SteelVal,
 };
 
 use std::{
     borrow::Cow,
     collections::{HashMap, VecDeque},
-    marker::PhantomData,
     ops::Deref,
     path::PathBuf,
     sync::Mutex,
@@ -49,13 +41,13 @@ use crate::{
     compositor::{self, Component, Compositor},
     config::Config,
     job::{self, Callback},
-    keymap::{self, merge_keys, KeyTrie, KeymapResult, Keymaps},
-    ui::{self, menu::Item, overlay::overlaid, Popup, Prompt, PromptEvent},
+    keymap::{self, merge_keys, KeyTrie, KeymapResult},
+    ui::{self, menu::Item, Popup, Prompt, PromptEvent},
 };
 
 use components::SteelDynamicComponent;
 
-use super::{components, indent, shell_impl, Context, MappableCommand, TYPABLE_COMMAND_LIST};
+use super::{components, shell_impl, Context, MappableCommand, TYPABLE_COMMAND_LIST};
 use insert::{insert_char, insert_string};
 
 thread_local! {

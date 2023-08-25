@@ -8,7 +8,7 @@ use crate::{
     ui::{self, PromptEvent},
 };
 
-use super::{indent, shell_impl, Context, MappableCommand, TYPABLE_COMMAND_LIST};
+use super::{shell_impl, Context, MappableCommand, TYPABLE_COMMAND_LIST};
 
 #[cfg(feature = "steel")]
 mod components;
@@ -32,14 +32,14 @@ static PLUGIN_SYSTEM: PluginEngine<scheme::SteelScriptingEngine> =
 #[cfg(not(feature = "steel"))]
 static PLUGIN_SYSTEM: PluginEngine<NoEngine> = PluginEngine(NoEngine);
 
-enum PluginSystemTypes {
-    None,
-    Steel,
-}
+// enum PluginSystemTypes {
+//     None,
+//     Steel,
+// }
 
 // The order in which the plugins will be evaluated against - if we wanted to include, lets say `rhai`,
-// we would have to
-static PLUGIN_PRECEDENCE: &[PluginSystemTypes] = &[PluginSystemTypes::Steel];
+// we would have to order the precedence for searching for exported commands, or somehow merge them?
+// static PLUGIN_PRECEDENCE: &[PluginSystemTypes] = &[PluginSystemTypes::Steel];
 
 pub struct NoEngine;
 
@@ -114,13 +114,13 @@ impl PluginSystem for NoEngine {}
 pub trait PluginSystem {
     fn initialize(&self) {}
 
-    fn run_initialization_script(&self, cx: &mut Context) {}
+    fn run_initialization_script(&self, _cx: &mut Context) {}
 
     fn handle_keymap_event(
         &self,
         editor: &mut ui::EditorView,
         mode: Mode,
-        cxt: &mut Context,
+        _cxt: &mut Context,
         event: KeyEvent,
     ) -> KeymapResult {
         editor.keymaps.get(mode, event)
@@ -128,40 +128,40 @@ pub trait PluginSystem {
 
     fn call_function_if_global_exists(
         &self,
-        cx: &mut Context,
-        name: &str,
-        args: Vec<Cow<str>>,
+        _cx: &mut Context,
+        _name: &str,
+        _args: Vec<Cow<str>>,
     ) -> bool {
         false
     }
 
     fn call_typed_command_if_global_exists<'a>(
         &self,
-        cx: &mut compositor::Context,
-        input: &'a str,
-        parts: &'a [&'a str],
-        event: PromptEvent,
+        _cx: &mut compositor::Context,
+        _input: &'a str,
+        _parts: &'a [&'a str],
+        _event: PromptEvent,
     ) -> bool {
         false
     }
 
-    fn get_doc_for_identifier(&self, ident: &str) -> Option<String> {
+    fn get_doc_for_identifier(&self, _ident: &str) -> Option<String> {
         None
     }
 
     fn fuzzy_match<'a>(
         &self,
-        fuzzy_matcher: &'a fuzzy_matcher::skim::SkimMatcherV2,
-        input: &'a str,
+        _fuzzy_matcher: &'a fuzzy_matcher::skim::SkimMatcherV2,
+        _input: &'a str,
     ) -> Vec<(String, i64)> {
         Vec::new()
     }
 
-    fn is_exported(&self, ident: &str) -> bool {
+    fn is_exported(&self, _ident: &str) -> bool {
         false
     }
 
-    fn engine_get_doc(&self, ident: &str) -> Option<String> {
+    fn engine_get_doc(&self, _ident: &str) -> Option<String> {
         None
     }
 }
