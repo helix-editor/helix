@@ -102,7 +102,7 @@ pub fn expand_variables<'a>(editor: &Editor, input: &'a str) -> anyhow::Result<C
                                         o.push_str(&input[last_push_end..index]);
                                         last_push_end = end + 1;
 
-                                        o.push_str(&output?);
+                                        o.push_str(&output?.trim());
 
                                         break;
                                     }
