@@ -2794,3 +2794,13 @@ roots = []
 [[grammar]]
 name = "strace"
 source = { git = "https://github.com/sigmaSd/tree-sitter-strace", rev = "a0f6c50ae4087a9299f055d0f30fe94fd98189a4" }
+
+[[language]]
+name = "gemini"
+scope = "source.gmi"
+file-types = ["gmi"]
+roots = []
+
+[[grammar]]
+name = "gemini"
+source = { git = "https://git.sr.ht/~sfr/tree-sitter-gemini", rev = "3cc5e4bdf572d5df4277fc2e54d6299bd59a54b3" }
