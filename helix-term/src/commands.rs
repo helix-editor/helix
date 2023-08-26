@@ -202,24 +202,20 @@ impl MappableCommand {
                         jobs: cx.jobs,
                         scroll: None,
                     };
+                    let args = args.join(" ");
 
-                    let args: Vec<Cow<str>> = match args
-                        .iter()
-                        .map(|arg| {
-                            helix_view::editor::expand_variables(cx.editor, arg).map(Cow::from)
-                        })
-                        .collect()
-                    {
-                        Ok(expanded_args) => expanded_args,
+                    match helix_view::editor::expand_variables(cx.editor, &args) {
+                        Ok(args) => {
+                            let args = [args];
+
+                            if let Err(e) = (command.fun)(&mut cx, &args, PromptEvent::Validate) {
+                                cx.editor.set_error(format!("{}", e));
+                            }
+                        }
                         Err(err) => {
                             cx.editor.set_error(err.to_string());
-                            return;
                         }
                     };
-
-                    if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
-                        cx.editor.set_error(format!("{}", e));
-                    }
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
