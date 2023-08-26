@@ -268,6 +268,7 @@ These scopes are used for theming the editor interface:
 | ---                               | ---                                                                                            |
 | `ui.background`                   |                                                                                                |
 | `ui.background.separator`         | Picker separator below input line                                                              |
+| `ui.background.eof`               | Portion of the editor window past the end of the buffer contents                               |
 | `ui.cursor`                       |                                                                                                |
 | `ui.cursor.normal`                |                                                                                                |
 | `ui.cursor.insert`                |                                                                                                |
