@@ -821,20 +821,15 @@ impl Loader {
     pub fn language_config_for_file_name(&self, path: &Path) -> Option<Arc<LanguageConfiguration>> {
         // Find all the language configurations that match this file name
         // or a suffix of the file name.
-        let configuration_id = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .and_then(|file_name| self.language_config_ids_by_extension.get(file_name))
-            .or_else(|| {
-                self.language_config_ids_by_glob
-                    .iter()
-                    .find_map(|(glob, id)| {
-                        if glob.compile_matcher().is_match(path) {
-                            Some(id)
-                        } else {
-                            None
-                        }
-                    })
+        let configuration_id = self
+            .language_config_ids_by_glob
+            .iter()
+            .find_map(|(glob, id)| {
+                if glob.compile_matcher().is_match(path) {
+                    Some(id)
+                } else {
+                    None
+                }
             })
             .or_else(|| {
                 path.extension()
