@@ -24,7 +24,7 @@ use tui::backend::Backend;
 
 use crate::{
     args::Args,
-    commands::apply_workspace_edit,
+    commands::{self, apply_workspace_edit},
     compositor::{Compositor, Event},
     config::Config,
     job::Jobs,
@@ -238,7 +238,7 @@ impl Application {
         ])
         .context("build signal handler")?;
 
-        let app = Self {
+        let mut app = Self {
             compositor,
             terminal,
             editor,
@@ -252,6 +252,34 @@ impl Application {
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
         };
+
+        for command in args.commands {
+            let callback = {
+                let mut ctx = commands::Context {
+                    editor: &mut app.editor,
+                    count: None,
+                    register: None,
+                    callback: None,
+                    on_next_key_callback: None,
+                    jobs: &mut app.jobs,
+                };
+                command.execute(&mut ctx);
+                ctx.callback
+            };
+
+            if app.editor.should_close() {
+                break;
+            }
+
+            if let Some(callback) = callback {
+                let mut ctx = crate::compositor::Context {
+                    editor: &mut app.editor,
+                    jobs: &mut app.jobs,
+                    scroll: None,
+                };
+                callback(&mut app.compositor, &mut ctx);
+            }
+        }
 
         Ok(app)
     }
@@ -1157,7 +1185,7 @@ impl Application {
         self.terminal.restore(terminal_config)
     }
 
-    pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
+    pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<Vec<Error>, Error>
     where
         S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
     {
@@ -1179,12 +1207,7 @@ impl Application {
 
         self.restore_term()?;
 
-        for err in close_errs {
-            self.editor.exit_code = 1;
-            eprintln!("Error: {}", err);
-        }
-
-        Ok(self.editor.exit_code)
+        Ok(close_errs)
     }
 
     pub async fn close(&mut self) -> Vec<anyhow::Error> {
