@@ -74,12 +74,13 @@ fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 
     ensure!(args.is_empty(), ":quit takes no arguments");
 
+    cx.block_try_flush_writes()?;
+
     // last view and we have unsaved changes
     if cx.editor.tree.views().count() == 1 {
         buffers_remaining_impl(cx.editor)?
     }
 
-    cx.block_try_flush_writes()?;
     cx.editor.close(view!(cx.editor).id);
 
     Ok(())
