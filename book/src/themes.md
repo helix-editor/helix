@@ -70,6 +70,7 @@ over it and is merged into the default palette.
 
 | Color Name      |
 | ---             |
+| `reset`         |
 | `black`         |
 | `red`           |
 | `green`         |
