@@ -345,7 +345,9 @@ impl super::PluginSystem for SteelScriptingEngine {
             .map(|x| (x.0.to_string(), x.1))
             .collect::<Vec<_>>()
     }
+}
 
+impl SteelScriptingEngine {
     fn is_exported(&self, ident: &str) -> bool {
         EXPORTED_IDENTIFIERS
             .identifiers
@@ -353,9 +355,7 @@ impl super::PluginSystem for SteelScriptingEngine {
             .unwrap()
             .contains(ident)
     }
-}
 
-impl SteelScriptingEngine {
     // Attempt to fetch the keymap for the extension
     fn get_keymap_for_extension<'a>(cx: &'a mut Context) -> Option<SteelVal> {
         // Get the currently activated extension, also need to check the

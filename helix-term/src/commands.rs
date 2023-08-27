@@ -551,12 +551,6 @@ impl std::str::FromStr for MappableCommand {
                             args,
                             doc,
                         })
-                    } else if self::engine::ScriptingEngine::is_exported(name) {
-                        Some(MappableCommand::Typable {
-                            name: name.to_owned(),
-                            args,
-                            doc: "plugin function".to_string(),
-                        })
                     } else {
                         None
                     }

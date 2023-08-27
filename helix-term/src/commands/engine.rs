@@ -99,10 +99,6 @@ impl ScriptingEngine {
     ) -> Vec<(String, i64)> {
         PLUGIN_SYSTEM.0.fuzzy_match(fuzzy_matcher, input)
     }
-
-    pub fn is_exported(ident: &str) -> bool {
-        PLUGIN_SYSTEM.0.is_exported(ident)
-    }
 }
 
 impl PluginSystem for NoEngine {}
@@ -173,10 +169,5 @@ pub trait PluginSystem {
         _input: &'a str,
     ) -> Vec<(String, i64)> {
         Vec::new()
-    }
-
-    /// Checks if this identifier is available in the global environment in the engine.
-    fn is_exported(&self, _ident: &str) -> bool {
-        false
     }
 }
