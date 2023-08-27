@@ -505,11 +505,15 @@ impl EditorView {
             let pos = doc.selection(view.id).primary().cursor(text);
 
             if let Some(pos) =
-                match_brackets::find_matching_bracket(syntax, doc.text().slice(..), pos)
+                match_brackets::find_matching_bracket_fuzzy(syntax, doc.text().slice(..), pos)
             {
-                // ensure col is on screen
-                if let Some(highlight) = theme.find_scope_index_exact("ui.cursor.match") {
-                    return vec![(highlight, pos..pos + 1)];
+                if let Some(pos2) =
+                    match_brackets::find_matching_bracket(syntax, doc.text().slice(..), pos)
+                {
+                    // ensure col is on screen
+                    if let Some(highlight) = theme.find_scope_index_exact("ui.cursor.match") {
+                        return vec![(highlight, pos2..pos2 + 1), (highlight, pos..pos + 1)];
+                    }
                 }
             }
         }

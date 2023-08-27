@@ -15,9 +15,10 @@
 "ui.background" = { fg = "fg", bg = "bg" }
 
 "ui.cursor" = { bg = "dark_brown", fg = "bg" }
+"ui.cursor.match" = { bg = "#AFB996" }
 "ui.selection" = { bg = "brown", fg = "fg" }
 
-"diagnostic" = { bg = "bg", underline = { color = "purple", style = "doubleline" } }
+"diagnostic" = { bg = "bg", underline = { color = "purple", style = "double_line" } }
 
 "diagnostic.hint"    = { underline = { color = "fg", style = "double_line" } }
 "diagnostic.info"    = { underline = { color = "fg", style = "double_line" } }
@@ -27,7 +28,7 @@
 "hint" = { bg = "blue", fg = "fg", modifiers = ["bold"]}
 "info" = { bg = "blue", fg = "fg", modifiers = ["bold"]}
 "error" = { bg = "pink", fg = "fg", modifiers = ["bold"] }
-"warning" = { fg = "underline_darker_beige" }
+# "warning" = { fg = "underline_darker_beige" }
 
 "diff.plus" = { fg = "dark_brown" }
 "diff.delta" = { fg = "dark_brown" }
