@@ -30,6 +30,7 @@
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | dot | ✓ |  |  | `dot-language-server` |
 | dtd | ✓ |  |  |  |
+| editorconfig | ✓ |  |  |  |
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |

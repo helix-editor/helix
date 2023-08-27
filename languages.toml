@@ -2804,3 +2804,14 @@ roots = []
 [[grammar]]
 name = "gemini"
 source = { git = "https://git.sr.ht/~sfr/tree-sitter-gemini", rev = "3cc5e4bdf572d5df4277fc2e54d6299bd59a54b3" }
+
+[[language]]
+name = "editorconfig"
+scope = "source.editorconfig"
+file-types = [".editorconfig"]
+comment-token = "#"
+roots = []
+
+[[grammar]]
+name = "editorconfig"
+source = { git = "https://git.sr.ht/~sfr/tree-sitter-editorconfig", rev = "1f0d15cede8bbc0e2317fa83896ef3c600ffd82d" }
