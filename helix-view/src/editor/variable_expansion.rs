@@ -26,6 +26,11 @@ pub fn expand_variables<'a>(editor: &Editor, input: &'a str) -> anyhow::Result<C
                                 last_push_end = end + 1;
 
                                 let value = match &input[index + 2..end] {
+                                    "basename" => doc
+                                        .path()
+                                        .and_then(|it| it.file_name().and_then(|it| it.to_str()))
+                                        .unwrap_or(crate::document::SCRATCH_BUFFER_NAME)
+                                        .to_owned(),
                                     "filename" => doc
                                         .path()
                                         .and_then(|it| it.to_str())
@@ -43,10 +48,15 @@ pub fn expand_variables<'a>(editor: &Editor, input: &'a str) -> anyhow::Result<C
                                         .cursor_line(doc.text().slice(..))
                                         + 1)
                                     .to_string(),
+                                    "selection" => doc
+                                        .selection(view.id)
+                                        .primary()
+                                        .fragment(doc.text().slice(..))
+                                        .to_string(),
                                     _ => anyhow::bail!("Unknown variable"),
                                 };
 
-                                o.push_str(&value);
+                                o.push_str(&value.trim());
 
                                 break;
                             }
