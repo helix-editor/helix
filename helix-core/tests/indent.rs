@@ -186,7 +186,7 @@ fn test_treesitter_indent(
     lang_scope: &str,
     ignored_lines: Vec<std::ops::Range<usize>>,
 ) {
-    let loader = Loader::new(indent_tests_config());
+    let loader = Loader::new(indent_tests_config()).unwrap();
 
     // set runtime path so we can find the queries
     let mut runtime = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));

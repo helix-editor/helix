@@ -126,7 +126,7 @@ impl Application {
             })
             .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
-        let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
+        let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf)?);
 
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout(), &config.editor);
@@ -397,7 +397,7 @@ impl Application {
         let syntax_config = helix_core::config::user_syntax_loader()
             .map_err(|err| anyhow::anyhow!("Failed to load language config: {}", err))?;
 
-        self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
+        self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config)?);
         self.editor.syn_loader = self.syn_loader.clone();
         for document in self.editor.documents.values_mut() {
             document.detect_language(self.syn_loader.clone());

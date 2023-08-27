@@ -765,6 +765,47 @@ pub struct SoftWrap {
     pub wrap_at_text_width: Option<bool>,
 }
 
+#[derive(Debug)]
+struct FileTypeGlob {
+    glob: globset::Glob,
+    language_id: usize,
+}
+
+impl FileTypeGlob {
+    fn new(glob: globset::Glob, language_id: usize) -> Self {
+        Self { glob, language_id }
+    }
+}
+
+#[derive(Debug)]
+struct FileTypeGlobMatcher {
+    matcher: globset::GlobSet,
+    file_types: Vec<FileTypeGlob>,
+}
+
+impl FileTypeGlobMatcher {
+    fn new(file_types: Vec<FileTypeGlob>) -> Result<Self, globset::Error> {
+        let mut builder = globset::GlobSetBuilder::new();
+        for file_type in &file_types {
+            builder.add(file_type.glob.clone());
+        }
+
+        Ok(Self {
+            matcher: builder.build()?,
+            file_types,
+        })
+    }
+
+    fn language_id_for_path(&self, path: &Path) -> Option<&usize> {
+        self.matcher
+            .matches(path)
+            .iter()
+            .filter_map(|idx| self.file_types.get(*idx))
+            .max_by_key(|file_type| file_type.glob.glob().len())
+            .map(|file_type| &file_type.language_id)
+    }
+}
+
 // Expose loader as Lazy<> global since it's always static?
 
 #[derive(Debug)]
@@ -772,7 +813,7 @@ pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
     language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
-    language_config_ids_by_glob: HashMap<globset::Glob, usize>,
+    language_config_ids_glob_matcher: FileTypeGlobMatcher,
     language_config_ids_by_shebang: HashMap<String, usize>,
 
     language_server_configs: HashMap<String, LanguageServerConfiguration>,
@@ -781,56 +822,50 @@ pub struct Loader {
 }
 
 impl Loader {
-    pub fn new(config: Configuration) -> Self {
-        let mut loader = Self {
-            language_configs: Vec::new(),
-            language_server_configs: config.language_server,
-            language_config_ids_by_extension: HashMap::new(),
-            language_config_ids_by_glob: HashMap::new(),
-            language_config_ids_by_shebang: HashMap::new(),
-            scopes: ArcSwap::from_pointee(Vec::new()),
-        };
+    pub fn new(config: Configuration) -> Result<Self, globset::Error> {
+        let mut language_configs = Vec::new();
+        let mut language_config_ids_by_extension = HashMap::new();
+        let mut language_config_ids_by_shebang = HashMap::new();
+        let mut file_type_globs = Vec::new();
 
         for config in config.language {
             // get the next id
-            let language_id = loader.language_configs.len();
+            let language_id = language_configs.len();
 
             for file_type in &config.file_types {
                 // entry().or_insert(Vec::new).push(language_id);
                 match file_type {
-                    FileType::Extension(extension) => loader
-                        .language_config_ids_by_extension
-                        .insert(extension.clone(), language_id),
-                    FileType::Glob(glob) => loader
-                        .language_config_ids_by_glob
-                        .insert(glob.to_owned(), language_id),
+                    FileType::Extension(extension) => {
+                        language_config_ids_by_extension.insert(extension.clone(), language_id);
+                    }
+                    FileType::Glob(glob) => {
+                        file_type_globs.push(FileTypeGlob::new(glob.to_owned(), language_id));
+                    }
                 };
             }
             for shebang in &config.shebangs {
-                loader
-                    .language_config_ids_by_shebang
-                    .insert(shebang.clone(), language_id);
+                language_config_ids_by_shebang.insert(shebang.clone(), language_id);
             }
 
-            loader.language_configs.push(Arc::new(config));
+            language_configs.push(Arc::new(config));
         }
 
-        loader
+        Ok(Self {
+            language_configs,
+            language_config_ids_by_extension,
+            language_config_ids_glob_matcher: FileTypeGlobMatcher::new(file_type_globs)?,
+            language_config_ids_by_shebang,
+            language_server_configs: config.language_server,
+            scopes: ArcSwap::from_pointee(Vec::new()),
+        })
     }
 
     pub fn language_config_for_file_name(&self, path: &Path) -> Option<Arc<LanguageConfiguration>> {
         // Find all the language configurations that match this file name
         // or a suffix of the file name.
         let configuration_id = self
-            .language_config_ids_by_glob
-            .iter()
-            .find_map(|(glob, id)| {
-                if glob.compile_matcher().is_match(path) {
-                    Some(id)
-                } else {
-                    None
-                }
-            })
+            .language_config_ids_glob_matcher
+            .language_id_for_path(path)
             .or_else(|| {
                 path.extension()
                     .and_then(|extension| extension.to_str())
@@ -2600,7 +2635,8 @@ mod test {
         let loader = Loader::new(Configuration {
             language: vec![],
             language_server: HashMap::new(),
-        });
+        })
+        .unwrap();
         let language = get_language("rust").unwrap();
 
         let query = Query::new(language, query_str).unwrap();
@@ -2662,7 +2698,8 @@ mod test {
         let loader = Loader::new(Configuration {
             language: vec![],
             language_server: HashMap::new(),
-        });
+        })
+        .unwrap();
 
         let language = get_language("rust").unwrap();
         let config = HighlightConfiguration::new(
@@ -2768,7 +2805,8 @@ mod test {
         let loader = Loader::new(Configuration {
             language: vec![],
             language_server: HashMap::new(),
-        });
+        })
+        .unwrap();
         let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
