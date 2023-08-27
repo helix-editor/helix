@@ -1,10 +1,10 @@
 use helix_view::{document::Mode, input::KeyEvent};
 
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 use crate::{
     compositor,
-    keymap::KeymapResult,
+    keymap::{KeyTrie, KeymapResult},
     ui::{self, PromptEvent},
 };
 
@@ -12,9 +12,6 @@ use super::{shell_impl, Context, MappableCommand, TYPABLE_COMMAND_LIST};
 
 #[cfg(feature = "steel")]
 mod components;
-
-// TODO: Change this visibility to pub(crate) probably, and adjust the status line message to not refer to the one
-// in the scheme module directly. Probably create some kind of object here to refer to instead
 
 #[cfg(feature = "steel")]
 pub mod scheme;
@@ -30,6 +27,7 @@ static PLUGIN_SYSTEM: PluginEngine<scheme::SteelScriptingEngine> =
     PluginEngine(scheme::SteelScriptingEngine);
 
 #[cfg(not(feature = "steel"))]
+/// The default plugin system used ends up with no ops for all of the behavior.
 static PLUGIN_SYSTEM: PluginEngine<NoEngine> = PluginEngine(NoEngine);
 
 // enum PluginSystemTypes {
@@ -53,6 +51,10 @@ impl ScriptingEngine {
 
     pub fn run_initialization_script(cx: &mut Context) {
         PLUGIN_SYSTEM.0.run_initialization_script(cx);
+    }
+
+    pub fn get_keybindings() -> Option<HashMap<Mode, KeyTrie>> {
+        PLUGIN_SYSTEM.0.get_keybindings()
     }
 
     pub fn handle_keymap_event(
@@ -101,10 +103,6 @@ impl ScriptingEngine {
     pub fn is_exported(ident: &str) -> bool {
         PLUGIN_SYSTEM.0.is_exported(ident)
     }
-
-    pub fn engine_get_doc(ident: &str) -> Option<String> {
-        PLUGIN_SYSTEM.0.engine_get_doc(ident)
-    }
 }
 
 impl PluginSystem for NoEngine {}
@@ -112,10 +110,23 @@ impl PluginSystem for NoEngine {}
 /// These methods are the main entry point for interaction with the rest of
 /// the editor system.
 pub trait PluginSystem {
+    /// If any initialization needs to happen prior to the initialization script being run,
+    /// this is done here. This is run before the context is available.
     fn initialize(&self) {}
 
+    /// Post initialization, once the context is available. This means you should be able to
+    /// run anything here that could modify the context before the main editor is available.
     fn run_initialization_script(&self, _cx: &mut Context) {}
 
+    /// Fetch the keybindings so that these can be loaded in to the keybinding map. These are
+    /// keybindings that overwrite the default ones.
+    fn get_keybindings(&self) -> Option<HashMap<Mode, KeyTrie>> {
+        None
+    }
+
+    /// Allow the engine to directly handle a keymap event. This is some of the tightest integration
+    /// with the engine, directly intercepting any keymap events. By default, this just delegates to the
+    /// editors default keybindings.
     fn handle_keymap_event(
         &self,
         editor: &mut ui::EditorView,
@@ -126,6 +137,8 @@ pub trait PluginSystem {
         editor.keymaps.get(mode, event)
     }
 
+    /// This attempts to call a function in the engine with the name `name` using the args `args`. The context
+    /// is available here. Returns a bool indicating whether the function exists or not.
     fn call_function_if_global_exists(
         &self,
         _cx: &mut Context,
@@ -135,6 +148,9 @@ pub trait PluginSystem {
         false
     }
 
+    /// This is explicitly for calling a function via the typed command interface, e.g. `:vsplit`. The context here
+    /// that is available is more limited than the context available in `call_function_if_global_exists`. This also
+    /// gives the ability to handle in progress commands with `PromptEvent`.
     fn call_typed_command_if_global_exists<'a>(
         &self,
         _cx: &mut compositor::Context,
@@ -145,10 +161,12 @@ pub trait PluginSystem {
         false
     }
 
+    /// Given an identifier, extract the documentation from the engine.
     fn get_doc_for_identifier(&self, _ident: &str) -> Option<String> {
         None
     }
 
+    /// Fuzzy match the input against the fuzzy matcher, used for handling completions on typed commands
     fn fuzzy_match<'a>(
         &self,
         _fuzzy_matcher: &'a fuzzy_matcher::skim::SkimMatcherV2,
@@ -157,11 +175,8 @@ pub trait PluginSystem {
         Vec::new()
     }
 
+    /// Checks if this identifier is available in the global environment in the engine.
     fn is_exported(&self, _ident: &str) -> bool {
         false
-    }
-
-    fn engine_get_doc(&self, _ident: &str) -> Option<String> {
-        None
     }
 }

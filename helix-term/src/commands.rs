@@ -545,7 +545,7 @@ impl std::str::FromStr for MappableCommand {
                     args: args.clone(),
                 })
                 .or_else(|| {
-                    if let Some(doc) = self::engine::ScriptingEngine::engine_get_doc(name) {
+                    if let Some(doc) = self::engine::ScriptingEngine::get_doc_for_identifier(name) {
                         Some(MappableCommand::Typable {
                             name: name.to_owned(),
                             args,

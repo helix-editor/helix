@@ -187,6 +187,10 @@ impl super::PluginSystem for SteelScriptingEngine {
         run_initialization_script(cx);
     }
 
+    fn get_keybindings(&self) -> Option<HashMap<Mode, KeyTrie>> {
+        crate::commands::engine::scheme::SharedKeyBindingsEventQueue::get()
+    }
+
     fn handle_keymap_event(
         &self,
         editor: &mut ui::EditorView,
@@ -312,15 +316,15 @@ impl super::PluginSystem for SteelScriptingEngine {
     }
 
     fn get_doc_for_identifier(&self, ident: &str) -> Option<String> {
-        if ENGINE.with(|x| x.borrow().global_exists(ident)) {
-            if let Some(v) = ExportedIdentifiers::engine_get_doc(ident) {
-                return Some(v.into());
-            }
-
-            return Some("Run this plugin command!".into());
-        }
-
-        None
+        ExportedIdentifiers::engine_get_doc(ident)
+            .map(|v| v.into())
+            .or_else(|| {
+                if Self::is_exported(self, ident) {
+                    Some("Run this plugin command!".into())
+                } else {
+                    None
+                }
+            })
     }
 
     fn fuzzy_match<'a>(
@@ -348,15 +352,6 @@ impl super::PluginSystem for SteelScriptingEngine {
             .read()
             .unwrap()
             .contains(ident)
-    }
-
-    fn engine_get_doc(&self, ident: &str) -> Option<String> {
-        EXPORTED_IDENTIFIERS
-            .docs
-            .read()
-            .unwrap()
-            .get(ident)
-            .cloned()
     }
 }
 
