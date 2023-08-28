@@ -1,6 +1,6 @@
 # 23.08 (2023-08-31)
 
-Checkpoint: `e4c95f65a64a0553e1dafa365a40dcd5c328fa69`
+A big shout out to all the contributors! We had 107 contributors in this release.
 
 Breaking changes:
 
@@ -43,7 +43,7 @@ Usability improvements:
 - Improve performance of mapping positions through changes (#7408, 8d39a81, #7471)
 - Mark buffers created from stdin as modified (#7431)
 - Forcibly shut down uninitialized language servers (#7449)
-- Use redraw handle to debounce LSP notifications (#7538)
+- Use redraw handle to debounce LSP notifications (#7538, #8023)
 - Add filename completer for shell prompts (#7569)
 - Show visual feedback in `surround_replace` (#7588)
 - Allow binding F13-F24 (#7672)
@@ -54,6 +54,7 @@ Usability improvements:
 - Include gitignored files in debugger completions (#7936)
 - Make editor remember the last search register (#5244)
 - Open directories with `goto_file` (#7909)
+- Use relative path to open buffer in `goto_file` (`gf`) (#7965)
 
 Fixes:
 
@@ -81,6 +82,7 @@ Fixes:
 - Center the picker preview using visual lines (#7837)
 - Align view correctly for background buffers opened with `A-ret` (#7691)
 - Fix cursor resetting to block when quitting via a keybind (#7931)
+- Remove path completions for the `:new` command (#8010)
 
 Themes:
 
@@ -113,13 +115,14 @@ New languages:
 - t32 (#7140, #7811)
 - WebC (#7290)
 - Persistent DSL for Haskell (#7261)
-- F# (#7619)
+- F# (#7619, #8024)
 - Wren (#7765, #7819)
 - Unison (#7724)
 - Todo.txt (#7835)
 - Jinja and Handlebars (#7233)
 - Pod (#7907)
 - Strace (#7928)
+- Gemini (#8070)
 
 Updated languages and queries:
 
@@ -168,12 +171,14 @@ Updated languages and queries:
 - Update JavaScript, TypeScript and TSX grammars (#7852)
 - Update tree-sitter-nu (#7873)
 - Fix YAML indentation (#6768)
-- Add `csharp-ls`, Pyright, Pylyzer and add roots for Python (#7897)
+- Add `csharp-ls`, Pyright, Pylyzer and add roots for Python (#7897, #8032)
 - Update tree-sitter-slint (#7893)
 - Recognize more ZSH file-types as Bash (#7930)
 - Recognize `star` extension as Starlark (#7922)
 - Fix inline HTML tag highlighting in markdown (#7960)
 - Update tree-sitter-robot (#7970)
+- Highlight Dart 3 `sealed` and `base` keywords (#7974)
+- Add configuration for `ltex-ls` to the default `languages.toml` (#7838)
 
 Packaging:
 
