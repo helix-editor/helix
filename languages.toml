@@ -1541,10 +1541,11 @@ roots = ["gleam.toml"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "gleam" ]
+auto-format = true
 
 [[grammar]]
 name = "gleam"
-source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "ae79782c00656945db69641378e688cdb78d52c1" }
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "a59aadf3d7c11702cad244e7cd6b67b34ca9c16a" }
 
 [[language]]
 name = "ron"
