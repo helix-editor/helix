@@ -22,7 +22,8 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex, RegexBuilder},
     search::{self, CharMatcher},
-    selection, shellwords, surround,
+    selection::{self, SelectionRange},
+    shellwords, surround,
     syntax::LanguageServerFeature,
     text_annotations::TextAnnotations,
     textobject,
@@ -890,18 +891,28 @@ fn trim_selections(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
-    let ranges: SmallVec<[Range; 1]> = doc
+    let ranges: SmallVec<[SelectionRange; 1]> = doc
         .selection(view.id)
         .iter()
         .filter_map(|range| {
-            if range.is_empty() || range.slice(text).chars().all(|ch| ch.is_whitespace()) {
+            if range.range().is_empty()
+                || range
+                    .range()
+                    .slice(text)
+                    .chars()
+                    .all(|ch| ch.is_whitespace())
+            {
                 return None;
             }
-            let mut start = range.from();
-            let mut end = range.to();
+            let mut start = range.range().from();
+            let mut end = range.range().to();
             start = movement::skip_while(text, start, |x| x.is_whitespace()).unwrap_or(start);
             end = movement::backwards_skip_while(text, end, |x| x.is_whitespace()).unwrap_or(end);
-            Some(Range::new(start, end).with_direction(range.direction()))
+            Some(
+                range
+                    .clone()
+                    .with_range(Range::new(start, end).with_direction(range.range().direction())),
+            )
         })
         .collect();
 
@@ -909,7 +920,7 @@ fn trim_selections(cx: &mut Context) {
         let primary = doc.selection(view.id).primary();
         let idx = ranges
             .iter()
-            .position(|range| range.overlaps(&primary))
+            .position(|range| range.range().overlaps(&primary))
             .unwrap_or(ranges.len() - 1);
         doc.set_selection(view.id, Selection::new(ranges, idx));
     } else {
@@ -932,7 +943,7 @@ fn align_selections(cx: &mut Context) {
     let mut last_line = text.len_lines() + 1;
     let mut col = 0;
 
-    for range in selection {
+    for range in selection.clone().ranges() {
         let coords = visual_coords_at_pos(text, range.head, tab_width);
         let anchor_coords = visual_coords_at_pos(text, range.anchor, tab_width);
 
@@ -1163,7 +1174,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .map(|path| path.parent().unwrap().to_path_buf())
         .unwrap_or_default();
     let mut paths: Vec<_> = selections
-        .iter()
+        .ranges()
         .map(|r| text.slice(r.from()..r.to()).to_string())
         .collect();
     let primary = selections.primary();
@@ -1488,6 +1499,7 @@ fn replace(cx: &mut Context) {
 
         if let Some(ch) = ch {
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
+                let range = range.range();
                 if !range.is_empty() {
                     let text: String =
                         RopeGraphemes::new(doc.text().slice(range.from()..range.to()))
@@ -1521,6 +1533,7 @@ where
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
+        let range = range.range();
         let text: Tendril = change_fn(range.slice(doc.text().slice(..)));
 
         (range.from(), range.to(), Some(text))
@@ -1672,17 +1685,17 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
-    let mut ranges = SmallVec::with_capacity(selection.ranges().len() * (count + 1));
-    ranges.extend_from_slice(selection.ranges());
+    let mut ranges = SmallVec::with_capacity(selection.ranges().count() * (count + 1));
+    ranges.extend(selection.iter().cloned());
     let mut primary_index = 0;
     for range in selection.iter() {
-        let is_primary = *range == selection.primary();
+        let is_primary = range.range() == selection.primary();
 
         // The range is always head exclusive
-        let (head, anchor) = if range.anchor < range.head {
-            (range.head - 1, range.anchor)
+        let (head, anchor) = if range.range().anchor < range.range().head {
+            (range.range().head - 1, range.range().anchor)
         } else {
-            (range.head, range.anchor.saturating_sub(1))
+            (range.range().head, range.range().anchor.saturating_sub(1))
         };
 
         let tab_width = doc.tab_width();
@@ -1697,7 +1710,7 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
         if is_primary {
             primary_index = ranges.len();
         }
-        ranges.push(*range);
+        ranges.push(range.clone());
 
         let mut sels = 0;
         let mut i = 0;
@@ -1730,7 +1743,11 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
                     primary_index = ranges.len();
                 }
                 // This is Range::new(anchor, head), but it will place the cursor on the correct column
-                ranges.push(Range::point(anchor).put_cursor(text, head, true));
+                ranges.push(
+                    range
+                        .clone()
+                        .with_range(Range::point(anchor).put_cursor(text, head, true)),
+                );
                 sels += 1;
             }
 
@@ -2038,7 +2055,7 @@ fn search_selection(cx: &mut Context) {
 
     let regex = doc
         .selection(view.id)
-        .iter()
+        .ranges()
         .map(|selection| regex::escape(&selection.fragment(contents)))
         .collect::<HashSet<_>>() // Collect into hashset to deduplicate identical regexes
         .into_iter()
@@ -2438,7 +2455,7 @@ enum Operation {
 }
 
 fn selection_is_linewise(selection: &Selection, text: &Rope) -> bool {
-    selection.ranges().iter().all(|range| {
+    selection.ranges().all(|range| {
         let text = text.slice(..);
         if range.slice(text).len_lines() < 2 {
             return false;
@@ -2469,8 +2486,9 @@ fn delete_selection_impl(cx: &mut Context, op: Operation) {
     };
 
     // then delete
-    let transaction =
-        Transaction::delete_by_selection(doc.text(), selection, |range| (range.from(), range.to()));
+    let transaction = Transaction::delete_by_selection(doc.text(), selection, |range| {
+        (range.range().from(), range.range().to())
+    });
     doc.apply(&transaction, view.id);
 
     match op {
@@ -2501,19 +2519,19 @@ fn delete_by_selection_insert_mode(
     let text_len = text.len_chars();
     let mut transaction =
         Transaction::delete_by_selection(doc.text(), doc.selection(view.id), |range| {
-            let (start, end) = f(text, range);
+            let (start, end) = f(text, &range.range());
             if direction == Direction::Forward {
-                let mut range = *range;
-                if range.head > range.anchor {
+                let mut new_range = range.range();
+                if range.range().head > range.range().anchor {
                     insert_newline |= end == text_len;
                     // move the cursor to the right so that the selection
                     // doesn't shrink when deleting forward (so the text appears to
                     // move to  left)
                     // += 1 is enough here as the range is normalized to grapheme boundaries
                     // later anyway
-                    range.head += 1;
+                    new_range.head += 1;
                 }
-                selection.push(range);
+                selection.push(range.clone().with_range(new_range));
             }
             (start, end)
         });
@@ -2623,7 +2641,7 @@ fn append_mode(cx: &mut Context) {
     let end = text.len_chars();
     let last_range = doc
         .selection(view.id)
-        .iter()
+        .ranges()
         .last()
         .expect("selection should always have at least one range");
     if !last_range.is_empty() && last_range.to() == end {
@@ -2968,7 +2986,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
     let mut offs = 0;
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
-        let cursor_line = range.cursor_line(text);
+        let cursor_line = range.range().cursor_line(text);
         let cursor_line_start = text.line_to_char(cursor_line);
 
         if line_end_char_index(&text, cursor_line) == cursor_line_start {
@@ -2989,7 +3007,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             // calculate new selection ranges
             let pos = offs + cursor_line_start;
             let indent_width = indent.chars().count();
-            ranges.push(Range::point(pos + indent_width));
+            ranges.push(range.clone().with_range(Range::point(pos + indent_width)));
             offs += indent_width;
 
             (line_end_index, line_end_index, Some(indent.into()))
@@ -3004,7 +3022,11 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
                 IndentFallbackPos::LineEnd => line_end_char_index(&text, cursor_line),
             };
 
-            ranges.push(range.put_cursor(text, pos + offs, cx.editor.mode == Mode::Select));
+            ranges.push(range.clone().with_range(range.range().put_cursor(
+                text,
+                pos + offs,
+                cx.editor.mode == Mode::Select,
+            )));
 
             (cursor_line_start, cursor_line_start, None)
         }
@@ -3079,8 +3101,8 @@ fn open(cx: &mut Context, open: Open) {
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
         let cursor_line = text.char_to_line(match open {
-            Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
-            Open::Above => range.from(),
+            Open::Below => graphemes::prev_grapheme_boundary(text, range.range().to()),
+            Open::Above => range.range().from(),
         });
 
         let new_line = match open {
@@ -3126,7 +3148,11 @@ fn open(cx: &mut Context, open: Open) {
             // pos                    -> beginning of reference line,
             // + (i * (1+indent_len)) -> beginning of i'th line from pos
             // + indent_len ->        -> indent for i'th line
-            ranges.push(Range::point(pos + (i * (1 + indent_len)) + indent_len));
+            ranges.push(
+                range
+                    .clone()
+                    .with_range(Range::point(pos + (i * (1 + indent_len)) + indent_len)),
+            );
         }
 
         offs += text.chars().count();
@@ -3573,7 +3599,7 @@ pub mod insert {
             cx.editor.config().smart_tab,
             Some(SmartTabConfig { enable: true, .. })
         ) {
-            let cursors_after_whitespace = doc.selection(view_id).ranges().iter().all(|range| {
+            let cursors_after_whitespace = doc.selection(view_id).ranges().all(|range| {
                 let cursor = range.cursor(doc.text().slice(..));
                 let current_line_num = doc.text().char_to_line(cursor);
                 let current_line_start = doc.text().line_to_char(current_line_num);
@@ -3616,7 +3642,7 @@ pub mod insert {
         let mut global_offs = 0;
 
         let mut transaction = Transaction::change_by_selection(contents, &selection, |range| {
-            let pos = range.cursor(text);
+            let pos = range.range().cursor(text);
 
             let prev = if pos == 0 {
                 ' '
@@ -3683,21 +3709,21 @@ pub mod insert {
             let new_range = if doc.restore_cursor {
                 // when appending, extend the range by local_offs
                 Range::new(
-                    range.anchor + global_offs,
-                    range.head + local_offs + global_offs,
+                    range.range().anchor + global_offs,
+                    range.range().head + local_offs + global_offs,
                 )
             } else {
                 // when inserting, slide the range by local_offs
                 Range::new(
-                    range.anchor + local_offs + global_offs,
-                    range.head + local_offs + global_offs,
+                    range.range().anchor + local_offs + global_offs,
+                    range.range().head + local_offs + global_offs,
                 )
             };
 
             // TODO: range replace or extend
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
             // can be used with cx.mode to do replace or extend on most changes
-            ranges.push(new_range);
+            ranges.push(range.clone().with_range(new_range));
             global_offs += new_text.chars().count();
 
             (from, to, Some(new_text.into()))
@@ -3719,6 +3745,7 @@ pub mod insert {
 
         let transaction =
             Transaction::delete_by_selection(doc.text(), doc.selection(view.id), |range| {
+                let range = range.range();
                 let pos = range.cursor(text);
                 if pos == 0 {
                     return (pos, pos);
@@ -4033,18 +4060,18 @@ fn paste_impl(
     let mut transaction = Transaction::change_by_selection(text, selection, |range| {
         let pos = match (action, linewise) {
             // paste linewise before
-            (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
+            (Paste::Before, true) => text.line_to_char(text.char_to_line(range.range().from())),
             // paste linewise after
             (Paste::After, true) => {
-                let line = range.line_range(text.slice(..)).1;
+                let line = range.range().line_range(text.slice(..)).1;
                 text.line_to_char((line + 1).min(text.len_lines()))
             }
             // paste insert
-            (Paste::Before, false) => range.from(),
+            (Paste::Before, false) => range.range().from(),
             // paste append
-            (Paste::After, false) => range.to(),
+            (Paste::After, false) => range.range().to(),
             // paste at cursor
-            (Paste::Cursor, _) => range.cursor(text.slice(..)),
+            (Paste::Cursor, _) => range.range().cursor(text.slice(..)),
         };
 
         let value = values.next();
@@ -4055,8 +4082,9 @@ fn paste_impl(
             .unwrap_or_default();
         let anchor = offset + pos;
 
-        let new_range = Range::new(anchor, anchor + value_len).with_direction(range.direction());
-        ranges.push(new_range);
+        let new_range =
+            Range::new(anchor, anchor + value_len).with_direction(range.range().direction());
+        ranges.push(range.clone().with_range(new_range));
         offset += value_len;
 
         (pos, pos, value)
@@ -4120,6 +4148,7 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
         .chain(repeat);
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
+        let range = range.range();
         if !range.is_empty() {
             (range.from(), range.to(), Some(values.next().unwrap()))
         } else {
@@ -4168,7 +4197,7 @@ fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
     let mut lines = Vec::new();
 
     // Get all line numbers
-    for range in doc.selection(view_id) {
+    for range in doc.selection(view_id).ranges() {
         let (start, end) = range.line_range(doc.text().slice(..));
 
         for line in start..=end {
@@ -4275,7 +4304,7 @@ fn format_selections(cx: &mut Context) {
     let offset_encoding = language_server.offset_encoding();
     let ranges: Vec<lsp::Range> = doc
         .selection(view_id)
-        .iter()
+        .ranges()
         .map(|range| range_to_lsp_range(doc.text(), *range, offset_encoding))
         .collect();
 
@@ -4310,7 +4339,7 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
     let mut changes = Vec::new();
     let fragment = Tendril::from(" ");
 
-    for selection in doc.selection(view.id) {
+    for selection in doc.selection(view.id).ranges() {
         let (start, mut end) = selection.line_range(slice);
         if start == end {
             end = (end + 1).min(text.len_lines() - 1);
@@ -4348,7 +4377,11 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
             .scan(0, |offset, change| {
                 let range = Range::point(change.0 - *offset);
                 *offset += change.1 - change.0 - 1; // -1 because cursor is 0-sized
-                Some(range)
+
+                // TODO: this should probably be using with_range to track
+                // selection range metadata properly, but matching up the
+                // changes here with the selections they came from is hard
+                Some(range.into())
             })
             .collect();
         let selection = Selection::new(ranges, 0);
@@ -4638,7 +4671,6 @@ fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
         doc.text(),
         selection
             .ranges()
-            .iter()
             .zip(fragments)
             .map(|(range, fragment)| (range.from(), range.to(), Some(fragment))),
     );
@@ -5225,12 +5257,21 @@ fn surround_add(cx: &mut Context) {
         let mut offs = 0;
 
         for range in selection.iter() {
-            changes.push((range.from(), range.from(), Some(open.clone())));
-            changes.push((range.to(), range.to(), Some(close.clone())));
+            changes.push((
+                range.range().from(),
+                range.range().from(),
+                Some(open.clone()),
+            ));
+            changes.push((range.range().to(), range.range().to(), Some(close.clone())));
 
             ranges.push(
-                Range::new(offs + range.from(), offs + range.to() + surround_len)
-                    .with_direction(range.direction()),
+                range.clone().with_range(
+                    Range::new(
+                        offs + range.range().from(),
+                        offs + range.range().to() + surround_len,
+                    )
+                    .with_direction(range.range().direction()),
+                ),
             );
 
             offs += surround_len;
@@ -5264,7 +5305,11 @@ fn surround_replace(cx: &mut Context) {
         };
 
         let selection = selection.clone();
-        let ranges: SmallVec<[Range; 1]> = change_pos.iter().map(|&p| Range::point(p)).collect();
+        // TODO: this should probably be using with_range to track
+        // selection range metadata properly, but matching up the
+        // changes here with the selections they came from is hard
+        let ranges: SmallVec<[SelectionRange; 1]> =
+            change_pos.iter().map(|&p| Range::point(p).into()).collect();
         doc.set_selection(
             view.id,
             Selection::new(ranges, selection.primary_index() * 2),
@@ -5365,8 +5410,8 @@ fn shell_keep_pipe(cx: &mut Context) {
             let mut index: Option<usize> = None;
             let text = doc.text().slice(..);
 
-            for (i, range) in selection.ranges().iter().enumerate() {
-                let fragment = range.slice(text);
+            for (i, range) in selection.clone().iter().enumerate() {
+                let fragment = range.range().slice(text);
                 let (_output, success) = match shell_impl(shell, input, Some(fragment.into())) {
                     Ok(result) => result,
                     Err(err) => {
@@ -5377,7 +5422,7 @@ fn shell_keep_pipe(cx: &mut Context) {
 
                 // if the process exits successfully, keep the selection
                 if success {
-                    ranges.push(*range);
+                    ranges.push(range.clone());
                     if i >= old_index && index.is_none() {
                         index = Some(ranges.len() - 1);
                     }
@@ -5486,11 +5531,11 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
 
     let mut shell_output: Option<Tendril> = None;
     let mut offset = 0isize;
-    for range in selection.ranges() {
+    for range in selection.iter() {
         let (output, success) = if let Some(output) = shell_output.as_ref() {
             (output.clone(), true)
         } else {
-            let fragment = range.slice(text);
+            let fragment = range.range().slice(text);
             match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
                 Ok(result) => {
                     if !pipe {
@@ -5513,18 +5558,23 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
         let output_len = output.chars().count();
 
         let (from, to, deleted_len) = match behavior {
-            ShellBehavior::Replace => (range.from(), range.to(), range.len()),
-            ShellBehavior::Insert => (range.from(), range.from(), 0),
-            ShellBehavior::Append => (range.to(), range.to(), 0),
-            _ => (range.from(), range.from(), 0),
+            ShellBehavior::Replace => (
+                range.range().from(),
+                range.range().to(),
+                range.range().len(),
+            ),
+            ShellBehavior::Insert => (range.range().from(), range.range().from(), 0),
+            ShellBehavior::Append => (range.range().to(), range.range().to(), 0),
+            _ => (range.range().from(), range.range().from(), 0),
         };
 
         // These `usize`s cannot underflow because selection ranges cannot overlap.
         // Once the MSRV is 1.66.0 (mixed_integer_ops is stabilized), we can use checked
         // arithmetic to assert this.
         let anchor = (to as isize + offset - deleted_len as isize) as usize;
-        let new_range = Range::new(anchor, anchor + output_len).with_direction(range.direction());
-        ranges.push(new_range);
+        let new_range =
+            Range::new(anchor, anchor + output_len).with_direction(range.range().direction());
+        ranges.push(range.clone().with_range(new_range));
         offset = offset + output_len as isize - deleted_len as isize;
 
         changes.push((from, to, Some(output)));
@@ -5581,7 +5631,7 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
     let text = doc.text();
     let slice = text.slice(..);
 
-    let changes = selection.into_iter().map(|range| {
+    let changes = selection.ranges().map(|range| {
         let (start, end) = range.line_range(slice);
         let line = match open {
             Open::Above => start,
@@ -5634,8 +5684,8 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
     let mut changes = vec![];
 
     for range in selection {
-        let selected_text: Cow<str> = range.fragment(text);
-        let new_from = ((range.from() as i128) + cumulative_length_diff) as usize;
+        let selected_text: Cow<str> = range.range().fragment(text);
+        let new_from = ((range.range().from() as i128) + cumulative_length_diff) as usize;
         let incremented = [increment::integer, increment::date_time]
             .iter()
             .find_map(|incrementor| incrementor(selected_text.as_ref(), amount));
@@ -5646,15 +5696,19 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
             None => {
                 let new_range = Range::new(
                     new_from,
-                    (range.to() as i128 + cumulative_length_diff) as usize,
+                    (range.range().to() as i128 + cumulative_length_diff) as usize,
                 );
-                new_selection_ranges.push(new_range);
+                new_selection_ranges.push(range.clone().with_range(new_range));
             }
             Some(new_text) => {
                 let new_range = Range::new(new_from, new_from + new_text.len());
                 cumulative_length_diff += new_text.len() as i128 - selected_text.len() as i128;
-                new_selection_ranges.push(new_range);
-                changes.push((range.from(), range.to(), Some(new_text.into())));
+                new_selection_ranges.push(range.clone().with_range(new_range));
+                changes.push((
+                    range.range().from(),
+                    range.range().to(),
+                    Some(new_text.into()),
+                ));
             }
         }
     }

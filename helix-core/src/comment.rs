@@ -66,7 +66,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     let mut lines: Vec<usize> = Vec::with_capacity(selection.len());
 
     let mut min_next_line = 0;
-    for selection in selection {
+    for selection in selection.ranges() {
         let (start, end) = selection.line_range(text);
         let start = start.clamp(min_next_line, text.len_lines());
         let end = (end + 1).min(text.len_lines());

@@ -437,7 +437,7 @@ impl EditorView {
         .unwrap_or(base_primary_cursor_scope);
 
         let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
-        for (i, range) in selection.iter().enumerate() {
+        for (i, range) in selection.ranges().enumerate() {
             let selection_is_primary = i == primary_idx;
             let (cursor_scope, selection_scope) = if selection_is_primary {
                 (primary_cursor_scope, primary_selection_scope)
@@ -584,7 +584,7 @@ impl EditorView {
         let text = doc.text().slice(..);
         let cursors: Rc<[_]> = doc
             .selection(view.id)
-            .iter()
+            .ranges()
             .map(|range| range.cursor_line(text))
             .collect();
 
@@ -719,7 +719,7 @@ impl EditorView {
         #[allow(clippy::needless_collect)]
         let secondary_lines: Vec<_> = doc
             .selection(view.id)
-            .iter()
+            .ranges()
             .map(|range| range.cursor_line(text))
             .collect();
 
@@ -766,7 +766,7 @@ impl EditorView {
         let selection = doc.selection(view.id);
         let primary = selection.primary();
         let text_format = doc.text_format(viewport.width, None);
-        for range in selection.iter() {
+        for range in selection.ranges() {
             let is_primary = primary == *range;
             let cursor = range.cursor(text);
 

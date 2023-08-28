@@ -2055,7 +2055,7 @@ fn sort_impl(
     let transaction = Transaction::change(
         doc.text(),
         selection
-            .into_iter()
+            .ranges()
             .zip(fragments)
             .map(|(s, fragment)| (s.from(), s.to(), Some(fragment))),
     );
@@ -2095,6 +2095,7 @@ fn reflow(
 
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(rope, selection, |range| {
+        let range = range.range();
         let fragment = range.fragment(rope.slice(..));
         let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, text_width);
 

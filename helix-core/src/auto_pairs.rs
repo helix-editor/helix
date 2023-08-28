@@ -267,7 +267,7 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let mut offs = 0;
 
     let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
-        let cursor = start_range.cursor(doc.slice(..));
+        let cursor = start_range.range().cursor(doc.slice(..));
         let next_char = doc.get_char(cursor);
         let len_inserted;
 
@@ -275,7 +275,7 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
         // inserting exactly one or two chars. When arbitrary length pairs are
         // added, these will need to be changed.
         let change = match next_char {
-            Some(_) if !pair.should_close(doc, start_range) => {
+            Some(_) if !pair.should_close(doc, &start_range.range()) => {
                 len_inserted = 1;
                 let mut tendril = Tendril::new();
                 tendril.push(pair.open);
@@ -289,8 +289,8 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
             }
         };
 
-        let next_range = get_next_range(doc, start_range, offs, len_inserted);
-        end_ranges.push(next_range);
+        let next_range = get_next_range(doc, &start_range.range(), offs, len_inserted);
+        end_ranges.push(start_range.clone().with_range(next_range));
         offs += len_inserted;
 
         change
@@ -306,7 +306,7 @@ fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let mut offs = 0;
 
     let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
-        let cursor = start_range.cursor(doc.slice(..));
+        let cursor = start_range.range().cursor(doc.slice(..));
         let next_char = doc.get_char(cursor);
         let mut len_inserted = 0;
 
@@ -320,8 +320,8 @@ fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
             (cursor, cursor, Some(tendril))
         };
 
-        let next_range = get_next_range(doc, start_range, offs, len_inserted);
-        end_ranges.push(next_range);
+        let next_range = get_next_range(doc, &start_range.range(), offs, len_inserted);
+        end_ranges.push(start_range.clone().with_range(next_range));
         offs += len_inserted;
 
         change
@@ -339,7 +339,7 @@ fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let mut offs = 0;
 
     let transaction = Transaction::change_by_selection(doc, selection, |start_range| {
-        let cursor = start_range.cursor(doc.slice(..));
+        let cursor = start_range.range().cursor(doc.slice(..));
         let mut len_inserted = 0;
         let next_char = doc.get_char(cursor);
 
@@ -352,7 +352,7 @@ fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
 
             // for equal pairs, don't insert both open and close if either
             // side has a non-pair char
-            if pair.should_close(doc, start_range) {
+            if pair.should_close(doc, &start_range.range()) {
                 pair_str.push(pair.close);
             }
 
@@ -360,8 +360,8 @@ fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
             (cursor, cursor, Some(pair_str))
         };
 
-        let next_range = get_next_range(doc, start_range, offs, len_inserted);
-        end_ranges.push(next_range);
+        let next_range = get_next_range(doc, &start_range.range(), offs, len_inserted);
+        end_ranges.push(start_range.clone().with_range(next_range));
         offs += len_inserted;
 
         change
