@@ -8,6 +8,11 @@
 "operator"              = { fg = "fg_bg_average" }
 # "keyword" = { modifiers = ["dim"] }
 
+"function" = { bg = "purple" }
+"function.method" = { bg = "bg" }
+"function.builtin" = { bg = "bg" }
+"function.macro" = { bg = "bg" }
+"function.special" = { bg = "bg" }
 
 "function.declaration" = { bg = "blue" }
 # "enum.declaration" = { bg = "blue" }
@@ -17,6 +22,8 @@
 "ui.cursor" = { bg = "dark_brown", fg = "bg" }
 "ui.cursor.match" = { bg = "#AFB996" }
 "ui.selection" = { bg = "brown", fg = "fg" }
+
+"ui.linenr.selected" = { bg = "darker_beige" }
 
 "diagnostic" = { bg = "bg", underline = { color = "purple", style = "double_line" } }
 
@@ -45,6 +52,12 @@
 # TOML file keys
 # "type" = { bg = "purple" }
 
+"markup.heading.marker" = "fg_bg_average"
+"markup.heading.1" = { bg = "green" }
+"markup.heading.2" = { bg = "blue" }
+"markup.heading.3" = { bg = "purple" }
+"markup.heading.4" = { bg = "pink" }
+
 [palette]
 bg                = "#EEE2CB"
 fg                = "#111D34"
@@ -55,8 +68,8 @@ blue              = "#D2D4CA"
 darker_beige      = "#D8C9B0"
 brown             = "#BCA787"
 dark_brown        = "#4B361B"
-purple            = "#DDCEC9"
-pink              = "#DD9FAA"
+purple            = "#E3D5CA"
+pink              = "#E8C9BF"
 
 underline_red     = "#ec3824"
 underline_orange  = "#EC9023"
