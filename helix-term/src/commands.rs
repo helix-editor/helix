@@ -2127,7 +2127,9 @@ fn global_search(cx: &mut Context) {
                     .canonicalize()
                     .unwrap_or_else(|_| search_root.clone());
 
-                WalkBuilder::new(search_root)
+                let mut walk_builder = WalkBuilder::new(search_root);
+
+                walk_builder
                     .hidden(file_picker_config.hidden)
                     .parents(file_picker_config.parents)
                     .ignore(file_picker_config.ignore)
@@ -2138,66 +2140,66 @@ fn global_search(cx: &mut Context) {
                     .max_depth(file_picker_config.max_depth)
                     .filter_entry(move |entry| {
                         filter_picker_entry(entry, &absolute_root, dedup_symlinks)
-                    })
-                    .build_parallel()
-                    .run(|| {
-                        let mut searcher = searcher.clone();
-                        let matcher = matcher.clone();
-                        let all_matches_sx = all_matches_sx.clone();
-                        let documents = &documents;
-                        Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
-                            let entry = match entry {
-                                Ok(entry) => entry,
-                                Err(_) => return WalkState::Continue,
-                            };
-
-                            match entry.file_type() {
-                                Some(entry) if entry.is_file() => {}
-                                // skip everything else
-                                _ => return WalkState::Continue,
-                            };
-
-                            let sink = sinks::UTF8(|line_num, _| {
-                                all_matches_sx
-                                    .send(FileResult::new(entry.path(), line_num as usize - 1))
-                                    .unwrap();
-
-                                Ok(true)
-                            });
-                            let doc = documents.iter().find(|&(doc_path, _)| {
-                                doc_path.map_or(false, |doc_path| doc_path == entry.path())
-                            });
-
-                            let result = if let Some((_, doc)) = doc {
-                                // there is already a buffer for this file
-                                // search the buffer instead of the file because it's faster
-                                // and captures new edits without requireing a save
-                                if searcher.multi_line_with_matcher(&matcher) {
-                                    // in this case a continous buffer is required
-                                    // convert the rope to a string
-                                    let text = doc.to_string();
-                                    searcher.search_slice(&matcher, text.as_bytes(), sink)
-                                } else {
-                                    searcher.search_reader(
-                                        &matcher,
-                                        RopeReader::new(doc.slice(..)),
-                                        sink,
-                                    )
-                                }
-                            } else {
-                                searcher.search_path(&matcher, entry.path(), sink)
-                            };
-
-                            if let Err(err) = result {
-                                log::error!(
-                                    "Global search error: {}, {}",
-                                    entry.path().display(),
-                                    err
-                                );
-                            }
-                            WalkState::Continue
-                        })
                     });
+
+                if file_picker_config.hxignore {
+                    walk_builder.add_custom_ignore_filename(".hxignore");
+                }
+
+                walk_builder.build_parallel().run(|| {
+                    let mut searcher = searcher.clone();
+                    let matcher = matcher.clone();
+                    let all_matches_sx = all_matches_sx.clone();
+                    let documents = &documents;
+                    Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
+                        let entry = match entry {
+                            Ok(entry) => entry,
+                            Err(_) => return WalkState::Continue,
+                        };
+
+                        match entry.file_type() {
+                            Some(entry) if entry.is_file() => {}
+                            // skip everything else
+                            _ => return WalkState::Continue,
+                        };
+
+                        let sink = sinks::UTF8(|line_num, _| {
+                            all_matches_sx
+                                .send(FileResult::new(entry.path(), line_num as usize - 1))
+                                .unwrap();
+
+                            Ok(true)
+                        });
+                        let doc = documents.iter().find(|&(doc_path, _)| {
+                            doc_path.map_or(false, |doc_path| doc_path == entry.path())
+                        });
+
+                        let result = if let Some((_, doc)) = doc {
+                            // there is already a buffer for this file
+                            // search the buffer instead of the file because it's faster
+                            // and captures new edits without requireing a save
+                            if searcher.multi_line_with_matcher(&matcher) {
+                                // in this case a continous buffer is required
+                                // convert the rope to a string
+                                let text = doc.to_string();
+                                searcher.search_slice(&matcher, text.as_bytes(), sink)
+                            } else {
+                                searcher.search_reader(
+                                    &matcher,
+                                    RopeReader::new(doc.slice(..)),
+                                    sink,
+                                )
+                            }
+                        } else {
+                            searcher.search_path(&matcher, entry.path(), sink)
+                        };
+
+                        if let Err(err) = result {
+                            log::error!("Global search error: {}, {}", entry.path().display(), err);
+                        }
+                        WalkState::Continue
+                    })
+                });
             } else {
                 // Otherwise do nothing
                 // log::warn!("Global Search Invalid Pattern")

@@ -177,6 +177,9 @@ pub struct FilePickerConfig {
     pub deduplicate_links: bool,
     /// Enables reading ignore files from parent directories. Defaults to true.
     pub parents: bool,
+    /// Enables reading `.hxignore` files.
+    /// Whether to hide files listed in .hxignore in file picker and global search results. Defaults to true.
+    pub hxignore: bool,
     /// Enables reading `.ignore` files.
     /// Whether to hide files listed in .ignore in file picker and global search results. Defaults to true.
     pub ignore: bool,
@@ -201,6 +204,7 @@ impl Default for FilePickerConfig {
             follow_symlinks: true,
             deduplicate_links: true,
             parents: true,
+            hxignore: true,
             ignore: true,
             git_ignore: true,
             git_global: true,

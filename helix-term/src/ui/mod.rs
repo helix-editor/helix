@@ -177,6 +177,10 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
         .max_depth(config.file_picker.max_depth)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
 
+    if config.file_picker.hxignore {
+        walk_builder.add_custom_ignore_filename(".hxignore");
+    }
+
     // We want to exclude files that the editor can't handle yet
     let mut type_builder = TypesBuilder::new();
     type_builder
