@@ -386,9 +386,32 @@ impl From<(usize, usize)> for Range {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
+pub struct Captures {
+    groups: Vec<Option<String>>,
+}
+
+impl Captures {
+    pub fn from_regex(text: RopeSlice<'_>, cap: &regex::Captures<'_>, start_byte: usize) -> Self {
+        Self {
+            groups: cap
+                .iter()
+                .map(|mat| {
+                    mat.map(|mat| {
+                        let start = text.byte_to_char(start_byte + mat.start());
+                        let end = text.byte_to_char(start_byte + mat.end());
+                        Range::new(start, end).fragment(text).to_string()
+                    })
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct SelectionRange {
     inner: Range,
+    captures: Option<Captures>,
 }
 
 impl SelectionRange {
@@ -400,7 +423,21 @@ impl SelectionRange {
         self.inner = range;
         self
     }
+
+    pub fn capture(&self, group: usize) -> Option<String> {
+        self.captures
+            .as_ref()
+            .and_then(|captures| captures.groups.get(group).cloned())
+            .flatten()
+    }
+
+    pub fn with_captures(mut self, captures: Captures) -> Self {
+        self.captures = Some(captures);
+        self
+    }
 }
+
+impl Eq for SelectionRange {}
 
 impl PartialEq for SelectionRange {
     fn eq(&self, other: &Self) -> bool {
@@ -410,13 +447,19 @@ impl PartialEq for SelectionRange {
 
 impl From<Range> for SelectionRange {
     fn from(full: Range) -> Self {
-        Self { inner: full }
+        Self {
+            inner: full,
+            captures: None,
+        }
     }
 }
 
 impl From<&Range> for SelectionRange {
     fn from(full: &Range) -> Self {
-        Self { inner: *full }
+        Self {
+            inner: *full,
+            captures: None,
+        }
     }
 }
 
@@ -791,9 +834,10 @@ pub fn select_on_matches(
         let sel_start = sel.range().from();
         let start_byte = text.char_to_byte(sel_start);
 
-        for mat in regex.find_iter(&fragment) {
+        for cap in regex.captures_iter(&fragment) {
             // TODO: retain range direction
 
+            let mat = cap.get(0).unwrap();
             let start = text.byte_to_char(start_byte + mat.start());
             let end = text.byte_to_char(start_byte + mat.end());
 
@@ -801,7 +845,10 @@ pub fn select_on_matches(
             // Make sure the match is not right outside of the selection.
             // These invalid matches can come from using RegEx anchors like `^`, `$`
             if range != Range::point(sel.range().to()) {
-                result.push(sel.clone().with_range(range));
+                result.push(
+                    SelectionRange::from(range)
+                        .with_captures(Captures::from_regex(text, &cap, start_byte)),
+                );
             }
         }
     }
