@@ -16,6 +16,9 @@ Features:
 - Search buffer contents in `global_search` (#5652)
 - Add a "smart tab" command that intelligently jumps the cursor on tab (#4443)
 - Add a statusline element for whether a file is read-only (#7222, #7875)
+- Syntax highlight regex prompts (#7738)
+- Allow defining alignment in indent queries (#5355)
+- Show visual feedback in `surround_replace` (#7588)
 
 Commands:
 
@@ -35,7 +38,6 @@ Usability improvements:
 - Propagate the count and register to command palette commands (b394997)
 - Auto indent on `insert_at_line_start` (#5837)
 - Add a config option to control whether LSP completions are automatically inserted on preview (#7189)
-- Check for `git` before fetching or building grammars (#7320)
 - Add a config option for default line endings (#5621, #7357)
 - Allow ANSI colors in themes (#5119)
 - Match pairs that don't form a standalone tree-sitter node (#7242)
@@ -43,14 +45,10 @@ Usability improvements:
 - Improve performance of mapping positions through changes (#7408, 8d39a81, #7471)
 - Mark buffers created from stdin as modified (#7431)
 - Forcibly shut down uninitialized language servers (#7449)
-- Use redraw handle to debounce LSP notifications (#7538, #8023)
 - Add filename completer for shell prompts (#7569)
-- Show visual feedback in `surround_replace` (#7588)
 - Allow binding F13-F24 (#7672)
 - Resolve LSP code actions (#7677)
 - Save an undo checkpoint before accepting completions (#7747)
-- Syntax highlight regex prompts (#7738)
-- Allow defining alignment in indent queries (#5355)
 - Include gitignored files in debugger completions (#7936)
 - Make editor remember the last search register (#5244)
 - Open directories with `goto_file` (#7909)
@@ -73,6 +71,7 @@ Fixes:
 - Use negotiated position encoding for LSP workspace edits (#7469)
 - Fix error message for unknown gutter types in config (#7534)
 - Fix `:log-open` when `--log` CLI arg is specified (#7573, #7585)
+- Fix debouncing of LSP messages to fix the last message sticking around (#7538, #8023)
 - Fix crash when the current working directory is deleted (#7185)
 - Fix piping to Helix on macOS (#5468)
 - Fix crash when parsing overlapping injections (#7621)
@@ -183,6 +182,7 @@ Updated languages and queries:
 Packaging:
 
 - Add an overlay to the Nix flake (#7078)
+- Check for `git` before fetching or building grammars (#7320)
 - Refactor Nix flake to use Crane (#7763)
 - Remove the aarch64 appimage from the release CI (#7832)
 
