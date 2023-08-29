@@ -33,6 +33,7 @@ use helix_core::{
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
+    input::KeyEvent,
     theme::Style,
     view::ViewPosition,
     Document, DocumentId, Editor,
@@ -73,6 +74,12 @@ impl From<DocumentId> for PathOrId {
 }
 
 type FileCallback<T> = Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>;
+
+pub enum PickerAction<T: Item> {
+    UpdateOptions(Vec<T>),
+}
+
+type KeyEventCallback<T> = Box<dyn Fn(&mut Context, &T, &KeyEvent) -> Option<PickerAction<T>>>;
 
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation = (PathOrId, Option<(usize, usize)>);
@@ -132,7 +139,6 @@ pub struct Picker<T: Item> {
     show_preview: bool,
     /// Constraints for tabular formatting
     widths: Vec<Constraint>,
-
     callback_fn: PickerCallback<T>,
 
     pub truncate_start: bool,
@@ -141,6 +147,7 @@ pub struct Picker<T: Item> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Option<FileCallback<T>>,
+    key_event_callback: Option<KeyEventCallback<T>>,
 }
 
 impl<T: Item + 'static> Picker<T> {
@@ -172,6 +179,7 @@ impl<T: Item + 'static> Picker<T> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
+            key_event_callback: None,
         };
 
         picker.calculate_column_widths();
@@ -202,6 +210,14 @@ impl<T: Item + 'static> Picker<T> {
         preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
     ) -> Self {
         self.file_fn = Some(Box::new(preview_fn));
+        self
+    }
+
+    pub fn on_key_event(
+        mut self,
+        callback: impl Fn(&mut Context, &T, &KeyEvent) -> Option<PickerAction<T>> + 'static,
+    ) -> Self {
+        self.key_event_callback = Some(Box::new(callback));
         self
     }
 
@@ -852,7 +868,16 @@ impl<T: Item + 'static> Component for Picker<T> {
                 self.toggle_preview();
             }
             _ => {
-                self.prompt_handle_event(event, ctx);
+                match self.selection().and_then(|option| {
+                    self.key_event_callback
+                        .as_ref()
+                        .and_then(|cb| cb(ctx, option, &key_event))
+                }) {
+                    Some(PickerAction::UpdateOptions(options)) => self.set_options(options),
+                    None => {
+                        self.prompt_handle_event(event, ctx);
+                    }
+                };
             }
         }
 
