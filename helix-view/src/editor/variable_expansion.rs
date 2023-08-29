@@ -15,9 +15,9 @@ pub fn expand_variables<'a>(editor: &Editor, input: &'a str) -> anyhow::Result<C
         if char == '%' {
             if let Some((_, char)) = chars.next() {
                 if char == '{' {
-                    while let Some((end, char)) = chars.next() {
+                    for (end, char) in chars.by_ref() {
                         if char == '}' {
-                            if output == None {
+                            if output.is_none() {
                                 output = Some(String::with_capacity(input.len()))
                             }
 
@@ -56,7 +56,7 @@ pub fn expand_variables<'a>(editor: &Editor, input: &'a str) -> anyhow::Result<C
                                     _ => anyhow::bail!("Unknown variable"),
                                 };
 
-                                o.push_str(&value.trim());
+                                o.push_str(value.trim());
 
                                 break;
                             }
@@ -65,12 +65,12 @@ pub fn expand_variables<'a>(editor: &Editor, input: &'a str) -> anyhow::Result<C
                 } else if char == 's' {
                     if let (Some((_, 'h')), Some((_, '{'))) = (chars.next(), chars.next()) {
                         let mut right_bracket_remaining = 1;
-                        while let Some((end, char)) = chars.next() {
+                        for (end, char) in chars.by_ref() {
                             if char == '}' {
                                 right_bracket_remaining -= 1;
 
                                 if right_bracket_remaining == 0 {
-                                    if output == None {
+                                    if output.is_none() {
                                         output = Some(String::with_capacity(input.len()))
                                     }
 
@@ -112,7 +112,7 @@ pub fn expand_variables<'a>(editor: &Editor, input: &'a str) -> anyhow::Result<C
                                         o.push_str(&input[last_push_end..index]);
                                         last_push_end = end + 1;
 
-                                        o.push_str(&output?.trim());
+                                        o.push_str(output?.trim());
 
                                         break;
                                     }
