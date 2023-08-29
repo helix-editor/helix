@@ -177,6 +177,18 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
         .max_depth(config.file_picker.max_depth)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
 
+    // We want some dotfiles to remain visible
+    let mut defined_dots = vec![
+        ".github".to_string(),
+        ".gitattributes".to_string(),
+        ".gitignore".to_string(),
+    ];
+
+    defined_dots.extend(config.file_picker.include_hidden.to_owned());
+    defined_dots
+        .into_iter()
+        .fold(&mut walk_builder, |walk_builder, f| walk_builder.add(f));
+
     // We want to exclude files that the editor can't handle yet
     let mut type_builder = TypesBuilder::new();
     type_builder
@@ -184,12 +196,14 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
             "compressed",
             "*.{zip,gz,bz2,zst,lzo,sz,tgz,tbz2,lz,lz4,lzma,lzo,z,Z,xz,7z,rar,cab}",
         )
-        .expect("Invalid type definition");
+        .expect("Invalid type definition -- compressed");
+
     type_builder.negate("all");
-    let excluded_types = type_builder
+
+    let exclude_types = type_builder
         .build()
         .expect("failed to build excluded_types");
-    walk_builder.types(excluded_types);
+    walk_builder.types(exclude_types);
 
     // We want files along with their modification date for sorting
     let files = walk_builder.build().filter_map(|entry| {

@@ -192,6 +192,9 @@ pub struct FilePickerConfig {
     /// WalkBuilder options
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
+    /// Enables user to define a list of dotfiles to be included when hidden is set to true
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub include_hidden: Vec<String>,
 }
 
 impl Default for FilePickerConfig {
@@ -206,6 +209,7 @@ impl Default for FilePickerConfig {
             git_global: true,
             git_exclude: true,
             max_depth: None,
+            include_hidden: Vec::new(),
         }
     }
 }
