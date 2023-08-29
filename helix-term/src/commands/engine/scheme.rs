@@ -54,6 +54,14 @@ thread_local! {
     pub static ENGINE: std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> = configure_engine();
 }
 
+enum CoreModules {
+    Document(DocumentApi),
+    Editor(EditorApi),
+    Component(ComponentApi),
+    TypedCommands(TypedCommandsApi),
+    StaticCommands(StaticCommandsApi),
+}
+
 // APIs / Modules that need to be accepted by the plugin system
 // Without these, the core functionality cannot operate
 pub struct DocumentApi;
@@ -457,6 +465,32 @@ pub fn compositor_present_error(cx: &mut compositor::Context, e: SteelErr) {
     cx.jobs.callback(callback);
 }
 
+pub fn present_error_inside_engine_context(cx: &mut Context, engine: &mut Engine, e: SteelErr) {
+    cx.editor.set_error(format!("{}", e));
+
+    let backtrace = engine.raise_error_to_string(e);
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                if let Some(backtrace) = backtrace {
+                    let contents = ui::Markdown::new(
+                        format!("```\n{}\n```", backtrace),
+                        editor.syn_loader.clone(),
+                    );
+                    ui::Text::new(format!("```\n{}\n```", backtrace));
+                    let popup = Popup::new("engine", contents).position(Some(
+                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                    ));
+                    compositor.replace_or_push("engine", popup);
+                }
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+}
+
 pub fn present_error(cx: &mut Context, e: SteelErr) {
     cx.editor.set_error(format!("{}", e));
 
@@ -550,7 +584,7 @@ fn run_initialization_script(cx: &mut Context) {
 
         // Present the error in the helix.scm loading
         if let Err(e) = res {
-            present_error(cx, e);
+            present_error_inside_engine_context(cx, &mut guard, e);
             return;
         }
 
@@ -592,8 +626,9 @@ fn run_initialization_script(cx: &mut Context) {
                 *EXPORTED_IDENTIFIERS.identifiers.write().unwrap() = exported;
                 *EXPORTED_IDENTIFIERS.docs.write().unwrap() = docs;
             } else {
-                present_error(
+                present_error_inside_engine_context(
                     cx,
+                    &mut guard,
                     SteelErr::new(
                         ErrorKind::Generic,
                         "Unable to parse exported identifiers from helix module!".to_string(),
@@ -617,7 +652,7 @@ fn run_initialization_script(cx: &mut Context) {
 
             match res {
                 Ok(_) => {}
-                Err(e) => present_error(cx, e),
+                Err(e) => present_error_inside_engine_context(cx, &mut guard, e),
             }
 
             log::info!("Finished loading init.scm!")
@@ -851,6 +886,8 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     let mut engine = steel::steel_vm::engine::Engine::new();
 
     log::info!("Loading engine!");
+
+    engine.register_value("*context*", SteelVal::Void);
 
     engine.register_fn("hx.context?", |_: &mut Context| true);
 
