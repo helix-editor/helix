@@ -296,6 +296,8 @@ This layer is a kludge of mappings, mostly pickers.
 | `R`     | Replace selections by clipboard contents                                | `replace_selections_with_clipboard`        |
 | `/`     | Global search in workspace folder                                       | `global_search`                            |
 | `?`     | Open command palette                                                    | `command_palette`                          |
+| `e`     | Reveal current file in explorer                                         | `reveal_current_file`                      |
+
 
 > 💡 Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
 
@@ -452,3 +454,7 @@ Keys to use within prompt, Remapping currently not supported.
 | `Tab`                                       | Select next completion item                                             |
 | `BackTab`                                   | Select previous completion item                                         |
 | `Enter`                                     | Open selected                                                           |
+
+# File explorer
+
+Press `?` to see keymaps. Remapping currently not supported.

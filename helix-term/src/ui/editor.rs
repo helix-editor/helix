@@ -6,7 +6,7 @@ use crate::{
     keymap::{KeymapResult, Keymaps},
     ui::{
         document::{render_document, LinePos, TextRenderer, TranslatedPosition},
-        Completion, ProgressSpinners,
+        Completion, Explorer, ProgressSpinners,
     },
 };
 
@@ -23,7 +23,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, CursorShapeConfig, ExplorerPosition},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -43,6 +43,7 @@ pub struct EditorView {
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
+    pub(crate) explorer: Option<Explorer>,
 }
 
 #[derive(Debug, Clone)]
@@ -71,6 +72,7 @@ impl EditorView {
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
+            explorer: None,
         }
     }
 
@@ -1227,6 +1229,11 @@ impl Component for EditorView {
         event: &Event,
         context: &mut crate::compositor::Context,
     ) -> EventResult {
+        if let Some(explore) = self.explorer.as_mut() {
+            if let EventResult::Consumed(callback) = explore.handle_event(event, context) {
+                return EventResult::Consumed(callback);
+            }
+        }
         let mut cx = commands::Context {
             editor: context.editor,
             count: None,
@@ -1389,6 +1396,8 @@ impl Component for EditorView {
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
 
+        let editor_area = area.clip_bottom(1);
+
         // check if bufferline should be rendered
         use helix_view::editor::BufferLine;
         let use_bufferline = match config.bufferline {
@@ -1397,14 +1406,42 @@ impl Component for EditorView {
             _ => false,
         };
 
-        // -1 for commandline and -1 for bufferline
-        let mut editor_area = area.clip_bottom(1);
-        if use_bufferline {
-            editor_area = editor_area.clip_top(1);
-        }
+        let editor_area = if use_bufferline {
+            editor_area.clip_top(1)
+        } else {
+            editor_area
+        };
+
+        let editor_area = if let Some(explorer) = &self.explorer {
+            let explorer_column_width = if explorer.is_opened() {
+                explorer.column_width().saturating_add(2)
+            } else {
+                0
+            };
+            // For future developer:
+            // We should have a Dock trait that allows a component to dock to the top/left/bottom/right
+            // of another component.
+            match config.explorer.position {
+                ExplorerPosition::Left => editor_area.clip_left(explorer_column_width),
+                ExplorerPosition::Right => editor_area.clip_right(explorer_column_width),
+            }
+        } else {
+            editor_area
+        };
 
         // if the terminal size suddenly changed, we need to trigger a resize
         cx.editor.resize(editor_area);
+
+        if let Some(explorer) = self.explorer.as_mut() {
+            if !explorer.is_focus() {
+                let area = if use_bufferline {
+                    area.clip_top(1)
+                } else {
+                    area
+                };
+                explorer.render(area, surface, cx);
+            }
+        }
 
         if use_bufferline {
             Self::render_bufferline(cx.editor, area.with_height(1), surface);
@@ -1484,9 +1521,28 @@ impl Component for EditorView {
         if let Some(completion) = self.completion.as_mut() {
             completion.render(area, surface, cx);
         }
+
+        if let Some(explore) = self.explorer.as_mut() {
+            if explore.is_focus() {
+                let area = if use_bufferline {
+                    area.clip_top(1)
+                } else {
+                    area
+                };
+                explore.render(area, surface, cx);
+            }
+        }
     }
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        if let Some(explore) = &self.explorer {
+            if explore.is_focus() {
+                let cursor = explore.cursor(_area, editor);
+                if cursor.0.is_some() {
+                    return cursor;
+                }
+            }
+        }
         match editor.cursor() {
             // All block cursors are drawn manually
             (pos, CursorKind::Block) => (pos, CursorKind::Hidden),
