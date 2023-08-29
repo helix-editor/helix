@@ -2,7 +2,7 @@ use crate::compositor::{Component, Context};
 use helix_view::graphics::{Margin, Rect};
 use helix_view::info::Info;
 use tui::buffer::Buffer as Surface;
-use tui::widgets::{Block, Borders, Paragraph, Widget};
+use tui::widgets::{Block, BorderType, Borders, Paragraph, Widget};
 
 impl Component for Info {
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
@@ -22,10 +22,22 @@ impl Component for Info {
         ));
         surface.clear_with(area, popup_style);
 
-        let block = Block::default()
-            .title(self.title.as_str())
-            .borders(Borders::ALL)
-            .border_style(popup_style);
+        // try to extract a border style from the ui.popup.info scope
+        // or fallback tot he default style used by this widget.
+        let border_type = cx
+            .editor
+            .theme
+            .find_map("ui.popup.info", |s| s.border_type)
+            .unwrap_or(BorderType::Plain);
+
+        let mut block = Block::default().title(self.title.as_str());
+
+        if border_type != BorderType::None {
+            block = block
+                .borders(Borders::ALL)
+                .border_style(popup_style)
+                .border_type(border_type);
+        };
 
         let margin = Margin::horizontal(1);
         let inner = block.inner(area).inner(&margin);

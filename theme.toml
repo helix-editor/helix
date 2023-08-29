@@ -49,7 +49,7 @@ label = "honey"
 "ui.linenr.selected" = { fg = "lilac" }
 "ui.statusline" = { fg = "lilac", bg = "revolver" }
 "ui.statusline.inactive" = { fg = "lavender", bg = "revolver" }
-"ui.popup" = { bg = "revolver" }
+"ui.popup" = { bg = "revolver", border = "rounded" }
 "ui.window" = { fg = "bossanova" }
 "ui.help" = { bg = "#7958DC", fg = "#171452" }
 

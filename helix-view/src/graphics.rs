@@ -302,6 +302,31 @@ impl From<Color> for crossterm::style::Color {
     }
 }
 
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BorderType {
+    None,
+    #[default]
+    Plain,
+    Rounded,
+    Double,
+    Thick,
+}
+
+impl FromStr for BorderType {
+    type Err = &'static str;
+
+    fn from_str(style: &str) -> Result<Self, Self::Err> {
+        match style {
+            "none" => Ok(Self::None),
+            "plain" => Ok(Self::Plain),
+            "rounded" => Ok(Self::Rounded),
+            "double" => Ok(Self::Double),
+            "thick" => Ok(Self::Thick),
+            _ => Err("Invalid underline style"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnderlineStyle {
     Reset,
@@ -456,6 +481,7 @@ pub struct Style {
     pub underline_style: Option<UnderlineStyle>,
     pub add_modifier: Modifier,
     pub sub_modifier: Modifier,
+    pub border_type: Option<BorderType>,
 }
 
 impl Default for Style {
@@ -467,6 +493,7 @@ impl Default for Style {
             underline_style: None,
             add_modifier: Modifier::empty(),
             sub_modifier: Modifier::empty(),
+            border_type: None,
         }
     }
 }
@@ -481,6 +508,7 @@ impl Style {
             underline_style: None,
             add_modifier: Modifier::empty(),
             sub_modifier: Modifier::all(),
+            border_type: None,
         }
     }
 
@@ -584,6 +612,22 @@ impl Style {
         self
     }
 
+    /// Changes the border type.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// # use helix_view::graphics::{BorderType, Style};
+    /// let style = Style::default().border_type(BorderType::None);
+    /// let diff = Style::default().border_type(BorderType::Plain);
+    /// let patched = style.patch(diff);
+    /// assert_eq!(patched.border_type, BorderType::Plain);
+    /// ```
+    pub fn border_type(mut self, border_style: BorderType) -> Style {
+        self.border_type = Some(border_style);
+        self
+    }
+
     /// Results in a combined style that is equivalent to applying the two individual styles to
     /// a style one after the other.
     ///
@@ -602,6 +646,7 @@ impl Style {
         self.bg = other.bg.or(self.bg);
         self.underline_color = other.underline_color.or(self.underline_color);
         self.underline_style = other.underline_style.or(self.underline_style);
+        self.border_type = other.border_type.or(self.border_type);
 
         self.add_modifier.remove(other.sub_modifier);
         self.add_modifier.insert(other.add_modifier);
