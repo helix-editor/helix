@@ -53,8 +53,8 @@ Normal mode is the default mode when you launch helix. Return to it from other m
 | `End`                 | Move to the end of the line                        | `goto_line_end`             |
 | `Ctrl-b`, `PageUp`    | Move page up                                       | `page_up`                   |
 | `Ctrl-f`, `PageDown`  | Move page down                                     | `page_down`                 |
-| `Ctrl-u`              | Move half page up                                  | `half_page_up`              |
-| `Ctrl-d`              | Move half page down                                | `half_page_down`            |
+| `Ctrl-u`              | Move cursor and page half page up                  | `page_cursor_half_up`       |
+| `Ctrl-d`              | Move cursor and page half page down                | `page_cursor_half_down`     |
 | `Ctrl-i`              | Jump forward on the jumplist                       | `jump_forward`              |
 | `Ctrl-o`              | Jump backward on the jumplist                      | `jump_backward`             |
 | `Ctrl-s`              | Save the current selection to the jumplist         | `save_selection`            |
@@ -182,18 +182,18 @@ normal mode) is persistent and can be exited using the escape key. This is
 useful when you're simply looking over text and not actively editing it.
 
 
-| Key                  | Description                                               | Command             |
-| -----                | -----------                                               | -------             |
-| `z`, `c`             | Vertically center the line                                | `align_view_center` |
-| `t`                  | Align the line to the top of the screen                   | `align_view_top`    |
-| `b`                  | Align the line to the bottom of the screen                | `align_view_bottom` |
-| `m`                  | Align the line to the middle of the screen (horizontally) | `align_view_middle` |
-| `j`, `down`          | Scroll the view downwards                                 | `scroll_down`       |
-| `k`, `up`            | Scroll the view upwards                                   | `scroll_up`         |
-| `Ctrl-f`, `PageDown` | Move page down                                            | `page_down`         |
-| `Ctrl-b`, `PageUp`   | Move page up                                              | `page_up`           |
-| `Ctrl-d`             | Move half page down                                       | `half_page_down`    |
-| `Ctrl-u`             | Move half page up                                         | `half_page_up`      |
+| Key                  | Description                                               | Command                 |
+| -----                | -----------                                               | -------                 |
+| `z`, `c`             | Vertically center the line                                | `align_view_center`     |
+| `t`                  | Align the line to the top of the screen                   | `align_view_top`        |
+| `b`                  | Align the line to the bottom of the screen                | `align_view_bottom`     |
+| `m`                  | Align the line to the middle of the screen (horizontally) | `align_view_middle`     |
+| `j`, `down`          | Scroll the view downwards                                 | `scroll_down`           |
+| `k`, `up`            | Scroll the view upwards                                   | `scroll_up`             |
+| `Ctrl-f`, `PageDown` | Move page down                                            | `page_down`             |
+| `Ctrl-b`, `PageUp`   | Move page up                                              | `page_up`               |
+| `Ctrl-u`             | Move cursor and page half page up                         | `page_cursor_half_up`   |
+| `Ctrl-d`             | Move cursor and page half page down                       | `page_cursor_half_down` |
 
 #### Goto mode
 
