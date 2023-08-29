@@ -1539,7 +1539,7 @@ fn vsplit(
     }
 
     if args.is_empty() {
-        split_helper(&mut cx.editor, Action::VerticalSplit);
+        split_helper(cx.editor, Action::VerticalSplit);
     } else {
         for arg in args {
             cx.editor
@@ -1560,7 +1560,7 @@ fn hsplit(
     }
 
     if args.is_empty() {
-        split_helper(&mut cx.editor, Action::HorizontalSplit);
+        split_helper(cx.editor, Action::HorizontalSplit);
     } else {
         for arg in args {
             cx.editor

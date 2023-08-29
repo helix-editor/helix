@@ -4848,7 +4848,7 @@ fn split_helper(editor: &mut Editor, action: Action) {
 }
 
 fn hsplit(cx: &mut Context) {
-    split_helper(&mut cx.editor, Action::HorizontalSplit);
+    split_helper(cx.editor, Action::HorizontalSplit);
 }
 
 fn hsplit_new(cx: &mut Context) {
@@ -4856,7 +4856,7 @@ fn hsplit_new(cx: &mut Context) {
 }
 
 fn vsplit(cx: &mut Context) {
-    split_helper(&mut cx.editor, Action::VerticalSplit);
+    split_helper(cx.editor, Action::VerticalSplit);
 }
 
 fn vsplit_new(cx: &mut Context) {
