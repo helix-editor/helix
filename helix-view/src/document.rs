@@ -733,16 +733,16 @@ impl Document {
     // We can't use anyhow::Result here since the output of the future has to be
     // clonable to be used as shared future. So use a custom error type.
     pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
-        if let Some(formatter) = self
+        if let Some((fmt_cmd, fmt_args)) = self
             .language_config()
-            .and_then(|c| c.formatter.clone())
-            .filter(|formatter| which::which(&formatter.command).is_ok())
+            .and_then(|c| c.formatter.as_ref())
+            .and_then(|formatter| Some((which::which(&formatter.command).ok()?, &formatter.args)))
         {
             use std::process::Stdio;
             let text = self.text().clone();
-            let mut process = tokio::process::Command::new(&formatter.command);
+            let mut process = tokio::process::Command::new(&fmt_cmd);
             process
-                .args(&formatter.args)
+                .args(fmt_args)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
@@ -751,7 +751,7 @@ impl Document {
                 let mut process = process
                     .spawn()
                     .map_err(|e| FormatterError::SpawningFailed {
-                        command: formatter.command.clone(),
+                        command: fmt_cmd.to_string_lossy().into(),
                         error: e.kind(),
                     })?;
                 {
