@@ -17,6 +17,7 @@ term = ["crossterm"]
 bitflags = "2.4"
 anyhow = "1"
 helix-core = { version = "0.6", path = "../helix-core" }
+helix-event = { version = "0.6", path = "../helix-event" }
 helix-loader = { version = "0.6", path = "../helix-loader" }
 helix-lsp = { version = "0.6", path = "../helix-lsp" }
 helix-dap = { version = "0.6", path = "../helix-dap" }
