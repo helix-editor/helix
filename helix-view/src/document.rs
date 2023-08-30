@@ -33,7 +33,7 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
-use crate::editor::{Config, RedrawHandle};
+use crate::editor::Config;
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -995,7 +995,6 @@ impl Document {
         &mut self,
         view: &mut View,
         provider_registry: &DiffProviderRegistry,
-        redraw_handle: RedrawHandle,
     ) -> Result<(), Error> {
         let encoding = self.encoding;
         let path = self
@@ -1023,7 +1022,7 @@ impl Document {
         self.detect_indent_and_line_ending();
 
         match provider_registry.get_diff_base(&path) {
-            Some(diff_base) => self.set_diff_base(diff_base, redraw_handle),
+            Some(diff_base) => self.set_diff_base(diff_base),
             None => self.diff_handle = None,
         }
 
@@ -1583,13 +1582,13 @@ impl Document {
     }
 
     /// Intialize/updates the differ for this document with a new base.
-    pub fn set_diff_base(&mut self, diff_base: Vec<u8>, redraw_handle: RedrawHandle) {
+    pub fn set_diff_base(&mut self, diff_base: Vec<u8>) {
         if let Ok((diff_base, ..)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
             if let Some(differ) = &self.diff_handle {
                 differ.update_diff_base(diff_base);
                 return;
             }
-            self.diff_handle = Some(DiffHandle::new(diff_base, self.text.clone(), redraw_handle))
+            self.diff_handle = Some(DiffHandle::new(diff_base, self.text.clone()))
         } else {
             self.diff_handle = None;
         }
