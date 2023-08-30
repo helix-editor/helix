@@ -2172,7 +2172,7 @@ fn global_search(cx: &mut Context) {
                                 let result = if let Some((_, doc)) = doc {
                                     // there is already a buffer for this file
                                     // search the buffer instead of the file because it's faster
-                                    // and captures new edits without requireing a save
+                                    // and captures new edits without requiring a save
                                     if searcher.multi_line_with_matcher(&matcher) {
                                         // in this case a continous buffer is required
                                         // convert the rope to a string
