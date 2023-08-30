@@ -359,7 +359,7 @@ impl Default for ThemePalette {
     fn default() -> Self {
         Self {
             palette: hashmap! {
-                "reset".to_string() => Color::Reset,
+                "default".to_string() => Color::Reset,
                 "black".to_string() => Color::Black,
                 "red".to_string() => Color::Red,
                 "green".to_string() => Color::Green,
