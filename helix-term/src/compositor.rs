@@ -101,7 +101,7 @@ impl Compositor {
 
     /// Add a layer to be rendered in front of all existing layers.
     pub fn push(&mut self, mut layer: Box<dyn Component>) {
-        // immidietly clear last_picker field to avoid excessive memory
+        // immediately clear last_picker field to avoid excessive memory
         // consumption for picker with many items
         if layer.id() == Some(picker::ID) {
             self.last_picker = None;

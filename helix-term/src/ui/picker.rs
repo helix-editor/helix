@@ -816,7 +816,7 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
                 // stop streaming in new items in the background, really we should
                 // be restarting the stream somehow once the picker gets
                 // reopened instead (like for an FS crawl) that would also remove the
-                // need for the specical case above but that is pretty tricky
+                // need for the special case above but that is pretty tricky
                 picker.shutdown.store(true, atomic::Ordering::Relaxed);
                 Box::new(|compositor: &mut Compositor, _ctx| {
                     // remove the layer
