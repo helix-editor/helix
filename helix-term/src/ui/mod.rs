@@ -6,7 +6,7 @@ pub mod lsp;
 mod markdown;
 pub mod menu;
 pub mod overlay;
-mod picker;
+pub mod picker;
 pub mod popup;
 mod prompt;
 mod spinner;
