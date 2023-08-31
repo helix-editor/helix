@@ -200,6 +200,7 @@
     "async"
     "async*"
     "await"
+    "base"
     "class"
     "covariant"
     "deferred"
@@ -219,6 +220,7 @@
     "operator"
     "part"
     "required"
+    "sealed"
     "set"
     "show"
     "static"
@@ -230,7 +232,7 @@
 
 ; when used as an identifier:
 ((identifier) @variable.builtin
- (#match? @variable.builtin "^(abstract|as|covariant|deferred|dynamic|export|external|factory|Function|get|implements|import|interface|library|operator|mixin|part|set|static|typedef)$"))
+ (#match? @variable.builtin "^(abstract|as|base|covariant|deferred|dynamic|export|external|factory|Function|get|implements|import|interface|library|operator|mixin|part|sealed|set|static|typedef)$"))
 
 ; Error
 (ERROR) @error

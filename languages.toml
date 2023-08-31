@@ -38,6 +38,7 @@ jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "-
 julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
 kotlin-language-server = { command = "kotlin-language-server" }
 lean = { command = "lean", args = [ "--server" ] }
+ltex-ls = { command = "ltex-ls" }
 markdoc-ls = { command = "markdoc-ls", args = ["--stdio"] }
 marksman = { command = "marksman", args = ["server"] }
 metals = { command = "metals", config = { "isHttpEnabled" = true } }
@@ -1540,10 +1541,11 @@ roots = ["gleam.toml"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "gleam" ]
+auto-format = true
 
 [[grammar]]
 name = "gleam"
-source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "ae79782c00656945db69641378e688cdb78d52c1" }
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "a59aadf3d7c11702cad244e7cd6b67b34ca9c16a" }
 
 [[language]]
 name = "ron"
@@ -2350,7 +2352,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "matlab"
-source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "676117eafa64afedc8380a921a77cd9f2244bc6b" }
+source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "6071891a8c39600203eba20513666cf93b4d650a" }
 
 [[language]]
 name = "ponylang"
@@ -2792,4 +2794,14 @@ roots = []
 
 [[grammar]]
 name = "strace"
-source = { git = "https://github.com/sigmaSd/tree-sitter-strace", rev = "a0f6c50ae4087a9299f055d0f30fe94fd98189a4" }
+source = { git = "https://github.com/sigmaSd/tree-sitter-strace", rev = "2b18fdf9a01e7ec292cc6006724942c81beb7fd5" }
+
+[[language]]
+name = "gemini"
+scope = "source.gmi"
+file-types = ["gmi"]
+roots = []
+
+[[grammar]]
+name = "gemini"
+source = { git = "https://git.sr.ht/~sfr/tree-sitter-gemini", rev = "3cc5e4bdf572d5df4277fc2e54d6299bd59a54b3" }

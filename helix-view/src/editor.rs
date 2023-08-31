@@ -32,7 +32,7 @@ use std::{
 use tokio::{
     sync::{
         mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-        oneshot, Notify, RwLock,
+        oneshot,
     },
     time::{sleep, Duration, Instant, Sleep},
 };
@@ -925,10 +925,6 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
-    /// Allows asynchronous tasks to control the rendering
-    /// The `Notify` allows asynchronous tasks to request the editor to perform a redraw
-    /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be acquired
-    pub redraw_handle: RedrawHandle,
     pub needs_redraw: bool,
     /// Cached position of the cursor calculated during rendering.
     /// The content of `cursor_cache` is returned by `Editor::cursor` if
@@ -954,8 +950,6 @@ pub struct Editor {
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
-
-pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
 
 #[derive(Debug)]
 pub enum EditorEvent {
@@ -1062,7 +1056,6 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
-            redraw_handle: Default::default(),
             needs_redraw: false,
             cursor_cache: Cell::new(None),
             completion_request_handle: None,
@@ -1453,7 +1446,7 @@ impl Editor {
             )?;
 
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
-                doc.set_diff_base(diff_base, self.redraw_handle.clone());
+                doc.set_diff_base(diff_base);
             }
             doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
@@ -1752,7 +1745,7 @@ impl Editor {
                     return EditorEvent::DebuggerEvent(event)
                 }
 
-                _ = self.redraw_handle.0.notified() => {
+                _ = helix_event::redraw_requested() => {
                     if  !self.needs_redraw{
                         self.needs_redraw = true;
                         let timeout = Instant::now() + Duration::from_millis(33);

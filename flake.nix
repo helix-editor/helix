@@ -43,7 +43,6 @@
           ".ignore"
           ".github"
           ".gitignore"
-          "logo.svg"
           "logo_dark.svg"
           "logo_light.svg"
           "rust-toolchain.toml"
@@ -51,7 +50,6 @@
           "runtime"
           "screenshot.png"
           "book"
-          "contrib"
           "docs"
           "README.md"
           "CHANGELOG.md"
@@ -142,6 +140,12 @@
         helix-unwrapped = craneLib.buildPackage (commonArgs
           // {
             inherit cargoArtifacts;
+            postInstall = ''
+              mkdir -p $out/share/applications $out/share/icons/hicolor/scalable/apps $out/share/icons/hicolor/256x256/apps
+              cp contrib/Helix.desktop $out/share/applications
+              cp logo.svg $out/share/icons/hicolor/scalable/apps/helix.svg
+              cp contrib/helix.png $out/share/icons/hicolor/256x256/apps
+            '';
           });
         helix = makeOverridableHelix self.packages.${system}.helix-unwrapped {};
         default = self.packages.${system}.helix;
