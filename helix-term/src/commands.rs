@@ -1192,11 +1192,15 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     for sel in paths {
         let p = sel.trim();
         if !p.is_empty() {
-            let path = &rel_path.join(p);
+            let mut path = PathBuf::from(p);
+            if !path.exists() {
+                path = rel_path.join(p);
+            }
+
             if path.is_dir() {
-                let picker = ui::file_picker(path.into(), &cx.editor.config());
+                let picker = ui::file_picker(path, &cx.editor.config());
                 cx.push_layer(Box::new(overlaid(picker)));
-            } else if let Err(e) = cx.editor.open(path, action) {
+            } else if let Err(e) = cx.editor.open(&path, action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
         }
