@@ -1508,9 +1508,8 @@ fn lsp_info(
     let callback = async move {
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
-                let picker = ui::lsp_info::LspInfo::new(editor);
-                // compositor.push(Box::new(overlaid(picker)));
-                compositor.push(Box::new(picker));
+                let component = ui::lsp_info::LspInfo::new(editor);
+                compositor.push(Box::new(component));
             },
         ));
         Ok(call)
