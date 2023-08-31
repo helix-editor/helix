@@ -4831,7 +4831,7 @@ fn transpose_view(cx: &mut Context) {
 /// Open a new split in the given direction specified by the action.
 ///
 /// Maintain the current view (both the cursor's position and view in document).
-fn split_helper(editor: &mut Editor, action: Action) {
+fn split(editor: &mut Editor, action: Action) {
     let (view, doc) = current!(editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
@@ -4848,7 +4848,7 @@ fn split_helper(editor: &mut Editor, action: Action) {
 }
 
 fn hsplit(cx: &mut Context) {
-    split_helper(cx.editor, Action::HorizontalSplit);
+    split(cx.editor, Action::HorizontalSplit);
 }
 
 fn hsplit_new(cx: &mut Context) {
@@ -4856,7 +4856,7 @@ fn hsplit_new(cx: &mut Context) {
 }
 
 fn vsplit(cx: &mut Context) {
-    split_helper(cx.editor, Action::VerticalSplit);
+    split(cx.editor, Action::VerticalSplit);
 }
 
 fn vsplit_new(cx: &mut Context) {
