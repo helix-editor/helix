@@ -145,6 +145,7 @@ where
         helix_view::editor::StatusLineElement::FileModificationIndicator => {
             render_file_modification_indicator
         }
+        helix_view::editor::StatusLineElement::ReadOnlyIndicator => render_read_only_indicator,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
@@ -160,6 +161,7 @@ where
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
+        helix_view::editor::StatusLineElement::Register => render_register,
     }
 }
 
@@ -441,6 +443,19 @@ where
     write(context, title, None);
 }
 
+fn render_read_only_indicator<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = if context.doc.readonly {
+        " [readonly] "
+    } else {
+        ""
+    }
+    .to_string();
+    write(context, title, None);
+}
+
 fn render_file_base_name<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
@@ -488,4 +503,13 @@ where
         .to_string();
 
     write(context, head, None);
+}
+
+fn render_register<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    if let Some(reg) = context.editor.selected_register {
+        write(context, format!(" reg={} ", reg), None)
+    }
 }

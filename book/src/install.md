@@ -6,9 +6,10 @@
 - [Linux](#linux)
   - [Ubuntu](#ubuntu)
   - [Fedora/RHEL](#fedorarhel)
-  - [Arch Linux community](#arch-linux-community)
+  - [Arch Linux extra](#arch-linux-extra)
   - [NixOS](#nixos)
   - [Flatpak](#flatpak)
+  - [Snap](#snap)
   - [AppImage](#appimage)
 - [macOS](#macos)
   - [Homebrew Core](#homebrew-core)
@@ -70,9 +71,9 @@ sudo dnf copr enable varlad/helix
 sudo dnf install helix
 ```
 
-### Arch Linux community
+### Arch Linux extra
 
-Releases are available in the `community` repository:
+Releases are available in the `extra` repository:
 
 ```sh
 sudo pacman -S helix
@@ -103,6 +104,16 @@ Helix is available on [Flathub](https://flathub.org/en-GB/apps/com.helix_editor.
 flatpak install flathub com.helix_editor.Helix
 flatpak run com.helix_editor.Helix
 ```
+
+### Snap
+
+Helix is available on [Snapcraft](https://snapcraft.io/helix) and can be installed with:
+
+```sh
+snap install --classic helix
+```
+
+This will install Helix as both `/snap/bin/helix` and `/snap/bin/hx`, so make sure `/snap/bin` is in your `PATH`.
 
 ### AppImage
 
@@ -159,9 +170,13 @@ pacman -S mingw-w64-ucrt-x86_64-helix
 
 Requirements:
 
+Clone the Helix GitHub repository into a directory of your choice. The
+examples in this documentation assume installation into either `~/src/` on
+Linux and macOS, or `%userprofile%\src\` on Windows.
+
 - The [Rust toolchain](https://www.rust-lang.org/tools/install)
 - The [Git version control system](https://git-scm.com/)
-- A c++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang
+- A C++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang
 
 If you are using the `musl-libc` standard library instead of `glibc` the following environment variable must be set during the build to ensure tree-sitter grammars can be loaded correctly:
 
@@ -171,19 +186,19 @@ RUSTFLAGS="-C target-feature=-crt-static"
 
 1. Clone the repository:
 
-```sh
-git clone https://github.com/helix-editor/helix
-cd helix
-```
+   ```sh
+   git clone https://github.com/helix-editor/helix
+   cd helix
+   ```
 
 2. Compile from source:
 
-```sh
-cargo install --path helix-term --locked
-```
+   ```sh
+   cargo install --path helix-term --locked
+   ```
 
-This command will create the `hx` executable and construct the tree-sitter
-grammars in the local `runtime` folder.
+   This command will create the `hx` executable and construct the tree-sitter
+   grammars in the local `runtime` folder.
 
 > 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
 > grammars with `hx --grammar fetch` and compile them with
@@ -195,13 +210,15 @@ grammars in the local `runtime` folder.
 
 #### Linux and macOS
 
-Either set the `HELIX_RUNTIME` environment variable to point to the runtime files and add it to your `~/.bashrc` or equivalent:
+The **runtime** directory is one below the Helix source, so either set a
+`HELIX_RUNTIME` environment variable to point to that directory and add it to
+your `~/.bashrc` or equivalent:
 
 ```sh
-HELIX_RUNTIME=/home/user-name/src/helix/runtime
+HELIX_RUNTIME=~/src/helix/runtime
 ```
 
-Or, create a symlink in `~/.config/helix` that links to the source code directory:
+Or, create a symbolic link:
 
 ```sh
 ln -Ts $PWD/runtime ~/.config/helix/runtime

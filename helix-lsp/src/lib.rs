@@ -1,4 +1,5 @@
 mod client;
+pub mod file_event;
 pub mod jsonrpc;
 pub mod snippet;
 mod transport;
@@ -377,7 +378,7 @@ pub mod util {
         .expect("transaction must be valid for primary selection");
         let removed_text = text.slice(removed_start..removed_end);
 
-        let (transaction, selection) = Transaction::change_by_selection_ignore_overlapping(
+        let (transaction, mut selection) = Transaction::change_by_selection_ignore_overlapping(
             doc,
             selection,
             |range| {
@@ -420,6 +421,11 @@ pub mod util {
             return transaction;
         }
 
+        // Don't normalize to avoid merging/reording selections which would
+        // break the association between tabstops and selections. Most ranges
+        // will be replaced by tabstops anyways and the final selection will be
+        // normalized anyways
+        selection = selection.map_no_normalize(changes);
         let mut mapped_selection = SmallVec::with_capacity(selection.len());
         let mut mapped_primary_idx = 0;
         let primary_range = selection.primary();
@@ -428,9 +434,8 @@ pub mod util {
                 mapped_primary_idx = mapped_selection.len()
             }
 
-            let range = range.map(changes);
             let tabstops = tabstops.first().filter(|tabstops| !tabstops.is_empty());
-            let Some(tabstops) = tabstops else{
+            let Some(tabstops) = tabstops else {
                 // no tabstop normal mapping
                 mapped_selection.push(range);
                 continue;
@@ -543,6 +548,7 @@ pub enum MethodCall {
     WorkspaceFolders,
     WorkspaceConfiguration(lsp::ConfigurationParams),
     RegisterCapability(lsp::RegistrationParams),
+    UnregisterCapability(lsp::UnregistrationParams),
 }
 
 impl MethodCall {
@@ -565,6 +571,10 @@ impl MethodCall {
             lsp::request::RegisterCapability::METHOD => {
                 let params: lsp::RegistrationParams = params.parse()?;
                 Self::RegisterCapability(params)
+            }
+            lsp::request::UnregisterCapability::METHOD => {
+                let params: lsp::UnregistrationParams = params.parse()?;
+                Self::UnregisterCapability(params)
             }
             _ => {
                 return Err(Error::Unhandled);
@@ -625,6 +635,7 @@ pub struct Registry {
     syn_loader: Arc<helix_core::syntax::Loader>,
     counter: usize,
     pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
+    pub file_event_handler: file_event::Handler,
 }
 
 impl Registry {
@@ -634,6 +645,7 @@ impl Registry {
             syn_loader,
             counter: 0,
             incoming: SelectAll::new(),
+            file_event_handler: file_event::Handler::new(),
         }
     }
 
@@ -646,6 +658,7 @@ impl Registry {
     }
 
     pub fn remove_by_id(&mut self, id: usize) {
+        self.file_event_handler.remove_client(id);
         self.inner.retain(|_, language_servers| {
             language_servers.retain(|ls| id != ls.id());
             !language_servers.is_empty()
@@ -711,6 +724,7 @@ impl Registry {
                         .unwrap();
 
                     for old_client in old_clients {
+                        self.file_event_handler.remove_client(old_client.id());
                         tokio::spawn(async move {
                             let _ = old_client.force_shutdown().await;
                         });
@@ -727,6 +741,7 @@ impl Registry {
     pub fn stop(&mut self, name: &str) {
         if let Some(clients) = self.inner.remove(name) {
             for client in clients {
+                self.file_event_handler.remove_client(client.id());
                 tokio::spawn(async move {
                     let _ = client.force_shutdown().await;
                 });
@@ -927,7 +942,7 @@ pub fn find_lsp_workspace(
     let mut file = if file.is_absolute() {
         file.to_path_buf()
     } else {
-        let current_dir = std::env::current_dir().expect("unable to determine current directory");
+        let current_dir = helix_loader::current_working_dir();
         current_dir.join(file)
     };
     file = path::get_normalized_path(&file);

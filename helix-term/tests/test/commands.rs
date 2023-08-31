@@ -2,6 +2,7 @@ use helix_term::application::Application;
 
 use super::*;
 
+mod movement;
 mod write;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -421,6 +422,59 @@ async fn test_delete_char_forward() -> anyhow::Result<()> {
                 #(abc|)#
                 #(abc|)#
             "}),
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_insert_with_indent() -> anyhow::Result<()> {
+    const INPUT: &str = "\
+#[f|]#n foo() {
+    if let Some(_) = None {
+
+    }
+\x20
+}
+
+fn bar() {
+
+}";
+
+    // insert_at_line_start
+    test((
+        INPUT,
+        ":lang rust<ret>%<A-s>I",
+        "\
+#[f|]#n foo() {
+    #(i|)#f let Some(_) = None {
+        #(\n|)#\
+\x20   #(}|)#
+#(\x20|)#
+#(}|)#
+#(\n|)#\
+#(f|)#n bar() {
+    #(\n|)#\
+#(}|)#",
+    ))
+    .await?;
+
+    // insert_at_line_end
+    test((
+        INPUT,
+        ":lang rust<ret>%<A-s>A",
+        "\
+fn foo() {#[\n|]#\
+\x20   if let Some(_) = None {#(\n|)#\
+\x20       #(\n|)#\
+\x20   }#(\n|)#\
+\x20#(\n|)#\
+}#(\n|)#\
+#(\n|)#\
+fn bar() {#(\n|)#\
+\x20   #(\n|)#\
+}#(|)#",
     ))
     .await?;
 

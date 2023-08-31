@@ -1,6 +1,6 @@
-use crate::input::KeyEvent;
-use helix_core::{register::Registers, unicode::width::UnicodeWidthStr};
-use std::{collections::BTreeSet, fmt::Write};
+use crate::register::Registers;
+use helix_core::unicode::width::UnicodeWidthStr;
+use std::fmt::Write;
 
 #[derive(Debug)]
 /// Info box used in editor. Rendering logic will be in other crate.
@@ -55,30 +55,10 @@ impl Info {
         }
     }
 
-    pub fn from_keymap(title: &str, body: Vec<(&str, BTreeSet<KeyEvent>)>) -> Self {
-        let body: Vec<_> = body
-            .into_iter()
-            .map(|(desc, events)| {
-                let events = events.iter().map(ToString::to_string).collect::<Vec<_>>();
-                (events.join(", "), desc)
-            })
-            .collect();
-
-        Self::new(title, &body)
-    }
-
     pub fn from_registers(registers: &Registers) -> Self {
         let body: Vec<_> = registers
-            .inner()
-            .iter()
-            .map(|(ch, reg)| {
-                let content = reg
-                    .read()
-                    .get(0)
-                    .and_then(|s| s.lines().next())
-                    .unwrap_or_default();
-                (ch.to_string(), content)
-            })
+            .iter_preview()
+            .map(|(ch, preview)| (ch.to_string(), preview))
             .collect();
 
         let mut infobox = Self::new("Registers", &body);

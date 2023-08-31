@@ -85,23 +85,21 @@ pub fn get_normalized_path(path: &Path) -> PathBuf {
 ///
 /// This function is used instead of `std::fs::canonicalize` because we don't want to verify
 /// here if the path exists, just normalize it's components.
-pub fn get_canonicalized_path(path: &Path) -> std::io::Result<PathBuf> {
+pub fn get_canonicalized_path(path: &Path) -> PathBuf {
     let path = expand_tilde(path);
     let path = if path.is_relative() {
-        std::env::current_dir().map(|current_dir| current_dir.join(path))?
+        helix_loader::current_working_dir().join(path)
     } else {
         path
     };
 
-    Ok(get_normalized_path(path.as_path()))
+    get_normalized_path(path.as_path())
 }
 
 pub fn get_relative_path(path: &Path) -> PathBuf {
     let path = PathBuf::from(path);
     let path = if path.is_absolute() {
-        let cwdir = std::env::current_dir()
-            .map(|path| get_normalized_path(&path))
-            .expect("couldn't determine current directory");
+        let cwdir = get_normalized_path(&helix_loader::current_working_dir());
         get_normalized_path(&path)
             .strip_prefix(cwdir)
             .map(PathBuf::from)
@@ -142,7 +140,7 @@ pub fn get_relative_path(path: &Path) -> PathBuf {
 /// ```
 ///
 pub fn get_truncated_path<P: AsRef<Path>>(path: P) -> PathBuf {
-    let cwd = std::env::current_dir().unwrap_or_default();
+    let cwd = helix_loader::current_working_dir();
     let path = path
         .as_ref()
         .strip_prefix(cwd)
