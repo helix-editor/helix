@@ -75,6 +75,8 @@
 | `:config-reload` | Refresh user config. |
 | `:config-open` | Open the user config.toml file. |
 | `:config-open-workspace` | Open the workspace config.toml file. |
+| `:lang-config-open` | Open the user languages.toml file. |
+| `:lang-config-open-workspace` | Open the workspace languages.toml file. |
 | `:log-open` | Open the helix log file. |
 | `:insert-output` | Run shell command, inserting output before each selection. |
 | `:append-output` | Run shell command, appending output after each selection. |
