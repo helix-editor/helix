@@ -13,7 +13,7 @@ use helix_lsp::{
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
-    editor::{ConfigEvent, EditorEvent},
+    editor::{ConfigEvent, DiffSource, EditorEvent},
     graphics::Rect,
     theme,
     tree::Layout,
@@ -362,11 +362,15 @@ impl Application {
             // the Application can apply it.
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
+                let update_diff_base = app_config.editor.diff_source != editor_config.diff_source;
                 app_config.editor = *editor_config;
                 if let Err(err) = self.terminal.reconfigure(app_config.editor.clone().into()) {
                     self.editor.set_error(err.to_string());
                 };
                 self.config.store(Arc::new(app_config));
+                if update_diff_base {
+                    self.editor.update_diff_base();
+                }
             }
         }
 
@@ -566,6 +570,14 @@ impl Application {
             let id = doc.id();
             doc.detect_language(loader);
             self.editor.refresh_language_servers(id);
+        }
+
+        let diff_source = self.editor.config().diff_source;
+        let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
+        if diff_source == DiffSource::File {
+            if let Some(path) = doc.path().cloned() {
+                doc.update_diff_base(&path, &self.editor.diff_provider, diff_source);
+            }
         }
 
         // TODO: fix being overwritten by lsp

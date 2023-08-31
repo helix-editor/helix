@@ -1283,10 +1283,12 @@ fn reload(
     }
 
     let scrolloff = cx.editor.config().scrolloff;
+    let diff_source = cx.editor.config().diff_source;
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_provider).map(|_| {
-        view.ensure_cursor_in_view(doc, scrolloff);
-    })?;
+    doc.reload(view, &cx.editor.diff_provider, diff_source)
+        .map(|_| {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        })?;
     if let Some(path) = doc.path() {
         cx.editor
             .language_servers
@@ -1324,6 +1326,7 @@ fn reload_all(
         .collect();
 
     for (doc_id, view_ids) in docs_view_ids {
+        let diff_source = cx.editor.config().diff_source;
         let doc = doc_mut!(cx.editor, &doc_id);
 
         // Every doc is guaranteed to have at least 1 view at this point.
@@ -1332,7 +1335,7 @@ fn reload_all(
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
-        doc.reload(view, &cx.editor.diff_provider)?;
+        doc.reload(view, &cx.editor.diff_provider, diff_source)?;
         if let Some(path) = doc.path() {
             cx.editor
                 .language_servers

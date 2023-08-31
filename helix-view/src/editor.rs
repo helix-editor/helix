@@ -73,6 +73,14 @@ where
     )
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DiffSource {
+    #[default]
+    Git,
+    File,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct GutterConfig {
@@ -291,6 +299,9 @@ pub struct Config {
     pub insert_final_newline: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
+    #[serde(default)]
+    /// What the diff gutter should diff against
+    pub diff_source: DiffSource,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -841,6 +852,7 @@ impl Default for Config {
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
+            diff_source: DiffSource::default(),
         }
     }
 }
@@ -1452,22 +1464,7 @@ impl Editor {
                 self.config.clone(),
             )?;
 
-            match self.diff_provider.get_diff_base(&path) {
-                Ok(diff_base) => doc.set_diff_base(diff_base),
-                Err(err) => {
-                    log::info!("{err:#?}");
-                    log::info!("failed to open diff base for for {}", path.display());
-                }
-            }
-
-            doc.set_version_control_head(match self.diff_provider.get_current_head_name(&path) {
-                Ok(res) => Some(res),
-                Err(err) => {
-                    log::info!("{err:#?}");
-                    log::info!("failed to obtain current head name for {}", path.display());
-                    None
-                }
-            });
+            doc.update_diff_base(&path, &self.diff_provider, self.config().diff_source);
 
             let id = self.new_document(doc);
             self.launch_language_servers(id);
@@ -1838,6 +1835,15 @@ impl Editor {
         self.debugger
             .as_ref()
             .and_then(|debugger| debugger.current_stack_frame())
+    }
+
+    pub fn update_diff_base(&mut self) {
+        let diff_source = self.config().diff_source;
+        for doc in self.documents.values_mut() {
+            if let Some(path) = doc.path().cloned() {
+                doc.update_diff_base(&path, &self.diff_provider, diff_source);
+            }
+        }
     }
 }
 
