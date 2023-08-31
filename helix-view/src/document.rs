@@ -8,7 +8,7 @@ use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
-use helix_vcs::{DiffHandle, DiffProviderRegistry};
+use helix_vcs::{DiffHandle, Git};
 
 use ::parking_lot::Mutex;
 use serde::de::{self, Deserialize, Deserializer};
@@ -991,11 +991,7 @@ impl Document {
     }
 
     /// Reload the document from its path.
-    pub fn reload(
-        &mut self,
-        view: &mut View,
-        provider_registry: &DiffProviderRegistry,
-    ) -> Result<(), Error> {
+    pub fn reload(&mut self, view: &mut View, diff_provider: &Git) -> Result<(), Error> {
         let encoding = self.encoding;
         let path = self
             .path()
@@ -1021,12 +1017,23 @@ impl Document {
 
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path) {
-            Some(diff_base) => self.set_diff_base(diff_base),
-            None => self.diff_handle = None,
+        match diff_provider.get_diff_base(&path) {
+            Ok(diff_base) => self.set_diff_base(diff_base),
+            Err(err) => {
+                log::info!("{err:#?}");
+                log::info!("failed to open diff base for for {}", path.display());
+                self.diff_handle = None;
+            }
         }
 
-        self.version_control_head = provider_registry.get_current_head_name(&path);
+        self.version_control_head = match diff_provider.get_current_head_name(&path) {
+            Ok(res) => Some(res),
+            Err(err) => {
+                log::info!("{err:#?}");
+                log::info!("failed to obtain current head name for {}", path.display());
+                None
+            }
+        };
 
         Ok(())
     }

@@ -11,11 +11,11 @@ use crate::{
     Align, Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
-use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::Call;
+use helix_vcs::Git;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -889,7 +889,7 @@ pub struct Editor {
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
-    pub diff_providers: DiffProviderRegistry,
+    pub diff_provider: Git,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -1035,7 +1035,7 @@ impl Editor {
             theme: theme_loader.default(),
             language_servers,
             diagnostics: BTreeMap::new(),
-            diff_providers: DiffProviderRegistry::default(),
+            diff_provider: Git,
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
@@ -1452,10 +1452,22 @@ impl Editor {
                 self.config.clone(),
             )?;
 
-            if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
-                doc.set_diff_base(diff_base);
+            match self.diff_provider.get_diff_base(&path) {
+                Ok(diff_base) => doc.set_diff_base(diff_base),
+                Err(err) => {
+                    log::info!("{err:#?}");
+                    log::info!("failed to open diff base for for {}", path.display());
+                }
             }
-            doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
+
+            doc.set_version_control_head(match self.diff_provider.get_current_head_name(&path) {
+                Ok(res) => Some(res),
+                Err(err) => {
+                    log::info!("{err:#?}");
+                    log::info!("failed to obtain current head name for {}", path.display());
+                    None
+                }
+            });
 
             let id = self.new_document(doc);
             self.launch_language_servers(id);

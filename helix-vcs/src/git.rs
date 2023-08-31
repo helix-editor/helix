@@ -7,8 +7,6 @@ use gix::objs::tree::EntryMode;
 use gix::sec::trust::DefaultForLevel;
 use gix::{Commit, ObjectId, Repository, ThreadSafeRepository};
 
-use crate::DiffProvider;
-
 #[cfg(test)]
 mod test;
 
@@ -59,10 +57,8 @@ impl Git {
 
         Ok(res)
     }
-}
 
-impl DiffProvider for Git {
-    fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
+    pub fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
         debug_assert!(!file.exists() || file.is_file());
         debug_assert!(file.is_absolute());
 
@@ -101,7 +97,7 @@ impl DiffProvider for Git {
         Ok(data)
     }
 
-    fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
+    pub fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
         debug_assert!(!file.exists() || file.is_file());
         debug_assert!(file.is_absolute());
         let repo_dir = file.parent().context("file has no parent directory")?;

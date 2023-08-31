@@ -1284,7 +1284,7 @@ fn reload(
 
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_providers).map(|_| {
+    doc.reload(view, &cx.editor.diff_provider).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
     })?;
     if let Some(path) = doc.path() {
@@ -1332,7 +1332,7 @@ fn reload_all(
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
-        doc.reload(view, &cx.editor.diff_providers)?;
+        doc.reload(view, &cx.editor.diff_provider)?;
         if let Some(path) = doc.path() {
             cx.editor
                 .language_servers
