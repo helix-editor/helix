@@ -62,30 +62,27 @@ impl LspInfo {
     fn get_info(editor: &Editor) -> String {
         let server_states = LspInfo::get_server_states(editor);
 
-        format!(
-            "Server status:\n\
-                    {}\n\
-                    \n\
-                    Press q or Esc to close",
-            server_states
-                .iter()
-                .map(|state| {
-                    let prefix = match state.status {
-                        Ok(_) => "✓",
-                        Err(_) => "✘",
-                    };
+        let status = server_states
+            .iter()
+            .map(|state| {
+                let prefix = match state.status {
+                    Ok(_) => "✓",
+                    Err(_) => "✘",
+                };
 
-                    let error = if let Err(e) = &state.status {
-                        "\n      ".to_string() + e.0.as_str()
-                    } else {
-                        "".to_string()
-                    };
+                let error = if let Err(e) = &state.status {
+                    "\n      ".to_string() + e.0.as_str()
+                } else {
+                    "".to_string()
+                };
 
-                    format!("  {} {}{}", prefix, state.name, error)
-                })
-                .reduce(|acc, i| acc + "\n" + i.as_str())
-                .unwrap_or_default()
-        )
+                format!("  {} {}{}", prefix, state.name, error)
+            })
+            .reduce(|acc, i| acc + "\n" + i.as_str())
+            .map(|s| "Server status:\n".to_string() + s.as_str())
+            .unwrap_or_else(|| "No configured server".to_string());
+
+        format!("{}\n\nPress q or Esc to close", status)
     }
 
     fn get_error_message(_name: &str, config: Option<&LanguageServerConfiguration>) -> String {
