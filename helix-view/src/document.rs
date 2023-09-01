@@ -1618,6 +1618,9 @@ impl Document {
                     self.set_diff_base(self.text.clone());
                 }
             }
+            DiffSource::None => {
+                self.diff_handle = None;
+            }
         }
 
         self.version_control_head = match diff_provider.get_current_head_name(path) {

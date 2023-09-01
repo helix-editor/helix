@@ -79,6 +79,7 @@ pub enum DiffSource {
     #[default]
     Git,
     File,
+    None,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
