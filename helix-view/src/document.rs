@@ -131,7 +131,6 @@ pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     selections: HashMap<ViewId, Selection>,
-    readonly: bool,
 
     /// Inlay hints annotations for the document, by view.
     ///
@@ -187,6 +186,7 @@ pub struct Document {
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
 
+    force_readonly: bool,
     pub readonly: bool,
 }
 
@@ -642,7 +642,7 @@ impl Document {
         text: Rope,
         encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
-        readonly: bool,
+        force_readonly: bool,
     ) -> Self {
         let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
         let line_ending = config.load().default_line_ending.into();
@@ -655,7 +655,6 @@ impl Document {
             encoding,
             has_bom,
             text,
-            readonly,
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
@@ -678,7 +677,8 @@ impl Document {
             config,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
-            readonly: false,
+            readonly: force_readonly,
+            force_readonly,
         }
     }
 
@@ -696,7 +696,7 @@ impl Document {
         encoding: Option<&'static Encoding>,
         config_loader: Option<Arc<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
-        readonly: bool,
+        force_readonly: bool,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding, has_bom) = if path.exists() {
@@ -709,7 +709,7 @@ impl Document {
             (Rope::from(line_ending.as_str()), encoding, false)
         };
 
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config, readonly);
+        let mut doc = Self::from(rope, Some((encoding, has_bom)), config, force_readonly);
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
@@ -968,34 +968,34 @@ impl Document {
 
     #[cfg(unix)]
     // Detect if the file is readonly and change the readonly field if necessary (unix only)
-    pub fn detect_readonly(&mut self) {
+    fn detect_readonly(&self) -> bool {
         use rustix::fs::{access, Access};
         // Allows setting the flag for files the user cannot modify, like root files
-        self.readonly = match &self.path {
+        match &self.path {
             None => false,
             Some(p) => match access(p, Access::WRITE_OK) {
                 Ok(_) => false,
                 Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
                 Err(_) => true,
             },
-        };
+        }
     }
 
     #[cfg(not(unix))]
     // Detect if the file is readonly and change the readonly field if necessary (non-unix os)
-    pub fn detect_readonly(&mut self) {
+    fn detect_readonly(&self) -> bool {
         // TODO Use the Windows' function `CreateFileW` to check if a file is readonly
         // Discussion: https://github.com/helix-editor/helix/pull/7740#issuecomment-1656806459
         // Vim implementation: https://github.com/vim/vim/blob/4c0089d696b8d1d5dc40568f25ea5738fa5bbffb/src/os_win32.c#L7665
         // Windows binding: https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/Storage/FileSystem/fn.CreateFileW.html
-        self.readonly = match &self.path {
+        match &self.path {
             None => false,
             Some(p) => match std::fs::metadata(p) {
                 Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
                 Err(_) => false,
                 Ok(metadata) => metadata.permissions().readonly(),
             },
-        };
+        }
     }
 
     /// Reload the document from its path.
@@ -1012,7 +1012,7 @@ impl Document {
             .to_owned();
 
         // Once we have a valid path we check if its readonly status has changed
-        self.detect_readonly();
+        self.readonly = self.force_readonly || self.detect_readonly();
 
         let mut file = std::fs::File::open(&path)?;
         let (rope, ..) = from_reader(&mut file, Some(encoding))?;
@@ -1061,7 +1061,7 @@ impl Document {
         // and error out when document is saved
         self.path = path;
 
-        self.detect_readonly();
+        self.readonly = self.force_readonly || self.detect_readonly();
     }
 
     /// Set the programming language for the file and load associated data (e.g. highlighting)
