@@ -88,6 +88,7 @@
   "keyof"
   "namespace"
   "override"
+  "satisfies"
 ] @keyword
 
 [

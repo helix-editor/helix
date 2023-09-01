@@ -1,3 +1,4 @@
+use ropey::RopeSlice;
 use smallvec::SmallVec;
 
 use crate::{Range, Rope, Selection, Tendril};
@@ -42,7 +43,7 @@ impl ChangeSet {
     }
 
     #[must_use]
-    pub fn new(doc: &Rope) -> Self {
+    pub fn new(doc: RopeSlice) -> Self {
         let len = doc.len_chars();
         Self {
             changes: Vec::new(),
@@ -388,7 +389,10 @@ impl ChangeSet {
             }
 
             let Some((i, change)) = iter.next() else {
-                map!(|pos, _| (old_pos == pos).then_some(new_pos), self.changes.len());
+                map!(
+                    |pos, _| (old_pos == pos).then_some(new_pos),
+                    self.changes.len()
+                );
                 break;
             };
 
@@ -485,7 +489,7 @@ impl Transaction {
     /// Create a new, empty transaction.
     pub fn new(doc: &Rope) -> Self {
         Self {
-            changes: ChangeSet::new(doc),
+            changes: ChangeSet::new(doc.slice(..)),
             selection: None,
         }
     }
@@ -946,9 +950,9 @@ mod test {
     #[test]
     fn combine_with_empty() {
         let empty = Rope::from("");
-        let a = ChangeSet::new(&empty);
+        let a = ChangeSet::new(empty.slice(..));
 
-        let mut b = ChangeSet::new(&empty);
+        let mut b = ChangeSet::new(empty.slice(..));
         b.insert("a".into());
 
         let changes = a.compose(b);
@@ -962,9 +966,9 @@ mod test {
         const TEST_CASE: &str = "Hello, これはヘリックスエディターです！";
 
         let empty = Rope::from("");
-        let a = ChangeSet::new(&empty);
+        let a = ChangeSet::new(empty.slice(..));
 
-        let mut b = ChangeSet::new(&empty);
+        let mut b = ChangeSet::new(empty.slice(..));
         b.insert(TEST_CASE.into());
 
         let changes = a.compose(b);

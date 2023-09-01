@@ -1,4 +1,4 @@
-(TopLevelDecl (FnProto)
+(Decl (FnProto)
   (_) @function.inside) @function.around
 
 (TestDecl (_) @test.inside) @test.around
@@ -6,10 +6,10 @@
 ; matches all of: struct, enum, union
 ; this unfortunately cannot be split up because
 ; of the way struct "container" types are defined
-(TopLevelDecl (VarDecl (ErrorUnionExpr (SuffixExpr (ContainerDecl
+(Decl (VarDecl (ErrorUnionExpr (SuffixExpr (ContainerDecl
     (_) @class.inside))))) @class.around
 
-(TopLevelDecl (VarDecl (ErrorUnionExpr (SuffixExpr (ErrorSetDecl
+(Decl (VarDecl (ErrorUnionExpr (SuffixExpr (ErrorSetDecl
     (_) @class.inside))))) @class.around
 
 (ParamDeclList

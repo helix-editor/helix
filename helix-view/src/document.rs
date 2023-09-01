@@ -33,7 +33,7 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
-use crate::editor::{Config, RedrawHandle};
+use crate::editor::Config;
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -186,6 +186,8 @@ pub struct Document {
 
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
+
+    pub readonly: bool,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -644,7 +646,7 @@ impl Document {
     ) -> Self {
         let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
         let line_ending = config.load().default_line_ending.into();
-        let changes = ChangeSet::new(&text);
+        let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
 
         Self {
@@ -676,6 +678,7 @@ impl Document {
             config,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
+            readonly: false,
         }
     }
 
@@ -709,7 +712,7 @@ impl Document {
         let mut doc = Self::from(rope, Some((encoding, has_bom)), config, readonly);
 
         // set the path and try detecting the language
-        doc.set_path(Some(path))?;
+        doc.set_path(Some(path));
         if let Some(loader) = config_loader {
             doc.detect_language(loader);
         }
@@ -734,16 +737,16 @@ impl Document {
     // We can't use anyhow::Result here since the output of the future has to be
     // clonable to be used as shared future. So use a custom error type.
     pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
-        if let Some(formatter) = self
+        if let Some((fmt_cmd, fmt_args)) = self
             .language_config()
-            .and_then(|c| c.formatter.clone())
-            .filter(|formatter| which::which(&formatter.command).is_ok())
+            .and_then(|c| c.formatter.as_ref())
+            .and_then(|formatter| Some((which::which(&formatter.command).ok()?, &formatter.args)))
         {
             use std::process::Stdio;
             let text = self.text().clone();
-            let mut process = tokio::process::Command::new(&formatter.command);
+            let mut process = tokio::process::Command::new(&fmt_cmd);
             process
-                .args(&formatter.args)
+                .args(fmt_args)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
@@ -752,7 +755,7 @@ impl Document {
                 let mut process = process
                     .spawn()
                     .map_err(|e| FormatterError::SpawningFailed {
-                        command: formatter.command.clone(),
+                        command: fmt_cmd.to_string_lossy().into(),
                         error: e.kind(),
                     })?;
                 {
@@ -858,7 +861,7 @@ impl Document {
         let text = self.text().clone();
 
         let path = match path {
-            Some(path) => helix_core::path::get_canonicalized_path(&path)?,
+            Some(path) => helix_core::path::get_canonicalized_path(&path),
             None => {
                 if self.path.is_none() {
                     bail!("Can't save with no path set!");
@@ -946,7 +949,7 @@ impl Document {
     ) -> Option<Arc<helix_core::syntax::LanguageConfiguration>> {
         config_loader
             .language_config_for_file_name(self.path.as_ref()?)
-            .or_else(|| config_loader.language_config_for_shebang(self.text()))
+            .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
@@ -963,12 +966,43 @@ impl Document {
         }
     }
 
+    #[cfg(unix)]
+    // Detect if the file is readonly and change the readonly field if necessary (unix only)
+    pub fn detect_readonly(&mut self) {
+        use rustix::fs::{access, Access};
+        // Allows setting the flag for files the user cannot modify, like root files
+        self.readonly = match &self.path {
+            None => false,
+            Some(p) => match access(p, Access::WRITE_OK) {
+                Ok(_) => false,
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
+                Err(_) => true,
+            },
+        };
+    }
+
+    #[cfg(not(unix))]
+    // Detect if the file is readonly and change the readonly field if necessary (non-unix os)
+    pub fn detect_readonly(&mut self) {
+        // TODO Use the Windows' function `CreateFileW` to check if a file is readonly
+        // Discussion: https://github.com/helix-editor/helix/pull/7740#issuecomment-1656806459
+        // Vim implementation: https://github.com/vim/vim/blob/4c0089d696b8d1d5dc40568f25ea5738fa5bbffb/src/os_win32.c#L7665
+        // Windows binding: https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/Storage/FileSystem/fn.CreateFileW.html
+        self.readonly = match &self.path {
+            None => false,
+            Some(p) => match std::fs::metadata(p) {
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
+                Err(_) => false,
+                Ok(metadata) => metadata.permissions().readonly(),
+            },
+        };
+    }
+
     /// Reload the document from its path.
     pub fn reload(
         &mut self,
         view: &mut View,
         provider_registry: &DiffProviderRegistry,
-        redraw_handle: RedrawHandle,
     ) -> Result<(), Error> {
         let encoding = self.encoding;
         let path = self
@@ -976,6 +1010,9 @@ impl Document {
             .filter(|path| path.exists())
             .ok_or_else(|| anyhow!("can't find file to reload from {:?}", self.display_name()))?
             .to_owned();
+
+        // Once we have a valid path we check if its readonly status has changed
+        self.detect_readonly();
 
         let mut file = std::fs::File::open(&path)?;
         let (rope, ..) = from_reader(&mut file, Some(encoding))?;
@@ -993,7 +1030,7 @@ impl Document {
         self.detect_indent_and_line_ending();
 
         match provider_registry.get_diff_base(&path) {
-            Some(diff_base) => self.set_diff_base(diff_base, redraw_handle),
+            Some(diff_base) => self.set_diff_base(diff_base),
             None => self.diff_handle = None,
         }
 
@@ -1017,16 +1054,14 @@ impl Document {
         self.encoding
     }
 
-    pub fn set_path(&mut self, path: Option<&Path>) -> Result<(), std::io::Error> {
-        let path = path
-            .map(helix_core::path::get_canonicalized_path)
-            .transpose()?;
+    pub fn set_path(&mut self, path: Option<&Path>) {
+        let path = path.map(helix_core::path::get_canonicalized_path);
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
         self.path = path;
 
-        Ok(())
+        self.detect_readonly();
     }
 
     /// Set the programming language for the file and load associated data (e.g. highlighting)
@@ -1038,7 +1073,7 @@ impl Document {
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
             if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
-                self.syntax = Syntax::new(&self.text, highlight_config, loader);
+                self.syntax = Syntax::new(self.text.slice(..), highlight_config, loader);
             }
 
             self.language = Some(language_config);
@@ -1173,7 +1208,11 @@ impl Document {
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
                 // TODO: no unwrap
-                let res = syntax.update(&old_doc, &self.text, transaction.changes());
+                let res = syntax.update(
+                    old_doc.slice(..),
+                    self.text.slice(..),
+                    transaction.changes(),
+                );
                 if res.is_err() {
                     log::error!("TS parser failed, disabeling TS for the current buffer: {res:?}");
                     self.syntax = None;
@@ -1296,7 +1335,7 @@ impl Document {
 
         if success {
             // reset changeset to fix len
-            self.changes = ChangeSet::new(self.text());
+            self.changes = ChangeSet::new(self.text().slice(..));
             // Sync with changes with the jumplist selections.
             view.sync_changes(self);
         }
@@ -1379,7 +1418,7 @@ impl Document {
         }
         if success {
             // reset changeset to fix len
-            self.changes = ChangeSet::new(self.text());
+            self.changes = ChangeSet::new(self.text().slice(..));
             // Sync with changes with the jumplist selections.
             view.sync_changes(self);
         }
@@ -1402,7 +1441,7 @@ impl Document {
             return;
         }
 
-        let new_changeset = ChangeSet::new(self.text());
+        let new_changeset = ChangeSet::new(self.text().slice(..));
         let changes = std::mem::replace(&mut self.changes, new_changeset);
         // Instead of doing this messy merge we could always commit, and based on transaction
         // annotations either add a new layer or compose into the previous one.
@@ -1551,13 +1590,13 @@ impl Document {
     }
 
     /// Intialize/updates the differ for this document with a new base.
-    pub fn set_diff_base(&mut self, diff_base: Vec<u8>, redraw_handle: RedrawHandle) {
+    pub fn set_diff_base(&mut self, diff_base: Vec<u8>) {
         if let Ok((diff_base, ..)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
             if let Some(differ) = &self.diff_handle {
                 differ.update_diff_base(diff_base);
                 return;
             }
-            self.diff_handle = Some(DiffHandle::new(diff_base, self.text.clone(), redraw_handle))
+            self.diff_handle = Some(DiffHandle::new(diff_base, self.text.clone()))
         } else {
             self.diff_handle = None;
         }

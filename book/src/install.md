@@ -9,6 +9,7 @@
   - [Arch Linux extra](#arch-linux-extra)
   - [NixOS](#nixos)
   - [Flatpak](#flatpak)
+  - [Snap](#snap)
   - [AppImage](#appimage)
 - [macOS](#macos)
   - [Homebrew Core](#homebrew-core)
@@ -103,6 +104,16 @@ Helix is available on [Flathub](https://flathub.org/en-GB/apps/com.helix_editor.
 flatpak install flathub com.helix_editor.Helix
 flatpak run com.helix_editor.Helix
 ```
+
+### Snap
+
+Helix is available on [Snapcraft](https://snapcraft.io/helix) and can be installed with:
+
+```sh
+snap install --classic helix
+```
+
+This will install Helix as both `/snap/bin/helix` and `/snap/bin/hx`, so make sure `/snap/bin` is in your `PATH`.
 
 ### AppImage
 

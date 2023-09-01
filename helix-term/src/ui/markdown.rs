@@ -10,14 +10,14 @@ use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag};
 
 use helix_core::{
     syntax::{self, HighlightEvent, InjectionLanguageMarker, Syntax},
-    Rope,
+    RopeSlice,
 };
 use helix_view::{
     graphics::{Margin, Rect, Style},
     Theme,
 };
 
-fn styled_multiline_text<'a>(text: String, style: Style) -> Text<'a> {
+fn styled_multiline_text<'a>(text: &str, style: Style) -> Text<'a> {
     let spans: Vec<_> = text
         .lines()
         .map(|line| Span::styled(line.to_string(), style))
@@ -27,7 +27,7 @@ fn styled_multiline_text<'a>(text: String, style: Style) -> Text<'a> {
 }
 
 pub fn highlighted_code_block<'a>(
-    text: String,
+    text: &str,
     language: &str,
     theme: Option<&Theme>,
     config_loader: Arc<syntax::Loader>,
@@ -45,13 +45,13 @@ pub fn highlighted_code_block<'a>(
         None => return styled_multiline_text(text, code_style),
     };
 
-    let rope = Rope::from(text.as_ref());
+    let ropeslice = RopeSlice::from(text);
     let syntax = config_loader
         .language_configuration_for_injection_string(&InjectionLanguageMarker::Name(
             language.into(),
         ))
         .and_then(|config| config.highlight_config(theme.scopes()))
-        .and_then(|config| Syntax::new(&rope, config, Arc::clone(&config_loader)));
+        .and_then(|config| Syntax::new(ropeslice, config, Arc::clone(&config_loader)));
 
     let syntax = match syntax {
         Some(s) => s,
@@ -59,7 +59,7 @@ pub fn highlighted_code_block<'a>(
     };
 
     let highlight_iter = syntax
-        .highlight_iter(rope.slice(..), None, None)
+        .highlight_iter(ropeslice, None, None)
         .map(|e| e.unwrap());
     let highlight_iter: Box<dyn Iterator<Item = HighlightEvent>> =
         if let Some(spans) = additional_highlight_spans {
@@ -267,7 +267,7 @@ impl Markdown {
                             CodeBlockKind::Indented => "",
                         };
                         let tui_text = highlighted_code_block(
-                            text.to_string(),
+                            &text,
                             language,
                             theme,
                             Arc::clone(&self.config_loader),

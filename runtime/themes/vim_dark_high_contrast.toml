@@ -1,0 +1,72 @@
+"ui.background" = { bg = "black" }
+"ui.cursor" = { fg = "green", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "light-cyan", bg = "dark-cyan" }
+"ui.cursor.primary" = { fg = "light-green", modifiers = ["reversed"] }
+"ui.menu" = { bg = "dark-white" }
+"ui.menu.selected" = { fg = "yellow" }
+"ui.popup" = { bg = "dark-white" }
+"ui.selection" = { bg = "dark-white" }
+"ui.statusline" = { fg = "light-magenta", bg = "dark-magenta" }
+"ui.statusline.normal" = { fg = "black", bg = "light-yellow" }
+"ui.statusline.insert" = { fg = "black", bg = "light-cyan" }
+"ui.statusline.select" = { fg = "black", bg = "yellow" }
+"ui.text" = { fg = "default" }
+"ui.text.info" = { bg = "dark-white" }
+"ui.text.focus" = { fg = "yellow" }
+"ui.virtual.wrap" = { fg = "dark-blue" }
+"ui.virtual.indent-guide" = { fg = "dark-blue" }
+"ui.window" = { bg = "dark-white" }
+
+"diagnostic.error" = { bg = "dark-red" }
+"diagnostic.warning" = { bg = "dark-yellow" }
+"diagnostic.hint" = { bg = "dark-cyan" }
+"diagnostic.info" = { bg = "dark-white" }
+"warning" = { fg = "yellow", bg = "dark-yellow" }
+"error" = { fg = "red", bg = "dark-red" }
+"info" = { fg = "default", bg = "dark-white" }
+"hint" = { fg = "cyan", bg = "dark-cyan" }
+
+"type" = "green"
+"constructor" = "light-cyan"
+"constant" = "red"
+"constant.character.escape" = "magenta"
+"string" = "red"
+"comment" = "light-black"
+"comment.documentation" = "magenta"
+"label" = "green"
+"keyword" = "yellow"
+"keyword.directive" = "magenta"
+"function" = "light-cyan"
+"function.macro" = "magenta"
+"special" = "cyan"
+
+"diff.plus" = "green"
+"diff.minus" = "red"
+"diff.delta" = "yellow"
+
+[palette]
+black = "#000000"
+red = "#ed5f74"
+green = "#1ea672"
+yellow = "#d97917"
+blue = "#688ef1"
+magenta = "#c96ed0"
+cyan = "#3a97d4"
+white = "#e3e8ee"
+light-black = "#697386"
+light-red = "#fbb5b2"
+light-green = "#85d996"
+light-yellow = "#efc078"
+light-blue = "#9fcdff"
+light-magenta = "#f0b4e4"
+light-cyan = "#7fd3ed"
+light-white = "#ffffff"
+dark-black = "#000000"
+dark-red = "#742833"
+dark-green = "#00643c"
+dark-yellow = "#6e3500"
+dark-blue = "#2c4074"
+dark-magenta = "#602864"
+dark-cyan = "#144c71"
+dark-white = "#3e4043"
+default = "#c1c9d2"

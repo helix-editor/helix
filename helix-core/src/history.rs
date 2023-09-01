@@ -72,8 +72,8 @@ impl Default for History {
             revisions: vec![Revision {
                 parent: 0,
                 last_child: None,
-                transaction: Transaction::from(ChangeSet::new(&Rope::new())),
-                inversion: Transaction::from(ChangeSet::new(&Rope::new())),
+                transaction: Transaction::from(ChangeSet::new("".into())),
+                inversion: Transaction::from(ChangeSet::new("".into())),
                 timestamp: Instant::now(),
             }],
             current: 0,
