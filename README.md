@@ -18,17 +18,17 @@
 
 ![Screenshot](./screenshot.png)
 
-A Kakoune / Neovim inspired editor, written in Rust.
-
-The editing model is very heavily based on Kakoune; during development I found
-myself agreeing with most of Kakoune's design decisions.
-
-For more information, see the [website](https://helix-editor.com) or
-[documentation](https://docs.helix-editor.com/).
-
-All shortcuts/keymaps can be found [in the documentation on the website](https://docs.helix-editor.com/keymap.html).
-
-[Troubleshooting](https://github.com/helix-editor/helix/wiki/Troubleshooting)
+<div align="center">
+  <p>A <a href="https://kakoune.org/">Kakoune</a> and <a href="https://neovim.io/">Neovim</a> inspired editor, written in Rust.</p>
+  
+  <a href="https://docs.helix-editor.com/install.html"><img alt="Static Badge" src="https://img.shields.io/badge/Installation-997BC8?style=for-the-badge"></a>
+  <a href="https://helix-editor.com"><img alt="Static Badge" src="https://img.shields.io/badge/Website-997BC8?style=for-the-badge"></a>
+  <a href="https://docs.helix-editor.com"><img alt="Static Badge" src="https://img.shields.io/badge/Documentation-997BC8?style=for-the-badge"></a>
+  <a href="https://github.com/helix-editor/helix/wiki/Troubleshooting"><img alt="Static Badge" src="https://img.shields.io/badge/Troubleshooting-997BC8?style=for-the-badge"></a>
+  <a href="https://github.com/helix-editor/helix/blob/master/docs/CONTRIBUTING.md"><img alt="Static Badge" src="https://img.shields.io/badge/Contributing-997BC8?style=for-the-badge"></a>
+  <a href="https://matrix.to/#/#helix-community:matrix.org"><img alt="Static Badge" src="https://img.shields.io/badge/Matrix-Space-55C5E4?style=for-the-badge"></a>
+  <a href="https://matrix.to/#/#helix-editor:matrix.org"><img alt="Static Badge" src="https://img.shields.io/badge/Matrix-Chat-55C5E4?style=for-the-badge"></a>
+</div>
 
 # Features
 
@@ -40,24 +40,8 @@ All shortcuts/keymaps can be found [in the documentation on the website](https:/
 It's a terminal-based editor first, but I'd like to explore a custom renderer
 (similar to Emacs) in wgpu or skulpin.
 
-Note: Only certain languages have indentation definitions at the moment. Check
-`runtime/queries/<lang>/` for `indents.scm`.
-
-# Installation
-
-[Installation documentation](https://docs.helix-editor.com/install.html).
-
-[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
-
-# Contributing
-
-Contributing guidelines can be found [here](./docs/CONTRIBUTING.md).
-
-# Getting help
-
-Your question might already be answered on the [FAQ](https://github.com/helix-editor/helix/wiki/FAQ).
-
-Discuss the project on the community [Matrix Space](https://matrix.to/#/#helix-community:matrix.org) (make sure to join `#helix-editor:matrix.org` if you're on a client that doesn't support Matrix Spaces yet).
+> [!NOTE]  
+> Only certain languages have indentation definitions at the moment. Please check `runtime/queries/<lang>/` for `indents.scm` file.
 
 # Credits
 
