@@ -16,6 +16,7 @@ pub enum EventResult {
 }
 
 use crate::job::Jobs;
+use crate::ui::picker;
 use helix_view::Editor;
 
 pub use helix_view::input::Event;
@@ -100,6 +101,11 @@ impl Compositor {
 
     /// Add a layer to be rendered in front of all existing layers.
     pub fn push(&mut self, mut layer: Box<dyn Component>) {
+        // immediately clear last_picker field to avoid excessive memory
+        // consumption for picker with many items
+        if layer.id() == Some(picker::ID) {
+            self.last_picker = None;
+        }
         let size = self.size();
         // trigger required_size on init
         layer.required_size((size.width, size.height));
