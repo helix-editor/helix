@@ -197,13 +197,31 @@ pub fn move_prev_long_word_end(slice: RopeSlice, range: Range, count: usize) -> 
     word_move(slice, range, count, WordMotionTarget::PrevLongWordEnd)
 }
 
+pub fn move_next_sub_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::NextSubWordStart)
+}
+
+pub fn move_next_sub_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::NextSubWordEnd)
+}
+
+pub fn move_prev_sub_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevSubWordStart)
+}
+
+pub fn move_prev_sub_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevSubWordEnd)
+}
+
 fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTarget) -> Range {
     let is_prev = matches!(
         target,
         WordMotionTarget::PrevWordStart
             | WordMotionTarget::PrevLongWordStart
+            | WordMotionTarget::PrevSubWordStart
             | WordMotionTarget::PrevWordEnd
             | WordMotionTarget::PrevLongWordEnd
+            | WordMotionTarget::PrevSubWordEnd
     );
 
     // Special-case early-out.
@@ -383,6 +401,12 @@ pub enum WordMotionTarget {
     NextLongWordEnd,
     PrevLongWordStart,
     PrevLongWordEnd,
+    // A sub word is similar to a regular word, except it is also delimited by
+    // underscores and transitions from lowercase to uppercase.
+    NextSubWordStart,
+    NextSubWordEnd,
+    PrevSubWordStart,
+    PrevSubWordEnd,
 }
 
 pub trait CharHelpers {
@@ -398,8 +422,10 @@ impl CharHelpers for Chars<'_> {
             target,
             WordMotionTarget::PrevWordStart
                 | WordMotionTarget::PrevLongWordStart
+                | WordMotionTarget::PrevSubWordStart
                 | WordMotionTarget::PrevWordEnd
                 | WordMotionTarget::PrevLongWordEnd
+                | WordMotionTarget::PrevSubWordEnd
         );
 
         // Reverse the iterator if needed for the motion direction.
@@ -476,6 +502,25 @@ fn is_long_word_boundary(a: char, b: char) -> bool {
     }
 }
 
+fn is_sub_word_boundary(a: char, b: char, dir: Direction) -> bool {
+    match (categorize_char(a), categorize_char(b)) {
+        (CharCategory::Word, CharCategory::Word) => {
+            if (a == '_') != (b == '_') {
+                return true;
+            }
+
+            // Subword boundaries are directional: in 'fooBar', there is a
+            // boundary between 'o' and 'B', but not between 'B' and 'a'.
+            match dir {
+                Direction::Forward => a.is_lowercase() && b.is_uppercase(),
+                Direction::Backward => a.is_uppercase() && b.is_lowercase(),
+            }
+        }
+        (a, b) if a != b => true,
+        _ => false,
+    }
+}
+
 fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> bool {
     match target {
         WordMotionTarget::NextWordStart | WordMotionTarget::PrevWordEnd => {
@@ -493,6 +538,22 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
         WordMotionTarget::NextLongWordEnd | WordMotionTarget::PrevLongWordStart => {
             is_long_word_boundary(prev_ch, next_ch)
                 && (!prev_ch.is_whitespace() || char_is_line_ending(next_ch))
+        }
+        WordMotionTarget::NextSubWordStart => {
+            is_sub_word_boundary(prev_ch, next_ch, Direction::Forward)
+                && (char_is_line_ending(next_ch) || !(next_ch.is_whitespace() || next_ch == '_'))
+        }
+        WordMotionTarget::PrevSubWordEnd => {
+            is_sub_word_boundary(prev_ch, next_ch, Direction::Backward)
+                && (char_is_line_ending(next_ch) || !(next_ch.is_whitespace() || next_ch == '_'))
+        }
+        WordMotionTarget::NextSubWordEnd => {
+            is_sub_word_boundary(prev_ch, next_ch, Direction::Forward)
+                && (!(prev_ch.is_whitespace() || prev_ch == '_') || char_is_line_ending(next_ch))
+        }
+        WordMotionTarget::PrevSubWordStart => {
+            is_sub_word_boundary(prev_ch, next_ch, Direction::Backward)
+                && (!(prev_ch.is_whitespace() || prev_ch == '_') || char_is_line_ending(next_ch))
         }
     }
 }
