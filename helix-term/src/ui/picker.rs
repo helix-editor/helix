@@ -577,7 +577,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                         let picker = match compositor.find::<Overlay<Self>>() {
                             Some(Overlay { content, .. }) => Some(content),
                             None => compositor
-                                .find::<Overlay<DynamicPicker<T>>>()
+                                .find::<Overlay<DynamicPicker<T, D>>>()
                                 .map(|overlay| &mut overlay.content.file_picker),
                         };
                         let Some(picker) = picker else {
