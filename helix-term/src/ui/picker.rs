@@ -794,7 +794,13 @@ impl<T: Item + 'static> Picker<T> {
         surface.set_string(
             area.x,
             area.y + 1,
-            format!("{} {} {0}", borders.vertical, self.title.clone()),
+            format!("{} {}  ", borders.vertical, self.title.clone()),
+            text_style,
+        );
+        surface.set_string(
+            area.x + area.width - 1,
+            area.y + 1,
+            borders.vertical.to_string(),
             text_style,
         );
         surface.set_string(
