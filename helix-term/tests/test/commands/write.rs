@@ -424,6 +424,120 @@ async fn test_write_utf_bom_file() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_insert_final_newline_added_if_missing() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_config(Config {
+            editor: helix_view::editor::Config {
+                insert_final_newline: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_file(file.path(), None)
+        .with_input_text("#[h|]#ave you tried chamomile tea?")
+        .build()?;
+
+    test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(
+        file.as_file_mut(),
+        &helpers::platform_line("have you tried chamomile tea?\n"),
+    )?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_insert_final_newline_unchanged_if_not_missing() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_config(Config {
+            editor: helix_view::editor::Config {
+                insert_final_newline: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_file(file.path(), None)
+        .with_input_text(&helpers::platform_line("#[t|]#en minutes, please\n"))
+        .build()?;
+
+    test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(
+        file.as_file_mut(),
+        &helpers::platform_line("ten minutes, please\n"),
+    )?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_all_insert_final_newline_add_if_missing_and_modified() -> anyhow::Result<()> {
+    let mut file1 = tempfile::NamedTempFile::new()?;
+    let mut file2 = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_config(Config {
+            editor: helix_view::editor::Config {
+                insert_final_newline: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_file(file1.path(), None)
+        .with_input_text("#[w|]#e don't serve time travelers here")
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some(&format!(
+            ":o {}<ret>ia time traveler walks into a bar<esc>:wa<ret>",
+            file2.path().to_string_lossy()
+        )),
+        None,
+        false,
+    )
+    .await?;
+
+    helpers::assert_file_has_content(
+        file1.as_file_mut(),
+        &helpers::platform_line("we don't serve time travelers here\n"),
+    )?;
+
+    helpers::assert_file_has_content(
+        file2.as_file_mut(),
+        &helpers::platform_line("a time traveler walks into a bar\n"),
+    )?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_all_insert_final_newline_do_not_add_if_unmodified() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_config(Config {
+            editor: helix_view::editor::Config {
+                insert_final_newline: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_file(file.path(), None)
+        .build()?;
+
+    file.write_all(b"i lost on Jeopardy!")?;
+    file.rewind()?;
+
+    test_key_sequence(&mut app, Some(":wa<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(file.as_file_mut(), "i lost on Jeopardy!")?;
+
+    Ok(())
+}
+
 async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 

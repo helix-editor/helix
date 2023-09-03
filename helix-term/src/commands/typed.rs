@@ -6,7 +6,7 @@ use crate::job::Job;
 use super::*;
 
 use helix_core::fuzzy::fuzzy_match;
-use helix_core::{encoding, shellwords::Shellwords};
+use helix_core::{encoding, line_ending, shellwords::Shellwords};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
@@ -330,12 +330,12 @@ fn write_impl(
     path: Option<&Cow<str>>,
     force: bool,
 ) -> anyhow::Result<()> {
-    let editor_auto_fmt = cx.editor.config().auto_format;
+    let config = cx.editor.config();
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
-    let fmt = if editor_auto_fmt {
+    let fmt = if config.auto_format {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
@@ -352,11 +352,24 @@ fn write_impl(
     };
 
     if fmt.is_none() {
+        if config.insert_final_newline {
+            insert_final_newline(doc, view);
+        }
         let id = doc.id();
         cx.editor.save(id, path, force)?;
     }
 
     Ok(())
+}
+
+fn insert_final_newline(doc: &mut Document, view: &mut View) {
+    let text = doc.text();
+    if line_ending::get_line_ending(&text.slice(..)).is_none() {
+        let eof = Selection::point(text.len_chars());
+        let insert = Transaction::insert(text, &eof, doc.line_ending.as_str().into());
+        doc.apply(&insert, view.id);
+        doc.append_changes_to_history(view);
+    }
 }
 
 fn write(
@@ -658,7 +671,7 @@ pub fn write_all_impl(
     write_scratch: bool,
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
-    let auto_format = cx.editor.config().auto_format;
+    let config = cx.editor.config();
     let jobs = &mut cx.jobs;
     let current_view = view!(cx.editor);
 
@@ -693,7 +706,7 @@ pub fn write_all_impl(
                 current_view.id
             };
 
-            let fmt = if auto_format {
+            let fmt = if config.auto_format {
                 doc.auto_format().map(|fmt| {
                     let callback = make_format_callback(
                         doc.id(),
@@ -709,7 +722,7 @@ pub fn write_all_impl(
             };
 
             if fmt.is_none() {
-                return Some(doc.id());
+                return Some((doc.id(), target_view));
             }
 
             None
@@ -717,8 +730,11 @@ pub fn write_all_impl(
         .collect();
 
     // manually call save for the rest of docs that don't have a formatter
-    for id in saves {
-        cx.editor.save::<PathBuf>(id, None, force)?;
+    for (doc_id, view_id) in saves {
+        if config.insert_final_newline {
+            insert_final_newline(doc_mut!(cx.editor, &doc_id), view_mut!(cx.editor, view_id));
+        }
+        cx.editor.save::<PathBuf>(doc_id, None, force)?;
     }
 
     if !errors.is_empty() && !force {
