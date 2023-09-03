@@ -201,6 +201,9 @@ pub struct Picker<T: Item> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Option<FileCallback<T>>,
+
+    /// Title for the picker box
+    title: String,
 }
 
 impl<T: Item + 'static> Picker<T> {
@@ -220,6 +223,7 @@ impl<T: Item + 'static> Picker<T> {
     }
 
     pub fn new(
+        title: String,
         options: Vec<T>,
         editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
@@ -237,6 +241,7 @@ impl<T: Item + 'static> Picker<T> {
             }
         }
         Self::with(
+            title,
             matcher,
             Arc::new(editor_data),
             Arc::new(AtomicBool::new(false)),
@@ -245,14 +250,22 @@ impl<T: Item + 'static> Picker<T> {
     }
 
     pub fn with_stream(
+        title: String,
         matcher: Nucleo<T>,
         injector: Injector<T>,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
-        Self::with(matcher, injector.editor_data, injector.shutown, callback_fn)
+        Self::with(
+            title,
+            matcher,
+            injector.editor_data,
+            injector.shutown,
+            callback_fn,
+        )
     }
 
     fn with(
+        title: String,
         matcher: Nucleo<T>,
         editor_data: Arc<T::Data>,
         shutdown: Arc<AtomicBool>,
@@ -280,6 +293,7 @@ impl<T: Item + 'static> Picker<T> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
+            title,
         }
     }
 

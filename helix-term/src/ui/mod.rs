@@ -199,16 +199,22 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
     });
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
-    let picker = Picker::new(Vec::new(), root, move |cx, path: &PathBuf, action| {
-        if let Err(e) = cx.editor.open(path, action) {
-            let err = if let Some(err) = e.source() {
-                format!("{}", err)
-            } else {
-                format!("unable to open \"{}\"", path.display())
-            };
-            cx.editor.set_error(err);
-        }
-    })
+    let picker_title = String::from("File Picker");
+    let picker = Picker::new(
+        picker_title,
+        Vec::new(),
+        root,
+        move |cx, path: &PathBuf, action| {
+            if let Err(e) = cx.editor.open(path, action) {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path.display())
+                };
+                cx.editor.set_error(err);
+            }
+        },
+    )
     .with_preview(|_editor, path| Some((path.clone().into(), None)));
     let injector = picker.injector();
     std::thread::spawn(move || {
