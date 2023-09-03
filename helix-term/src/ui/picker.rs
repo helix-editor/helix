@@ -794,7 +794,7 @@ impl<T: Item + 'static> Picker<T> {
         surface.set_string(
             area.x,
             area.y + 1,
-            format!("{}{}{0}", borders.vertical, self.title.clone()),
+            format!("{} {} {0}", borders.vertical, self.title.clone()),
             text_style,
         );
         surface.set_string(
@@ -839,8 +839,8 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             self.render_preview(preview_area, surface, cx);
         }
 
-        // Add two extra for the left and right edges in the bounding box
-        let title_width = self.title.len() as u16 + 2;
+        // Add four for margin and bounding box edges
+        let title_width = self.title.len() as u16 + 4;
         let area_to_clip = area.width - title_width;
         let title_area = area
             .clip_left(area_to_clip / 2)
