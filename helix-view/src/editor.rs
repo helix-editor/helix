@@ -287,7 +287,7 @@ pub struct Config {
     pub workspace_lsp_roots: Vec<PathBuf>,
     /// Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`.
     pub default_line_ending: LineEndingConfig,
-    /// Whether to automatically insert a final newline on write if missing. Defaults to `false`.
+    /// Whether to automatically insert a trailing line-ending on write if missing. Defaults to `false`.
     pub insert_final_newline: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
