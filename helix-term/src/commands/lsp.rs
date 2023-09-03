@@ -296,8 +296,26 @@ fn diag_picker(
         warning: cx.editor.theme.get("warning"),
         error: cx.editor.theme.get("error"),
     };
+    let mut informations = 0;
+    let mut warnings = 0;
+    let mut errors = 0;
+    let mut hints = 0;
 
-    let picker_title = String::from("Diagnostics Picker");
+    flat_diag
+        .iter()
+        .filter_map(|i| i.diag.severity)
+        .for_each(|severity| match severity {
+            DiagnosticSeverity::INFORMATION => informations += 1,
+            DiagnosticSeverity::WARNING => warnings += 1,
+            DiagnosticSeverity::ERROR => errors += 1,
+            DiagnosticSeverity::HINT => hints += 1,
+            _ => (),
+        });
+
+    let picker_title = format!(
+        "Diagnostics: [{} E] [{} W] [{} I] [{} H]",
+        errors, warnings, informations, hints,
+    );
     Picker::new(
         picker_title,
         flat_diag,
