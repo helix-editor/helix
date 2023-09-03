@@ -199,7 +199,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
     });
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
-    let picker_title = String::from("File Picker");
+    let picker_title = format!("Files in {:?}", root.as_os_str());
     let picker = Picker::new(
         picker_title,
         Vec::new(),
