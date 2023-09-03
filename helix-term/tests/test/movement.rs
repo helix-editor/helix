@@ -513,3 +513,42 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn find_char_line_ending() -> anyhow::Result<()> {
+    test((
+        helpers::platform_line(indoc! {
+            "\
+            one
+            #[|t]#wo
+            three"
+        }),
+        "T<ret>gll2f<ret>",
+        helpers::platform_line(indoc! {
+            "\
+            one
+            two#[
+            |]#three"
+        }),
+    ))
+    .await?;
+
+    test((
+        helpers::platform_line(indoc! {
+            "\
+            #[|o]#ne
+            two
+            three"
+        }),
+        "f<ret>2t<ret>ghT<ret>F<ret>",
+        helpers::platform_line(indoc! {
+            "\
+            one#[|
+            t]#wo
+            three"
+        }),
+    ))
+    .await?;
+
+    Ok(())
+}
