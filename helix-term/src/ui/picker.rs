@@ -777,6 +777,39 @@ impl<T: Item + 'static> Picker<T> {
             );
         }
     }
+
+    fn render_title(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        // -- Render the frame:
+        // clear area
+        let background = cx.editor.theme.get("ui.background");
+        let text_style = cx.editor.theme.get("ui.text");
+        surface.clear_with(area, background);
+
+        // don't like this but the lifetime sucks
+        let block = Block::default().borders(Borders::ALL);
+
+        // calculate the inner area inside the box
+        let borders = BorderType::line_symbols(BorderType::Plain);
+        block.render(area, surface);
+        surface.set_string(
+            area.x,
+            area.y + 1,
+            format!("{}{}{0}", borders.vertical, self.title.clone()),
+            text_style,
+        );
+        surface.set_string(
+            area.x,
+            area.y + 2,
+            borders.horizontal_up.to_string(),
+            text_style,
+        );
+        surface.set_string(
+            area.x + area.width - 1,
+            area.y + 2,
+            borders.horizontal_up.to_string(),
+            text_style,
+        );
+    }
 }
 
 impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
@@ -805,6 +838,15 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             let preview_area = area.clip_left(picker_width).clip_top(TITLE_BOX_HEIGHT);
             self.render_preview(preview_area, surface, cx);
         }
+
+        // Add two extra for the left and right edges in the bounding box
+        let title_width = self.title.len() as u16 + 2;
+        let area_to_clip = area.width - title_width;
+        let title_area = area
+            .clip_left(area_to_clip / 2)
+            .clip_right(area_to_clip / 2)
+            .with_height(TITLE_BOX_HEIGHT);
+        self.render_title(title_area, surface, cx);
     }
 
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
