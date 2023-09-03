@@ -2209,9 +2209,26 @@ fn global_search(cx: &mut Context) {
                         });
                 });
 
+                let user_entered_regex = regex.to_string();
+                let case_sensitive = if smart_case {
+                    user_entered_regex
+                        .chars()
+                        .find(|char| char.is_ascii_uppercase())
+                        .is_some()
+                } else {
+                    true
+                };
                 cx.jobs.callback(async move {
                     let call = move |_: &mut Editor, compositor: &mut Compositor| {
-                        let picker_title = String::from("Global Search");
+                        let picker_title = format!(
+                            "Global Search: '{}' {}",
+                            regex.to_string(),
+                            if case_sensitive {
+                                "[Case Sensitive]"
+                            } else {
+                                "[Case Insensitive]"
+                            }
+                        );
                         let picker = Picker::with_stream(
                             picker_title,
                             picker,
