@@ -10,10 +10,7 @@ use helix_stdx::{
 };
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
-use tui::{
-    text::Span,
-    widgets::{Cell, Row},
-};
+use tui::text::Span;
 pub use typed::*;
 
 use helix_core::{
@@ -61,8 +58,7 @@ use crate::{
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
-    keymap::ReverseKeymap,
-    ui::{self, menu::Item, overlay::overlaid, Picker, Popup, Prompt, PromptEvent},
+    ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Jobs};
@@ -2246,32 +2242,15 @@ fn global_search(cx: &mut Context) {
         path: PathBuf,
         /// 0 indexed lines
         line_num: usize,
+        line_content: String,
     }
 
     impl FileResult {
-        fn new(path: &Path, line_num: usize) -> Self {
+        fn new(path: &Path, line_num: usize, line_content: String) -> Self {
             Self {
                 path: path.to_path_buf(),
                 line_num,
-            }
-        }
-    }
-
-    impl ui::menu::Item for FileResult {
-        type Data = Option<PathBuf>;
-
-        fn format(&self, current_path: &Self::Data) -> Row {
-            let relative_path = helix_stdx::path::get_relative_path(&self.path)
-                .to_string_lossy()
-                .into_owned();
-            if current_path
-                .as_ref()
-                .map(|p| p == &self.path)
-                .unwrap_or(false)
-            {
-                format!("{} (*)", relative_path).into()
-            } else {
-                relative_path.into()
+                line_content,
             }
         }
     }
@@ -2317,8 +2296,28 @@ fn global_search(cx: &mut Context) {
                     return;
                 }
 
-                // TODO
-                let columns = vec![];
+                let columns = vec![
+                    PickerColumn::new(
+                        "path",
+                        |item: &FileResult, current_path: &Option<PathBuf>| {
+                            let relative_path = helix_stdx::path::get_relative_path(&item.path)
+                                .to_string_lossy()
+                                .into_owned();
+                            if current_path
+                                .as_ref()
+                                .map(|p| p == &item.path)
+                                .unwrap_or(false)
+                            {
+                                format!("{} (*)", relative_path).into()
+                            } else {
+                                relative_path.into()
+                            }
+                        },
+                    ),
+                    PickerColumn::new("contents", |item: &FileResult, _| {
+                        item.line_content.as_str().into()
+                    }),
+                ];
                 let (picker, injector) = Picker::stream(columns, current_path);
 
                 let dedup_symlinks = file_picker_config.deduplicate_links;
@@ -2345,77 +2344,79 @@ fn global_search(cx: &mut Context) {
                         .max_depth(file_picker_config.max_depth)
                         .filter_entry(move |entry| {
                             filter_picker_entry(entry, &absolute_root, dedup_symlinks)
-                        });
-
-                    walk_builder
-                        .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
-                    walk_builder.add_custom_ignore_filename(".helix/ignore");
-
-                    walk_builder.build_parallel().run(|| {
-                        let mut searcher = searcher.clone();
-                        let matcher = matcher.clone();
-                        let injector = injector_.clone();
-                        let documents = &documents;
-                        Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
-                            let entry = match entry {
-                                Ok(entry) => entry,
-                                Err(_) => return WalkState::Continue,
-                            };
-
-                            match entry.file_type() {
-                                Some(entry) if entry.is_file() => {}
-                                // skip everything else
-                                _ => return WalkState::Continue,
-                            };
-
-                            let mut stop = false;
-                            let sink = sinks::UTF8(|line_num, _| {
-                                stop = injector
-                                    .push(FileResult::new(entry.path(), line_num as usize - 1))
-                                    .is_err();
-
-                                Ok(!stop)
-                            });
-                            let doc = documents.iter().find(|&(doc_path, _)| {
-                                doc_path
-                                    .as_ref()
-                                    .map_or(false, |doc_path| doc_path == entry.path())
-                            });
-
-                            let result = if let Some((_, doc)) = doc {
-                                // there is already a buffer for this file
-                                // search the buffer instead of the file because it's faster
-                                // and captures new edits without requiring a save
-                                if searcher.multi_line_with_matcher(&matcher) {
-                                    // in this case a continous buffer is required
-                                    // convert the rope to a string
-                                    let text = doc.to_string();
-                                    searcher.search_slice(&matcher, text.as_bytes(), sink)
-                                } else {
-                                    searcher.search_reader(
-                                        &matcher,
-                                        RopeReader::new(doc.slice(..)),
-                                        sink,
-                                    )
-                                }
-                            } else {
-                                searcher.search_path(&matcher, entry.path(), sink)
-                            };
-
-                            if let Err(err) = result {
-                                log::error!(
-                                    "Global search error: {}, {}",
-                                    entry.path().display(),
-                                    err
-                                );
-                            }
-                            if stop {
-                                WalkState::Quit
-                            } else {
-                                WalkState::Continue
-                            }
                         })
-                    });
+                        .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
+                        .add_custom_ignore_filename(".helix/ignore")
+                        .build_parallel()
+                        .run(|| {
+                            let mut searcher = searcher.clone();
+                            let matcher = matcher.clone();
+                            let injector = injector_.clone();
+                            let documents = &documents;
+                            Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
+                                let entry = match entry {
+                                    Ok(entry) => entry,
+                                    Err(_) => return WalkState::Continue,
+                                };
+
+                                match entry.file_type() {
+                                    Some(entry) if entry.is_file() => {}
+                                    // skip everything else
+                                    _ => return WalkState::Continue,
+                                };
+
+                                let mut stop = false;
+                                let sink = sinks::UTF8(|line_num, line_content| {
+                                    stop = injector
+                                        .push(FileResult::new(
+                                            entry.path(),
+                                            line_num as usize - 1,
+                                            line_content.to_string(),
+                                        ))
+                                        .is_err();
+
+                                    Ok(!stop)
+                                });
+                                let doc = documents.iter().find(|&(doc_path, _)| {
+                                    doc_path
+                                        .as_ref()
+                                        .map_or(false, |doc_path| doc_path == entry.path())
+                                });
+
+                                let result = if let Some((_, doc)) = doc {
+                                    // there is already a buffer for this file
+                                    // search the buffer instead of the file because it's faster
+                                    // and captures new edits without requiring a save
+                                    if searcher.multi_line_with_matcher(&matcher) {
+                                        // in this case a continous buffer is required
+                                        // convert the rope to a string
+                                        let text = doc.to_string();
+                                        searcher.search_slice(&matcher, text.as_bytes(), sink)
+                                    } else {
+                                        searcher.search_reader(
+                                            &matcher,
+                                            RopeReader::new(doc.slice(..)),
+                                            sink,
+                                        )
+                                    }
+                                } else {
+                                    searcher.search_path(&matcher, entry.path(), sink)
+                                };
+
+                                if let Err(err) = result {
+                                    log::error!(
+                                        "Global search error: {}, {}",
+                                        entry.path().display(),
+                                        err
+                                    );
+                                }
+                                if stop {
+                                    WalkState::Quit
+                                } else {
+                                    WalkState::Continue
+                                }
+                            })
+                        });
                 });
 
                 cx.jobs.callback(async move {
@@ -2424,7 +2425,7 @@ fn global_search(cx: &mut Context) {
                             picker,
                             0,
                             injector,
-                            move |cx, FileResult { path, line_num }, action| {
+                            move |cx, FileResult { path, line_num, .. }, action| {
                                 let doc = match cx.editor.open(path, action) {
                                     Ok(id) => doc_mut!(cx.editor, &id),
                                     Err(e) => {
@@ -2456,7 +2457,7 @@ fn global_search(cx: &mut Context) {
                             },
                         )
                         .with_preview(
-                            |_editor, FileResult { path, line_num }| {
+                            |_editor, FileResult { path, line_num, .. }| {
                                 Some((path.clone().into(), Some((*line_num, *line_num))))
                             },
                         );
@@ -2897,31 +2898,6 @@ fn buffer_picker(cx: &mut Context) {
         focused_at: std::time::Instant,
     }
 
-    impl ui::menu::Item for BufferMeta {
-        type Data = ();
-
-        fn format(&self, _data: &Self::Data) -> Row {
-            let path = self
-                .path
-                .as_deref()
-                .map(helix_stdx::path::get_relative_path);
-            let path = match path.as_deref().and_then(Path::to_str) {
-                Some(path) => path,
-                None => SCRATCH_BUFFER_NAME,
-            };
-
-            let mut flags = String::new();
-            if self.is_modified {
-                flags.push('+');
-            }
-            if self.is_current {
-                flags.push('*');
-            }
-
-            Row::new([self.id.to_string(), flags, path.to_string()])
-        }
-    }
-
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
         path: doc.path().cloned(),
@@ -2940,8 +2916,31 @@ fn buffer_picker(cx: &mut Context) {
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
 
-    let columns = vec![];
-    let picker = Picker::new(columns, 0, items, (), |cx, meta, action| {
+    let columns = vec![
+        PickerColumn::new("id", |meta: &BufferMeta, _| meta.id.to_string().into()),
+        PickerColumn::new("flags", |meta: &BufferMeta, _| {
+            let mut flags = String::new();
+            if meta.is_modified {
+                flags.push('+');
+            }
+            if meta.is_current {
+                flags.push('*');
+            }
+            flags.into()
+        }),
+        PickerColumn::new("path", |meta: &BufferMeta, _| {
+            let path = meta
+                .path
+                .as_deref()
+                .map(helix_stdx::path::get_relative_path);
+            path.as_deref()
+                .and_then(Path::to_str)
+                .unwrap_or(SCRATCH_BUFFER_NAME)
+                .to_string()
+                .into()
+        }),
+    ];
+    let picker = Picker::new(columns, 2, items, (), |cx, meta, action| {
         cx.editor.switch(meta.id, action);
     })
     .with_preview(|editor, meta| {
@@ -2963,33 +2962,6 @@ fn jumplist_picker(cx: &mut Context) {
         selection: Selection,
         text: String,
         is_current: bool,
-    }
-
-    impl ui::menu::Item for JumpMeta {
-        type Data = ();
-
-        fn format(&self, _data: &Self::Data) -> Row {
-            let path = self
-                .path
-                .as_deref()
-                .map(helix_stdx::path::get_relative_path);
-            let path = match path.as_deref().and_then(Path::to_str) {
-                Some(path) => path,
-                None => SCRATCH_BUFFER_NAME,
-            };
-
-            let mut flags = Vec::new();
-            if self.is_current {
-                flags.push("*");
-            }
-
-            let flag = if flags.is_empty() {
-                "".into()
-            } else {
-                format!(" ({})", flags.join(""))
-            };
-            format!("{} {}{} {}", self.id, path, flag, self.text).into()
-        }
     }
 
     for (view, _) in cx.editor.tree.views_mut() {
@@ -3018,10 +2990,37 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
-    let columns = vec![];
+    let columns = vec![
+        ui::PickerColumn::new("id", |item: &JumpMeta, _| item.id.to_string().into()),
+        ui::PickerColumn::new("path", |item: &JumpMeta, _| {
+            let path = item
+                .path
+                .as_deref()
+                .map(helix_stdx::path::get_relative_path);
+            path.as_deref()
+                .and_then(Path::to_str)
+                .unwrap_or(SCRATCH_BUFFER_NAME)
+                .to_string()
+                .into()
+        }),
+        ui::PickerColumn::new("flags", |item: &JumpMeta, _| {
+            let mut flags = Vec::new();
+            if item.is_current {
+                flags.push("*");
+            }
+
+            if flags.is_empty() {
+                "".into()
+            } else {
+                format!(" ({})", flags.join("")).into()
+            }
+        }),
+        ui::PickerColumn::new("contents", |item: &JumpMeta, _| item.text.as_str().into()),
+    ];
+
     let picker = Picker::new(
         columns,
-        0,
+        1, // path
         cx.editor
             .tree
             .views()
@@ -3061,33 +3060,6 @@ fn changed_file_picker(cx: &mut Context) {
         style_renamed: Style,
     }
 
-    impl Item for FileChange {
-        type Data = FileChangeData;
-
-        fn format(&self, data: &Self::Data) -> Row {
-            let process_path = |path: &PathBuf| {
-                path.strip_prefix(&data.cwd)
-                    .unwrap_or(path)
-                    .display()
-                    .to_string()
-            };
-
-            let (sign, style, content) = match self {
-                Self::Untracked { path } => ("[+]", data.style_untracked, process_path(path)),
-                Self::Modified { path } => ("[~]", data.style_modified, process_path(path)),
-                Self::Conflict { path } => ("[x]", data.style_conflict, process_path(path)),
-                Self::Deleted { path } => ("[-]", data.style_deleted, process_path(path)),
-                Self::Renamed { from_path, to_path } => (
-                    "[>]",
-                    data.style_renamed,
-                    format!("{} -> {}", process_path(from_path), process_path(to_path)),
-                ),
-            };
-
-            Row::new([Cell::from(Span::styled(sign, style)), Cell::from(content)])
-        }
-    }
-
     let cwd = helix_stdx::env::current_working_dir();
     if !cwd.exists() {
         cx.editor
@@ -3101,7 +3073,40 @@ fn changed_file_picker(cx: &mut Context) {
     let deleted = cx.editor.theme.get("diff.minus");
     let renamed = cx.editor.theme.get("diff.delta.moved");
 
+    let columns = vec![
+        PickerColumn::new("change", |change: &FileChange, data: &FileChangeData| {
+            match change {
+                FileChange::Untracked { .. } => Span::styled("+ untracked", data.style_untracked),
+                FileChange::Modified { .. } => Span::styled("~ modified", data.style_modified),
+                FileChange::Conflict { .. } => Span::styled("x conflict", data.style_conflict),
+                FileChange::Deleted { .. } => Span::styled("- deleted", data.style_deleted),
+                FileChange::Renamed { .. } => Span::styled("> renamed", data.style_renamed),
+            }
+            .into()
+        }),
+        PickerColumn::new("path", |change: &FileChange, data: &FileChangeData| {
+            let display_path = |path: &PathBuf| {
+                path.strip_prefix(&data.cwd)
+                    .unwrap_or(path)
+                    .display()
+                    .to_string()
+            };
+            match change {
+                FileChange::Untracked { path } => display_path(path),
+                FileChange::Modified { path } => display_path(path),
+                FileChange::Conflict { path } => display_path(path),
+                FileChange::Deleted { path } => display_path(path),
+                FileChange::Renamed { from_path, to_path } => {
+                    format!("{} -> {}", display_path(from_path), display_path(to_path))
+                }
+            }
+            .into()
+        }),
+    ];
+
     let picker = Picker::new(
+        columns,
+        1, // path
         Vec::new(),
         FileChangeData {
             cwd: cwd.clone(),
@@ -3139,35 +3144,6 @@ fn changed_file_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
-impl ui::menu::Item for MappableCommand {
-    type Data = ReverseKeymap;
-
-    fn format(&self, keymap: &Self::Data) -> Row {
-        let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
-            bindings.iter().fold(String::new(), |mut acc, bind| {
-                if !acc.is_empty() {
-                    acc.push(' ');
-                }
-                for key in bind {
-                    acc.push_str(&key.key_sequence_format());
-                }
-                acc
-            })
-        };
-
-        match self {
-            MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
-                Some(bindings) => format!("{} ({}) [:{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [:{}]", doc, name).into(),
-            },
-            MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
-                Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [{}]", doc, name).into(),
-            },
-        }
-    }
-}
-
 pub fn command_palette(cx: &mut Context) {
     let register = cx.register;
     let count = cx.count;
@@ -3187,7 +3163,34 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let columns = vec![];
+            let columns = vec![
+                ui::PickerColumn::new("name", |item, _| match item {
+                    MappableCommand::Typable { name, .. } => format!(":{name}").into(),
+                    MappableCommand::Static { name, .. } => (*name).into(),
+                }),
+                ui::PickerColumn::new(
+                    "bindings",
+                    |item: &MappableCommand, keymap: &crate::keymap::ReverseKeymap| {
+                        keymap
+                            .get(item.name())
+                            .map(|bindings| {
+                                bindings.iter().fold(String::new(), |mut acc, bind| {
+                                    if !acc.is_empty() {
+                                        acc.push(' ');
+                                    }
+                                    for key in bind {
+                                        acc.push_str(&key.key_sequence_format());
+                                    }
+                                    acc
+                                })
+                            })
+                            .unwrap_or_default()
+                            .into()
+                    },
+                ),
+                ui::PickerColumn::new("doc", |item: &MappableCommand, _| item.doc().into()),
+            ];
+
             let picker = Picker::new(columns, 0, commands, keymap, move |cx, command, _action| {
                 let mut ctx = Context {
                     register,

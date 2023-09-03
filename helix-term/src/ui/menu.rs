@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cmp::Reverse, path::PathBuf};
+use std::{borrow::Cow, cmp::Reverse};
 
 use crate::{
     compositor::{Callback, Component, Compositor, Context, Event, EventResult},
@@ -28,18 +28,6 @@ pub trait Item: Sync + Send + 'static {
     fn filter_text(&self, data: &Self::Data) -> Cow<str> {
         let label: String = self.format(data).cell_text().collect();
         label.into()
-    }
-}
-
-impl Item for PathBuf {
-    /// Root prefix to strip.
-    type Data = PathBuf;
-
-    fn format(&self, root_path: &Self::Data) -> Row {
-        self.strip_prefix(root_path)
-            .unwrap_or(self)
-            .to_string_lossy()
-            .into()
     }
 }
 

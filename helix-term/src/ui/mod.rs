@@ -219,7 +219,15 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     });
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
-    let columns = vec![];
+    let columns = vec![PickerColumn::new(
+        "path",
+        |item: &PathBuf, root: &PathBuf| {
+            item.strip_prefix(root)
+                .unwrap_or(item)
+                .to_string_lossy()
+                .into()
+        },
+    )];
     let picker = Picker::new(
         columns,
         0,

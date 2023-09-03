@@ -12,7 +12,7 @@ use helix_view::editor::Breakpoint;
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tui::{text::Spans, widgets::Row};
+use tui::text::Spans;
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -21,38 +21,6 @@ use std::path::PathBuf;
 use anyhow::{anyhow, bail};
 
 use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select_thread_id};
-
-impl ui::menu::Item for StackFrame {
-    type Data = ();
-
-    fn format(&self, _data: &Self::Data) -> Row {
-        self.name.as_str().into() // TODO: include thread_states in the label
-    }
-}
-
-impl ui::menu::Item for DebugTemplate {
-    type Data = ();
-
-    fn format(&self, _data: &Self::Data) -> Row {
-        self.name.as_str().into()
-    }
-}
-
-impl ui::menu::Item for Thread {
-    type Data = ThreadStates;
-
-    fn format(&self, thread_states: &Self::Data) -> Row {
-        format!(
-            "{} ({})",
-            self.name,
-            thread_states
-                .get(&self.id)
-                .map(|state| state.as_str())
-                .unwrap_or("unknown")
-        )
-        .into()
-    }
-}
 
 fn thread_picker(
     cx: &mut Context,
@@ -73,7 +41,16 @@ fn thread_picker(
             let debugger = debugger!(editor);
 
             let thread_states = debugger.thread_states.clone();
-            let columns = vec![];
+            let columns = vec![
+                ui::PickerColumn::new("name", |item: &Thread, _| item.name.as_str().into()),
+                ui::PickerColumn::new("state", |item: &Thread, thread_states: &ThreadStates| {
+                    thread_states
+                        .get(&item.id)
+                        .map(|state| state.as_str())
+                        .unwrap_or("unknown")
+                        .into()
+                }),
+            ];
             let picker = Picker::new(
                 columns,
                 0,
@@ -273,7 +250,10 @@ pub fn dap_launch(cx: &mut Context) {
 
     let templates = config.templates.clone();
 
-    let columns = vec![];
+    let columns = vec![ui::PickerColumn::new(
+        "template",
+        |item: &DebugTemplate, _| item.name.as_str().into(),
+    )];
 
     cx.push_layer(Box::new(overlaid(Picker::new(
         columns,
@@ -745,7 +725,9 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
 
     let frames = debugger.stack_frames[&thread_id].clone();
 
-    let columns = vec![];
+    let columns = vec![ui::PickerColumn::new("frame", |item: &StackFrame, _| {
+        item.name.as_str().into() // TODO: include thread_states in the label
+    })];
     let picker = Picker::new(columns, 0, frames, (), move |cx, frame, _action| {
         let debugger = debugger!(cx.editor);
         // TODO: this should be simpler to find
