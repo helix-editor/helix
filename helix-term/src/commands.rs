@@ -1256,7 +1256,7 @@ fn extend_next_long_word_end(cx: &mut Context) {
 // This is necessary because the one document can have different line endings inside. And we
 // cannot predict what character to find when <ret> is pressed. On the current line it can be `lf`
 // but on the next line it can be `crlf`. That's why [`find_char_impl`] cannot be applied here.
-fn find_char_ending(
+fn find_char_line_ending(
     cx: &mut Context,
     count: usize,
     direction: Direction,
@@ -1324,7 +1324,7 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
                 code: KeyCode::Enter,
                 ..
             } => {
-                find_char_ending(cx, count, direction, inclusive, extend);
+                find_char_line_ending(cx, count, direction, inclusive, extend);
                 return;
             }
 

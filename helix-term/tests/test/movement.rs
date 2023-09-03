@@ -515,7 +515,7 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn find_char_ending() -> anyhow::Result<()> {
+async fn find_char_line_ending() -> anyhow::Result<()> {
     test((
         helpers::platform_line(indoc! {
             "\
