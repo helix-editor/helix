@@ -824,7 +824,7 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
         //        | title |
         // +------+--+ +--+------+
         // |prompt   | |preview  |
-        // +---------+ |         |
+        // |---------| |         |
         // |picker   | |         |
         // |         | |         |
         // +---------+ +---------+
