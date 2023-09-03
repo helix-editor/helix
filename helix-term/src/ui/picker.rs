@@ -50,6 +50,7 @@ pub const ID: &str = "picker";
 use super::{menu::Item, overlay::Overlay};
 
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
+pub const TITLE_BOX_HEIGHT: u16 = 2;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
@@ -780,7 +781,9 @@ impl<T: Item + 'static> Picker<T> {
 
 impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // +---------+ +---------+
+        //        +-------+
+        //        | title |
+        // +------+--+ +--+------+
         // |prompt   | |preview  |
         // +---------+ |         |
         // |picker   | |         |
@@ -795,11 +798,11 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             area.width
         };
 
-        let picker_area = area.with_width(picker_width);
+        let picker_area = area.with_width(picker_width).clip_top(TITLE_BOX_HEIGHT);
         self.render_picker(picker_area, surface, cx);
 
         if render_preview {
-            let preview_area = area.clip_left(picker_width);
+            let preview_area = area.clip_left(picker_width).clip_top(TITLE_BOX_HEIGHT);
             self.render_preview(preview_area, surface, cx);
         }
     }
@@ -903,7 +906,7 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
         let inner = block.inner(area);
 
         // prompt area
-        let area = inner.clip_left(1).with_height(1);
+        let area = inner.clip_left(1).with_height(1 + TITLE_BOX_HEIGHT);
 
         self.prompt.cursor(area, editor)
     }
