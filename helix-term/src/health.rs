@@ -286,15 +286,15 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
         }
     };
 
-    for ls in &lang.language_servers {
-        probe_protocol(
-            "language server",
-            syn_loader_conf
-                .language_server
-                .get(&ls.name)
-                .map(|config| config.command.clone()),
-        )?;
-    }
+    probe_protocols(
+        "language server",
+        lang.language_servers
+            .iter()
+            .filter_map(|ls| syn_loader_conf.language_server.get(&ls.name))
+            .map(|config| config.command.as_str())
+            .collect::<Vec<_>>()
+            .as_slice(),
+    )?;
 
     probe_protocol(
         "debug adapter",
@@ -303,6 +303,29 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
 
     for ts_feat in TsFeature::all() {
         probe_treesitter_feature(&lang_str, *ts_feat)?
+    }
+
+    Ok(())
+}
+
+/// Display diagnostics about multiple LSPs and DAPs.
+fn probe_protocols(protocol_name: &str, server_cmds: &[&str]) -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    write!(stdout, "Configured {}s:", protocol_name)?;
+    if server_cmds.is_empty() {
+        writeln!(stdout, "{}", " None".yellow())?;
+        return Ok(());
+    }
+    writeln!(stdout)?;
+
+    for cmd in server_cmds {
+        let (path, icon) = match which::which(cmd) {
+            Ok(path) => (path.display().to_string().green(), "✓".green()),
+            Err(_) => (format!("'{}' not found in $PATH", cmd).red(), "✘".red()),
+        };
+        writeln!(stdout, "  {} {}: {}", icon, cmd, path)?;
     }
 
     Ok(())
