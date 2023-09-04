@@ -1542,7 +1542,7 @@ fn tree_sitter_highlight_name(
     let pos = doc.selection(view.id).primary().cursor(text);
 
     let mut highlight_name: &str = "";
-    if let Some(highlight) = indent::get_highlight_name(doc.syntax(), text, pos) {
+    if let Some(highlight) = helix_core::syntax::get_highlight_name(doc.syntax(), text, pos) {
         let theme = &cx.editor.theme;
         highlight_name = theme.scope(highlight.0);
     }
