@@ -15,14 +15,14 @@
 "constructor" = "nord8"
 
 # Diagnostics
-"diagnostic" = "nord13"
-"diagnostic.error" = "nord11"
+"diagnostic" = { underline = { color = "nord13", style = "curl" } }
+"diagnostic.error" = { underline = { color = "nord11", style = "curl" } }
 "error" = "nord11"
-"diagnostic.hint" = "nord10"
+"diagnostic.hint" = { underline = { color = "nord10", style = "curl" } }
 "hint" = "nord10"
-"diagnostic.info" = "nord8"
+"diagnostic.info" = { underline = { color = "nord8", style = "curl" } }
 "info" = "nord8"
-"diagnostic.warning" = "nord13"
+"diagnostic.warning" = { underline = { color = "nord13", style = "curl" } }
 "warning" = "nord13"
 
 # Diffs
@@ -100,6 +100,7 @@
 "ui.popup" = { bg = "nord1" }
 "ui.popup.info" = { bg = "nord1" }
 "ui.help" = { bg = "nord1" }
+"ui.text.focus" = { fg = "nord8", bg = "nord2" }
 
 # Gutter
 "ui.gutter" = "nord5"
