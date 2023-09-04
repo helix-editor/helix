@@ -1536,10 +1536,8 @@ fn vsplit(
         return Ok(());
     }
 
-    let id = view!(cx.editor).doc;
-
     if args.is_empty() {
-        cx.editor.switch(id, Action::VerticalSplit);
+        split(cx.editor, Action::VerticalSplit);
     } else {
         for arg in args {
             cx.editor
@@ -1559,10 +1557,8 @@ fn hsplit(
         return Ok(());
     }
 
-    let id = view!(cx.editor).doc;
-
     if args.is_empty() {
-        cx.editor.switch(id, Action::HorizontalSplit);
+        split(cx.editor, Action::HorizontalSplit);
     } else {
         for arg in args {
             cx.editor
