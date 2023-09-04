@@ -5,7 +5,7 @@ use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
     graphemes::{grapheme_width, tab_width_at},
-    syntax::{LanguageConfiguration, RopeProvider, Syntax},
+    syntax::{Highlight, HighlightEvent, LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
     Rope, RopeGraphemes, RopeSlice,
 };
@@ -894,6 +894,44 @@ pub fn get_scopes(syntax: Option<&Syntax>, text: RopeSlice, pos: usize) -> Vec<&
 
     scopes.reverse();
     scopes
+}
+
+pub fn get_highlight_name(
+    syntax: Option<&Syntax>,
+    text: RopeSlice,
+    pos: usize,
+) -> Option<Highlight> {
+    let mut highlight: Option<Highlight> = None;
+    if let Some(syntax) = syntax {
+        let pos = text.char_to_byte(pos);
+
+        let node: Node = match syntax
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(pos, pos)
+        {
+            Some(node) => node,
+            None => return None,
+        };
+
+        for event in syntax
+            .highlight_iter(text.slice(..), Some(node.byte_range()), None)
+            .map(|event| event.unwrap())
+        {
+            match event {
+                HighlightEvent::Source { start, end } => {
+                    if start == node.start_byte() && end == node.end_byte() {
+                        break;
+                    }
+                }
+                HighlightEvent::HighlightStart(hl) => {
+                    highlight = Some(hl);
+                }
+                HighlightEvent::HighlightEnd => {}
+            }
+        }
+    }
+    highlight
 }
 
 #[cfg(test)]

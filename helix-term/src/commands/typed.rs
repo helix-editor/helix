@@ -1527,6 +1527,44 @@ fn tree_sitter_scopes(
     Ok(())
 }
 
+fn tree_sitter_highlight_name(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let pos = doc.selection(view.id).primary().cursor(text);
+
+    let mut highlight_name: &str = "";
+    if let Some(highlight) = indent::get_highlight_name(doc.syntax(), text, pos) {
+        let theme = &cx.editor.theme;
+        highlight_name = theme.scope(highlight.0);
+    }
+
+    let content = format!("``json\n{:?}\n````", highlight_name);
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let content = ui::Markdown::new(content, editor.syn_loader.clone());
+                let popup = Popup::new("hover", content).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 fn vsplit(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2682,6 +2720,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Display tree sitter scopes, primarily for theming and development.",
         fun: tree_sitter_scopes,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "tree-sitter-highlight-name",
+        aliases: &[],
+        doc: "Display tree-sitter highlight name.",
+        fun: tree_sitter_highlight_name,
         signature: CommandSignature::none(),
     },
     TypableCommand {
