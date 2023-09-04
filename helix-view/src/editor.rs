@@ -270,6 +270,9 @@ pub struct Config {
     /// Search configuration.
     #[serde(default)]
     pub search: SearchConfig,
+    /// Picker configuration
+    #[serde(default)]
+    pub picker: PickerConfig,
     pub lsp: LspConfig,
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
@@ -400,6 +403,19 @@ pub struct SearchConfig {
     pub smart_case: bool,
     /// Whether the search should wrap after depleting the matches. Default to true.
     pub wrap_around: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct PickerConfig {
+    /// Title: Weather to render title for the picker
+    pub title: bool,
+}
+
+impl Default for PickerConfig {
+    fn default() -> Self {
+        Self { title: true }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -827,6 +843,7 @@ impl Default for Config {
             true_color: false,
             undercurl: false,
             search: SearchConfig::default(),
+            picker: PickerConfig::default(),
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
             rulers: Vec::new(),

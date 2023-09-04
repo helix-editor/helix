@@ -837,7 +837,8 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             self.render_preview(preview_area, surface, cx);
         }
 
-        let render_title = area.y >= TITLE_BOX_HEIGHT;
+        let editor_config = cx.editor.config.load();
+        let render_title = editor_config.picker.title && area.y >= TITLE_BOX_HEIGHT;
 
         if render_title {
             // Add four for margin and bounding box edges
