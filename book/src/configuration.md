@@ -228,6 +228,15 @@ Search specific options.
 | `smart-case` | Enable smart case regex searching (case-insensitive unless pattern contains upper case characters) | `true` |
 | `wrap-around`| Whether the search should wrap after depleting the matches | `true` |
 
+
+### `[editor.picker]` Section
+
+Picker specific options.
+
+| Key | Description | Default |
+|--|--|---------|
+| `title` | Weather to draw picker's titlebox | `true` |
+
 ### `[editor.whitespace]` Section
 
 Options for rendering whitespace with visible characters. Use `:set whitespace.render all` to temporarily enable visible whitespace.
