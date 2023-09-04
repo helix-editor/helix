@@ -17,7 +17,7 @@ pub struct Args {
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
     pub files: Vec<(PathBuf, Position)>,
-    pub working_path: Option<String>,
+    pub working_path: Option<PathBuf>,
 }
 
 impl Args {
@@ -61,7 +61,7 @@ impl Args {
                     None => anyhow::bail!("--log must specify a path to write"),
                 },
                 "-w" | "--working-path" => match argv.next().as_deref() {
-                    Some(path) => args.working_path = Some(path.into()),
+                    Some(path) => args.working_path = if Path::new(path).exists() {Some(PathBuf::from(path))} else {None},
                     None => anyhow::bail!("--working-path must specify an initial working directory"),
                 },
                 arg if arg.starts_with("--") => {
