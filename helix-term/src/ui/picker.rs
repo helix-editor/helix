@@ -785,35 +785,32 @@ impl<T: Item + 'static> Picker<T> {
         let text_style = cx.editor.theme.get("ui.text");
         surface.clear_with(area, background);
 
-        // don't like this but the lifetime sucks
-        let block = Block::default().borders(Borders::ALL);
-
-        // calculate the inner area inside the box
-        let borders = BorderType::line_symbols(BorderType::Plain);
+        // render the border
+        let block = Block::default().borders(Borders::TOP | Borders::LEFT | Borders::RIGHT);
         block.render(area, surface);
+
+        // render the title text
         surface.set_string(
-            area.x,
+            // Add two for spacing for border box and margin
+            area.x + 2,
             area.y + 1,
-            format!("{} {}  ", borders.vertical, self.title.clone()),
+            &self.title,
             text_style,
         );
-        surface.set_string(
-            area.x + area.width - 1,
-            area.y + 1,
-            borders.vertical.to_string(),
-            text_style,
-        );
+
+        // add connecting characters to picker's top border
+        let borders = BorderType::line_symbols(BorderType::Plain);
         surface.set_string(
             area.x,
             area.y + 2,
             borders.horizontal_up.to_string(),
-            text_style,
+            Style::default(),
         );
         surface.set_string(
             area.x + area.width - 1,
             area.y + 2,
             borders.horizontal_up.to_string(),
-            text_style,
+            Style::default(),
         );
     }
 }
