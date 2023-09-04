@@ -2456,7 +2456,7 @@ pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result 
     }
 }
 
-pub fn get_highlight_name(
+pub fn get_highlight_for_node_at_position(
     syntax: Option<&Syntax>,
     text: RopeSlice,
     pos: usize,
