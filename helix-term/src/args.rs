@@ -17,6 +17,7 @@ pub struct Args {
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
     pub files: Vec<(PathBuf, Position)>,
+    pub working_path: Option<String>,
 }
 
 impl Args {
@@ -58,6 +59,10 @@ impl Args {
                 "--log" => match argv.next().as_deref() {
                     Some(path) => args.log_file = Some(path.into()),
                     None => anyhow::bail!("--log must specify a path to write"),
+                },
+                "-w" | "--working-path" => match argv.next().as_deref() {
+                    Some(path) => args.working_path = Some(path.into()),
+                    None => anyhow::bail!("--working-path must specify an initial working directory"),
                 },
                 arg if arg.starts_with("--") => {
                     anyhow::bail!("unexpected double dash argument: {}", arg)
