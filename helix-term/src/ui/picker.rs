@@ -837,21 +837,22 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             area.width
         };
 
-        let picker_area = area.with_width(picker_width).clip_top(TITLE_BOX_HEIGHT);
+        let picker_area = area.with_width(picker_width);
         self.render_picker(picker_area, surface, cx);
 
         if render_preview {
-            let preview_area = area.clip_left(picker_width).clip_top(TITLE_BOX_HEIGHT);
+            let preview_area = area.clip_left(picker_width);
             self.render_preview(preview_area, surface, cx);
         }
 
         // Add four for margin and bounding box edges
         let title_width = self.title.len() as u16 + 4;
         let area_to_clip = area.width - title_width;
-        let title_area = area
+        let mut title_area = area
             .clip_left(area_to_clip / 2)
             .clip_right(area_to_clip / 2)
             .with_height(TITLE_BOX_HEIGHT);
+        title_area.y -= TITLE_BOX_HEIGHT;
         self.render_title(title_area, surface, cx);
     }
 
@@ -954,7 +955,7 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
         let inner = block.inner(area);
 
         // prompt area
-        let area = inner.clip_left(1).with_height(1 + TITLE_BOX_HEIGHT);
+        let area = inner.clip_left(1).with_height(1);
 
         self.prompt.cursor(area, editor)
     }
