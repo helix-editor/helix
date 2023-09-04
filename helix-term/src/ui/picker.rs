@@ -782,7 +782,7 @@ impl<T: Item + 'static> Picker<T> {
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
-        let text_style = cx.editor.theme.get("ui.text");
+        let text_style = cx.editor.theme.get("ui.text").add_modifier(Modifier::BOLD);
         surface.clear_with(area, background);
 
         // render the border
