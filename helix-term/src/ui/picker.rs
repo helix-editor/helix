@@ -800,16 +800,11 @@ impl<T: Item + 'static> Picker<T> {
 
         // add connecting characters to picker's top border
         let borders = BorderType::line_symbols(BorderType::Plain);
-        surface.set_string(
-            area.x,
-            area.y + 2,
-            borders.horizontal_up.to_string(),
-            Style::default(),
-        );
+        surface.set_string(area.x, area.y + 2, borders.horizontal_up, Style::default());
         surface.set_string(
             area.x + area.width - 1,
             area.y + 2,
-            borders.horizontal_up.to_string(),
+            borders.horizontal_up,
             Style::default(),
         );
     }

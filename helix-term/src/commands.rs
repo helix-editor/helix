@@ -2213,8 +2213,7 @@ fn global_search(cx: &mut Context) {
                 let case_sensitive = if smart_case {
                     user_entered_regex
                         .chars()
-                        .find(|char| char.is_ascii_uppercase())
-                        .is_some()
+                        .any(|char| char.is_ascii_uppercase())
                 } else {
                     true
                 };
@@ -2222,7 +2221,7 @@ fn global_search(cx: &mut Context) {
                     let call = move |_: &mut Editor, compositor: &mut Compositor| {
                         let picker_title = format!(
                             "Global Search: '{}' {}",
-                            regex.to_string(),
+                            regex,
                             if case_sensitive {
                                 "[Case Sensitive]"
                             } else {
