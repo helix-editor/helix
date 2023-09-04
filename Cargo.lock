@@ -1764,9 +1764,9 @@ dependencies = [
 
 [[package]]
 name = "nucleo"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ccab936f2c8ad271bb31430944d98d358f74153566ea323265497f5639b11b6"
+checksum = "ae5331f4bcce475cf28cb29c95366c3091af4b0aa7703f1a6bc858f29718fdf3"
 dependencies = [
  "nucleo-matcher",
  "parking_lot",
