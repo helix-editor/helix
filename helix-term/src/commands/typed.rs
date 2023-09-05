@@ -1587,7 +1587,7 @@ fn tree_sitter_highlight_name(
         return Ok(());
     };
 
-    let content = cx.editor.theme.scope(highlight.0);
+    let content = cx.editor.theme.scope(highlight.0).to_string();
 
     let callback = async move {
         let call: job::Callback = Callback::EditorCompositor(Box::new(
