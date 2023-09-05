@@ -275,7 +275,7 @@ These scopes are used for theming the editor interface:
 | `ui.cursor.insert`                |                                                                                                |
 | `ui.cursor.select`                |                                                                                                |
 | `ui.cursor.match`                 | Matching bracket etc.                                                                          |
-| `ui.cursor.surround`              | Surrounding bracket pair.                                                                  |
+| `ui.cursor.surround`              | Surrounding bracket pair. (if surround highlighting is enabled)                                |
 | `ui.cursor.primary`               | Cursor with primary selection                                                                  |
 | `ui.cursor.primary.normal`        |                                                                                                |
 | `ui.cursor.primary.insert`        |                                                                                                |

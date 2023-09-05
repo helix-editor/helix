@@ -243,6 +243,8 @@ pub struct Config {
     pub auto_save: bool,
     /// Set a global text_width
     pub text_width: usize,
+    /// Highlight the pair ([,{,(, etc.}]) surrounding the cursor. Defaults to false.
+    pub highlight_surround_pair: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
     #[serde(
@@ -839,6 +841,7 @@ impl Default for Config {
                 ..SoftWrap::default()
             },
             text_width: 80,
+            highlight_surround_pair: false,
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
