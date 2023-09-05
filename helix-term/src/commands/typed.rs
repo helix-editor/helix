@@ -1532,24 +1532,62 @@ fn tree_sitter_highlight_name(
     _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
+    fn find_highlight_at_cursor(
+        cx: &mut compositor::Context<'_>,
+    ) -> Option<helix_core::syntax::Highlight> {
+        use helix_core::syntax::HighlightEvent;
+
+        let (view, doc) = current!(cx.editor);
+        let syntax = doc.syntax()?;
+        let text = doc.text().slice(..);
+        let cursor = doc.selection(view.id).primary().cursor(text);
+        let byte = text.char_to_byte(cursor);
+        let node = syntax
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(byte, byte)?;
+        // Query the same range as the one used in syntax highlighting.
+        let range = {
+            // Calculate viewport byte ranges:
+            let row = text.char_to_line(view.offset.anchor.min(text.len_chars()));
+            // Saturating subs to make it inclusive zero indexing.
+            let last_line = text.len_lines().saturating_sub(1);
+            let height = view.inner_area(doc).height;
+            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+            let start = text.line_to_byte(row.min(last_line));
+            let end = text.line_to_byte(last_visible_line + 1);
+
+            start..end
+        };
+
+        let mut highlight = None;
+
+        for event in syntax.highlight_iter(text, Some(range), None) {
+            match event.unwrap() {
+                HighlightEvent::Source { start, end }
+                    if start == node.start_byte() && end == node.end_byte() =>
+                {
+                    return highlight;
+                }
+                HighlightEvent::HighlightStart(hl) => {
+                    highlight = Some(hl);
+                }
+                _ => (),
+            }
+        }
+
+        None
+    }
+
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
+    let Some(highlight) = find_highlight_at_cursor(cx) else {
+        return Ok(());
+    };
 
-    let pos = doc.selection(view.id).primary().cursor(text);
-
-    let mut highlight_name: &str = "";
-    if let Some(highlight) =
-        helix_core::syntax::get_highlight_for_node_at_position(doc.syntax(), text, pos)
-    {
-        let theme = &cx.editor.theme;
-        highlight_name = theme.scope(highlight.0);
-    }
-
-    let content = format!("``json\n{:?}\n````", highlight_name);
+    let content = cx.editor.theme.scope(highlight.0);
 
     let callback = async move {
         let call: job::Callback = Callback::EditorCompositor(Box::new(
@@ -2727,7 +2765,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tree-sitter-highlight-name",
         aliases: &[],
-        doc: "Display tree-sitter highlight name.",
+        doc: "Display name of tree-sitter highlight scope under the cursor.",
         fun: tree_sitter_highlight_name,
         signature: CommandSignature::none(),
     },

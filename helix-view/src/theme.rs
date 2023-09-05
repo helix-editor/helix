@@ -298,8 +298,8 @@ impl Theme {
     }
 
     #[inline]
-    pub fn scope(&self, index: usize) -> &str {
-        &self.scopes[index]
+    pub fn scope(&self, index: usize) -> String {
+        self.scopes[index].clone()
     }
 
     pub fn name(&self) -> &str {

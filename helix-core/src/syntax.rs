@@ -2456,44 +2456,6 @@ pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result 
     }
 }
 
-pub fn get_highlight_for_node_at_position(
-    syntax: Option<&Syntax>,
-    text: RopeSlice,
-    pos: usize,
-) -> Option<Highlight> {
-    let mut highlight: Option<Highlight> = None;
-    if let Some(syntax) = syntax {
-        let pos = text.char_to_byte(pos);
-
-        let node: Node = match syntax
-            .tree()
-            .root_node()
-            .descendant_for_byte_range(pos, pos)
-        {
-            Some(node) => node,
-            None => return None,
-        };
-
-        for event in syntax
-            .highlight_iter(text.slice(..), Some(node.byte_range()), None)
-            .map(|event| event.unwrap())
-        {
-            match event {
-                HighlightEvent::Source { start, end } => {
-                    if start == node.start_byte() && end == node.end_byte() {
-                        break;
-                    }
-                }
-                HighlightEvent::HighlightStart(hl) => {
-                    highlight = Some(hl);
-                }
-                HighlightEvent::HighlightEnd => {}
-            }
-        }
-    }
-    highlight
-}
-
 fn pretty_print_tree_impl<W: fmt::Write>(
     fmt: &mut W,
     cursor: &mut TreeCursor,
