@@ -156,7 +156,7 @@ impl<T: Item> Clone for Injector<T> {
         Injector {
             dst: self.dst.clone(),
             editor_data: self.editor_data.clone(),
-            shutown: Arc::new(AtomicBool::new(false)),
+            shutown: self.shutown.clone(),
         }
     }
 }
