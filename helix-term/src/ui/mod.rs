@@ -190,7 +190,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
         .build()
         .expect("failed to build excluded_types");
     walk_builder.types(excluded_types);
-    let files = walk_builder.build().filter_map(|entry| {
+    let mut files = walk_builder.build().filter_map(|entry| {
         let entry = entry.ok()?;
         if !entry.file_type()?.is_file() {
             return None;
@@ -211,13 +211,27 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
     })
     .with_preview(|_editor, path| Some((path.clone().into(), None)));
     let injector = picker.injector();
-    std::thread::spawn(move || {
-        for file in files {
-            if injector.push(file).is_err() {
-                break;
-            }
+    let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
+
+    let mut hit_timeout = false;
+    for file in &mut files {
+        if injector.push(file).is_err() {
+            break;
         }
-    });
+        if std::time::Instant::now() >= timeout {
+            hit_timeout = true;
+            break;
+        }
+    }
+    if hit_timeout {
+        std::thread::spawn(move || {
+            for file in files {
+                if injector.push(file).is_err() {
+                    break;
+                }
+            }
+        });
+    }
     picker
 }
 
