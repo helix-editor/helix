@@ -324,6 +324,36 @@ fn buffer_previous(
     goto_buffer(cx.editor, Direction::Backward);
     Ok(())
 }
+
+fn buffer_first(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    match cx.editor.documents.keys().nth(0) {
+        Some(doc_id) => cx.editor.switch(*doc_id, Action::Replace),
+        None => bail!("The first buffer not found"),
+    }
+    Ok(())
+}
+
+fn buffer_last(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    match cx.editor.documents.keys().last() {
+        Some(doc_id) => cx.editor.switch(*doc_id, Action::Replace),
+        None => bail!("The last buffer not found"),
+    }
+    Ok(())
+}
 fn buffer_index(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -337,17 +367,16 @@ fn buffer_index(
     } else if args.len() > 1 {
         bail!("Only one index must be provided");
     }
-    let mut index = args[0].parse::<u8>()?;
+    let mut index = args[0].parse::<usize>()?;
+    if index == 0 {
+        bail!("The index must be greater than 0");
+    }
+
     let document_keys: Vec<&DocumentId> = cx.editor.documents.keys().collect();
-    if index == 0 || index > 9 {
-        bail!("The index must be within: [1-9]");
-    } else if index > document_keys.len() as u8 && index != 9 {
-        bail!("Buffer not found");
+    if index > document_keys.len() {
+        index = document_keys.len()
     }
-    if index == 9 {
-        index = document_keys.len() as u8
-    }
-    let doc_id = document_keys[(index - 1) as usize];
+    let doc_id = document_keys[index - 1];
     cx.editor.switch(*doc_id, Action::Replace);
     Ok(())
 }
@@ -2398,8 +2427,22 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-index",
         aliases: &["bi"],
-        doc: "Goto buffer by number [1-9].",
+        doc: "Goto buffer by number <n>.",
         fun: buffer_index,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-first",
+        aliases: &["bf"],
+        doc: "Goto first buffer.",
+        fun: buffer_first,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-last",
+        aliases: &["bl"],
+        doc: "Goto last buffer.",
+        fun: buffer_last,
         signature: CommandSignature::none(),
     },
     TypableCommand {
