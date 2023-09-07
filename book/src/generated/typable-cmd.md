@@ -9,9 +9,9 @@
 | `:buffer-close-others!`, `:bco!`, `:bcloseother!` | Force close all buffers but the currently focused one. |
 | `:buffer-close-all`, `:bca`, `:bcloseall` | Close all buffers without quitting. |
 | `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Force close all buffers ignoring unsaved changes without quitting. |
-| `:buffer-index`, `:bi` | Goto buffer by number [1-9].|
 | `:buffer-next`, `:bn`, `:bnext` | Goto next buffer. |
 | `:buffer-previous`, `:bp`, `:bprev` | Goto previous buffer. |
+| `:buffer-index`, `:bi` | Goto buffer by number [1-9]. |
 | `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
 | `:write!`, `:w!` | Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt) |
 | `:write-buffer-close`, `:wbc` | Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt) |
