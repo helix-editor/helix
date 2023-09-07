@@ -372,11 +372,11 @@ fn buffer_index(
         bail!("The index must be greater than 0");
     }
 
-    let document_keys: Vec<&DocumentId> = cx.editor.documents.keys().collect();
+    let mut document_keys = cx.editor.documents.keys();
     if index > document_keys.len() {
         index = document_keys.len()
     }
-    let doc_id = document_keys[index - 1];
+    let doc_id = document_keys.nth(index - 1).unwrap();
     cx.editor.switch(*doc_id, Action::Replace);
     Ok(())
 }
@@ -2968,7 +2968,6 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
 
 #[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
-    //Command Mode
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
