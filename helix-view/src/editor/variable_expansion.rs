@@ -40,7 +40,7 @@ pub fn expand_variables<'a>(editor: &Editor, input: &'a str) -> anyhow::Result<C
                                         .path()
                                         .and_then(|p| p.parent())
                                         .and_then(std::path::Path::to_str)
-                                        .unwrap()
+                                        .unwrap_or(std::env::current_dir()?.to_str().unwrap())
                                         .to_owned(),
                                     "linenumber" => (doc
                                         .selection(view.id)
