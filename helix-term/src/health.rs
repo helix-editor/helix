@@ -189,22 +189,6 @@ pub fn languages_all() -> std::io::Result<()> {
         None => column("None", Color::Yellow),
     };
 
-    let check_binaries = |cmds: Vec<String>| {
-        match cmds.len() {
-            0 => column("None", Color::Yellow),
-            1 => check_binary(cmds.get(0).cloned()),
-            n_configured => {
-                let n_available = cmds.iter().filter_map(|cmd| which::which(cmd).ok()).count();
-                let (icon, color) = match n_available {
-                    0 => ("✘", Color::Red),
-                    n_available if n_available == n_configured => ("✓", Color::Green),
-                    _ => ("-", Color::Yellow),
-                };
-                column(&format!("{} {}/{}", icon, n_available, n_configured), color);
-            }
-        };
-    };
-
     for lang in &syn_loader_conf.language {
         column(&lang.language_id, Color::Reset);
 
@@ -217,8 +201,8 @@ pub fn languages_all() -> std::io::Result<()> {
                     .get(&ls.name)
                     .map(|config| config.command.clone())
             })
-            .collect();
-        check_binaries(cmds);
+            .collect::<Vec<_>>();
+        check_binary(cmds.get(0).cloned());
 
         let dap = lang.debugger.as_ref().map(|dap| dap.command.to_string());
         check_binary(dap);
@@ -231,6 +215,14 @@ pub fn languages_all() -> std::io::Result<()> {
         }
 
         writeln!(stdout)?;
+
+        if cmds.len() > 1 {
+            cmds.iter().skip(1).try_for_each(|cmd| {
+                column("", Color::Reset);
+                check_binary(Some(cmd.clone()));
+                writeln!(stdout)
+            })?;
+        }
     }
 
     Ok(())
