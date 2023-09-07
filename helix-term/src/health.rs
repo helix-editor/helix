@@ -181,8 +181,8 @@ pub fn languages_all() -> std::io::Result<()> {
         .language
         .sort_unstable_by_key(|l| l.language_id.clone());
 
-    let check_binary = |cmd: Option<String>| match cmd {
-        Some(cmd) => match which::which(&cmd) {
+    let check_binary = |cmd: Option<&str>| match cmd {
+        Some(cmd) => match which::which(cmd) {
             Ok(_) => column(&format!("✓ {}", cmd), Color::Green),
             Err(_) => column(&format!("✘ {}", cmd), Color::Red),
         },
@@ -199,12 +199,12 @@ pub fn languages_all() -> std::io::Result<()> {
                 syn_loader_conf
                     .language_server
                     .get(&ls.name)
-                    .map(|config| config.command.clone())
+                    .map(|config| config.command.as_str())
             })
             .collect::<Vec<_>>();
-        check_binary(cmds.get(0).cloned());
+        check_binary(cmds.first().cloned());
 
-        let dap = lang.debugger.as_ref().map(|dap| dap.command.to_string());
+        let dap = lang.debugger.as_ref().map(|dap| dap.command.as_str());
         check_binary(dap);
 
         for ts_feat in TsFeature::all() {
@@ -219,7 +219,7 @@ pub fn languages_all() -> std::io::Result<()> {
         if cmds.len() > 1 {
             cmds.iter().skip(1).try_for_each(|cmd| {
                 column("", Color::Reset);
-                check_binary(Some(cmd.clone()));
+                check_binary(Some(cmd));
                 writeln!(stdout)
             })?;
         }
