@@ -4,37 +4,37 @@
 
 
 # User Interface
-"ui.background" = "background"
-"ui.text" = "foreground"
 
-"ui.statusline" = { bg = "gray", fg = "foreground" }
-"ui.statusline.inactive" = { bg = "gray", fg = "disabled" }
-"ui.statusline.normal" = { bg = "accent", fg = "foreground" }
-"ui.statusline.insert" = { bg = "green", fg = "foreground" }
-"ui.statusline.select" = { bg = "purple", fg = "foreground" }
+"ui.background" = { bg = "bg", fg = "text" }
+"ui.text" = { fg = "text" }
+
+"ui.statusline" = { bg = "highlight", fg = "text" }
+"ui.statusline.inactive" = { bg = "highlight", fg = "disabled" }
+"ui.statusline.normal" = { bg = "accent", fg = "text" }
+"ui.statusline.insert" = { bg = "green", fg = "text" }
+"ui.statusline.select" = { bg = "purple", fg = "text" }
 
 
-"ui.selection" = { bg = "#717cb480", fg = "white" }
+"ui.selection" = { bg = "selection", fg = "white" }
 
-"ui.virtual" = "gray"
-"ui.virtual.whitespace" = "background"
-"ui.virtual.indent-guide" = { fg = "gray" }
-"ui.virtual.ruler" = { bg = "gray" }
+"ui.virtual" = { fg = "highlight" }
 
-"ui.linenr" = { fg = "linenr" }
+"ui.virtual.indent-guide" = { fg = "highlight" }
 
-"ui.cursor" = { bg = "white", fg = "gray" }
+"ui.linenr" = { fg = "line-number" }
+
+"ui.cursor" = { bg = "highlight", fg = "white" }
+
 "ui.cursor.primary" = { bg = "white", fg = "gray" }
+"ui.cursorline.primary" = { bg = "white" }
 
-"ui.cursorline.primary" = "white"
+"ui.highlight" = { bg = "highlight" }
 
-"ui.highlight" = "highlight"
+"ui.menu" = { bg = "highlight", fg = "text" }
 
-"ui.menu" = { bg = "background", fg = "foreground" }
+"ui.help" = { bg = "highlight", fg = "text" }
 
-"ui.help" = { bg = "background", fg = "foreground" }
-
-"ui.popup" = "gray"
+"ui.popup" = { bg = "highlight", fg = "text" }
 
 warning = "yellow"
 error = "error"
@@ -42,21 +42,26 @@ info = "blue"
 hint = "purple"
 
 [palette]
-background = "#0f111a"
-foreground = "#a6accd"
+bg = "#0f111a"
+text = "#a6accd"
 
-accent = "#84ffff"
-linenr = "#3b3f51"
-highlight = "#1f2233"
-error = "#ff5370"
-
+white = "#eeffff"
 green = "#c3e88d"
 yellow = "#ffcb6b"
-blue = "#82aaf"
+blue = "#82aaff"
 red = "#f07178"
 purple = "#c792ea"
 orange = "#f78c6c"
 cyan = "#89ddff"
 gray = "#717cb4"
+error = "#ff5370"
+
 disabled = "#464b5d"
-white = "#eeffff"
+
+accent = "#84ffff"
+
+highlight = "#1f2233"
+
+selection = "#717cb480"
+
+line-number = "#3b3f51"
