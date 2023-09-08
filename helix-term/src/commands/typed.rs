@@ -2291,6 +2291,29 @@ fn clear_register(
     Ok(())
 }
 
+fn redraw(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let callback = Box::pin(async move {
+        let call: job::Callback =
+            job::Callback::EditorCompositor(Box::new(|_editor, compositor| {
+                compositor.need_full_redraw();
+            }));
+
+        Ok(call)
+    });
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -2875,6 +2898,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Clear given register. If no argument is provided, clear all registers.",
         fun: clear_register,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "redraw",
+        aliases: &[],
+        doc: "Clear and re-render the whole UI",
+        fun: redraw,
         signature: CommandSignature::none(),
     },
 ];
