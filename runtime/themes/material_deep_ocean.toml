@@ -1,6 +1,54 @@
-[pallete]
+# Material Theme <https://material-theme.com/> for Helix Editor
+
+# Syntax Highlighting
+
+
+# User Interface
+"ui.background" = "background"
+"ui.text" = "foreground"
+
+"ui.statusline" = { bg = "gray", fg = "foreground" }
+"ui.statusline.inactive" = { bg = "gray", fg = "disabled" }
+"ui.statusline.normal" = { bg = "accent", fg = "foreground" }
+"ui.statusline.insert" = { bg = "green", fg = "foreground" }
+"ui.statusline.select" = { bg = "purple", fg = "foreground" }
+
+
+"ui.selection" = { bg = "#717cb480", fg = "white" }
+
+"ui.virtual" = "gray"
+"ui.virtual.whitespace" = "background"
+"ui.virtual.indent-guide" = { fg = "gray" }
+"ui.virtual.ruler" = { bg = "gray" }
+
+"ui.linenr" = { fg = "linenr" }
+
+"ui.cursor" = { bg = "white", fg = "gray" }
+"ui.cursor.primary" = { bg = "white", fg = "gray" }
+
+"ui.cursorline.primary" = "white"
+
+"ui.highlight" = "highlight"
+
+"ui.menu" = { bg = "background", fg = "foreground" }
+
+"ui.help" = { bg = "background", fg = "foreground" }
+
+"ui.popup" = "gray"
+
+warning = "yellow"
+error = "error"
+info = "blue"
+hint = "purple"
+
+[palette]
 background = "#0f111a"
-foreground = "#8f93a2"
+foreground = "#a6accd"
+
+accent = "#84ffff"
+linenr = "#3b3f51"
+highlight = "#1f2233"
+error = "#ff5370"
 
 green = "#c3e88d"
 yellow = "#ffcb6b"
@@ -10,5 +58,5 @@ purple = "#c792ea"
 orange = "#f78c6c"
 cyan = "#89ddff"
 gray = "#717cb4"
+disabled = "#464b5d"
 white = "#eeffff"
-black = "#eeffff"
