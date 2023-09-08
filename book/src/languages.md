@@ -127,7 +127,7 @@ These are the available options for a language server.
 | `environment`         | Any environment variables that will be used when starting the language server `{ "KEY1" = "Value1", "KEY2" = "Value2" }` |
 
 A `format` sub-table within `config` can be used to pass extra formatting options to
-[Document Formatting Requests](https://github.com/microsoft/language-server-protocol/blob/gh-pages/_specifications/specification-3-17.md#document-formatting-request--leftwards_arrow_with_hook).
+[Document Formatting Requests](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_formatting).
 For example, with typescript:
 
 ```toml
