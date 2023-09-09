@@ -474,9 +474,13 @@ impl<T: Item + 'static> Picker<T> {
                             log::info!("highlighting picker item failed");
                             return;
                         };
-                        let Some(Overlay {
-                            content: picker, ..
-                        }) = compositor.find::<Overlay<Self>>()
+                        let picker = match compositor.find::<Overlay<Self>>() {
+                            Some(Overlay { content, .. }) => Some(content),
+                            None => compositor
+                                .find::<Overlay<DynamicPicker<T>>>()
+                                .map(|overlay| &mut overlay.content.file_picker),
+                        };
+                        let Some(picker) = picker
                         else {
                             log::info!("picker closed before syntax highlighting finished");
                             return;
