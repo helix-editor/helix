@@ -50,7 +50,6 @@ pub const ID: &str = "picker";
 use super::{menu::Item, overlay::Overlay};
 
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
-pub const TITLE_BOX_HEIGHT: u16 = 2;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
@@ -778,35 +777,58 @@ impl<T: Item + 'static> Picker<T> {
         }
     }
 
-    fn render_title(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // -- Render the frame:
-        // clear area
+    fn render_title(
+        &mut self,
+        mode: PickerTitle,
+        area: Rect,
+        surface: &mut Surface,
+        cx: &mut Context,
+    ) {
+        let borders = BorderType::line_symbols(BorderType::Plain);
         let background = cx.editor.theme.get("ui.background");
         let text_style = cx.editor.theme.get("ui.text").add_modifier(Modifier::BOLD);
-        surface.clear_with(area, background);
+        // Add four for margin and bounding box edges
+        let title_width = self.title.len() as u16 + 4;
+        match mode {
+            PickerTitle::Center => {
+                const TITLE_BOX_HEIGHT: u16 = 2;
 
-        // render the border
-        let block = Block::default().borders(Borders::TOP | Borders::LEFT | Borders::RIGHT);
-        block.render(area, surface);
+                // Compute area for title rendering
+                let area_to_clip = area.width - title_width;
+                let mut area = area
+                    .clip_left(area_to_clip / 2)
+                    .clip_right(area_to_clip / 2)
+                    .with_height(TITLE_BOX_HEIGHT);
+                area.y -= TITLE_BOX_HEIGHT;
 
-        // render the title text
-        surface.set_string(
-            // Add two for spacing for border box and margin
-            area.x + 2,
-            area.y + 1,
-            &self.title,
-            text_style,
-        );
+                // -- Render the frame:
+                // clear area
+                surface.clear_with(area, background);
 
-        // add connecting characters to picker's top border
-        let borders = BorderType::line_symbols(BorderType::Plain);
-        surface.set_string(area.x, area.y + 2, borders.horizontal_up, Style::default());
-        surface.set_string(
-            area.x + area.width - 1,
-            area.y + 2,
-            borders.horizontal_up,
-            Style::default(),
-        );
+                // render the border
+                let block = Block::default().borders(Borders::TOP | Borders::LEFT | Borders::RIGHT);
+                block.render(area, surface);
+
+                // render the title text
+                surface.set_string(
+                    // Add two for spacing for border box and margin
+                    area.x + 2,
+                    area.y + 1,
+                    &self.title,
+                    text_style,
+                );
+
+                // add connecting characters to picker's top border
+                surface.set_string(area.x, area.y + 2, borders.horizontal_up, Style::default());
+                surface.set_string(
+                    area.x + area.width - 1,
+                    area.y + 2,
+                    borders.horizontal_up,
+                    Style::default(),
+                );
+            }
+            _ => (),
+        }
     }
 }
 
@@ -837,20 +859,8 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             self.render_preview(preview_area, surface, cx);
         }
 
-        let editor_config = cx.editor.config.load();
-        let render_title = editor_config.picker != PickerTitle::Never && area.y >= TITLE_BOX_HEIGHT;
-
-        if render_title {
-            // Add four for margin and bounding box edges
-            let title_width = self.title.len() as u16 + 4;
-            let area_to_clip = area.width - title_width;
-            let mut title_area = area
-                .clip_left(area_to_clip / 2)
-                .clip_right(area_to_clip / 2)
-                .with_height(TITLE_BOX_HEIGHT);
-            title_area.y -= TITLE_BOX_HEIGHT;
-            self.render_title(title_area, surface, cx);
-        }
+        let title_render_mode = cx.editor.config.load().picker;
+        self.render_title(title_render_mode, area, surface, cx);
     }
 
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
