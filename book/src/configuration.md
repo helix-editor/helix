@@ -235,7 +235,7 @@ Picker specific options.
 
 | Key | Description | Default |
 |--|--|---------|
-| `title` | Weather to draw picker's titlebox | `true` |
+| `picker-title` | Renders a title for the opening picker. Can be `never`, `center`, `inline`, `inline-border` or `prompt` | `never` |
 
 ### `[editor.whitespace]` Section
 

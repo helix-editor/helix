@@ -886,7 +886,7 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             self.render_preview(preview_area, surface, cx);
         }
 
-        let title_render_mode = cx.editor.config.load().picker;
+        let title_render_mode = cx.editor.config.load().picker_title;
         self.render_title(title_render_mode, area, surface, cx);
     }
 

@@ -272,7 +272,7 @@ pub struct Config {
     pub search: SearchConfig,
     /// Picker configuration
     #[serde(default)]
-    pub picker: PickerTitle,
+    pub picker_title: PickerTitle,
     pub lsp: LspConfig,
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
@@ -846,7 +846,7 @@ impl Default for Config {
             true_color: false,
             undercurl: false,
             search: SearchConfig::default(),
-            picker: PickerTitle::default(),
+            picker_title: PickerTitle::default(),
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
