@@ -272,7 +272,7 @@ pub struct Config {
     pub search: SearchConfig,
     /// Picker configuration
     #[serde(default)]
-    pub picker: PickerConfig,
+    pub picker: PickerTitle,
     pub lsp: LspConfig,
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
@@ -405,17 +405,20 @@ pub struct SearchConfig {
     pub wrap_around: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct PickerConfig {
-    /// Title: Weather to render title for the picker
-    pub title: bool,
-}
-
-impl Default for PickerConfig {
-    fn default() -> Self {
-        Self { title: true }
-    }
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PickerTitle {
+    /// Don't render the title
+    #[default]
+    Never,
+    /// Render on top of picker box
+    Center,
+    /// Render inline with the picker's border
+    Inline,
+    /// Render inline with the picker's border
+    InlineBorder,
+    /// Render title in the prompt line
+    Prompt,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -843,7 +846,7 @@ impl Default for Config {
             true_color: false,
             undercurl: false,
             search: SearchConfig::default(),
-            picker: PickerConfig::default(),
+            picker: PickerTitle::default(),
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
             rulers: Vec::new(),

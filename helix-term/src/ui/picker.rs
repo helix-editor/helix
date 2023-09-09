@@ -39,7 +39,7 @@ use helix_core::{
     Syntax,
 };
 use helix_view::{
-    editor::Action,
+    editor::{Action, PickerTitle},
     graphics::{CursorKind, Margin, Modifier, Rect},
     theme::Style,
     view::ViewPosition,
@@ -838,7 +838,7 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
         }
 
         let editor_config = cx.editor.config.load();
-        let render_title = editor_config.picker.title && area.y >= TITLE_BOX_HEIGHT;
+        let render_title = editor_config.picker != PickerTitle::Never && area.y >= TITLE_BOX_HEIGHT;
 
         if render_title {
             // Add four for margin and bounding box edges
