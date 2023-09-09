@@ -793,6 +793,10 @@ impl<T: Item + 'static> Picker<T> {
             PickerTitle::Center => {
                 const TITLE_BOX_HEIGHT: u16 = 2;
 
+                if area.y < TITLE_BOX_HEIGHT || area.width <= title_width + 1 {
+                    return;
+                }
+
                 // Compute area for title rendering
                 let area_to_clip = area.width - title_width;
                 let mut area = area
@@ -829,6 +833,9 @@ impl<T: Item + 'static> Picker<T> {
             }
             PickerTitle::Inline => surface.set_string(area.x + 1, area.y, &self.title, text_style),
             PickerTitle::InlineBorder => {
+                if area.width <= title_width {
+                    return;
+                }
                 let mut area = area.with_width(title_width).with_height(2);
                 area.y -= 1;
 
