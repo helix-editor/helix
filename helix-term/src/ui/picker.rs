@@ -827,7 +827,27 @@ impl<T: Item + 'static> Picker<T> {
                     Style::default(),
                 );
             }
-            _ => (),
+            PickerTitle::Inline => surface.set_string(area.x + 1, area.y, &self.title, text_style),
+            PickerTitle::InlineBorder => {
+                let mut area = area.with_width(title_width).with_height(2);
+                area.y -= 1;
+
+                surface.clear_with(area, background);
+
+                let block = Block::default().borders(Borders::TOP | Borders::LEFT | Borders::RIGHT);
+                block.render(area, surface);
+
+                surface.set_string(area.x + 2, area.y + 1, &self.title, text_style);
+
+                surface.set_string(
+                    area.x + title_width - 1,
+                    area.y + 1,
+                    borders.bottom_left,
+                    Style::default(),
+                );
+            }
+            PickerTitle::Prompt => cx.editor.set_status(self.title.clone()),
+            PickerTitle::Never => (),
         }
     }
 }
