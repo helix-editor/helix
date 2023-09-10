@@ -1,0 +1,123 @@
+# Material Theme <https://material-theme.com/> for Helix Editor
+
+# Syntax Highlighting
+
+"type" = "purple"
+
+"constructor" = "blue"
+
+"constant" = "yellow"
+
+"string" = "green"
+"string.regexp" = "yellow"
+"string.special" = "blue"
+
+"comment" = { fg = "comment" }
+
+"variable" = "text"
+"variable.parameter" = { fg = "orange" }
+"variable.builtin" = "yellow"
+
+"label" = "orange"
+
+"punctuation" = "cyan"
+
+"keyword" = "purple"
+"keyword.storage" = "cyan"
+
+"operator" = "cyan"
+
+"function" = "blue"
+"function.macro" = "cyan"
+
+"tag" = "red"
+"attribute" = "purple"
+
+"namespace" = { fg = "yellow" }
+
+"special" = "cyan"
+
+"markup.heading.marker" = { fg = "cyan", modifiers = ["bold"] }
+"markup.heading.1" = "cyan"
+"markup.heading.2" = "red"
+"markup.heading.3" = "green"
+"markup.heading.4" = "yellow"
+"markup.heading.5" = "blue"
+"markup.heading.6" = "orange"
+"markup.list" = "purple"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "green", modifiers = ["underlined"] }
+"markup.link.text" = "blue"
+"markup.raw" = "text"
+
+"diff.plus" = "green"
+"diff.minus" = "red"
+"diff.delta" = "blue"
+
+# User Interface
+
+"ui.background" = { bg = "bg", fg = "text" }
+"ui.text" = { fg = "text" }
+
+"ui.statusline" = { bg = "bg", fg = "text" }
+"ui.statusline.inactive" = { bg = "bg", fg = "disabled" }
+"ui.statusline.normal" = { bg = "accent", fg = "text" }
+"ui.statusline.insert" = { bg = "green", fg = "text" }
+"ui.statusline.select" = { bg = "purple", fg = "text" }
+
+
+"ui.selection" = { bg = "selection" }
+
+"ui.linenr" = { fg = "line-number" }
+"ui.linenr.selected" = { fg = "accent" }
+
+"ui.cursor" = { bg = "highlight", fg = "white" }
+
+"ui.cursor.primary" = { bg = "white", fg = "gray" }
+"ui.cursorline.primary" = { bg = "white" }
+
+"ui.virtual" = { fg = "gray" }
+"ui.virtual.ruler" = { bg = "highlight" }
+"ui.virtual.indent-guide" = { fg = "gray" }
+
+"ui.highlight" = { bg = "highlight" }
+
+"ui.menu" = { bg = "highlight", fg = "text" }
+
+"ui.help" = { bg = "highlight", fg = "text" }
+
+"ui.popup" = { bg = "highlight", fg = "text" }
+
+warning = "yellow"
+error = "error"
+info = "blue"
+hint = "purple"
+
+[palette]
+bg = "#0f111a"
+text = "#a6accd"
+
+white = "#eeffff"
+green = "#c3e88d"
+yellow = "#ffcb6b"
+blue = "#82aaff"
+red = "#f07178"
+purple = "#c792ea"
+orange = "#f78c6c"
+cyan = "#89ddff"
+gray = "#717cb4"
+error = "#ff5370"
+
+disabled = "#464b5d"
+
+accent = "#84ffff"
+
+highlight = "#1f2233"
+
+comment = "#464b5d"
+
+selection = "#1f2233"
+
+line-number = "#3b3f51"
