@@ -297,6 +297,11 @@ impl Theme {
         self.highlights[index]
     }
 
+    #[inline]
+    pub fn scope(&self, index: usize) -> &str {
+        &self.scopes[index]
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }

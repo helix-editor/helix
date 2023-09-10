@@ -1527,6 +1527,84 @@ fn tree_sitter_scopes(
     Ok(())
 }
 
+fn tree_sitter_highlight_name(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    fn find_highlight_at_cursor(
+        cx: &mut compositor::Context<'_>,
+    ) -> Option<helix_core::syntax::Highlight> {
+        use helix_core::syntax::HighlightEvent;
+
+        let (view, doc) = current!(cx.editor);
+        let syntax = doc.syntax()?;
+        let text = doc.text().slice(..);
+        let cursor = doc.selection(view.id).primary().cursor(text);
+        let byte = text.char_to_byte(cursor);
+        let node = syntax
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(byte, byte)?;
+        // Query the same range as the one used in syntax highlighting.
+        let range = {
+            // Calculate viewport byte ranges:
+            let row = text.char_to_line(view.offset.anchor.min(text.len_chars()));
+            // Saturating subs to make it inclusive zero indexing.
+            let last_line = text.len_lines().saturating_sub(1);
+            let height = view.inner_area(doc).height;
+            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+            let start = text.line_to_byte(row.min(last_line));
+            let end = text.line_to_byte(last_visible_line + 1);
+
+            start..end
+        };
+
+        let mut highlight = None;
+
+        for event in syntax.highlight_iter(text, Some(range), None) {
+            match event.unwrap() {
+                HighlightEvent::Source { start, end }
+                    if start == node.start_byte() && end == node.end_byte() =>
+                {
+                    return highlight;
+                }
+                HighlightEvent::HighlightStart(hl) => {
+                    highlight = Some(hl);
+                }
+                _ => (),
+            }
+        }
+
+        None
+    }
+
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let Some(highlight) = find_highlight_at_cursor(cx) else {
+        return Ok(());
+    };
+
+    let content = cx.editor.theme.scope(highlight.0).to_string();
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let content = ui::Markdown::new(content, editor.syn_loader.clone());
+                let popup = Popup::new("hover", content).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 fn vsplit(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2701,6 +2779,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Display tree sitter scopes, primarily for theming and development.",
         fun: tree_sitter_scopes,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "tree-sitter-highlight-name",
+        aliases: &[],
+        doc: "Display name of tree-sitter highlight scope under the cursor.",
+        fun: tree_sitter_highlight_name,
         signature: CommandSignature::none(),
     },
     TypableCommand {
