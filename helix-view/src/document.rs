@@ -1206,7 +1206,7 @@ impl Document {
                     transaction.changes(),
                 );
                 if res.is_err() {
-                    log::error!("TS parser failed, disabeling TS for the current buffer: {res:?}");
+                    log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
                     self.syntax = None;
                 }
             }

@@ -89,7 +89,7 @@
 "comment" = { fg = "muted", modifiers = ["italic"]}
 # "comment.line" = ""
 # "comment.block" = ""
-# "comment.block.documenation" = ""
+# "comment.block.documentation" = ""
 
 "variable" = "text"
 "variable.builtin" = "love"
