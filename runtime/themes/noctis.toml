@@ -100,14 +100,14 @@
 
 'variable' = { fg = "white" }  # Variable names.
 'variable.builtin' = { } # Language reserved variables: `this`, `self`, `super`, etc.
-'variable.parameter' = { } # Funtion parameters.
+'variable.parameter' = { } # Function parameters.
 'variable.other.member' = { } # Fields of composite data types (e.g. structs, unions).
 'variable.function' = { } # ?
 
 'label' = { fg = "purple" } # Loop labels in rust.
 
 'punctuation' =  { fg = "yellow", modifiers = ["bold"] } # (){}[]:;,.
-# 'punctuation.delimeter' = { fg = "yellow" } # Commas and colons.
+# 'punctuation.delimiter' = { fg = "yellow" } # Commas and colons.
 # 'punctuation.bracket' = { fg = "yellow" } # Parentheses, angle brackets, etc.
 
 'keyword' = { fg = "pink", modifiers = ["bold"] } # Language reserved keywords.
@@ -119,7 +119,7 @@
 'keyword.control.exception' = {fg = "pink", modifiers = ["bold"] } # 'raise' in python.
 'keyword.operator' = { } # 'or', 'and', 'in'.
 'keyword.directive' = { fg = "purple" } # Preprocessor directives (#if in C).
-'keyword.function' = { } # The keyword to define a funtion: 'def', 'fun', 'fn'.
+'keyword.function' = { } # The keyword to define a function: 'def', 'fun', 'fn'.
 
 'operator' = { fg = "pink", modifiers = ["bold"] } # Logical (&&, ||) and - I assume - Mathematical (+, %) operators
 
