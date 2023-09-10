@@ -112,7 +112,7 @@
 | pascal | ✓ | ✓ |  | `pasls` |
 | passwd | ✓ |  |  |  |
 | pem | ✓ |  |  |  |
-| perl | ✓ |  |  | `perlnavigator` |
+| perl | ✓ | ✓ | ✓ | `perlnavigator` |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | po | ✓ | ✓ |  |  |
 | pod | ✓ |  |  |  |
