@@ -70,10 +70,6 @@
 
 "ui.selection" = { bg = "selection" }
 
-"ui.virtual" = { fg = "gray" }
-
-"ui.virtual.indent-guide" = { fg = "gray" }
-
 "ui.linenr" = { fg = "line-number" }
 "ui.linenr.selected" = { fg = "accent" }
 
@@ -81,6 +77,10 @@
 
 "ui.cursor.primary" = { bg = "white", fg = "gray" }
 "ui.cursorline.primary" = { bg = "white" }
+
+"ui.virtual" = { fg = "gray" }
+"ui.virtual.ruler" = { bg = "highlight" }
+"ui.virtual.indent-guide" = { fg = "gray" }
 
 "ui.highlight" = { bg = "highlight" }
 
