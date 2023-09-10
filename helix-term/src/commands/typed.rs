@@ -335,6 +335,10 @@ fn write_impl(
     let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
+    if config.insert_final_newline {
+        insert_final_newline(doc, view);
+    }
+
     let fmt = if config.auto_format {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
@@ -352,9 +356,6 @@ fn write_impl(
     };
 
     if fmt.is_none() {
-        if config.insert_final_newline {
-            insert_final_newline(doc, view);
-        }
         let id = doc.id();
         cx.editor.save(id, path, force)?;
     }
@@ -675,7 +676,6 @@ pub fn write_all_impl(
     let jobs = &mut cx.jobs;
     let current_view = view!(cx.editor);
 
-    // save all documents
     let saves: Vec<_> = cx
         .editor
         .documents
@@ -706,35 +706,35 @@ pub fn write_all_impl(
                 current_view.id
             };
 
-            let fmt = if config.auto_format {
-                doc.auto_format().map(|fmt| {
-                    let callback = make_format_callback(
-                        doc.id(),
-                        doc.version(),
-                        target_view,
-                        fmt,
-                        Some((None, force)),
-                    );
-                    jobs.add(Job::with_callback(callback).wait_before_exiting());
-                })
-            } else {
-                None
-            };
-
-            if fmt.is_none() {
-                return Some((doc.id(), target_view));
-            }
-
-            None
+            Some((doc.id(), target_view))
         })
         .collect();
 
-    // manually call save for the rest of docs that don't have a formatter
-    for (doc_id, view_id) in saves {
+    for (doc_id, target_view) in saves {
+        let doc = doc_mut!(cx.editor, &doc_id);
+
         if config.insert_final_newline {
-            insert_final_newline(doc_mut!(cx.editor, &doc_id), view_mut!(cx.editor, view_id));
+            insert_final_newline(doc, view_mut!(cx.editor, target_view));
         }
-        cx.editor.save::<PathBuf>(doc_id, None, force)?;
+
+        let fmt = if config.auto_format {
+            doc.auto_format().map(|fmt| {
+                let callback = make_format_callback(
+                    doc_id,
+                    doc.version(),
+                    target_view,
+                    fmt,
+                    Some((None, force)),
+                );
+                jobs.add(Job::with_callback(callback).wait_before_exiting());
+            })
+        } else {
+            None
+        };
+
+        if fmt.is_none() {
+            cx.editor.save::<PathBuf>(doc_id, None, force)?;
+        }
     }
 
     if !errors.is_empty() && !force {
