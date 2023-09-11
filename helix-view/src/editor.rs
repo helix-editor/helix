@@ -244,7 +244,7 @@ pub struct Config {
     /// Set a global text_width
     pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
-    /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
+    /// Used for autocompletion, set to 0 for instant. Defaults to 250ms.
     #[serde(
         serialize_with = "serialize_duration_millis",
         deserialize_with = "deserialize_duration_millis"
@@ -817,7 +817,7 @@ impl Default for Config {
             auto_completion: true,
             auto_format: true,
             auto_save: false,
-            idle_timeout: Duration::from_millis(400),
+            idle_timeout: Duration::from_millis(250),
             preview_completion_insert: true,
             completion_trigger_len: 2,
             auto_info: true,
