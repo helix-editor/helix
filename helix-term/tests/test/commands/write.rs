@@ -461,6 +461,31 @@ async fn test_write_insert_final_newline_unchanged_if_not_missing() -> anyhow::R
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_write_insert_final_newline_unchanged_if_missing_and_false() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_config(Config {
+            editor: helix_view::editor::Config {
+                insert_final_newline: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_file(file.path(), None)
+        .with_input_text("#[t|]#he quiet rain continued through the night")
+        .build()?;
+
+    test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(
+        file.as_file_mut(),
+        "the quiet rain continued through the night",
+    )?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_all_insert_final_newline_add_if_missing_and_modified() -> anyhow::Result<()> {
     let mut file1 = tempfile::NamedTempFile::new()?;
     let mut file2 = tempfile::NamedTempFile::new()?;
