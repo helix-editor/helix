@@ -886,7 +886,6 @@ indent = { tab-width = 2, unit = "  " }
 '{' = '}'
 '[' = ']'
 '"' = '"'
-'`' = '`'
 
 [[grammar]]
 name = "ocaml"
@@ -907,7 +906,6 @@ indent = { tab-width = 2, unit = "  " }
 '{' = '}'
 '[' = ']'
 '"' = '"'
-'`' = '`'
 
 [[grammar]]
 name = "ocaml-interface"
