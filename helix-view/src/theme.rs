@@ -297,6 +297,11 @@ impl Theme {
         self.highlights[index]
     }
 
+    #[inline]
+    pub fn scope(&self, index: usize) -> &str {
+        &self.scopes[index]
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -359,6 +364,7 @@ impl Default for ThemePalette {
     fn default() -> Self {
         Self {
             palette: hashmap! {
+                "default".to_string() => Color::Reset,
                 "black".to_string() => Color::Black,
                 "red".to_string() => Color::Red,
                 "green".to_string() => Color::Green,
@@ -390,8 +396,23 @@ impl ThemePalette {
         Self { palette: default }
     }
 
-    pub fn hex_string_to_rgb(s: &str) -> Result<Color, String> {
-        if s.starts_with('#') && s.len() >= 7 {
+    pub fn string_to_rgb(s: &str) -> Result<Color, String> {
+        if s.starts_with('#') {
+            Self::hex_string_to_rgb(s)
+        } else {
+            Self::ansi_string_to_rgb(s)
+        }
+    }
+
+    fn ansi_string_to_rgb(s: &str) -> Result<Color, String> {
+        if let Ok(index) = s.parse::<u8>() {
+            return Ok(Color::Indexed(index));
+        }
+        Err(format!("Theme: malformed ANSI: {}", s))
+    }
+
+    fn hex_string_to_rgb(s: &str) -> Result<Color, String> {
+        if s.len() >= 7 {
             if let (Ok(red), Ok(green), Ok(blue)) = (
                 u8::from_str_radix(&s[1..3], 16),
                 u8::from_str_radix(&s[3..5], 16),
@@ -417,7 +438,7 @@ impl ThemePalette {
             .get(value)
             .copied()
             .ok_or("")
-            .or_else(|_| Self::hex_string_to_rgb(value))
+            .or_else(|_| Self::string_to_rgb(value))
     }
 
     pub fn parse_modifier(value: &Value) -> Result<Modifier, String> {
@@ -493,7 +514,7 @@ impl TryFrom<Value> for ThemePalette {
         let mut palette = HashMap::with_capacity(map.len());
         for (name, value) in map {
             let value = Self::parse_value_as_str(&value)?;
-            let color = Self::hex_string_to_rgb(value)?;
+            let color = Self::string_to_rgb(value)?;
             palette.insert(name, color);
         }
 

@@ -1,0 +1,231 @@
+html {
+  font-family: "Inter", sans-serif;
+}
+
+.sidebar .sidebar-scrollbox {
+  padding: 0;
+}
+
+.chapter {
+  margin: 0.25rem 0;
+}
+
+.chapter li.chapter-item {
+  line-height: initial;
+  margin: 0;
+  padding: 1rem 1.5rem;
+}
+
+.chapter .section li.chapter-item {
+  line-height: inherit;
+  padding: .5rem .5rem 0 .5rem;
+}
+
+.content {
+  overflow-y: auto;
+  padding: 0 15px;
+  padding-bottom: 50px;
+}
+
+/* 2 1.75 1.5 1.25 1 .875 */
+.content h1 { font-size: 2em }
+.content h2 { font-size: 1.75em }
+.content h3 { font-size: 1.5em }
+.content h4 { font-size: 1.25em }
+.content h5 { font-size: 1em }
+.content h6 { font-size: .875em }
+
+.content h1,
+.content h2,
+.content h3,
+.content h4 {
+  font-weight: 500;
+  margin-top: 1.275em;
+  margin-bottom: .875em;
+}
+
+.content p,
+.content ol,
+.content ul,
+.content table {
+  margin-top: 0;
+  margin-bottom: .875em;
+}
+
+.content ul li {
+  margin-bottom: .25rem;
+}
+
+.content ul {
+  list-style-type: square;
+}
+
+.content ul ul,
+.content ol ul {
+  margin-bottom: .5rem;
+}
+
+.content li p {
+  margin-bottom: .5em;
+}
+
+blockquote {
+  margin: 1.5rem 0;
+  padding: 1rem 1.5rem;
+  color: var(--fg);
+  opacity: .9;
+  background-color: var(--quote-bg);
+  border-left: 4px solid var(--quote-border);
+  border-top: none;
+  border-bottom: none;
+}
+
+blockquote *:last-child {
+  margin-bottom: 0;
+}
+
+table {
+  width: 100%;
+}
+
+table thead th {
+  padding: .75rem;
+  text-align: left;
+  font-weight: 500;
+  line-height: 1.5;
+  width: auto;
+}
+
+table td {
+  padding: .75rem;
+  border: none;
+}
+
+table thead tr {
+  border: none;
+  border-bottom: 2px var(--table-border-color) solid;
+}
+
+table tbody tr {
+  border-bottom: 1px var(--table-border-line) solid;
+}
+
+table tbody tr:nth-child(2n) {
+  background: unset;
+}
+
+pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+}
+
+code.hljs {
+  padding: 3px 5px;
+}
+
+.colibri {
+  --bg: #3b224c;
+  --fg: #bcbdd0;
+  --heading-fg: #fff;
+
+  --sidebar-bg: #281733;
+  --sidebar-fg: #c8c9db;
+  --sidebar-non-existent: #505274;
+  --sidebar-active: #a4a0e8;
+  --sidebar-spacer: #2d334f;
+
+  --scrollbar: var(--sidebar-fg);
+
+  --icons: #737480;
+  --icons-hover: #b7b9cc;
+
+  /* --links: #a4a0e8; */
+  --links: #ECCDBA;
+
+  --inline-code-color: hsl(48.7, 7.8%, 70%);
+
+  --theme-popup-bg: #161923;
+  --theme-popup-border: #737480;
+  --theme-hover: rgba(0, 0, 0, .2);
+
+  --quote-bg: #281733;
+  --quote-border: hsl(226, 15%, 22%);
+
+  --table-border-color: hsl(226, 23%, 76%);
+  --table-header-bg: hsla(226, 23%, 31%, 0);
+  --table-alternate-bg: hsl(226, 23%, 14%);
+  --table-border-line: hsla(201deg, 20%, 92%, 0.2);
+
+  --searchbar-border-color: #aaa;
+  --searchbar-bg: #aeaec6;
+  --searchbar-fg: #000;
+  --searchbar-shadow-color: #aaa;
+  --searchresults-header-fg: #5f5f71;
+  --searchresults-border-color: #5c5c68;
+  --searchresults-li-bg: #242430;
+  --search-mark-bg: #acff5;
+}
+
+.colibri .content .header {
+  color: #fff;
+}
+
+/* highlight.js theme, :where() is used to avoid increasing specificity */
+
+:where(.colibri) .hljs {
+  background: #2f1e2e;
+  color: #a39e9b;
+}
+
+:where(.colibri) .hljs-comment,
+:where(.colibri) .hljs-quote {
+  color: #8d8687;
+}
+
+:where(.colibri) .hljs-link,
+:where(.colibri) .hljs-meta,
+:where(.colibri) .hljs-name,
+:where(.colibri) .hljs-regexp,
+:where(.colibri) .hljs-selector-class,
+:where(.colibri) .hljs-selector-id,
+:where(.colibri) .hljs-tag,
+:where(.colibri) .hljs-template-variable,
+:where(.colibri) .hljs-variable {
+  color: #ef6155;
+}
+
+:where(.colibri) .hljs-built_in,
+:where(.colibri) .hljs-deletion,
+:where(.colibri) .hljs-literal,
+:where(.colibri) .hljs-number,
+:where(.colibri) .hljs-params,
+:where(.colibri) .hljs-type {
+  color: #f99b15;
+}
+
+:where(.colibri) .hljs-attribute,
+:where(.colibri) .hljs-section,
+:where(.colibri) .hljs-title {
+  color: #fec418;
+}
+
+:where(.colibri) .hljs-addition,
+:where(.colibri) .hljs-bullet,
+:where(.colibri) .hljs-string,
+:where(.colibri) .hljs-symbol {
+  color: #48b685;
+}
+
+:where(.colibri) .hljs-keyword,
+:where(.colibri) .hljs-selector-tag {
+  color: #815ba4;
+}
+
+:where(.colibri) .hljs-emphasis {
+  font-style: italic;
+}
+
+:where(.colibri) .hljs-strong {
+  font-weight: 700;
+}

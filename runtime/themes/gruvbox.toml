@@ -61,6 +61,7 @@
 "ui.virtual.whitespace" = "bg2"
 "ui.virtual.ruler" = { bg = "bg1" }
 "ui.virtual.inlay-hint" = { fg = "gray1" }
+"ui.virtual.wrap" = { fg = "bg2" }
 
 "diagnostic.warning" = { underline = { color = "orange1", style = "curl" } }
 "diagnostic.error" = { underline = { color = "red1", style = "curl" } }

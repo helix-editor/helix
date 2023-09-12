@@ -97,3 +97,8 @@
 
 ["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
+(quote "'") @operator
+(unquote_splicing ",@") @operator
+(unquote ",") @operator
+(quasiquote "`") @operator
+

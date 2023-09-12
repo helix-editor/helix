@@ -28,10 +28,10 @@
 
 ; Error level tags
 ((tag (name) @error)
- (match? @error "^(BUG|FIXME|ISSUE|XXX)$"))
+ (#match? @error "^(BUG|FIXME|ISSUE|XXX)$"))
 
 ("text" @error
- (match? @error "^(BUG|FIXME|ISSUE|XXX)$"))
+ (#match? @error "^(BUG|FIXME|ISSUE|XXX)$"))
 
 (tag
  (name) @ui.text
