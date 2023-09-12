@@ -112,9 +112,9 @@ impl Preview<'_, '_> {
     /// Alternate text to show for the preview.
     fn placeholder(&self) -> &str {
         match *self {
-            Self::EditorDocument(_) => "<File preview>",
+            Self::EditorDocument(_) => "<Invalid file location>",
             Self::Cached(preview) => match preview {
-                CachedPreview::Document(_) => "<File preview>",
+                CachedPreview::Document(_) => "<Invalid file location>",
                 CachedPreview::Binary => "<Binary file>",
                 CachedPreview::LargeFile => "<File too large to preview>",
                 CachedPreview::NotFound => "<File not found>",
@@ -693,8 +693,14 @@ impl<T: Item + 'static> Picker<T> {
         if let Some((path, range)) = self.current_file(cx.editor) {
             let preview = self.get_preview(path, cx.editor);
             let doc = match preview.document() {
-                Some(doc) => doc,
-                None => {
+                Some(doc)
+                    if range.map_or(true, |(start, end)| {
+                        start <= end && end <= doc.text().len_lines()
+                    }) =>
+                {
+                    doc
+                }
+                _ => {
                     let alt_text = preview.placeholder();
                     let x = inner.x + inner.width.saturating_sub(alt_text.len() as u16) / 2;
                     let y = inner.y + inner.height / 2;
