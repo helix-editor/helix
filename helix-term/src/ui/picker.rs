@@ -710,18 +710,30 @@ impl<T: Item + 'static> Picker<T> {
             };
 
             let mut offset = ViewPosition::default();
-            if let Some(range) = range {
-                let text_fmt = doc.text_format(inner.width, None);
-                let annotations = TextAnnotations::default();
-                (offset.anchor, offset.vertical_offset) = char_idx_at_visual_offset(
-                    doc.text().slice(..),
-                    doc.text().line_to_char(range.0),
-                    // align to middle
-                    -(inner.height as isize / 2),
-                    0,
-                    &text_fmt,
-                    &annotations,
-                );
+            if let Some((start_line, end_line)) = range {
+                let height = end_line - start_line;
+                let text = doc.text().slice(..);
+                let start = text.line_to_char(start_line);
+                let middle = text.line_to_char(start_line + height / 2);
+                if height < inner.height as usize {
+                    let text_fmt = doc.text_format(inner.width, None);
+                    let annotations = TextAnnotations::default();
+                    (offset.anchor, offset.vertical_offset) = char_idx_at_visual_offset(
+                        text,
+                        middle,
+                        // align to middle
+                        -(inner.height as isize / 2),
+                        0,
+                        &text_fmt,
+                        &annotations,
+                    );
+                    if start < offset.anchor {
+                        offset.anchor = start;
+                        offset.vertical_offset = 0;
+                    }
+                } else {
+                    offset.anchor = start;
+                }
             }
 
             let mut highlights = EditorView::doc_syntax_highlights(
