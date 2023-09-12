@@ -350,7 +350,7 @@ pub fn assert_file_has_content(file: &mut File, content: &str) -> anyhow::Result
 
     let mut file_content = String::new();
     file.read_to_string(&mut file_content)?;
-    assert_eq!(content, file_content);
+    assert_eq!(file_content, content);
 
     Ok(())
 }
