@@ -29,9 +29,15 @@ files, run
 cargo xtask docgen
 ```
 
-inside the project. We use [xtask][xtask] as an ad-hoc task runner and
-thus do not require any dependencies other than `cargo` (You don't have
-to `cargo install` anything either).
+inside the project. We use [xtask][xtask] as an ad-hoc task runner.
+
+To preview the book itself, install [mdbook][mdbook]. Then, run
+
+```shell
+mdbook serve book
+```
+
+and visit [http://localhost:3000](http://localhost:3000).
 
 # Testing
 
@@ -58,4 +64,5 @@ The current MSRV and future changes to the MSRV are listed in the [Firefox docum
 [architecture.md]: ./architecture.md
 [docs]: https://docs.helix-editor.com/
 [xtask]: https://github.com/matklad/cargo-xtask
+[mdbook]: https://rust-lang.github.io/mdBook/guide/installation.html
 [helpers.rs]: ../helix-term/tests/test/helpers.rs
