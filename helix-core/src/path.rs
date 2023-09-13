@@ -165,7 +165,7 @@ pub fn get_truncated_path<P: AsRef<Path>>(path: P) -> PathBuf {
 pub fn remove_quotes_from_windows_path(path: &Path) -> PathBuf {
     if cfg!(windows) {
         // remove double quotes from paths from Windows
-        PathBuf::from(path.to_string_lossy().replace("\"", ""))
+        PathBuf::from(path.to_string_lossy().replace('\"', ""))
     } else {
         path.to_path_buf()
     }
