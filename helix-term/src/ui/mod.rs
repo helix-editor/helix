@@ -407,6 +407,7 @@ pub mod completers {
 
         let is_tilde = input == "~";
         let path = helix_core::path::expand_tilde(Path::new(input));
+        let path = helix_core::path::remove_quotes_from_windows_path(&path);
 
         let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)

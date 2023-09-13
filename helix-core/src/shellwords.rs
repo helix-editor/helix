@@ -13,7 +13,13 @@ pub fn escape(input: Cow<str>) -> Cow<str> {
             buf
         }))
     } else {
-        Cow::Owned(format!("\"{}\"", input))
+        let buf = if input.ends_with('\\') {
+            format!("\"{}\"\\", input.trim_end_matches('\\'))
+        } else {
+            format!("\"{}\"", input)
+        };
+
+        Cow::Owned(buf)
     }
 }
 
@@ -86,6 +92,13 @@ impl<'a> From<&'a str> for Shellwords<'a> {
                             Unquoted
                         }
                     }
+                    '"' => {
+                        if cfg!(windows) {
+                            Dquoted
+                        } else {
+                            Unquoted
+                        }
+                    }
                     c if c.is_ascii_whitespace() => {
                         end = i;
                         OnWhitespace
@@ -121,8 +134,12 @@ impl<'a> From<&'a str> for Shellwords<'a> {
                         }
                     }
                     '"' => {
-                        end = i;
-                        OnWhitespace
+                        if cfg!(unix) {
+                            end = i;
+                            OnWhitespace
+                        } else {
+                            Unquoted
+                        }
                     }
                     _ => Dquoted,
                 },
@@ -302,6 +319,18 @@ mod test {
             Cow::from("statusline.center"),
             Cow::from(r#"["file-type","file-encoding"]"#),
             Cow::from(r#"["list", "in", "quotes"]"#),
+        ];
+        assert_eq!(expected, result);
+    }
+    #[test]
+    #[cfg(windows)]
+    fn test_windows_open_path() {
+        let input = r#":open C:\"Program Files"\"Test file.txt""#;
+        let shellwords = Shellwords::from(input);
+        let result = shellwords.words().to_vec();
+        let expected = vec![
+            Cow::from(":open"),
+            Cow::from(r#"C:\"Program Files"\"Test file.txt""#),
         ];
         assert_eq!(expected, result);
     }

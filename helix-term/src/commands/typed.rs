@@ -110,6 +110,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     for arg in args {
         let (path, pos) = args::parse_file(arg);
         let path = helix_core::path::expand_tilde(&path);
+        let path = helix_core::path::remove_quotes_from_windows_path(&path);
         // If the path is a directory, open a file picker on that directory and update the status
         // message
         if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
@@ -1096,6 +1097,8 @@ fn change_current_directory(
             .as_ref()
             .as_ref(),
     );
+
+    let dir = helix_core::path::remove_quotes_from_windows_path(&dir);
 
     helix_loader::set_current_working_dir(dir)?;
 
