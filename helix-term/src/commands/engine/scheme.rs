@@ -191,6 +191,10 @@ impl super::PluginSystem for SteelScriptingEngine {
         initialize_engine();
     }
 
+    fn engine_name(&self) -> super::PluginSystemKind {
+        super::PluginSystemKind::Steel
+    }
+
     fn run_initialization_script(&self, cx: &mut Context) {
         run_initialization_script(cx);
     }
@@ -205,27 +209,25 @@ impl super::PluginSystem for SteelScriptingEngine {
         mode: Mode,
         cxt: &mut Context,
         event: KeyEvent,
-    ) -> KeymapResult {
-        SteelScriptingEngine::get_keymap_for_extension(cxt)
-            .and_then(|map| {
-                if let steel::SteelVal::Custom(inner) = map {
-                    if let Some(underlying) =
-                        steel::rvals::as_underlying_type::<EmbeddedKeyMap>(inner.borrow().as_ref())
-                    {
-                        return Some(editor.keymaps.get_with_map(&underlying.0, mode, event));
-                    }
+    ) -> Option<KeymapResult> {
+        SteelScriptingEngine::get_keymap_for_extension(cxt).and_then(|map| {
+            if let steel::SteelVal::Custom(inner) = map {
+                if let Some(underlying) =
+                    steel::rvals::as_underlying_type::<EmbeddedKeyMap>(inner.borrow().as_ref())
+                {
+                    return Some(editor.keymaps.get_with_map(&underlying.0, mode, event));
                 }
+            }
 
-                None
-            })
-            .unwrap_or_else(|| editor.keymaps.get(mode, event))
+            None
+        })
     }
 
     fn call_function_if_global_exists(
         &self,
         cx: &mut Context,
         name: &str,
-        args: Vec<Cow<str>>,
+        args: &[Cow<str>],
     ) -> bool {
         if ENGINE.with(|x| x.borrow().global_exists(name)) {
             let args = steel::List::from(
@@ -882,10 +884,27 @@ impl Component for BoxDynComponent {
     }
 }
 
+// Make this be prompt event validate?
+fn call_function_in_external_engine(
+    ctx: &mut Context,
+    name: String,
+    args: Vec<String>,
+    engine_type: String,
+) {
+    // Wire up entire plugins separately?
+    match engine_type.as_str() {
+        "rhai" => todo!(),
+        _ => {}
+    }
+}
+
 fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> {
     let mut engine = steel::steel_vm::engine::Engine::new();
 
     log::info!("Loading engine!");
+
+    // Include this?
+    engine.register_fn("call-function-in-context", call_function_in_external_engine);
 
     engine.register_value("*context*", SteelVal::Void);
 

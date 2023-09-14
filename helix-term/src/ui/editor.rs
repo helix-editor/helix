@@ -803,7 +803,8 @@ impl EditorView {
         self.pseudo_pending.extend(self.keymaps.pending());
 
         // Check the engine for any buffer specific keybindings first
-        let key_result = ScriptingEngine::handle_keymap_event(self, mode, cxt, event);
+        let key_result = ScriptingEngine::handle_keymap_event(self, mode, cxt, event)
+            .unwrap_or_else(|| self.keymaps.get(mode, event));
 
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 

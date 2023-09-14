@@ -16,45 +16,68 @@ mod components;
 #[cfg(feature = "steel")]
 pub mod scheme;
 
-// For now, we will allow _one_ embedded scripting engine to live inside of helix.
-// In theory, we could allow multiple, with some kind of hierarchy where we check
-// each one, with some kind of precedence.
-struct PluginEngine<T: PluginSystem>(T);
+pub enum PluginSystemKind {
+    None,
+    #[cfg(feature = "steel")]
+    Steel,
+}
 
-// This is where we can configure our system to use the correct one
-#[cfg(feature = "steel")]
-static PLUGIN_SYSTEM: PluginEngine<scheme::SteelScriptingEngine> =
-    PluginEngine(scheme::SteelScriptingEngine);
-
-#[cfg(not(feature = "steel"))]
-/// The default plugin system used ends up with no ops for all of the behavior.
-static PLUGIN_SYSTEM: PluginEngine<NoEngine> = PluginEngine(NoEngine);
-
-// enum PluginSystemTypes {
-//     None,
-//     Steel,
-// }
+pub enum PluginSystemTypes {
+    None(NoEngine),
+    #[cfg(feature = "steel")]
+    Steel(scheme::SteelScriptingEngine),
+}
 
 // The order in which the plugins will be evaluated against - if we wanted to include, lets say `rhai`,
 // we would have to order the precedence for searching for exported commands, or somehow merge them?
-// static PLUGIN_PRECEDENCE: &[PluginSystemTypes] = &[PluginSystemTypes::Steel];
+const PLUGIN_PRECEDENCE: &[PluginSystemTypes] = &[
+    #[cfg(feature = "steel")]
+    PluginSystemTypes::Steel(scheme::SteelScriptingEngine),
+    PluginSystemTypes::None(NoEngine),
+];
 
 pub struct NoEngine;
 
 // This will be the boundary layer between the editor and the engine.
 pub struct ScriptingEngine;
 
+macro_rules! manual_dispatch {
+    ($kind:expr, $raw:tt ($($args:expr),* $(,)?) ) => {
+        match $kind {
+            PluginSystemTypes::None(n) => n.$raw($($args),*),
+            #[cfg(feature = "steel")]
+            PluginSystemTypes::Steel(s) => s.$raw($($args),*),
+        }
+    };
+}
+
 impl ScriptingEngine {
     pub fn initialize() {
-        PLUGIN_SYSTEM.0.initialize();
+        for kind in PLUGIN_PRECEDENCE {
+            manual_dispatch!(kind, initialize())
+        }
     }
 
     pub fn run_initialization_script(cx: &mut Context) {
-        PLUGIN_SYSTEM.0.run_initialization_script(cx);
+        for kind in PLUGIN_PRECEDENCE {
+            manual_dispatch!(kind, run_initialization_script(cx))
+        }
     }
 
     pub fn get_keybindings() -> Option<HashMap<Mode, KeyTrie>> {
-        PLUGIN_SYSTEM.0.get_keybindings()
+        let mut map = HashMap::new();
+
+        for kind in PLUGIN_PRECEDENCE {
+            if let Some(keybindings) = manual_dispatch!(kind, get_keybindings()) {
+                map.extend(keybindings);
+            }
+        }
+
+        if map.is_empty() {
+            None
+        } else {
+            Some(map)
+        }
     }
 
     pub fn handle_keymap_event(
@@ -62,10 +85,16 @@ impl ScriptingEngine {
         mode: Mode,
         cxt: &mut Context,
         event: KeyEvent,
-    ) -> KeymapResult {
-        PLUGIN_SYSTEM
-            .0
-            .handle_keymap_event(editor, mode, cxt, event)
+    ) -> Option<KeymapResult> {
+        for kind in PLUGIN_PRECEDENCE {
+            let res = manual_dispatch!(kind, handle_keymap_event(editor, mode, cxt, event));
+
+            if res.is_some() {
+                return res;
+            }
+        }
+
+        None
     }
 
     pub fn call_function_if_global_exists(
@@ -73,9 +102,13 @@ impl ScriptingEngine {
         name: &str,
         args: Vec<Cow<str>>,
     ) -> bool {
-        PLUGIN_SYSTEM
-            .0
-            .call_function_if_global_exists(cx, name, args)
+        for kind in PLUGIN_PRECEDENCE {
+            if manual_dispatch!(kind, call_function_if_global_exists(cx, name, &args)) {
+                return true;
+            }
+        }
+
+        false
     }
 
     pub fn call_typed_command_if_global_exists<'a>(
@@ -84,24 +117,46 @@ impl ScriptingEngine {
         parts: &'a [&'a str],
         event: PromptEvent,
     ) -> bool {
-        PLUGIN_SYSTEM
-            .0
-            .call_typed_command_if_global_exists(cx, input, parts, event)
+        for kind in PLUGIN_PRECEDENCE {
+            if manual_dispatch!(
+                kind,
+                call_typed_command_if_global_exists(cx, input, parts, event)
+            ) {
+                return true;
+            }
+        }
+
+        false
     }
 
     pub fn get_doc_for_identifier(ident: &str) -> Option<String> {
-        PLUGIN_SYSTEM.0.get_doc_for_identifier(ident)
+        for kind in PLUGIN_PRECEDENCE {
+            let doc = manual_dispatch!(kind, get_doc_for_identifier(ident));
+
+            if doc.is_some() {
+                return doc;
+            }
+        }
+
+        None
     }
 
     pub fn fuzzy_match<'a>(
         fuzzy_matcher: &'a fuzzy_matcher::skim::SkimMatcherV2,
         input: &'a str,
     ) -> Vec<(String, i64)> {
-        PLUGIN_SYSTEM.0.fuzzy_match(fuzzy_matcher, input)
+        PLUGIN_PRECEDENCE
+            .iter()
+            .flat_map(|kind| manual_dispatch!(kind, fuzzy_match(fuzzy_matcher, input)))
+            .collect()
     }
 }
 
-impl PluginSystem for NoEngine {}
+impl PluginSystem for NoEngine {
+    fn engine_name(&self) -> PluginSystemKind {
+        PluginSystemKind::None
+    }
+}
 
 /// These methods are the main entry point for interaction with the rest of
 /// the editor system.
@@ -109,6 +164,8 @@ pub trait PluginSystem {
     /// If any initialization needs to happen prior to the initialization script being run,
     /// this is done here. This is run before the context is available.
     fn initialize(&self) {}
+
+    fn engine_name(&self) -> PluginSystemKind;
 
     /// Post initialization, once the context is available. This means you should be able to
     /// run anything here that could modify the context before the main editor is available.
@@ -129,8 +186,8 @@ pub trait PluginSystem {
         mode: Mode,
         _cxt: &mut Context,
         event: KeyEvent,
-    ) -> KeymapResult {
-        editor.keymaps.get(mode, event)
+    ) -> Option<KeymapResult> {
+        None
     }
 
     /// This attempts to call a function in the engine with the name `name` using the args `args`. The context
@@ -139,7 +196,7 @@ pub trait PluginSystem {
         &self,
         _cx: &mut Context,
         _name: &str,
-        _args: Vec<Cow<str>>,
+        _args: &[Cow<str>],
     ) -> bool {
         false
     }
