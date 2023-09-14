@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install nix
-      uses: cachix/install-nix-action@v22
+      uses: cachix/install-nix-action@v23
 
     - name: Authenticate with Cachix
       uses: cachix/cachix-action@v12

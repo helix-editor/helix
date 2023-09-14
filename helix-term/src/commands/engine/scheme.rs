@@ -1,4 +1,3 @@
-use fuzzy_matcher::FuzzyMatcher;
 use helix_core::{
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     graphemes,
@@ -337,22 +336,15 @@ impl super::PluginSystem for SteelScriptingEngine {
             })
     }
 
-    fn fuzzy_match<'a>(
+    fn available_commands<'a>(
         &self,
-        fuzzy_matcher: &'a fuzzy_matcher::skim::SkimMatcherV2,
-        input: &'a str,
-    ) -> Vec<(String, i64)> {
+    ) -> Vec<Cow<'a, str>> {
         EXPORTED_IDENTIFIERS
             .identifiers
             .read()
             .unwrap()
             .iter()
-            .filter_map(|name| {
-                fuzzy_matcher
-                    .fuzzy_match(name, input)
-                    .map(|score| (name, score))
-            })
-            .map(|x| (x.0.to_string(), x.1))
+            .map(|x| x.clone().into())
             .collect::<Vec<_>>()
     }
 }
@@ -694,22 +686,22 @@ impl StatusLineMessage {
     }
 }
 
-impl Item for SteelVal {
-    type Data = ();
+// impl Item for SteelVal {
+//     type Data = ();
 
-    // TODO: This shouldn't copy the data every time
-    fn format(&self, _data: &Self::Data) -> tui::widgets::Row {
-        let formatted = self.to_string();
+//     // TODO: This shouldn't copy the data every time
+//     fn format(&self, _data: &Self::Data) -> tui::widgets::Row {
+//         let formatted = self.to_string();
 
-        formatted
-            .strip_prefix("\"")
-            .unwrap_or(&formatted)
-            .strip_suffix("\"")
-            .unwrap_or(&formatted)
-            .to_owned()
-            .into()
-    }
-}
+//         formatted
+//             .strip_prefix("\"")
+//             .unwrap_or(&formatted)
+//             .strip_suffix("\"")
+//             .unwrap_or(&formatted)
+//             .to_owned()
+//             .into()
+//     }
+// }
 
 pub struct CallbackQueue {
     queue: Arc<Mutex<VecDeque<String>>>,

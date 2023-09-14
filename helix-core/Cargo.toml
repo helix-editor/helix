@@ -50,6 +50,8 @@ etcetera = "0.8"
 textwrap = "0.16.0"
 
 steel-core = { workspace = true, optional = true }
+nucleo.workspace = true
+parking_lot = "0.12"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }

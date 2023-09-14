@@ -20,7 +20,6 @@ mod test {
     mod commands;
     mod languages;
     mod movement;
-    mod picker;
     mod prompt;
     mod splits;
 }

@@ -38,6 +38,7 @@ jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "-
 julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
 kotlin-language-server = { command = "kotlin-language-server" }
 lean = { command = "lean", args = [ "--server" ] }
+ltex-ls = { command = "ltex-ls" }
 markdoc-ls = { command = "markdoc-ls", args = ["--stdio"] }
 marksman = { command = "marksman", args = ["server"] }
 metals = { command = "metals", config = { "isHttpEnabled" = true } }
@@ -586,7 +587,7 @@ scope = "source.ts"
 injection-regex = "(ts|typescript)"
 file-types = ["ts", "mts", "cts"]
 language-id = "typescript"
-shebangs = []
+shebangs = ["deno", "ts-node"]
 roots = []
 language-servers = [ "typescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
@@ -820,6 +821,7 @@ name = "julia"
 scope = "source.julia"
 injection-regex = "julia"
 file-types = ["jl"]
+shebangs = ["julia"]
 roots = ["Manifest.toml", "Project.toml"]
 comment-token = "#"
 language-servers = [ "julia" ]
@@ -833,7 +835,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-julia", rev = "8fb3
 name = "java"
 scope = "source.java"
 injection-regex = "java"
-file-types = ["java"]
+file-types = ["java", "jav"]
 roots = ["pom.xml", "build.gradle", "build.gradle.kts"]
 language-servers = [ "jdtls" ]
 indent = { tab-width = 2, unit = "  " }
@@ -873,7 +875,7 @@ name = "ocaml"
 scope = "source.ocaml"
 injection-regex = "ocaml"
 file-types = ["ml"]
-shebangs = []
+shebangs = ["ocaml", "ocamlrun", "ocamlscript"]
 roots = []
 comment-token = "(**)"
 language-servers = [ "ocamllsp" ]
@@ -884,7 +886,6 @@ indent = { tab-width = 2, unit = "  " }
 '{' = '}'
 '[' = ']'
 '"' = '"'
-'`' = '`'
 
 [[grammar]]
 name = "ocaml"
@@ -905,7 +906,6 @@ indent = { tab-width = 2, unit = "  " }
 '{' = '}'
 '[' = ']'
 '"' = '"'
-'`' = '`'
 
 [[grammar]]
 name = "ocaml-interface"
@@ -1118,7 +1118,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "perl"
-source = { git = "https://github.com/tree-sitter-perl/tree-sitter-perl", rev = "ed21ecbcc128a6688770ebafd3ef68a1c9bc1ea9" }
+source = { git = "https://github.com/tree-sitter-perl/tree-sitter-perl", rev = "9f3166800d40267fa68ed8273e96baf74f390517" }
 
 [[language]]
 name = "pod"
@@ -1379,7 +1379,7 @@ source = { git = "https://github.com/mtoohey31/tree-sitter-gitattributes", rev =
 name = "git-ignore"
 scope = "source.gitignore"
 roots = []
-file-types = [".gitignore", ".gitignore_global"]
+file-types = [".gitignore", ".gitignore_global", ".ignore", ".prettierignore", ".eslintignore", ".npmignore", "CODEOWNERS"]
 injection-regex = "git-ignore"
 comment-token = "#"
 grammar = "gitignore"
@@ -1540,10 +1540,11 @@ roots = ["gleam.toml"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "gleam" ]
+auto-format = true
 
 [[grammar]]
 name = "gleam"
-source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "ae79782c00656945db69641378e688cdb78d52c1" }
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "a59aadf3d7c11702cad244e7cd6b67b34ca9c16a" }
 
 [[language]]
 name = "ron"
@@ -1822,6 +1823,7 @@ name = "scheme"
 scope = "source.scheme"
 injection-regex = "scheme"
 file-types = ["ss", "scm"]
+shebangs = ["scheme", "guile", "chicken"]
 roots = []
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
@@ -2067,7 +2069,7 @@ roots = ["edgedb.toml"]
 
 [[grammar]]
 name ="esdl"
-source = { git = "https://github.com/greym0uth/tree-sitter-esdl", rev = "b840c8a8028127e0a7c6e6c45141adade2bd75cf" }
+source = { git = "https://github.com/greym0uth/tree-sitter-esdl", rev = "df83acc8cacd0cfb139eecee0e718dc32c4f92e2" }
 
 [[language]]
 name = "pascal"
@@ -2200,7 +2202,7 @@ source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d1
 name = "xml"
 scope = "source.xml"
 injection-regex = "xml"
-file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg", "xsd", "gml", "xaml", "gir"]
+file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg", "xsd", "gml", "xaml", "gir", "rss", "atom", "opml"]
 indent = { tab-width = 2, unit = "  " }
 roots = []
 
@@ -2350,7 +2352,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "matlab"
-source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "676117eafa64afedc8380a921a77cd9f2244bc6b" }
+source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "6071891a8c39600203eba20513666cf93b4d650a" }
 
 [[language]]
 name = "ponylang"
@@ -2663,7 +2665,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "blueprint"
-source = { git = "https://gitlab.com/gabmus/tree-sitter-blueprint", rev = "7f1a5df44861291d6951b6b2146a9fef4c226e14" }
+source = { git = "https://gitlab.com/gabmus/tree-sitter-blueprint", rev = "863cea9f83ad5637300478e0559262f1e791684b" }
 
 [[language]]
 name = "forth"
@@ -2792,4 +2794,14 @@ roots = []
 
 [[grammar]]
 name = "strace"
-source = { git = "https://github.com/sigmaSd/tree-sitter-strace", rev = "a0f6c50ae4087a9299f055d0f30fe94fd98189a4" }
+source = { git = "https://github.com/sigmaSd/tree-sitter-strace", rev = "2b18fdf9a01e7ec292cc6006724942c81beb7fd5" }
+
+[[language]]
+name = "gemini"
+scope = "source.gmi"
+file-types = ["gmi"]
+roots = []
+
+[[grammar]]
+name = "gemini"
+source = { git = "https://git.sr.ht/~sfr/tree-sitter-gemini", rev = "3cc5e4bdf572d5df4277fc2e54d6299bd59a54b3" }

@@ -141,13 +141,10 @@ impl ScriptingEngine {
         None
     }
 
-    pub fn fuzzy_match<'a>(
-        fuzzy_matcher: &'a fuzzy_matcher::skim::SkimMatcherV2,
-        input: &'a str,
-    ) -> Vec<(String, i64)> {
+    pub fn available_commands<'a>() -> Vec<Cow<'a, str>> {
         PLUGIN_PRECEDENCE
             .iter()
-            .flat_map(|kind| manual_dispatch!(kind, fuzzy_match(fuzzy_matcher, input)))
+            .flat_map(|kind| manual_dispatch!(kind, available_commands()))
             .collect()
     }
 }
@@ -220,11 +217,7 @@ pub trait PluginSystem {
     }
 
     /// Fuzzy match the input against the fuzzy matcher, used for handling completions on typed commands
-    fn fuzzy_match<'a>(
-        &self,
-        _fuzzy_matcher: &'a fuzzy_matcher::skim::SkimMatcherV2,
-        _input: &'a str,
-    ) -> Vec<(String, i64)> {
+    fn available_commands<'a>(&self) -> Vec<Cow<'a, str>> {
         Vec::new()
     }
 }

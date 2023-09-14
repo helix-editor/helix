@@ -43,7 +43,6 @@
           ".ignore"
           ".github"
           ".gitignore"
-          "logo.svg"
           "logo_dark.svg"
           "logo_light.svg"
           "rust-toolchain.toml"
@@ -51,7 +50,6 @@
           "runtime"
           "screenshot.png"
           "book"
-          "contrib"
           "docs"
           "README.md"
           "CHANGELOG.md"
@@ -123,7 +121,8 @@
         then ''$RUSTFLAGS -C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment''
         else "$RUSTFLAGS";
       rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-      craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+      craneLibMSRV = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+      craneLibStable = (crane.mkLib pkgs).overrideToolchain pkgs.pkgsBuildHost.rust-bin.stable.latest.default;
       commonArgs =
         {
           inherit stdenv;
@@ -135,13 +134,19 @@
           doCheck = false;
           meta.mainProgram = "hx";
         }
-        // craneLib.crateNameFromCargoToml {cargoToml = ./helix-term/Cargo.toml;};
-      cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+        // craneLibMSRV.crateNameFromCargoToml {cargoToml = ./helix-term/Cargo.toml;};
+      cargoArtifacts = craneLibMSRV.buildDepsOnly commonArgs;
     in {
       packages = {
-        helix-unwrapped = craneLib.buildPackage (commonArgs
+        helix-unwrapped = craneLibStable.buildPackage (commonArgs
           // {
-            inherit cargoArtifacts;
+            cargoArtifacts = craneLibStable.buildDepsOnly commonArgs;
+            postInstall = ''
+              mkdir -p $out/share/applications $out/share/icons/hicolor/scalable/apps $out/share/icons/hicolor/256x256/apps
+              cp contrib/Helix.desktop $out/share/applications
+              cp logo.svg $out/share/icons/hicolor/scalable/apps/helix.svg
+              cp contrib/helix.png $out/share/icons/hicolor/256x256/apps
+            '';
           });
         helix = makeOverridableHelix self.packages.${system}.helix-unwrapped {};
         default = self.packages.${system}.helix;
@@ -151,20 +156,20 @@
         # Build the crate itself
         inherit (self.packages.${system}) helix;
 
-        clippy = craneLib.cargoClippy (commonArgs
+        clippy = craneLibMSRV.cargoClippy (commonArgs
           // {
             inherit cargoArtifacts;
             cargoClippyExtraArgs = "--all-targets -- --deny warnings";
           });
 
-        fmt = craneLib.cargoFmt commonArgs;
+        fmt = craneLibMSRV.cargoFmt commonArgs;
 
-        doc = craneLib.cargoDoc (commonArgs
+        doc = craneLibMSRV.cargoDoc (commonArgs
           // {
             inherit cargoArtifacts;
           });
 
-        test = craneLib.cargoTest (commonArgs
+        test = craneLibMSRV.cargoTest (commonArgs
           // {
             inherit cargoArtifacts;
           });

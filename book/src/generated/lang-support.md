@@ -45,6 +45,7 @@
 | fortran | ✓ |  | ✓ | `fortls` |
 | fsharp | ✓ |  |  | `fsautocomplete` |
 | gdscript | ✓ | ✓ | ✓ |  |
+| gemini | ✓ |  |  |  |
 | git-attributes | ✓ |  |  |  |
 | git-commit | ✓ | ✓ |  |  |
 | git-config | ✓ |  |  |  |
@@ -111,7 +112,7 @@
 | pascal | ✓ | ✓ |  | `pasls` |
 | passwd | ✓ |  |  |  |
 | pem | ✓ |  |  |  |
-| perl | ✓ |  |  | `perlnavigator` |
+| perl | ✓ | ✓ | ✓ | `perlnavigator` |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | po | ✓ | ✓ |  |  |
 | pod | ✓ |  |  |  |

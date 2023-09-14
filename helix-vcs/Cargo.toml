@@ -12,6 +12,7 @@ homepage = "https://helix-editor.com"
 
 [dependencies]
 helix-core = { version = "0.6", path = "../helix-core" }
+helix-event = { version = "0.6", path = "../helix-event" }
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot", "macros"] }
 parking_lot = "0.12"

@@ -297,6 +297,11 @@ impl Theme {
         self.highlights[index]
     }
 
+    #[inline]
+    pub fn scope(&self, index: usize) -> &str {
+        &self.scopes[index]
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -359,6 +364,7 @@ impl Default for ThemePalette {
     fn default() -> Self {
         Self {
             palette: hashmap! {
+                "default".to_string() => Color::Reset,
                 "black".to_string() => Color::Black,
                 "red".to_string() => Color::Red,
                 "green".to_string() => Color::Green,
