@@ -182,10 +182,10 @@ pub trait PluginSystem {
     /// editors default keybindings.
     fn handle_keymap_event(
         &self,
-        editor: &mut ui::EditorView,
-        mode: Mode,
+        _editor: &mut ui::EditorView,
+        _mode: Mode,
         _cxt: &mut Context,
-        event: KeyEvent,
+        _event: KeyEvent,
     ) -> Option<KeymapResult> {
         None
     }
