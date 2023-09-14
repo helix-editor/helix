@@ -15,6 +15,11 @@
 (decorator) @attribute
 
 (property_definition (property_name) @variable.other.member)
+(property_definition
+  (property_binding
+    "bind" @keyword
+    (property_name) @variable.other.member
+    ["no-sync-create" "bidirectional" "inverted"]* @keyword))
 
 (object) @type
 

@@ -90,6 +90,7 @@
 "ui.virtual.whitespace"           = { fg    = "current_line"                                                }
 "ui.virtual.wrap"                 = { fg    = "current_line"                                                }
 "ui.virtual.ruler"                = { bg    = "black"                                                       }
+"ui.virtual.indent-guide"         = { fg    = "indent"                                                      }
 "ui.virtual.inlay-hint"           = { fg    = "cyan"                                                        }
 "ui.virtual.inlay-hint.parameter" = { fg    = "cyan",            modifiers = ["italic", "dim"]              }
 "ui.virtual.inlay-hint.type"      = { fg    = "cyan",            modifiers = ["italic", "dim"]              }
@@ -123,6 +124,7 @@ black             = "#191A21"
 grey              = "#666771"
 comment           = "#6272A4"
 current_line      = "#44475a"
+indent            = "#56596a"
 selection         = "#363848"
 red               = "#ff5555"
 orange            = "#ffb86c" 

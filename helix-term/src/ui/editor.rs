@@ -1073,6 +1073,7 @@ impl EditorView {
                 let editor = &mut cxt.editor;
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
+                    let prev_view_id = view!(editor).id;
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
 
                     if modifiers == KeyModifiers::ALT {
@@ -1080,6 +1081,10 @@ impl EditorView {
                         doc.set_selection(view_id, selection.push(Range::point(pos)));
                     } else {
                         doc.set_selection(view_id, Selection::point(pos));
+                    }
+
+                    if view_id != prev_view_id {
+                        self.clear_completion(editor);
                     }
 
                     editor.focus(view_id);

@@ -328,6 +328,9 @@ impl ModifierDiff {
         if removed.contains(Modifier::SLOW_BLINK) || removed.contains(Modifier::RAPID_BLINK) {
             queue!(w, SetAttribute(CAttribute::NoBlink))?;
         }
+        if removed.contains(Modifier::HIDDEN) {
+            queue!(w, SetAttribute(CAttribute::NoHidden))?;
+        }
 
         let added = self.to - self.from;
         if added.contains(Modifier::REVERSED) {
@@ -350,6 +353,9 @@ impl ModifierDiff {
         }
         if added.contains(Modifier::RAPID_BLINK) {
             queue!(w, SetAttribute(CAttribute::RapidBlink))?;
+        }
+        if added.contains(Modifier::HIDDEN) {
+            queue!(w, SetAttribute(CAttribute::Hidden))?;
         }
 
         Ok(())
