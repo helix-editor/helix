@@ -5,6 +5,10 @@
 ((((comment) @injection.language) .
   (indented_string_expression (string_fragment) @injection.content))
   (#set! injection.combined))
+((binding
+    (comment) @injection.language
+    expression: (indented_string_expression (string_fragment) @injection.content))
+  (#set! injection.combined))
 
 ; Common attribute keys corresponding to Python scripts,
 ; such as those for NixOS VM tests in nixpkgs/nixos/tests.
