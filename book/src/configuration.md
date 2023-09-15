@@ -86,6 +86,7 @@ mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
 ```
+
 The `[editor.statusline]` key takes the following sub-keys:
 
 | Key           | Description | Default |
@@ -171,6 +172,7 @@ All git related options are only enabled in a git repository.
 |`deduplicate-links` | Ignore symlinks that point at files already shown in the picker | true
 |`parents` | Enables reading ignore files from parent directories | true
 |`ignore` | Enables reading `.ignore` files | true
+|`global-ignore` | Enables reading a global `.ignore` file from the same directory as the config.toml configuration | true
 |`git-ignore` | Enables reading `.gitignore` files | true
 |`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludefile` option | true
 |`git-exclude` | Enables reading `.git/info/exclude` files | true
@@ -337,7 +339,7 @@ Options for soft wrapping lines that exceed the view width:
 | `enable`             | Whether soft wrapping is enabled.                            | `false` |
 | `max-wrap`           | Maximum free space left at the end of the line.              | `20`    |
 | `max-indent-retain`  | Maximum indentation to carry over when soft wrapping a line. | `40`    |
-| `wrap-indicator`     | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `↪ `    |
+| `wrap-indicator`     | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `↪`    |
 | `wrap-at-text-width` | Soft wrap at `text-width` instead of using the full viewport size. | `false` |
 
 Example:
