@@ -1,39 +1,70 @@
+;; Punctuation
+[ "." ";" ":"] @punctuation.delimiter
+[ "(" ")" "{" "}" ] @punctuation.bracket
+
 ;; Constants
 (integer) @constant.numeric.integer
 ; (float) @constant.numeric.float
 (literal) @string
 
-(macro) @function.macro
-
 ;; Pragmas and comments
-(pragma) @attribute
 (comment) @comment
+(pragma) @attribute
+(macro) @function.macro
 
 ;; Imports
 (open) @keyword.control.import
 (module) @keyword.control.import
 (module_name) @namespace
 
-
-
-
-
-;; Variables and Symbols
-(typed_binding (atom (qid) @variable))
-(untyped_binding) @variable
+;; Types
 (typed_binding (expr) @type)
-; todo
+(record        (expr) @type)
+(data          (expr) @type)
+(signature     (expr) @type)
+(function (rhs (expr) @type))
+; todo: these are too general. ideally, any nested (atom)
+; https://github.com/tree-sitter/tree-sitter/issues/880
+
+;; Variables
+(untyped_binding (atom) @variable)
+(typed_binding   (atom) @variable)
+(field_name) @variable.other.member
+; todo: variable.parameter
 
 ;; Functions
-(id) @function
-(bid) @function
-(function_name (atom (qid) @function))
-(field_name) @function
+(function_name) @function
+; (function (lhs (atom) @function))
+; todo: most functions?? weirdly crashing
 
-;; Functions
+;; Data
 [(data_name) (record_name)] @constructor
 
-(SetN) @type.builtin
+"Set" @type.builtin
+
+; postulate
+; type_signature
+; pattern
+; id
+; bid
+; typed_binding
+; primitive
+; private
+; record_signature
+; record_assignments
+; field_assignment
+; module_assignment
+; renaming
+; import_directive
+; lambda
+; let
+; instance
+; generalize
+; record
+; fields
+; syntax
+; hole_name
+; data_signature
 
 ;; Keywords
 [
@@ -47,7 +78,6 @@
   "Prop"
   "quote"
   "renaming"
-  "open"
   "in"
   "hiding"
   "constructor"
@@ -55,35 +85,28 @@
   "let"
   "field"
   "mutual"
-  "module"
   "infix"
   "infixl"
   "infixr"
   "record"
+  "overlap"
+  "instance"
+  "do"
 ] @keyword
 
-; postulate??
-; Prop??
-;
-; = | -> : ? \ .. ...
+; = | -> : ? \ .. ... λ ∀ →
 ; (_LAMBDA) (_FORALL) (_ARROW)
 ; "coinductive"
-; "do"
 ; "eta-equality"
 ; "field"
-; "forall"
-; "import"
 ; "inductive"
-; "instance"
 ; "interleaved"
 ; "macro"
 ; "no-eta-equality"
-; "overlap"
 ; "pattern"
 ; "primitive"
 ; "quoteTerm"
 ; "rewrite"
-; "Set"
 ; "syntax"
 ; "unquote"
 ; "unquoteDecl"
@@ -91,39 +114,6 @@
 ; "using"
 ; "variable"
 ; "with"
-
-; function_name
-; postulate
-; function
-; type_signature
-; field_name
-; pattern
-; id
-; untyped_binding
-; bid
-; typed_binding
-; primitive
-; private
-; record_name
-; record_signature
-; record
-; record_assignments
-; field_assignment
-; module_assignment
-; renaming
-; import_directive
-; lambda
-; let
-; instance
-; generalize
-; signature
-; record
-; fields
-; syntax
-; hole_name
-; data_signature
-; data_name
-; data
 
 ;; Brackets
 ; [
