@@ -180,6 +180,8 @@ pub struct FilePickerConfig {
     /// Enables reading `.ignore` files.
     /// Whether to hide files listed in .ignore in file picker and global search results. Defaults to true.
     pub ignore: bool,
+    /// Enables reading a global `.ignore` file. Defaults to true.
+    pub global_ignore: bool,
     /// Enables reading `.gitignore` files.
     /// Whether to hide files listed in .gitignore in file picker and global search results. Defaults to true.
     pub git_ignore: bool,
@@ -202,6 +204,7 @@ impl Default for FilePickerConfig {
             deduplicate_links: true,
             parents: true,
             ignore: true,
+            global_ignore: true,
             git_ignore: true,
             git_global: true,
             git_exclude: true,
