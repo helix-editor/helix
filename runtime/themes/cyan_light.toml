@@ -90,11 +90,11 @@
 "ui.window" = { bg = "shade00", fg = "shade04" }
 "ui.help" = { fg = "shade06", bg = "shade01" }
 "ui.text" = "shade05"
-"ui.text.focus" = { fg = "shade05", bg = "diff_green" }
+"ui.text.focus" = { fg = "shade07", bg = "light_blue" }
 "ui.virtual" = "shade03"
 "ui.virtual.ruler" = { bg = "shade04" }
 "ui.menu" = { fg = "shade05", bg = "shade01" }
-"ui.menu.selected" = { fg = "shade00", bg = "light_blue" }
+"ui.menu.selected" = { fg = "shade07", bg = "light_blue" }
 
 "hint" = "shade04"
 "info" = "light_blue"
