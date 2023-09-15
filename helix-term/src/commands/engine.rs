@@ -67,7 +67,8 @@ impl ScriptingEngine {
     pub fn get_keybindings() -> Option<HashMap<Mode, KeyTrie>> {
         let mut map = HashMap::new();
 
-        for kind in PLUGIN_PRECEDENCE {
+        // Overlay these in reverse, so the precedence applies correctly
+        for kind in PLUGIN_PRECEDENCE.iter().rev() {
             if let Some(keybindings) = manual_dispatch!(kind, get_keybindings()) {
                 map.extend(keybindings);
             }
