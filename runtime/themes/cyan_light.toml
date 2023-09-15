@@ -63,7 +63,7 @@
 
 # ui specific
 "ui.background" = { bg = "shade00" }
-"ui.cursor" = { bg = "shade03" }
+"ui.cursor" = { bg = "shade02" }
 "ui.cursor.primary" = { bg = "cursor_blue" }
 "ui.cursor.match" = { fg = "shade00", bg = "shade04" }
 "ui.cursor.primary.select" = { bg = "light_purple" }
