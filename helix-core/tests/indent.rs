@@ -210,7 +210,6 @@ fn test_treesitter_indent(
             let suggested_indent = treesitter_indent_for_pos(
                 indent_query,
                 &syntax,
-                &indent_style,
                 tab_width,
                 indent_style.indent_width(tab_width),
                 text,
@@ -218,7 +217,8 @@ fn test_treesitter_indent(
                 text.line_to_char(i) + pos,
                 false,
             )
-            .unwrap();
+            .unwrap()
+            .to_string(&indent_style);
             assert!(
                 line.get_slice(..pos).map_or(false, |s| s == suggested_indent),
                 "Wrong indentation for file {:?} on line {}:\n\"{}\" (original line)\n\"{}\" (suggested indentation)\n",
