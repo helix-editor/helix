@@ -86,7 +86,6 @@ mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
 ```
-
 The `[editor.statusline]` key takes the following sub-keys:
 
 | Key           | Description | Default |
@@ -339,7 +338,7 @@ Options for soft wrapping lines that exceed the view width:
 | `enable`             | Whether soft wrapping is enabled.                            | `false` |
 | `max-wrap`           | Maximum free space left at the end of the line.              | `20`    |
 | `max-indent-retain`  | Maximum indentation to carry over when soft wrapping a line. | `40`    |
-| `wrap-indicator`     | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `↪`    |
+| `wrap-indicator`     | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `↪ `    |
 | `wrap-at-text-width` | Soft wrap at `text-width` instead of using the full viewport size. | `false` |
 
 Example:
