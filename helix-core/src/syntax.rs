@@ -962,7 +962,7 @@ impl Syntax {
         let res = syntax.update(source, source, &ChangeSet::new(source));
 
         if res.is_err() {
-            log::error!("TS parser failed, disabeling TS for the current buffer: {res:?}");
+            log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
             return None;
         }
         Some(syntax)
