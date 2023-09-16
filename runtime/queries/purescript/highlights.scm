@@ -33,8 +33,6 @@
 ; ----------------------------------------------------------------------------
 ; Keywords, operators, includes
 
- (pragma) @constant.macro
-
  [
    "if"
    "then"
@@ -55,7 +53,6 @@
    (tycon_arrow)
    (qualified_module)  ; grabs the `.` (dot), ex: import System.IO
    (all_names)
-   (wildcard)
    "="
    "|"
    "::"
