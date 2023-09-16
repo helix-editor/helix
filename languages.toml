@@ -317,7 +317,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "json"
 scope = "source.json"
 injection-regex = "json"
-file-types = ["json", "jsonc", "arb", "ipynb", "geojson", "gltf"]
+file-types = ["json", "jsonc", "arb", "ipynb", "geojson", "gltf", "flake.lock"]
 roots = []
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
