@@ -44,6 +44,7 @@
 | forth | ✓ |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ | `fortls` |
 | fsharp | ✓ |  |  | `fsautocomplete` |
+| gas | ✓ | ✓ |  |  |
 | gdscript | ✓ | ✓ | ✓ |  |
 | gemini | ✓ |  |  |  |
 | git-attributes | ✓ |  |  |  |

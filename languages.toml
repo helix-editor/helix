@@ -2495,7 +2495,7 @@ source = { git = "https://github.com/erasin/tree-sitter-po", rev = "417cee9abb20
 [[language]]
 name = "nasm"
 scope = "source.nasm"
-file-types = ["asm", "s", "S", "nasm"]
+file-types = ["asm", "S", "nasm"]
 injection-regex = "n?asm"
 roots = []
 comment-token = ";"
@@ -2504,6 +2504,19 @@ indent = { tab-width = 8, unit = "        " }
 [[grammar]]
 name = "nasm"
 source = { git = "https://github.com/naclsn/tree-sitter-nasm", rev = "a0db15db6fcfb1bf2cc8702500e55e558825c48b" }
+
+[[language]]
+name = "gas"
+scope = "source.gas"
+file-types = ["s"]
+injection-regex = "gas"
+roots = []
+comment-token = "#"
+indent = { tab-width = 8, unit = "        " }
+
+[[grammar]]
+name = "gas"
+source = { git = "https://github.com/sirius94/tree-sitter-gas", rev = "60f443646b20edee3b7bf18f3a4fb91dc214259a" }
 
 [[language]]
 name = "rst"
