@@ -2290,7 +2290,8 @@ file-types = [
   "container",
   "volume",
   "kube",
-  "network"
+  "network",
+  ".editorconfig"
 ]
 injection-regex = "ini"
 comment-token = "#"
