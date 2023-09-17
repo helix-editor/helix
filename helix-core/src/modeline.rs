@@ -4,14 +4,16 @@ use once_cell::sync::Lazy;
 
 use crate::indent::IndentStyle;
 use crate::regex::Regex;
+use crate::syntax::ModelineConfig;
 use crate::{LineEnding, RopeSlice};
 
 // 5 is the vim default
 const LINES_TO_CHECK: usize = 5;
 const LENGTH_TO_CHECK: usize = 256;
 
-static MODELINE_REGEX: Lazy<Regex> =
+static VIM_MODELINE_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(\S*\s+)?(vi|[vV]im[<=>]?\d*|ex):\s*(set?\s+)?").unwrap());
+static HELIX_MODELINE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\S*\s+)?helix:").unwrap());
 
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct Modeline {
@@ -65,7 +67,8 @@ impl Modeline {
             };
             c == ' ' || c == '\t'
         };
-        if let Some(pos) = MODELINE_REGEX.find(line) {
+
+        if let Some(pos) = VIM_MODELINE_REGEX.find(line) {
             for option in line[pos.end()..].split(split_modeline) {
                 let parts: Vec<_> = option.split('=').collect();
                 match parts[0] {
@@ -91,6 +94,27 @@ impl Modeline {
                     }
                     _ => {}
                 }
+            }
+        }
+
+        if let Some(pos) = HELIX_MODELINE_REGEX.find(line) {
+            let config = &line[pos.end()..];
+            match toml::from_str::<ModelineConfig>(config) {
+                Ok(modeline) => {
+                    if let Some(language) = modeline.language {
+                        self.language = Some(language);
+                    }
+                    if let Some(indent) = modeline.indent {
+                        self.indent_style = Some(IndentStyle::from_str(&indent.unit));
+                    }
+                    if let Some(line_ending) = modeline.line_ending {
+                        self.line_ending = LineEnding::from_str(&line_ending);
+                        if self.line_ending.is_none() {
+                            log::warn!("could not interpret line ending {line_ending:?}");
+                        }
+                    }
+                }
+                Err(e) => log::warn!("{e}"),
             }
         }
     }
@@ -220,6 +244,41 @@ mod test {
                 "; vim:ft=gitconfig:",
                 Modeline {
                     language: Some("gitconfig".to_string()),
+                    ..Default::default()
+                },
+            ),
+            (
+                "# helix: language = 'perl'",
+                Modeline {
+                    language: Some("perl".to_string()),
+                    ..Default::default()
+                },
+            ),
+            (
+                "# helix: indent = { unit = '   ' }",
+                Modeline {
+                    indent_style: Some(IndentStyle::Spaces(3)),
+                    ..Default::default()
+                },
+            ),
+            (
+                "# helix: indent = { unit = \"\t\" }",
+                Modeline {
+                    indent_style: Some(IndentStyle::Tabs),
+                    ..Default::default()
+                },
+            ),
+            (
+                "# helix: indent = { unit = \"\\t\" }",
+                Modeline {
+                    indent_style: Some(IndentStyle::Tabs),
+                    ..Default::default()
+                },
+            ),
+            (
+                "# helix: line-ending = \"\\r\\n\"",
+                Modeline {
+                    line_ending: Some(LineEnding::Crlf),
                     ..Default::default()
                 },
             ),
