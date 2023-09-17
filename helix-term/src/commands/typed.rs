@@ -7,7 +7,6 @@ use crate::job::Job;
 use super::*;
 
 use helix_core::fuzzy::fuzzy_match;
-use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
@@ -487,18 +486,10 @@ fn set_indent_style(
     }
 
     // Attempt to parse argument as an indent style.
-    let style = match args.first() {
-        Some(arg) if "tabs".starts_with(&arg.to_lowercase()) => Some(Tabs),
-        Some(Cow::Borrowed("0")) => Some(Tabs),
-        Some(arg) => arg
-            .parse::<u8>()
-            .ok()
-            .filter(|n| (1..=MAX_INDENT).contains(n))
-            .map(Spaces),
-        _ => None,
-    };
-
-    let style = style.context("invalid indent style")?;
+    let style = args
+        .first()
+        .and_then(|s| IndentStyle::from_option_str(s))
+        .context("invalid indent style")?;
     let doc = doc_mut!(cx.editor);
     doc.indent_style = style;
 
@@ -544,16 +535,8 @@ fn set_line_ending(
         .to_ascii_lowercase();
 
     // Attempt to parse argument as a line ending.
-    let line_ending = match arg {
-        arg if arg.starts_with("crlf") => Crlf,
-        arg if arg.starts_with("lf") => LF,
-        #[cfg(feature = "unicode-lines")]
-        arg if arg.starts_with("cr") => CR,
-        #[cfg(feature = "unicode-lines")]
-        arg if arg.starts_with("ff") => FF,
-        #[cfg(feature = "unicode-lines")]
-        arg if arg.starts_with("nel") => Nel,
-        _ => bail!("invalid line ending"),
+    let Some(line_ending) = LineEnding::from_option_str(&arg) else {
+        bail!("invalid line ending");
     };
     let (view, doc) = current!(cx.editor);
     doc.line_ending = line_ending;

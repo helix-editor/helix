@@ -101,6 +101,21 @@ impl LineEnding {
     }
 
     #[inline]
+    pub fn from_option_str(arg: &str) -> Option<LineEnding> {
+        match arg {
+            arg if arg.starts_with("crlf") => Some(LineEnding::Crlf),
+            arg if arg.starts_with("lf") => Some(LineEnding::LF),
+            #[cfg(feature = "unicode-lines")]
+            arg if arg.starts_with("cr") => Some(LineEnding::CR),
+            #[cfg(feature = "unicode-lines")]
+            arg if arg.starts_with("ff") => Some(LineEnding::FF),
+            #[cfg(feature = "unicode-lines")]
+            arg if arg.starts_with("nel") => Some(LineEnding::Nel),
+            _ => None,
+        }
+    }
+
+    #[inline]
     pub fn from_rope_slice(g: &RopeSlice) -> Option<LineEnding> {
         if let Some(text) = g.as_str() {
             LineEnding::from_str(text)
