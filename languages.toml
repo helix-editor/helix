@@ -1003,7 +1003,10 @@ language-servers = [ "purescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
 auto-format = true
 formatter = { command = "purs-tidy", args = ["format"] }
-grammar = "haskell"
+
+[[grammar]]
+name = "purescript"
+source = { git = "https://github.com/maskhjarna/tree-sitter-purescript", rev = "5f5a030826849b7be17596d372967f60051b42bd" }
 
 [[language]]
 name = "zig"
