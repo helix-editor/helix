@@ -2831,4 +2831,4 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "agda"
-source = { git = "https://github.com/omentic/tree-sitter-agda", rev = "7aff1ccb0bb60c0884839ba37076441b2fbcbde2" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-agda", rev = "7aff1ccb0bb60c0884839ba37076441b2fbcbde2" }
