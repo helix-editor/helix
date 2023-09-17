@@ -26,6 +26,7 @@ use helix_core::{
     indent::{self, IndentStyle},
     line_ending::{get_line_ending_of_str, line_end_char_index},
     match_brackets,
+    modeline::Modeline,
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
@@ -3442,7 +3443,8 @@ async fn make_format_callback(
             if doc.version() == doc_version {
                 doc.apply(&format, view.id);
                 doc.append_changes_to_history(view);
-                doc.detect_indent_and_line_ending();
+                let modeline = Modeline::parse(doc.text().slice(..));
+                doc.detect_indent_and_line_ending(&modeline);
                 view.ensure_cursor_in_view(doc, scrolloff);
             } else {
                 log::info!("discarded formatting changes because the document changed");

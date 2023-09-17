@@ -2027,7 +2027,8 @@ fn language(
     } else {
         doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone())?;
     }
-    doc.detect_indent_and_line_ending();
+    let modeline = Modeline::parse(doc.text().slice(..));
+    doc.detect_indent_and_line_ending(&modeline);
 
     let id = doc.id();
     cx.editor.refresh_language_servers(id);

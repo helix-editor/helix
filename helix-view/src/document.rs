@@ -35,6 +35,7 @@ use helix_core::{
     history::{History, State, UndoKind},
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
+    modeline::Modeline,
     syntax::{self, LanguageConfiguration},
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
@@ -734,15 +735,16 @@ impl Document {
             (Rope::from(line_ending.as_str()), encoding, false)
         };
 
+        let modeline = Modeline::parse(rope.slice(..));
         let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
         if let Some(loader) = config_loader {
-            doc.detect_language(loader);
+            doc.detect_language(loader, &modeline);
         }
 
-        doc.detect_indent_and_line_ending();
+        doc.detect_indent_and_line_ending(&modeline);
 
         Ok(doc)
     }
@@ -1067,10 +1069,14 @@ impl Document {
     }
 
     /// Detect the programming language based on the file type.
-    pub fn detect_language(&mut self, config_loader: Arc<ArcSwap<syntax::Loader>>) {
+    pub fn detect_language(
+        &mut self,
+        config_loader: Arc<ArcSwap<syntax::Loader>>,
+        modeline: &Modeline,
+    ) {
         let loader = config_loader.load();
         self.set_language(
-            self.detect_language_config(&loader),
+            self.detect_language_config(&loader, modeline),
             Some(Arc::clone(&config_loader)),
         );
     }
@@ -1079,22 +1085,34 @@ impl Document {
     pub fn detect_language_config(
         &self,
         config_loader: &syntax::Loader,
+        modeline: &Modeline,
     ) -> Option<Arc<helix_core::syntax::LanguageConfiguration>> {
-        config_loader
-            .language_config_for_file_name(self.path.as_ref()?)
-            .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
+        modeline
+            .language()
+            .and_then(|language| config_loader.language_config_for_language_id(language))
+            .or_else(|| {
+                config_loader
+                    .language_config_for_file_name(self.path.as_ref()?)
+                    .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
+            })
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
     /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
     /// is likewise auto-detected, and will remain unchanged if no line endings were detected.
-    pub fn detect_indent_and_line_ending(&mut self) {
-        self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
-            self.language_config()
-                .and_then(|config| config.indent.as_ref())
-                .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
-        });
-        if let Some(line_ending) = auto_detect_line_ending(&self.text) {
+    pub fn detect_indent_and_line_ending(&mut self, modeline: &Modeline) {
+        self.indent_style = modeline
+            .indent_style()
+            .or_else(|| auto_detect_indent_style(&self.text))
+            .unwrap_or_else(|| {
+                self.language_config()
+                    .and_then(|config| config.indent.as_ref())
+                    .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
+            });
+        if let Some(line_ending) = modeline
+            .line_ending()
+            .or_else(|| auto_detect_line_ending(&self.text))
+        {
             self.line_ending = line_ending;
         }
     }
@@ -1147,6 +1165,7 @@ impl Document {
 
         let mut file = std::fs::File::open(&path)?;
         let (rope, ..) = from_reader(&mut file, Some(encoding))?;
+        let modeline = Modeline::parse(rope.slice(..));
 
         // Calculate the difference between the buffer and source text, and apply it.
         // This is not considered a modification of the contents of the file regardless
@@ -1156,7 +1175,7 @@ impl Document {
         self.append_changes_to_history(view);
         self.reset_modified();
         self.pickup_last_saved_time();
-        self.detect_indent_and_line_ending();
+        self.detect_indent_and_line_ending(&modeline);
 
         match provider_registry.get_diff_base(&path) {
             Some(diff_base) => self.set_diff_base(diff_base),

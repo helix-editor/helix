@@ -4,6 +4,7 @@ use std::{
     time::Duration,
 };
 
+use helix_core::modeline::Modeline;
 use helix_event::AsyncHook;
 use tokio::time::Instant;
 
@@ -70,7 +71,9 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                 return;
             }
 
-            let Some(language_config) = doc.detect_language_config(&editor.syn_loader.load())
+            let modeline = Modeline::parse(doc.text().slice(..));
+            let Some(language_config) =
+                doc.detect_language_config(&editor.syn_loader.load(), &modeline)
             else {
                 return;
             };

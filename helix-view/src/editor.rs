@@ -45,6 +45,7 @@ use anyhow::{anyhow, bail, Error};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
+    modeline::Modeline,
     syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
     Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
@@ -1456,8 +1457,9 @@ impl Editor {
     pub fn refresh_doc_language(&mut self, doc_id: DocumentId) {
         let loader = self.syn_loader.clone();
         let doc = doc_mut!(self, &doc_id);
-        doc.detect_language(loader);
-        doc.detect_indent_and_line_ending();
+        let modeline = Modeline::parse(doc.text().slice(..));
+        doc.detect_language(loader, &modeline);
+        doc.detect_indent_and_line_ending(&modeline);
         self.refresh_language_servers(doc_id);
         let doc = doc_mut!(self, &doc_id);
         let diagnostics = Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, doc);
