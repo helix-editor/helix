@@ -34,11 +34,15 @@
 
 ;; Functions
 (function_name) @function
-; (function (lhs (atom) @function))
-; todo: most functions?? weirdly crashing
+;(function (lhs
+;  . (atom) @function
+;    (atom) @variable.parameter))
+; todo: why tf does this not work
 
 ;; Data
 [(data_name) (record_name)] @constructor
+((atom) @constant.builtin.boolean
+  (#any-of? @constant.builtin.boolean "true" "false" "True" "False"))
 
 "Set" @type.builtin
 
@@ -93,6 +97,10 @@
   "instance"
   "do"
 ] @keyword
+
+[
+  "="
+] @operator
 
 ; = | -> : ? \ .. ... λ ∀ →
 ; (_LAMBDA) (_FORALL) (_ARROW)

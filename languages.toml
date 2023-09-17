@@ -2814,7 +2814,8 @@ injection-regex = "agda"
 file-types = ["agda"]
 roots = []
 comment-token = "--"
-language-servers = [ "als" ]
+# language-servers = [ "als" ]
+# the agda language server is of questionable functionality.
 auto-format = false
 indent = { tab-width = 2, unit = "  " }
 
