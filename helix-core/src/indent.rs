@@ -210,6 +210,46 @@ fn whitespace_with_same_width(text: RopeSlice) -> String {
     s
 }
 
+fn add_indent_level(
+    mut base_indent: String,
+    added_indent_level: isize,
+    indent_style: &IndentStyle,
+    tab_width: usize,
+) -> String {
+    if added_indent_level >= 0 {
+        // Adding a non-negative indent is easy, we can simply append the indent string
+        base_indent.push_str(&indent_style.as_str().repeat(added_indent_level as usize));
+        base_indent
+    } else {
+        // In this case, we want to return a prefix of `base_indent`.
+        // Since the width of a tab depends on its offset, we cannot simply iterate over
+        // the chars of `base_indent` in reverse until we have the desired indent reduction,
+        // instead we iterate over them twice in forward direction.
+        let mut base_indent_width: usize = 0;
+        for c in base_indent.chars() {
+            base_indent_width += match c {
+                '\t' => tab_width_at(base_indent_width, tab_width as u16),
+                // This is only true since `base_indent` consists only of tabs and spaces
+                _ => 1,
+            };
+        }
+        let target_indent_width = base_indent_width
+            .saturating_sub((-added_indent_level) as usize * indent_style.indent_width(tab_width));
+        let mut reduced_indent_width = 0;
+        for (i, c) in base_indent.char_indices() {
+            if reduced_indent_width >= target_indent_width {
+                base_indent.truncate(i);
+                return base_indent;
+            }
+            reduced_indent_width += match c {
+                '\t' => tab_width_at(base_indent_width, tab_width as u16),
+                _ => 1,
+            };
+        }
+        base_indent
+    }
+}
+
 /// Computes for node and all ancestors whether they are the first node on their line.
 /// The first entry in the return value represents the root node, the last one the node itself
 fn get_first_in_line(mut node: Node, new_line_byte_pos: Option<usize>) -> Vec<bool> {
@@ -334,59 +374,25 @@ impl<'a> Indentation<'a> {
             // we can simply take `other_leading_whitespace` and add some indent / outdent to it (in the second
             // case, the alignment should already be accounted for in `other_leading_whitespace`).
             let indent_diff = self.net_indent() - other_computed_indent.net_indent();
-            if indent_diff >= 0 {
-                let mut indent = other_leading_whitespace.to_string();
-                indent.push_str(&indent_style.as_str().repeat(indent_diff as usize));
-                Some(indent)
-            } else {
-                // It's not entirely clear how to subtract a given indent level from the other line if its indentation is
-                // complex (e.g. a weird alignment or a mixture of tabs and spaces). Therefore, we only consider the indent level
-                // of `baseline_leading_whitespace`, add `indent_diff` to it and convert this indent level back to a string. If we ever encounter
-                // cases where some other behavior is expected, the behavior for strings that don't exactly correspond to some indent
-                // level could be re-evaluated.
-                let actual_baseline_indent_level = indent_level_for_line(
-                    other_leading_whitespace,
-                    tab_width,
-                    indent_style.indent_width(tab_width),
-                );
-                let total_indent = actual_baseline_indent_level as isize + indent_diff;
-                if total_indent < 0 {
-                    log::warn!(
-                        "Computed negative indent during a relative indent computation (actual baseline indent: {}, computed baseline indent: {}, computed line indent: {})",
-                        actual_baseline_indent_level,
-                        other_computed_indent.net_indent(),
-                        self.net_indent(),
-                    );
-                    Some(String::new())
-                } else {
-                    Some(indent_style.as_str().repeat(total_indent as usize))
-                }
-            }
-        } else if self.align.is_some() {
-            Some(self.to_string(indent_style))
+            Some(add_indent_level(
+                String::from(other_leading_whitespace),
+                indent_diff,
+                indent_style,
+                tab_width,
+            ))
         } else {
-            // If the other line has some alignment and `self` does not, there is no reasonable way to take
-            // into account `other_leading_whitespace`.
+            // If the alignment of both lines is different, we cannot compare their indentation in any meaningful way
             None
         }
     }
-    pub fn to_string(&self, indent_style: &IndentStyle) -> String {
-        let indent = self.indent_always + self.indent;
-        let outdent = self.outdent_always + self.outdent;
-
-        let indent_level = if indent >= outdent {
-            indent - outdent
-        } else {
-            log::warn!("Encountered more outdent than indent nodes while calculating indentation: {} outdent, {} indent", self.outdent, self.indent);
-            0
-        };
-        let mut indent_string = if let Some(align) = self.align {
-            whitespace_with_same_width(align)
-        } else {
-            String::new()
-        };
-        indent_string.push_str(&indent_style.as_str().repeat(indent_level));
-        indent_string
+    pub fn to_string(&self, indent_style: &IndentStyle, tab_width: usize) -> String {
+        add_indent_level(
+            self.align
+                .map_or_else(String::new, whitespace_with_same_width),
+            self.net_indent(),
+            indent_style,
+            tab_width,
+        )
     }
 }
 
@@ -992,7 +998,7 @@ pub fn indent_for_newline(
                     break;
                 }
             }
-            return indent.to_string(indent_style);
+            return indent.to_string(indent_style, tab_width);
         };
     }
     // Fallback in case we either don't have indent queries or they failed for some reason
@@ -1186,6 +1192,76 @@ mod test {
                 add_capture(outdent(), IndentCaptureType::OutdentAlways),
                 IndentCaptureType::Outdent
             )
+        );
+    }
+
+    #[test]
+    fn test_relative_indent() {
+        let indent_style = IndentStyle::Spaces(4);
+        let tab_width: usize = 4;
+        let no_align = [
+            Indentation::default(),
+            Indentation {
+                indent: 1,
+                ..Default::default()
+            },
+            Indentation {
+                indent: 5,
+                outdent: 1,
+                ..Default::default()
+            },
+        ];
+        let align = no_align.clone().map(|indent| Indentation {
+            align: Some(RopeSlice::from("12345")),
+            ..indent
+        });
+        let different_align = Indentation {
+            align: Some(RopeSlice::from("123456")),
+            ..Default::default()
+        };
+
+        // Check that relative and absolute indentation computation are the same when the line we compare to is
+        // indented as we expect.
+        let check_consistency = |indent: &Indentation, other: &Indentation| {
+            assert_eq!(
+                indent.relative_indent(
+                    other,
+                    RopeSlice::from(other.to_string(&indent_style, tab_width).as_str()),
+                    &indent_style,
+                    tab_width
+                ),
+                Some(indent.to_string(&indent_style, tab_width))
+            );
+        };
+        for a in &no_align {
+            for b in &no_align {
+                check_consistency(a, b);
+            }
+        }
+        for a in &align {
+            for b in &align {
+                check_consistency(a, b);
+            }
+        }
+
+        // Relative indent computation makes no sense if the alignment differs
+        assert_eq!(
+            align[0].relative_indent(
+                &no_align[0],
+                RopeSlice::from("      "),
+                &indent_style,
+                tab_width
+            ),
+            None
+        );
+        assert_eq!(
+            align[0].relative_indent(
+                &different_align,
+                RopeSlice::from("      "),
+                &indent_style,
+                tab_width
+            ),
+            None
         );
     }
 }
