@@ -317,7 +317,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "json"
 scope = "source.json"
 injection-regex = "json"
-file-types = ["json", "jsonc", "arb", "ipynb", "geojson", "gltf"]
+file-types = ["json", "jsonc", "arb", "ipynb", "geojson", "gltf", "flake.lock", ".babelrc"]
 roots = []
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
@@ -1003,7 +1003,10 @@ language-servers = [ "purescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
 auto-format = true
 formatter = { command = "purs-tidy", args = ["format"] }
-grammar = "haskell"
+
+[[grammar]]
+name = "purescript"
+source = { git = "https://github.com/maskhjarna/tree-sitter-purescript", rev = "5f5a030826849b7be17596d372967f60051b42bd" }
 
 [[language]]
 name = "zig"
@@ -2290,7 +2293,8 @@ file-types = [
   "container",
   "volume",
   "kube",
-  "network"
+  "network",
+  ".editorconfig"
 ]
 injection-regex = "ini"
 comment-token = "#"
