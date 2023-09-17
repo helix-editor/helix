@@ -61,8 +61,16 @@ impl Args {
                     None => anyhow::bail!("--log must specify a path to write"),
                 },
                 "-w" | "--working-path" => match argv.next().as_deref() {
-                    Some(path) => args.working_path = if Path::new(path).exists() {Some(PathBuf::from(path))} else {None},
-                    None => anyhow::bail!("--working-path must specify an initial working directory"),
+                    Some(path) => {
+                        args.working_path = if Path::new(path).exists() {
+                            Some(PathBuf::from(path))
+                        } else {
+                            None
+                        }
+                    }
+                    None => {
+                        anyhow::bail!("--working-path must specify an initial working directory")
+                    }
                 },
                 arg if arg.starts_with("--") => {
                     anyhow::bail!("unexpected double dash argument: {}", arg)
