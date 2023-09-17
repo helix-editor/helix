@@ -170,7 +170,7 @@ impl Application {
                 compositor.push(Box::new(overlaid(picker)));
             } else {
                 match args.working_path {
-                    Some(path) => helix_loader::set_current_working_dir(path.clone())?,
+                    Some(path) => helix_loader::set_current_working_dir(path)?,
                     None => log::warn!("invalid working path given"),
                 }
                 let nr_of_files = args.files.len();
