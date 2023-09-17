@@ -177,11 +177,10 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
         .max_depth(config.file_picker.max_depth)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
 
-    // Add global .ignore
-    if config.file_picker.global_ignore {
-        if let Some(ignore_error) =
-            walk_builder.add_ignore(helix_loader::config_dir().join(".ignore"))
-        {
+    // Add global .ignore when available
+    let global_ignore_path = helix_loader::config_dir().join(".ignore");
+    if global_ignore_path.exists() {
+        if let Some(ignore_error) = walk_builder.add_ignore(global_ignore_path) {
             log::error!("Failed to add the global ignore file: {}", ignore_error);
         }
     }
