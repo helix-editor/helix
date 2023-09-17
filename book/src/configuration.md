@@ -171,7 +171,6 @@ All git related options are only enabled in a git repository.
 |`deduplicate-links` | Ignore symlinks that point at files already shown in the picker | true
 |`parents` | Enables reading ignore files from parent directories | true
 |`ignore` | Enables reading `.ignore` files | true
-|`global-ignore` | Enables reading a global `.ignore` file from the same directory as the config.toml configuration | true
 |`git-ignore` | Enables reading `.gitignore` files | true
 |`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludefile` option | true
 |`git-exclude` | Enables reading `.git/info/exclude` files | true
