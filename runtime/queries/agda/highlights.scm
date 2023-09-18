@@ -30,14 +30,13 @@
 (untyped_binding (atom) @variable)
 (typed_binding   (atom) @variable)
 (field_name) @variable.other.member
-; todo: variable.parameter
 
 ;; Functions
 (function_name) @function
 ;(function (lhs
 ;  . (atom) @function
 ;    (atom) @variable.parameter))
-; todo: why tf does this not work
+; todo: currently fails to parse, upstream tree-sitter bug
 
 ;; Data
 [(data_name) (record_name)] @constructor
@@ -123,18 +122,3 @@
 ; "variable"
 ; "with"
 
-;; Brackets
-; [
-;   "("
-;   ")"
-;   "["
-;   "]"
-;   "{"
-;   "}"
-;   "{-#"
-;   "#-}"
-;   "{-"
-;   "-}"
-;   "{!"
-;   "!}"
-; ] @punctuation.bracket
