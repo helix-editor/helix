@@ -195,7 +195,6 @@ fn location_to_file_location(location: &lsp::Location) -> FileLocation {
     (path.into(), line)
 }
 
-// TODO: share with symbol picker(symbol.location)
 fn jump_to_location(
     editor: &mut Editor,
     location: &lsp::Location,
@@ -213,15 +212,16 @@ fn jump_to_location(
             return;
         }
     };
-    match editor.open(&path, action) {
-        Ok(_) => (),
+
+    let doc = match editor.open(&path, action) {
+        Ok(id) => doc_mut!(editor, &id),
         Err(err) => {
             let err = format!("failed to open path: {:?}: {:?}", location.uri, err);
             editor.set_error(err);
             return;
         }
-    }
-    let (view, doc) = current!(editor);
+    };
+    let view = view_mut!(editor);
     // TODO: convert inside server
     let new_range =
         if let Some(new_range) = lsp_range_to_range(doc.text(), location.range, offset_encoding) {
@@ -233,45 +233,22 @@ fn jump_to_location(
     // we flip the range so that the cursor sits on the start of the symbol
     // (for example start of the function).
     doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
-    align_view(doc, view, Align::Center);
+    if action.align_view(view, doc.id()) {
+        align_view(doc, view, Align::Center);
+    }
 }
 
 type SymbolPicker = Picker<SymbolInformationItem>;
 
 fn sym_picker(symbols: Vec<SymbolInformationItem>, current_path: Option<lsp::Url>) -> SymbolPicker {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
-    Picker::new(symbols, current_path.clone(), move |cx, item, action| {
-        let (view, doc) = current!(cx.editor);
-        push_jump(view, doc);
-
-        if current_path.as_ref() != Some(&item.symbol.location.uri) {
-            let uri = &item.symbol.location.uri;
-            let path = match uri.to_file_path() {
-                Ok(path) => path,
-                Err(_) => {
-                    let err = format!("unable to convert URI to filepath: {}", uri);
-                    cx.editor.set_error(err);
-                    return;
-                }
-            };
-            if let Err(err) = cx.editor.open(&path, action) {
-                let err = format!("failed to open document: {}: {}", uri, err);
-                log::error!("{}", err);
-                cx.editor.set_error(err);
-                return;
-            }
-        }
-
-        let (view, doc) = current!(cx.editor);
-
-        if let Some(range) =
-            lsp_range_to_range(doc.text(), item.symbol.location.range, item.offset_encoding)
-        {
-            // we flip the range so that the cursor sits on the start of the symbol
-            // (for example start of the function).
-            doc.set_selection(view.id, Selection::single(range.head, range.anchor));
-            align_view(doc, view, Align::Center);
-        }
+    Picker::new(symbols, current_path, move |cx, item, action| {
+        jump_to_location(
+            cx.editor,
+            &item.symbol.location,
+            item.offset_encoding,
+            action,
+        );
     })
     .with_preview(move |_editor, item| Some(location_to_file_location(&item.symbol.location)))
     .truncate_start(false)
@@ -286,7 +263,7 @@ enum DiagnosticsFormat {
 fn diag_picker(
     cx: &Context,
     diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
-    current_path: Option<lsp::Url>,
+    _current_path: Option<lsp::Url>,
     format: DiagnosticsFormat,
 ) -> Picker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
@@ -324,22 +301,12 @@ fn diag_picker(
                   offset_encoding,
               },
               action| {
-            if current_path.as_ref() == Some(url) {
-                let (view, doc) = current!(cx.editor);
-                push_jump(view, doc);
-            } else {
-                let path = url.to_file_path().unwrap();
-                cx.editor.open(&path, action).expect("editor.open failed");
-            }
-
-            let (view, doc) = current!(cx.editor);
-
-            if let Some(range) = lsp_range_to_range(doc.text(), diag.range, *offset_encoding) {
-                // we flip the range so that the cursor sits on the start of the symbol
-                // (for example start of the function).
-                doc.set_selection(view.id, Selection::single(range.head, range.anchor));
-                align_view(doc, view, Align::Center);
-            }
+            jump_to_location(
+                cx.editor,
+                &lsp::Location::new(url.clone(), diag.range),
+                *offset_encoding,
+                action,
+            )
         },
     )
     .with_preview(move |_editor, PickerDiagnostic { url, diag, .. }| {
@@ -730,7 +697,8 @@ pub fn code_action(cx: &mut Context) {
 
                 // always present here
                 let action = action.unwrap();
-                let Some(language_server) = editor.language_server_by_id(action.language_server_id) else {
+                let Some(language_server) = editor.language_server_by_id(action.language_server_id)
+                else {
                     editor.set_error("Language Server disappeared");
                     return;
                 };
@@ -743,7 +711,25 @@ pub fn code_action(cx: &mut Context) {
                     }
                     lsp::CodeActionOrCommand::CodeAction(code_action) => {
                         log::debug!("code action: {:?}", code_action);
-                        if let Some(ref workspace_edit) = code_action.edit {
+                        // we support lsp "codeAction/resolve" for `edit` and `command` fields
+                        let mut resolved_code_action = None;
+                        if code_action.edit.is_none() || code_action.command.is_none() {
+                            if let Some(future) =
+                                language_server.resolve_code_action(code_action.clone())
+                            {
+                                if let Ok(response) = helix_lsp::block_on(future) {
+                                    if let Ok(code_action) =
+                                        serde_json::from_value::<CodeAction>(response)
+                                    {
+                                        resolved_code_action = Some(code_action);
+                                    }
+                                }
+                            }
+                        }
+                        let resolved_code_action =
+                            resolved_code_action.as_ref().unwrap_or(code_action);
+
+                        if let Some(ref workspace_edit) = resolved_code_action.edit {
                             log::debug!("edit: {:?}", workspace_edit);
                             let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
                         }
@@ -1033,7 +1019,7 @@ fn goto_impl(
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    let cwdir = std::env::current_dir().unwrap_or_default();
+    let cwdir = helix_loader::current_working_dir();
 
     match locations.as_slice() {
         [location] => {
@@ -1173,7 +1159,8 @@ pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
         // Do not show the message if signature help was invoked
         // automatically on backspace, trigger characters, etc.
         if invoked == SignatureHelpInvoked::Manual {
-            cx.editor.set_error("No configured language server supports signature-help");
+            cx.editor
+                .set_error("No configured language server supports signature-help");
         }
         return;
     };
@@ -1398,7 +1385,8 @@ pub fn rename_symbol(cx: &mut Context) {
                     .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
                     .find(|ls| language_server_id.map_or(true, |id| id == ls.id()))
                 else {
-                    cx.editor.set_error("No configured language server supports symbol renaming");
+                    cx.editor
+                        .set_error("No configured language server supports symbol renaming");
                     return;
                 };
 

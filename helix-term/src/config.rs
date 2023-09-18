@@ -109,6 +109,7 @@ impl Config {
                     )?,
                 }
             }
+
             // these are just two io errors return the one for the global config
             (Err(err), Err(_)) => return Err(err),
         };

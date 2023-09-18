@@ -9,7 +9,7 @@
 "ui.selection" = { bg = "#304a3d" }
 "ui.selection.primary" = { bg = "#2f2f2f" }
 "comment" = { fg = "comment" }
-"ui.virtual.inlay-hint" = { fg = "comment" }
+"ui.virtual.inlay-hint" = { fg = "#9f9f9f" }
 "comment.block.documentation" = { fg = "black", modifiers = ["bold"] }
 "ui.statusline" = { bg = "statusbg", fg = "#ccdc90" }
 "ui.statusline.inactive" = { fg = '#2e3330', bg = '#88b090' }

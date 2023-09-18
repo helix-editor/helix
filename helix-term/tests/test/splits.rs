@@ -62,9 +62,9 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file1.as_file_mut(), "hello1")?;
-    helpers::assert_file_has_content(file2.as_file_mut(), "hello2")?;
-    helpers::assert_file_has_content(file3.as_file_mut(), "hello3")?;
+    helpers::assert_file_has_content(file1.as_file_mut(), &platform_line("hello1"))?;
+    helpers::assert_file_has_content(file2.as_file_mut(), &platform_line("hello2"))?;
+    helpers::assert_file_has_content(file3.as_file_mut(), &platform_line("hello3"))?;
 
     Ok(())
 }

@@ -5,7 +5,8 @@ use crate::job::Job;
 
 use super::*;
 
-use helix_core::{encoding, shellwords::Shellwords};
+use helix_core::fuzzy::fuzzy_match;
+use helix_core::{encoding, line_ending, shellwords::Shellwords};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
@@ -329,12 +330,16 @@ fn write_impl(
     path: Option<&Cow<str>>,
     force: bool,
 ) -> anyhow::Result<()> {
-    let editor_auto_fmt = cx.editor.config().auto_format;
+    let config = cx.editor.config();
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
-    let fmt = if editor_auto_fmt {
+    if config.insert_final_newline {
+        insert_final_newline(doc, view);
+    }
+
+    let fmt = if config.auto_format {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
@@ -356,6 +361,16 @@ fn write_impl(
     }
 
     Ok(())
+}
+
+fn insert_final_newline(doc: &mut Document, view: &mut View) {
+    let text = doc.text();
+    if line_ending::get_line_ending(&text.slice(..)).is_none() {
+        let eof = Selection::point(text.len_chars());
+        let insert = Transaction::insert(text, &eof, doc.line_ending.as_str().into());
+        doc.apply(&insert, view.id);
+        doc.append_changes_to_history(view);
+    }
 }
 
 fn write(
@@ -657,11 +672,10 @@ pub fn write_all_impl(
     write_scratch: bool,
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
-    let auto_format = cx.editor.config().auto_format;
+    let config = cx.editor.config();
     let jobs = &mut cx.jobs;
     let current_view = view!(cx.editor);
 
-    // save all documents
     let saves: Vec<_> = cx
         .editor
         .documents
@@ -672,7 +686,7 @@ pub fn write_all_impl(
             }
             if doc.path().is_none() {
                 if write_scratch {
-                    errors.push("cannot write a buffer without a filename\n");
+                    errors.push("cannot write a buffer without a filename");
                 }
                 return None;
             }
@@ -692,32 +706,35 @@ pub fn write_all_impl(
                 current_view.id
             };
 
-            let fmt = if auto_format {
-                doc.auto_format().map(|fmt| {
-                    let callback = make_format_callback(
-                        doc.id(),
-                        doc.version(),
-                        target_view,
-                        fmt,
-                        Some((None, force)),
-                    );
-                    jobs.add(Job::with_callback(callback).wait_before_exiting());
-                })
-            } else {
-                None
-            };
-
-            if fmt.is_none() {
-                return Some(doc.id());
-            }
-
-            None
+            Some((doc.id(), target_view))
         })
         .collect();
 
-    // manually call save for the rest of docs that don't have a formatter
-    for id in saves {
-        cx.editor.save::<PathBuf>(id, None, force)?;
+    for (doc_id, target_view) in saves {
+        let doc = doc_mut!(cx.editor, &doc_id);
+
+        if config.insert_final_newline {
+            insert_final_newline(doc, view_mut!(cx.editor, target_view));
+        }
+
+        let fmt = if config.auto_format {
+            doc.auto_format().map(|fmt| {
+                let callback = make_format_callback(
+                    doc_id,
+                    doc.version(),
+                    target_view,
+                    fmt,
+                    Some((None, force)),
+                );
+                jobs.add(Job::with_callback(callback).wait_before_exiting());
+            })
+        } else {
+            None
+        };
+
+        if fmt.is_none() {
+            cx.editor.save::<PathBuf>(doc_id, None, force)?;
+        }
     }
 
     if !errors.is_empty() && !force {
@@ -737,6 +754,18 @@ fn write_all(
     }
 
     write_all_impl(cx, false, true)
+}
+
+fn force_write_all(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_all_impl(cx, true, true)
 }
 
 fn write_all_quit(
@@ -892,7 +921,8 @@ fn yank_main_selection_to_clipboard(
         return Ok(());
     }
 
-    yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Clipboard)
+    yank_primary_selection_impl(cx.editor, '*');
+    Ok(())
 }
 
 fn yank_joined(
@@ -926,7 +956,8 @@ fn yank_joined_to_clipboard(
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_to_clipboard_impl(cx.editor, separator, ClipboardType::Clipboard)
+    yank_joined_impl(cx.editor, separator, '*');
+    Ok(())
 }
 
 fn yank_main_selection_to_primary_clipboard(
@@ -938,7 +969,8 @@ fn yank_main_selection_to_primary_clipboard(
         return Ok(());
     }
 
-    yank_main_selection_to_clipboard_impl(cx.editor, ClipboardType::Selection)
+    yank_primary_selection_impl(cx.editor, '+');
+    Ok(())
 }
 
 fn yank_joined_to_primary_clipboard(
@@ -953,7 +985,8 @@ fn yank_joined_to_primary_clipboard(
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_to_clipboard_impl(cx.editor, separator, ClipboardType::Selection)
+    yank_joined_impl(cx.editor, separator, '+');
+    Ok(())
 }
 
 fn paste_clipboard_after(
@@ -965,7 +998,8 @@ fn paste_clipboard_after(
         return Ok(());
     }
 
-    paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Clipboard, 1)
+    paste(cx.editor, '*', Paste::After, 1);
+    Ok(())
 }
 
 fn paste_clipboard_before(
@@ -977,7 +1011,8 @@ fn paste_clipboard_before(
         return Ok(());
     }
 
-    paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Clipboard, 1)
+    paste(cx.editor, '*', Paste::Before, 1);
+    Ok(())
 }
 
 fn paste_primary_clipboard_after(
@@ -989,7 +1024,8 @@ fn paste_primary_clipboard_after(
         return Ok(());
     }
 
-    paste_clipboard_impl(cx.editor, Paste::After, ClipboardType::Selection, 1)
+    paste(cx.editor, '+', Paste::After, 1);
+    Ok(())
 }
 
 fn paste_primary_clipboard_before(
@@ -1001,30 +1037,8 @@ fn paste_primary_clipboard_before(
         return Ok(());
     }
 
-    paste_clipboard_impl(cx.editor, Paste::Before, ClipboardType::Selection, 1)
-}
-
-fn replace_selections_with_clipboard_impl(
-    cx: &mut compositor::Context,
-    clipboard_type: ClipboardType,
-) -> anyhow::Result<()> {
-    let scrolloff = cx.editor.config().scrolloff;
-    let (view, doc) = current!(cx.editor);
-
-    match cx.editor.clipboard_provider.get_contents(clipboard_type) {
-        Ok(contents) => {
-            let selection = doc.selection(view.id);
-            let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-                (range.from(), range.to(), Some(contents.as_str().into()))
-            });
-
-            doc.apply(&transaction, view.id);
-            doc.append_changes_to_history(view);
-            view.ensure_cursor_in_view(doc, scrolloff);
-            Ok(())
-        }
-        Err(e) => Err(e.context("Couldn't get system clipboard contents")),
-    }
+    paste(cx.editor, '+', Paste::Before, 1);
+    Ok(())
 }
 
 fn replace_selections_with_clipboard(
@@ -1036,7 +1050,8 @@ fn replace_selections_with_clipboard(
         return Ok(());
     }
 
-    replace_selections_with_clipboard_impl(cx, ClipboardType::Clipboard)
+    replace_with_yanked_impl(cx.editor, '*', 1);
+    Ok(())
 }
 
 fn replace_selections_with_primary_clipboard(
@@ -1048,7 +1063,8 @@ fn replace_selections_with_primary_clipboard(
         return Ok(());
     }
 
-    replace_selections_with_clipboard_impl(cx, ClipboardType::Selection)
+    replace_with_yanked_impl(cx.editor, '+', 1);
+    Ok(())
 }
 
 fn show_clipboard_provider(
@@ -1061,7 +1077,7 @@ fn show_clipboard_provider(
     }
 
     cx.editor
-        .set_status(cx.editor.clipboard_provider.name().to_string());
+        .set_status(cx.editor.registers.clipboard_provider_name().to_string());
     Ok(())
 }
 
@@ -1081,14 +1097,11 @@ fn change_current_directory(
             .as_ref(),
     );
 
-    if let Err(e) = std::env::set_current_dir(dir) {
-        bail!("Couldn't change the current working directory: {}", e);
-    }
+    helix_loader::set_current_working_dir(dir)?;
 
-    let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
     cx.editor.set_status(format!(
         "Current working directory is now {}",
-        cwd.display()
+        helix_loader::current_working_dir().display()
     ));
     Ok(())
 }
@@ -1102,9 +1115,14 @@ fn show_current_directory(
         return Ok(());
     }
 
-    let cwd = std::env::current_dir().context("Couldn't get the new working directory")?;
-    cx.editor
-        .set_status(format!("Current working directory is {}", cwd.display()));
+    let cwd = helix_loader::current_working_dir();
+    let message = format!("Current working directory is {}", cwd.display());
+
+    if cwd.exists() {
+        cx.editor.set_status(message);
+    } else {
+        cx.editor.set_error(format!("{} (deleted)", message));
+    }
     Ok(())
 }
 
@@ -1264,12 +1282,17 @@ fn reload(
     }
 
     let scrolloff = cx.editor.config().scrolloff;
-    let redraw_handle = cx.editor.redraw_handle.clone();
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_providers, redraw_handle)
-        .map(|_| {
-            view.ensure_cursor_in_view(doc, scrolloff);
-        })
+    doc.reload(view, &cx.editor.diff_providers).map(|_| {
+        view.ensure_cursor_in_view(doc, scrolloff);
+    })?;
+    if let Some(path) = doc.path() {
+        cx.editor
+            .language_servers
+            .file_event_handler
+            .file_changed(path.clone());
+    }
+    Ok(())
 }
 
 fn reload_all(
@@ -1308,8 +1331,13 @@ fn reload_all(
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
-        let redraw_handle = cx.editor.redraw_handle.clone();
-        doc.reload(view, &cx.editor.diff_providers, redraw_handle)?;
+        doc.reload(view, &cx.editor.diff_providers)?;
+        if let Some(path) = doc.path() {
+            cx.editor
+                .language_servers
+                .file_event_handler
+                .file_changed(path.clone());
+        }
 
         for view_id in view_ids {
             let view = view_mut!(cx.editor, view_id);
@@ -1358,9 +1386,8 @@ fn lsp_workspace_command(
                 .map(|options| (ls.id(), options))
         })
     else {
-        cx.editor.set_status(
-             "No active language servers for this document support workspace commands",
-        );
+        cx.editor
+            .set_status("No active language servers for this document support workspace commands");
         return Ok(());
     };
 
@@ -1516,6 +1543,84 @@ fn tree_sitter_scopes(
     Ok(())
 }
 
+fn tree_sitter_highlight_name(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    fn find_highlight_at_cursor(
+        cx: &mut compositor::Context<'_>,
+    ) -> Option<helix_core::syntax::Highlight> {
+        use helix_core::syntax::HighlightEvent;
+
+        let (view, doc) = current!(cx.editor);
+        let syntax = doc.syntax()?;
+        let text = doc.text().slice(..);
+        let cursor = doc.selection(view.id).primary().cursor(text);
+        let byte = text.char_to_byte(cursor);
+        let node = syntax
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(byte, byte)?;
+        // Query the same range as the one used in syntax highlighting.
+        let range = {
+            // Calculate viewport byte ranges:
+            let row = text.char_to_line(view.offset.anchor.min(text.len_chars()));
+            // Saturating subs to make it inclusive zero indexing.
+            let last_line = text.len_lines().saturating_sub(1);
+            let height = view.inner_area(doc).height;
+            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+            let start = text.line_to_byte(row.min(last_line));
+            let end = text.line_to_byte(last_visible_line + 1);
+
+            start..end
+        };
+
+        let mut highlight = None;
+
+        for event in syntax.highlight_iter(text, Some(range), None) {
+            match event.unwrap() {
+                HighlightEvent::Source { start, end }
+                    if start == node.start_byte() && end == node.end_byte() =>
+                {
+                    return highlight;
+                }
+                HighlightEvent::HighlightStart(hl) => {
+                    highlight = Some(hl);
+                }
+                _ => (),
+            }
+        }
+
+        None
+    }
+
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let Some(highlight) = find_highlight_at_cursor(cx) else {
+        return Ok(());
+    };
+
+    let content = cx.editor.theme.scope(highlight.0).to_string();
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let content = ui::Markdown::new(content, editor.syn_loader.clone());
+                let popup = Popup::new("hover", content).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 fn vsplit(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1525,10 +1630,8 @@ fn vsplit(
         return Ok(());
     }
 
-    let id = view!(cx.editor).doc;
-
     if args.is_empty() {
-        cx.editor.switch(id, Action::VerticalSplit);
+        split(cx.editor, Action::VerticalSplit);
     } else {
         for arg in args {
             cx.editor
@@ -1548,10 +1651,8 @@ fn hsplit(
         return Ok(());
     }
 
-    let id = view!(cx.editor).doc;
-
     if args.is_empty() {
-        cx.editor.switch(id, Action::HorizontalSplit);
+        split(cx.editor, Action::HorizontalSplit);
     } else {
         for arg in args {
             cx.editor
@@ -1666,7 +1767,7 @@ fn tutor(
     let path = helix_loader::runtime_file(Path::new("tutor"));
     cx.editor.open(&path, Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
-    doc_mut!(cx.editor).set_path(None)?;
+    doc_mut!(cx.editor).set_path(None);
     Ok(())
 }
 
@@ -1843,14 +1944,29 @@ fn toggle_option(
                     .to_string(),
             )
         }
-        Value::Null | Value::Object(_) | Value::Array(_) | Value::Number(_) => {
+        Value::Number(ref value) => {
+            ensure!(
+                args.len() > 2,
+                "Bad arguments. For number configurations use: `:toggle key val1 val2 ...`",
+            );
+
+            Value::Number(
+                args[1..]
+                    .iter()
+                    .skip_while(|&e| value.to_string() != *e.to_string())
+                    .nth(1)
+                    .unwrap_or_else(|| &args[1])
+                    .parse()?,
+            )
+        }
+        Value::Null | Value::Object(_) | Value::Array(_) => {
             anyhow::bail!("Configuration {key} does not support toggle yet")
         }
     };
 
     let status = format!("'{key}' is now set to {value}");
     let config = serde_json::from_value(config)
-        .map_err(|_| anyhow::anyhow!("Could not parse field: `{:?}`", &args))?;
+        .map_err(|err| anyhow::anyhow!("Cannot parse `{:?}`, {}", &args, err))?;
 
     cx.editor
         .config_events
@@ -2259,599 +2375,640 @@ fn clear_register(
         format!("Invalid register {}", args[0])
     );
     let register = args[0].chars().next().unwrap_or_default();
-    match cx.editor.registers.remove(register) {
-        Some(_) => cx
-            .editor
-            .set_status(format!("Register {} cleared", register)),
-        None => cx
-            .editor
-            .set_error(format!("Register {} not found", register)),
+    if cx.editor.registers.remove(register) {
+        cx.editor
+            .set_status(format!("Register {} cleared", register));
+    } else {
+        cx.editor
+            .set_error(format!("Register {} not found", register));
     }
     Ok(())
 }
 
+fn redraw(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let callback = Box::pin(async move {
+        let call: job::Callback =
+            job::Callback::EditorCompositor(Box::new(|_editor, compositor| {
+                compositor.need_full_redraw();
+            }));
+
+        Ok(call)
+    });
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
-        TypableCommand {
-            name: "quit",
-            aliases: &["q"],
-            doc: "Close the current view.",
-            fun: quit,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "quit!",
-            aliases: &["q!"],
-            doc: "Force close the current view, ignoring unsaved changes.",
-            fun: force_quit,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "open",
-            aliases: &["o"],
-            doc: "Open a file from disk into the current view.",
-            fun: open,
-            signature: CommandSignature::all(completers::filename),
-        },
-        TypableCommand {
-            name: "buffer-close",
-            aliases: &["bc", "bclose"],
-            doc: "Close the current buffer.",
-            fun: buffer_close,
-            signature: CommandSignature::all(completers::buffer),
-        },
-        TypableCommand {
-            name: "buffer-close!",
-            aliases: &["bc!", "bclose!"],
-            doc: "Close the current buffer forcefully, ignoring unsaved changes.",
-            fun: force_buffer_close,
-            signature: CommandSignature::all(completers::buffer)
-        },
-        TypableCommand {
-            name: "buffer-close-others",
-            aliases: &["bco", "bcloseother"],
-            doc: "Close all buffers but the currently focused one.",
-            fun: buffer_close_others,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "buffer-close-others!",
-            aliases: &["bco!", "bcloseother!"],
-            doc: "Force close all buffers but the currently focused one.",
-            fun: force_buffer_close_others,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "buffer-close-all",
-            aliases: &["bca", "bcloseall"],
-            doc: "Close all buffers without quitting.",
-            fun: buffer_close_all,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "buffer-close-all!",
-            aliases: &["bca!", "bcloseall!"],
-            doc: "Force close all buffers ignoring unsaved changes without quitting.",
-            fun: force_buffer_close_all,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "buffer-next",
-            aliases: &["bn", "bnext"],
-            doc: "Goto next buffer.",
-            fun: buffer_next,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "buffer-previous",
-            aliases: &["bp", "bprev"],
-            doc: "Goto previous buffer.",
-            fun: buffer_previous,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "write",
-            aliases: &["w"],
-            doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
-            fun: write,
-            signature: CommandSignature::positional(&[completers::filename]),
-        },
-        TypableCommand {
-            name: "write!",
-            aliases: &["w!"],
-            doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)",
-            fun: force_write,
-            signature: CommandSignature::positional(&[completers::filename]),
-        },
-        TypableCommand {
-            name: "write-buffer-close",
-            aliases: &["wbc"],
-            doc: "Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)",
-            fun: write_buffer_close,
-            signature: CommandSignature::positional(&[completers::filename]),
-        },
-        TypableCommand {
-            name: "write-buffer-close!",
-            aliases: &["wbc!"],
-            doc: "Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)",
-            fun: force_write_buffer_close,
-            signature: CommandSignature::positional(&[completers::filename]),
-        },
-        TypableCommand {
-            name: "new",
-            aliases: &["n"],
-            doc: "Create a new scratch buffer.",
-            fun: new_file,
-            // TODO: This seems to complete with a filename, but doesn't use that filename to
-            //       set the path of the newly created buffer.
-            signature: CommandSignature::positional(&[completers::filename]),
-        },
-        TypableCommand {
-            name: "format",
-            aliases: &["fmt"],
-            doc: "Format the file using the LSP formatter.",
-            fun: format,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "indent-style",
-            aliases: &[],
-            doc: "Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)",
-            fun: set_indent_style,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "line-ending",
-            aliases: &[],
-            #[cfg(not(feature = "unicode-lines"))]
-            doc: "Set the document's default line ending. Options: crlf, lf.",
-            #[cfg(feature = "unicode-lines")]
-            doc: "Set the document's default line ending. Options: crlf, lf, cr, ff, nel.",
-            fun: set_line_ending,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "earlier",
-            aliases: &["ear"],
-            doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
-            fun: earlier,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "later",
-            aliases: &["lat"],
-            doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
-            fun: later,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "write-quit",
-            aliases: &["wq", "x"],
-            doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
-            fun: write_quit,
-            signature: CommandSignature::positional(&[completers::filename]),
-        },
-        TypableCommand {
-            name: "write-quit!",
-            aliases: &["wq!", "x!"],
-            doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
-            fun: force_write_quit,
-            signature: CommandSignature::positional(&[completers::filename]),
-        },
-        TypableCommand {
-            name: "write-all",
-            aliases: &["wa"],
-            doc: "Write changes from all buffers to disk.",
-            fun: write_all,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "write-quit-all",
-            aliases: &["wqa", "xa"],
-            doc: "Write changes from all buffers to disk and close all views.",
-            fun: write_all_quit,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "write-quit-all!",
-            aliases: &["wqa!", "xa!"],
-            doc: "Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
-            fun: force_write_all_quit,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "quit-all",
-            aliases: &["qa"],
-            doc: "Close all views.",
-            fun: quit_all,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "quit-all!",
-            aliases: &["qa!"],
-            doc: "Force close all views ignoring unsaved changes.",
-            fun: force_quit_all,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "cquit",
-            aliases: &["cq"],
-            doc: "Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).",
-            fun: cquit,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "cquit!",
-            aliases: &["cq!"],
-            doc: "Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).",
-            fun: force_cquit,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "theme",
-            aliases: &[],
-            doc: "Change the editor theme (show current theme if no name specified).",
-            fun: theme,
-            signature: CommandSignature::positional(&[completers::theme]),
-        },
-        TypableCommand {
-            name: "yank-join",
-            aliases: &[],
-            doc: "Yank joined selections. A separator can be provided as first argument. Default value is newline.",
-            fun: yank_joined,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "clipboard-yank",
-            aliases: &[],
-            doc: "Yank main selection into system clipboard.",
-            fun: yank_main_selection_to_clipboard,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "clipboard-yank-join",
-            aliases: &[],
-            doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
-            fun: yank_joined_to_clipboard,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "primary-clipboard-yank",
-            aliases: &[],
-            doc: "Yank main selection into system primary clipboard.",
-            fun: yank_main_selection_to_primary_clipboard,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "primary-clipboard-yank-join",
-            aliases: &[],
-            doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
-            fun: yank_joined_to_primary_clipboard,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "clipboard-paste-after",
-            aliases: &[],
-            doc: "Paste system clipboard after selections.",
-            fun: paste_clipboard_after,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "clipboard-paste-before",
-            aliases: &[],
-            doc: "Paste system clipboard before selections.",
-            fun: paste_clipboard_before,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "clipboard-paste-replace",
-            aliases: &[],
-            doc: "Replace selections with content of system clipboard.",
-            fun: replace_selections_with_clipboard,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "primary-clipboard-paste-after",
-            aliases: &[],
-            doc: "Paste primary clipboard after selections.",
-            fun: paste_primary_clipboard_after,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "primary-clipboard-paste-before",
-            aliases: &[],
-            doc: "Paste primary clipboard before selections.",
-            fun: paste_primary_clipboard_before,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "primary-clipboard-paste-replace",
-            aliases: &[],
-            doc: "Replace selections with content of system primary clipboard.",
-            fun: replace_selections_with_primary_clipboard,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "show-clipboard-provider",
-            aliases: &[],
-            doc: "Show clipboard provider name in status bar.",
-            fun: show_clipboard_provider,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "change-current-directory",
-            aliases: &["cd"],
-            doc: "Change the current working directory.",
-            fun: change_current_directory,
-            signature: CommandSignature::positional(&[completers::directory]),
-        },
-        TypableCommand {
-            name: "show-directory",
-            aliases: &["pwd"],
-            doc: "Show the current working directory.",
-            fun: show_current_directory,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "encoding",
-            aliases: &[],
-            doc: "Set encoding. Based on `https://encoding.spec.whatwg.org`.",
-            fun: set_encoding,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "character-info",
-            aliases: &["char"],
-            doc: "Get info about the character under the primary cursor.",
-            fun: get_character_info,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "reload",
-            aliases: &["rl"],
-            doc: "Discard changes and reload from the source file.",
-            fun: reload,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "reload-all",
-            aliases: &["rla"],
-            doc: "Discard changes and reload all documents from the source files.",
-            fun: reload_all,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "update",
-            aliases: &["u"],
-            doc: "Write changes only if the file has been modified.",
-            fun: update,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "lsp-workspace-command",
-            aliases: &[],
-            doc: "Open workspace command picker",
-            fun: lsp_workspace_command,
-            signature: CommandSignature::positional(&[completers::lsp_workspace_command]),
-        },
-        TypableCommand {
-            name: "lsp-restart",
-            aliases: &[],
-            doc: "Restarts the language servers used by the current doc",
-            fun: lsp_restart,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "lsp-stop",
-            aliases: &[],
-            doc: "Stops the language servers that are used by the current doc",
-            fun: lsp_stop,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "tree-sitter-scopes",
-            aliases: &[],
-            doc: "Display tree sitter scopes, primarily for theming and development.",
-            fun: tree_sitter_scopes,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "debug-start",
-            aliases: &["dbg"],
-            doc: "Start a debug session from a given template with given parameters.",
-            fun: debug_start,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "debug-remote",
-            aliases: &["dbg-tcp"],
-            doc: "Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
-            fun: debug_remote,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "debug-eval",
-            aliases: &[],
-            doc: "Evaluate expression in current debug context.",
-            fun: debug_eval,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "vsplit",
-            aliases: &["vs"],
-            doc: "Open the file in a vertical split.",
-            fun: vsplit,
-            signature: CommandSignature::all(completers::filename)
-        },
-        TypableCommand {
-            name: "vsplit-new",
-            aliases: &["vnew"],
-            doc: "Open a scratch buffer in a vertical split.",
-            fun: vsplit_new,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "hsplit",
-            aliases: &["hs", "sp"],
-            doc: "Open the file in a horizontal split.",
-            fun: hsplit,
-            signature: CommandSignature::all(completers::filename)
-        },
-        TypableCommand {
-            name: "hsplit-new",
-            aliases: &["hnew"],
-            doc: "Open a scratch buffer in a horizontal split.",
-            fun: hsplit_new,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "tutor",
-            aliases: &[],
-            doc: "Open the tutorial.",
-            fun: tutor,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "goto",
-            aliases: &["g"],
-            doc: "Goto line number.",
-            fun: goto_line_number,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "set-language",
-            aliases: &["lang"],
-            doc: "Set the language of current buffer (show current language if no value specified).",
-            fun: language,
-            signature: CommandSignature::positional(&[completers::language]),
-        },
-        TypableCommand {
-            name: "set-option",
-            aliases: &["set"],
-            doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
-            fun: set_option,
-            // TODO: Add support for completion of the options value(s), when appropriate.
-            signature: CommandSignature::positional(&[completers::setting]),
-        },
-        TypableCommand {
-            name: "toggle-option",
-            aliases: &["toggle"],
-            doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
-            fun: toggle_option,
-            signature: CommandSignature::positional(&[completers::setting]),
-        },
-        TypableCommand {
-            name: "get-option",
-            aliases: &["get"],
-            doc: "Get the current value of a config option.",
-            fun: get_option,
-            signature: CommandSignature::positional(&[completers::setting]),
-        },
-        TypableCommand {
-            name: "sort",
-            aliases: &[],
-            doc: "Sort ranges in selection.",
-            fun: sort,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "rsort",
-            aliases: &[],
-            doc: "Sort ranges in selection in reverse order.",
-            fun: sort_reverse,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "reflow",
-            aliases: &[],
-            doc: "Hard-wrap the current selection of lines to a given width.",
-            fun: reflow,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "tree-sitter-subtree",
-            aliases: &["ts-subtree"],
-            doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
-            fun: tree_sitter_subtree,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "config-reload",
-            aliases: &[],
-            doc: "Refresh user config.",
-            fun: refresh_config,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "config-open",
-            aliases: &[],
-            doc: "Open the user config.toml file.",
-            fun: open_config,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "config-open-workspace",
-            aliases: &[],
-            doc: "Open the workspace config.toml file.",
-            fun: open_workspace_config,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "log-open",
-            aliases: &[],
-            doc: "Open the helix log file.",
-            fun: open_log,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "insert-output",
-            aliases: &[],
-            doc: "Run shell command, inserting output before each selection.",
-            fun: insert_output,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "append-output",
-            aliases: &[],
-            doc: "Run shell command, appending output after each selection.",
-            fun: append_output,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "pipe",
-            aliases: &[],
-            doc: "Pipe each selection to the shell command.",
-            fun: pipe,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "pipe-to",
-            aliases: &[],
-            doc: "Pipe each selection to the shell command, ignoring output.",
-            fun: pipe_to,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "run-shell-command",
-            aliases: &["sh"],
-            doc: "Run a shell command",
-            fun: run_shell_command,
-            signature: CommandSignature::all(completers::filename)
-        },
-       TypableCommand {
-            name: "reset-diff-change",
-            aliases: &["diffget", "diffg"],
-            doc: "Reset the diff change at the cursor position.",
-            fun: reset_diff_change,
-            signature: CommandSignature::none(),
-        },
-        TypableCommand {
-            name: "clear-register",
-            aliases: &[],
-            doc: "Clear given register. If no argument is provided, clear all registers.",
-            fun: clear_register,
-            signature: CommandSignature::none(),
-        },
-    ];
+    TypableCommand {
+        name: "quit",
+        aliases: &["q"],
+        doc: "Close the current view.",
+        fun: quit,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "quit!",
+        aliases: &["q!"],
+        doc: "Force close the current view, ignoring unsaved changes.",
+        fun: force_quit,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "open",
+        aliases: &["o"],
+        doc: "Open a file from disk into the current view.",
+        fun: open,
+        signature: CommandSignature::all(completers::filename),
+    },
+    TypableCommand {
+        name: "buffer-close",
+        aliases: &["bc", "bclose"],
+        doc: "Close the current buffer.",
+        fun: buffer_close,
+        signature: CommandSignature::all(completers::buffer),
+    },
+    TypableCommand {
+        name: "buffer-close!",
+        aliases: &["bc!", "bclose!"],
+        doc: "Close the current buffer forcefully, ignoring unsaved changes.",
+        fun: force_buffer_close,
+        signature: CommandSignature::all(completers::buffer)
+    },
+    TypableCommand {
+        name: "buffer-close-others",
+        aliases: &["bco", "bcloseother"],
+        doc: "Close all buffers but the currently focused one.",
+        fun: buffer_close_others,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-close-others!",
+        aliases: &["bco!", "bcloseother!"],
+        doc: "Force close all buffers but the currently focused one.",
+        fun: force_buffer_close_others,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-close-all",
+        aliases: &["bca", "bcloseall"],
+        doc: "Close all buffers without quitting.",
+        fun: buffer_close_all,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-close-all!",
+        aliases: &["bca!", "bcloseall!"],
+        doc: "Force close all buffers ignoring unsaved changes without quitting.",
+        fun: force_buffer_close_all,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-next",
+        aliases: &["bn", "bnext"],
+        doc: "Goto next buffer.",
+        fun: buffer_next,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-previous",
+        aliases: &["bp", "bprev"],
+        doc: "Goto previous buffer.",
+        fun: buffer_previous,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "write",
+        aliases: &["w"],
+        doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
+        fun: write,
+        signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "write!",
+        aliases: &["w!"],
+        doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)",
+        fun: force_write,
+        signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "write-buffer-close",
+        aliases: &["wbc"],
+        doc: "Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)",
+        fun: write_buffer_close,
+        signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "write-buffer-close!",
+        aliases: &["wbc!"],
+        doc: "Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)",
+        fun: force_write_buffer_close,
+        signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "new",
+        aliases: &["n"],
+        doc: "Create a new scratch buffer.",
+        fun: new_file,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "format",
+        aliases: &["fmt"],
+        doc: "Format the file using the LSP formatter.",
+        fun: format,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "indent-style",
+        aliases: &[],
+        doc: "Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)",
+        fun: set_indent_style,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "line-ending",
+        aliases: &[],
+        #[cfg(not(feature = "unicode-lines"))]
+        doc: "Set the document's default line ending. Options: crlf, lf.",
+        #[cfg(feature = "unicode-lines")]
+        doc: "Set the document's default line ending. Options: crlf, lf, cr, ff, nel.",
+        fun: set_line_ending,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "earlier",
+        aliases: &["ear"],
+        doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
+        fun: earlier,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "later",
+        aliases: &["lat"],
+        doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
+        fun: later,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "write-quit",
+        aliases: &["wq", "x"],
+        doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
+        fun: write_quit,
+        signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "write-quit!",
+        aliases: &["wq!", "x!"],
+        doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
+        fun: force_write_quit,
+        signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "write-all",
+        aliases: &["wa"],
+        doc: "Write changes from all buffers to disk.",
+        fun: write_all,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "write-all!",
+        aliases: &["wa!"],
+        doc: "Forcefully write changes from all buffers to disk creating necessary subdirectories.",
+        fun: force_write_all,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "write-quit-all",
+        aliases: &["wqa", "xa"],
+        doc: "Write changes from all buffers to disk and close all views.",
+        fun: write_all_quit,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "write-quit-all!",
+        aliases: &["wqa!", "xa!"],
+        doc: "Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
+        fun: force_write_all_quit,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "quit-all",
+        aliases: &["qa"],
+        doc: "Close all views.",
+        fun: quit_all,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "quit-all!",
+        aliases: &["qa!"],
+        doc: "Force close all views ignoring unsaved changes.",
+        fun: force_quit_all,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "cquit",
+        aliases: &["cq"],
+        doc: "Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).",
+        fun: cquit,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "cquit!",
+        aliases: &["cq!"],
+        doc: "Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).",
+        fun: force_cquit,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "theme",
+        aliases: &[],
+        doc: "Change the editor theme (show current theme if no name specified).",
+        fun: theme,
+        signature: CommandSignature::positional(&[completers::theme]),
+    },
+    TypableCommand {
+        name: "yank-join",
+        aliases: &[],
+        doc: "Yank joined selections. A separator can be provided as first argument. Default value is newline.",
+        fun: yank_joined,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "clipboard-yank",
+        aliases: &[],
+        doc: "Yank main selection into system clipboard.",
+        fun: yank_main_selection_to_clipboard,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "clipboard-yank-join",
+        aliases: &[],
+        doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
+        fun: yank_joined_to_clipboard,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "primary-clipboard-yank",
+        aliases: &[],
+        doc: "Yank main selection into system primary clipboard.",
+        fun: yank_main_selection_to_primary_clipboard,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "primary-clipboard-yank-join",
+        aliases: &[],
+        doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
+        fun: yank_joined_to_primary_clipboard,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "clipboard-paste-after",
+        aliases: &[],
+        doc: "Paste system clipboard after selections.",
+        fun: paste_clipboard_after,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "clipboard-paste-before",
+        aliases: &[],
+        doc: "Paste system clipboard before selections.",
+        fun: paste_clipboard_before,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "clipboard-paste-replace",
+        aliases: &[],
+        doc: "Replace selections with content of system clipboard.",
+        fun: replace_selections_with_clipboard,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "primary-clipboard-paste-after",
+        aliases: &[],
+        doc: "Paste primary clipboard after selections.",
+        fun: paste_primary_clipboard_after,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "primary-clipboard-paste-before",
+        aliases: &[],
+        doc: "Paste primary clipboard before selections.",
+        fun: paste_primary_clipboard_before,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "primary-clipboard-paste-replace",
+        aliases: &[],
+        doc: "Replace selections with content of system primary clipboard.",
+        fun: replace_selections_with_primary_clipboard,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "show-clipboard-provider",
+        aliases: &[],
+        doc: "Show clipboard provider name in status bar.",
+        fun: show_clipboard_provider,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "change-current-directory",
+        aliases: &["cd"],
+        doc: "Change the current working directory.",
+        fun: change_current_directory,
+        signature: CommandSignature::positional(&[completers::directory]),
+    },
+    TypableCommand {
+        name: "show-directory",
+        aliases: &["pwd"],
+        doc: "Show the current working directory.",
+        fun: show_current_directory,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "encoding",
+        aliases: &[],
+        doc: "Set encoding. Based on `https://encoding.spec.whatwg.org`.",
+        fun: set_encoding,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "character-info",
+        aliases: &["char"],
+        doc: "Get info about the character under the primary cursor.",
+        fun: get_character_info,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "reload",
+        aliases: &["rl"],
+        doc: "Discard changes and reload from the source file.",
+        fun: reload,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "reload-all",
+        aliases: &["rla"],
+        doc: "Discard changes and reload all documents from the source files.",
+        fun: reload_all,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "update",
+        aliases: &["u"],
+        doc: "Write changes only if the file has been modified.",
+        fun: update,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "lsp-workspace-command",
+        aliases: &[],
+        doc: "Open workspace command picker",
+        fun: lsp_workspace_command,
+        signature: CommandSignature::positional(&[completers::lsp_workspace_command]),
+    },
+    TypableCommand {
+        name: "lsp-restart",
+        aliases: &[],
+        doc: "Restarts the language servers used by the current doc",
+        fun: lsp_restart,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "lsp-stop",
+        aliases: &[],
+        doc: "Stops the language servers that are used by the current doc",
+        fun: lsp_stop,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "tree-sitter-scopes",
+        aliases: &[],
+        doc: "Display tree sitter scopes, primarily for theming and development.",
+        fun: tree_sitter_scopes,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "tree-sitter-highlight-name",
+        aliases: &[],
+        doc: "Display name of tree-sitter highlight scope under the cursor.",
+        fun: tree_sitter_highlight_name,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "debug-start",
+        aliases: &["dbg"],
+        doc: "Start a debug session from a given template with given parameters.",
+        fun: debug_start,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "debug-remote",
+        aliases: &["dbg-tcp"],
+        doc: "Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
+        fun: debug_remote,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "debug-eval",
+        aliases: &[],
+        doc: "Evaluate expression in current debug context.",
+        fun: debug_eval,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "vsplit",
+        aliases: &["vs"],
+        doc: "Open the file in a vertical split.",
+        fun: vsplit,
+        signature: CommandSignature::all(completers::filename)
+    },
+    TypableCommand {
+        name: "vsplit-new",
+        aliases: &["vnew"],
+        doc: "Open a scratch buffer in a vertical split.",
+        fun: vsplit_new,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "hsplit",
+        aliases: &["hs", "sp"],
+        doc: "Open the file in a horizontal split.",
+        fun: hsplit,
+        signature: CommandSignature::all(completers::filename)
+    },
+    TypableCommand {
+        name: "hsplit-new",
+        aliases: &["hnew"],
+        doc: "Open a scratch buffer in a horizontal split.",
+        fun: hsplit_new,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "tutor",
+        aliases: &[],
+        doc: "Open the tutorial.",
+        fun: tutor,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "goto",
+        aliases: &["g"],
+        doc: "Goto line number.",
+        fun: goto_line_number,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "set-language",
+        aliases: &["lang"],
+        doc: "Set the language of current buffer (show current language if no value specified).",
+        fun: language,
+        signature: CommandSignature::positional(&[completers::language]),
+    },
+    TypableCommand {
+        name: "set-option",
+        aliases: &["set"],
+        doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
+        fun: set_option,
+        // TODO: Add support for completion of the options value(s), when appropriate.
+        signature: CommandSignature::positional(&[completers::setting]),
+    },
+    TypableCommand {
+        name: "toggle-option",
+        aliases: &["toggle"],
+        doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
+        fun: toggle_option,
+        signature: CommandSignature::positional(&[completers::setting]),
+    },
+    TypableCommand {
+        name: "get-option",
+        aliases: &["get"],
+        doc: "Get the current value of a config option.",
+        fun: get_option,
+        signature: CommandSignature::positional(&[completers::setting]),
+    },
+    TypableCommand {
+        name: "sort",
+        aliases: &[],
+        doc: "Sort ranges in selection.",
+        fun: sort,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "rsort",
+        aliases: &[],
+        doc: "Sort ranges in selection in reverse order.",
+        fun: sort_reverse,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "reflow",
+        aliases: &[],
+        doc: "Hard-wrap the current selection of lines to a given width.",
+        fun: reflow,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "tree-sitter-subtree",
+        aliases: &["ts-subtree"],
+        doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
+        fun: tree_sitter_subtree,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "config-reload",
+        aliases: &[],
+        doc: "Refresh user config.",
+        fun: refresh_config,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "config-open",
+        aliases: &[],
+        doc: "Open the user config.toml file.",
+        fun: open_config,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "config-open-workspace",
+        aliases: &[],
+        doc: "Open the workspace config.toml file.",
+        fun: open_workspace_config,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "log-open",
+        aliases: &[],
+        doc: "Open the helix log file.",
+        fun: open_log,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "insert-output",
+        aliases: &[],
+        doc: "Run shell command, inserting output before each selection.",
+        fun: insert_output,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "append-output",
+        aliases: &[],
+        doc: "Run shell command, appending output after each selection.",
+        fun: append_output,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "pipe",
+        aliases: &[],
+        doc: "Pipe each selection to the shell command.",
+        fun: pipe,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "pipe-to",
+        aliases: &[],
+        doc: "Pipe each selection to the shell command, ignoring output.",
+        fun: pipe_to,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "run-shell-command",
+        aliases: &["sh"],
+        doc: "Run a shell command",
+        fun: run_shell_command,
+        signature: CommandSignature::all(completers::filename)
+    },
+    TypableCommand {
+        name: "reset-diff-change",
+        aliases: &["diffget", "diffg"],
+        doc: "Reset the diff change at the cursor position.",
+        fun: reset_diff_change,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "clear-register",
+        aliases: &[],
+        doc: "Clear given register. If no argument is provided, clear all registers.",
+        fun: clear_register,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "redraw",
+        aliases: &[],
+        doc: "Clear and re-render the whole UI",
+        fun: redraw,
+        signature: CommandSignature::none(),
+    },
+];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
     Lazy::new(|| {
@@ -2870,28 +3027,18 @@ pub(super) fn command_mode(cx: &mut Context) {
         ":".into(),
         Some(':'),
         |editor: &Editor, input: &str| {
-            static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
-                Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
-
             let shellwords = Shellwords::from(input);
             let words = shellwords.words();
 
             if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
-                // If the command has not been finished yet, complete commands.
-                let mut matches: Vec<_> = typed::TYPABLE_COMMAND_LIST
-                    .iter()
-                    .filter_map(|command| {
-                        FUZZY_MATCHER
-                            .fuzzy_match(command.name, input)
-                            .map(|score| (command.name, score))
-                    })
-                    .collect();
-
-                matches.sort_unstable_by_key(|(_file, score)| std::cmp::Reverse(*score));
-                matches
-                    .into_iter()
-                    .map(|(name, _)| (0.., name.into()))
-                    .collect()
+                fuzzy_match(
+                    input,
+                    TYPABLE_COMMAND_LIST.iter().map(|command| command.name),
+                    false,
+                )
+                .into_iter()
+                .map(|(name, _)| (0.., name.into()))
+                .collect()
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.

@@ -630,11 +630,19 @@ impl Selection {
         self.transform(|range| Range::point(range.cursor(text)))
     }
 
-    pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {
+    pub fn fragments<'a>(
+        &'a self,
+        text: RopeSlice<'a>,
+    ) -> impl DoubleEndedIterator<Item = Cow<'a, str>> + ExactSizeIterator<Item = Cow<str>> + 'a
+    {
         self.ranges.iter().map(move |range| range.fragment(text))
     }
 
-    pub fn slices<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = RopeSlice> + 'a {
+    pub fn slices<'a>(
+        &'a self,
+        text: RopeSlice<'a>,
+    ) -> impl DoubleEndedIterator<Item = RopeSlice<'a>> + ExactSizeIterator<Item = RopeSlice<'a>> + 'a
+    {
         self.ranges.iter().map(move |range| range.slice(text))
     }
 

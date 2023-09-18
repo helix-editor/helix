@@ -4,7 +4,7 @@ use crate::{
     diagnostic::Severity,
     regex::Regex,
     transaction::{ChangeSet, Operation},
-    Rope, RopeSlice, Tendril,
+    RopeSlice, Tendril,
 };
 
 use ahash::RandomState;
@@ -818,7 +818,10 @@ impl Loader {
         // TODO: content_regex handling conflict resolution
     }
 
-    pub fn language_config_for_shebang(&self, source: &Rope) -> Option<Arc<LanguageConfiguration>> {
+    pub fn language_config_for_shebang(
+        &self,
+        source: RopeSlice,
+    ) -> Option<Arc<LanguageConfiguration>> {
         let line = Cow::from(source.line(0));
         static SHEBANG_REGEX: Lazy<Regex> =
             Lazy::new(|| Regex::new(&["^", SHEBANG].concat()).unwrap());
@@ -928,7 +931,7 @@ fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<st
 
 impl Syntax {
     pub fn new(
-        source: &Rope,
+        source: RopeSlice,
         config: Arc<HighlightConfiguration>,
         loader: Arc<Loader>,
     ) -> Option<Self> {
@@ -959,7 +962,7 @@ impl Syntax {
         let res = syntax.update(source, source, &ChangeSet::new(source));
 
         if res.is_err() {
-            log::error!("TS parser failed, disabeling TS for the current buffer: {res:?}");
+            log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
             return None;
         }
         Some(syntax)
@@ -967,8 +970,8 @@ impl Syntax {
 
     pub fn update(
         &mut self,
-        old_source: &Rope,
-        source: &Rope,
+        old_source: RopeSlice,
+        source: RopeSlice,
         changeset: &ChangeSet,
     ) -> Result<(), Error> {
         let mut queue = VecDeque::new();
@@ -1135,11 +1138,37 @@ impl Syntax {
                     layer.tree().root_node(),
                     RopeProvider(source_slice),
                 );
+                let mut combined_injections = vec![
+                    (None, Vec::new(), IncludedChildren::default());
+                    layer.config.combined_injections_patterns.len()
+                ];
                 let mut injections = Vec::new();
+                let mut last_injection_end = 0;
                 for mat in matches {
                     let (injection_capture, content_node, included_children) = layer
                         .config
                         .injection_for_match(&layer.config.injections_query, &mat, source_slice);
+
+                    // in case this is a combined injection save it for more processing later
+                    if let Some(combined_injection_idx) = layer
+                        .config
+                        .combined_injections_patterns
+                        .iter()
+                        .position(|&pattern| pattern == mat.pattern_index)
+                    {
+                        let entry = &mut combined_injections[combined_injection_idx];
+                        if injection_capture.is_some() {
+                            entry.0 = injection_capture;
+                        }
+                        if let Some(content_node) = content_node {
+                            if content_node.start_byte() >= last_injection_end {
+                                entry.1.push(content_node);
+                                last_injection_end = content_node.end_byte();
+                            }
+                        }
+                        entry.2 = included_children;
+                        continue;
+                    }
 
                     // Explicitly remove this match so that none of its other captures will remain
                     // in the stream of captures.
@@ -1155,49 +1184,23 @@ impl Syntax {
                                 intersect_ranges(&layer.ranges, &[content_node], included_children);
 
                             if !ranges.is_empty() {
+                                if content_node.start_byte() < last_injection_end {
+                                    continue;
+                                }
+                                last_injection_end = content_node.end_byte();
                                 injections.push((config, ranges));
                             }
                         }
                     }
                 }
 
-                // Process combined injections.
-                if let Some(combined_injections_query) = &layer.config.combined_injections_query {
-                    let mut injections_by_pattern_index =
-                        vec![
-                            (None, Vec::new(), IncludedChildren::default());
-                            combined_injections_query.pattern_count()
-                        ];
-                    let matches = cursor.matches(
-                        combined_injections_query,
-                        layer.tree().root_node(),
-                        RopeProvider(source_slice),
-                    );
-                    for mat in matches {
-                        let entry = &mut injections_by_pattern_index[mat.pattern_index];
-                        let (injection_capture, content_node, included_children) = layer
-                            .config
-                            .injection_for_match(combined_injections_query, &mat, source_slice);
-                        if injection_capture.is_some() {
-                            entry.0 = injection_capture;
-                        }
-                        if let Some(content_node) = content_node {
-                            entry.1.push(content_node);
-                        }
-                        entry.2 = included_children;
-                    }
-                    for (lang_name, content_nodes, included_children) in injections_by_pattern_index
-                    {
-                        if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty()) {
-                            if let Some(config) = (injection_callback)(&lang_name) {
-                                let ranges = intersect_ranges(
-                                    &layer.ranges,
-                                    &content_nodes,
-                                    included_children,
-                                );
-                                if !ranges.is_empty() {
-                                    injections.push((config, ranges));
-                                }
+                for (lang_name, content_nodes, included_children) in combined_injections {
+                    if let (Some(lang_name), false) = (lang_name, content_nodes.is_empty()) {
+                        if let Some(config) = (injection_callback)(&lang_name) {
+                            let ranges =
+                                intersect_ranges(&layer.ranges, &content_nodes, included_children);
+                            if !ranges.is_empty() {
+                                injections.push((config, ranges));
                             }
                         }
                     }
@@ -1387,7 +1390,7 @@ impl LanguageLayer {
         self.tree.as_ref().unwrap()
     }
 
-    fn parse(&mut self, parser: &mut Parser, source: &Rope) -> Result<(), Error> {
+    fn parse(&mut self, parser: &mut Parser, source: RopeSlice) -> Result<(), Error> {
         parser
             .set_included_ranges(&self.ranges)
             .map_err(|_| Error::InvalidRanges)?;
@@ -1418,7 +1421,7 @@ impl LanguageLayer {
 }
 
 pub(crate) fn generate_edits(
-    old_text: &Rope,
+    old_text: RopeSlice,
     changeset: &ChangeSet,
 ) -> Vec<tree_sitter::InputEdit> {
     use Operation::*;
@@ -1434,7 +1437,7 @@ pub(crate) fn generate_edits(
 
     // TODO; this is a lot easier with Change instead of Operation.
 
-    fn point_at_pos(text: &Rope, pos: usize) -> (usize, Point) {
+    fn point_at_pos(text: RopeSlice, pos: usize) -> (usize, Point) {
         let byte = text.char_to_byte(pos); // <- attempted to index past end
         let line = text.char_to_line(pos);
         let line_start_byte = text.line_to_byte(line);
@@ -1560,7 +1563,7 @@ pub struct HighlightConfiguration {
     pub language: Grammar,
     pub query: Query,
     injections_query: Query,
-    combined_injections_query: Option<Query>,
+    combined_injections_patterns: Vec<usize>,
     highlights_pattern_index: usize,
     highlight_indices: ArcSwap<Vec<Option<Highlight>>>,
     non_local_variable_patterns: Vec<bool>,
@@ -1611,7 +1614,7 @@ impl<'a> Iterator for ChunksBytes<'a> {
 }
 
 pub struct RopeProvider<'a>(pub RopeSlice<'a>);
-impl<'a> TextProvider<'a> for RopeProvider<'a> {
+impl<'a> TextProvider<&'a [u8]> for RopeProvider<'a> {
     type I = ChunksBytes<'a>;
 
     fn text(&mut self, node: Node) -> Self::I {
@@ -1625,7 +1628,7 @@ impl<'a> TextProvider<'a> for RopeProvider<'a> {
 struct HighlightIterLayer<'a> {
     _tree: Option<Tree>,
     cursor: QueryCursor,
-    captures: RefCell<iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>>>>,
+    captures: RefCell<iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>, &'a [u8]>>>,
     config: &'a HighlightConfiguration,
     highlight_end_stack: Vec<usize>,
     scope_stack: Vec<LocalScope<'a>>,
@@ -1676,26 +1679,15 @@ impl HighlightConfiguration {
             }
         }
 
-        let mut injections_query = Query::new(language, injection_query)?;
-
-        // Construct a separate query just for dealing with the 'combined injections'.
-        // Disable the combined injection patterns in the main query.
-        let mut combined_injections_query = Query::new(language, injection_query)?;
-        let mut has_combined_queries = false;
-        for pattern_index in 0..injections_query.pattern_count() {
-            let settings = injections_query.property_settings(pattern_index);
-            if settings.iter().any(|s| &*s.key == "injection.combined") {
-                has_combined_queries = true;
-                injections_query.disable_pattern(pattern_index);
-            } else {
-                combined_injections_query.disable_pattern(pattern_index);
-            }
-        }
-        let combined_injections_query = if has_combined_queries {
-            Some(combined_injections_query)
-        } else {
-            None
-        };
+        let injections_query = Query::new(language, injection_query)?;
+        let combined_injections_patterns = (0..injections_query.pattern_count())
+            .filter(|&i| {
+                injections_query
+                    .property_settings(i)
+                    .iter()
+                    .any(|s| &*s.key == "injection.combined")
+            })
+            .collect();
 
         // Find all of the highlighting patterns that are disabled for nodes that
         // have been identified as local variables.
@@ -1744,7 +1736,7 @@ impl HighlightConfiguration {
             language,
             query,
             injections_query,
-            combined_injections_query,
+            combined_injections_patterns,
             highlights_pattern_index,
             highlight_indices,
             non_local_variable_patterns,
@@ -2540,7 +2532,7 @@ mod test {
         let mut cursor = QueryCursor::new();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
+        let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
 
         let root = syntax.tree().root_node();
         let mut test = |capture, range| {
@@ -2614,7 +2606,7 @@ mod test {
             fn main() {}
         ",
         );
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
+        let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
         let tree = syntax.tree();
         let root = tree.root_node();
         assert_eq!(root.kind(), "source_file");
@@ -2641,7 +2633,7 @@ mod test {
             &doc,
             vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
         );
-        let edits = generate_edits(&doc, transaction.changes());
+        let edits = generate_edits(doc.slice(..), transaction.changes());
         // transaction.apply(&mut state);
 
         assert_eq!(
@@ -2670,7 +2662,7 @@ mod test {
         let mut doc = Rope::from("fn test() {}");
         let transaction =
             Transaction::change(&doc, vec![(8, 8, Some("a: u32".into()))].into_iter());
-        let edits = generate_edits(&doc, transaction.changes());
+        let edits = generate_edits(doc.slice(..), transaction.changes());
         transaction.apply(&mut doc);
 
         assert_eq!(doc, "fn test(a: u32) {}");
@@ -2704,7 +2696,7 @@ mod test {
         let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(&source, Arc::new(config), Arc::new(loader)).unwrap();
+        let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
 
         let root = syntax
             .tree()

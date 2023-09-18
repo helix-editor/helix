@@ -144,7 +144,9 @@ impl Completion {
                         }
                     };
 
-                    let Some(range) = util::lsp_range_to_range(doc.text(), edit.range, offset_encoding) else{
+                    let Some(range) =
+                        util::lsp_range_to_range(doc.text(), edit.range, offset_encoding)
+                    else {
                         return Transaction::new(doc.text());
                     };
 
@@ -292,6 +294,8 @@ impl Completion {
                     };
                     // if more text was entered, remove it
                     doc.restore(view, &savepoint, true);
+                    // save an undo checkpoint before the completion
+                    doc.append_changes_to_history(view);
                     let transaction = item_to_transaction(
                         doc,
                         view.id,
@@ -411,10 +415,18 @@ impl Completion {
             _ => return false,
         };
 
-        let Some(language_server) = cx.editor.language_server_by_id(current_item.language_server_id) else { return false; };
+        let Some(language_server) = cx
+            .editor
+            .language_server_by_id(current_item.language_server_id)
+        else {
+            return false;
+        };
 
         // This method should not block the compositor so we handle the response asynchronously.
-        let Some(future) = language_server.resolve_completion_item(current_item.item.clone()) else { return false; };
+        let Some(future) = language_server.resolve_completion_item(current_item.item.clone())
+        else {
+            return false;
+        };
 
         cx.callback(
             future,
