@@ -2755,7 +2755,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "typst"
-source = { git = "https://github.com/SeniorMars/tree-sitter-typst", rev = "2e66ef4b798a26f0b82144143711f3f7a9e8ea35" }
+source = { git = "https://github.com/uben0/tree-sitter-typst", rev = "d3e7991b8c77ab9fda590ab70513300c5e1a09f5" }
 
 [[language]]
 name = "nunjucks"
