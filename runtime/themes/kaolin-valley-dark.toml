@@ -1,0 +1,73 @@
+# Author : thlsrms <thlsrmsdev@gmail.com>
+
+# Original author: kaolin-valley-dark by Ogden Webb: github.com/ogdenwebb/emacs-kaolin-themes
+# Kaolin Valley Dark Theme - Colorful Kaolin theme with brown background
+
+inherits = "kaolin-dark"
+
+"attribute" = "fg1"
+"keyword" = { fg = "teal3" }
+"keyword.directive" = "green0"
+"operator" = "teal3"
+"special" = "ultramarine3"
+"variable.other.member" = { fg = "selection0", modifiers = ["italic"] }
+"variable" = "constant"
+"variable.builtin" = "teal3"
+"variable.parameter" = "constant"
+"type.builtin" = "aquamarine3"
+"function" = { fg = "valley-dark-fn" }
+"function.macro" = "valley-dark-fn"
+"function.builtin" = "aquamarine3"
+"tag" = "green0"
+"constant.builtin" = { fg = "aquamarine3" }
+"string" = "fg1"
+"constant.numeric" = "aquamarine3"
+"constant.character.escape" = "fg1"
+"label" = "ultramarine3"
+"module" = "green0"
+
+"diff.delta" = "type"
+
+"ui.linenr.selected" = { fg = "warn", modifiers = ["bold"] }
+"ui.statusline" = { fg = "fg0", bg = "bg1" }
+"ui.statusline.normal" = { fg = "warn", bg = "bg1", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "hint", bg = "bg1", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "constant", bg = "bg1", modifiers = ["bold"] }
+"ui.text.focus" = { fg = "selection0", bg = "bg1" }
+"ui.cursor.match" = { fg = "bg0", bg = "selection0" }
+"ui.menu" = { fg = "fg1", bg = "bg1" }
+"ui.menu.selected" = { fg = "selection0", bg = "bg1", modifiers = ["bold"] }
+"ui.virtual.wrap" = "gray1"
+"ui.virtual.whitespace" = "gray1"
+"ui.virtual.indent-guide" = "gray1"
+"ui.virtual.ruler" = { bg = "bg2" }
+"ui.virtual.inlay-hint" = "gray0"
+"ui.virtual.inlay-hint.parameter" = { fg = "gray0", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.type" = { fg = "gray0", modifiers = ["italic"] }
+
+"markup.heading" = "type"
+"markup.link.url" = { fg = "constant", modifiers = ["underlined"] }
+"markup.link.text" = "valley-dark-fn"
+
+[palette]
+# kaolin-valley-dark palette
+bg0 = "#262221" # valley-dark-bg1
+bg1 = "#2e2a29" # valley-dark-bg2
+bg2 = "#383030" # valley-dark-bg4
+fg0 = "#eee6d3" # amber9
+fg1 = "#cea2ca" # magenta3
+gray0 = "#635c4a" # valley-dark-comment
+gray1 = "#52413f" # brown2
+green0 = "#91f368" # harlequin3
+selection0 = "#ee7042" # vermilion3
+selection1 = "#402e2e" # red6
+type = "#eed891" # amber3
+hint = "#6bd9db" # cyan3
+info = "#41b0f3" # capri3
+warn = "#cfb05f" # amber1
+error = "#e84c58" # red3
+constant = "#ef6787" # crimson3
+valley-dark-fn = "#7ed7e6"
+teal3 = "#49bdb0"
+aquamarine3 = "#53e6b5"
+ultramarine3 = "#9587dd"

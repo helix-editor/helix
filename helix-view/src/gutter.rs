@@ -1,15 +1,16 @@
 use std::fmt::Write;
 
+use helix_core::syntax::LanguageServerFeature;
+
 use crate::{
     editor::GutterType,
-    graphics::{Color, Style, UnderlineStyle},
+    graphics::{Style, UnderlineStyle},
     Document, Editor, Theme, View,
 };
 
 fn count_digits(n: usize) -> usize {
-    // NOTE: if int_log gets standardized in stdlib, can use checked_log10
-    // (https://github.com/rust-lang/rust/issues/70887#issue)
-    std::iter::successors(Some(n), |&n| (n >= 10).then(|| n / 10)).count()
+    // TODO: use checked_log10 when MSRV reaches 1.67
+    std::iter::successors(Some(n), |&n| (n >= 10).then_some(n / 10)).count()
 }
 
 pub type GutterFn<'doc> = Box<dyn FnMut(usize, bool, bool, &mut String) -> Option<Style> + 'doc>;
@@ -56,7 +57,7 @@ pub fn diagnostic<'doc>(
     let error = theme.get("error");
     let info = theme.get("info");
     let hint = theme.get("hint");
-    let diagnostics = doc.diagnostics();
+    let diagnostics = &doc.diagnostics;
 
     Box::new(
         move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
@@ -64,28 +65,24 @@ pub fn diagnostic<'doc>(
                 return None;
             }
             use helix_core::diagnostic::Severity;
-            if let Ok(index) = diagnostics.binary_search_by_key(&line, |d| d.line) {
-                let after = diagnostics[index..].iter().take_while(|d| d.line == line);
-
-                let before = diagnostics[..index]
-                    .iter()
-                    .rev()
-                    .take_while(|d| d.line == line);
-
-                let diagnostics_on_line = after.chain(before);
-
-                // This unwrap is safe because the iterator cannot be empty as it contains at least the item found by the binary search.
-                let diagnostic = diagnostics_on_line.max_by_key(|d| d.severity).unwrap();
-
-                write!(out, "●").unwrap();
-                return Some(match diagnostic.severity {
+            let first_diag_idx_maybe_on_line = diagnostics.partition_point(|d| d.line < line);
+            let diagnostics_on_line = diagnostics[first_diag_idx_maybe_on_line..]
+                .iter()
+                .take_while(|d| {
+                    d.line == line
+                        && doc
+                            .language_servers_with_feature(LanguageServerFeature::Diagnostics)
+                            .any(|ls| ls.id() == d.language_server_id)
+                });
+            diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
+                write!(out, "●").ok();
+                match d.severity {
                     Some(Severity::Error) => error,
                     Some(Severity::Warning) | None => warning,
                     Some(Severity::Info) => info,
                     Some(Severity::Hint) => hint,
-                });
-            }
-            None
+                }
+            })
         },
     )
 }
@@ -101,7 +98,7 @@ pub fn diff<'doc>(
     let deleted = theme.get("diff.minus");
     let modified = theme.get("diff.delta");
     if let Some(diff_handle) = doc.diff_handle() {
-        let hunks = diff_handle.hunks();
+        let hunks = diff_handle.load();
         let mut hunk_i = 0;
         let mut hunk = hunks.nth_hunk(hunk_i);
         Box::new(
@@ -199,8 +196,7 @@ pub fn line_numbers<'doc>(
                     write!(out, "{:>1$}", " ", width).unwrap();
                 }
 
-                // TODO: Use then_some when MSRV reaches 1.62
-                first_visual_line.then(|| style)
+                first_visual_line.then_some(style)
             }
         },
     )
@@ -247,9 +243,9 @@ pub fn breakpoints<'doc>(
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
-    let warning = theme.get("warning");
     let error = theme.get("error");
     let info = theme.get("info");
+    let breakpoint_style = theme.get("ui.debug.breakpoint");
 
     let breakpoints = doc.path().and_then(|path| editor.breakpoints.get(path));
 
@@ -267,30 +263,52 @@ pub fn breakpoints<'doc>(
                 .iter()
                 .find(|breakpoint| breakpoint.line == line)?;
 
-            let mut style = if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
+            let style = if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
                 error.underline_style(UnderlineStyle::Line)
             } else if breakpoint.condition.is_some() {
                 error
             } else if breakpoint.log_message.is_some() {
                 info
             } else {
-                warning
+                breakpoint_style
             };
 
-            if !breakpoint.verified {
-                // Faded colors
-                style = if let Some(Color::Rgb(r, g, b)) = style.fg {
-                    style.fg(Color::Rgb(
-                        ((r as f32) * 0.4).floor() as u8,
-                        ((g as f32) * 0.4).floor() as u8,
-                        ((b as f32) * 0.4).floor() as u8,
-                    ))
-                } else {
-                    style.fg(Color::Gray)
-                }
-            };
+            let sym = if breakpoint.verified { "●" } else { "◯" };
+            write!(out, "{}", sym).unwrap();
+            Some(style)
+        },
+    )
+}
 
-            let sym = if breakpoint.verified { "▲" } else { "⊚" };
+fn execution_pause_indicator<'doc>(
+    editor: &'doc Editor,
+    doc: &'doc Document,
+    theme: &Theme,
+    is_focused: bool,
+) -> GutterFn<'doc> {
+    let style = theme.get("ui.debug.active");
+    let current_stack_frame = editor.current_stack_frame();
+    let frame_line = current_stack_frame.map(|frame| frame.line - 1);
+    let frame_source_path = current_stack_frame.map(|frame| {
+        frame
+            .source
+            .as_ref()
+            .and_then(|source| source.path.as_ref())
+    });
+    let should_display_for_current_doc =
+        doc.path().is_some() && frame_source_path.unwrap_or(None) == doc.path();
+
+    Box::new(
+        move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
+            if !first_visual_line
+                || !is_focused
+                || line != frame_line?
+                || !should_display_for_current_doc
+            {
+                return None;
+            }
+
+            let sym = "▶";
             write!(out, "{}", sym).unwrap();
             Some(style)
         },
@@ -306,9 +324,11 @@ pub fn diagnostics_or_breakpoints<'doc>(
 ) -> GutterFn<'doc> {
     let mut diagnostics = diagnostic(editor, doc, view, theme, is_focused);
     let mut breakpoints = breakpoints(editor, doc, view, theme, is_focused);
+    let mut execution_pause_indicator = execution_pause_indicator(editor, doc, theme, is_focused);
 
     Box::new(move |line, selected, first_visual_line: bool, out| {
-        breakpoints(line, selected, first_visual_line, out)
+        execution_pause_indicator(line, selected, first_visual_line, out)
+            .or_else(|| breakpoints(line, selected, first_visual_line, out))
             .or_else(|| diagnostics(line, selected, first_visual_line, out))
     })
 }

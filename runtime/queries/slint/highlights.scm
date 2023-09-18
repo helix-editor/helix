@@ -1,67 +1,110 @@
 
-(user_type_identifier) @type
+(identifier) @variable
+[
+  (type_identifier) 
+  (units)
+]@type
 
-(var_identifier) @variable
-
-(state_identifier) @variable.other.member
-
-(var_identifier
-  (post_identifier) @variable)
+(array_literal 
+  (identifier) @type)
 
 (function_identifier) @function
+[
+  (image_macro)
+  (children_macro)
+  (radial_grad_macro)
+  (linear_grad_macro)
+] @function.macro
 
-(reference_identifier) @keyword.storage.modifier.ref
-(visibility_modifier) @keyword.storage.modifier
+(call_expression
+  function: (identifier) @function)
+(call_expression
+  function: (field_expression
+    field: (identifier) @function))
+
+(vis) @keyword.control.import
+
+(transition_statement state: (identifier) @variable.other.member)
+(state_expression state: (identifier) @variable.other.member)
+(struct_block_definition field: (identifier) @variable.other.member)
+(assign_property (identifier) @attribute)
 
 (comment) @comment
 
-(string) @string
-(int_number) @constant.numeric
-(unit_type) @type.builtin
+(string_literal) @string
+(int_literal) @constant.numeric.integer
+(float_literal) @constant.numeric.float
 
 [
-"struct"
-"property"
-"callback"
-"import"
-"from"
-"root"
-"parent"
-"this"
-"for"
-"in"
-"if"
-"else if"
-"else"
-"animate"
-"states"
-"when"
-"in"
-"out"
-"transitions"
-"global"
+  "in"
+  "in-out"
+  "for"
+] @keyword.control.repeat
+
+[
+  "import"
+  "export"
+  "from"
+] @keyword.control.import
+
+[
+  "if"
+  "else"
+  "when"
+] @keyword.control.conditional
+
+[
+  "struct"
+  "property"
+] @keyword.storage.type
+
+[
+  "global"
+] @keyword.storage.modifier
+
+
+[
+  "root"
+  "parent"
+  "duration"
+  "easing"
+] @variable.builtin
+
+
+[
+  "callback"
+  "animate"
+  "states"
+  "out"
+  "transitions"
+  "component"
+  "inherits"
 ] @keyword
 
 [
- "black"
- "transparent"
- "blue"
- "ease"
- "ease_in"
- "ease-in"
- "ease_in_out"
- "ease-in-out"
- "ease_out"
- "ease-out"
- "end"
- "green"
- "red"
- "red"
- "start"
- "yellow"
- "true"
- "false"
+  "black"
+  "transparent"
+  "blue"
+  "ease"
+  "ease_in"
+  "ease-in"
+  "ease_in_out"
+  "ease-in-out"
+  "ease_out"
+  "ease-out"
+  "end"
+  "green"
+  "red"
+  "start"
+  "yellow"
+  "white"
+  "gray"
  ] @constant.builtin
+
+[
+  "true"
+  "false"
+] @constant.builtin.boolean
 
 "@" @keyword
 
@@ -69,37 +112,42 @@
 [
   ","
   "."
+  ";"
+  ":"
 ] @punctuation.delimiter
 
 ; ; Brackets
 [
-"("
-")"
-"["
-"]"
-"{"
-"}"
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
 ] @punctuation.bracket
 
+(define_property ["<" ">"] @punctuation.bracket)
+
 [
-"angle"
-"bool"
-"brush"
-; "color" // This causes problems
-"duration"
-"easing"
-"float"
-"image"
-"int"
-"length"
-"percent"
-"physical-length"
-"physical_length"
-"string"
+  "angle"
+  "bool"
+  "brush"
+  "color" 
+  "duration"
+  "easing"
+  "float"
+  "image"
+  "int"
+  "length"
+  "percent"
+  "physical-length"
+  "physical_length"
+  "string"
 ] @type.builtin
 
 [
  ":="
+ "<=>"
  "!"
  "-"
  "+"
@@ -118,8 +166,6 @@
  "*="
  "/="
  "?"
-
- "=>"
- ] @operator
+ "=>" ] @operator
 
 (ternary_expression [":" "?"] @keyword.control.conditional)

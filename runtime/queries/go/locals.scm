@@ -12,7 +12,7 @@
           (identifier) @local.definition))
 
 (var_spec
-  name: (identifier) @local.definition)
+  (identifier) @local.definition)
 
 (for_statement
  (range_clause

@@ -354,7 +354,13 @@ impl TableState {
 impl<'a> Table<'a> {
     // type State = TableState;
 
-    pub fn render_table(mut self, area: Rect, buf: &mut Buffer, state: &mut TableState) {
+    pub fn render_table(
+        mut self,
+        area: Rect,
+        buf: &mut Buffer,
+        state: &mut TableState,
+        truncate: bool,
+    ) {
         if area.area() == 0 {
             return;
         }
@@ -401,6 +407,7 @@ impl<'a> Table<'a> {
                         width: *width,
                         height: max_header_height,
                     },
+                    truncate,
                 );
                 col += *width + self.column_spacing;
             }
@@ -443,11 +450,11 @@ impl<'a> Table<'a> {
             } else {
                 col
             };
+            if is_selected {
+                buf.set_style(table_row_area, self.highlight_style);
+            }
             let mut col = table_row_start_col;
             for (width, cell) in columns_widths.iter().zip(table_row.cells.iter()) {
-                if is_selected {
-                    buf.set_style(table_row_area, self.highlight_style);
-                }
                 render_cell(
                     buf,
                     cell,
@@ -457,6 +464,7 @@ impl<'a> Table<'a> {
                         width: *width,
                         height: table_row.height,
                     },
+                    truncate,
                 );
                 col += *width + self.column_spacing;
             }
@@ -464,20 +472,24 @@ impl<'a> Table<'a> {
     }
 }
 
-fn render_cell(buf: &mut Buffer, cell: &Cell, area: Rect) {
+fn render_cell(buf: &mut Buffer, cell: &Cell, area: Rect, truncate: bool) {
     buf.set_style(area, cell.style);
     for (i, spans) in cell.content.lines.iter().enumerate() {
         if i as u16 >= area.height {
             break;
         }
-        buf.set_spans(area.x, area.y + i as u16, spans, area.width);
+        if truncate {
+            buf.set_spans_truncated(area.x, area.y + i as u16, spans, area.width);
+        } else {
+            buf.set_spans(area.x, area.y + i as u16, spans, area.width);
+        }
     }
 }
 
 impl<'a> Widget for Table<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut state = TableState::default();
-        Table::render_table(self, area, buf, &mut state);
+        Table::render_table(self, area, buf, &mut state, false);
     }
 }
 

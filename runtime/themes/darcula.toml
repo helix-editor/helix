@@ -23,6 +23,7 @@
 "ui.virtual.ruler" = { bg = "grey02" }
 "ui.virtual.indent-guide" = "grey02"
 "ui.virtual.whitespace" = "grey03"
+"ui.virtual.inlay-hint" = { fg = "grey03", modifiers = ["italic"] }
 "ui.bufferline" = { fg = "grey04", bg = "grey00" }
 "ui.bufferline.active" = { fg = "grey07", bg = "grey02" }
 

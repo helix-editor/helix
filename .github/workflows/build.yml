@@ -4,24 +4,17 @@ on:
   push:
     branches:
       - master
+  merge_group:
   schedule:
     - cron: '00 01 * * *'
 
 jobs:
   check:
-    name: Check
+    name: Check (msrv)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, msrv]
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Use MSRV rust toolchain
-        if: matrix.rust == 'msrv'
-        run: cp .github/workflows/msrv-rust-toolchain.toml rust-toolchain.toml
-
+        uses: actions/checkout@v4
       - name: Install stable toolchain
         uses: helix-editor/rust-toolchain@v1
         with:
@@ -41,10 +34,10 @@ jobs:
       HELIX_LOG_LEVEL: info
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.61
+        uses: dtolnay/rust-toolchain@1.65
 
       - uses: Swatinem/rust-cache@v2
 
@@ -70,10 +63,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.61
+        uses: dtolnay/rust-toolchain@1.65
         with:
           components: rustfmt, clippy
 
@@ -95,10 +88,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.61
+        uses: dtolnay/rust-toolchain@1.65
 
       - uses: Swatinem/rust-cache@v2
 

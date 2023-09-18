@@ -119,16 +119,7 @@ fn overlay() {
             "foobar",
             0,
             false,
-            &[
-                Overlay {
-                    char_idx: 0,
-                    grapheme: "X".into(),
-                },
-                Overlay {
-                    char_idx: 2,
-                    grapheme: "\t".into(),
-                },
-            ]
+            &[Overlay::new(0, "X"), Overlay::new(2, "\t")],
         ),
         "Xo  bar "
     );
@@ -138,18 +129,9 @@ fn overlay() {
             0,
             true,
             &[
-                Overlay {
-                    char_idx: 2,
-                    grapheme: "\t".into(),
-                },
-                Overlay {
-                    char_idx: 5,
-                    grapheme: "\t".into(),
-                },
-                Overlay {
-                    char_idx: 16,
-                    grapheme: "X".into(),
-                },
+                Overlay::new(2, "\t"),
+                Overlay::new(5, "\t"),
+                Overlay::new(16, "X"),
             ]
         ),
         "fo   f  o foo \n.foo Xoo foo foo \n.foo foo foo  "
@@ -170,24 +152,14 @@ fn annotate_text(text: &str, softwrap: bool, annotations: &[InlineAnnotation]) -
 #[test]
 fn annotation() {
     assert_eq!(
-        annotate_text(
-            "bar",
-            false,
-            &[InlineAnnotation {
-                char_idx: 0,
-                text: "foo".into(),
-            }]
-        ),
+        annotate_text("bar", false, &[InlineAnnotation::new(0, "foo")]),
         "foobar "
     );
     assert_eq!(
         annotate_text(
             &"foo ".repeat(10),
             true,
-            &[InlineAnnotation {
-                char_idx: 0,
-                text: "foo ".into(),
-            }]
+            &[InlineAnnotation::new(0, "foo ")]
         ),
         "foo foo foo foo \n.foo foo foo foo \n.foo foo foo  "
     );
@@ -199,20 +171,8 @@ fn annotation_and_overlay() {
             "bbar".into(),
             &TextFormat::new_test(false),
             TextAnnotations::default()
-                .add_inline_annotations(
-                    Rc::new([InlineAnnotation {
-                        char_idx: 0,
-                        text: "fooo".into(),
-                    }]),
-                    None
-                )
-                .add_overlay(
-                    Rc::new([Overlay {
-                        char_idx: 0,
-                        grapheme: "\t".into(),
-                    }]),
-                    None
-                ),
+                .add_inline_annotations(Rc::new([InlineAnnotation::new(0, "fooo")]), None)
+                .add_overlay(Rc::new([Overlay::new(0, "\t")]), None),
             0,
         )
         .0

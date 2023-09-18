@@ -1,9 +1,11 @@
+use anyhow::{bail, Context, Result};
+use arc_swap::ArcSwap;
 use std::path::Path;
+use std::sync::Arc;
 
-use git::objs::tree::EntryMode;
-use git::sec::trust::DefaultForLevel;
-use git::{Commit, ObjectId, Repository, ThreadSafeRepository};
-use git_repository as git;
+use gix::objs::tree::EntryMode;
+use gix::sec::trust::DefaultForLevel;
+use gix::{Commit, ObjectId, Repository, ThreadSafeRepository};
 
 use crate::DiffProvider;
 
@@ -13,15 +15,15 @@ mod test;
 pub struct Git;
 
 impl Git {
-    fn open_repo(path: &Path, ceiling_dir: Option<&Path>) -> Option<ThreadSafeRepository> {
+    fn open_repo(path: &Path, ceiling_dir: Option<&Path>) -> Result<ThreadSafeRepository> {
         // custom open options
-        let mut git_open_opts_map = git::sec::trust::Mapping::<git::open::Options>::default();
+        let mut git_open_opts_map = gix::sec::trust::Mapping::<gix::open::Options>::default();
 
         // On windows various configuration options are bundled as part of the installations
         // This path depends on the install location of git and therefore requires some overhead to lookup
         // This is basically only used on windows and has some overhead hence it's disabled on other platforms.
         // `gitoxide` doesn't use this as default
-        let config = git::permissions::Config {
+        let config = gix::open::permissions::Config {
             system: true,
             git: true,
             user: true,
@@ -30,40 +32,50 @@ impl Git {
             git_binary: cfg!(windows),
         };
         // change options for config permissions without touching anything else
-        git_open_opts_map.reduced = git_open_opts_map.reduced.permissions(git::Permissions {
+        git_open_opts_map.reduced = git_open_opts_map
+            .reduced
+            .permissions(gix::open::Permissions {
+                config,
+                ..gix::open::Permissions::default_for_level(gix::sec::Trust::Reduced)
+            });
+        git_open_opts_map.full = git_open_opts_map.full.permissions(gix::open::Permissions {
             config,
-            ..git::Permissions::default_for_level(git::sec::Trust::Reduced)
-        });
-        git_open_opts_map.full = git_open_opts_map.full.permissions(git::Permissions {
-            config,
-            ..git::Permissions::default_for_level(git::sec::Trust::Full)
+            ..gix::open::Permissions::default_for_level(gix::sec::Trust::Full)
         });
 
-        let mut open_options = git::discover::upwards::Options::default();
-        if let Some(ceiling_dir) = ceiling_dir {
-            open_options.ceiling_dirs = vec![ceiling_dir.to_owned()];
-        }
+        let open_options = gix::discover::upwards::Options {
+            ceiling_dirs: ceiling_dir
+                .map(|dir| vec![dir.to_owned()])
+                .unwrap_or_default(),
+            dot_git_only: true,
+            ..Default::default()
+        };
 
-        ThreadSafeRepository::discover_with_environment_overrides_opts(
+        let res = ThreadSafeRepository::discover_with_environment_overrides_opts(
             path,
             open_options,
             git_open_opts_map,
-        )
-        .ok()
+        )?;
+
+        Ok(res)
     }
 }
 
 impl DiffProvider for Git {
-    fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>> {
+    fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
         debug_assert!(!file.exists() || file.is_file());
         debug_assert!(file.is_absolute());
 
         // TODO cache repository lookup
-        let repo = Git::open_repo(file.parent()?, None)?.to_thread_local();
-        let head = repo.head_commit().ok()?;
+
+        let repo_dir = file.parent().context("file has no parent directory")?;
+        let repo = Git::open_repo(repo_dir, None)
+            .context("failed to open git repo")?
+            .to_thread_local();
+        let head = repo.head_commit()?;
         let file_oid = find_file_in_commit(&repo, &head, file)?;
 
-        let file_object = repo.find_object(file_oid).ok()?;
+        let file_object = repo.find_object(file_oid)?;
         let mut data = file_object.detach().data;
         // convert LF to CRLF if configured to avoid showing every line as changed
         if repo
@@ -86,20 +98,42 @@ impl DiffProvider for Git {
             }
             data = normalized_file
         }
-        Some(data)
+        Ok(data)
+    }
+
+    fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
+        debug_assert!(!file.exists() || file.is_file());
+        debug_assert!(file.is_absolute());
+        let repo_dir = file.parent().context("file has no parent directory")?;
+        let repo = Git::open_repo(repo_dir, None)
+            .context("failed to open git repo")?
+            .to_thread_local();
+        let head_ref = repo.head_ref()?;
+        let head_commit = repo.head_commit()?;
+
+        let name = match head_ref {
+            Some(reference) => reference.name().shorten().to_string(),
+            None => head_commit.id.to_hex_with_len(8).to_string(),
+        };
+
+        Ok(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
     }
 }
 
 /// Finds the object that contains the contents of a file at a specific commit.
-fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Option<ObjectId> {
-    let repo_dir = repo.work_dir()?;
-    let rel_path = file.strip_prefix(repo_dir).ok()?;
-    let tree = commit.tree().ok()?;
-    let tree_entry = tree.lookup_entry_by_path(rel_path).ok()??;
+fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Result<ObjectId> {
+    let repo_dir = repo.work_dir().context("repo has no worktree")?;
+    let rel_path = file.strip_prefix(repo_dir)?;
+    let tree = commit.tree()?;
+    let tree_entry = tree
+        .lookup_entry_by_path(rel_path)?
+        .context("file is untracked")?;
     match tree_entry.mode() {
         // not a file, everything is new, do not show diff
-        EntryMode::Tree | EntryMode::Commit | EntryMode::Link => None,
+        mode @ (EntryMode::Tree | EntryMode::Commit | EntryMode::Link) => {
+            bail!("entry at {} is not a file but a {mode:?}", file.display())
+        }
         // found a file
-        EntryMode::Blob | EntryMode::BlobExecutable => Some(tree_entry.object_id()),
+        EntryMode::Blob | EntryMode::BlobExecutable => Ok(tree_entry.object_id()),
     }
 }
