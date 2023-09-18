@@ -99,7 +99,7 @@ impl EditorView {
         let mut line_decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
         let mut translated_positions: Vec<TranslatedPosition> = Vec::new();
 
-        if !is_focused {
+        if !(is_focused && self.terminal_focused) {
             surface.set_style(area, theme.get("ui.background.inactive"))
         }
 
