@@ -13,9 +13,9 @@
 (macro) @function.macro
 
 ;; Imports
-(open) @keyword.control.import
-(module) @keyword.control.import
 (module_name) @namespace
+(import_directive (id) @namespace)
+[(module) (import) (open)] @keyword.control.import
 
 ;; Types
 (typed_binding (expr) @type)
