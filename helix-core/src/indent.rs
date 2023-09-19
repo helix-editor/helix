@@ -6,7 +6,7 @@ use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
     find_first_non_whitespace_char,
     graphemes::{grapheme_width, tab_width_at},
-    syntax::{LanguageConfiguration, RopeProvider, Syntax},
+    syntax::{IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
     Rope, RopeGraphemes, RopeSlice,
 };
@@ -931,6 +931,7 @@ pub fn treesitter_indent_for_pos<'a>(
 pub fn indent_for_newline(
     language_config: Option<&LanguageConfiguration>,
     syntax: Option<&Syntax>,
+    indent_heuristic: &IndentationHeuristic,
     indent_style: &IndentStyle,
     tab_width: usize,
     text: RopeSlice,
@@ -939,7 +940,12 @@ pub fn indent_for_newline(
     current_line: usize,
 ) -> String {
     let indent_width = indent_style.indent_width(tab_width);
-    if let (Some(query), Some(syntax)) = (
+    if let (
+        IndentationHeuristic::TreeSitter | IndentationHeuristic::Hybrid,
+        Some(query),
+        Some(syntax),
+    ) = (
+        indent_heuristic,
         language_config.and_then(|config| config.indent_query()),
         syntax,
     ) {
@@ -953,49 +959,51 @@ pub fn indent_for_newline(
             line_before_end_pos,
             true,
         ) {
-            // We want to compute the indentation not only based on the
-            // syntax tree but also on the actual indentation of a previous
-            // line. This makes indentation computation more resilient to
-            // incomplete queries, incomplete source code & differing indentation
-            // styles for the same language.
-            // However, using the indent of a previous line as a baseline may not
-            // make sense, e.g. if it has a different alignment than the new line.
-            // In order to prevent edge cases with long running times, we only try
-            // a constant number of (non-empty) lines.
-            const MAX_ATTEMPTS: usize = 2;
-            let mut num_attempts = 0;
-            for line_idx in (0..=line_before).rev() {
-                let line = text.line(line_idx);
-                let first_non_whitespace_char = match find_first_non_whitespace_char(line) {
-                    Some(i) => i,
-                    None => {
-                        continue;
+            if let IndentationHeuristic::Hybrid = indent_heuristic {
+                // We want to compute the indentation not only based on the
+                // syntax tree but also on the actual indentation of a previous
+                // line. This makes indentation computation more resilient to
+                // incomplete queries, incomplete source code & differing indentation
+                // styles for the same language.
+                // However, using the indent of a previous line as a baseline may not
+                // make sense, e.g. if it has a different alignment than the new line.
+                // In order to prevent edge cases with long running times, we only try
+                // a constant number of (non-empty) lines.
+                const MAX_ATTEMPTS: usize = 2;
+                let mut num_attempts = 0;
+                for line_idx in (0..=line_before).rev() {
+                    let line = text.line(line_idx);
+                    let first_non_whitespace_char = match find_first_non_whitespace_char(line) {
+                        Some(i) => i,
+                        None => {
+                            continue;
+                        }
+                    };
+                    if let Some(indent) = (|| {
+                        let computed_indent = treesitter_indent_for_pos(
+                            query,
+                            syntax,
+                            tab_width,
+                            indent_width,
+                            text,
+                            line_idx,
+                            text.line_to_char(line_idx) + first_non_whitespace_char,
+                            false,
+                        )?;
+                        let leading_whitespace = line.slice(0..first_non_whitespace_char);
+                        indent.relative_indent(
+                            &computed_indent,
+                            leading_whitespace,
+                            indent_style,
+                            tab_width,
+                        )
+                    })() {
+                        return indent;
                     }
-                };
-                if let Some(indent) = (|| {
-                    let computed_indent = treesitter_indent_for_pos(
-                        query,
-                        syntax,
-                        tab_width,
-                        indent_width,
-                        text,
-                        line_idx,
-                        text.line_to_char(line_idx) + first_non_whitespace_char,
-                        false,
-                    )?;
-                    let leading_whitespace = line.slice(0..first_non_whitespace_char);
-                    indent.relative_indent(
-                        &computed_indent,
-                        leading_whitespace,
-                        indent_style,
-                        tab_width,
-                    )
-                })() {
-                    return indent;
-                }
-                num_attempts += 1;
-                if num_attempts == MAX_ATTEMPTS {
-                    break;
+                    num_attempts += 1;
+                    if num_attempts == MAX_ATTEMPTS {
+                        break;
+                    }
                 }
             }
             return indent.to_string(indent_style, tab_width);
