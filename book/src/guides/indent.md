@@ -12,6 +12,15 @@ Note that it matters where these added indents begin. For example,
 multiple indent level increases that start on the same line only increase
 the total indent level by 1. See [Capture types](#capture-types).
 
+By default, Helix uses the `hybrid` indentation heuristic. This means that
+indent queries are not used to compute the expected absolute indentation of a
+line but rather the expected difference in indentation between the new and an
+already existing line. This difference is then added to the actual indentation
+of the already existing line. Since this makes errors in the indent queries
+harder to find, it is recommended to disable it when testing via
+`:set indent-heuristic tree-sitter`. The rest of this guide assumes that
+the `tree-sitter` heuristic is used.
+
 ## Indent queries
 
 When Helix is inserting a new line through `o`, `O`, or `<ret>`, to determine

@@ -65,6 +65,7 @@ Its settings will be merged with the configuration directory `config.toml` and t
 | `workspace-lsp-roots` | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml` | `[]` |
 | `default-line-ending` | The line ending to use for new documents. Can be `native`, `lf`, `crlf`, `ff`, `cr` or `nel`. `native` uses the platform's native line ending (`crlf` on Windows, otherwise `lf`). | `native` |
 | `insert-final-newline` | Whether to automatically insert a trailing line-ending on write if missing | `true` |
+| `indent-heuristic` | How the indentation for a newly inserted line is computed: `simple` just copies the indentation level from the previous line, `tree-sitter` computes the indentation based on the syntax tree and `hybrid` combines both approaches | `hybrid`
 
 ### `[editor.statusline]` Section
 
