@@ -336,9 +336,7 @@ impl super::PluginSystem for SteelScriptingEngine {
             })
     }
 
-    fn available_commands<'a>(
-        &self,
-    ) -> Vec<Cow<'a, str>> {
+    fn available_commands<'a>(&self) -> Vec<Cow<'a, str>> {
         EXPORTED_IDENTIFIERS
             .identifiers
             .read()
@@ -1027,7 +1025,40 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
         },
     );
 
-    engine.register_fn("Picker::new", |values: Vec<String>| todo!());
+    engine.register_fn(
+        "Picker::new",
+        |values: steel::List<String>| -> WrappedDynComponent {
+            let picker = ui::Picker::new(
+                Vec::new(),
+                PathBuf::from(""),
+                move |cx, path: &PathBuf, action| {
+                    if let Err(e) = cx.editor.open(path, action) {
+                        let err = if let Some(err) = e.source() {
+                            format!("{}", err)
+                        } else {
+                            format!("unable to open \"{}\"", path.display())
+                        };
+                        cx.editor.set_error(err);
+                    }
+                },
+            )
+            .with_preview(|_editor, path| Some((path.clone().into(), None)));
+
+            let injector = picker.injector();
+
+            for file in values {
+                if injector.push(PathBuf::from(file)).is_err() {
+                    break;
+                }
+            }
+
+            WrappedDynComponent {
+                inner: Some(Box::new(ui::overlay::overlaid(picker))),
+            }
+        },
+    );
+
+    // engine.register_fn("Picker::new", |values: Vec<String>| todo!());
 
     // engine.register_fn(
     //     "Picker::new",
@@ -1135,6 +1166,9 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     // Check if the doc exists first
     engine.register_fn("editor-doc-exists?", document_exists);
     engine.register_fn("Document-path", document_path);
+    engine.register_fn("Document-focused-at", document_focused_at);
+    engine.register_fn("editor-all-documents", editor_all_documents);
+
     engine.register_fn("helix.context?", is_context);
     engine.register_type::<DocumentId>("DocumentId?");
 
@@ -1443,6 +1477,16 @@ fn document_exists(editor: &mut Editor, doc_id: DocumentId) -> bool {
 
 fn document_path(doc: &Document) -> Option<String> {
     doc.path().and_then(|x| x.to_str()).map(|x| x.to_string())
+}
+
+// Get the time the document was focused
+fn document_focused_at(doc: &Document) -> std::time::Instant {
+    doc.focused_at
+}
+
+// Get all the editor documents
+fn editor_all_documents(editor: &mut Editor) -> Vec<DocumentId> {
+    editor.documents.keys().copied().collect()
 }
 
 fn switch(editor: &mut Editor, doc_id: DocumentId) {
