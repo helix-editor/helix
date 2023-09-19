@@ -2055,7 +2055,8 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 .iter()
                 .filter(|comp| comp.starts_with(input))
                 .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
-                .collect()
+                .collect::<Vec<_>>()
+                .into()
         },
         move |cx, regex, event| {
             if event == PromptEvent::Validate {
@@ -2248,7 +2249,8 @@ fn global_search(cx: &mut Context) {
                 .iter()
                 .filter(|comp| comp.starts_with(input))
                 .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
-                .collect()
+                .collect::<Vec<_>>()
+                .into()
         },
         move |cx, regex, event| {
             if event != PromptEvent::Validate {

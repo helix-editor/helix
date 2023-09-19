@@ -19,9 +19,24 @@ use helix_view::{
 
 type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
 pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
-type CompletionFn = Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>;
+type CompletionFn = Box<dyn FnMut(&Editor, &str) -> CompletionResult>;
 type CallbackFn = Box<dyn FnMut(&mut Context, &str, PromptEvent)>;
 pub type DocFn = Box<dyn Fn(&str) -> Option<Cow<str>>>;
+
+#[derive(Default)]
+pub struct CompletionResult {
+    pub completions: Vec<Completion>,
+    pub show_popup: bool,
+}
+
+impl From<Vec<Completion>> for CompletionResult {
+    fn from(completions: Vec<Completion>) -> Self {
+        Self {
+            show_popup: true,
+            completions,
+        }
+    }
+}
 
 pub struct Prompt {
     prompt: Cow<'static, str>,
@@ -34,6 +49,7 @@ pub struct Prompt {
     completion_fn: CompletionFn,
     callback_fn: CallbackFn,
     pub doc_fn: DocFn,
+    pub show_popup: bool,
     next_char_handler: Option<PromptCharHandler>,
     language: Option<(&'static str, Arc<ArcSwap<syntax::Loader>>)>,
 }
@@ -72,7 +88,7 @@ impl Prompt {
     pub fn new(
         prompt: Cow<'static, str>,
         history_register: Option<char>,
-        completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,
+        completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
     ) -> Self {
         Self {
@@ -88,6 +104,7 @@ impl Prompt {
             doc_fn: Box::new(|_| None),
             next_char_handler: None,
             language: None,
+            show_popup: true,
         }
     }
 
@@ -114,7 +131,13 @@ impl Prompt {
 
     pub fn recalculate_completion(&mut self, editor: &Editor) {
         self.exit_selection();
-        self.completion = (self.completion_fn)(editor, &self.line);
+        let CompletionResult {
+            completions,
+            show_popup,
+        } = (self.completion_fn)(editor, &self.line);
+
+        self.completion = completions;
+        self.show_popup = show_popup;
     }
 
     /// Compute the cursor position after applying movement
@@ -367,14 +390,10 @@ impl Prompt {
 const BASE_WIDTH: u16 = 30;
 
 impl Prompt {
-    pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    fn render_completion_hints(&self, area: Rect, surface: &mut Surface, cx: &mut Context) -> Rect {
         let theme = &cx.editor.theme;
-        let prompt_color = theme.get("ui.text");
         let completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
-        let suggestion_color = theme.get("ui.text.inactive");
-        let background = theme.get("ui.background");
-        // completion
 
         let max_len = self
             .completion
@@ -436,6 +455,21 @@ impl Prompt {
                 }
             }
         }
+
+        completion_area
+    }
+
+    pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        let completion_area = if self.show_popup {
+            self.render_completion_hints(area, surface, cx)
+        } else {
+            Rect::new(area.x, area.height.saturating_sub(1), area.width, 0)
+        };
+
+        let theme = &cx.editor.theme;
+        let prompt_color = theme.get("ui.text");
+        let suggestion_color = theme.get("ui.text.inactive");
+        let background = theme.get("ui.background");
 
         if let Some(doc) = (self.doc_fn)(&self.line) {
             let mut text = ui::Text::new(doc.to_string());

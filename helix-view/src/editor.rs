@@ -320,6 +320,7 @@ pub enum CommandHints {
     /// Never show it
     Never,
     /// Show only for command's arguments
+    #[serde(rename = "only-args")]
     OnlyArguments,
 }
 
