@@ -36,3 +36,6 @@
 (parameter_list
   . (parameter_declaration) @anchor
   (#set! "scope" "tail")) @align
+(argument_list
+  . (_) @anchor
+  (#set! "scope" "tail")) @align
