@@ -1,16 +1,18 @@
+use helix_view::document::read_to_string;
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
 
 use crate::job::Job;
+use crate::ui::CompletionResult;
 
 use super::*;
 
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
-use helix_core::{line_ending, shellwords::Shellwords};
-use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
-use helix_view::editor::{CloseError, ConfigEvent};
+use helix_core::{encoding, line_ending, shellwords::Shellwords};
+use helix_view::document::DEFAULT_LANGUAGE_NAME;
+use helix_view::editor::{Action, CloseError, CommandHints, ConfigEvent};
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
@@ -3132,14 +3134,18 @@ pub(super) fn command_mode(cx: &mut Context) {
             let words = shellwords.words();
 
             if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
-                fuzzy_match(
+                let mut result: CompletionResult = fuzzy_match(
                     input,
                     TYPABLE_COMMAND_LIST.iter().map(|command| command.name),
                     false,
                 )
                 .into_iter()
                 .map(|(name, _)| (0.., name.into()))
-                .collect()
+                .collect::<Vec<_>>()
+                .into();
+                result.show_popup = matches!(editor.config().command_hints, CommandHints::Always);
+
+                result
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.
@@ -3151,11 +3157,12 @@ pub(super) fn command_mode(cx: &mut Context) {
 
                 let argument_number = argument_number_of(&shellwords);
 
-                if let Some(completer) = TYPABLE_COMMAND_MAP
+                let mut result = if let Some(completer) = TYPABLE_COMMAND_MAP
                     .get(&words[0] as &str)
                     .map(|tc| tc.completer_for_argument_number(argument_number))
                 {
                     completer(editor, word)
+                        .completions
                         .into_iter()
                         .map(|(range, file)| {
                             let file = shellwords::escape(file);
@@ -3165,10 +3172,18 @@ pub(super) fn command_mode(cx: &mut Context) {
                             let range = (range.start + offset)..;
                             (range, file)
                         })
-                        .collect()
+                        .collect::<Vec<_>>()
+                        .into()
                 } else {
-                    Vec::new()
-                }
+                    CompletionResult::default()
+                };
+
+                result.show_popup = matches!(
+                    editor.config().command_hints,
+                    CommandHints::Always | CommandHints::OnlyArguments
+                );
+
+                result
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
