@@ -3199,20 +3199,23 @@ pub(super) fn command_mode(cx: &mut Context) {
             }
         },
     );
-    prompt.doc_fn = Box::new(|input: &str| {
-        let part = input.split(' ').next().unwrap_or_default();
 
-        if let Some(typed::TypableCommand { doc, aliases, .. }) =
-            typed::TYPABLE_COMMAND_MAP.get(part)
-        {
-            if aliases.is_empty() {
-                return Some((*doc).into());
+    if cx.editor.config().command_docs {
+        prompt.doc_fn = Box::new(|input: &str| {
+            let part = input.split(' ').next().unwrap_or_default();
+
+            if let Some(typed::TypableCommand { doc, aliases, .. }) =
+                typed::TYPABLE_COMMAND_MAP.get(part)
+            {
+                if aliases.is_empty() {
+                    return Some((*doc).into());
+                }
+                return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
             }
-            return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
-        }
 
-        None
-    });
+            None
+        });
+    }
 
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
