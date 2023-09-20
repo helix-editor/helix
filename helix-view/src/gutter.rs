@@ -94,9 +94,9 @@ pub fn diff<'doc>(
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
-    let added = theme.get("diff.plus");
-    let deleted = theme.get("diff.minus");
-    let modified = theme.get("diff.delta");
+    let added = theme.get("diff.plus.gutter");
+    let deleted = theme.get("diff.minus.gutter");
+    let modified = theme.get("diff.delta.gutter");
     if let Some(diff_handle) = doc.diff_handle() {
         let hunks = diff_handle.load();
         let mut hunk_i = 0;
