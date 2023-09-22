@@ -19,7 +19,7 @@ use helix_core::{
     movement::Direction,
     syntax::{self, HighlightEvent},
     text_annotations::TextAnnotations,
-    unicode::width::UnicodeWidthStr,
+    unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr},
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
 use helix_view::{
@@ -608,16 +608,8 @@ impl EditorView {
     }
 
     /// Render bufferline at the top
-    pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
+    pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) -> u16 {
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
-        surface.clear_with(
-            viewport,
-            editor
-                .theme
-                .try_get("ui.bufferline.background")
-                .unwrap_or_else(|| editor.theme.get("ui.statusline")),
-        );
-
         let bufferline_active = editor
             .theme
             .try_get("ui.bufferline.active")
@@ -629,7 +621,10 @@ impl EditorView {
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
         let mut x = viewport.x;
+        let mut y = 0;
         let current_doc = view!(editor).doc;
+
+        let mut tabs = Vec::<(String, u16, u16, Style)>::new();
 
         for doc in editor.documents() {
             let fname = doc
@@ -647,17 +642,34 @@ impl EditorView {
             };
 
             let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let used_width = viewport.x.saturating_sub(x);
-            let rem_width = surface.area.width.saturating_sub(used_width);
+            let text_width = text.grapheme_indices(true).count() as u16;
 
-            x = surface
-                .set_stringn(x, viewport.y, text, rem_width as usize, style)
-                .0;
-
-            if x >= surface.area.right() {
-                break;
+            if x + text_width > surface.area.width {
+                y += 1;
+                x = 0;
             }
+
+            tabs.push((text, x, y, style));
+            x += text_width;
         }
+
+        let height = if x != 0 { y + 1 } else { y };
+
+        let viewport = viewport.with_height(height);
+
+        surface.clear_with(
+            viewport,
+            editor
+                .theme
+                .try_get("ui.bufferline.background")
+                .unwrap_or_else(|| editor.theme.get("ui.statusline")),
+        );
+
+        for (text, x, y, style) in tabs {
+            surface.set_string(x, y, text, style);
+        }
+
+        height
     }
 
     pub fn render_gutter<'d>(
@@ -1547,15 +1559,12 @@ impl Component for EditorView {
         // -1 for commandline and -1 for bufferline
         let mut editor_area = area.clip_bottom(1);
         if use_bufferline {
-            editor_area = editor_area.clip_top(1);
+            let bufferline_height = Self::render_bufferline(cx.editor, area, surface);
+            editor_area = editor_area.clip_top(bufferline_height);
         }
 
         // if the terminal size suddenly changed, we need to trigger a resize
         cx.editor.resize(editor_area);
-
-        if use_bufferline {
-            Self::render_bufferline(cx.editor, area.with_height(1), surface);
-        }
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
