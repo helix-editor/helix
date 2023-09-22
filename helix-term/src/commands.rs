@@ -2756,7 +2756,7 @@ fn command_history_picker(cx: &mut Context) {
 
     let items = command_history
         .into_iter()
-        .flat_map(|reg| reg)
+        .flatten()
         .map(|entry| Command {
             args: entry.to_string(),
         })
