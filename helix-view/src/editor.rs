@@ -653,8 +653,16 @@ impl Default for CursorShapeConfig {
 
 /// bufferline render modes
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct BufferLine {
+    pub show: BufferLineShow,
+    pub style: BufferLineStyle,
+}
+
+/// bufferline render modes
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum BufferLine {
+pub enum BufferLineShow {
     /// Don't render bufferline
     #[default]
     Never,
@@ -662,6 +670,19 @@ pub enum BufferLine {
     Always,
     /// Only if multiple buffers are open
     Multiple,
+}
+
+/// bufferline render
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BufferLineStyle {
+    /// Don't render bufferline
+    #[default]
+    Overflow,
+    /// Always render
+    Wrap,
+    /// Only if multiple buffers are open
+    Scroll,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
