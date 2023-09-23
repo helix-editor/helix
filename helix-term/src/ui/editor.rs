@@ -25,7 +25,7 @@ use helix_core::{
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{BufferLine, BufferLineStyle, CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -55,6 +55,22 @@ pub enum InsertEvent {
     },
     TriggerCompletion,
     RequestCompletion,
+}
+
+#[derive(Debug, Clone)]
+pub struct BufferTab {
+    active: bool,
+    text: String,
+    width: u16,
+    x: i32,
+    y: i32,
+    style: Style,
+}
+
+impl Default for EditorView {
+    fn default() -> Self {
+        Self::new(Keymaps::default())
+    }
 }
 
 impl EditorView {
@@ -608,8 +624,25 @@ impl EditorView {
     }
 
     /// Render bufferline at the top
-    pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) -> u16 {
-        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+    pub fn render_bufferline(
+        editor: &Editor,
+        viewport: Rect,
+        surface: &mut Surface,
+        config: BufferLine,
+    ) -> u16 {
+        // check if bufferline should be rendered
+        use helix_view::editor::BufferLineShow;
+        let use_bufferline = match config.show {
+            BufferLineShow::Always => true,
+            BufferLineShow::Multiple if editor.documents.len() > 1 => true,
+            _ => false,
+        };
+
+        if !use_bufferline {
+            return 0;
+        }
+
+        // Define styles
         let bufferline_active = editor
             .theme
             .try_get("ui.bufferline.active")
@@ -620,12 +653,14 @@ impl EditorView {
             .try_get("ui.bufferline")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
-        let mut x = viewport.x;
-        let mut y = 0;
+        let mut x = viewport.x as i32;
+        let mut y = viewport.y as i32;
         let current_doc = view!(editor).doc;
 
-        let mut tabs = Vec::<(String, u16, u16, Style)>::new();
+        // Keep track of the tabs
+        let mut buffertabs = Vec::new();
 
+        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
         for doc in editor.documents() {
             let fname = doc
                 .path()
@@ -635,25 +670,37 @@ impl EditorView {
                 .to_str()
                 .unwrap_or_default();
 
-            let style = if current_doc == doc.id() {
+            let active = current_doc == doc.id();
+
+            let style = if active {
                 bufferline_active
             } else {
                 bufferline_inactive
             };
 
             let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let text_width = text.grapheme_indices(true).count() as u16;
+            let text_width = text.grapheme_indices(true).count();
 
-            if x + text_width > surface.area.width {
-                y += 1;
-                x = 0;
+            if config.style == BufferLineStyle::Wrap
+                && x.saturating_add(text_width as i32) >= viewport.right() as i32
+            {
+                y = y.saturating_add(1);
+                x = viewport.x as _;
             }
 
-            tabs.push((text, x, y, style));
-            x += text_width;
+            buffertabs.push(BufferTab {
+                active,
+                text,
+                width: text_width as _,
+                x,
+                y,
+                style,
+            });
+            x = x.saturating_add(text_width as _);
         }
 
-        let height = if x != 0 { y + 1 } else { y };
+        let height =
+            (if x != 0 { y.saturating_add(1) } else { y } as u16).saturating_sub(viewport.y);
 
         let viewport = viewport.with_height(height);
 
@@ -665,8 +712,77 @@ impl EditorView {
                 .unwrap_or_else(|| editor.theme.get("ui.statusline")),
         );
 
-        for (text, x, y, style) in tabs {
-            surface.set_string(x, y, text, style);
+        if config.style == BufferLineStyle::Scroll {
+            let viewport_center = (viewport.width as f64 / 2.).floor() as i32 + viewport.x as i32;
+
+            let maybe_active_buffertab = buffertabs.iter().find(|tab| tab.active);
+
+            if let Some(tab) = maybe_active_buffertab {
+                log::debug!("Activae buffer found");
+                let active_buffertab_center = (tab.width as f64 / 2.).floor() as i32 + tab.x;
+
+                let right_of_center = active_buffertab_center as i32 - viewport_center as i32;
+
+                log::debug!(
+                    "Viewport center {}, tab center {}, right of center {}",
+                    viewport_center,
+                    active_buffertab_center,
+                    right_of_center
+                );
+
+                if right_of_center > 0 {
+                    let rightmost = buffertabs.last().unwrap();
+                    let full_width = rightmost.x + rightmost.width as i32;
+
+                    let max_displacement = (full_width - viewport.width as i32).max(0);
+                    let displacement = right_of_center.min(max_displacement);
+                    log::debug!(
+                        "Full width {}, max displacement {}, displacement {}",
+                        full_width,
+                        max_displacement,
+                        displacement
+                    );
+
+                    for tab in buffertabs.iter_mut() {
+                        tab.x = tab.x.saturating_sub(displacement.abs());
+                    }
+                } // If on center, or left of center, nothing to do
+            } // If no active buffer, keep everything scrolled to leftmost
+        }
+
+        for tab in buffertabs.iter_mut() {
+            if tab.x < viewport.x as i32 {
+                if tab.x + tab.width as i32 > viewport.x as i32 {
+                    let new_width = tab.width as i32 + tab.x;
+
+                    tab.text = tab
+                        .text
+                        .graphemes(true)
+                        .into_iter()
+                        .skip((tab.width as i32 - new_width) as usize)
+                        .collect();
+
+                    tab.width -= new_width as u16;
+                    tab.x = viewport.x as _;
+                } else {
+                    // skip tabs completely of screen
+                    continue;
+                }
+            }
+            if tab.x > viewport.right() as i32 {
+                // Stop when off screen
+                break;
+            }
+
+            let _ = surface
+                .set_stringn(
+                    tab.x as _,
+                    tab.y as _,
+                    tab.text.clone(),
+                    (viewport.right() as usize).saturating_sub(tab.x as _),
+                    tab.style,
+                )
+                .0;
         }
 
         height
@@ -1548,20 +1664,11 @@ impl Component for EditorView {
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
 
-        // check if bufferline should be rendered
-        use helix_view::editor::BufferLine;
-        let use_bufferline = match config.bufferline {
-            BufferLine::Always => true,
-            BufferLine::Multiple if cx.editor.documents.len() > 1 => true,
-            _ => false,
-        };
-
         // -1 for commandline and -1 for bufferline
         let mut editor_area = area.clip_bottom(1);
-        if use_bufferline {
-            let bufferline_height = Self::render_bufferline(cx.editor, area, surface);
-            editor_area = editor_area.clip_top(bufferline_height);
-        }
+        let buffer_line_height =
+            Self::render_bufferline(cx.editor, area, surface, config.bufferline.clone());
+        editor_area = editor_area.clip_top(buffer_line_height);
 
         // if the terminal size suddenly changed, we need to trigger a resize
         cx.editor.resize(editor_area);
