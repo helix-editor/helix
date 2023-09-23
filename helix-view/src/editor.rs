@@ -651,11 +651,13 @@ impl Default for CursorShapeConfig {
     }
 }
 
-/// bufferline render modes
+/// bufferline configuration
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct BufferLine {
+    // Set when to show the bufferline
     pub show: BufferLineShow,
+    // Set how to handle overflowing
     pub style: BufferLineStyle,
 }
 
@@ -672,16 +674,16 @@ pub enum BufferLineShow {
     Multiple,
 }
 
-/// bufferline render
+/// bufferline render style
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum BufferLineStyle {
-    /// Don't render bufferline
+    /// Overflow bufferline on the right
     #[default]
     Overflow,
-    /// Always render
+    /// Wrap when the bufferline overflows
     Wrap,
-    /// Only if multiple buffers are open
+    /// Scroll active buffer as centered in the bufferline as possible
     Scroll,
 }
 
