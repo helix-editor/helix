@@ -657,7 +657,7 @@ impl EditorView {
         let mut y = viewport.y as i32;
         let current_doc = view!(editor).doc;
 
-        // Keep track of the tabs
+        // Gather info on buffertabs
         let mut buffertabs = Vec::new();
 
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
@@ -703,7 +703,6 @@ impl EditorView {
             (if x != 0 { y.saturating_add(1) } else { y } as u16).saturating_sub(viewport.y);
 
         let viewport = viewport.with_height(height);
-
         surface.clear_with(
             viewport,
             editor
@@ -715,44 +714,32 @@ impl EditorView {
         if config.style == BufferLineStyle::Scroll {
             let viewport_center = (viewport.width as f64 / 2.).floor() as i32 + viewport.x as i32;
 
-            let maybe_active_buffertab = buffertabs.iter().find(|tab| tab.active);
+            let active_buffertab = buffertabs.iter().find(|tab| tab.active).unwrap();
 
-            if let Some(tab) = maybe_active_buffertab {
-                log::debug!("Activae buffer found");
-                let active_buffertab_center = (tab.width as f64 / 2.).floor() as i32 + tab.x;
+            let active_buffertab_center =
+                (active_buffertab.width as f64 / 2.).floor() as i32 + active_buffertab.x;
 
-                let right_of_center = active_buffertab_center as i32 - viewport_center as i32;
+            let right_of_center = active_buffertab_center as i32 - viewport_center as i32;
 
-                log::debug!(
-                    "Viewport center {}, tab center {}, right of center {}",
-                    viewport_center,
-                    active_buffertab_center,
-                    right_of_center
-                );
+            if right_of_center > 0 {
+                let rightmost = buffertabs.last().unwrap();
+                let full_width = rightmost.x + rightmost.width as i32;
 
-                if right_of_center > 0 {
-                    let rightmost = buffertabs.last().unwrap();
-                    let full_width = rightmost.x + rightmost.width as i32;
+                let max_displacement = (full_width - viewport.width as i32).max(0);
+                let displacement = right_of_center.min(max_displacement);
 
-                    let max_displacement = (full_width - viewport.width as i32).max(0);
-                    let displacement = right_of_center.min(max_displacement);
-                    log::debug!(
-                        "Full width {}, max displacement {}, displacement {}",
-                        full_width,
-                        max_displacement,
-                        displacement
-                    );
-
-                    for tab in buffertabs.iter_mut() {
-                        tab.x = tab.x.saturating_sub(displacement.abs());
-                    }
-                } // If on center, or left of center, nothing to do
-            } // If no active buffer, keep everything scrolled to leftmost
+                for tab in buffertabs.iter_mut() {
+                    tab.x = tab.x.saturating_sub(displacement.abs());
+                }
+            } // If on center, or left of center, nothing to do
         }
 
+        // Itterate over buffertabs, skip or slice them if left off screen, stop if right of screen.
+        // If wrapping no buffers will go off screen and all are drawn.
         for tab in buffertabs.iter_mut() {
             if tab.x < viewport.x as i32 {
                 if tab.x + tab.width as i32 > viewport.x as i32 {
+                    // Draw on screen portion
                     let new_width = tab.width as i32 + tab.x;
 
                     tab.text = tab
@@ -765,15 +752,16 @@ impl EditorView {
                     tab.width -= new_width as u16;
                     tab.x = viewport.x as _;
                 } else {
-                    // skip tabs completely of screen
+                    // Skip tabs completely of screen
                     continue;
                 }
             }
             if tab.x > viewport.right() as i32 {
-                // Stop when off screen
+                // Stop when off screen to the right
                 break;
             }
 
+            // Actually put the string on the screen
             let _ = surface
                 .set_stringn(
                     tab.x as _,
