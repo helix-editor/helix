@@ -61,8 +61,8 @@ pub enum OffsetEncoding {
 pub mod util {
     use super::*;
     use helix_core::line_ending::{line_end_byte_index, line_end_char_index};
-    use helix_core::{chars, RopeSlice, SmallVec};
     use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
+    use helix_core::{RopeSlice, SmallVec};
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
     ///
@@ -272,14 +272,14 @@ pub mod util {
             - text
                 .chars_at(cursor)
                 .reversed()
-                .take_while(|ch| chars::char_is_word(*ch))
+                .take_while(char::is_ascii_graphic)
                 .count();
         let mut end = cursor;
         if replace_mode {
             end += text
                 .chars_at(cursor)
                 .skip(1)
-                .take_while(|ch| chars::char_is_word(*ch))
+                .take_while(char::is_ascii_graphic)
                 .count();
         }
         (start, end)

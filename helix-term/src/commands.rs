@@ -3454,12 +3454,11 @@ pub mod insert {
         let text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
 
-        use helix_core::chars::char_is_word;
         let mut iter = text.chars_at(cursor);
         iter.reverse();
         for _ in 0..config.completion_trigger_len {
             match iter.next() {
-                Some(c) if char_is_word(c) => {}
+                Some(c) if c.is_ascii_graphic() => {}
                 _ => return,
             }
         }
@@ -4102,9 +4101,13 @@ fn replace_with_yanked(cx: &mut Context) {
 }
 
 fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
-    let Some(values) = editor.registers
+    let Some(values) = editor
+        .registers
         .read(register, editor)
-        .filter(|values| values.len() > 0) else { return };
+        .filter(|values| values.len() > 0)
+    else {
+        return;
+    };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
     let (view, doc) = current!(editor);
@@ -4139,7 +4142,9 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
 }
 
 fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
-    let Some(values) = editor.registers.read(register, editor) else { return };
+    let Some(values) = editor.registers.read(register, editor) else {
+        return;
+    };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
     let (view, doc) = current!(editor);
@@ -4507,10 +4512,9 @@ pub fn completion(cx: &mut Context) {
     // TODO: trigger_offset should be the cursor offset but we also need a starting offset from where we want to apply
     // completion filtering. For example logger.te| should filter the initial suggestion list with "te".
 
-    use helix_core::chars;
     let mut iter = text.chars_at(cursor);
     iter.reverse();
-    let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
+    let offset = iter.take_while(char::is_ascii_graphic).count();
     let start_offset = cursor.saturating_sub(offset);
 
     let trigger_doc = doc.id();
