@@ -336,7 +336,7 @@ pub mod util {
             doc,
             selection,
             |range| {
-                let cursor = range.cursor(text);
+                let cursor = range.range().cursor(text);
                 completion_range(text, edit_offset, replace_mode, cursor)
                     .filter(|(start, end)| text.slice(start..end) == removed_text)
                     .unwrap_or_else(|| find_completion_range(text, replace_mode, cursor))
@@ -382,7 +382,7 @@ pub mod util {
             doc,
             selection,
             |range| {
-                let cursor = range.cursor(text);
+                let cursor = range.range().cursor(text);
                 completion_range(text, edit_offset, replace_mode, cursor)
                     .filter(|(start, end)| text.slice(start..end) == removed_text)
                     .unwrap_or_else(|| find_completion_range(text, replace_mode, cursor))
@@ -430,7 +430,7 @@ pub mod util {
         let mut mapped_primary_idx = 0;
         let primary_range = selection.primary();
         for (range, (tabstop_anchor, tabstops)) in selection.into_iter().zip(selection_tabstops) {
-            if range == primary_range {
+            if range.range() == primary_range {
                 mapped_primary_idx = mapped_selection.len()
             }
 
@@ -444,18 +444,20 @@ pub mod util {
             // expand the selection to cover the tabstop to retain the helix selection semantic
             // the tabstop closest to the range simply replaces `head` while anchor remains in place
             // the remaining tabstops receive their own single-width cursor
-            if range.head < range.anchor {
+            if range.range().head < range.range().anchor {
                 let first_tabstop = tabstop_anchor + tabstops[0].1;
 
                 // if selection is forward but was moved to the right it is
                 // contained entirely in the replacement text, just do a point
                 // selection (fallback below)
-                if range.anchor >= first_tabstop {
-                    let range = Range::new(range.anchor, first_tabstop);
-                    mapped_selection.push(range);
-                    let rem_tabstops = tabstops[1..]
-                        .iter()
-                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.1));
+                if range.range().anchor >= first_tabstop {
+                    let new_range = Range::new(range.range().anchor, first_tabstop);
+                    mapped_selection.push(range.clone().with_range(new_range));
+                    let rem_tabstops = tabstops[1..].iter().zip(std::iter::repeat(range)).map(
+                        |(tabstop, range)| {
+                            range.with_range(Range::point(tabstop_anchor + tabstop.1))
+                        },
+                    );
                     mapped_selection.extend(rem_tabstops);
                     continue;
                 }
@@ -466,17 +468,20 @@ pub mod util {
                 // if selection is forward but was moved to the right it is
                 // contained entirely in the replacement text, just do a point
                 // selection (fallback below)
-                if range.anchor <= last_tabstop {
+                if range.range().anchor <= last_tabstop {
                     // we can't properly compute the the next grapheme
                     // here because the transaction hasn't been applied yet
                     // that is not a problem because the range gets grapheme aligned anyway
                     // tough so just adding one will always cause head to be grapheme
                     // aligned correctly when applied to the document
-                    let range = Range::new(range.anchor, last_tabstop + 1);
-                    mapped_selection.push(range);
+                    let new_range = Range::new(range.range().anchor, last_tabstop + 1);
+                    mapped_selection.push(range.clone().with_range(new_range));
                     let rem_tabstops = tabstops[..last_idx]
                         .iter()
-                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
+                        .zip(std::iter::repeat(range))
+                        .map(|(tabstop, range)| {
+                            range.with_range(Range::point(tabstop_anchor + tabstop.0))
+                        });
                     mapped_selection.extend(rem_tabstops);
                     continue;
                 }
@@ -484,7 +489,8 @@ pub mod util {
 
             let tabstops = tabstops
                 .iter()
-                .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
+                .zip(std::iter::repeat(range))
+                .map(|(tabstop, range)| range.with_range(Range::point(tabstop_anchor + tabstop.0)));
             mapped_selection.extend(tabstops);
         }
 

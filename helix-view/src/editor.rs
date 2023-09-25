@@ -1853,7 +1853,7 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
         // Removes tailing whitespaces.
         let transaction =
             Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                let line_start_pos = text.line_to_char(range.cursor_line(text));
+                let line_start_pos = text.line_to_char(range.range().cursor_line(text));
                 (line_start_pos, pos, None)
             });
         doc.apply(&transaction, view.id);

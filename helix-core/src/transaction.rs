@@ -1,7 +1,7 @@
 use ropey::RopeSlice;
 use smallvec::SmallVec;
 
-use crate::{Range, Rope, Selection, Tendril};
+use crate::{selection::SelectionRange, Rope, Selection, Tendril};
 use std::{borrow::Cow, iter::once};
 
 /// (from, to, replacement)
@@ -645,7 +645,7 @@ impl Transaction {
     /// Generate a transaction with a change per selection range.
     pub fn change_by_selection<F>(doc: &Rope, selection: &Selection, f: F) -> Self
     where
-        F: FnMut(&Range) -> Change,
+        F: FnMut(&SelectionRange) -> Change,
     {
         Self::change(doc, selection.iter().map(f))
     }
@@ -653,13 +653,13 @@ impl Transaction {
     pub fn change_by_selection_ignore_overlapping(
         doc: &Rope,
         selection: &Selection,
-        mut change_range: impl FnMut(&Range) -> (usize, usize),
+        mut change_range: impl FnMut(&SelectionRange) -> (usize, usize),
         mut create_tendril: impl FnMut(usize, usize) -> Option<Tendril>,
     ) -> (Transaction, Selection) {
         let mut last_selection_idx = None;
         let mut new_primary_idx = None;
-        let mut ranges: SmallVec<[Range; 1]> = SmallVec::new();
-        let process_change = |change_start, change_end, (idx, range): (usize, &Range)| {
+        let mut ranges: SmallVec<[SelectionRange; 1]> = SmallVec::new();
+        let process_change = |change_start, change_end, (idx, range): (usize, &SelectionRange)| {
             // update the primary idx
             if idx == selection.primary_index() {
                 new_primary_idx = Some(idx);
@@ -670,7 +670,7 @@ impl Transaction {
                     last_selection_idx = Some(idx);
                 }
             }
-            ranges.push(*range);
+            ranges.push(range.clone());
             create_tendril(change_start, change_end)
         };
         let transaction = Self::change_ignore_overlapping(
@@ -693,7 +693,7 @@ impl Transaction {
     /// In that case they are merged
     pub fn delete_by_selection<F>(doc: &Rope, selection: &Selection, f: F) -> Self
     where
-        F: FnMut(&Range) -> Deletion,
+        F: FnMut(&SelectionRange) -> Deletion,
     {
         Self::delete(doc, selection.iter().map(f))
     }
@@ -701,7 +701,7 @@ impl Transaction {
     /// Insert text at each selection head.
     pub fn insert(doc: &Rope, selection: &Selection, text: Tendril) -> Self {
         Self::change_by_selection(doc, selection, |range| {
-            (range.head, range.head, Some(text.clone()))
+            (range.range().head, range.range().head, Some(text.clone()))
         })
     }
 

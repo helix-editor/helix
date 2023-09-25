@@ -24,7 +24,7 @@ use unicode_segmentation::UnicodeSegmentation;
 ///
 /// assert_eq!(
 ///     print("#[a|]#b#(|c)#"),
-///     ("abc".to_owned(), Selection::new(smallvec![Range::new(0, 1), Range::new(3, 2)], 0))
+///     ("abc".to_owned(), Selection::new(smallvec![Range::new(0, 1).into(), Range::new(3, 2).into()], 0))
 /// );
 /// ```
 ///
@@ -111,7 +111,7 @@ pub fn print(s: &str) -> (String, Selection) {
                 false => (start, left.chars().count()),
             };
 
-            ranges.push(Range::new(anchor, head));
+            ranges.push(Range::new(anchor, head).into());
             continue 'outer;
         }
 
@@ -145,7 +145,7 @@ pub fn print(s: &str) -> (String, Selection) {
 /// use smallvec::smallvec;
 ///
 /// assert_eq!(
-///     plain("abc", &Selection::new(smallvec![Range::new(0, 1), Range::new(3, 2)], 0)),
+///     plain("abc", &Selection::new(smallvec![Range::new(0, 1).into(), Range::new(3, 2).into()], 0)),
 ///     "#[a|]#b#(|c)#".to_owned()
 /// );
 /// ```
@@ -156,7 +156,7 @@ pub fn plain<R: Into<Rope>>(s: R, selection: &Selection) -> String {
     out.push_str(&s.to_string());
 
     let mut insertion: Vec<_> = selection
-        .iter()
+        .ranges()
         .enumerate()
         .flat_map(|(i, range)| {
             // sort like this before reversed so anchor < head later
@@ -182,6 +182,7 @@ pub fn plain<R: Into<Rope>>(s: R, selection: &Selection) -> String {
 #[allow(clippy::module_inception)]
 mod test {
     use super::*;
+    use smallvec::smallvec;
 
     #[test]
     fn print_single() {
@@ -217,7 +218,7 @@ mod test {
             (
                 String::from("hello"),
                 Selection::new(
-                    SmallVec::from_slice(&[Range::new(1, 0), Range::new(5, 4)]),
+                    smallvec![Range::new(1, 0).into(), Range::new(5, 4).into()],
                     0
                 )
             ),
@@ -227,7 +228,7 @@ mod test {
             (
                 String::from("hello"),
                 Selection::new(
-                    SmallVec::from_slice(&[Range::new(0, 1), Range::new(4, 5)]),
+                    smallvec![Range::new(0, 1).into(), Range::new(4, 5).into()],
                     0
                 )
             ),
@@ -237,7 +238,7 @@ mod test {
             (
                 String::from("hello"),
                 Selection::new(
-                    SmallVec::from_slice(&[Range::new(2, 0), Range::new(5, 3)]),
+                    smallvec![Range::new(2, 0).into(), Range::new(5, 3).into()],
                     0
                 )
             ),
@@ -247,11 +248,11 @@ mod test {
             (
                 String::from("hello\r\nhello\r\nhello\r\n"),
                 Selection::new(
-                    SmallVec::from_slice(&[
-                        Range::new(7, 5),
-                        Range::new(21, 19),
-                        Range::new(14, 12)
-                    ]),
+                    smallvec![
+                        Range::new(7, 5).into(),
+                        Range::new(21, 19).into(),
+                        Range::new(14, 12).into(),
+                    ],
                     0
                 )
             ),
@@ -310,7 +311,7 @@ mod test {
             plain(
                 "hello",
                 &Selection::new(
-                    SmallVec::from_slice(&[Range::new(1, 0), Range::new(5, 4)]),
+                    smallvec![Range::new(1, 0).into(), Range::new(5, 4).into()],
                     0
                 )
             ),
@@ -320,7 +321,7 @@ mod test {
             plain(
                 "hello",
                 &Selection::new(
-                    SmallVec::from_slice(&[Range::new(0, 1), Range::new(4, 5)]),
+                    smallvec![Range::new(0, 1).into(), Range::new(4, 5).into()],
                     0
                 )
             ),
@@ -330,7 +331,7 @@ mod test {
             plain(
                 "hello",
                 &Selection::new(
-                    SmallVec::from_slice(&[Range::new(2, 0), Range::new(5, 3)]),
+                    smallvec![Range::new(2, 0).into(), Range::new(5, 3).into()],
                     0
                 )
             ),
@@ -340,11 +341,11 @@ mod test {
             plain(
                 "hello\r\nhello\r\nhello\r\n",
                 &Selection::new(
-                    SmallVec::from_slice(&[
-                        Range::new(7, 5),
-                        Range::new(21, 19),
-                        Range::new(14, 12)
-                    ]),
+                    smallvec![
+                        Range::new(7, 5).into(),
+                        Range::new(21, 19).into(),
+                        Range::new(14, 12).into(),
+                    ],
                     0
                 )
             ),

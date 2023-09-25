@@ -1485,7 +1485,7 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
                     if range.contains(pos) {
                         primary_index = i;
                     }
-                    range
+                    range.into()
                 })
                 .collect();
             let selection = Selection::new(ranges, primary_index);

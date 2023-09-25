@@ -80,6 +80,17 @@ impl Registers {
                     _ => unreachable!(),
                 },
             )),
+            '&' | '1'..='9' => {
+                let (view, doc) = current_ref!(editor);
+                let group = if name == '&' {
+                    0
+                } else {
+                    usize::from(name as u8 - b'0')
+                };
+                Some(RegisterValues::new(doc.selection(view.id).iter().map(
+                    move |range| Cow::from(range.capture(group).unwrap_or_default()),
+                )))
+            }
             _ => self
                 .inner
                 .get(&name)
@@ -90,7 +101,9 @@ impl Registers {
     pub fn write(&mut self, name: char, mut values: Vec<String>) -> Result<()> {
         match name {
             '_' => Ok(()),
-            '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support writing")),
+            '#' | '.' | '%' | '&' | '1'..='9' => {
+                Err(anyhow::anyhow!("Register {name} does not support writing"))
+            }
             '*' | '+' => {
                 self.clipboard_provider.set_contents(
                     values.join(NATIVE_LINE_ENDING.as_str()),
@@ -115,7 +128,9 @@ impl Registers {
     pub fn push(&mut self, name: char, mut value: String) -> Result<()> {
         match name {
             '_' => Ok(()),
-            '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support pushing")),
+            '#' | '.' | '%' | '&' | '1'..='9' => {
+                Err(anyhow::anyhow!("Register {name} does not support pushing"))
+            }
             '*' | '+' => {
                 let clipboard_type = match name {
                     '*' => ClipboardType::Clipboard,
@@ -174,6 +189,16 @@ impl Registers {
                     ('%', "<document path>"),
                     ('*', "<system clipboard>"),
                     ('+', "<primary clipboard>"),
+                    ('&', "<last regex match>"),
+                    ('1', "<last regex match group 1>"),
+                    ('2', "<last regex match group 2>"),
+                    ('3', "<last regex match group 3>"),
+                    ('4', "<last regex match group 4>"),
+                    ('5', "<last regex match group 5>"),
+                    ('6', "<last regex match group 6>"),
+                    ('7', "<last regex match group 7>"),
+                    ('8', "<last regex match group 8>"),
+                    ('9', "<last regex match group 9>"),
                 ]
                 .iter()
                 .copied(),
@@ -198,7 +223,7 @@ impl Registers {
 
                 true
             }
-            '_' | '#' | '.' | '%' => false,
+            '_' | '#' | '.' | '%' | '&' | '1'..='9' => false,
             _ => self.inner.remove(&name).is_some(),
         }
     }

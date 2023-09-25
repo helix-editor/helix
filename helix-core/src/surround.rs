@@ -252,10 +252,10 @@ pub fn get_surround_pos(
 ) -> Result<Vec<usize>> {
     let mut change_pos = Vec::new();
 
-    for &range in selection {
+    for range in selection.ranges() {
         let (open_pos, close_pos) = match ch {
-            Some(ch) => find_nth_pairs_pos(text, ch, range, skip)?,
-            None => find_nth_closest_pairs_pos(text, range, skip)?,
+            Some(ch) => find_nth_pairs_pos(text, ch, *range, skip)?,
+            None => find_nth_closest_pairs_pos(text, *range, skip)?,
         };
         if change_pos.contains(&open_pos) || change_pos.contains(&close_pos) {
             return Err(Error::CursorOverlap);
@@ -268,7 +268,7 @@ pub fn get_surround_pos(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Range;
+    use crate::{selection::SelectionRange, Range};
 
     use ropey::Rope;
     use smallvec::SmallVec;
@@ -395,9 +395,9 @@ mod test {
 
         let rope = Rope::from(text);
 
-        let selections: SmallVec<[Range; 1]> = spec
+        let selections: SmallVec<[SelectionRange; 1]> = spec
             .match_indices('^')
-            .map(|(i, _)| Range::point(i))
+            .map(|(i, _)| Range::point(i).into())
             .collect();
 
         let expectations: Vec<usize> = spec.match_indices('_').map(|(i, _)| i).collect();
