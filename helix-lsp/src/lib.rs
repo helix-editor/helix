@@ -749,17 +749,15 @@ impl Registry {
         }
     }
 
-    pub fn get(
-        &mut self,
-        language_config: &LanguageConfiguration,
-        doc_path: Option<&std::path::PathBuf>,
-        root_dirs: &[PathBuf],
+    pub fn get<'a>(
+        &'a mut self,
+        language_config: &'a LanguageConfiguration,
+        doc_path: Option<&'a std::path::PathBuf>,
+        root_dirs: &'a [PathBuf],
         enable_snippets: bool,
-    ) -> HashMap<LanguageServerName, Result<Arc<Client>>> {
-        language_config
-            .language_servers
-            .iter()
-            .map(|LanguageServerFeatures { name, .. }| {
+    ) -> impl Iterator<Item = (LanguageServerName, Result<Arc<Client>>)> + 'a {
+        language_config.language_servers.iter().map(
+            move |LanguageServerFeatures { name, .. }| {
                 if let Some(clients) = self.inner.get(name) {
                     if let Some((_, client)) = clients.iter().enumerate().find(|(i, client)| {
                         client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
@@ -780,8 +778,8 @@ impl Registry {
                 let clients = self.inner.entry(name.clone()).or_default();
                 clients.push(client.clone());
                 (name.clone(), Ok(client))
-            })
-            .collect()
+            },
+        )
     }
 
     pub fn iter_clients(&self) -> impl Iterator<Item = &Arc<Client>> {
