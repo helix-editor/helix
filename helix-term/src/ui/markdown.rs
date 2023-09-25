@@ -285,12 +285,12 @@ impl Markdown {
                                 HeadingLevel::H5 => heading_styles[4],
                                 HeadingLevel::H6 => heading_styles[5],
                             },
-                            _ => text_style.add_modifier(match tags.last() {
-                                Some(Tag::Emphasis) => Modifier::ITALIC,
-                                Some(Tag::Strong) => Modifier::BOLD,
-                                Some(Tag::Strikethrough) => Modifier::CROSSED_OUT,
-                                _ => Modifier::empty(),
-                            }),
+                            Some(Tag::Emphasis) => text_style.add_modifier(Modifier::ITALIC),
+                            Some(Tag::Strong) => text_style.add_modifier(Modifier::BOLD),
+                            Some(Tag::Strikethrough) => {
+                                text_style.add_modifier(Modifier::CROSSED_OUT)
+                            }
+                            _ => text_style,
                         };
                         spans.push(Span::styled(text, style));
                     }
