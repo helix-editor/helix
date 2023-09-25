@@ -14,6 +14,7 @@ use helix_core::{
 };
 use helix_view::{
     graphics::{Margin, Rect, Style},
+    theme::Modifier,
     Theme,
 };
 
@@ -275,17 +276,21 @@ impl Markdown {
                         );
                         lines.extend(tui_text.lines.into_iter());
                     } else {
-                        let style = if let Some(Tag::Heading(level, ..)) = tags.last() {
-                            match level {
+                        let style = match tags.last() {
+                            Some(Tag::Heading(level, ..)) => match level {
                                 HeadingLevel::H1 => heading_styles[0],
                                 HeadingLevel::H2 => heading_styles[1],
                                 HeadingLevel::H3 => heading_styles[2],
                                 HeadingLevel::H4 => heading_styles[3],
                                 HeadingLevel::H5 => heading_styles[4],
                                 HeadingLevel::H6 => heading_styles[5],
-                            }
-                        } else {
-                            text_style
+                            },
+                            _ => text_style.add_modifier(match tags.last() {
+                                Some(Tag::Emphasis) => Modifier::ITALIC,
+                                Some(Tag::Strong) => Modifier::BOLD,
+                                Some(Tag::Strikethrough) => Modifier::CROSSED_OUT,
+                                _ => Modifier::empty(),
+                            }),
                         };
                         spans.push(Span::styled(text, style));
                     }
