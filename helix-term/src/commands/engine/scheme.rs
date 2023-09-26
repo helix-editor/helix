@@ -1127,7 +1127,7 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
         },
     );
 
-    let mut module = BuiltInModule::new("helix/core/keybindings".to_string());
+    let module = BuiltInModule::new("helix/core/keybindings".to_string());
     // module.register_fn("set-keybindings!", SharedKeyBindingsEventQueue::merge);
 
     RegisterFn::<

@@ -2337,6 +2337,8 @@ fn global_search(cx: &mut Context) {
     );
 }
 
+// TODO: Fix this! It is just a copy paste of the above global_search - they should just
+// share the same implementation.
 fn search_in_directory(cx: &mut Context, search_root: PathBuf) {
     #[derive(Debug)]
     struct FileResult {
