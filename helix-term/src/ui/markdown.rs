@@ -184,7 +184,9 @@ impl Markdown {
         // Transform text in `<code>` blocks into `Event::Code`
         let mut in_code = false;
         let parser = parser.filter_map(|event| match event {
-            Event::Html(tag) if *tag == *"<code>" => {
+            Event::Html(tag)
+                if tag.starts_with("<code") && matches!(tag.chars().nth(5), Some(' ' | '>')) =>
+            {
                 in_code = true;
                 None
             }
