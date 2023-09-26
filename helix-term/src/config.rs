@@ -1,5 +1,5 @@
 use crate::keymap;
-use crate::keymap::{merge_keys, KeyTrie, Keymaps};
+use crate::keymap::{merge_keys, KeyTrie};
 use helix_loader::merge_toml_values;
 use helix_view::document::Mode;
 use serde::Deserialize;
@@ -59,7 +59,6 @@ impl Config {
     pub fn load(
         global: Result<String, ConfigLoadError>,
         local: Result<String, ConfigLoadError>,
-        engine_overlay: Option<HashMap<Mode, KeyTrie>>,
     ) -> Result<Config, ConfigLoadError> {
         let global_config: Result<ConfigRaw, ConfigLoadError> =
             global.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
@@ -74,10 +73,6 @@ impl Config {
                 }
                 if let Some(local_keys) = local.keys {
                     merge_keys(&mut keys, local_keys)
-                }
-
-                if let Some(overlay) = engine_overlay {
-                    merge_keys(&mut keys, overlay);
                 }
 
                 let editor = match (global.editor, local.editor) {
@@ -107,10 +102,6 @@ impl Config {
                     merge_keys(&mut keys, keymap);
                 }
 
-                if let Some(overlay) = engine_overlay {
-                    merge_keys(&mut keys, overlay);
-                }
-
                 Config {
                     theme: config.theme,
                     keys,
@@ -134,9 +125,7 @@ impl Config {
         let local_config = fs::read_to_string(helix_loader::workspace_config_file())
             .map_err(ConfigLoadError::Error);
 
-        let bindings = crate::commands::engine::ScriptingEngine::get_keybindings();
-
-        Config::load(global_config, local_config, bindings)
+        Config::load(global_config, local_config)
     }
 }
 
@@ -146,7 +135,7 @@ mod tests {
 
     impl Config {
         fn load_test(config: &str) -> Config {
-            Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default()), None).unwrap()
+            Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default())).unwrap()
         }
     }
 

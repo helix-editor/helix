@@ -64,23 +64,6 @@ impl ScriptingEngine {
         }
     }
 
-    pub fn get_keybindings() -> Option<HashMap<Mode, KeyTrie>> {
-        let mut map = HashMap::new();
-
-        // Overlay these in reverse, so the precedence applies correctly
-        for kind in PLUGIN_PRECEDENCE.iter().rev() {
-            if let Some(keybindings) = manual_dispatch!(kind, get_keybindings()) {
-                map.extend(keybindings);
-            }
-        }
-
-        if map.is_empty() {
-            None
-        } else {
-            Some(map)
-        }
-    }
-
     pub fn handle_keymap_event(
         editor: &mut ui::EditorView,
         mode: Mode,
@@ -168,12 +151,6 @@ pub trait PluginSystem {
     /// Post initialization, once the context is available. This means you should be able to
     /// run anything here that could modify the context before the main editor is available.
     fn run_initialization_script(&self, _cx: &mut Context) {}
-
-    /// Fetch the keybindings so that these can be loaded in to the keybinding map. These are
-    /// keybindings that overwrite the default ones.
-    fn get_keybindings(&self) -> Option<HashMap<Mode, KeyTrie>> {
-        None
-    }
 
     /// Allow the engine to directly handle a keymap event. This is some of the tightest integration
     /// with the engine, directly intercepting any keymap events. By default, this just delegates to the

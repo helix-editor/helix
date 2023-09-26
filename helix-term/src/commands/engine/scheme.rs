@@ -1,9 +1,11 @@
 use helix_core::{
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     graphemes,
+    path::expand_tilde,
     shellwords::Shellwords,
     Range, Selection, Tendril,
 };
+use helix_loader::{current_working_dir, set_current_working_dir};
 use helix_view::{
     document::Mode,
     editor::{Action, ConfigEvent},
@@ -16,7 +18,7 @@ use serde_json::Value;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
     rerrs::ErrorKind,
-    rvals::{as_underlying_type, AsRefMutSteelValFromRef, FromSteelVal, IntoSteelVal},
+    rvals::{as_underlying_type, AsRefMutSteelValFromRef, FromSteelVal, IntoSteelVal, SteelString},
     steel_vm::{engine::Engine, register_fn::RegisterFn},
     SteelErr, SteelVal,
 };
@@ -97,6 +99,8 @@ thread_local! {
 
     pub static REVERSE_BUFFER_MAP: SteelVal =
         SteelVal::boxed(SteelVal::empty_hashmap());
+
+    pub static GLOBAL_KEYBINDING_MAP: SteelVal = get_keymap().into_steelval().unwrap();
 }
 
 fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
@@ -117,6 +121,11 @@ fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
     module.register_value(
         "*reverse-buffer-map*",
         REVERSE_BUFFER_MAP.with(|x| x.clone()),
+    );
+
+    module.register_value(
+        "*global-keybinding-map*",
+        GLOBAL_KEYBINDING_MAP.with(|x| x.clone()),
     );
 
     engine.register_module(module);
@@ -196,10 +205,6 @@ impl super::PluginSystem for SteelScriptingEngine {
 
     fn run_initialization_script(&self, cx: &mut Context) {
         run_initialization_script(cx);
-    }
-
-    fn get_keybindings(&self) -> Option<HashMap<Mode, KeyTrie>> {
-        crate::commands::engine::scheme::SharedKeyBindingsEventQueue::get()
     }
 
     fn handle_keymap_event(
@@ -423,7 +428,8 @@ impl SteelScriptingEngine {
             }
         }
 
-        None
+        // Refer to the global keybinding map for the rest
+        Some(GLOBAL_KEYBINDING_MAP.with(|x| x.clone()))
     }
 }
 
@@ -654,8 +660,8 @@ fn run_initialization_script(cx: &mut Context) {
     });
 }
 
-pub static KEYBINDING_QUEUE: Lazy<SharedKeyBindingsEventQueue> =
-    Lazy::new(|| SharedKeyBindingsEventQueue::new());
+// pub static KEYBINDING_QUEUE: Lazy<SharedKeyBindingsEventQueue> =
+//     Lazy::new(|| SharedKeyBindingsEventQueue::new());
 
 pub static CALLBACK_QUEUE: Lazy<CallbackQueue> = Lazy::new(|| CallbackQueue::new());
 
@@ -725,44 +731,44 @@ impl CallbackQueue {
 /// In order to send events from the engine back to the configuration, we can created a shared
 /// queue that the engine and the config push and pull from. Alternatively, we could use a channel
 /// directly, however this was easy enough to set up.
-pub struct SharedKeyBindingsEventQueue {
-    raw_bindings: Arc<Mutex<Vec<String>>>,
-}
+// pub struct SharedKeyBindingsEventQueue {
+//     raw_bindings: Arc<Mutex<Vec<String>>>,
+// }
 
-impl SharedKeyBindingsEventQueue {
-    pub fn new() -> Self {
-        Self {
-            raw_bindings: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
-        }
-    }
+// impl SharedKeyBindingsEventQueue {
+//     pub fn new() -> Self {
+//         Self {
+//             raw_bindings: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
+//         }
+//     }
 
-    pub fn merge(other_as_json: String) {
-        KEYBINDING_QUEUE
-            .raw_bindings
-            .lock()
-            .unwrap()
-            .push(other_as_json);
-    }
+//     pub fn merge(other_as_json: String) {
+//         KEYBINDING_QUEUE
+//             .raw_bindings
+//             .lock()
+//             .unwrap()
+//             .push(other_as_json);
+//     }
 
-    pub fn get() -> Option<HashMap<Mode, KeyTrie>> {
-        let guard = KEYBINDING_QUEUE.raw_bindings.lock().unwrap();
+//     pub fn get() -> Option<HashMap<Mode, KeyTrie>> {
+//         let guard = KEYBINDING_QUEUE.raw_bindings.lock().unwrap();
 
-        if let Some(first) = guard.get(0).clone() {
-            let mut initial = serde_json::from_str(first).unwrap();
+//         if let Some(first) = guard.get(0).clone() {
+//             let mut initial = serde_json::from_str(first).unwrap();
 
-            // while let Some(remaining_event) = guard.pop_front() {
-            for remaining_event in guard.iter() {
-                let bindings = serde_json::from_str(remaining_event).unwrap();
+//             // while let Some(remaining_event) = guard.pop_front() {
+//             for remaining_event in guard.iter() {
+//                 let bindings = serde_json::from_str(remaining_event).unwrap();
 
-                merge_keys(&mut initial, bindings);
-            }
+//                 merge_keys(&mut initial, bindings);
+//             }
 
-            return Some(initial);
-        }
+//             return Some(initial);
+//         }
 
-        None
-    }
-}
+//         None
+//     }
+// }
 
 impl Custom for PromptEvent {}
 
@@ -1122,7 +1128,7 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     );
 
     let mut module = BuiltInModule::new("helix/core/keybindings".to_string());
-    module.register_fn("set-keybindings!", SharedKeyBindingsEventQueue::merge);
+    // module.register_fn("set-keybindings!", SharedKeyBindingsEventQueue::merge);
 
     RegisterFn::<
         _,
@@ -1278,6 +1284,11 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     module.register_fn("run-in-engine!", run_in_engine);
     module.register_fn("get-helix-scm-path", get_helix_scm_path);
     module.register_fn("get-init-scm-path", get_init_scm_path);
+
+    module.register_fn("get-helix-cwd", get_helix_cwd);
+
+    module.register_fn("search-in-directory", search_in_directory);
+
     module.register_fn("block-on-shell-command", run_shell_command_text);
 
     module.register_fn("cx->current-file", current_path);
@@ -1721,6 +1732,13 @@ pub fn cx_pos_within_text(cx: &mut Context) -> usize {
     pos
 }
 
+pub fn get_helix_cwd(cx: &mut Context) -> Option<String> {
+    helix_loader::current_working_dir()
+        .as_os_str()
+        .to_str()
+        .map(|x| x.into())
+}
+
 // Special newline...
 pub fn custom_insert_newline(cx: &mut Context, indent: String) {
     let (view, doc) = current_ref!(cx.editor);
@@ -1818,4 +1836,9 @@ pub fn custom_insert_newline(cx: &mut Context, indent: String) {
 
     let (view, doc) = current!(cx.editor);
     doc.apply(&transaction, view.id);
+}
+
+fn search_in_directory(cx: &mut Context, directory: String) {
+    let search_path = expand_tilde(&PathBuf::from(directory));
+    crate::commands::search_in_directory(cx, search_path);
 }

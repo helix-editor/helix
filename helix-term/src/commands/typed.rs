@@ -3111,13 +3111,15 @@ pub(super) fn command_mode(cx: &mut Context) {
                 //     .collect()
                 fuzzy_match(
                     input,
-                    TYPABLE_COMMAND_LIST.iter().map(|command| Cow::from(command.name)).chain(crate::commands::engine::ScriptingEngine::available_commands()),
+                    TYPABLE_COMMAND_LIST
+                        .iter()
+                        .map(|command| Cow::from(command.name))
+                        .chain(crate::commands::engine::ScriptingEngine::available_commands()),
                     false,
                 )
                 .into_iter()
                 .map(|(name, _)| (0.., name.into()))
                 .collect()
-
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.
