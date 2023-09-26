@@ -765,19 +765,22 @@ impl Registry {
                         return (name.to_owned(), Ok(client.clone()));
                     }
                 }
-                let client = match self.start_client(
+                match self.start_client(
                     name.clone(),
                     language_config,
                     doc_path,
                     root_dirs,
                     enable_snippets,
                 ) {
-                    Ok(client) => client,
-                    Err(err) => return (name.to_owned(), Err(err)),
-                };
-                let clients = self.inner.entry(name.clone()).or_default();
-                clients.push(client.clone());
-                (name.clone(), Ok(client))
+                    Ok(client) => {
+                        self.inner
+                            .entry(name.to_owned())
+                            .or_default()
+                            .push(client.clone());
+                        (name.clone(), Ok(client))
+                    }
+                    Err(err) => (name.to_owned(), Err(err)),
+                }
             },
         )
     }
