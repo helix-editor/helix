@@ -35,8 +35,10 @@
  CapsLock key is not pressed and hold the j key until you reach
  the first lesson.
 
-
-
+ PS:
+ Please note that helix does not have autosave enabled by default,
+ nor does helix have any method of recovering unsaved changes at
+ the moment. Please be aware of this and remember to write often.
 
 
 
