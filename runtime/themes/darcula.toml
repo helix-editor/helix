@@ -8,12 +8,13 @@
 "ui.gutter" = { bg = "grey01" }
 "ui.popup" = { fg = "grey05", bg = "grey00" }
 "ui.window" = { bg = "grey01" }
-"ui.selection" = { bg = "grey03" }
+"ui.selection" = { bg = "grey02" }
+"ui.selection.primary" = { bg = "blue" }
 "ui.statusline" = { fg = "grey04", bg = "grey02" }
 "ui.statusline.insert" = { bg = "white", fg = "grey01" }
 "ui.statusline.select" = { bg = "orange", fg = "grey01" }
 "ui.help" = { fg = "grey04", bg = "grey01" }
-"ui.cursor" = { fg = "grey04", modifiers = ["reversed"] }
+"ui.cursor" = { bg = "grey02", modifiers = ["underlined"] }
 "ui.cursor.primary" = { fg = "grey05", modifiers = ["reversed"] }
 "ui.cursor.match" = { fg = "white", modifiers = ["underlined"] }
 "ui.cursorline.primary" = { bg = "grey02" }
@@ -97,3 +98,4 @@ green = "#32cd32"
 grey = "#808080"
 darkgreen = "#629755"
 lightblue = "#6897bb"
+blue = "#104158"
