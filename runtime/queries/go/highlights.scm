@@ -24,7 +24,6 @@
 
 ; Identifiers
 
-((identifier) @constant (match? @constant "^[A-Z][A-Z\\d_]+$"))
 (const_spec
   name: (identifier) @constant)
 
@@ -38,6 +37,7 @@
 (type_spec 
   name: (type_identifier) @constructor)
 (field_identifier) @variable.other.member
+(keyed_element (literal_element (identifier) @variable.other.member))
 (identifier) @variable
 (package_identifier) @namespace
 

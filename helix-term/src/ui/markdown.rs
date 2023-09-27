@@ -14,6 +14,7 @@ use helix_core::{
 };
 use helix_view::{
     graphics::{Margin, Rect, Style},
+    theme::Modifier,
     Theme,
 };
 
@@ -183,7 +184,9 @@ impl Markdown {
         // Transform text in `<code>` blocks into `Event::Code`
         let mut in_code = false;
         let parser = parser.filter_map(|event| match event {
-            Event::Html(tag) if *tag == *"<code>" => {
+            Event::Html(tag)
+                if tag.starts_with("<code") && matches!(tag.chars().nth(5), Some(' ' | '>')) =>
+            {
                 in_code = true;
                 None
             }
@@ -275,17 +278,21 @@ impl Markdown {
                         );
                         lines.extend(tui_text.lines.into_iter());
                     } else {
-                        let style = if let Some(Tag::Heading(level, ..)) = tags.last() {
-                            match level {
+                        let style = match tags.last() {
+                            Some(Tag::Heading(level, ..)) => match level {
                                 HeadingLevel::H1 => heading_styles[0],
                                 HeadingLevel::H2 => heading_styles[1],
                                 HeadingLevel::H3 => heading_styles[2],
                                 HeadingLevel::H4 => heading_styles[3],
                                 HeadingLevel::H5 => heading_styles[4],
                                 HeadingLevel::H6 => heading_styles[5],
+                            },
+                            Some(Tag::Emphasis) => text_style.add_modifier(Modifier::ITALIC),
+                            Some(Tag::Strong) => text_style.add_modifier(Modifier::BOLD),
+                            Some(Tag::Strikethrough) => {
+                                text_style.add_modifier(Modifier::CROSSED_OUT)
                             }
-                        } else {
-                            text_style
+                            _ => text_style,
                         };
                         spans.push(Span::styled(text, style));
                     }
