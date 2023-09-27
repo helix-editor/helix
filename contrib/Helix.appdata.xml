@@ -5,6 +5,7 @@
   <project_license>MPL-2.0</project_license>
   <name>Helix</name>
   <summary>A post-modern text editor</summary>
+  <summary xml:lang="ar">مُحَرِّرُ نُصُوصٍ سَابِقٌ لِعَهدِه</summary>
 
   <description>
     <p>
@@ -15,6 +16,17 @@
       <li>Multiple selections</li>
       <li>Built-in language server support</li>
       <li>Smart, incremental syntax highlighting and code editing via tree-sitter</li>
+    </ul>
+  </description>
+  <description xml:lang="ar">
+    <p>
+      مُحَرِّرُ نُصُوصٍ يَعمَلُ فِي الطَّرَفِيَّة، مُستَلهَمٌ مِن Kakoune وَ Neovim وَمَكتُوبٌ بِلُغَةِ رَست البَرمَجِيَّة.
+    </p>
+    <ul>
+      <li>تَحرِيرٌ وَضعِيٌّ شَبيهٌ بِـVim</li>
+      <li>تَحدِيدَاتٌ لِلنَّصِ مُتَعَدِّدَة</li>
+      <li>دَعْمٌ مُدمَجٌ لِخَوادِمِ اللُّغَات</li>
+      <li>تَحرِيرُ التَّعلِيمَاتِ البَّرمَجِيَّةِ مَعَ تَمييزٍ لِلتَّركِيبِ النَّحُويِّ بِواسِطَةِ tree-sitter</li>
     </ul>
   </description>
 

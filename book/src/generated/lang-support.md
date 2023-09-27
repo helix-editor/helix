@@ -44,6 +44,7 @@
 | forth | ✓ |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ | `fortls` |
 | fsharp | ✓ |  |  | `fsautocomplete` |
+| gas | ✓ | ✓ |  |  |
 | gdscript | ✓ | ✓ | ✓ |  |
 | gemini | ✓ |  |  |  |
 | git-attributes | ✓ |  |  |  |
@@ -121,7 +122,7 @@
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ |  | ✓ | `bufls`, `pb` |
 | prql | ✓ |  |  |  |
-| purescript | ✓ |  |  | `purescript-language-server` |
+| purescript | ✓ | ✓ |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
 | r | ✓ |  |  | `R` |
