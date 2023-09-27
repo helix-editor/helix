@@ -424,7 +424,6 @@ impl Default for StatusLineConfig {
 
         Self {
             left: vec![
-                E::Spacer,
                 E::Mode,
                 E::Spinner,
                 E::FileName,
@@ -457,9 +456,9 @@ pub struct ModeConfig {
 impl Default for ModeConfig {
     fn default() -> Self {
         Self {
-            normal: String::from("NOR"),
-            insert: String::from("INS"),
-            select: String::from("SEL"),
+            normal: String::from(" NOR "),
+            insert: String::from(" INS "),
+            select: String::from(" SEL "),
         }
     }
 }
@@ -845,7 +844,7 @@ impl Default for Config {
             whitespace: WhitespaceConfig::default(),
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
-            color_modes: false,
+            color_modes: true,
             soft_wrap: SoftWrap {
                 enable: Some(false),
                 ..SoftWrap::default()
