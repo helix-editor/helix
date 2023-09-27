@@ -103,6 +103,10 @@ thread_local! {
     pub static GLOBAL_KEYBINDING_MAP: SteelVal = get_keymap().into_steelval().unwrap();
 }
 
+fn load_theme_api(engine: &mut Engine) {
+    todo!()
+}
+
 fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
     let mut module = BuiltInModule::new("helix/core/keymaps");
 
