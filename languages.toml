@@ -2445,7 +2445,6 @@ file-types = [
   "kube",
   "network",
   ".editorconfig",
-  "conf",
   "properties",
   "cfg",
   "directory"
