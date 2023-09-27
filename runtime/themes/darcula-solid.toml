@@ -4,7 +4,7 @@ inherits = "darcula"
 
 "ui.background.separator" = { bg = "grey01" }
 "ui.menu.scroll" = { fg = "grey02", bg = "grey00" }
-"ui.popup" = { fg = "grey03", bg = "grey02" }
+"ui.popup" = { fg = "grey03", bg = "grey00" }
 "ui.window" = { bg = "grey00" }
 "ui.cursorline.secondary" = { bg = "grey03" }
 
