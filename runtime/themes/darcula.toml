@@ -62,7 +62,7 @@
 "markup.link.url" = { fg = "lightblue", modifiers = ["underlined"] }
 "markup.link.text" = "white"
 "markup.quote" = "darkgreen"
-"markup.raw" = "white"
+"markup.raw" = "purple"
 
 "diff.plus" = "green"
 "diff.delta" = "grey"
