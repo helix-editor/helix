@@ -36,7 +36,7 @@ package.helix-tui.opt-level = 2
 package.helix-term.opt-level = 2
 
 [workspace.dependencies]
-tree-sitter = { version = "0.20", git = "https://github.com/tree-sitter/tree-sitter", rev = "ab09ae20d640711174b8da8a654f6b3dec93da1a" }
+tree-sitter = { version = "0.20", git = "https://github.com/helix-editor/tree-sitter", rev = "660481dbf71413eba5a928b0b0ab8da50c1109e0" }
 nucleo = "0.2.0"
 
 [workspace.package]
