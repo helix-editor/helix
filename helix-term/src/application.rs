@@ -169,9 +169,8 @@ impl Application {
                 let picker = ui::file_picker(".".into(), &config.load().editor);
                 compositor.push(Box::new(overlaid(picker)));
             } else {
-                match args.working_path {
-                    Some(path) => helix_loader::set_current_working_dir(path)?,
-                    None => log::warn!("invalid working path given"),
+                if let Some(path) = args.working_directory {
+                    helix_loader::set_current_working_dir(path)?
                 }
                 let nr_of_files = args.files.len();
                 for (i, (file, pos)) in args.files.into_iter().enumerate() {
