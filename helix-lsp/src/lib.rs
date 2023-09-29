@@ -749,36 +749,40 @@ impl Registry {
         }
     }
 
-    pub fn get(
-        &mut self,
-        language_config: &LanguageConfiguration,
-        doc_path: Option<&std::path::PathBuf>,
-        root_dirs: &[PathBuf],
+    pub fn get<'a>(
+        &'a mut self,
+        language_config: &'a LanguageConfiguration,
+        doc_path: Option<&'a std::path::PathBuf>,
+        root_dirs: &'a [PathBuf],
         enable_snippets: bool,
-    ) -> Result<HashMap<LanguageServerName, Arc<Client>>> {
-        language_config
-            .language_servers
-            .iter()
-            .map(|LanguageServerFeatures { name, .. }| {
+    ) -> impl Iterator<Item = (LanguageServerName, Result<Arc<Client>>)> + 'a {
+        language_config.language_servers.iter().map(
+            move |LanguageServerFeatures { name, .. }| {
                 if let Some(clients) = self.inner.get(name) {
                     if let Some((_, client)) = clients.iter().enumerate().find(|(i, client)| {
                         client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
                     }) {
-                        return Ok((name.to_owned(), client.clone()));
+                        return (name.to_owned(), Ok(client.clone()));
                     }
                 }
-                let client = self.start_client(
+                match self.start_client(
                     name.clone(),
                     language_config,
                     doc_path,
                     root_dirs,
                     enable_snippets,
-                )?;
-                let clients = self.inner.entry(name.clone()).or_default();
-                clients.push(client.clone());
-                Ok((name.clone(), client))
-            })
-            .collect()
+                ) {
+                    Ok(client) => {
+                        self.inner
+                            .entry(name.to_owned())
+                            .or_default()
+                            .push(client.clone());
+                        (name.clone(), Ok(client))
+                    }
+                    Err(err) => (name.to_owned(), Err(err)),
+                }
+            },
+        )
     }
 
     pub fn iter_clients(&self) -> impl Iterator<Item = &Arc<Client>> {

@@ -317,7 +317,7 @@ indent = { tab-width = 2, unit = "  " }
 name = "json"
 scope = "source.json"
 injection-regex = "json"
-file-types = ["json", "jsonc", "arb", "ipynb", "geojson", "gltf", "flake.lock", ".babelrc"]
+file-types = ["json", "jsonc", "arb", "ipynb", "geojson", "gltf", "webmanifest", "flake.lock", ".babelrc"]
 roots = []
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
@@ -546,7 +546,7 @@ name = "javascript"
 scope = "source.js"
 injection-regex = "(js|javascript)"
 language-id = "javascript"
-file-types = ["js", "mjs", "cjs"]
+file-types = ["js", "mjs", "cjs", "rules"]
 shebangs = ["node"]
 roots = []
 comment-token = "//"
@@ -1087,6 +1087,7 @@ source = { git = "https://github.com/uyha/tree-sitter-cmake", rev = "6e51463ef30
 name = "make"
 scope = "source.make"
 file-types = ["Makefile", "makefile", "make", "mk"]
+shebangs = ["make", "gmake"]
 injection-regex = "(make|makefile|Makefile|mk)"
 roots = []
 comment-token = "#"
@@ -2205,7 +2206,7 @@ source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d1
 name = "xml"
 scope = "source.xml"
 injection-regex = "xml"
-file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg", "xsd", "gml", "xaml", "gir", "rss", "atom", "opml"]
+file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg", "xsd", "gml", "xaml", "gir", "rss", "atom", "opml", "policy"]
 indent = { tab-width = 2, unit = "  " }
 roots = []
 
