@@ -50,7 +50,7 @@
 "keyword.operator" = "nord9"
 "keyword.return" = "nord9"
 "keyword.storage.modifier" = "nord9"
-"keyword.storage.type" = "nord7"
+"keyword.storage.type" = "nord9"
 
 # Punctuation
 "punctuation" = "nord6"
@@ -65,22 +65,22 @@
 "string.special" = "nord13"
 
 # Types
-"type" = "nord4"
+"type" = "nord7"
 "type.builtin" = "nord7"
 
 # Variables
 "variable" = "nord4"
-"variable.builint" = "nord9"
+"variable.builtin" = "nord9"
 "variable.other.member" = "nord4"
 "variable.parameter" = "nord8"
-"attribute" = "nord4"
+"attribute" = "nord9"
 
 # Misc.
 "label" = "nord7"
 "namespace" = "nord4"
 "operator" = "nord9"
-"special" = "nord4"
-"tag" = "nord4"
+"special" = "nord9"
+"tag" = "nord7"
 "comment" = { fg = "nord3_bright", modifiers = ["italic"] }
 
 ## EDITOR UI COLORS
@@ -165,7 +165,7 @@ nord8 = "#88C0D0"
 # A more darkened and less saturated color reminiscent of arctic waters
 nord9 = "#81A1C1" 
 # A dark and intensive color reminiscent of the deep arctic ocean
- nord10 = "#5E81AC" 
+nord10 = "#5E81AC" 
 
 # Aurora consists of five colorful components reminiscent of the "Aurora borealis", sometimes referred to as polar lights or northern lights.
 #
