@@ -445,36 +445,36 @@ pub mod util {
             // the tabstop closest to the range simply replaces `head` while anchor remains in place
             // the remaining tabstops receive their own single-width cursor
             if range.head < range.anchor {
-                let first_tabstop = tabstop_anchor + tabstops[0].1;
+                let last_idx = tabstops.len() - 1;
+                let last_tabstop = tabstop_anchor + tabstops[last_idx].0;
 
                 // if selection is forward but was moved to the right it is
                 // contained entirely in the replacement text, just do a point
                 // selection (fallback below)
-                if range.anchor >= first_tabstop {
-                    let range = Range::new(range.anchor, first_tabstop);
+                if range.anchor > last_tabstop {
+                    let range = Range::new(range.anchor, last_tabstop);
                     mapped_selection.push(range);
-                    let rem_tabstops = tabstops[1..]
+                    let rem_tabstops = tabstops[..last_idx]
                         .iter()
-                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.1));
+                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
                     mapped_selection.extend(rem_tabstops);
                     continue;
                 }
             } else {
-                let last_idx = tabstops.len() - 1;
-                let last_tabstop = tabstop_anchor + tabstops[last_idx].1;
+                let first_tabstop = tabstop_anchor + tabstops[0].0;
 
                 // if selection is forward but was moved to the right it is
                 // contained entirely in the replacement text, just do a point
                 // selection (fallback below)
-                if range.anchor <= last_tabstop {
+                if range.anchor < first_tabstop {
                     // we can't properly compute the the next grapheme
                     // here because the transaction hasn't been applied yet
                     // that is not a problem because the range gets grapheme aligned anyway
                     // tough so just adding one will always cause head to be grapheme
                     // aligned correctly when applied to the document
-                    let range = Range::new(range.anchor, last_tabstop + 1);
+                    let range = Range::new(range.anchor, first_tabstop + 1);
                     mapped_selection.push(range);
-                    let rem_tabstops = tabstops[..last_idx]
+                    let rem_tabstops = tabstops[1..]
                         .iter()
                         .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
                     mapped_selection.extend(rem_tabstops);
