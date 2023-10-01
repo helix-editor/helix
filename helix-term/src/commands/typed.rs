@@ -2936,14 +2936,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: CommandSignature::none(),
     },
     TypableCommand {
-        name: "sort-alphanumeric",
-        aliases: &["sortn"],
+        name: "sortn",
+        aliases: &[],
         doc: "Sort ranges alphanumerically in selection.",
         fun: sort_alphanumeric,
         signature: CommandSignature::none(),
     },
     TypableCommand {
-        name: "sort-alphanumeric-reverse",
+        name: "rsortn",
         aliases: &["rsortn"],
         doc: "Sort ranges alphanumerically in selection in reverse order.",
         fun: sort_alphanumeric_reverse,
