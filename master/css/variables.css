@@ -38,6 +38,8 @@
     --quote-bg: hsl(226, 15%, 17%);
     --quote-border: hsl(226, 15%, 22%);
 
+    --warning-border: #ff8e00;
+
     --table-border-color: hsl(210, 25%, 13%);
     --table-header-bg: hsl(210, 25%, 28%);
     --table-alternate-bg: hsl(210, 25%, 11%);
@@ -79,6 +81,8 @@
 
     --quote-bg: hsl(234, 21%, 18%);
     --quote-border: hsl(234, 21%, 23%);
+
+    --warning-border: #ff8e00;
 
     --table-border-color: hsl(200, 7%, 13%);
     --table-header-bg: hsl(200, 7%, 28%);
@@ -122,6 +126,8 @@
     --quote-bg: hsl(197, 37%, 96%);
     --quote-border: hsl(197, 37%, 91%);
 
+    --warning-border: #ff8e00;
+
     --table-border-color: hsl(0, 0%, 95%);
     --table-header-bg: hsl(0, 0%, 80%);
     --table-alternate-bg: hsl(0, 0%, 97%);
@@ -163,6 +169,8 @@
 
     --quote-bg: hsl(226, 15%, 17%);
     --quote-border: hsl(226, 15%, 22%);
+
+    --warning-border: #ff8e00;
 
     --table-border-color: hsl(226, 23%, 16%);
     --table-header-bg: hsl(226, 23%, 31%);
@@ -206,6 +214,8 @@
     --quote-bg: hsl(60, 5%, 75%);
     --quote-border: hsl(60, 5%, 70%);
 
+    --warning-border: #ff8e00;
+
     --table-border-color: hsl(60, 9%, 82%);
     --table-header-bg: #b3a497;
     --table-alternate-bg: hsl(60, 9%, 84%);
@@ -248,6 +258,8 @@
 
         --quote-bg: hsl(234, 21%, 18%);
         --quote-border: hsl(234, 21%, 23%);
+
+        --warning-border: #ff8e00;
 
         --table-border-color: hsl(200, 7%, 13%);
         --table-header-bg: hsl(200, 7%, 28%);

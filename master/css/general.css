@@ -25,6 +25,7 @@ body {
 code {
     font-family: var(--mono-font) !important;
     font-size: var(--code-font-size);
+    direction: ltr !important;
 }
 
 /* make long words/inline code not x overflow */
@@ -48,13 +49,13 @@ h1 code, h2 code, h3 code, h4 code, h5 code, h6 code {
 .hide-boring .boring { display: none; }
 .hidden { display: none !important; }
 
-h2, h3 { margin-top: 2.5em; }
-h4, h5 { margin-top: 2em; }
+h2, h3 { margin-block-start: 2.5em; }
+h4, h5 { margin-block-start: 2em; }
 
 .header + .header h3,
 .header + .header h4,
 .header + .header h5 {
-    margin-top: 1em;
+    margin-block-start: 1em;
 }
 
 h1:target::before,
@@ -65,7 +66,7 @@ h5:target::before,
 h6:target::before {
     display: inline-block;
     content: "»";
-    margin-left: -30px;
+    margin-inline-start: -30px;
     width: 30px;
 }
 
@@ -74,19 +75,25 @@ h6:target::before {
    https://bugs.webkit.org/show_bug.cgi?id=218076
 */
 :target {
+    /* Safari does not support logical properties */
     scroll-margin-top: calc(var(--menu-bar-height) + 0.5em);
 }
 
 .page {
     outline: 0;
     padding: 0 var(--page-padding);
-    margin-top: calc(0px - var(--menu-bar-height)); /* Compensate for the #menu-bar-hover-placeholder */
+    margin-block-start: calc(0px - var(--menu-bar-height)); /* Compensate for the #menu-bar-hover-placeholder */
 }
 .page-wrapper {
     box-sizing: border-box;
+    background-color: var(--bg);
 }
+.no-js .page-wrapper,
 .js:not(.sidebar-resizing) .page-wrapper {
     transition: margin-left 0.3s ease, transform 0.3s ease; /* Animation: slide away */
+}
+[dir=rtl] .js:not(.sidebar-resizing) .page-wrapper {
+    transition: margin-right 0.3s ease, transform 0.3s ease; /* Animation: slide away */
 }
 
 .content {
@@ -94,8 +101,8 @@ h6:target::before {
     padding: 0 5px 50px 5px;
 }
 .content main {
-    margin-left: auto;
-    margin-right: auto;
+    margin-inline-start: auto;
+    margin-inline-end: auto;
     max-width: var(--content-max-width);
 }
 .content p { line-height: 1.45em; }
@@ -145,8 +152,31 @@ blockquote {
     padding: 0 20px;
     color: var(--fg);
     background-color: var(--quote-bg);
-    border-top: .1em solid var(--quote-border);
-    border-bottom: .1em solid var(--quote-border);
+    border-block-start: .1em solid var(--quote-border);
+    border-block-end: .1em solid var(--quote-border);
+}
+
+.warning {
+    margin: 20px;
+    padding: 0 20px;
+    border-inline-start: 2px solid var(--warning-border);
+}
+
+.warning:before {
+    position: absolute;
+    width: 3rem;
+    height: 3rem;
+    margin-inline-start: calc(-1.5rem - 21px);
+    content: "ⓘ";
+    text-align: center;
+    background-color: var(--bg);
+    color: var(--warning-border);
+    font-weight: bold;
+    font-size: 2rem;
+}
+
+blockquote .warning:before {
+    background-color: var(--quote-bg);
 }
 
 kbd {
@@ -164,7 +194,7 @@ kbd {
 
 :not(.footnote-definition) + .footnote-definition,
 .footnote-definition + :not(.footnote-definition) {
-    margin-top: 2em;
+    margin-block-start: 2em;
 }
 .footnote-definition {
     font-size: 0.9em;
