@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt::Write;
 use std::ops::Deref;
 
@@ -2016,7 +2017,7 @@ fn sort(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         return Ok(());
     }
 
-    sort_impl(cx, args, false)
+    sort_impl(cx, args, |a, b| a.cmp(b))
 }
 
 fn sort_reverse(
@@ -2028,14 +2029,41 @@ fn sort_reverse(
         return Ok(());
     }
 
-    sort_impl(cx, args, true)
+    sort_impl(cx, args, |a, b| b.cmp(a))
 }
 
-fn sort_impl(
+fn sort_alphanumeric(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
-    reverse: bool,
+    args: &[Cow<str>],
+    event: PromptEvent,
 ) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    sort_impl(cx, args, |a, b| {
+        alphanumeric_sort::compare_str(a.as_str(), b.as_str())
+    })
+}
+
+fn sort_alphanumeric_reverse(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    sort_impl(cx, args, |a, b| {
+        alphanumeric_sort::compare_str(b.as_str(), a.as_str())
+    })
+}
+
+fn sort_impl<F>(cx: &mut compositor::Context, _args: &[Cow<str>], cmp_fn: F) -> anyhow::Result<()>
+where
+    F: FnMut(&Tendril, &Tendril) -> Ordering,
+{
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -2047,10 +2075,7 @@ fn sort_impl(
         .map(|fragment| fragment.chunks().collect())
         .collect();
 
-    fragments.sort_by(match reverse {
-        true => |a: &Tendril, b: &Tendril| b.cmp(a),
-        false => |a: &Tendril, b: &Tendril| a.cmp(b),
-    });
+    fragments.sort_by(cmp_fn);
 
     let transaction = Transaction::change(
         doc.text(),
@@ -2908,6 +2933,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Sort ranges in selection in reverse order.",
         fun: sort_reverse,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "sort-alphanumeric",
+        aliases: &["sortn"],
+        doc: "Sort ranges alphanumerically in selection.",
+        fun: sort_alphanumeric,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "sort-alphanumeric-reverse",
+        aliases: &["rsortn"],
+        doc: "Sort ranges alphanumerically in selection in reverse order.",
+        fun: sort_alphanumeric_reverse,
         signature: CommandSignature::none(),
     },
     TypableCommand {
