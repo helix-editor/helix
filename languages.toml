@@ -317,7 +317,27 @@ indent = { tab-width = 2, unit = "  " }
 name = "json"
 scope = "source.json"
 injection-regex = "json"
-file-types = ["json", "jsonc", "arb", "ipynb", "geojson", "gltf", "webmanifest", "flake.lock", ".babelrc"]
+file-types = [
+  "json",
+  "jsonc",
+  "arb",
+  "ipynb",
+  "geojson",
+  "gltf",
+  "webmanifest",
+  "flake.lock",
+  ".babelrc",
+  ".bowerrc",
+  ".jscrc",
+  "js.map",
+  "ts.map",
+  "css.map",
+  ".jslintrc",
+  "jsonld",
+  ".vuerc",
+  "composer.lock",
+  ".watchmanconfig"
+]
 roots = []
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
@@ -368,7 +388,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-c", rev = "7175a6dd
 name = "cpp"
 scope = "source.cpp"
 injection-regex = "cpp"
-file-types = ["cc", "hh", "c++", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino", "C", "H", "cu", "cuh", "cppm"]
+file-types = ["cc", "hh", "c++", "cpp", "hpp", "h", "ipp", "tpp", "cxx", "hxx", "ixx", "txx", "ino", "C", "H", "cu", "cuh", "cppm", "h++", "ii", "inl", { suffix = ".hpp.in" }, { suffix = ".h.in" }]
 roots = []
 comment-token = "//"
 language-servers = [ "clangd" ]
@@ -415,7 +435,7 @@ language-servers = [ "crystalline" ]
 name = "c-sharp"
 scope = "source.csharp"
 injection-regex = "c-?sharp"
-file-types = ["cs"]
+file-types = ["cs", "csx", "cake"]
 roots = ["sln", "csproj"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "\t" }
@@ -546,7 +566,7 @@ name = "javascript"
 scope = "source.js"
 injection-regex = "(js|javascript)"
 language-id = "javascript"
-file-types = ["js", "mjs", "cjs", "rules"]
+file-types = ["js", "mjs", "cjs", "rules", "es6", "pac", "jakefile"]
 shebangs = ["node"]
 roots = []
 comment-token = "//"
@@ -642,7 +662,7 @@ source = { git = "https://github.com/serenadeai/tree-sitter-scss", rev = "c478c6
 name = "html"
 scope = "text.html.basic"
 injection-regex = "html"
-file-types = ["html"]
+file-types = ["html", "htm", "shtml", "xhtml", "xht", "jsp", "asp", "aspx", "jshtm", "volt", "rhtml"]
 roots = []
 language-servers = [ "vscode-html-language-server" ]
 auto-format = true
@@ -656,7 +676,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "29f53
 name = "python"
 scope = "source.python"
 injection-regex = "python"
-file-types = ["py","pyi","py3","pyw","ptl",".pythonstartup",".pythonrc","SConstruct"]
+file-types = ["py","pyi","py3","pyw","ptl",".pythonstartup",".pythonrc","SConstruct", "rpy", "cpy", "ipy", "pyt", "SConscript"]
 shebangs = ["python"]
 roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
@@ -708,7 +728,42 @@ source = { git = "https://github.com/nix-community/tree-sitter-nix", rev = "1b69
 name = "ruby"
 scope = "source.ruby"
 injection-regex = "ruby"
-file-types = ["rb", "rake", "rakefile", "irb", "gemfile", "gemspec", "Rakefile", "Gemfile", "rabl", "jbuilder", "jb", "Podfile", "podspec", "Vagrantfile", "Brewfile"]
+file-types = [
+  "rb",
+  "rake",
+  "rakefile",
+  "irb",
+  "gemfile",
+  "gemspec",
+  "Rakefile",
+  "Gemfile",
+  "rabl",
+  "jbuilder",
+  "jb",
+  "Podfile",
+  "podspec",
+  "Vagrantfile",
+  "Brewfile",
+  "rjs",
+  "rbi",
+  "Guardfile",
+  "Capfile",
+  "Cheffile",
+  "Hobofile",
+  "Appraisals",
+  "Rantfile",
+  "Berksfile",
+  "Berksfile.lock",
+  "Thorfile",
+  "Puppetfile",
+  "Fastfile",
+  "Appfile",
+  "Deliverfile",
+  "Matchfile",
+  "Scanfile",
+  "Snapfile",
+  "Gymfile"
+]
 shebangs = ["ruby"]
 roots = []
 comment-token = "#"
@@ -723,7 +778,47 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-ruby", rev = "206c7
 name = "bash"
 scope = "source.bash"
 injection-regex = "(shell|bash|zsh|sh)"
-file-types = ["sh", "bash", "zsh", ".bash_login", ".bash_logout", ".bash_profile", ".bashrc", ".profile", ".zshenv", "zshenv", ".zlogin", "zlogin", ".zlogout", "zlogout", ".zprofile", "zprofile", ".zshrc", "zshrc", ".zimrc", "APKBUILD", "PKGBUILD", "eclass", "ebuild", "bazelrc", ".bash_aliases", "Renviron", ".Renviron"]
+file-types = [
+  "sh",
+  "bash",
+  "zsh",
+  ".bash_login",
+  ".bash_logout",
+  ".bash_profile",
+  ".bashrc",
+  ".profile",
+  ".zshenv",
+  "zshenv",
+  ".zlogin",
+  "zlogin",
+  ".zlogout",
+  "zlogout",
+  ".zprofile",
+  "zprofile",
+  ".zshrc",
+  "zshrc",
+  ".zimrc",
+  "APKBUILD",
+  "PKGBUILD",
+  "eclass",
+  "ebuild",
+  "bazelrc",
+  ".bash_aliases",
+  "Renviron",
+  ".Renviron",
+  ".xprofile",
+  ".xsession",
+  ".xsessionrc",
+  "zsh-theme",
+  "ksh",
+  "cshrc",
+  "tcshrc",
+  ".yashrc",
+  ".yash_profile",
+  ".hushlogin",
+  "bashrc_Apple_Terminal",
+  "zshrc_Apple_Terminal"
+]
 shebangs = ["sh", "bash", "dash", "zsh"]
 roots = []
 comment-token = "#"
@@ -738,7 +833,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-bash", rev = "275ef
 name = "php"
 scope = "source.php"
 injection-regex = "php"
-file-types = ["php", "inc"]
+file-types = ["php", "inc", "php4", "php5", "phtml", "ctp"]
 shebangs = ["php"]
 roots = ["composer.json", "index.php"]
 language-servers = [ "intelephense" ]
@@ -764,7 +859,7 @@ source = { git = "https://github.com/gbprod/tree-sitter-twig", rev = "807b293fec
 name = "latex"
 scope = "source.tex"
 injection-regex = "tex"
-file-types = ["tex", "sty", "cls", "Rd"]
+file-types = ["tex", "sty", "cls", "Rd", "bbx", "cbx"]
 roots = []
 comment-token = "%"
 language-servers = [ "texlab" ]
@@ -1086,7 +1181,7 @@ source = { git = "https://github.com/uyha/tree-sitter-cmake", rev = "6e51463ef30
 [[language]]
 name = "make"
 scope = "source.make"
-file-types = ["Makefile", "makefile", "make", "mk"]
+file-types = ["Makefile", "makefile", "make", "mk", "mak", "GNUmakefile", "OCamlMakefile"]
 shebangs = ["make", "gmake"]
 injection-regex = "(make|makefile|Makefile|mk)"
 roots = []
@@ -1113,7 +1208,7 @@ source = { git = "https://github.com/theHamsta/tree-sitter-glsl", rev = "88408ff
 [[language]]
 name = "perl"
 scope = "source.perl"
-file-types = ["pl", "pm", "t"]
+file-types = ["pl", "pm", "t", "psgi", "raku", "rakumod", "rakutest", "rakudoc", "nqp", "p6", "pl6", "pm6"]
 shebangs = ["perl"]
 roots = []
 comment-token = "#"
@@ -1240,7 +1335,7 @@ source = { git = "https://github.com/Flakebi/tree-sitter-tablegen", rev = "568dd
 name = "markdown"
 scope = "source.md"
 injection-regex = "md|markdown"
-file-types = ["md", "markdown", "PULLREQ_EDITMSG"]
+file-types = ["md", "markdown", "PULLREQ_EDITMSG", "mkd", "mdwn", "mdown", "markdn", "mdtxt", "mdtext", "workbook"]
 roots = [".marksman.toml"]
 language-servers = [ "marksman" ]
 indent = { tab-width = 2, unit = "  " }
@@ -1320,7 +1415,7 @@ source = { git = "https://github.com/the-mikedavis/tree-sitter-git-commit", rev 
 name = "diff"
 scope = "source.diff"
 roots = []
-file-types = ["diff", "patch"]
+file-types = ["diff", "patch", "rej"]
 injection-regex = "diff"
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
@@ -1578,7 +1673,7 @@ source = { git = "https://github.com/Hubro/tree-sitter-robot", rev = "322e4cc657
 name = "r"
 scope = "source.r"
 injection-regex = "(r|R)"
-file-types = ["r", "R", ".Rprofile", "Rprofile.site"]
+file-types = ["r", "R", ".Rprofile", "Rprofile.site", ".RHistory"]
 shebangs = ["r", "R"]
 roots = []
 comment-token = "#"
@@ -1663,7 +1758,7 @@ source = { git = "https://github.com/phoenixframework/tree-sitter-heex", rev = "
 [[language]]
 name = "sql"
 scope = "source.sql"
-file-types = ["sql"]
+file-types = ["sql", "dsql"]
 roots = []
 comment-token = "--"
 indent = { tab-width = 4, unit = "    " }
@@ -2206,7 +2301,62 @@ source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d1
 name = "xml"
 scope = "source.xml"
 injection-regex = "xml"
-file-types = ["xml", "mobileconfig", "plist", "xib", "storyboard", "svg", "xsd", "gml", "xaml", "gir", "rss", "atom", "opml", "policy"]
+file-types = [
+  "xml",
+  "mobileconfig",
+  "plist",
+  "xib",
+  "storyboard",
+  "svg",
+  "xsd",
+  "gml",
+  "xaml",
+  "gir",
+  "rss",
+  "atom",
+  "opml",
+  "policy",
+  "ascx",
+  "axml",
+  "axaml",
+  "bpmn",
+  "cpt",
+  "csl",
+  "csproj.user",
+  "dita",
+  "ditamap",
+  "dtml",
+  "fxml",
+  "iml",
+  "isml",
+  "jmx",
+  "launch",
+  "menu",
+  "mxml",
+  "nuspec",
+  "pt",
+  "publishsettings",
+  "pubxml",
+  "pubxml.user",
+  "rbxlx",
+  "rbxmx",
+  "rng",
+  "shproj",
+  "tld",
+  "tmx",
+  "vbproj.user",
+  "vcxproj",
+  "vcxproj.filters",
+  "wsdl",
+  "wxi",
+  "wxs",
+  "xbl",
+  "xlf",
+  "xliff",
+  "xpdl",
+  "xul",
+  "xoml"
+]
 indent = { tab-width = 2, unit = "  " }
 roots = []
 
@@ -2295,7 +2445,10 @@ file-types = [
   "volume",
   "kube",
   "network",
-  ".editorconfig"
+  ".editorconfig",
+  "properties",
+  "cfg",
+  "directory"
 ]
 injection-regex = "ini"
 comment-token = "#"
@@ -2704,7 +2857,7 @@ name = "fsharp"
 scope = "source.fs"
 roots = ["sln", "fsproj"]
 injection-regex = "fsharp"
-file-types = ["fs", "fsx"]
+file-types = ["fs", "fsx", "fsi", "fsscript"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 auto-format = true
