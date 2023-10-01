@@ -1071,6 +1071,7 @@ dependencies = [
  "ropey",
  "serde",
  "serde_json",
+ "sha1_smol",
  "slotmap",
  "smallvec",
  "smartstring",
