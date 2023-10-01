@@ -78,6 +78,7 @@ pub struct KeyMapApi {
     string_to_embedded_keymap: fn(String) -> EmbeddedKeyMap,
     merge_keybindings: fn(&mut EmbeddedKeyMap, EmbeddedKeyMap),
     is_keymap: fn(SteelVal) -> bool,
+    deep_copy_keymap: fn(EmbeddedKeyMap) -> EmbeddedKeyMap,
 }
 
 impl KeyMapApi {
@@ -89,6 +90,7 @@ impl KeyMapApi {
             string_to_embedded_keymap,
             merge_keybindings,
             is_keymap,
+            deep_copy_keymap,
         }
     }
 }
@@ -116,6 +118,8 @@ fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
     module.register_fn("helix-merge-keybindings", api.merge_keybindings);
     module.register_fn("helix-string->keymap", api.string_to_embedded_keymap);
     module.register_fn("keymap?", api.is_keymap);
+
+    module.register_fn("helix-deep-copy-keymap", api.deep_copy_keymap);
 
     // This should be associated with a corresponding scheme module to wrap this up
     module.register_value(
@@ -532,6 +536,11 @@ pub fn get_keymap() -> EmbeddedKeyMap {
     let map = keymap.keys;
 
     EmbeddedKeyMap(map)
+}
+
+// Will deep copy a value by default when using a value type
+pub fn deep_copy_keymap(copied: EmbeddedKeyMap) -> EmbeddedKeyMap {
+    copied
 }
 
 // Base level - no configuration
