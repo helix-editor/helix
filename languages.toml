@@ -71,6 +71,7 @@ solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
 svlangserver = { command = "svlangserver", args = [] }
 swipl = { command = "swipl", args = [ "-g", "use_module(library(lsp_server))", "-g", "lsp_server:main", "-t", "halt", "--", "stdio" ] }
+tailwindcss-ls = { command = "tailwindcss-language-server", args = ["--stdio"] }
 taplo = { command = "taplo", args = ["lsp", "stdio"] }
 terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
