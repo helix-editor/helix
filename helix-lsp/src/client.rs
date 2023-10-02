@@ -971,12 +971,12 @@ impl Client {
     ) -> Option<impl Future<Output = Result<Value>>> {
         let capabilities = self.capabilities.get().unwrap();
 
-        // Return early if the server does not support resolving code action.
-        match capabilities.completion_provider {
-            Some(lsp::CompletionOptions {
+        // Return early if the server does not support resolving code actions.
+        match capabilities.code_action_provider {
+            Some(lsp::CodeActionProviderCapability::Options(lsp::CodeActionOptions {
                 resolve_provider: Some(true),
                 ..
-            }) => (),
+            })) => (),
             _ => return None,
         }
 
