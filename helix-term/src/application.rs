@@ -158,6 +158,9 @@ impl Application {
         let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
         compositor.push(editor_view);
 
+        if let Some(path) = args.working_directory {
+            helix_loader::set_current_working_dir(path)?
+        }
         if args.load_tutor {
             let path = helix_loader::runtime_file(Path::new("tutor"));
             editor.open(&path, Action::VerticalSplit)?;
@@ -253,6 +256,11 @@ impl Application {
     }
 
     async fn render(&mut self) {
+        if self.compositor.full_redraw {
+            self.terminal.clear().expect("Cannot clear the terminal");
+            self.compositor.full_redraw = false;
+        }
+
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,

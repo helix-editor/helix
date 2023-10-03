@@ -1,7 +1,7 @@
 # Adding Injection Queries
 
 Writing language injection queries allows one to highlight a specific node as a different language.
-In addition to the [standard](upstream-docs) language injection options used by tree-sitter, there
+In addition to the [standard][upstream-docs] language injection options used by tree-sitter, there
 are a few Helix specific extensions that allow for more control.
 
 And example of a simple query that would highlight all strings as bash in Nix:

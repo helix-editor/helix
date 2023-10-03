@@ -13,7 +13,7 @@ inherits = "monokai"
 "keyword.storage.modifier" = { fg = "#fd971f", modifiers = ["italic"] }
 "label" = "#e6db74"
 "operator" = "keyword"
-"punctuation.delimeter" = "#8f8f8f"
+"punctuation.delimiter" = "#8f8f8f"
 "type" = "light-blue"
 "variable.builtin" = { fg = "#ae81ff", modifiers = ["bold"] }
 "tag.builtin" = { fg = "#ae81ff", modifiers = ["bold"] }

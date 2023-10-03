@@ -1251,6 +1251,65 @@ fn extend_next_long_word_end(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_long_word_end)
 }
 
+/// Separate branch to find_char designed only for <ret> char.
+//
+// This is necessary because the one document can have different line endings inside. And we
+// cannot predict what character to find when <ret> is pressed. On the current line it can be `lf`
+// but on the next line it can be `crlf`. That's why [`find_char_impl`] cannot be applied here.
+fn find_char_line_ending(
+    cx: &mut Context,
+    count: usize,
+    direction: Direction,
+    inclusive: bool,
+    extend: bool,
+) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let cursor = range.cursor(text);
+        let cursor_line = range.cursor_line(text);
+
+        // Finding the line where we're going to find <ret>. Depends mostly on
+        // `count`, but also takes into account edge cases where we're already at the end
+        // of a line or the beginning of a line
+        let find_on_line = match direction {
+            Direction::Forward => {
+                let on_edge = line_end_char_index(&text, cursor_line) == cursor;
+                let line = cursor_line + count - 1 + (on_edge as usize);
+                if line >= text.len_lines() - 1 {
+                    return range;
+                } else {
+                    line
+                }
+            }
+            Direction::Backward => {
+                let on_edge = text.line_to_char(cursor_line) == cursor && !inclusive;
+                let line = cursor_line as isize - (count as isize - 1 + on_edge as isize);
+                if line <= 0 {
+                    return range;
+                } else {
+                    line as usize
+                }
+            }
+        };
+
+        let pos = match (direction, inclusive) {
+            (Direction::Forward, true) => line_end_char_index(&text, find_on_line),
+            (Direction::Forward, false) => line_end_char_index(&text, find_on_line) - 1,
+            (Direction::Backward, true) => line_end_char_index(&text, find_on_line - 1),
+            (Direction::Backward, false) => text.line_to_char(find_on_line),
+        };
+
+        if extend {
+            range.put_cursor(text, pos, true)
+        } else {
+            Range::point(range.cursor(text)).put_cursor(text, pos, true)
+        }
+    });
+    doc.set_selection(view.id, selection);
+}
+
 fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
@@ -1264,13 +1323,9 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
             KeyEvent {
                 code: KeyCode::Enter,
                 ..
-            } =>
-            // TODO: this isn't quite correct when CRLF is involved.
-            // This hack will work in most cases, since documents don't
-            // usually mix line endings.  But we should fix it eventually
-            // anyway.
-            {
-                doc!(cx.editor).line_ending.as_str().chars().next().unwrap()
+            } => {
+                find_char_line_ending(cx, count, direction, inclusive, extend);
+                return;
             }
 
             KeyEvent {
@@ -4831,17 +4886,19 @@ fn transpose_view(cx: &mut Context) {
     cx.editor.transpose_view()
 }
 
-// split helper, clear it later
-fn split(cx: &mut Context, action: Action) {
-    let (view, doc) = current!(cx.editor);
+/// Open a new split in the given direction specified by the action.
+///
+/// Maintain the current view (both the cursor's position and view in document).
+fn split(editor: &mut Editor, action: Action) {
+    let (view, doc) = current!(editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
     let offset = view.offset;
 
-    cx.editor.switch(id, action);
+    editor.switch(id, action);
 
     // match the selection in the previous view
-    let (view, doc) = current!(cx.editor);
+    let (view, doc) = current!(editor);
     doc.set_selection(view.id, selection);
     // match the view scroll offset (switch doesn't handle this fully
     // since the selection is only matched after the split)
@@ -4849,7 +4906,7 @@ fn split(cx: &mut Context, action: Action) {
 }
 
 fn hsplit(cx: &mut Context) {
-    split(cx, Action::HorizontalSplit);
+    split(cx.editor, Action::HorizontalSplit);
 }
 
 fn hsplit_new(cx: &mut Context) {
@@ -4857,7 +4914,7 @@ fn hsplit_new(cx: &mut Context) {
 }
 
 fn vsplit(cx: &mut Context) {
-    split(cx, Action::VerticalSplit);
+    split(cx.editor, Action::VerticalSplit);
 }
 
 fn vsplit_new(cx: &mut Context) {

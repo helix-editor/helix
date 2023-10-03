@@ -1,5 +1,6 @@
 # Author : Gokul Soumya <gokulps15@gmail.com>
 
+"tag" = { fg = "red" }
 "attribute" = { fg = "yellow" }
 "comment" = { fg = "light-gray", modifiers = ["italic"] }
 "constant" = { fg = "cyan" }
