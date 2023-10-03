@@ -2,6 +2,7 @@ use helix_core::{
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     graphemes,
     path::expand_tilde,
+    regex::Regex,
     shellwords::Shellwords,
     Range, Selection, Tendril,
 };
@@ -1301,6 +1302,8 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     module.register_fn("get-helix-cwd", get_helix_cwd);
 
     module.register_fn("search-in-directory", search_in_directory);
+    module.register_fn("regex-selection", regex_selection);
+    module.register_fn("replace-selection-with", replace_selection);
 
     module.register_fn("block-on-shell-command", run_shell_command_text);
 
@@ -1854,4 +1857,34 @@ pub fn custom_insert_newline(cx: &mut Context, indent: String) {
 fn search_in_directory(cx: &mut Context, directory: String) {
     let search_path = expand_tilde(&PathBuf::from(directory));
     crate::commands::search_in_directory(cx, search_path);
+}
+
+// TODO: Result should create unrecoverable result, and should have a special
+// recoverable result - that way we can handle both, not one in particular
+fn regex_selection(cx: &mut Context, regex: String) {
+    if let Ok(regex) = Regex::new(&regex) {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text().slice(..);
+        if let Some(selection) =
+            helix_core::selection::select_on_matches(text, doc.selection(view.id), &regex)
+        {
+            doc.set_selection(view.id, selection);
+        }
+    }
+}
+
+fn replace_selection(cx: &mut Context, value: String) {
+    let (view, doc) = current!(cx.editor);
+
+    let selection = doc.selection(view.id);
+    let transaction =
+        helix_core::Transaction::change_by_selection(doc.text(), selection, |range| {
+            if !range.is_empty() {
+                (range.from(), range.to(), Some(value.to_owned().into()))
+            } else {
+                (range.from(), range.to(), None)
+            }
+        });
+
+    doc.apply(&transaction, view.id);
 }
