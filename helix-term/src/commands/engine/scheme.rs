@@ -306,7 +306,7 @@ impl super::PluginSystem for SteelScriptingEngine {
                             register: None,
                             count: std::num::NonZeroUsize::new(1),
                             editor: cx.editor,
-                            callback: None,
+                            callback: Vec::new(),
                             on_next_key_callback: None,
                             jobs: cx.jobs,
                         };
@@ -1017,7 +1017,7 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
                         register: None,
                         count: None,
                         editor: cx.editor,
-                        callback: None,
+                        callback: Vec::new(),
                         on_next_key_callback: None,
                         jobs: cx.jobs,
                     };
@@ -1574,7 +1574,7 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
                     register: None,
                     count: None,
                     editor,
-                    callback: None,
+                    callback: Vec::new(),
                     on_next_key_callback: None,
                     jobs,
                 };
@@ -1610,7 +1610,7 @@ fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: St
                     register: None,
                     count: None,
                     editor,
-                    callback: None,
+                    callback: Vec::new(),
                     on_next_key_callback: None,
                     jobs,
                 };
@@ -1647,7 +1647,7 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
                     register: None,
                     count: None,
                     editor,
-                    callback: None,
+                    callback: Vec::new(),
                     on_next_key_callback: None,
                     jobs,
                 };

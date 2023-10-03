@@ -255,7 +255,7 @@ impl Application {
                 register: None,
                 count: std::num::NonZeroUsize::new(1),
                 editor: &mut app.editor,
-                callback: None,
+                callback: Vec::new(),
                 on_next_key_callback: None,
                 jobs: &mut app.jobs,
             };

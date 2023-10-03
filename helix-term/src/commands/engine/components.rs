@@ -93,7 +93,7 @@ pub fn helix_component_module() -> BuiltInModule {
                         register: None,
                         count: None,
                         editor: cx.editor,
-                        callback: None,
+                        callback: Vec::new(),
                         on_next_key_callback: None,
                         jobs: cx.jobs,
                     };
@@ -348,7 +348,7 @@ impl Component for SteelDynamicComponent {
             register: None,
             count: None,
             editor: ctx.editor,
-            callback: None,
+            callback: Vec::new(),
             on_next_key_callback: None,
             jobs: ctx.jobs,
         };
@@ -395,7 +395,7 @@ impl Component for SteelDynamicComponent {
                 register: None,
                 count: None,
                 editor: ctx.editor,
-                callback: None,
+                callback: Vec::new(),
                 on_next_key_callback: None,
                 jobs: ctx.jobs,
             };
