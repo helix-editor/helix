@@ -1,15 +1,39 @@
+use helix_event::status::StatusMessage;
+use helix_event::{runtime_local, send_blocking};
 use helix_view::Editor;
+use once_cell::sync::OnceCell;
 
 use crate::compositor::Compositor;
 
-use futures_util::future::{BoxFuture, Future, FutureExt, LocalBoxFuture};
-use futures_util::stream::{FuturesOrdered, FuturesUnordered, StreamExt};
+use futures_util::future::LocalBoxFuture;
+use futures_util::future::{BoxFuture, Future, FutureExt};
+use futures_util::stream::{FuturesUnordered, StreamExt};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
 pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
 
 pub type ThreadLocalEditorCompositorCallback =
     Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut Jobs)>;
+runtime_local! {
+    static JOB_QUEUE: OnceCell<Sender<Callback>> = OnceCell::new();
+}
+
+pub async fn dispatch_callback(job: Callback) {
+    let _ = JOB_QUEUE.wait().send(job).await;
+}
+
+pub async fn dispatch(job: impl FnOnce(&mut Editor, &mut Compositor) + Send + 'static) {
+    let _ = JOB_QUEUE
+        .wait()
+        .send(Callback::EditorCompositor(Box::new(job)))
+        .await;
+}
+
+pub fn dispatch_blocking(job: impl FnOnce(&mut Editor, &mut Compositor) + Send + 'static) {
+    let jobs = JOB_QUEUE.wait();
+    send_blocking(jobs, Callback::EditorCompositor(Box::new(job)))
+}
 
 pub enum Callback {
     EditorCompositor(EditorCompositorCallback),
@@ -27,13 +51,13 @@ pub struct Job {
 pub type ThreadLocalJob =
     LocalBoxFuture<'static, anyhow::Result<Option<ThreadLocalEditorCompositorCallback>>>;
 
-#[derive(Default)]
 pub struct Jobs {
-    pub futures: FuturesUnordered<JobFuture>,
-    /// These are the ones that need to complete before we exit.
+    /// jobs the ones that need to complete before we exit.
     pub wait_futures: FuturesUnordered<JobFuture>,
 
     pub local_futures: FuturesUnordered<ThreadLocalJob>,
+    pub callbacks: Receiver<Callback>,
+    pub status_messages: Receiver<StatusMessage>,
 }
 
 impl Job {
@@ -60,8 +84,17 @@ impl Job {
 }
 
 impl Jobs {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        Self::default()
+        let (tx, rx) = channel(1024);
+        let _ = JOB_QUEUE.set(tx);
+        let status_messages = helix_event::status::setup();
+        Self {
+            wait_futures: FuturesUnordered::new(),
+            local_futures: FuturesUnordered::new(),
+            callbacks: rx,
+            status_messages,
+        }
     }
 
     pub fn spawn<F: Future<Output = anyhow::Result<()>> + Send + 'static>(&mut self, f: F) {
@@ -118,18 +151,24 @@ impl Jobs {
         }
     }
 
-    pub async fn next_job(&mut self) -> Option<anyhow::Result<Option<Callback>>> {
-        tokio::select! {
-            event = self.futures.next() => {  event }
-            event = self.wait_futures.next() => { event }
-        }
-    }
+    // pub async fn next_job(&mut self) -> Option<anyhow::Result<Option<Callback>>> {
+    //     tokio::select! {
+    //         event = self.futures.next() => {  event }
+    //         event = self.wait_futures.next() => { event }
+    //     }
+    // }
 
     pub fn add(&self, j: Job) {
         if j.wait {
             self.wait_futures.push(j.future);
         } else {
-            self.futures.push(j.future);
+            tokio::spawn(async move {
+                match j.future.await {
+                    Ok(Some(cb)) => dispatch_callback(cb).await,
+                    Ok(None) => (),
+                    Err(err) => helix_event::status::report(err).await,
+                }
+            });
         }
     }
 
