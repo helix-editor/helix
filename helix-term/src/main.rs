@@ -66,6 +66,7 @@ FLAGS:
     -V, --version                  Prints version information
     --vsplit                       Splits all given files vertically into different windows
     --hsplit                       Splits all given files horizontally into different windows
+    -w, --working-dir <path>       Specify an initial working directory
 ",
         env!("CARGO_PKG_NAME"),
         VERSION_AND_GIT_HASH,
