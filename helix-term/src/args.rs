@@ -8,7 +8,7 @@ use std::{
 
 pub enum HealthArg {
     All,
-    AllLanguges,
+    AllLanguages,
     Clipboard,
     Language(String),
     Languages(Vec<String>),
@@ -53,20 +53,18 @@ impl Args {
                 },
                 "--health" => {
                     args.health = true;
-
                     args.health_arg =
                         argv.next_if(|opt| !opt.starts_with('-'))
                             .map(|opt| match opt.as_str() {
                                 "all" => HealthArg::All,
                                 "clipboard" => HealthArg::Clipboard,
-                                "languages" => HealthArg::AllLanguges,
+                                "languages" => HealthArg::AllLanguages,
                                 _ => {
                                     let languages = iter::once(opt)
                                         .chain(iter::from_fn(|| {
                                             argv.next_if(|opt| !opt.starts_with('-'))
                                         }))
                                         .collect::<Vec<String>>();
-
                                     match languages.len() {
                                         0 => unreachable!(),
                                         1 => HealthArg::Language(
