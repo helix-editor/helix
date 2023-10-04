@@ -335,7 +335,7 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
 
 pub fn print_health(health_arg: Option<HealthArg>) -> std::io::Result<()> {
     match health_arg {
-        Some(HealthArg::AllLanguges) => languages_all()?,
+        Some(HealthArg::AllLanguages) => languages_all()?,
         Some(HealthArg::Clipboard) => clipboard()?,
         None | Some(HealthArg::All) => {
             general()?;
