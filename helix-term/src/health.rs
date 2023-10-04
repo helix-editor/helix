@@ -3,7 +3,10 @@ use crossterm::{
     style::{Color, Print, Stylize},
     tty::IsTty,
 };
-use helix_core::config::{default_syntax_loader, user_syntax_loader};
+use helix_core::{
+    config::{default_syntax_loader, user_syntax_loader},
+    syntax::LanguageConfiguration,
+};
 use helix_loader::grammar::load_runtime_file;
 use helix_view::clipboard::get_clipboard_provider;
 use std::io::Write;
@@ -125,11 +128,16 @@ pub fn clipboard() -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn languages_all() -> std::io::Result<()> {
+// QUESTION: Should I give this a doc comment?
+/// Display diagnostics for a given languages (LSP, highlight
+/// queries, etc).
+/// `Some(_)` signifies a subset of all languages,
+/// while `None` signifies no subset (ie all languages).
+fn languages(lang_vec: Option<Vec<String>>) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let mut syn_loader_conf = match user_syntax_loader() {
+    let syn_loader_conf = match user_syntax_loader() {
         Ok(conf) => conf,
         Err(err) => {
             let stderr = std::io::stderr();
@@ -176,11 +184,8 @@ pub fn languages_all() -> std::io::Result<()> {
     for heading in headings {
         column(heading, Color::White);
     }
-    writeln!(stdout)?;
 
-    syn_loader_conf
-        .language
-        .sort_unstable_by_key(|l| l.language_id.clone());
+    writeln!(stdout)?;
 
     let check_binary = |cmd: Option<String>| match cmd {
         Some(cmd) => match which::which(&cmd) {
@@ -190,7 +195,19 @@ pub fn languages_all() -> std::io::Result<()> {
         None => column("None", Color::Yellow),
     };
 
-    for lang in &syn_loader_conf.language {
+    let mut syn_language: Vec<&LanguageConfiguration> = syn_loader_conf.language.iter().collect(); // I don't like this
+
+    if let Some(languages) = lang_vec {
+        syn_language = syn_loader_conf
+            .language
+            .iter()
+            .filter(|&lang_c| languages.iter().any(|lang_v| &lang_c.language_id == lang_v))
+            .collect::<Vec<&LanguageConfiguration>>();
+    };
+
+    syn_language.sort_by_key(|&l| l.language_id.clone());
+
+    for &lang in syn_language.iter() {
         column(&lang.language_id, Color::Reset);
 
         // TODO multiple language servers (check binary for each supported language server, not just the first)
@@ -217,6 +234,13 @@ pub fn languages_all() -> std::io::Result<()> {
     }
 
     Ok(())
+}
+
+// QUESTION: Why is this not documented as part of the public facing API?
+// Same for `clipboard()`, `general()`
+/// Display diagnostics for all languages (LSP, highlight queries, etc).
+pub fn languages_all() -> std::io::Result<()> {
+    languages(None)
 }
 
 /// Display diagnostics pertaining to a particular language (LSP,
@@ -270,7 +294,17 @@ pub fn language(lang_str: String, display_heading: bool) -> std::io::Result<()> 
     };
 
     if display_heading {
-        writeln!(stdout, "\n{}", &lang_str.clone().white())?;
+        // But why?
+        // Maybe in the future have a array of the capitalized PL names somewhere
+        let to_titlecase = |s: String| {
+            let mut s1: Vec<char> = s.chars().collect();
+            s1[0] = s1[0].to_uppercase().next().unwrap();
+            s1
+        };
+
+        let lang_str: String = to_titlecase(lang_str.clone()).into_iter().collect();
+
+        writeln!(stdout, "{}", &lang_str.cyan())?;
     }
 
     // TODO multiple language servers
@@ -337,17 +371,25 @@ pub fn print_health(health_arg: Option<HealthArg>) -> std::io::Result<()> {
     match health_arg {
         Some(HealthArg::AllLanguages) => languages_all()?,
         Some(HealthArg::Clipboard) => clipboard()?,
+        Some(HealthArg::Language(lang)) => language(lang, false)?,
+        Some(HealthArg::Languages(langs)) => {
+            if langs.len() > 5 {
+                general()?;
+                clipboard()?;
+                writeln!(std::io::stdout().lock())?;
+                languages(Some(langs))?;
+            } else {
+                for lang in langs {
+                    language(lang, true)?;
+                    writeln!(std::io::stdout().lock())?;
+                }
+            }
+        }
         None | Some(HealthArg::All) => {
             general()?;
             clipboard()?;
             writeln!(std::io::stdout().lock())?;
             languages_all()?;
-        }
-        Some(HealthArg::Language(lang)) => language(lang, false)?,
-        Some(HealthArg::Languages(languages)) => {
-            for lang in languages {
-                language(lang, true)?;
-            }
         }
     }
     Ok(())
