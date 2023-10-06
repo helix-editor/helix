@@ -1,6 +1,6 @@
 (invocation
   (object_reference
-    name: (identifier) @function.call))
+    name: (identifier) @function.method))
 
 [
   (keyword_gist)
@@ -10,41 +10,41 @@
   (keyword_gin)
   (keyword_brin)
   (keyword_array)
-] @function.call
+] @function.builtin
 
 (object_reference
-  name: (identifier) @type)
+  name: (identifier) @variable.other.member)
 
 (relation
-  alias: (identifier) @variable)
+  alias: (identifier) @variable.parameter)
 
 (field
-  name: (identifier) @field)
+  name: (identifier) @variable.other.member)
 
 (term
-  alias: (identifier) @variable)
+  alias: (identifier) @variable.parameter)
 
-((term
+(term
    value: (cast
-    name: (keyword_cast) @function.call
-    parameter: [(literal)]?)))
+    name: (keyword_cast) @function.builtin
+    parameter: [(literal)]?))
 
 (literal) @string
-(comment) @comment @spell
-(marginalia) @comment
+(comment) @comment.line
+(marginalia) @comment.block
 
-((literal) @number
- (#lua-match? @number "^%d+$"))
+((literal) @constant.numeric.integer
+ (#lua-match? @constant.numeric.integer "^%d+$"))
 
-((literal) @float
-(#lua-match? @float "^[-]?%d*\.%d*$"))
+((literal) @constant.numeric.float
+(#lua-match? @constant.numeric.float "^[-]?%d*\.%d*$"))
 
-(parameter) @parameter
+(parameter) @variable.parameter
 
 [
  (keyword_true)
  (keyword_false)
-] @boolean
+] @constant.builtin.boolean
 
 [
  (keyword_asc)
@@ -92,14 +92,14 @@
  (keyword_jsonfile)
  (keyword_sequencefile)
  (keyword_volatile)
-] @storageclass
+] @keyword.storage.type
 
 [
  (keyword_case)
  (keyword_when)
  (keyword_then)
  (keyword_else)
-] @conditional
+] @keyword.control.conditional
 
 [
   (keyword_select)
@@ -290,7 +290,7 @@
  (keyword_statistics)
  (keyword_maxvalue)
  (keyword_minvalue)
-] @type.qualifier
+] @keyword
 
 [
   (keyword_int)
