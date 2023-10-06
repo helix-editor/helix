@@ -115,6 +115,14 @@ FLAGS:
 
     setup_logging(args.verbosity).context("failed to initialize logging")?;
 
+    // NOTE: Set the working directory early so the correct configuration is loaded. Be aware that
+    // Application::new() depends on this logic so it must be updated if this changes.
+    if let Some((path, true)) = args.files.first().map(|(path, _)| (path, path.is_dir())) {
+        helix_loader::set_current_working_dir(path)?;
+    } else if let Some(path) = &args.working_directory {
+        helix_loader::set_current_working_dir(path)?;
+    }
+
     let config = match Config::load_default() {
         Ok(config) => config,
         Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
