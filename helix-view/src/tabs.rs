@@ -47,6 +47,11 @@ impl Tabs {
     }
 
     #[inline]
+    pub fn curr_tab_mut(&mut self) -> &mut Tab {
+        self.tabs.get_mut(self.focus).unwrap()
+    }
+
+    #[inline]
     pub fn new_tab(&mut self) -> TabId {
         let area = self.curr_tree().area();
         let new_tab = Tab {

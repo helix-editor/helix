@@ -1659,6 +1659,24 @@ fn tab_new(
     Ok(())
 }
 
+fn tab_rename(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:tab-rename name`");
+    }
+
+    cx.editor.tabs.curr_tab_mut().name = args[0].to_string();
+
+    Ok(())
+}
+
 fn vsplit(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2973,6 +2991,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Goto previous tab.",
         fun: tab_previous,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "tab-rename",
+        aliases: &[],
+        doc: "Change the name of the current tab.",
+        fun: tab_rename,
         signature: CommandSignature::none(),
     },
     TypableCommand {
