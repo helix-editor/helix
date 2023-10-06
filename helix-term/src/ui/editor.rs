@@ -887,7 +887,12 @@ impl EditorView {
         match (event, cxt.editor.count) {
             // count handling
             (key!(i @ '0'), Some(_)) | (key!(i @ '1'..='9'), _)
-                if self.keymaps.pending().is_empty() =>
+                if self.keymaps.pending().is_empty()
+                    || self.keymaps.pending().last()
+                        == Some(&KeyEvent {
+                            code: KeyCode::Char('g'),
+                            modifiers: KeyModifiers::NONE,
+                        }) =>
             {
                 let i = i.to_digit(10).unwrap() as usize;
                 cxt.editor.count =
