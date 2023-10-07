@@ -283,9 +283,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
         lang.language_servers
             .iter()
             .filter_map(|ls| syn_loader_conf.language_server.get(&ls.name))
-            .map(|config| config.command.as_str())
-            .collect::<Vec<_>>()
-            .as_slice(),
+            .map(|config| config.command.as_str()),
     )?;
 
     probe_protocol(
@@ -301,12 +299,16 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
 }
 
 /// Display diagnostics about multiple LSPs and DAPs.
-fn probe_protocols(protocol_name: &str, server_cmds: &[&str]) -> std::io::Result<()> {
+fn probe_protocols<'a, I: Iterator<Item = &'a str> + 'a>(
+    protocol_name: &str,
+    server_cmds: I,
+) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
+    let mut server_cmds = server_cmds.peekable();
 
     write!(stdout, "Configured {}s:", protocol_name)?;
-    if server_cmds.is_empty() {
+    if server_cmds.peek().is_none() {
         writeln!(stdout, "{}", " None".yellow())?;
         return Ok(());
     }
