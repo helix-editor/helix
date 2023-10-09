@@ -1,15 +1,17 @@
-# 23.08 (2023-08-31)
+# 23.10 (2023-10-13)
 
-A big shout out to all the contributors! We had 107 contributors in this release.
+A big shout out to all the contributors! We had 118 contributors in this release.
 
 Breaking changes:
 
 - Support multiple language servers per language (#2507)
     - This is a breaking change to language configuration
+- Maintain the cursor position and view when splitting with `:hsplit`/`:vsplit` (#8109)
+    - Previously, splitting would open the new buffer at the top of the file
 
 Features:
 
-- Support multiple language servers per language (#2507, #7082, #7286)
+- Support multiple language servers per language (#2507, #7082, #7286, #8374)
 - Add a statusline element for the selected register (#7222)
 - Add `%`, `#`, `.`, `*` and `+` special registers (#6985)
 - Add initial support for LSP DidChangeWatchedFiles notifications (#7665)
@@ -19,6 +21,9 @@ Features:
 - Syntax highlight regex prompts (#7738)
 - Allow defining alignment in indent queries (#5355)
 - Show visual feedback in `surround_replace` (#7588)
+- Switch to Nucleo for fuzzy matching (#7814, #8148, #8192, #8194)
+- Insert a trailing newline on write (#8157)
+- Add a `-w`/`--working-dir` CLI flag for specifying a working directory on startup (#8223, #8498)
 
 Commands:
 
@@ -26,8 +31,10 @@ Commands:
 - `move_prev_long_word_end` and `extend_prev_long_word_end` - move/extend to the end of the previous WORD (#6905)
 - `reverse_selection_contents` - swaps the values of each register so they are reversed (#7329)
 - Add `:rl` and `:rla` aliases for `:reload` and `:reload-all` (#7158)
-- `yank_joined` - Join the selections and yank to the selected register (#7195)
+- `yank_joined` - join the selections and yank to the selected register (#7195)
 - `:write-all!` (`:wa!`) - forcibly write all buffers to disk and create any necessary subdirectories (#7577)
+- `:redraw` - clear re-render the UI (#6949)
+- `:tree-sitter-highlight-name` - show the theme scope name of the highlight under the cursor (#8170)
 
 Usability improvements:
 
@@ -47,12 +54,17 @@ Usability improvements:
 - Forcibly shut down uninitialized language servers (#7449)
 - Add filename completer for shell prompts (#7569)
 - Allow binding F13-F24 (#7672)
-- Resolve LSP code actions (#7677)
+- Resolve LSP code actions (#7677, #8421)
 - Save an undo checkpoint before accepting completions (#7747)
 - Include gitignored files in debugger completions (#7936)
 - Make editor remember the last search register (#5244)
 - Open directories with `goto_file` (#7909)
 - Use relative path to open buffer in `goto_file` (`gf`) (#7965)
+- Support `default` color in themes (#8083, #8114)
+- Toggle between relative and absolute line numbers when the terminal loses focus (#7955)
+- Lower default idle-timeout to 250ms (060e73a)
+- Allow theming diff gutters separately from other diff colors (#8343)
+- Style bold/italic/strikethrough in markdown doc popups (#8385)
 
 Fixes:
 
@@ -82,6 +94,15 @@ Fixes:
 - Align view correctly for background buffers opened with `A-ret` (#7691)
 - Fix cursor resetting to block when quitting via a keybind (#7931)
 - Remove path completions for the `:new` command (#8010)
+- Use binary path resolved by `which` for formatter commands (#8064)
+- Handle crossterm's `hidden` modifier (#8120)
+- Clear completion when switching between windows with the mouse (#8118)
+- Eagerly remove the last picker (`<space>'`) when the picker has many items (#8127)
+- Fix find commands for buffers with non-LF line-endings (#8111)
+- Detect the tmux clipboard provider on macOS (#8182)
+- Fix syntax highlighting in dynamic picker preview pane (#8206)
+- Recognize HTML code tags with attributes as code in markdown previews (#8397)
+- Fix multicursor snippet placeholder directions (#8423)
 
 Themes:
 
@@ -106,10 +127,22 @@ Themes:
 - Improve comment readability for `autumn` (#7939)
 - Distinguish active bufferline buffer in `monokai` (#7983)
 - Update ruler colors in `nord` (#7995)
+- Update Catppuccin themes (#8102)
+- Add text focus scope and diagnostics undercurls for `nord` (#8165)
+- Add material theme collection (#8211)
+- Improve indent line color in `dracula` (#8266)
+- Clean up and refactor `papercolor` to use inheritance (#8276)
+- Fix `zenburn` inlay hint color (#8278a)
+- Fix picker crash when previewing an invalid range (e9d0bd7)
+- Correctly center items in the picker preview (13d4463)
+- Add `cyan_light` (#8293)
+- Theme HTML tags in `onedark` (#8409)
+- Refine `darcula` and `darcula-solid` themes (#8412)
+- Improve `nord` highlights (#8414)
 
 New languages:
 
-- Blueprint (#7213)
+- Blueprint (#7213, #8161)
 - Forth (#7256, #7334)
 - t32 (#7140, #7811)
 - WebC (#7290)
@@ -122,6 +155,8 @@ New languages:
 - Pod (#7907)
 - Strace (#7928)
 - Gemini (#8070)
+- GNU Assembler (GAS) (#8291)
+- JSON5 (#8473)
 
 Updated languages and queries:
 
@@ -143,8 +178,8 @@ Updated languages and queries:
 - Support core mode for delve debugger (#7300)
 - Add Fortran comment injections (#7305)
 - Switch Vue language server to `vue-language-server` (#7312)
-- Update tree-sitter-sql (#7387)
-- Replace the MATLAB tre-sitter grammar (#7388, #7442, #7491, #7493, #7511, #7532)
+- Update tree-sitter-sql (#7387, #8464)
+- Replace the MATLAB tre-sitter grammar (#7388, #7442, #7491, #7493, #7511, #7532, #8040)
 - Highlight TOML table headers (#7441)
 - Recognize `cppm` file-type as C++ (#7492)
 - Refactor ecma language queries into private and public queries (#7207)
@@ -155,7 +190,7 @@ Updated languages and queries:
 - Enable inlay hints in the Svelte language server (#7622)
 - Recognize `Brewfile`s as Ruby (#7629)
 - Add more file-types for R (#7633)
-- Update tree-sitter-perl (#7644)
+- Switch tree-sitter-perl to official upstream parser (#7644, #7947)
 - Fix predicate typo in comment highlights (#7732)
 - Update tree-sitter-prql (#7771)
 - Recognize `.gitf` as JSON (#7781)
@@ -178,6 +213,32 @@ Updated languages and queries:
 - Update tree-sitter-robot (#7970)
 - Highlight Dart 3 `sealed` and `base` keywords (#7974)
 - Add configuration for `ltex-ls` to the default `languages.toml` (#7838)
+- Update tree-sitter-strace (#8087)
+- Update tree-sitter-gleam, enable auto-format (#8085)
+- Update tree-sitter-esdl (#8222)
+- Expand ignore file-types (#8220)
+- Recognize feed related formats as XML (#8232)
+- Improve YAML injections (#8217)
+- Add shebangs for TypeScript, Julia, Java and OCaml (95e994a)
+- Highlight abbreviations in Scheme (ef23847)
+- Remove backtic auto-pair in OCaml (#8260)
+- Recognize `flake.lock` as JSON (#8304)
+- Add Python test script injection for Nix (b4494e1)
+- Fix Nix comment injection precedence (37e48f4)
+- Recognize editorconfig files as INI (#8308)
+- Recognize `.babelrc` as JSON (#8309)
+- Switch Purescript to its own tree-sitter parser (#8306, #8338)
+- Update Unison highlights (#8315)
+- Recognize `.webmanifest` as JSON (#8342)
+- Recognize polkit policy files as XML (#8369)
+- Recognize polkit rules files as JavaScript (#8370)
+- Update Go highlight queries (#8399)
+- Add shebangs for Makefiles (#8410)
+- Add file-type associations from VSCode (#8388)
+- Add validation to JSON/CSS language server configs (#8433)
+- Add a configuration for the tailwind language server (#8442)
+- Add a configuration for the ansible language server (#7973)
+- Add a configuration for the GraphQL language server (#8492)
 
 Packaging:
 
@@ -185,6 +246,8 @@ Packaging:
 - Check for `git` before fetching or building grammars (#7320)
 - Refactor Nix flake to use Crane (#7763)
 - Remove the aarch64 appimage from the release CI (#7832)
+- Add desktop and icon files to Nix flake output (#7979)
+- Build flake packages with the latest stable Rust (#8133)
 
 # 23.05 (2023-05-18)
 
