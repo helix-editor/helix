@@ -31,7 +31,7 @@ arc-swap = "1"
 regex = "1"
 bitflags = "2.4"
 ahash = "0.8.3"
-hashbrown = { version = "0.14.0", features = ["raw"] }
+hashbrown = { version = "0.14.1", features = ["raw"] }
 dunce = "1.0"
 
 log = "0.4"
