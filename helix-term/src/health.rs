@@ -192,17 +192,13 @@ pub fn languages_all() -> std::io::Result<()> {
     for lang in &syn_loader_conf.language {
         column(&lang.language_id, Color::Reset);
 
-        let cmds = lang
-            .language_servers
-            .iter()
-            .filter_map(|ls| {
-                syn_loader_conf
-                    .language_server
-                    .get(&ls.name)
-                    .map(|config| config.command.as_str())
-            })
-            .collect::<Vec<_>>();
-        check_binary(cmds.first().cloned());
+        let mut cmds = lang.language_servers.iter().filter_map(|ls| {
+            syn_loader_conf
+                .language_server
+                .get(&ls.name)
+                .map(|config| config.command.as_str())
+        });
+        check_binary(cmds.next());
 
         let dap = lang.debugger.as_ref().map(|dap| dap.command.as_str());
         check_binary(dap);
@@ -216,13 +212,11 @@ pub fn languages_all() -> std::io::Result<()> {
 
         writeln!(stdout)?;
 
-        if cmds.len() > 1 {
-            cmds.iter().skip(1).try_for_each(|cmd| {
-                column("", Color::Reset);
-                check_binary(Some(cmd));
-                writeln!(stdout)
-            })?;
-        }
+        cmds.try_for_each(|cmd| {
+            column("", Color::Reset);
+            check_binary(Some(cmd));
+            writeln!(stdout)
+        })?;
     }
 
     Ok(())
