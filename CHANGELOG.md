@@ -6,8 +6,6 @@ Breaking changes:
 
 - Support multiple language servers per language (#2507)
     - This is a breaking change to language configuration
-- Maintain the cursor position and view when splitting with `:hsplit`/`:vsplit` (#8109)
-    - Previously, splitting would open the new buffer at the top of the file
 
 Features:
 
@@ -65,6 +63,7 @@ Usability improvements:
 - Lower default idle-timeout to 250ms (060e73a)
 - Allow theming diff gutters separately from other diff colors (#8343)
 - Style bold/italic/strikethrough in markdown doc popups (#8385)
+- Maintain the cursor position and view when splitting with `:hsplit`/`:vsplit` (#8109)
 
 Fixes:
 
