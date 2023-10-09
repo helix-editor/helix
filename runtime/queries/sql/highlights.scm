@@ -34,10 +34,10 @@
 (marginalia) @comment.block
 
 ((literal) @constant.numeric.integer
- (#lua-match? @constant.numeric.integer "^%d+$"))
+  (#match? @constant.numeric.integer "^-?\\d+$"))
 
 ((literal) @constant.numeric.float
-(#lua-match? @constant.numeric.float "^[-]?%d*\.%d*$"))
+  (#match? @constant.numeric.float "^-?\\d*\\.\\d*$"))
 
 (parameter) @variable.parameter
 
