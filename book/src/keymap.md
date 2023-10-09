@@ -330,10 +330,10 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 | `[T`     | Go to previous test (**TS**)                 | `goto_prev_test`      |
 | `]p`     | Go to next paragraph                         | `goto_next_paragraph` |
 | `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
-| `]g`     | Go to next change                            | `goto_next_change`    |
-| `[g`     | Go to previous change                        | `goto_prev_change`    |
-| `]G`     | Go to last change                            | `goto_last_change`    |
-| `[G`     | Go to first change                           | `goto_first_change`   |
+| `]g`     | Go to next Git hunk                          | `goto_next_change`    |
+| `[g`     | Go to previous Git hunk                      | `goto_prev_change`    |
+| `]G`     | Go to last Git hunk                          | `goto_last_change`    |
+| `[G`     | Go to first Git hunk                         | `goto_first_change`   |
 | `]Space` | Add newline below                            | `add_newline_below`   |
 | `[Space` | Add newline above                            | `add_newline_above`   |
 
