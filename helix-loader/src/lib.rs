@@ -33,9 +33,9 @@ pub fn current_working_dir() -> PathBuf {
     path
 }
 
-pub fn set_current_working_dir(path: PathBuf) -> std::io::Result<()> {
+pub fn set_current_working_dir(path: impl AsRef<Path>) -> std::io::Result<()> {
     let path = dunce::canonicalize(path)?;
-    std::env::set_current_dir(path.clone())?;
+    std::env::set_current_dir(&path)?;
     let mut cwd = CWD.write().unwrap();
     *cwd = Some(path);
     Ok(())
@@ -280,7 +280,7 @@ mod merge_toml_tests {
         let cwd = current_working_dir();
         assert_ne!(cwd, new_path);
 
-        set_current_working_dir(new_path.clone()).expect("Couldn't set new path");
+        set_current_working_dir(&new_path).expect("Couldn't set new path");
 
         let cwd = current_working_dir();
         assert_eq!(cwd, new_path);
