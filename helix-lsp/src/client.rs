@@ -21,7 +21,10 @@ use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
 };
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},
@@ -181,8 +184,8 @@ impl Client {
         req_timeout: u64,
         doc_path: Option<&std::path::PathBuf>,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
-        // Resolve path to the binary
-        let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
+        // Reads the absolute path otherwise resolves path to the binary
+        let cmd = Self::resolve_cmd_path(cmd)?;
 
         let process = Command::new(cmd)
             .envs(server_environment)
@@ -241,6 +244,15 @@ impl Client {
         };
 
         Ok((client, server_rx, initialize_notify))
+    }
+
+    fn resolve_cmd_path(cmd: &str) -> Result<PathBuf> {
+        if Path::new(cmd).exists() {
+            return Ok(PathBuf::from(cmd));
+        }
+
+        let path = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
+        return Ok(path);
     }
 
     pub fn name(&self) -> &str {
