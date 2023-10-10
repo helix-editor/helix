@@ -212,11 +212,11 @@ pub fn languages_all() -> std::io::Result<()> {
 
         writeln!(stdout)?;
 
-        cmds.try_for_each(|cmd| {
+        for cmd in cmds {
             column("", Color::Reset);
             check_binary(Some(cmd));
-            writeln!(stdout)
-        })?;
+            writeln!(stdout)?;
+        }
     }
 
     Ok(())
