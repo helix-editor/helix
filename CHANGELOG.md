@@ -1,4 +1,4 @@
-# 23.10 (2023-10-13)
+# 23.10 (2023-10-15)
 
 A big shout out to all the contributors! We had 118 contributors in this release.
 
