@@ -549,11 +549,7 @@ pub fn parse_macro(keys_str: &str) -> anyhow::Result<Vec<KeyEvent>> {
         if c == ">" {
             keys_res = Err(anyhow!("Unmatched '>'"));
         } else if c != "<" {
-            if c != "-" {
-                keys.push(c);
-            } else {
-                keys.push("minus");
-            }
+            keys.push(if c == "-" { keys::MINUS } else { c });
             i += end_i;
         } else {
             match s.find('>').context("'>' expected") {
