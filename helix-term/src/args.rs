@@ -1,14 +1,25 @@
 use anyhow::Result;
 use helix_core::Position;
 use helix_view::tree::Layout;
-use std::path::{Path, PathBuf};
+use std::{
+    iter,
+    path::{Path, PathBuf},
+};
+
+pub enum HealthArg {
+    All,
+    AllLanguages,
+    Clipboard,
+    Language(String),
+    Languages(Vec<String>),
+}
 
 #[derive(Default)]
 pub struct Args {
     pub display_help: bool,
     pub display_version: bool,
     pub health: bool,
-    pub health_arg: Option<String>,
+    pub health_arg: Option<HealthArg>,
     pub load_tutor: bool,
     pub fetch_grammars: bool,
     pub build_grammars: bool,
@@ -43,7 +54,30 @@ impl Args {
                 },
                 "--health" => {
                     args.health = true;
-                    args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));
+                    args.health_arg =
+                        argv.next_if(|opt| !opt.starts_with('-'))
+                            .map(|opt| match opt.as_str() {
+                                "all" => HealthArg::All,
+                                "clipboard" => HealthArg::Clipboard,
+                                "languages" => HealthArg::AllLanguages,
+                                _ => {
+                                    let languages = iter::once(opt)
+                                        .chain(iter::from_fn(|| {
+                                            argv.next_if(|opt| !opt.starts_with('-'))
+                                        }))
+                                        .collect::<Vec<String>>();
+                                    match languages.len() {
+                                        0 => unreachable!(),
+                                        1 => HealthArg::Language(
+                                            languages
+                                                .into_iter()
+                                                .next()
+                                                .expect("Should contain 1 element"),
+                                        ),
+                                        _ => HealthArg::Languages(languages),
+                                    }
+                                }
+                            });
                 }
                 "-g" | "--grammar" => match argv.next().as_deref() {
                     Some("fetch") => args.fetch_grammars = true,
