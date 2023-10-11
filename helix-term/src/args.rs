@@ -18,13 +18,13 @@ pub struct Args {
     pub config_file: Option<PathBuf>,
     pub files: Vec<(PathBuf, Position)>,
     pub working_directory: Option<PathBuf>,
-    pub line_number: usize,
 }
 
 impl Args {
     pub fn parse_args() -> Result<Args> {
         let mut args = Args::default();
         let mut argv = std::env::args().peekable();
+        let mut line_number = 0;
 
         argv.next(); // skip the program, we don't care about that
 
@@ -90,14 +90,11 @@ impl Args {
                     }
                 }
                 arg if arg.starts_with('+') => {
-                    let arg = arg.get(1..).unwrap();
-                    args.line_number = match arg.parse() {
-                        Ok(n) => n,
+                    let arg = &arg[1..];
+                    line_number = match arg.parse::<usize>() {
+                        Ok(n) => n.saturating_sub(1),
                         _ => anyhow::bail!("bad line number after +"),
                     };
-                    if args.line_number > 0 {
-                        args.line_number -= 1;
-                    }
                 }
                 arg => args.files.push(parse_file(arg)),
             }
@@ -109,7 +106,7 @@ impl Args {
         }
 
         if let Some(file) = args.files.first_mut() {
-            file.1.row = args.line_number;
+            file.1.row = line_number;
         }
 
         Ok(args)
