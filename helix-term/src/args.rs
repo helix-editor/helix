@@ -106,7 +106,9 @@ impl Args {
         }
 
         if let Some(file) = args.files.first_mut() {
-            file.1.row = line_number;
+            if line_number != 0 {
+                file.1.row = line_number;
+            }
         }
 
         Ok(args)
