@@ -49,6 +49,47 @@
   (identifier) @label)
 
 ; ---
+; Standard library
+; ---
+
+((identifier) @constant.builtin
+ (#any-of? @constant.builtin "Some" "None" "Ok" "Err"))
+
+((identifier) @type.builtin
+ (#any-of?
+    @type.builtin
+    "Result"
+    "Option"
+    "Vec"
+    "Box"
+    "Clone"
+    "Iterator"
+    "IntoIterator"
+    "DoubleEndedIterator"
+    "ExactSizeIterator"
+    "String"
+    "ToString"
+    "TryFrom"
+    "TryInto"))
+
+((type_identifier) @type.builtin
+ (#any-of?
+    @type.builtin
+    "Result"
+    "Option"
+    "Vec"
+    "Box"
+    "Clone"
+    "Iterator"
+    "IntoIterator"
+    "DoubleEndedIterator"
+    "ExactSizeIterator"
+    "String"
+    "ToString"
+    "TryFrom"
+    "TryInto"))
+
+; ---
 ; Punctuation
 ; ---
 
