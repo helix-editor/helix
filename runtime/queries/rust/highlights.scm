@@ -49,43 +49,51 @@
   (identifier) @label)
 
 ; ---
-; Standard library
+; Prelude
 ; ---
 
-((identifier) @constant.builtin
+((identifier) @type.enum.variant.builtin
  (#any-of? @constant.builtin "Some" "None" "Ok" "Err"))
 
-((identifier) @type.builtin
- (#any-of?
-    @type.builtin
-    "Result"
-    "Option"
-    "Vec"
-    "Box"
-    "Clone"
-    "Iterator"
-    "IntoIterator"
-    "DoubleEndedIterator"
-    "ExactSizeIterator"
-    "String"
-    "ToString"
-    "TryFrom"
-    "TryInto"))
+
 
 ((type_identifier) @type.builtin
  (#any-of?
     @type.builtin
-    "Result"
-    "Option"
-    "Vec"
-    "Box"
-    "Clone"
-    "Iterator"
-    "IntoIterator"
+    "Send"
+    "Sized"
+    "Sync"
+    "Unpin"
+    "Drop"
+    "Fn"
+    "FnMut"
+    "FnOnce"
+    "AsMut"
+    "AsRef"
+    "From"
+    "Into"
     "DoubleEndedIterator"
     "ExactSizeIterator"
+    "Extend"
+    "IntoIterator"
+    "Iterator"
+    "Option"
+    "Result"
+    "Clone"
+    "Copy"
+    "Debug"
+    "Default"
+    "Eq"
+    "Hash"
+    "Ord"
+    "PartialEq"
+    "PartialOrd"
+    "ToOwned"
+    "Box"
     "String"
     "ToString"
+    "Vec"
+    "FromIterator"
     "TryFrom"
     "TryInto"))
 
