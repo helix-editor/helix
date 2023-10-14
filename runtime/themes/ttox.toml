@@ -1,6 +1,9 @@
 # Author : Tomas Ruud <git@me.2ms.no>
 
 "ui.selection" = { fg = "white", bg = "gray" }
+"ui.cursor" = { fg = "black", bg = "light-gray" }
+"ui.cursor.primary" = { fg = "black", bg = "light-gray" }
+"ui.cursor.match" = { modifiers = ["underlined"] }
 "ui.background.separator" = "gray"
 "ui.linenr" = "gray"
 "ui.linenr.selected" = { fg = "white", bg = "gray" }
