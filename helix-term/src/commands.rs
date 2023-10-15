@@ -366,6 +366,7 @@ impl MappableCommand {
         smart_tab, "Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.",
         insert_tab, "Insert tab char",
         insert_newline, "Insert newline char",
+        insert_space, "Insert whitespace",
         delete_char_backward, "Delete previous char",
         delete_char_forward, "Delete next char",
         delete_word_backward, "Delete previous word",
@@ -3706,6 +3707,16 @@ pub mod insert {
         transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
         let (view, doc) = current!(cx.editor);
+        doc.apply(&transaction, view.id);
+    }
+
+    pub fn insert_space(cx: &mut Context) {
+        let (view, doc) = current!(cx.editor);
+        let transaction = Transaction::insert(
+            doc.text(),
+            &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
+            " ".into(),
+        );
         doc.apply(&transaction, view.id);
     }
 
