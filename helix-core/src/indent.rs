@@ -8,7 +8,7 @@ use crate::{
     graphemes::{grapheme_width, tab_width_at},
     syntax::{IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
-    Rope, RopeGraphemes, RopeSlice,
+    Position, Rope, RopeGraphemes, RopeSlice,
 };
 
 /// Enum representing indentation style.
@@ -225,27 +225,24 @@ fn add_indent_level(
         // Since the width of a tab depends on its offset, we cannot simply iterate over
         // the chars of `base_indent` in reverse until we have the desired indent reduction,
         // instead we iterate over them twice in forward direction.
-        let mut base_indent_width: usize = 0;
-        for c in base_indent.chars() {
-            base_indent_width += match c {
-                '\t' => tab_width_at(base_indent_width, tab_width as u16),
-                // This is only true since `base_indent` consists only of tabs and spaces
-                _ => 1,
-            };
-        }
+        let base_indent_rope = RopeSlice::from(base_indent.as_str());
+        #[allow(deprecated)]
+        let base_indent_width =
+            crate::visual_coords_at_pos(base_indent_rope, base_indent_rope.len_chars(), tab_width)
+                .col;
         let target_indent_width = base_indent_width
             .saturating_sub((-added_indent_level) as usize * indent_style.indent_width(tab_width));
-        let mut reduced_indent_width = 0;
-        for (i, c) in base_indent.char_indices() {
-            if reduced_indent_width >= target_indent_width {
-                base_indent.truncate(i);
-                return base_indent;
-            }
-            reduced_indent_width += match c {
-                '\t' => tab_width_at(base_indent_width, tab_width as u16),
-                _ => 1,
-            };
-        }
+        #[allow(deprecated)]
+        let char_end_idx = crate::pos_at_visual_coords(
+            base_indent_rope,
+            Position {
+                row: 0,
+                col: target_indent_width,
+            },
+            tab_width,
+        );
+        let byte_end_idx = base_indent_rope.char_to_byte(char_end_idx);
+        base_indent.truncate(byte_end_idx);
         base_indent
     }
 }
@@ -959,7 +956,7 @@ pub fn indent_for_newline(
             line_before_end_pos,
             true,
         ) {
-            if let IndentationHeuristic::Hybrid = indent_heuristic {
+            if *indent_heuristic == IndentationHeuristic::Hybrid {
                 // We want to compute the indentation not only based on the
                 // syntax tree but also on the actual indentation of a previous
                 // line. This makes indentation computation more resilient to
@@ -969,7 +966,7 @@ pub fn indent_for_newline(
                 // make sense, e.g. if it has a different alignment than the new line.
                 // In order to prevent edge cases with long running times, we only try
                 // a constant number of (non-empty) lines.
-                const MAX_ATTEMPTS: usize = 2;
+                const MAX_ATTEMPTS: usize = 4;
                 let mut num_attempts = 0;
                 for line_idx in (0..=line_before).rev() {
                     let line = text.line(line_idx);
