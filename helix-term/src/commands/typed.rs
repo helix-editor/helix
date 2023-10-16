@@ -573,7 +573,6 @@ fn set_line_ending(
 
     Ok(())
 }
-
 fn earlier(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
