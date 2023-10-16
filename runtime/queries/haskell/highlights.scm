@@ -33,6 +33,11 @@
 ;; ----------------------------------------------------------------------------
 ;; Keywords, operators, includes
 
+[
+  "forall"
+  "∀"
+] @keyword.control.repeat
+
 (pragma) @constant.macro
 
 [
@@ -68,10 +73,7 @@
   "@"
 ] @operator
 
-(qualified_module (module) @constructor)
-(qualified_type (module) @namespace)
-(qualified_variable (module) @namespace)
-(import (module) @namespace)
+(module) @namespace
 
 [
   (where)
@@ -92,8 +94,6 @@
   "do"
   "mdo"
   "rec"
-  "forall"
-  "∀"
   "infix"
   "infixl"
   "infixr"
@@ -104,22 +104,35 @@
 ;; Functions and variables
 
 (signature name: (variable) @type)
-(function name: (variable) @function)
-
-(variable) @variable
-"_" @variable.builtin
+(function
+  name: (variable) @function
+  patterns: (patterns))
+((signature (fun)) . (function (variable) @function))
+((signature (context (fun))) . (function (variable) @function))
+((signature (forall (context (fun)))) . (function (variable) @function))
 
 (exp_infix (variable) @operator)  ; consider infix functions as operators
 
-("@" @namespace)  ; "as" pattern operator, e.g. x@Constructor
+(exp_infix (exp_name) @function)
+(exp_apply . (exp_name (variable) @function))
+(exp_apply . (exp_name (qualified_variable (variable) @function)))
 
+(variable) @variable
+(pat_wildcard) @variable
 
 ;; ----------------------------------------------------------------------------
 ;; Types
 
 (type) @type
+(type_variable) @type
 
 (constructor) @constructor
 
 ; True or False
 ((constructor) @_bool (#match? @_bool "(True|False)")) @constant.builtin.boolean
+
+;; ----------------------------------------------------------------------------
+;; Quasi-quotes
+
+(quoter) @function
+; Highlighting of quasiquote_body is handled by injections.scm
