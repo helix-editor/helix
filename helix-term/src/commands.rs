@@ -37,7 +37,7 @@ use helix_view::{
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
-    tree,
+    tree::{self, Dimension, Resize},
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
@@ -347,6 +347,11 @@ impl MappableCommand {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        grow_buffer_width, "Grow focused container width",
+        shrink_buffer_width, "Shrink focused container width",
+        grow_buffer_height, "Grow focused container height",
+        shrink_buffer_height, "Shrink focused container height",
+        toggle_focus_window, "Toggle focus mode on buffer",
         goto_next_change, "Goto next change",
         goto_prev_change, "Goto previous change",
         goto_first_change, "Goto first change",
@@ -3360,6 +3365,25 @@ fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
     }
 }
 
+fn grow_buffer_width(cx: &mut Context) {
+    cx.editor.resize_buffer(Resize::Grow, Dimension::Width);
+}
+
+fn shrink_buffer_width(cx: &mut Context) {
+    cx.editor.resize_buffer(Resize::Shrink, Dimension::Width);
+}
+fn grow_buffer_height(cx: &mut Context) {
+    cx.editor.resize_buffer(Resize::Grow, Dimension::Height);
+}
+
+fn shrink_buffer_height(cx: &mut Context) {
+    cx.editor.resize_buffer(Resize::Shrink, Dimension::Height);
+}
+
+fn toggle_focus_window(cx: &mut Context) {
+    cx.editor.toggle_focus_window();
+}
+
 fn goto_next_change(cx: &mut Context) {
     goto_next_change_impl(cx, Direction::Forward)
 }
@@ -4102,9 +4126,13 @@ fn replace_with_yanked(cx: &mut Context) {
 }
 
 fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
-    let Some(values) = editor.registers
+    let Some(values) = editor
+        .registers
         .read(register, editor)
-        .filter(|values| values.len() > 0) else { return };
+        .filter(|values| values.len() > 0)
+    else {
+        return;
+    };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
     let (view, doc) = current!(editor);
@@ -4139,7 +4167,9 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
 }
 
 fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
-    let Some(values) = editor.registers.read(register, editor) else { return };
+    let Some(values) = editor.registers.read(register, editor) else {
+        return;
+    };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
     let (view, doc) = current!(editor);
