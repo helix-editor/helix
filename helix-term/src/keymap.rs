@@ -303,6 +303,14 @@ impl Keymaps {
         self.sticky.as_ref()
     }
 
+    pub fn key_exists(&self, mode: Mode, key: KeyEvent) -> bool {
+        let keymaps = &*self.map();
+        let keymap = &keymaps[&mode];
+        let mut ks = self.pending().to_vec();
+        ks.push(key);
+        keymap.search(&ks).is_some()
+    }
+
     /// Lookup `key` in the keymap to try and find a command to execute. Escape
     /// key cancels pending keystrokes. If there are no pending keystrokes but a
     /// sticky node is in use, it will be cleared.
