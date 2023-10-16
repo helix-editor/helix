@@ -1650,7 +1650,7 @@ impl Editor {
     }
 
     pub fn toggle_focus_window(&mut self) {
-        self.tree.buffer_expand_mode();
+        self.tree.toggle_focus_window();
     }
 
     pub fn should_close(&self) -> bool {

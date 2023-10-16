@@ -738,7 +738,7 @@ impl Tree {
         }
     }
 
-    pub fn buffer_expand_mode(&mut self) {
+    pub fn toggle_focus_window(&mut self) {
         if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
             bounds.expand = !bounds.expand;
         }
