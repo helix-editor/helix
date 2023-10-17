@@ -165,6 +165,24 @@ impl Default for GutterLineNumbersConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct PickerConfig {
+    pub selected_style: String,
+    pub highlight_style: String,
+    pub highlight_symbol: String,
+}
+
+impl Default for PickerConfig {
+    fn default() -> Self {
+        Self {
+            selected_style: "ui.text.focus".to_string(),
+            highlight_style: "special".to_string(),
+            highlight_symbol: " > ".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
     /// IgnoreOptions
     /// Enables ignoring hidden files.
@@ -291,6 +309,8 @@ pub struct Config {
     pub insert_final_newline: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
+    /// Options that apply to all pickers
+    pub picker: PickerConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -846,6 +866,7 @@ impl Default for Config {
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
+            picker: PickerConfig::default(),
         }
     }
 }
