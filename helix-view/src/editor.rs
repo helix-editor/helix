@@ -166,16 +166,13 @@ impl Default for GutterLineNumbersConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PickerConfig {
-    pub selected_style: String,
-    pub highlight_style: String,
+    /// Symbol in front of selected picker item row
     pub highlight_symbol: String,
 }
 
 impl Default for PickerConfig {
     fn default() -> Self {
         Self {
-            selected_style: "ui.text.focus".to_string(),
-            highlight_style: "special".to_string(),
             highlight_symbol: " > ".to_string(),
         }
     }

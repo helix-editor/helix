@@ -522,12 +522,8 @@ impl<T: Item + 'static> Picker<T> {
         }
 
         let text_style = cx.editor.theme.get("ui.text");
-        let selected = cx.editor.theme.get(&picker_config.selected_style);
-        let highlight_style = cx
-            .editor
-            .theme
-            .get(&picker_config.highlight_style)
-            .add_modifier(Modifier::BOLD);
+        let selected = cx.editor.theme.get("ui.text.focus");
+        let highlight_style = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
 
         // -- Render the frame:
         // clear area
