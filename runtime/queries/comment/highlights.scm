@@ -17,7 +17,7 @@
  (#match? @info "^(INFO|NOTE|TODO|PERF|OPTIMIZE|PERFORMANCE|QUESTION|ASK)$"))
 
 ("text" @info
- (#match? @info "^(INFO|NOTE|TODO|PERF|OPTIMIZE|PERFORMANCE|QUESTION|ASK))$"))
+ (#match? @info "^(INFO|NOTE|TODO|PERF|OPTIMIZE|PERFORMANCE|QUESTION|ASK)$"))
 
 ; Warning level tags
 ((tag (name) @warning)
