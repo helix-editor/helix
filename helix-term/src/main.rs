@@ -76,7 +76,7 @@ FLAGS:
         helix_loader::default_log_file().display(),
     );
 
-    let args = Args::parse_args().context("could not parse arguments")?;
+    let mut args = Args::parse_args().context("could not parse arguments")?;
 
     helix_loader::initialize_config_file(args.config_file.clone());
     helix_loader::initialize_log_file(args.log_file.clone());
@@ -118,10 +118,14 @@ FLAGS:
 
     // NOTE: Set the working directory early so the correct configuration is loaded. Be aware that
     // Application::new() depends on this logic so it must be updated if this changes.
-    if let Some((path, true)) = args.files.first().map(|(path, _)| (path, path.is_dir())) {
+    if let Some(path) = &args.working_directory {
         helix_loader::set_current_working_dir(path)?;
-    } else if let Some(path) = &args.working_directory {
+    }
+
+    // If the first file is a directory, it will be the working directory and a file picker will be opened
+    if let Some((path, _)) = args.files.first().filter(|p| p.0.is_dir()) {
         helix_loader::set_current_working_dir(path)?;
+        args.open_cwd = true; // Signal Application that we want to open the picker on "."
     }
 
     let config = match Config::load_default() {
