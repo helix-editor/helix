@@ -291,6 +291,8 @@ pub struct Config {
     pub insert_final_newline: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
+    /// Disable ":reflow" break on hyphen (default false)
+    pub no_break_on_hyphen: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -846,6 +848,7 @@ impl Default for Config {
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
+            no_break_on_hyphen: false,
         }
     }
 }
