@@ -179,7 +179,7 @@ file-types = ["rs"]
 roots = ["Cargo.toml", "Cargo.lock"]
 auto-format = true
 comment-token = "//"
-comment-tokens = ["//"]
+comment-tokens = ["//", "///", "//!"]
 language-servers = [ "rust-analyzer" ]
 indent = { tab-width = 4, unit = "    " }
 
