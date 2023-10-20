@@ -189,7 +189,7 @@ mod test {
 
         assert_eq!(get_comment_token(&doc, 0, &tokens), None);
         assert_eq!(get_comment_token(&doc, 1, &tokens), Some("//"));
-        assert_eq!(get_comment_token(&doc, 2, &tokens), None);
+        assert_eq!(get_comment_token(&doc, 2, &tokens), Some("///"));
         assert_eq!(get_comment_token(&doc, 3, &tokens), Some("///"));
         assert_eq!(get_comment_token(&doc, 4, &tokens), Some("//!"));
     }
