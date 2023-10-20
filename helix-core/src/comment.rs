@@ -1,8 +1,12 @@
-//! This module contains the functionality toggle comments on lines over the selection
-//! using the comment character defined in the user's `languages.toml`
+//! This module contains the functionality for the following comment-related features
+//! using the comment character defined in the user's `languages.toml`:
+//! * toggle comments on lines over the selection
+//! * continue comment when opening a new line
 
 use crate::{
-    find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction,
+    find_first_non_whitespace_char,
+    syntax::{CapturedNode, LanguageConfiguration},
+    Change, Rope, RopeSlice, Selection, Tendril, Transaction,
 };
 use std::borrow::Cow;
 
@@ -92,6 +96,36 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     }
 
     Transaction::change(doc, changes.into_iter())
+}
+
+/// Return the comment token of the current line if it is commented.
+/// Return None otherwise.
+pub fn continue_comment<'a>(doc: &Rope, line: usize, tokens: &'a [String]) -> Option<&'a str> {
+    // TODO: don't continue shebangs
+    if tokens.is_empty() {
+        return None;
+    }
+
+    let mut result = None;
+    let line_slice = doc.line(line);
+
+    if let Some(pos) = find_first_non_whitespace_char(line_slice) {
+        let len = line_slice.len_chars();
+
+        for token in tokens {
+            // line can be shorter than pos + token length
+            let fragment = Cow::from(line_slice.slice(pos..std::cmp::min(pos + token.len(), len)));
+
+            if fragment == *token {
+                // We don't necessarily want to break upon finding the first matching comment token
+                // Instead, we check against all of the comment tokens and end up returning the longest
+                // comment token that matches
+                result = Some(token.as_str());
+            }
+        }
+    }
+
+    result
 }
 
 #[cfg(test)]
