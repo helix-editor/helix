@@ -205,7 +205,7 @@ fn test_treesitter_indent(
         if ignored_lines.iter().any(|range| range.contains(&(i + 1))) {
             continue;
         }
-        if let Some(pos) = helix_core::find_first_non_whitespace_char(line) {
+        if let Some(pos) = helix_core::chars::find_first_non_whitespace_char(line) {
             let tab_width: usize = 4;
             let suggested_indent = treesitter_indent_for_pos(
                 indent_query,

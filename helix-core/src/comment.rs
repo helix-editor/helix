@@ -3,9 +3,7 @@
 //! * toggle comments on lines over the selection
 //! * continue comment when opening a new line
 
-use crate::{
-    find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction,
-};
+use crate::{chars, Change, Rope, RopeSlice, Selection, Tendril, Transaction};
 use std::borrow::Cow;
 
 /// Given text, a comment token, and a set of line indices, returns the following:
@@ -29,7 +27,7 @@ fn find_line_comment(
     let token_len = token.chars().count();
     for line in lines {
         let line_slice = text.line(line);
-        if let Some(pos) = find_first_non_whitespace_char(line_slice) {
+        if let Some(pos) = chars::find_first_non_whitespace_char(line_slice) {
             let len = line_slice.len_chars();
 
             if pos < min {
@@ -96,13 +94,14 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     Transaction::change(doc, changes.into_iter())
 }
 
-/// Return the comment token of the current line if it is commented.
+/// Return the comment token of the current line if it is commented, along with the
+/// position of the last character in the comment token.
 /// Return None otherwise.
-pub fn continue_single_comment<'a>(
+pub fn get_comment_token_and_position<'a>(
     doc: &Rope,
     line: usize,
     tokens: &'a [String],
-) -> Option<&'a str> {
+) -> Option<(&'a str, usize)> {
     // TODO: don't continue shebangs
     if tokens.is_empty() {
         return None;
@@ -111,7 +110,7 @@ pub fn continue_single_comment<'a>(
     let mut result = None;
     let line_slice = doc.line(line);
 
-    if let Some(pos) = find_first_non_whitespace_char(line_slice) {
+    if let Some(pos) = chars::find_first_non_whitespace_char(line_slice) {
         let len = line_slice.len_chars();
 
         for token in tokens {
@@ -122,7 +121,7 @@ pub fn continue_single_comment<'a>(
                 // We don't necessarily want to break upon finding the first matching comment token
                 // Instead, we check against all of the comment tokens and end up returning the longest
                 // comment token that matches
-                result = Some(token.as_str());
+                result = Some((token.as_str(), pos + token.len() - 1));
             }
         }
     }
@@ -187,16 +186,40 @@ mod test {
     }
 
     #[test]
-    fn test_continue_single_comment() {
-        let doc = Rope::from("# 1\n    // 2    \n///3\n/// 4\n//! 5\n//! /// 6\n7 ///");
-        let tokens = vec![String::from("//"), String::from("///"), String::from("//!")];
+    fn test_get_comment_token_and_position() {
+        let doc = Rope::from("# 1\n    // 2    \n///3\n/// 4\n//! 5\n//! /// 6\n7 ///\n;");
+        let tokens = vec![
+            String::from("//"),
+            String::from("///"),
+            String::from("//!"),
+            String::from(";"),
+        ];
 
-        assert_eq!(continue_single_comment(&doc, 0, &tokens), None);
-        assert_eq!(continue_single_comment(&doc, 1, &tokens), Some("//"));
-        assert_eq!(continue_single_comment(&doc, 2, &tokens), Some("///"));
-        assert_eq!(continue_single_comment(&doc, 3, &tokens), Some("///"));
-        assert_eq!(continue_single_comment(&doc, 4, &tokens), Some("//!"));
-        assert_eq!(continue_single_comment(&doc, 5, &tokens), Some("//!"));
-        assert_eq!(continue_single_comment(&doc, 6, &tokens), None);
+        assert_eq!(get_comment_token_and_position(&doc, 0, &tokens), None);
+        assert_eq!(
+            get_comment_token_and_position(&doc, 1, &tokens),
+            Some(("//", 5))
+        );
+        assert_eq!(
+            get_comment_token_and_position(&doc, 2, &tokens),
+            Some(("///", 2))
+        );
+        assert_eq!(
+            get_comment_token_and_position(&doc, 3, &tokens),
+            Some(("///", 2))
+        );
+        assert_eq!(
+            get_comment_token_and_position(&doc, 4, &tokens),
+            Some(("//!", 2))
+        );
+        assert_eq!(
+            get_comment_token_and_position(&doc, 5, &tokens),
+            Some(("//!", 2))
+        );
+        assert_eq!(get_comment_token_and_position(&doc, 6, &tokens), None);
+        assert_eq!(
+            get_comment_token_and_position(&doc, 7, &tokens),
+            Some((";", 0))
+        );
     }
 }
