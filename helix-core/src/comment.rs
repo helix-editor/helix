@@ -188,7 +188,7 @@ mod test {
 
     #[test]
     fn test_continue_single_comment() {
-        let doc = Rope::from("# 1\n    // 2    \n///3\n/// 4\n//! 5");
+        let doc = Rope::from("# 1\n    // 2    \n///3\n/// 4\n//! 5\n//! /// 6\n7 ///");
         let tokens = vec![String::from("//"), String::from("///"), String::from("//!")];
 
         assert_eq!(continue_single_comment(&doc, 0, &tokens), None);
@@ -196,5 +196,7 @@ mod test {
         assert_eq!(continue_single_comment(&doc, 2, &tokens), Some("///"));
         assert_eq!(continue_single_comment(&doc, 3, &tokens), Some("///"));
         assert_eq!(continue_single_comment(&doc, 4, &tokens), Some("//!"));
+        assert_eq!(continue_single_comment(&doc, 5, &tokens), Some("//!"));
+        assert_eq!(continue_single_comment(&doc, 6, &tokens), None);
     }
 }
