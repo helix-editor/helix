@@ -4,9 +4,7 @@
 //! * continue comment when opening a new line
 
 use crate::{
-    find_first_non_whitespace_char,
-    syntax::{CapturedNode, LanguageConfiguration},
-    Change, Rope, RopeSlice, Selection, Tendril, Transaction,
+    find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction,
 };
 use std::borrow::Cow;
 
@@ -100,7 +98,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
 
 /// Return the comment token of the current line if it is commented.
 /// Return None otherwise.
-pub fn continue_comment<'a>(doc: &Rope, line: usize, tokens: &'a [String]) -> Option<&'a str> {
+pub fn get_comment_token<'a>(doc: &Rope, line: usize, tokens: &'a [String]) -> Option<&'a str> {
     // TODO: don't continue shebangs
     if tokens.is_empty() {
         return None;
@@ -133,7 +131,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_find_line_comment() {
+    fn test_toggle_line_comments() {
         // four lines, two space indented, except for line 1 which is blank.
         let mut doc = Rope::from("  1\n\n  2\n  3");
         // select whole document
@@ -182,5 +180,17 @@ mod test {
         assert!(selection.len() == 1); // to ignore the selection unused warning
 
         // TODO: account for uncommenting with uneven comment indentation
+    }
+
+    #[test]
+    fn test_get_comment_token() {
+        let doc = Rope::from("# 1\n    // 2    \n///3\n/// 4\n//! 5");
+        let tokens = vec![String::from("//"), String::from("///"), String::from("//!")];
+
+        assert_eq!(get_comment_token(&doc, 0, &tokens), None);
+        assert_eq!(get_comment_token(&doc, 1, &tokens), Some("//"));
+        assert_eq!(get_comment_token(&doc, 2, &tokens), None);
+        assert_eq!(get_comment_token(&doc, 3, &tokens), Some("///"));
+        assert_eq!(get_comment_token(&doc, 4, &tokens), Some("//!"));
     }
 }
