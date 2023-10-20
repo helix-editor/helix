@@ -98,7 +98,11 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
 
 /// Return the comment token of the current line if it is commented.
 /// Return None otherwise.
-pub fn get_comment_token<'a>(doc: &Rope, line: usize, tokens: &'a [String]) -> Option<&'a str> {
+pub fn continue_single_comment<'a>(
+    doc: &Rope,
+    line: usize,
+    tokens: &'a [String],
+) -> Option<&'a str> {
     // TODO: don't continue shebangs
     if tokens.is_empty() {
         return None;
@@ -183,14 +187,14 @@ mod test {
     }
 
     #[test]
-    fn test_get_comment_token() {
+    fn test_continue_single_comment() {
         let doc = Rope::from("# 1\n    // 2    \n///3\n/// 4\n//! 5");
         let tokens = vec![String::from("//"), String::from("///"), String::from("//!")];
 
-        assert_eq!(get_comment_token(&doc, 0, &tokens), None);
-        assert_eq!(get_comment_token(&doc, 1, &tokens), Some("//"));
-        assert_eq!(get_comment_token(&doc, 2, &tokens), Some("///"));
-        assert_eq!(get_comment_token(&doc, 3, &tokens), Some("///"));
-        assert_eq!(get_comment_token(&doc, 4, &tokens), Some("//!"));
+        assert_eq!(continue_single_comment(&doc, 0, &tokens), None);
+        assert_eq!(continue_single_comment(&doc, 1, &tokens), Some("//"));
+        assert_eq!(continue_single_comment(&doc, 2, &tokens), Some("///"));
+        assert_eq!(continue_single_comment(&doc, 3, &tokens), Some("///"));
+        assert_eq!(continue_single_comment(&doc, 4, &tokens), Some("//!"));
     }
 }

@@ -3118,6 +3118,9 @@ fn open(cx: &mut Context, open: Open) {
         let mut text = String::with_capacity(1 + indent_len);
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
+
+        handle_comment_continue(doc, &mut text, cursor_line);
+
         let text = text.repeat(count);
 
         // calculate new selection ranges
@@ -3137,6 +3140,24 @@ fn open(cx: &mut Context, open: Open) {
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
+
+    // Since we might have added a comment token, move to the end of the line.
+    goto_line_end_newline(cx);
+}
+
+// Currently only continues single-line comments
+// TODO: Handle block comments as well
+fn handle_comment_continue(doc: &Document, text: &mut String, cursor_line: usize) {
+    if let Some(lang_config) = doc.language_config() {
+        let line_comment_tokens = &lang_config.comment_tokens;
+
+        if let Some(token) =
+            comment::continue_single_comment(doc.text(), cursor_line, line_comment_tokens)
+        {
+            text.push_str(token);
+            text.push(' ');
+        }
+    }
 }
 
 // o inserts a new line after each line with a selection
@@ -3674,6 +3695,9 @@ pub mod insert {
                     new_text.reserve_exact(1 + indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
+
+                    handle_comment_continue(doc, &mut new_text, current_line);
+
                     new_text.chars().count()
                 };
 
@@ -4576,7 +4600,7 @@ fn toggle_comments(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let token = doc
         .language_config()
-        .and_then(|lc| lc.comment_token.as_ref())
+        .and_then(|lc| lc.comment_tokens.get(0))
         .map(|tc| tc.as_ref());
     let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id), token);
 
