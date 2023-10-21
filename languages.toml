@@ -43,6 +43,7 @@ ltex-ls = { command = "ltex-ls" }
 markdoc-ls = { command = "markdoc-ls", args = ["--stdio"] }
 marksman = { command = "marksman", args = ["server"] }
 metals = { command = "metals", config = { "isHttpEnabled" = true } }
+mojo = { command = "mojo-lsp-server" }
 mint = { command = "mint", args = ["ls"] }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
@@ -3049,3 +3050,18 @@ language-servers = [ "templ" ]
 [[grammar]]
 name = "templ"
 source = { git = "https://github.com/vrischmann/tree-sitter-templ", rev = "ea56ac0655243490a4929a988f4eaa91dfccc995" }
+
+[[language]]
+name = "mojo"
+scope = "source.mojo"
+roots = []
+injection-regex = "mojo"
+file-types = ["mojo", "🔥"]
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+language-servers = [ "mojo" ]
+
+[[grammar]]
+name = "mojo"
+source = { git = "https://github.com/realprogrammersusevim/tree-sitter-mojo", rev = "f241530d0197c0ddfc0372c60be39221693f9196" }
+
