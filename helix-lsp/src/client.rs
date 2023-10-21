@@ -705,23 +705,60 @@ impl Client {
         })
     }
 
-    pub fn will_rename_files(
+    pub fn prepare_file_rename(
         &self,
-        params: &Vec<lsp::FileRename>,
-    ) -> impl Future<Output = Result<Option<lsp::WorkspaceEdit>>> {
-        let files = params.to_owned();
+        old_uri: &lsp::Url,
+        new_uri: &lsp::Url,
+    ) -> Option<impl Future<Output = Result<lsp::WorkspaceEdit>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if the server does not support willRename feature
+        match &capabilities.workspace {
+            Some(workspace) => match &workspace.file_operations {
+                Some(op) => {
+                    op.will_rename.as_ref()?;
+                }
+                _ => return None,
+            },
+            _ => return None,
+        }
+
+        let files = vec![lsp::FileRename {
+            old_uri: old_uri.to_string(),
+            new_uri: new_uri.to_string(),
+        }];
         let request = self.call::<lsp::request::WillRenameFiles>(lsp::RenameFilesParams { files });
 
-        async move {
+        Some(async move {
             let json = request.await?;
             let response: Option<lsp::WorkspaceEdit> = serde_json::from_value(json)?;
-            Ok(response)
-        }
+            Ok(response.unwrap_or_default())
+        })
     }
 
-    pub fn did_rename_files(&self, params: &[lsp::FileRename]) -> impl Future<Output = Result<()>> {
-        let files = params.to_owned();
-        self.notify::<lsp::notification::DidRenameFiles>(lsp::RenameFilesParams { files })
+    pub fn did_file_rename(
+        &self,
+        old_uri: &lsp::Url,
+        new_uri: &lsp::Url,
+    ) -> Option<impl Future<Output = std::result::Result<(), Error>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if the server does not support DidRename feature
+        match &capabilities.workspace {
+            Some(workspace) => match &workspace.file_operations {
+                Some(op) => {
+                    op.did_rename.as_ref()?;
+                }
+                _ => return None,
+            },
+            _ => return None,
+        }
+
+        let files = vec![lsp::FileRename {
+            old_uri: old_uri.to_string(),
+            new_uri: new_uri.to_string(),
+        }];
+        Some(self.notify::<lsp::notification::DidRenameFiles>(lsp::RenameFilesParams { files }))
     }
 
     // -------------------------------------------------------------------------------------------
