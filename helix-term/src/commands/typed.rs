@@ -2411,7 +2411,7 @@ fn redraw(
     Ok(())
 }
 
-fn rename_buffer(
+fn move_buffer(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     event: PromptEvent,
@@ -2419,51 +2419,25 @@ fn rename_buffer(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    ensure!(args.len() == 1, ":rename takes one argument");
-    let new_name = args.first().unwrap();
 
+    ensure!(args.len() == 1, format!(":move takes one argument"));
+
+    let new_path =
+        helix_core::path::get_normalized_path(&PathBuf::from(args.first().unwrap().as_ref()));
     let (_, doc) = current!(cx.editor);
-    let path = doc
+
+    let old_path = doc
         .path()
-        .ok_or_else(|| anyhow!("Scratch buffers can not be renamed, use :write"))?
-    let mut path_new = path.clone();
-    path_new.set_file_name(OsStr::new(new_name.as_ref()));
-    if path_new.exists() {
-        bail!("Destination already exists");
-    }
+        .ok_or_else(|| anyhow!("Scratch buffer cannot be moved. Use :write instead"))?
+        .clone();
 
-    if let Err(e) = std::fs::rename(&path, &path_new) {
-        bail!("Could not rename file: {e}");
-    }
-    let (_, doc) = current!(cx.editor);
-    doc.set_path(Some(path_new.as_path()))
-        .map_err(|_| anyhow!("File renamed, but could not set path of the document"))?;
+    doc.set_path(Some(new_path.as_path()));
 
-    if let Some(lsp_client) = doc.language_server() {
-        if let Ok(old_uri_str) = Url::from_file_path(&path) {
-            let old_uri = old_uri_str.to_string();
-            if let Ok(new_uri_str) = Url::from_file_path(&path_new) {
-                let new_uri = new_uri_str.to_string();
-                let files = vec![lsp::FileRename { old_uri, new_uri }];
-                match helix_lsp::block_on(lsp_client.will_rename_files(&files)) {
-                    Ok(edit) => {
-                        if apply_workspace_edit(cx.editor, helix_lsp::OffsetEncoding::Utf8, &edit)
-                            .is_err()
-                        {
-                            log::error!(":rename command failed to apply edits")
-                        }
-                    }
-                    Err(err) => log::error!("willRename request failed: {err}"),
-                }
-            } else {
-                log::error!(":rename command could not get new path uri")
-            }
-        } else {
-            log::error!(":rename command could not get current path uri")
-        }
-    }
-    cx.editor
-        .set_status(format!("Renamed file to {}", new_name));
+    if let Err(e) = std::fs::rename(&old_path, doc.path().unwrap()) {
+        doc.set_path(Some(old_path.as_path()));
+        bail!("Could not move file: {}", e);
+    };
+
     Ok(())
 }
 
@@ -3068,11 +3042,11 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: CommandSignature::none(),
     },
     TypableCommand {
-        name: "rename",
-        aliases: &["rnm"],
-        doc: "Rename the currently selected buffer",
-        fun: rename_buffer,
-        signature: CommandSignature::none(),
+        name: "move",
+        aliases: &[],
+        doc: "Move the current buffer and its corresponding file to a different path",
+        fun: move_buffer,
+        signature: CommandSignature::positional(&[completers::filename]),
     },
 ];
 
