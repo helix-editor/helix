@@ -848,7 +848,7 @@ impl Default for Config {
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
-            no_break_on_hyphen: false,
+            no_break_on_hyphen: true,
         }
     }
 }
