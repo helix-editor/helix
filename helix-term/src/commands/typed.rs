@@ -2078,7 +2078,6 @@ fn reflow(
 
     let scrolloff = cx.editor.config().scrolloff;
     let cfg_text_width: usize = cx.editor.config().text_width;
-    let cfg_no_break_on_hyphen: bool = cx.editor.config().no_break_on_hyphen;
     let (view, doc) = current!(cx.editor);
 
     // Find the text_width by checking the following sources in order:
@@ -2097,8 +2096,7 @@ fn reflow(
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(rope, selection, |range| {
         let fragment = range.fragment(rope.slice(..));
-        let reflowed_text =
-            helix_core::wrap::reflow_hard_wrap(&fragment, text_width, cfg_no_break_on_hyphen);
+        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, text_width);
 
         (range.from(), range.to(), Some(reflowed_text))
     });
