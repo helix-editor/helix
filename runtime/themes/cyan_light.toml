@@ -10,7 +10,7 @@
 "constant" = "darker_blue"
 "constant.builtin.boolean" = "blue"
 "constant.character" = "blue"
-"constant.character.escape" = "blue"
+"constant.character.escape" = "dark_red"
 "constant.numeric" = "blue"
 
 "string" = "green"
