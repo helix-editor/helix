@@ -27,7 +27,7 @@ fn find_line_comment(
     let token_len = token.chars().count();
     for line in lines {
         let line_slice = text.line(line);
-        if let Some(pos) = chars::find_first_non_whitespace_char(line_slice) {
+        if let Some(pos) = chars::find_first_non_whitespace_char(line_slice, 0) {
             let len = line_slice.len_chars();
 
             if pos < min {
@@ -110,7 +110,7 @@ pub fn get_comment_token_and_position<'a>(
     let mut result = None;
     let line_slice = doc.line(line);
 
-    if let Some(pos) = chars::find_first_non_whitespace_char(line_slice) {
+    if let Some(pos) = chars::find_first_non_whitespace_char(line_slice, 0) {
         let len = line_slice.len_chars();
 
         for token in tokens {
@@ -187,7 +187,9 @@ mod test {
 
     #[test]
     fn test_get_comment_token_and_position() {
-        let doc = Rope::from("# 1\n    // 2    \n///3\n/// 4\n//! 5\n//! /// 6\n7 ///\n;");
+        let doc = Rope::from(
+            "# 1\n    // 2    \n///3\n/// 4\n//! 5\n//! /// 6\n7 ///\n;8\n//////////// 9",
+        );
         let tokens = vec![
             String::from("//"),
             String::from("///"),
@@ -220,6 +222,10 @@ mod test {
         assert_eq!(
             get_comment_token_and_position(&doc, 7, &tokens),
             Some((";", 0))
+        );
+        assert_eq!(
+            get_comment_token_and_position(&doc, 8, &tokens),
+            Some(("///", 2))
         );
     }
 }

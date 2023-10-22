@@ -87,12 +87,18 @@ pub fn char_is_word(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
 }
 
-pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
-    line.chars().position(|ch| !ch.is_whitespace())
-}
+/// Find the first non-whitespace character in the line starting at the specified
+/// position in the line.
+///
+/// Returns None if the specified position index is out of the bounds on the line.
+pub fn find_first_non_whitespace_char(line: RopeSlice, pos: usize) -> Option<usize> {
+    let len = line.len_chars();
 
-pub fn count_whitespace_after(_line: RopeSlice) -> Option<usize> {
-    None
+    if pos >= len {
+        return None;
+    }
+
+    line.chars_at(pos).position(|ch| !ch.is_whitespace())
 }
 
 #[cfg(test)]

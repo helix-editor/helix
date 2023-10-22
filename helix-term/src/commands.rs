@@ -10,9 +10,9 @@ use tui::widgets::Row;
 pub use typed::*;
 
 use helix_core::{
-    char_idx_at_visual_offset, comment,
+    char_idx_at_visual_offset, chars, comment,
     doc_formatter::TextFormat,
-    encoding, find_first_non_whitespace_char, find_workspace, graphemes,
+    encoding, find_workspace, graphemes,
     history::UndoKind,
     increment, indent,
     indent::IndentStyle,
@@ -814,7 +814,7 @@ fn kill_to_line_start(cx: &mut Context) {
             let head = if anchor == first_char && line != 0 {
                 // select until previous line
                 line_end_char_index(&text, line - 1)
-            } else if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
+            } else if let Some(pos) = chars::find_first_non_whitespace_char(text.line(line), 0) {
                 if first_char + pos < anchor {
                     // select until first non-blank in line if cursor is after it
                     first_char + pos
@@ -876,7 +876,7 @@ fn goto_first_nonwhitespace_impl(view: &mut View, doc: &mut Document, movement: 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.cursor_line(text);
 
-        if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
+        if let Some(pos) = chars::find_first_non_whitespace_char(text.line(line), 0) {
             let pos = pos + text.line_to_char(line);
             range.put_cursor(text, pos, movement == Movement::Extend)
         } else {
@@ -2997,7 +2997,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             // move cursor to the fallback position
             let pos = match cursor_fallback {
                 IndentFallbackPos::LineStart => {
-                    find_first_non_whitespace_char(text.line(cursor_line))
+                    chars::find_first_non_whitespace_char(text.line(cursor_line), 0)
                         .map(|ws_offset| ws_offset + cursor_line_start)
                         .unwrap_or(cursor_line_start)
                 }
@@ -3151,9 +3151,10 @@ fn handle_comment_continue(doc: &Document, text: &mut String, cursor_line: usize
     if let Some(lang_config) = doc.language_config() {
         let line_comment_tokens = &lang_config.comment_tokens;
 
-        if let Some(token) =
-            comment::continue_single_comment(doc.text(), cursor_line, line_comment_tokens)
+        if let Some((token, pos)) =
+            comment::get_comment_token_and_position(doc.text(), cursor_line, line_comment_tokens)
         {
+            let trailing_whitespace = chars::find_first_non_whitespace_char(cursor_line, pos) - pos;
             text.push_str(token);
             text.push(' ');
         }
@@ -4531,7 +4532,6 @@ pub fn completion(cx: &mut Context) {
     // TODO: trigger_offset should be the cursor offset but we also need a starting offset from where we want to apply
     // completion filtering. For example logger.te| should filter the initial suggestion list with "te".
 
-    use helix_core::chars;
     let mut iter = text.chars_at(cursor);
     iter.reverse();
     let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
