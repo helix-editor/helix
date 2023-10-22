@@ -2475,6 +2475,11 @@ fn move_buffer(
         lsp.did_file_rename(&old_path_as_url, &new_path_as_url);
     });
 
+    cx.editor
+        .language_servers
+        .file_event_handler
+        .file_changed(new_path);
+
     Ok(())
 }
 
