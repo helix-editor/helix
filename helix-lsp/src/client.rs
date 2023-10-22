@@ -404,9 +404,19 @@ impl Client {
     where
         R::Params: serde::Serialize,
     {
+        self.call_with_timeout::<R>(params, self.req_timeout)
+    }
+
+    fn call_with_timeout<R: lsp::request::Request>(
+        &self,
+        params: R::Params,
+        timeout_secs: u64,
+    ) -> impl Future<Output = Result<Value>>
+    where
+        R::Params: serde::Serialize,
+    {
         let server_tx = self.server_tx.clone();
         let id = self.next_request_id();
-        let timeout_secs = self.req_timeout;
 
         async move {
             use std::time::Duration;
@@ -727,7 +737,10 @@ impl Client {
             old_uri: old_uri.to_string(),
             new_uri: new_uri.to_string(),
         }];
-        let request = self.call::<lsp::request::WillRenameFiles>(lsp::RenameFilesParams { files });
+        let request = self.call_with_timeout::<lsp::request::WillRenameFiles>(
+            lsp::RenameFilesParams { files },
+            5,
+        );
 
         Some(async move {
             let json = request.await?;
