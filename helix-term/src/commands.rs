@@ -3151,12 +3151,25 @@ fn handle_comment_continue(doc: &Document, text: &mut String, cursor_line: usize
     if let Some(lang_config) = doc.language_config() {
         let line_comment_tokens = &lang_config.comment_tokens;
 
-        if let Some((token, pos)) =
+        if let Some((token, comment_token_ending_pos)) =
             comment::get_comment_token_and_position(doc.text(), cursor_line, line_comment_tokens)
         {
-            let trailing_whitespace = chars::find_first_non_whitespace_char(cursor_line, pos) - pos;
             text.push_str(token);
-            text.push(' ');
+
+            // find the position of the first non-whitespace char after the commet token
+            // so that lines that continue a comment are indented to the same level as the
+            // previous line
+            if let Some(first_char_pos) = chars::find_first_non_whitespace_char(
+                doc.text().line(cursor_line),
+                comment_token_ending_pos,
+            ) {
+                let trailing_whitespace = first_char_pos - comment_token_ending_pos;
+                let whitespace = (0..trailing_whitespace).map(|_| ' ').collect::<String>();
+
+                text.push_str(&whitespace);
+            } else {
+                text.push(' ');
+            }
         }
     }
 }
