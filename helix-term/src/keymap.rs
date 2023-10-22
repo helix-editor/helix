@@ -224,13 +224,13 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
                 Err(serde::de::Error::custom("custom labels are only available for typable commands (the ones starting with ':')"))
             }
             Some(MappableCommand::Typable { name, args, .. }) if !label.is_empty() => {
-                Ok(KeyTrie::Leaf(MappableCommand::Typable {
+                Ok(KeyTrie::MappableCommand(MappableCommand::Typable {
                     name,
                     args,
                     doc: label.to_string(),
                 }))
             }
-            Some(command) => Ok(KeyTrie::Leaf(command)),
+            Some(command) => Ok(KeyTrie::MappableCommand(command)),
         }
     }
 }
