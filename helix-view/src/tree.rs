@@ -96,10 +96,10 @@ impl Container {
     }
 
     fn get_child_by_view_id(&mut self, node: ViewId) -> Option<&mut ContainerBounds> {
-        if let Some(index) = self.children.iter().position(|child| child == &node) {
-            return self.node_bounds.get_mut(index);
-        };
-        None
+        self.children
+            .iter()
+            .position(|child| child == &node)
+            .and_then(|index| self.node_bounds.get_mut(index))
     }
 
     fn push_child(&mut self, node: ViewId) -> &mut Self {
@@ -766,7 +766,7 @@ impl Tree {
         }
     }
 
-    pub fn buffer_expand_mode(&mut self) {
+    pub fn toggle_focus_window(&mut self) {
         if let Some(bounds) = self.get_active_node_bounds_mut(Layout::Horizontal) {
             bounds.expand = !bounds.expand;
         }
