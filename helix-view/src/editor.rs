@@ -2124,8 +2124,8 @@ impl Editor {
         self.tree.resize_buffer(resize_type, dimension);
     }
 
-    pub fn buffer_expand_mode(&mut self) {
-        self.tree.buffer_expand_mode();
+    pub fn toggle_focus_window(&mut self) {
+        self.tree.toggle_focus_window();
     }
 
     pub fn should_close(&self) -> bool {

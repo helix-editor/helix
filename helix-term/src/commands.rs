@@ -52,7 +52,7 @@ use helix_view::{
     input::KeyEvent,
     keyboard::KeyCode,
     theme::Style,
-    tree::{Dimension, Resize},
+    tree::{self, Dimension, Resize},
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
@@ -462,7 +462,7 @@ impl MappableCommand {
         shrink_buffer_width, "Shrink focused container width",
         grow_buffer_height, "Grow focused container height",
         shrink_buffer_height, "Shrink focused container height",
-        buffer_expand_mode, "Enable expand mode on buffer",
+        toggle_focus_window, "Toggle focus mode on buffer",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
         goto_column, "Goto column",
@@ -927,8 +927,8 @@ fn shrink_buffer_height(cx: &mut Context) {
     cx.editor.resize_buffer(Resize::Shrink, Dimension::Height);
 }
 
-fn buffer_expand_mode(cx: &mut Context) {
-    cx.editor.buffer_expand_mode();
+fn toggle_focus_window(cx: &mut Context) {
+    cx.editor.toggle_focus_window();
 }
 
 fn goto_next_buffer(cx: &mut Context) {
