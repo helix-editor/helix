@@ -27,11 +27,11 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "end" => goto_line_end,
 
         "A-w" => { "Alter Window"
-            "A-h"|"A-left" => shrink_buffer_width,
-            "A-l"|"A-right" => grow_buffer_width,
-            "A-j"|"A-down" => shrink_buffer_height,
-            "A-k"|"A-up" => grow_buffer_height,
-            "A-f" => buffer_expand_mode,
+            "A-h"|"A-left" |"h"|"left" => shrink_buffer_width,
+            "A-l"|"A-right"|"l"|"right" => grow_buffer_width,
+            "A-j"|"A-down" |"j"|"down" => shrink_buffer_height,
+            "A-k"|"A-up"   |"k"|"up" => grow_buffer_height,
+            "A-f"|"f" => toggle_focus_window,
         },
 
         "A-W" => { "Alter Window" sticky=true
@@ -39,7 +39,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "l"|"right" => grow_buffer_width,
             "j"|"down" => shrink_buffer_height,
             "k"|"up" => grow_buffer_height,
-            "f" => buffer_expand_mode,
+            "f" => toggle_focus_window,
         },
 
         "w" => move_next_word_start,
