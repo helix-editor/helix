@@ -17,7 +17,7 @@ integration = []
 [dependencies]
 helix-loader = { version = "0.6", path = "../helix-loader" }
 
-ropey = { version = "1.6.0", default-features = false, features = ["simd"] }
+ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 smallvec = "1.11"
 smartstring = "1.0.1"
 unicode-segmentation = "1.10"
