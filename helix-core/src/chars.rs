@@ -102,12 +102,12 @@ pub fn count_whitespace_after(line: RopeSlice, starting_idx: usize) -> Option<us
         return None;
     }
 
-    let count = line
+    let whitespace_count = line
         .chars_at(starting_idx + 1)
         .take_while(|ch| ch.is_whitespace() && *ch != '\n')
         .count();
 
-    Some(count)
+    Some(whitespace_count)
 }
 
 #[cfg(test)]
