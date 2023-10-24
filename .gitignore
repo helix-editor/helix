@@ -2,4 +2,5 @@ target
 .direnv
 helix-term/rustfmt.toml
 result
+.vscode
 runtime/grammars
