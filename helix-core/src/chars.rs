@@ -87,18 +87,27 @@ pub fn char_is_word(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
 }
 
-/// Find the first non-whitespace character in the line starting at the specified
-/// position in the line.
+/// Find the first non-whitespace character in the line.
+pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
+    line.chars().position(|ch| !ch.is_whitespace())
+}
+
+/// Count how much whitespace there is starting at the specified index in the line.
 ///
-/// Returns None if the specified position index is out of the bounds on the line.
-pub fn find_first_non_whitespace_char(line: RopeSlice, pos: usize) -> Option<usize> {
+/// Returns None if the specified starting index >= the length of the line.
+pub fn count_whitespace_after(line: RopeSlice, starting_idx: usize) -> Option<usize> {
     let len = line.len_chars();
 
-    if pos >= len {
+    if starting_idx >= len {
         return None;
     }
 
-    line.chars_at(pos).position(|ch| !ch.is_whitespace())
+    let count = line
+        .chars_at(starting_idx + 1)
+        .take_while(|ch| ch.is_whitespace())
+        .count();
+
+    Some(count)
 }
 
 #[cfg(test)]
@@ -149,5 +158,19 @@ mod test {
                 categorize_char(ch)
             );
         }
+    }
+
+    #[test]
+    fn test_count_whitespace_after() {
+        let mut line = RopeSlice::from("a       1");
+
+        assert_eq!(count_whitespace_after(line, 0), Some(7));
+        assert_eq!(count_whitespace_after(line, 3), Some(4));
+        assert_eq!(count_whitespace_after(line, 8), Some(0));
+        assert_eq!(count_whitespace_after(line, 10), None);
+
+        line = RopeSlice::from("1\n      2");
+
+        assert_eq!(count_whitespace_after(line, 0), Some(7));
     }
 }

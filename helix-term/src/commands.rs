@@ -814,7 +814,7 @@ fn kill_to_line_start(cx: &mut Context) {
             let head = if anchor == first_char && line != 0 {
                 // select until previous line
                 line_end_char_index(&text, line - 1)
-            } else if let Some(pos) = chars::find_first_non_whitespace_char(text.line(line), 0) {
+            } else if let Some(pos) = chars::find_first_non_whitespace_char(text.line(line)) {
                 if first_char + pos < anchor {
                     // select until first non-blank in line if cursor is after it
                     first_char + pos
@@ -876,7 +876,7 @@ fn goto_first_nonwhitespace_impl(view: &mut View, doc: &mut Document, movement: 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.cursor_line(text);
 
-        if let Some(pos) = chars::find_first_non_whitespace_char(text.line(line), 0) {
+        if let Some(pos) = chars::find_first_non_whitespace_char(text.line(line)) {
             let pos = pos + text.line_to_char(line);
             range.put_cursor(text, pos, movement == Movement::Extend)
         } else {
@@ -2997,7 +2997,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             // move cursor to the fallback position
             let pos = match cursor_fallback {
                 IndentFallbackPos::LineStart => {
-                    chars::find_first_non_whitespace_char(text.line(cursor_line), 0)
+                    chars::find_first_non_whitespace_char(text.line(cursor_line))
                         .map(|ws_offset| ws_offset + cursor_line_start)
                         .unwrap_or(cursor_line_start)
                 }
@@ -3151,26 +3151,7 @@ fn handle_comment_continue(doc: &Document, text: &mut String, cursor_line: usize
     if let Some(lang_config) = doc.language_config() {
         let line_comment_tokens = &lang_config.comment_tokens;
 
-        if let Some((token, comment_token_ending_pos)) =
-            comment::get_comment_token_and_position(doc.text(), cursor_line, line_comment_tokens)
-        {
-            text.push_str(token);
-
-            // find the position of the first non-whitespace char after the commet token
-            // so that lines that continue a comment are indented to the same level as the
-            // previous line
-            if let Some(first_char_pos) = chars::find_first_non_whitespace_char(
-                doc.text().line(cursor_line),
-                comment_token_ending_pos,
-            ) {
-                let trailing_whitespace = first_char_pos - comment_token_ending_pos;
-                let whitespace = (0..trailing_whitespace).map(|_| ' ').collect::<String>();
-
-                text.push_str(&whitespace);
-            } else {
-                text.push(' ');
-            }
-        }
+        comment::handle_comment_continue(doc.text(), text, cursor_line, line_comment_tokens);
     }
 }
 

@@ -27,7 +27,7 @@ fn find_line_comment(
     let token_len = token.chars().count();
     for line in lines {
         let line_slice = text.line(line);
-        if let Some(pos) = chars::find_first_non_whitespace_char(line_slice, 0) {
+        if let Some(pos) = chars::find_first_non_whitespace_char(line_slice) {
             let len = line_slice.len_chars();
 
             if pos < min {
@@ -110,7 +110,7 @@ pub fn get_comment_token_and_position<'a>(
     let mut result = None;
     let line_slice = doc.line(line);
 
-    if let Some(pos) = chars::find_first_non_whitespace_char(line_slice, 0) {
+    if let Some(pos) = chars::find_first_non_whitespace_char(line_slice) {
         let len = line_slice.len_chars();
 
         for token in tokens {
@@ -127,6 +127,33 @@ pub fn get_comment_token_and_position<'a>(
     }
 
     result
+}
+
+/// Determines whether the new line following the line at `line_idx` in
+/// document should be prepended with a comment token.
+pub fn handle_comment_continue<'a>(
+    doc: &'a Rope,
+    text: &'a mut String,
+    line_idx: usize,
+    comment_tokens: &'a [String],
+) {
+    if let Some((token, comment_token_ending_pos)) =
+        get_comment_token_and_position(doc, line_idx, comment_tokens)
+    {
+        text.push_str(token);
+
+        // find the position of the first non-whitespace char after the commet token so that
+        // lines that continue a comment are indented to the same level as the previous line
+        if let Some(trailing_whitespace) =
+            chars::count_whitespace_after(doc.line(line_idx), comment_token_ending_pos)
+        {
+            let whitespace_to_insert = (0..=trailing_whitespace).map(|_| ' ').collect::<String>();
+
+            text.push_str(&whitespace_to_insert);
+        } else {
+            text.push(' ');
+        }
+    }
 }
 
 #[cfg(test)]
@@ -227,5 +254,33 @@ mod test {
             get_comment_token_and_position(&doc, 8, &tokens),
             Some(("///", 2))
         );
+    }
+
+    #[test]
+    fn test_handle_continue_comment() {
+        let mut doc = Rope::from("// 1\n");
+        let mut text = String::from(&doc);
+        let comment_tokens = vec![String::from("//"), String::from("///")];
+
+        handle_comment_continue(&doc, &mut text, 0, &comment_tokens);
+
+        assert_eq!(text, String::from("// 1\n// "));
+
+        doc = Rope::from("///2\n");
+        text = String::from(&doc);
+
+        handle_comment_continue(&doc, &mut text, 0, &comment_tokens);
+
+        assert_eq!(text, String::from("///2\n/// "));
+
+        doc = Rope::from("      // 3\n");
+        text = String::from(&doc);
+
+        handle_comment_continue(&doc, &mut text, 0, &comment_tokens);
+
+        doc = Rope::from("///          4\n");
+        text = String::from(&doc);
+
+        handle_comment_continue(&doc, &mut text, 0, &comment_tokens);
     }
 }
