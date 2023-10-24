@@ -144,14 +144,14 @@ pub fn handle_comment_continue<'a>(
 
         // find the position of the first non-whitespace char after the commet token so that
         // lines that continue a comment are indented to the same level as the previous line
-        if let Some(trailing_whitespace) =
-            chars::count_whitespace_after(doc.line(line_idx), comment_token_ending_pos)
-        {
-            let whitespace_to_insert = (0..=trailing_whitespace).map(|_| ' ').collect::<String>();
+        match chars::count_whitespace_after(doc.line(line_idx), comment_token_ending_pos) {
+            None | Some(0) => text.push(' '),
+            Some(trailing_whitespace) => {
+                let whitespace_to_insert =
+                    (0..trailing_whitespace).map(|_| ' ').collect::<String>();
 
-            text.push_str(&whitespace_to_insert);
-        } else {
-            text.push(' ');
+                text.push_str(&whitespace_to_insert);
+            }
         }
     }
 }
