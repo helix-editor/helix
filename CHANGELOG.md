@@ -1,4 +1,4 @@
-# 23.10 (2023-10-15)
+# 23.10 (2023-10-24)
 
 A big shout out to all the contributors! We had 118 contributors in this release.
 
@@ -21,7 +21,9 @@ Features:
 - Show visual feedback in `surround_replace` (#7588)
 - Switch to Nucleo for fuzzy matching (#7814, #8148, #8192, #8194)
 - Insert a trailing newline on write (#8157)
-- Add a `-w`/`--working-dir` CLI flag for specifying a working directory on startup (#8223, #8498)
+- Add a `-w`/`--working-dir` CLI flag for specifying a working directory on startup (#8223, #8498, #8520)
+- Accept a `+N` CLI argument to set the first file's line number (#8521)
+- Accept Helix-specific ignore files in `.helix/ignore` and `~/.config/helix/ignore` (#8099)
 
 Commands:
 
@@ -64,6 +66,9 @@ Usability improvements:
 - Allow theming diff gutters separately from other diff colors (#8343)
 - Style bold/italic/strikethrough in markdown doc popups (#8385)
 - Maintain the cursor position and view when splitting with `:hsplit`/`:vsplit` (#8109)
+- Accept `-` in macros outside of `<`/`>` (#8475)
+- Show all language servers for each language in `--health` (#7315)
+- Don't break on hyphens in `:reflow` (#8569)
 
 Fixes:
 
@@ -102,6 +107,7 @@ Fixes:
 - Fix syntax highlighting in dynamic picker preview pane (#8206)
 - Recognize HTML code tags with attributes as code in markdown previews (#8397)
 - Fix multicursor snippet placeholder directions (#8423)
+- Only show diagnostic highlights when diagnostics are enabled for a language server (#8551)
 
 Themes:
 
@@ -134,10 +140,11 @@ Themes:
 - Fix `zenburn` inlay hint color (#8278a)
 - Fix picker crash when previewing an invalid range (e9d0bd7)
 - Correctly center items in the picker preview (13d4463)
-- Add `cyan_light` (#8293)
+- Add `cyan_light` (#8293, #8587)
 - Theme HTML tags in `onedark` (#8409)
 - Refine `darcula` and `darcula-solid` themes (#8412)
 - Improve `nord` highlights (#8414)
+- Add `nord-night` (#8549)
 
 New languages:
 
@@ -156,6 +163,7 @@ New languages:
 - Gemini (#8070)
 - GNU Assembler (GAS) (#8291)
 - JSON5 (#8473)
+- TEMPL (#8540)
 
 Updated languages and queries:
 
@@ -226,7 +234,7 @@ Updated languages and queries:
 - Fix Nix comment injection precedence (37e48f4)
 - Recognize editorconfig files as INI (#8308)
 - Recognize `.babelrc` as JSON (#8309)
-- Switch Purescript to its own tree-sitter parser (#8306, #8338)
+- Switch Purescript to its own tree-sitter parser (#8306, #8338, #8527)
 - Update Unison highlights (#8315)
 - Recognize `.webmanifest` as JSON (#8342)
 - Recognize polkit policy files as XML (#8369)
@@ -238,6 +246,8 @@ Updated languages and queries:
 - Add a configuration for the tailwind language server (#8442)
 - Add a configuration for the ansible language server (#7973)
 - Add a configuration for the GraphQL language server (#8492)
+- Indent while statements in Bash (#8528)
+- Update tree-sitter-haskell and queries (#8558)
 
 Packaging:
 
