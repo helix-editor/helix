@@ -53,14 +53,12 @@
   item: (builtin) @function.builtin)
 
 ; MARKUP
-(item "item" @operator)
-(term ["item" ":"] @operator)
-(heading) @markup.heading
+(item "-" @markup.list)
+(term ["/" ":"] @markup.list)
+(heading ["=" "==" "===" "====" "====="] @markup.heading.marker) @markup.heading
 (url) @tag
-(emph "_" @operator) @markup.italic
-(strong "*" @operator) @markup.bold
-(item) @markup.list
-(term) @markup.list
+(emph) @markup.italic
+(strong) @markup.bold
 (symbol) @constant.character
 (shorthand) @constant.builtin
 (quote) @markup.quote
