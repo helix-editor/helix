@@ -171,7 +171,7 @@ Updated languages and queries:
 - Recognize XAML files as XML ([#7083](https://github.com/helix-editor/helix/pull/7083))
 - Recognize `Cargo.lock` as TOML ([#7095](https://github.com/helix-editor/helix/pull/7095))
 - Use Rust grammar for Cairo ([c6d1430](https://github.com/helix-editor/helix/commit/c6d1430))
-- Update tree-sitter-nickle ([#7059](https://github.com/helix-editor/helix/pull/7059), [#7551](https://github.com/helix-editor/helix/pull/7551))
+- Update tree-sitter-nickel ([#7059](https://github.com/helix-editor/helix/pull/7059), [#7551](https://github.com/helix-editor/helix/pull/7551))
 - Tune auto-pair characters for Nickel ([#7059](https://github.com/helix-editor/helix/pull/7059))
 - Recognize `Vagrantfile` as Ruby ([#7112](https://github.com/helix-editor/helix/pull/7112))
 - Recognize hidden justfiles as Just ([#7088](https://github.com/helix-editor/helix/pull/7088))
