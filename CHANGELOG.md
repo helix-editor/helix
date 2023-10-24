@@ -29,7 +29,7 @@ Commands:
 
 - `merge_selections` (`A-minus`) - merge all selections into one selection that covers all ranges ([#7053](https://github.com/helix-editor/helix/pull/7053))
 - `move_prev_long_word_end` and `extend_prev_long_word_end` - move/extend to the end of the previous WORD ([#6905](https://github.com/helix-editor/helix/pull/6905))
-- `reverse_selection_contents` - swaps the values of each register so they are reversed ([#7329](https://github.com/helix-editor/helix/pull/7329))
+- `reverse_selection_contents` - swaps the values of each selection so they are reversed ([#7329](https://github.com/helix-editor/helix/pull/7329))
 - Add `:rl` and `:rla` aliases for `:reload` and `:reload-all` ([#7158](https://github.com/helix-editor/helix/pull/7158))
 - `yank_joined` - join the selections and yank to the selected register ([#7195](https://github.com/helix-editor/helix/pull/7195))
 - `:write-all!` (`:wa!`) - forcibly write all buffers to disk and create any necessary subdirectories ([#7577](https://github.com/helix-editor/helix/pull/7577))
