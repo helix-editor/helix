@@ -356,7 +356,7 @@ your <code>~/.bashrc</code> or equivalent:</p>
 <p>Or, create a symbolic link:</p>
 <pre><code class="language-sh">ln -Ts $PWD/runtime ~/.config/helix/runtime
 </code></pre>
-<p>If the above command fails to create a symbolic link because the file exists either move <code>~/.config/helix/runtime</code> to a new location or delete it, then run the symlink command above again. </p>
+<p>If the above command fails to create a symbolic link because the file exists either move <code>~/.config/helix/runtime</code> to a new location or delete it, then run the symlink command above again.</p>
 <h4 id="windows-1"><a class="header" href="#windows-1">Windows</a></h4>
 <p>Either set the <code>HELIX_RUNTIME</code> environment variable to point to the runtime files using the Windows setting (search for
 <code>Edit environment variables for your account</code>) or use the <code>setx</code> command in
@@ -384,11 +384,29 @@ following order:</p>
 <li><code>runtime/</code> sibling directory to <code>$CARGO_MANIFEST_DIR</code> directory (this is intended for
 developing and testing helix only).</li>
 <li><code>runtime/</code> subdirectory of OS-dependent helix user config directory.</li>
-<li><code>$HELIX_RUNTIME</code>.</li>
+<li><code>$HELIX_RUNTIME</code></li>
+<li>Distribution-specific fallback directory (set at compile time—not run time—
+with the <code>HELIX_DEFAULT_RUNTIME</code> environment variable)</li>
 <li><code>runtime/</code> subdirectory of path to Helix executable.</li>
 </ol>
 <p>This order also sets the priority for selecting which file will be used if multiple runtime
 directories have files with the same name.</p>
+<h4 id="note-to-packagers"><a class="header" href="#note-to-packagers">Note to packagers</a></h4>
+<p>If you are making a package of Helix for end users, to provide a good out of
+the box experience, you should set the <code>HELIX_DEFAULT_RUNTIME</code> environment
+variable at build time (before invoking <code>cargo build</code>) to a directory which
+will store the final runtime files after installation. For example, say you want
+to package the runtime into <code>/usr/lib/helix/runtime</code>. The rough steps a build
+script could follow are:</p>
+<ol>
+<li><code>export HELIX_DEFAULT_RUNTIME=/usr/lib/helix/runtime</code></li>
+<li><code>cargo build --profile opt --locked --path helix-term</code></li>
+<li><code>cp -r runtime $BUILD_DIR/usr/lib/helix/</code></li>
+<li><code>cp target/opt/hx $BUILD_DIR/usr/bin/hx</code></li>
+</ol>
+<p>This way the resulting <code>hx</code> binary will always look for its runtime directory in
+<code>/usr/lib/helix/runtime</code> if the user has no custom runtime in <code>~/.config/helix</code>
+or <code>HELIX_RUNTIME</code>.</p>
 <h3 id="validating-the-installation"><a class="header" href="#validating-the-installation">Validating the installation</a></h3>
 <p>To make sure everything is set up as expected you should run the Helix health
 check:</p>
