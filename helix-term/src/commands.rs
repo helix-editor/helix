@@ -3070,6 +3070,7 @@ fn open(cx: &mut Context, open: Open) {
     enter_insert_mode(cx);
     let (view, doc) = current!(cx.editor);
 
+    let config = doc.config.load();
     let text = doc.text().slice(..);
     let contents = doc.text();
     let selection = doc.selection(view.id);
@@ -3119,7 +3120,9 @@ fn open(cx: &mut Context, open: Open) {
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
 
-        handle_comment_continue(doc, &mut text, cursor_line);
+        if config.continue_comments {
+            handle_comment_continue(doc, &mut text, cursor_line);
+        }
 
         let text = text.repeat(count);
 

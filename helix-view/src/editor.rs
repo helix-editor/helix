@@ -291,6 +291,8 @@ pub struct Config {
     pub insert_final_newline: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
+    /// Whether to prepend a comment token onto a new line that follows a commented line. Defaults to `true`.
+    pub continue_comments: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -846,6 +848,7 @@ impl Default for Config {
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
+            continue_comments: true,
         }
     }
 }
