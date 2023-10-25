@@ -6,6 +6,8 @@
     --page-padding: 15px;
     --content-max-width: 750px;
     --menu-bar-height: 50px;
+    --mono-font: "Source Code Pro", Consolas, "Ubuntu Mono", Menlo, "DejaVu Sans Mono", monospace, monospace;
+    --code-font-size: 0.875em /* please adjust the ace font size accordingly in editor.js */
 }
 
 /* Themes */
@@ -16,7 +18,7 @@
 
     --sidebar-bg: #14191f;
     --sidebar-fg: #c8c9db;
-    --sidebar-non-existent: #5c6773;
+    --sidebar-non-existant: #5c6773;
     --sidebar-active: #ffb454;
     --sidebar-spacer: #2d334f;
 
@@ -36,6 +38,8 @@
     --quote-bg: hsl(226, 15%, 17%);
     --quote-border: hsl(226, 15%, 22%);
 
+    --warning-border: #ff8e00;
+
     --table-border-color: hsl(210, 25%, 13%);
     --table-header-bg: hsl(210, 25%, 28%);
     --table-alternate-bg: hsl(210, 25%, 11%);
@@ -48,18 +52,8 @@
     --searchresults-border-color: #888;
     --searchresults-li-bg: #252932;
     --search-mark-bg: #e3b171;
-    --hljs-background: #191f26;
-    --hljs-color: #e6e1cf;
-    --hljs-quote: #5c6773;
-    --hljs-variable: #ff7733;
-    --hljs-type: #ffee99;
-    --hljs-title: #b8cc52;
-    --hljs-symbol: #ffb454;
-    --hljs-selector-tag: #ff7733;
-    --hljs-selector-tag: #36a3d9;
-    --hljs-selector-tag: #00568d;
-    --hljs-selector-tag: #91b362;
-    --hljs-selector-tag: #d96c75;
+
+    --color-scheme: dark;
 }
 
 .coal {
@@ -68,7 +62,7 @@
 
     --sidebar-bg: #292c2f;
     --sidebar-fg: #a1adb8;
-    --sidebar-non-existent: #505254;
+    --sidebar-non-existant: #505254;
     --sidebar-active: #3473ad;
     --sidebar-spacer: #393939;
 
@@ -88,6 +82,8 @@
     --quote-bg: hsl(234, 21%, 18%);
     --quote-border: hsl(234, 21%, 23%);
 
+    --warning-border: #ff8e00;
+
     --table-border-color: hsl(200, 7%, 13%);
     --table-header-bg: hsl(200, 7%, 28%);
     --table-alternate-bg: hsl(200, 7%, 11%);
@@ -100,18 +96,8 @@
     --searchresults-border-color: #98a3ad;
     --searchresults-li-bg: #2b2b2f;
     --search-mark-bg: #355c7d;
-    --hljs-background: #969896;
-    --hljs-color: #cc6666;
-    --hljs-quote: #de935f;
-    --hljs-variable: #f0c674;
-    --hljs-type: #b5bd68;
-    --hljs-title: #8abeb7;
-    --hljs-symbol: #81a2be;
-    --hljs-selector-tag: #b294bb;
-    --hljs-selector-tag: #1d1f21;
-    --hljs-selector-tag: #c5c8c6;
-    --hljs-selector-tag: #718c00;
-    --hljs-selector-tag: #c82829;
+
+    --color-scheme: dark;
 }
 
 .light {
@@ -120,7 +106,7 @@
 
     --sidebar-bg: #fafafa;
     --sidebar-fg: hsl(0, 0%, 0%);
-    --sidebar-non-existent: #aaaaaa;
+    --sidebar-non-existant: #aaaaaa;
     --sidebar-active: #1f1fff;
     --sidebar-spacer: #f4f4f4;
 
@@ -140,6 +126,8 @@
     --quote-bg: hsl(197, 37%, 96%);
     --quote-border: hsl(197, 37%, 91%);
 
+    --warning-border: #ff8e00;
+
     --table-border-color: hsl(0, 0%, 95%);
     --table-header-bg: hsl(0, 0%, 80%);
     --table-alternate-bg: hsl(0, 0%, 97%);
@@ -152,14 +140,8 @@
     --searchresults-border-color: #888;
     --searchresults-li-bg: #e4f2fe;
     --search-mark-bg: #a2cff5;
-    --hljs-background: #f6f7f6;
-    --hljs-color: #000;
-    --hljs-quote: #575757;
-    --hljs-variable: #d70025;
-    --hljs-type: #b21e00;
-    --hljs-title: #0030f2;
-    --hljs-symbol: #008200;
-    --hljs-selector-tag: #9d00ec;
+
+    --color-scheme: light;
 }
 
 .navy {
@@ -168,7 +150,7 @@
 
     --sidebar-bg: #282d3f;
     --sidebar-fg: #c8c9db;
-    --sidebar-non-existent: #505274;
+    --sidebar-non-existant: #505274;
     --sidebar-active: #2b79a2;
     --sidebar-spacer: #2d334f;
 
@@ -188,6 +170,8 @@
     --quote-bg: hsl(226, 15%, 17%);
     --quote-border: hsl(226, 15%, 22%);
 
+    --warning-border: #ff8e00;
+
     --table-border-color: hsl(226, 23%, 16%);
     --table-header-bg: hsl(226, 23%, 31%);
     --table-alternate-bg: hsl(226, 23%, 14%);
@@ -201,18 +185,7 @@
     --searchresults-li-bg: #242430;
     --search-mark-bg: #a2cff5;
 
-    --hljs-background: #969896;
-    --hljs-color: #cc6666;
-    --hljs-quote: #de935f;
-    --hljs-variable: #f0c674;
-    --hljs-type: #b5bd68;
-    --hljs-title: #8abeb7;
-    --hljs-symbol: #81a2be;
-    --hljs-selector-tag: #b294bb;
-    --hljs-selector-tag: #1d1f21;
-    --hljs-selector-tag: #c5c8c6;
-    --hljs-selector-tag: #718c00;
-    --hljs-selector-tag: #c82829;
+    --color-scheme: dark;
 }
 
 .rust {
@@ -221,7 +194,7 @@
 
     --sidebar-bg: #3b2e2a;
     --sidebar-fg: #c8c9db;
-    --sidebar-non-existent: #505254;
+    --sidebar-non-existant: #505254;
     --sidebar-active: #e69f67;
     --sidebar-spacer: #45373a;
 
@@ -241,6 +214,8 @@
     --quote-bg: hsl(60, 5%, 75%);
     --quote-border: hsl(60, 5%, 70%);
 
+    --warning-border: #ff8e00;
+
     --table-border-color: hsl(60, 9%, 82%);
     --table-header-bg: #b3a497;
     --table-alternate-bg: hsl(60, 9%, 84%);
@@ -253,14 +228,8 @@
     --searchresults-border-color: #888;
     --searchresults-li-bg: #dec2a2;
     --search-mark-bg: #e69f67;
-    --hljs-background: #f6f7f6;
-    --hljs-color: #000;
-    --hljs-quote: #575757;
-    --hljs-variable: #d70025;
-    --hljs-type: #b21e00;
-    --hljs-title: #0030f2;
-    --hljs-symbol: #008200;
-    --hljs-selector-tag: #9d00ec;
+
+    --color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -270,7 +239,7 @@
 
         --sidebar-bg: #292c2f;
         --sidebar-fg: #a1adb8;
-        --sidebar-non-existent: #505254;
+        --sidebar-non-existant: #505254;
         --sidebar-active: #3473ad;
         --sidebar-spacer: #393939;
 
@@ -290,6 +259,8 @@
         --quote-bg: hsl(234, 21%, 18%);
         --quote-border: hsl(234, 21%, 23%);
 
+        --warning-border: #ff8e00;
+
         --table-border-color: hsl(200, 7%, 13%);
         --table-header-bg: hsl(200, 7%, 28%);
         --table-alternate-bg: hsl(200, 7%, 11%);
@@ -303,109 +274,4 @@
         --searchresults-li-bg: #2b2b2f;
         --search-mark-bg: #355c7d;
     }
-}
-
-.colibri {
-    --bg: #3b224c;
-    --fg: #bcbdd0;
-    --heading-fg: #fff;
-
-    --sidebar-bg: #281733;
-    --sidebar-fg: #c8c9db;
-    --sidebar-non-existent: #505274;
-    --sidebar-active: #a4a0e8;
-    --sidebar-spacer: #2d334f;
-
-    --scrollbar: var(--sidebar-fg);
-
-    --icons: #737480;
-    --icons-hover: #b7b9cc;
-
-    /* --links: #a4a0e8; */
-    --links: #ECCDBA;
-
-    --inline-code-color: hsl(48.7, 7.8%, 70%);
-
-    --theme-popup-bg: #161923;
-    --theme-popup-border: #737480;
-    --theme-hover: rgba(0,0,0, .2);
-
-    --quote-bg: #281733;
-    --quote-border: hsl(226, 15%, 22%);
-
-    --table-border-color: hsl(226, 23%, 76%);
-    --table-header-bg: hsla(226, 23%, 31%, 0);
-    --table-alternate-bg: hsl(226, 23%, 14%);
-    --table-border-line: hsla(201deg, 20%, 92%, 0.2);
-
-    --searchbar-border-color: #aaa;
-    --searchbar-bg: #aeaec6;
-    --searchbar-fg: #000;
-    --searchbar-shadow-color: #aaa;
-    --searchresults-header-fg: #5f5f71;
-    --searchresults-border-color: #5c5c68;
-    --searchresults-li-bg: #242430;
-    --search-mark-bg: #acff5;
-    --hljs-background: #2f1e2e;
-    --hljs-color: #a39e9b;
-    --hljs-quote: #8d8687;
-    --hljs-variable: #ef6155;
-    --hljs-type: #f99b15;
-    --hljs-title: #fec418;
-    --hljs-symbol: #48b685;
-    --hljs-selector-tag: #815ba4;
-}
-
-.colibri {
-/*
-    --bg: #ffffff;
-    --fg: #452859;
-    --fg: #5a5977;
-    --heading-fg: #281733;
-
-    --sidebar-bg: #281733;
-    --sidebar-fg: #c8c9db;
-    --sidebar-non-existent: #505274;
-    --sidebar-active: #a4a0e8;
-    --sidebar-spacer: #2d334f;
-
-    --scrollbar: var(--sidebar-fg);
-
-    --icons: #737480;
-    --icons-hover: #b7b9cc;
-
-    --links: #6F44F0;
-
-    --inline-code-color: #a39e9b;
-
-    --theme-popup-bg: #161923;
-    --theme-popup-border: #737480;
-    --theme-hover: rgba(0,0,0, .2);
-
-    --quote-bg: rgba(0, 0, 0, 0);
-    --quote-border: hsl(226, 15%, 75%);
-
-    --table-border-color: #5a5977;
-    --table-border-color: hsl(201deg 10% 67%);
-    --table-header-bg: hsl(0, 0%, 100%);
-    --table-alternate-bg: hsl(0, 0%, 97%);
-    --table-border-line: hsl(201deg, 20%, 92%);
-
-    --searchbar-border-color: #aaa;
-    --searchbar-bg: #aeaec6;
-    --searchbar-fg: #000;
-    --searchbar-shadow-color: #aaa;
-    --searchresults-header-fg: #5f5f71;
-    --searchresults-border-color: #5c5c68;
-    --searchresults-li-bg: #242430;
-    --search-mark-bg: #a2cff5;
-    --hljs-background: #TODO;
-    --hljs-color: #TODO;
-    --hljs-quote: #TODO;
-    --hljs-variable: #TODO;
-    --hljs-type: #TODO;
-    --hljs-title: #TODO;
-    --hljs-symbol: #TODO;
-    --hljs-selector-tag: #TODO;
-*/
 }
