@@ -8,7 +8,7 @@
   "IOBUF"
 ] @keyword
 
-["SITE"] @storage
+["SITE"] @keyword.storage
 
 ["="] @operator
 
