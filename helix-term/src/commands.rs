@@ -3625,6 +3625,7 @@ pub mod insert {
 
     pub fn insert_newline(cx: &mut Context) {
         let (view, doc) = current_ref!(cx.editor);
+        let config = doc.config.load();
         let text = doc.text().slice(..);
 
         let contents = doc.text();
@@ -3694,7 +3695,9 @@ pub mod insert {
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
 
-                    handle_comment_continue(doc, &mut new_text, current_line);
+                    if config.continue_comments {
+                        handle_comment_continue(doc, &mut new_text, current_line);
+                    }
 
                     new_text.chars().count()
                 };
