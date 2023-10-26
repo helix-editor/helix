@@ -794,11 +794,11 @@ lines.
 =                      7.3 INDENTING LINES                      =
 =================================================================
 
- Type > to indent a line and < to outdent it.
+ Type > to indent a line and < to unindent it.
 
  1. Move the cursor to the line marked '-->' below.
  2. Move down to the second line and type > to indent it.
- 3. Move to the third line and type < to outdent it.
+ 3. Move to the third line and type < to unindent it.
 
  --> These lines
     are indented
@@ -842,7 +842,7 @@ lines.
 
  * Type J to join lines in selection.
 
- * Type < and > to indent / outdent lines.
+ * Type > and < to indent / unindent lines.
 
  * Press Ctrl-a to increment the selected number.
    * Press Ctrl-x to decrement the selected number.
