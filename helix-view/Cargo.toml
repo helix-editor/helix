@@ -10,7 +10,7 @@ repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 
 [features]
-# default = ["dap_lsp"]
+default = ["dap_lsp", "term"]
 dap_lsp = ["dep:helix-lsp", "dep:helix-dap"]
 term = ["crossterm"]
 

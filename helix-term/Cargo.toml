@@ -13,7 +13,7 @@ default-run = "hx"
 rust-version = "1.65"
 
 [features]
-default = ["git"]                            #, "dap_lsp"]
+default = ["git", "crossterm", "dap_lsp"]
 dap_lsp = ["dep:helix-lsp", "dep:helix-dap"]
 unicode-lines = ["helix-core/unicode-lines"]
 integration = []
@@ -49,10 +49,8 @@ tokio = { version = "1", features = [
     "fs",
     "parking_lot",
 ] }
-tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = [
-    "crossterm",
-] }
-crossterm = { version = "0.27", features = ["event-stream"] }
+tui = { path = "../helix-tui", package = "helix-tui" }
+crossterm = { version = "0.27", features = ["event-stream"], optional = true }
 signal-hook = "0.3"
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = [
