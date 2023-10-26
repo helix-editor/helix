@@ -41,22 +41,32 @@ use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
 use anyhow::{Context, Error};
 
-use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
-#[cfg(not(windows))]
+#[cfg(not(target_arch = "wasm32"))]
+use crossterm::{event::Event as TermEvent, tty::IsTty};
+#[cfg(target_arch = "wasm32")]
+type TermEvent = ();
+#[cfg(not(any(windows, target_arch = "wasm32")))]
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
-#[cfg(windows)]
+#[cfg(any(windows, target_arch = "wasm32"))]
 type Signals = futures_util::stream::Empty<()>;
 
-#[cfg(not(feature = "integration"))]
+#[cfg(not(any(feature = "integration", target_arch = "wasm32")))]
 use tui::backend::CrosstermBackend;
 
 #[cfg(feature = "integration")]
 use tui::backend::TestBackend;
 
-#[cfg(not(feature = "integration"))]
+#[cfg(not(any(feature = "integration", target_arch = "wasm32")))]
 type TerminalBackend = CrosstermBackend<std::io::Stdout>;
 
 #[cfg(feature = "integration")]
+type TerminalBackend = TestBackend;
+
+// TODO(wasm32) plug an adequate backend instead
+#[cfg(target_arch = "wasm32")]
+use tui::backend::TestBackend;
+
+#[cfg(target_arch = "wasm32")]
 type TerminalBackend = TestBackend;
 
 type Terminal = tui::terminal::Terminal<TerminalBackend>;
@@ -134,10 +144,14 @@ impl Application {
 
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
-        #[cfg(not(feature = "integration"))]
+        #[cfg(not(any(feature = "integration", target_arch = "wasm32")))]
         let backend = CrosstermBackend::new(stdout(), &config.editor);
 
         #[cfg(feature = "integration")]
+        let backend = TestBackend::new(120, 150);
+
+        // TODO(wasm32) plug adequate backend
+        #[cfg(target_arch = "wasm32")]
         let backend = TestBackend::new(120, 150);
 
         let terminal = Terminal::new(backend)?;
@@ -212,19 +226,22 @@ impl Application {
                 let (view, doc) = current!(editor);
                 align_view(doc, view, Align::Center);
             }
-        } else if stdin().is_tty() || cfg!(feature = "integration") {
-            editor.new_file(Action::VerticalSplit);
         } else {
-            editor
-                .new_file_from_stdin(Action::VerticalSplit)
-                .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+            #[cfg(not(target_arch = "wasm32"))]
+            if stdin().is_tty() || cfg!(feature = "integration") {
+                editor.new_file(Action::VerticalSplit);
+            } else {
+                editor
+                    .new_file_from_stdin(Action::VerticalSplit)
+                    .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+            }
         }
 
         editor.set_theme(theme);
 
-        #[cfg(windows)]
+        #[cfg(any(windows, target_arch = "wasm32"))]
         let signals = futures_util::stream::empty();
-        #[cfg(not(windows))]
+        #[cfg(not(any(windows, target_arch = "wasm32")))]
         let signals = Signals::new([
             signal::SIGTSTP,
             signal::SIGCONT,
@@ -288,7 +305,7 @@ impl Application {
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TermEvent>> + Unpin,
     {
         self.render().await;
 
@@ -301,7 +318,7 @@ impl Application {
 
     pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TermEvent>> + Unpin,
     {
         loop {
             if self.editor.should_close() {
@@ -438,13 +455,13 @@ impl Application {
         }
     }
 
-    #[cfg(windows)]
+    #[cfg(any(windows, target_arch = "wasm32"))]
     // no signal handling available on windows
     pub async fn handle_signals(&mut self, _signal: ()) -> bool {
         true
     }
 
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_arch = "wasm32")))]
     pub async fn handle_signals(&mut self, signal: i32) -> bool {
         match signal {
             signal::SIGTSTP => {
@@ -618,7 +635,14 @@ impl Application {
         false
     }
 
-    pub async fn handle_terminal_events(&mut self, event: std::io::Result<CrosstermEvent>) {
+    #[cfg(target_arch = "wasm32")]
+    pub async fn handle_terminal_events(&mut self, event: std::io::Result<TermEvent>) {
+        // TODO(wasm32)
+        todo!()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn handle_terminal_events(&mut self, event: std::io::Result<TermEvent>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -626,7 +650,7 @@ impl Application {
         };
         // Handle key events
         let should_redraw = match event.unwrap() {
-            CrosstermEvent::Resize(width, height) => {
+            TermEvent::Resize(width, height) => {
                 self.terminal
                     .resize(Rect::new(0, 0, width, height))
                     .expect("Unable to resize terminal");
@@ -639,7 +663,7 @@ impl Application {
                     .handle_event(&Event::Resize(width, height), &mut cx)
             }
             // Ignore keyboard release events.
-            CrosstermEvent::Key(crossterm::event::KeyEvent {
+            TermEvent::Key(crossterm::event::KeyEvent {
                 kind: crossterm::event::KeyEventKind::Release,
                 ..
             }) => false,
@@ -1158,9 +1182,18 @@ impl Application {
         self.terminal.restore(terminal_config)
     }
 
+    #[cfg(target_arch = "wasm32")]
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<TermEvent>> + Unpin,
+    {
+        Ok(0)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
+    where
+        S: Stream<Item = std::io::Result<TermEvent>> + Unpin,
     {
         self.claim_term().await?;
 

@@ -522,10 +522,15 @@ impl MappableCommand {
         dap_enable_exceptions, "Enable exception breakpoints",
         #[cfg(feature = "dap_lsp")]
         dap_disable_exceptions, "Disable exception breakpoints",
+        #[cfg(not(target_arch = "wasm32"))]
         shell_pipe, "Pipe selections through shell command",
+        #[cfg(not(target_arch = "wasm32"))]
         shell_pipe_to, "Pipe selections into shell command ignoring output",
+        #[cfg(not(target_arch = "wasm32"))]
         shell_insert_output, "Insert shell command output before selections",
+        #[cfg(not(target_arch = "wasm32"))]
         shell_append_output, "Append shell command output after selections",
+        #[cfg(not(target_arch = "wasm32"))]
         shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend and return to shell",
         #[cfg(feature = "dap_lsp")]
@@ -5390,22 +5395,27 @@ enum ShellBehavior {
     Append,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn shell_pipe(cx: &mut Context) {
     shell_prompt(cx, "pipe:".into(), ShellBehavior::Replace);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn shell_pipe_to(cx: &mut Context) {
     shell_prompt(cx, "pipe-to:".into(), ShellBehavior::Ignore);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn shell_insert_output(cx: &mut Context) {
     shell_prompt(cx, "insert-output:".into(), ShellBehavior::Insert);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn shell_append_output(cx: &mut Context) {
     shell_prompt(cx, "append-output:".into(), ShellBehavior::Append);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn shell_keep_pipe(cx: &mut Context) {
     ui::prompt(
         cx,
@@ -5458,10 +5468,12 @@ fn shell_keep_pipe(cx: &mut Context) {
     );
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<(Tendril, bool)> {
     tokio::task::block_in_place(|| futures_executor::block_on(shell_impl_async(shell, cmd, input)))
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
@@ -5532,6 +5544,7 @@ async fn shell_impl_async(
     Ok((tendril, output.status.success()))
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let pipe = match behavior {
         ShellBehavior::Replace | ShellBehavior::Ignore => true,
@@ -5605,6 +5618,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     view.ensure_cursor_in_view(doc, config.scrolloff);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
     ui::prompt(
         cx,
@@ -5625,7 +5639,7 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
 }
 
 fn suspend(_cx: &mut Context) {
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_arch = "wasm32")))]
     signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
 }
 

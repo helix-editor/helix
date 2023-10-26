@@ -8,6 +8,7 @@ use std::{
     process::Command,
     sync::mpsc::channel,
 };
+#[cfg(not(target_arch = "wasm32"))]
 use tempfile::TempPath;
 use tree_sitter::Language;
 
@@ -225,6 +226,7 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
     Ok(grammars)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn run_parallel<F, Res>(grammars: Vec<GrammarConfiguration>, job: F) -> Vec<(String, Result<Res>)>
 where
     F: Fn(GrammarConfiguration) -> Result<Res> + Send + 'static + Clone,

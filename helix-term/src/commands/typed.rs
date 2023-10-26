@@ -2221,6 +2221,7 @@ fn refresh_config(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn append_output(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2235,6 +2236,7 @@ fn append_output(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn insert_output(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2249,6 +2251,7 @@ fn insert_output(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn pipe_to(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2257,10 +2260,12 @@ fn pipe_to(
     pipe_impl(cx, args, event, &ShellBehavior::Ignore)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     pipe_impl(cx, args, event, &ShellBehavior::Replace)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn pipe_impl(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2276,6 +2281,7 @@ fn pipe_impl(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn run_shell_command(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2975,6 +2981,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: open_log,
         signature: CommandSignature::none(),
     },
+    #[cfg(not(target_arch = "wasm32"))]
     TypableCommand {
         name: "insert-output",
         aliases: &[],
@@ -2982,6 +2989,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: insert_output,
         signature: CommandSignature::none(),
     },
+    #[cfg(not(target_arch = "wasm32"))]
     TypableCommand {
         name: "append-output",
         aliases: &[],
@@ -2989,6 +2997,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: append_output,
         signature: CommandSignature::none(),
     },
+    #[cfg(not(target_arch = "wasm32"))]
     TypableCommand {
         name: "pipe",
         aliases: &[],
@@ -2996,6 +3005,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: pipe,
         signature: CommandSignature::none(),
     },
+    #[cfg(not(target_arch = "wasm32"))]
     TypableCommand {
         name: "pipe-to",
         aliases: &[],
@@ -3003,6 +3013,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: pipe_to,
         signature: CommandSignature::none(),
     },
+    #[cfg(not(target_arch = "wasm32"))]
     TypableCommand {
         name: "run-shell-command",
         aliases: &["sh"],

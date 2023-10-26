@@ -27,13 +27,16 @@ pub struct Context<'a> {
     pub jobs: &'a mut Jobs,
 }
 
+// TODO(wasm32) review all `gui` branch and work on `Context` there
 impl<'a> Context<'a> {
     /// Waits on all pending jobs, and then tries to flush all pending write
     /// operations for all documents.
     pub fn block_try_flush_writes(&mut self) -> anyhow::Result<()> {
+        #[cfg(not(target_arch = "wasm32"))]
         tokio::task::block_in_place(|| {
             futures_executor::block_on(self.jobs.finish(self.editor, None))
         })?;
+        #[cfg(not(target_arch = "wasm32"))]
         tokio::task::block_in_place(|| futures_executor::block_on(self.editor.flush_writes()))?;
         Ok(())
     }

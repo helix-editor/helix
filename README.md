@@ -1,3 +1,31 @@
+# playground branch for `wasm32` support, WIP
+
+This branch aims at providing a `wasm32` Helix for integration e.g. with `xterm.js`.
+
+How to build:
+
+```sh
+cargo build --lib --no-default-features --target wasm32-unknown-unknown
+```
+
+This branch preserves native features (i.e. you should still be able to run successfully `cargo build` from the root), but on `wasm32`, at least these features are disabled:
+
+* language server support
+* debugging
+* shell commands execution and piping
+* cloning & compiling `tree-sitter` grammars
+* anything related to the filesystem
+* integration with an actual backend (`TestBackend` is used for now) and the event loop
+
+Next steps:
+
+* review and port other relevant efforts from [the original attempt](https://github.com/helix-editor/helix/tree/gui)
+* try out any form of web integration
+* design & implement a web bindable backend and event loop
+* review & tackle remaining `TODO(wasm32)`s
+
+# Original README
+
 <div align="center">
 
 <h1>

@@ -6,6 +6,7 @@ pub mod args;
 pub mod commands;
 pub mod compositor;
 pub mod config;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod health;
 pub mod job;
 pub mod keymap;

@@ -279,11 +279,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         },
 
         "\"" => select_register,
-        "|" => shell_pipe,
-        "A-|" => shell_pipe_to,
-        "!" => shell_insert_output,
-        "A-!" => shell_append_output,
-        "$" => shell_keep_pipe,
         "C-z" => suspend,
 
         "C-a" => increment,
@@ -341,6 +336,15 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "r" => rename_symbol,
             "h" => select_references_to_symbol_under_cursor,
         },
+    }));
+
+    #[cfg(not(target_arch = "wasm32"))]
+    normal.merge_nodes(keymap!({ "Normal mode"
+        "|" => shell_pipe,
+        "A-|" => shell_pipe_to,
+        "!" => shell_insert_output,
+        "A-!" => shell_append_output,
+        "$" => shell_keep_pipe,
     }));
 
     let mut select = normal.clone();
