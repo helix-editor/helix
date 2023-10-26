@@ -1954,7 +1954,7 @@ dependencies = [
 [[package]]
 name = "rs-xterm-js"
 version = "0.1.0"
-source = "git+https://github.com/makemeunsee/rs-xterm-js#83faccf76bddfb8a9459786190959cb8bb3f236b"
+source = "git+https://github.com/makemeunsee/rs-xterm-js#1e83e17dac1c78dcf4954ac319ef89600a71fef4"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
