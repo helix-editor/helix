@@ -36,8 +36,6 @@ Most features of the editor are untested, so expect bugs; see 'Known issues'.
 ```sh
 cargo install cargo-wasm
 
-nvm use 16
-
 npm install
 
 cd www/
@@ -49,9 +47,6 @@ npm install
 
 ```sh
 wasm-pack build
-
-# alternatively, without webpacking and integration into the node app:
-cargo build --lib --no-default-features --target wasm32-unknown-unknown
 ```
 
 ## Run
@@ -59,9 +54,9 @@ cargo build --lib --no-default-features --target wasm32-unknown-unknown
 ```sh
 cd www/
 
-nvm use 16
+NODE_OPTIONS=--openssl-legacy-provider npm run start
 
-npm run start
+# then visit https://localhost:8080
 ```
 
 ### Deploy
@@ -83,6 +78,8 @@ wasm-pack test --headless --firefox
 * Emojis cause glitches, maybe an encoding issue.
 * UI behavior on mobile is broken; mobile usability is not a goal but this may
   indicate issues nonetheless.
+* Some shortcuts are shadowed by the browser (e.g. Ctrl-w), other defaults could
+  be used.
 
 ## How does it work
 
