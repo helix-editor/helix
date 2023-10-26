@@ -109,6 +109,7 @@ FLAGS:
         return Ok(0);
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     if args.build_grammars {
         helix_loader::grammar::build_grammars(None)?;
         return Ok(0);

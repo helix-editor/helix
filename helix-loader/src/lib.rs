@@ -1,6 +1,7 @@
 pub mod config;
 pub mod grammar;
 
+#[cfg(not(target_arch = "wasm32"))]
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
@@ -140,7 +141,17 @@ pub fn runtime_file(rel_path: &Path) -> PathBuf {
             .unwrap_or_default()
     })
 }
+#[cfg(target_arch = "wasm32")]
+pub fn config_dir() -> PathBuf {
+    todo!()
+}
 
+#[cfg(target_arch = "wasm32")]
+pub fn cache_dir() -> PathBuf {
+    todo!()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub fn config_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
@@ -149,6 +160,7 @@ pub fn config_dir() -> PathBuf {
     path
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn cache_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");

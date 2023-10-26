@@ -153,6 +153,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "89b2fd2a0dcf38d7971e2194b6b6eebab45ae01067456a7fd93d5547a61b70be"
 
 [[package]]
+name = "c2rust-bitfields"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb34f0c0ace43530b2df7f18bc69ee0c4082158aa451ece29602f8c841e73764"
+dependencies = [
+ "c2rust-bitfields-derive",
+]
+
+[[package]]
+name = "c2rust-bitfields-derive"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3dd1601a7b828ab874d890e5a895563ca8ad485bdd3d2a359f148c8b72537241"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "cassowary"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -569,8 +589,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c85e1d9ab2eadba7e5040d4e09cbd6d072b76a557ad64e797c2cb9d4da21d7e4"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "wasi",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -1136,7 +1158,7 @@ dependencies = [
  "smartstring",
  "textwrap",
  "toml",
- "tree-sitter",
+ "tree-sitter-c2rust",
  "unicode-general-category",
  "unicode-segmentation",
  "unicode-width",
@@ -1180,7 +1202,7 @@ dependencies = [
  "tempfile",
  "threadpool",
  "toml",
- "tree-sitter",
+ "tree-sitter-c2rust",
  "which",
 ]
 
@@ -2258,11 +2280,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-sitter"
+name = "tree-sitter-c2rust"
 version = "0.20.10"
-source = "git+https://github.com/tree-sitter/tree-sitter?rev=ab09ae20d640711174b8da8a654f6b3dec93da1a#ab09ae20d640711174b8da8a654f6b3dec93da1a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee40a4d9cf5a30c199935f346887588239daceae4d1418d81b789276fffb8d91"
 dependencies = [
- "cc",
+ "c2rust-bitfields",
+ "once_cell",
  "regex",
 ]
 

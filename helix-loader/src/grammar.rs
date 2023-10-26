@@ -85,6 +85,7 @@ pub fn get_language(name: &str) -> Result<Language> {
     Ok(language)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn ensure_git_is_available() -> Result<()> {
     match which::which("git") {
         Ok(_cmd) => Ok(()),
@@ -92,6 +93,7 @@ fn ensure_git_is_available() -> Result<()> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn fetch_grammars() -> Result<()> {
     ensure_git_is_available()?;
 
@@ -153,6 +155,7 @@ pub fn fetch_grammars() -> Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn build_grammars(target: Option<String>) -> Result<()> {
     ensure_git_is_available()?;
 
@@ -348,6 +351,7 @@ enum BuildStatus {
     Built,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn build_grammar(grammar: GrammarConfiguration, target: Option<&str>) -> Result<BuildStatus> {
     let grammar_dir = if let GrammarSource::Local { path } = &grammar.source {
         PathBuf::from(&path)
@@ -386,6 +390,7 @@ fn build_grammar(grammar: GrammarConfiguration, target: Option<&str>) -> Result<
     build_tree_sitter_library(&path, grammar, target)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn build_tree_sitter_library(
     src_path: &Path,
     grammar: GrammarConfiguration,

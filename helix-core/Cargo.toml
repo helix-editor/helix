@@ -24,9 +24,9 @@ unicode-segmentation = "1.10"
 unicode-width = "0.1"
 unicode-general-category = "0.6"
 # slab = "0.4.2"
-slotmap = "1.0"
-tree-sitter.workspace = true
+tree-sitter = { package = "tree-sitter-c2rust", version = "0.20" }
 once_cell = "1.18"
+slotmap = "1.0"
 arc-swap = "1"
 regex = "1"
 bitflags = "2.4"
@@ -43,13 +43,19 @@ imara-diff = "0.1.0"
 
 encoding_rs = "0.8"
 
-chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
+chrono = { version = "0.4", default-features = false, features = [
+    "alloc",
+    "std",
+] }
 
-etcetera = "0.8"
 textwrap = "0.16.0"
 
 nucleo.workspace = true
 parking_lot = "0.12"
+
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+etcetera = "0.8"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }

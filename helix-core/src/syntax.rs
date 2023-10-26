@@ -1614,7 +1614,7 @@ impl<'a> Iterator for ChunksBytes<'a> {
 }
 
 pub struct RopeProvider<'a>(pub RopeSlice<'a>);
-impl<'a> TextProvider<&'a [u8]> for RopeProvider<'a> {
+impl<'a> TextProvider<'a> for RopeProvider<'a> {
     type I = ChunksBytes<'a>;
 
     fn text(&mut self, node: Node) -> Self::I {
@@ -1628,7 +1628,7 @@ impl<'a> TextProvider<&'a [u8]> for RopeProvider<'a> {
 struct HighlightIterLayer<'a> {
     _tree: Option<Tree>,
     cursor: QueryCursor,
-    captures: RefCell<iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>, &'a [u8]>>>,
+    captures: RefCell<iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>>>>,
     config: &'a HighlightConfiguration,
     highlight_end_stack: Vec<usize>,
     scope_stack: Vec<LocalScope<'a>>,
