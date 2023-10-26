@@ -24,6 +24,8 @@ use std::{
     io::{self, Write},
 };
 
+use super::Buffer;
+
 fn term_program() -> Option<String> {
     std::env::var("TERM_PROGRAM").ok()
 }
@@ -39,6 +41,7 @@ struct Capabilities {
 }
 
 impl Capabilities {
+    #[cfg(not(target_arch = "wasm32"))]
     /// Detect capabilities from the terminfo database located based
     /// on the $TERM environment variable. If detection fails, returns
     /// a default value where no capability is supported.
@@ -57,6 +60,10 @@ impl Capabilities {
             },
         }
     }
+    #[cfg(target_arch = "wasm32")]
+    pub fn from_env_or_default(config: &EditorConfig) -> Self {
+        Capabilities::default()
+    }
 }
 
 pub struct CrosstermBackend<W: Write> {
@@ -66,11 +73,11 @@ pub struct CrosstermBackend<W: Write> {
     mouse_capture_enabled: bool,
 }
 
-impl<W> CrosstermBackend<W>
+impl<B> CrosstermBackend<B>
 where
-    W: Write,
+    B: Buffer,
 {
-    pub fn new(buffer: W, config: &EditorConfig) -> CrosstermBackend<W> {
+    pub fn new(buffer: B, config: &EditorConfig) -> CrosstermBackend<B> {
         CrosstermBackend {
             buffer,
             capabilities: Capabilities::from_env_or_default(config),
@@ -79,6 +86,7 @@ where
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[inline]
     fn supports_keyboard_enhancement_protocol(&self) -> bool {
         *self.supports_keyboard_enhancement_protocol
@@ -98,6 +106,11 @@ where
                 supported
             })
     }
+
+    #[cfg(target_arch = "wasm32")]
+    fn supports_keyboard_enhancement_protocol(&self) -> bool {
+        false
+    }
 }
 
 impl<W> Write for CrosstermBackend<W>
@@ -113,9 +126,9 @@ where
     }
 }
 
-impl<W> Backend for CrosstermBackend<W>
+impl<B> Backend for CrosstermBackend<B>
 where
-    W: Write,
+    B: Buffer,
 {
     fn claim(&mut self, config: Config) -> io::Result<()> {
         terminal::enable_raw_mode()?;
@@ -272,6 +285,7 @@ where
         execute!(self.buffer, Show, shape)
     }
 
+    #[cfg(not(target_arch = "wasm32"))] // TODO(wasm32) worth enabling? `crossterm::cursor::position` exists for wasm but takes a `Terminal`
     fn get_cursor(&mut self) -> io::Result<(u16, u16)> {
         crossterm::cursor::position()
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
@@ -285,11 +299,17 @@ where
         execute!(self.buffer, Clear(ClearType::All))
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn size(&self) -> io::Result<Rect> {
         let (width, height) =
             terminal::size().map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
         Ok(Rect::new(0, 0, width, height))
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn size(&self) -> io::Result<Rect> {
+        self.buffer.size()
     }
 
     fn flush(&mut self) -> io::Result<()> {

@@ -21,7 +21,7 @@ use helix_view::{
     Align, Editor,
 };
 use serde_json::json;
-use tui::{backend::Backend, Terminal};
+use tui::backend::Backend;
 
 #[cfg(feature = "dap_lsp")]
 use crate::commands::apply_workspace_edit;
@@ -49,9 +49,23 @@ use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(any(windows, target_arch = "wasm32"))]
 type Signals = futures_util::stream::Empty<()>;
 
+#[cfg(not(feature = "integration"))]
+use tui::backend::CrosstermBackend;
+
+#[cfg(feature = "integration")]
+use tui::backend::TestBackend;
+
+#[cfg(not(feature = "integration"))]
+type TerminalBackend<B> = CrosstermBackend<B>;
+
+#[cfg(feature = "integration")]
+type TerminalBackend<B> = TestBackend;
+
+type Terminal<B> = tui::terminal::Terminal<TerminalBackend<B>>;
+
 pub struct Application<B>
 where
-    B: Backend,
+    B: tui::backend::Buffer,
 {
     compositor: Compositor,
     terminal: Terminal<B>,
@@ -92,16 +106,35 @@ fn setup_integration_logging() {
         .apply();
 }
 
-impl<B> Application<B>
-where
-    B: Backend,
-{
+#[cfg(not(target_arch = "wasm32"))]
+impl Application<std::io::Stdout> {
     pub fn new(
         args: Args,
         config: Config,
         syn_loader_conf: syntax::Configuration,
-        backend: B,
-    ) -> Result<Self, Error> {
+    ) -> Result<Application<std::io::Stdout>, Error> {
+        Ok(Application::new_with_write(
+            args,
+            config,
+            syn_loader_conf,
+            std::io::stdout(),
+        )?)
+    }
+}
+
+impl<B> Application<B>
+where
+    B: tui::backend::Buffer,
+{
+    pub fn new_with_write(
+        args: Args,
+        config: Config,
+        syn_loader_conf: syntax::Configuration,
+        buffer: B,
+    ) -> Result<Self, Error>
+    where
+        B: tui::backend::Buffer,
+    {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
@@ -128,6 +161,12 @@ where
             .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
+
+        #[cfg(not(feature = "integration"))]
+        let backend = CrosstermBackend::new(buffer, &config.editor);
+
+        #[cfg(feature = "integration")]
+        let backend = TestBackend::new(120, 150);
 
         let terminal = Terminal::new(backend)?;
         let area = terminal.size().expect("couldn't get terminal size");
@@ -281,9 +320,9 @@ where
         self.terminal.draw(pos, kind).unwrap();
     }
 
-    pub async fn event_loop<S>(&mut self, input_stream: &mut S)
+    pub async fn event_loop<IS>(&mut self, input_stream: &mut IS)
     where
-        S: Stream<Item = std::io::Result<TermEvent>> + Unpin,
+        IS: Stream<Item = std::io::Result<TermEvent>> + Unpin,
     {
         self.render().await;
 
@@ -294,9 +333,9 @@ where
         }
     }
 
-    pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
+    pub async fn event_loop_until_idle<IS>(&mut self, input_stream: &mut IS) -> bool
     where
-        S: Stream<Item = std::io::Result<TermEvent>> + Unpin,
+        IS: Stream<Item = std::io::Result<TermEvent>> + Unpin,
     {
         loop {
             if self.editor.should_close() {
@@ -1148,10 +1187,9 @@ where
         self.terminal.restore(terminal_config)
     }
 
-    // TODO(wasm32) entry point for wasm32 client
-    pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
+    pub async fn run<IS>(&mut self, input_stream: &mut IS) -> Result<i32, Error>
     where
-        S: Stream<Item = std::io::Result<TermEvent>> + Unpin,
+        IS: Stream<Item = std::io::Result<TermEvent>> + Unpin,
     {
         self.claim_term().await?;
 
@@ -1161,7 +1199,7 @@ where
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`.
-            let _ = B::force_restore();
+            let _ = TerminalBackend::<B>::force_restore();
             hook(info);
         }));
 

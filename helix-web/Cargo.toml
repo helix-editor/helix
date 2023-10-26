@@ -2,7 +2,7 @@
 name = "helix-web"
 version = "0.1.0"
 authors = ["makemeunsee <makemeunsee@gmail.com>"]
-edition = "2018"
+edition = "2021"
 resolver = "2"
 
 [lib]
@@ -23,6 +23,13 @@ console_log = "1.0"
 log = "0.4"
 futures-util = { version = "0.3", default-features = false }
 gloo-timers = { version = "0.3", features = ["futures"] }
+js-sys = "0.3"
+web-sys = { version = "0.3.39", features = [
+    "Document",
+    "Element",
+    "Window",
+] }
+rs-xterm-js = { path = "../../rs-xterm-js" }
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
@@ -33,10 +40,11 @@ console_error_panic_hook = { version = "0.1.7", optional = true }
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"
 
-[profile.release]
-# Tell `rustc` to optimize for small code size.
-opt-level = "s"
+# [profile.release]
+# # Tell `rustc` to optimize for small code size.
+# opt-level = "s"
 
 [package.metadata.wasm-pack.profile.release]
 # for quicker builds
+opt-level = "s"
 wasm-opt = false

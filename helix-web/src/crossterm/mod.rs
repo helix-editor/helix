@@ -2,7 +2,9 @@ use std::cell::Cell;
 use std::io::{Error as IoError, ErrorKind, Result as IoResult, Write};
 use std::ops::Deref;
 
-use super::Terminal;
+use helix_tui::backend::Buffer;
+use helix_view::graphics::Rect;
+use rs_xterm_js::Terminal;
 
 // License for code below:
 
@@ -70,27 +72,6 @@ impl<'a> XtermJsCrosstermBackend<'a> {
         }
     }
 
-    /// Writes a `String` directly to the underlying terminal, bypassing the
-    /// buffer.
-    ///
-    /// This is useful for situations in which the commands being sent are
-    /// already buffered and the extra copy is undesired. Note that this will
-    /// flush the buffer first to preserve the order of commands.
-    ///
-    /// # Errors
-    ///
-    /// This should never actually error. For consistency with the [`Write`]
-    /// calls it results an [`io::Result`]
-    ///
-    /// [`Write`]: std::io::Write
-    /// [`io::Result`]: std::io::Result
-    pub fn write_immediately(&mut self, commands: String) -> IoResult<()> {
-        self.flush()?;
-        self.terminal.write(&commands);
-
-        Ok(())
-    }
-
     /// A version of [`flush`](Write::flush) that takes an immutable reference
     /// instead of a mutable one.
     ///
@@ -123,5 +104,11 @@ impl<'a> Write for XtermJsCrosstermBackend<'a> {
 impl<'a> From<&'a Terminal> for XtermJsCrosstermBackend<'a> {
     fn from(terminal: &'a Terminal) -> Self {
         Self::new(terminal)
+    }
+}
+
+impl<'a> Buffer for XtermJsCrosstermBackend<'a> {
+    fn size(&self) -> std::io::Result<Rect> {
+        Ok(Rect::new(0, 0, self.terminal.cols(), self.terminal.rows()))
     }
 }

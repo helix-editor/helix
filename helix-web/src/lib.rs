@@ -1,8 +1,9 @@
 mod backend;
+mod crossterm;
 mod utils;
-mod xterm;
 
-use backend::XTermJsBackend;
+use backend::spawn_terminal;
+use crossterm::XtermJsCrosstermBackend;
 use helix_term::{application::Application, args::Args, config::Config};
 use helix_view::{
     input::{Event, KeyEvent},
@@ -20,11 +21,15 @@ pub async fn main() {
     utils::set_panic_hook();
     utils::set_logging(log::Level::Debug);
 
-    let mut app = Application::new(
+    let terminal = spawn_terminal();
+    let write: XtermJsCrosstermBackend = (&terminal).into();
+
+    let config = Config::default();
+    let mut app = Application::new_with_write(
         Args::default(),
-        Config::default(),
+        config,
         helix_core::config::default_syntax_loader(),
-        XTermJsBackend::new(),
+        write,
     )
     .unwrap();
 

@@ -273,7 +273,6 @@ pub enum Color {
     Indexed(u8),
 }
 
-#[cfg(feature = "term")]
 impl From<Color> for crossterm::style::Color {
     fn from(color: Color) -> Self {
         use crossterm::style::Color as CColor;
@@ -327,7 +326,6 @@ impl FromStr for UnderlineStyle {
     }
 }
 
-#[cfg(feature = "term")]
 impl From<UnderlineStyle> for crossterm::style::Attribute {
     fn from(style: UnderlineStyle) -> Self {
         match style {

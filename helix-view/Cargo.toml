@@ -12,7 +12,7 @@ homepage = "https://helix-editor.com"
 [features]
 default = ["dap_lsp", "term", "vcs"]
 dap_lsp = ["dep:helix-lsp", "dep:helix-dap"]
-term = []                                    # TODO(wasm32) review where it's used
+term = []
 vcs = ["helix-vcs"]
 
 [dependencies]
