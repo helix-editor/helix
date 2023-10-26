@@ -31,6 +31,7 @@ arc-swap = "1"
 regex = "1"
 bitflags = "2.4"
 ahash = "0.8.5"
+getrandom = { version = "*", features = ["js"] }
 hashbrown = { version = "0.14.2", features = ["raw"] }
 dunce = "1.0"
 

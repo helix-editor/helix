@@ -718,6 +718,7 @@ impl Document {
         Ok(doc)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// The same as [`format`], but only returns formatting changes if auto-formatting
     /// is configured.
     pub fn auto_format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
@@ -728,6 +729,7 @@ impl Document {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// If supported, returns the changes that should be applied to this document in order
     /// to format it nicely.
     // We can't use anyhow::Result here since the output of the future has to be

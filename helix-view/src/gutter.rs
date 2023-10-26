@@ -46,6 +46,7 @@ impl GutterType {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn diagnostic<'doc>(
     _editor: &'doc Editor,
     doc: &'doc Document,

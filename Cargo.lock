@@ -1140,6 +1140,7 @@ dependencies = [
  "dunce",
  "encoding_rs",
  "etcetera",
+ "getrandom",
  "hashbrown 0.14.2",
  "helix-loader",
  "imara-diff",

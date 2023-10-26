@@ -339,6 +339,9 @@ fn write_impl(
         insert_final_newline(doc, view);
     }
 
+    #[cfg(target_arch = "wasm32")]
+    let fmt = None;
+    #[cfg(not(target_arch = "wasm32"))]
     let fmt = if config.auto_format {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
@@ -717,6 +720,9 @@ pub fn write_all_impl(
             insert_final_newline(doc, view_mut!(cx.editor, target_view));
         }
 
+        #[cfg(target_arch = "wasm32")]
+        let fmt = None;
+        #[cfg(not(target_arch = "wasm32"))]
         let fmt = if config.auto_format {
             doc.auto_format().map(|fmt| {
                 let callback = make_format_callback(
