@@ -2,6 +2,12 @@
  (#set! injection.language "comment"))
 
 ((macro_invocation
+   macro: (identifier) @_html (#eq? @_html "html")
+   (token_tree) @injection.content)
+ (#set! injection.language "html")
+ (#set! injection.include-children))
+
+((macro_invocation
   (token_tree) @injection.content)
  (#set! injection.language "rust")
  (#set! injection.include-children))
