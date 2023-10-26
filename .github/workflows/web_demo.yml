@@ -1,0 +1,44 @@
+name: Deploy web demo
+on:
+  push:
+    branches: [ wasm32 ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Set up cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: 'latest'
+
+      - name: Build Helix webpack
+        run: |
+          cd helix-web
+          wasm-pack build
+          wasm-pack pack
+
+      - name: Install node modules and build static app
+        run: |
+          cd helix-web/www
+          npm install ../pkg/helix-web-0.1.0.tgz
+          npm run build
+          cp node_modules/xterm/css/xterm.css dist/
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./helix-web/www/dist/
+          destination_dir: ./demo
