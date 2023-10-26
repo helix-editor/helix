@@ -1,33 +1,37 @@
-# Helix, `wasm32` port, wip
+# Helix, `wasm32` port, alpha
 
-This branch aims at providing a `wasm32` Helix eventually integrated with `xterm.js` in a web app.
+This is `Helix`, compiling to `wasm32` and running in a browser.
 
-This branch preserves native features (i.e. you should still be able to run successfully `cargo build` from the root).
+Live demp: https://makemeunsee.github.io/helix/demo
 
-When building with target `wasm32`, these features are disabled:
+## What works
+
+* Compiling to `wasm32`, with limited features
+* Integration with `xterm-js`
+* Bundling Helix into a static web app
+* Running in a browser
+
+Building and tests on Linux or Windows should still work, but only building to
+`x86_64-unknown-linux-gnu` was actually tested.
+
+## What does not work
+
+By necessity (would require significant design changes in Helix and/or rely on
+tools only accessible natively so far), when building with target `wasm32`, all
+functionalities related to the following points are disabled (or should be):
 
 * language server support
 * debugging
 * shell commands execution and piping
 * vcs features, e.g. `git` info and diff'ing
 * cloning & compiling `tree-sitter` grammars
-* anything related to the filesystem
-* integration with an actual backend (`TestBackend` is used for now) and the event loop
+* filesystem operations
 
-Next steps:
+Most features of the editor are untested, so expect bugs; see 'Known issues'.
 
-* review and port other relevant efforts from [the original attempt](https://github.com/helix-editor/helix/tree/gui)
-* design & implement a web bindable backend and event loop
-* review & tackle remaining `TODO(wasm32)`s
+## How to...
 
-Ideas for down the road:
-
-* load/write configuration to web storage
-* restore `tree-sitter` grammars integration
-* restore/replace diff'ing (probably without `git`)
-* web workers for some operations
-
-## Init
+### Setup
 
 ```sh
 cargo install cargo-wasm
@@ -41,7 +45,7 @@ cd www/
 npm install
 ```
 
-## Building
+### Build
 
 ```sh
 wasm-pack build
@@ -50,7 +54,7 @@ wasm-pack build
 cargo build --lib --no-default-features --target wasm32-unknown-unknown
 ```
 
-## Running
+## Run
 
 ```sh
 cd www/
@@ -60,16 +64,42 @@ nvm use 16
 npm run start
 ```
 
-## Testing
+### Deploy
 
-(none so far)
+See `web_demo` GitHub workflow.
+
+### Test
+
+Would be done this way:
 
 ```sh
 wasm-pack test --headless --firefox
 ```
 
-## Notes
+## Known issues:
 
-[xterm-js-sys](https://github.com/rrbutani/xterm-js-sys/tree/main) implemented `crossterm` compatibility.
+* `TODO(wasm32)` around the code indicate noted issues or limitations.
+* Lots of warnings; clippy would have a lot to say too.
+* Some async is broken, e.g. searching in selection ('s').
+* Emojis cause glitches, maybe an encoding issue.
+* UI behavior on mobile is broken; mobile usability is not a goal but this may
+  indicate issues nonetheless.
 
-See customisation of `crossterm` for `wasm32`: <https://github.com/crossterm-rs/crossterm/compare/master...rrbutani:crossterm:xtermjs>
+## How does it work
+
+* feature-gated everything which cannot readily be ported to `wasm`.
+* adapted primitives to what's available on `wasm`; notably `async` code.
+* re-used `crossterm` and `xterm-js` integration from [rrbutani](https://github.com/rrbutani),
+  see [their fork of `crossterm`](https://github.com/rrbutani/crossterm/tree/xtermjs).
+  I ported the required subset of their work to my own forks to bring
+  compatibility with the most recent versions, including a very partial, adhoc
+  `xterm-js` Rust bindings library.
+
+## Ideas for down the road:
+
+* embed themes
+* load/write configuration to/from web storage
+* restore `tree-sitter` grammars integration
+* restore/replace diff'ing (probably without `git`)
+* web workers for some operations
+

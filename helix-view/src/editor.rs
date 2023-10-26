@@ -761,7 +761,7 @@ pub struct WhitespaceCharacters {
 impl Default for WhitespaceCharacters {
     fn default() -> Self {
         Self {
-            space: '·',    // U+00B7
+            space: '·',   // U+00B7
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
@@ -1172,7 +1172,6 @@ impl Editor {
     pub fn refresh_config(&mut self) {
         let config = self.config();
         self.auto_pairs = (&config.auto_pairs).into();
-        #[cfg(not(target_arch = "wasm32"))]
         self.reset_idle_timer();
         self._refresh();
     }
@@ -1183,14 +1182,6 @@ impl Editor {
         self.idle_timer
             .as_mut()
             .reset(Instant::now() + Duration::from_secs(THIRTY_YEARS_IN_SECS));
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub fn reset_idle_timer(&mut self) {
-        let config = self.config();
-        self.idle_timer
-            .as_mut()
-            .set(Sleep::new(config.idle_timeout));
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -1205,6 +1196,14 @@ impl Editor {
         self.idle_timer
             .as_mut()
             .reset(Instant::now() + config.idle_timeout);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn reset_idle_timer(&mut self) {
+        let config = self.config();
+        self.idle_timer
+            .as_mut()
+            .set(Sleep::new(config.idle_timeout));
     }
 
     pub fn clear_status(&mut self) {
@@ -1899,10 +1898,12 @@ impl Editor {
                 biased;
 
                 Some(event) = self.save_queue.next() => {
+                    debug!("save event");
                     self.write_count -= 1;
                     return EditorEvent::DocumentSaved(event)
                 }
                 Some(config_event) = self.config_events.1.recv() => {
+                    debug!("config event");
                     return EditorEvent::ConfigEvent(config_event)
                 }
 

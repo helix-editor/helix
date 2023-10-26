@@ -143,7 +143,6 @@ impl Backend for TestBackend {
         Ok(())
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn get_cursor(&mut self) -> Result<(u16, u16), io::Error> {
         Ok(self.pos)
     }

@@ -773,10 +773,6 @@ mod tests {
             Some(4)
         );
 
-        #[cfg(feature = "dap_lsp")]
-        let expected = Some(5);
-        #[cfg(not(feature = "dap_lsp"))]
-        let expected = Some(6);
         assert_eq!(
             view.text_pos_at_screen_coords(
                 &doc,
@@ -786,7 +782,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            expected
+            Some(5)
         );
 
         assert_eq!(
@@ -883,11 +879,6 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
 
-        // TODO(wasm32) this is just to make tests pass, probably it breaks the correct view
-        #[cfg(feature = "dap_lsp")]
-        const OFFSET: usize = 0;
-        #[cfg(not(feature = "dap_lsp"))]
-        const OFFSET: usize = 1;
         assert_eq!(
             view.text_pos_at_screen_coords(
                 &doc,
@@ -897,7 +888,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(0 + OFFSET)
+            Some(0)
         );
 
         assert_eq!(
@@ -920,7 +911,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(4 + OFFSET)
+            Some(4)
         );
 
         assert_eq!(
@@ -944,7 +935,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(5 + OFFSET)
+            Some(5)
         );
 
         assert_eq!(
@@ -971,10 +962,6 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
 
-        #[cfg(feature = "dap_lsp")]
-        let offset: usize = 0;
-        #[cfg(not(feature = "dap_lsp"))]
-        let offset: usize = 1;
         assert_eq!(
             view.text_pos_at_screen_coords(
                 &doc,
@@ -984,11 +971,9 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(0 + offset)
+            Some(0)
         );
 
-        #[cfg(not(feature = "dap_lsp"))]
-        let offset: usize = 2;
         assert_eq!(
             view.text_pos_at_screen_coords(
                 &doc,
@@ -998,7 +983,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(1 + offset)
+            Some(1)
         );
 
         assert_eq!(
@@ -1010,7 +995,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(3 + offset)
+            Some(3)
         );
 
         assert_eq!(
@@ -1022,7 +1007,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(5 + offset)
+            Some(5)
         );
 
         assert_eq!(
@@ -1034,7 +1019,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(7 + offset)
+            Some(7)
         );
     }
 }

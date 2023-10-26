@@ -285,10 +285,15 @@ where
         execute!(self.buffer, Show, shape)
     }
 
-    #[cfg(not(target_arch = "wasm32"))] // TODO(wasm32) worth enabling? `crossterm::cursor::position` exists for wasm but takes a `Terminal`
+    #[cfg(not(target_arch = "wasm32"))]
     fn get_cursor(&mut self) -> io::Result<(u16, u16)> {
         crossterm::cursor::position()
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn get_cursor(&mut self) -> io::Result<(u16, u16)> {
+        Ok((self.buffer.cursor_x(), self.buffer.cursor_y()))
     }
 
     fn set_cursor(&mut self, x: u16, y: u16) -> io::Result<()> {

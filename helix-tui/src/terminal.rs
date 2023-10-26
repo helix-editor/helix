@@ -151,10 +151,7 @@ where
 
     /// Queries the backend for size and resizes if it doesn't match the previous size.
     pub fn autoresize(&mut self) -> io::Result<Rect> {
-        #[cfg(not(target_arch = "wasm32"))]
         let size = self.size()?;
-        #[cfg(target_arch = "wasm32")] // TODO(wasm32) actual impl
-        let size = self.viewport.area;
         if size != self.viewport.area {
             self.resize(size)?;
         };
@@ -217,7 +214,6 @@ where
         Ok(())
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn get_cursor(&mut self) -> io::Result<(u16, u16)> {
         self.backend.get_cursor()
     }

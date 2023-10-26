@@ -111,4 +111,12 @@ impl<'a> Buffer for XtermJsCrosstermBackend<'a> {
     fn size(&self) -> std::io::Result<Rect> {
         Ok(Rect::new(0, 0, self.terminal.cols(), self.terminal.rows()))
     }
+
+    fn cursor_x(&self) -> u16 {
+        self.terminal.buffer().active().cursor_x()
+    }
+
+    fn cursor_y(&self) -> u16 {
+        self.terminal.buffer().active().cursor_y()
+    }
 }

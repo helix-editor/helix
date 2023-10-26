@@ -480,8 +480,7 @@ impl<T: Item + 'static> Picker<T> {
                                 .find::<Overlay<DynamicPicker<T>>>()
                                 .map(|overlay| &mut overlay.content.file_picker),
                         };
-                        let Some(picker) = picker
-                        else {
+                        let Some(picker) = picker else {
                             log::info!("picker closed before syntax highlighting finished");
                             return;
                         };
@@ -848,7 +847,6 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             EventResult::Consumed(Some(callback))
         };
 
-        #[cfg(not(target_arch = "wasm32"))]
         // So that idle timeout retriggers
         ctx.editor.reset_idle_timer();
 
@@ -985,7 +983,6 @@ impl<T: Item + Send + Sync + 'static> Component for DynamicPicker<T> {
                     None => return,
                 };
                 picker.set_options(new_options);
-                #[cfg(not(target_arch = "wasm32"))]
                 editor.reset_idle_timer();
             }));
             anyhow::Ok(callback)

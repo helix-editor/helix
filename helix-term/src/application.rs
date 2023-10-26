@@ -58,16 +58,33 @@ use tui::backend::TestBackend;
 type TerminalBackend<B> = CrosstermBackend<B>;
 
 #[cfg(feature = "integration")]
-type TerminalBackend<B> = TestBackend;
+type TerminalBackend = TestBackend;
 
+#[cfg(not(feature = "integration"))]
 type Terminal<B> = tui::terminal::Terminal<TerminalBackend<B>>;
+
+#[cfg(not(feature = "integration"))]
+use tui::backend::Buffer;
+
+#[cfg(feature = "integration")]
+type Terminal = tui::terminal::Terminal<TestBackend>;
+
+#[cfg(feature = "integration")]
+pub trait Buffer {}
+#[cfg(feature = "integration")]
+impl<T> Buffer for T {}
 
 pub struct Application<B>
 where
-    B: tui::backend::Buffer,
+    B: Buffer,
 {
     compositor: Compositor,
+    #[cfg(not(feature = "integration"))]
     terminal: Terminal<B>,
+    #[cfg(feature = "integration")]
+    terminal: Terminal,
+    #[cfg(feature = "integration")]
+    phantom_data: std::marker::PhantomData<B>,
     pub editor: Editor,
 
     config: Arc<ArcSwap<Config>>,
@@ -123,7 +140,7 @@ impl Application<std::io::Stdout> {
 
 impl<B> Application<B>
 where
-    B: tui::backend::Buffer,
+    B: Buffer,
 {
     pub fn new_with_write(
         args: Args,
@@ -132,7 +149,7 @@ where
         buffer: B,
     ) -> Result<Self, Error>
     where
-        B: tui::backend::Buffer,
+        B: Buffer,
     {
         #[cfg(feature = "integration")]
         setup_integration_logging();
@@ -270,6 +287,8 @@ where
         let app = Self {
             compositor,
             terminal,
+            #[cfg(feature = "integration")]
+            phantom_data: std::marker::PhantomData,
             editor,
 
             config,
@@ -347,22 +366,27 @@ where
                 biased;
 
                 Some(signal) = self.signals.next() => {
+                    debug!("handling signal");
                     if !self.handle_signals(signal).await {
                         return false;
                     };
                 }
                 Some(event) = input_stream.next() => {
+                    debug!("handling input");
                     self.handle_terminal_events(event).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
+                    debug!("handling future");
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render().await;
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
+                    debug!("handling wait future");
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render().await;
                 }
                 event = self.editor.wait_event() => {
+                    debug!("handling wait event");
                     let _idle_handled = self.handle_editor_event(event).await;
 
                     #[cfg(feature = "integration")]
@@ -1203,7 +1227,10 @@ where
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`.
+            #[cfg(not(feature = "integration"))]
             let _ = TerminalBackend::<B>::force_restore();
+            #[cfg(feature = "integration")]
+            let _ = TerminalBackend::force_restore();
             hook(info);
         }));
 
