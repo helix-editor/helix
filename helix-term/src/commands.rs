@@ -814,7 +814,7 @@ fn kill_to_line_start(cx: &mut Context) {
             let head = if anchor == first_char && line != 0 {
                 // select until previous line
                 line_end_char_index(&text, line - 1)
-            } else if let Some(pos) = chars::find_first_non_whitespace_char(text.line(line)) {
+            } else if let Some(pos) = chars::find_first_non_whitespace_char(&text.line(line)) {
                 if first_char + pos < anchor {
                     // select until first non-blank in line if cursor is after it
                     first_char + pos
@@ -876,7 +876,7 @@ fn goto_first_nonwhitespace_impl(view: &mut View, doc: &mut Document, movement: 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.cursor_line(text);
 
-        if let Some(pos) = chars::find_first_non_whitespace_char(text.line(line)) {
+        if let Some(pos) = chars::find_first_non_whitespace_char(&text.line(line)) {
             let pos = pos + text.line_to_char(line);
             range.put_cursor(text, pos, movement == Movement::Extend)
         } else {
@@ -2997,7 +2997,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             // move cursor to the fallback position
             let pos = match cursor_fallback {
                 IndentFallbackPos::LineStart => {
-                    chars::find_first_non_whitespace_char(text.line(cursor_line))
+                    chars::find_first_non_whitespace_char(&text.line(cursor_line))
                         .map(|ws_offset| ws_offset + cursor_line_start)
                         .unwrap_or(cursor_line_start)
                 }
@@ -3121,7 +3121,13 @@ fn open(cx: &mut Context, open: Open) {
         text.push_str(&indent);
 
         if config.continue_comments {
-            handle_comment_continue(doc, &mut text, cursor_line);
+            handle_comment_continue(
+                doc,
+                &mut text,
+                &doc.indent_style,
+                doc.tab_width(),
+                cursor_line,
+            );
         }
 
         let text = text.repeat(count);
@@ -3150,11 +3156,19 @@ fn open(cx: &mut Context, open: Open) {
 
 // Currently only continues single-line comments
 // TODO: Handle block comments as well
-fn handle_comment_continue(doc: &Document, text: &mut String, cursor_line: usize) {
-    if let Some(lang_config) = doc.language_config() {
-        let line_comment_tokens = &lang_config.comment_tokens;
+fn handle_comment_continue(
+    doc: &Document,
+    text: &mut String,
+    indent_style: &IndentStyle,
+    tab_width: usize,
+    cursor_line: usize,
+) {
+    let line = doc.text().line(cursor_line);
 
-        comment::handle_comment_continue(doc.text(), text, cursor_line, line_comment_tokens);
+    if let Some(lang_config) = doc.language_config() {
+        let comment_tokens = &lang_config.comment_tokens;
+
+        comment::handle_comment_continue(&line, text, indent_style, tab_width, comment_tokens);
     }
 }
 
@@ -3696,7 +3710,13 @@ pub mod insert {
                     new_text.push_str(&indent);
 
                     if config.continue_comments {
-                        handle_comment_continue(doc, &mut new_text, current_line);
+                        handle_comment_continue(
+                            doc,
+                            &mut new_text,
+                            &doc.indent_style,
+                            doc.tab_width(),
+                            current_line,
+                        );
                     }
 
                     new_text.chars().count()
