@@ -204,6 +204,7 @@ pub struct Picker<T: Item> {
 }
 
 impl<T: Item + 'static> Picker<T> {
+    // TODO(wasm32) nucleo works with a threadpool, find an alternative
     pub fn stream(editor_data: T::Data) -> (Nucleo<T>, Injector<T>) {
         let matcher = Nucleo::new(
             Config::DEFAULT,
@@ -224,6 +225,7 @@ impl<T: Item + 'static> Picker<T> {
         editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
+        // TODO(wasm32) nucleo works with a threadpool, find an alternative
         let matcher = Nucleo::new(
             Config::DEFAULT,
             Arc::new(helix_event::request_redraw),

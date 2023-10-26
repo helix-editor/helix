@@ -80,6 +80,8 @@ wasm-pack test --headless --firefox
   indicate issues nonetheless.
 * Some shortcuts are shadowed by the browser (e.g. Ctrl-w), other defaults could
   be used.
+* All pickers (file, command, buffer) are broken, as they rely on `nucleo` and
+  its threadpool.
 
 ## How does it work
 
