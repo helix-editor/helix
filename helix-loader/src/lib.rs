@@ -143,12 +143,12 @@ pub fn runtime_file(rel_path: &Path) -> PathBuf {
 }
 #[cfg(target_arch = "wasm32")]
 pub fn config_dir() -> PathBuf {
-    todo!()
+    todo!() // TODO(wasm32)
 }
 
 #[cfg(target_arch = "wasm32")]
 pub fn cache_dir() -> PathBuf {
-    todo!()
+    todo!() // TODO(wasm32)
 }
 
 #[cfg(not(target_arch = "wasm32"))]

@@ -347,6 +347,11 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
     })
 }
 
+#[cfg(target_arch = "wasm32")]
+pub fn get_terminal_provider() -> Option<TerminalConfig> {
+    None
+}
+
 #[cfg(not(any(windows, target_arch = "wasm32")))]
 pub fn get_terminal_provider() -> Option<TerminalConfig> {
     use crate::env::{binary_exists, env_var_is_set};
@@ -740,7 +745,7 @@ pub struct WhitespaceCharacters {
 impl Default for WhitespaceCharacters {
     fn default() -> Self {
         Self {
-            space: '·',    // U+00B7
+            space: '·',   // U+00B7
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
@@ -1784,7 +1789,7 @@ impl Editor {
                 Some(config_event) = self.config_events.1.recv() => {
                     return EditorEvent::ConfigEvent(config_event)
                 }
-                // TODO figure out feature gating
+                // TODO(wasm32) figure out feature gating
                 // Some(message) = self.language_servers.incoming.next() => {
                 //     return EditorEvent::LanguageServerMessage(message)
                 // }

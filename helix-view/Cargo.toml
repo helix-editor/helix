@@ -32,18 +32,6 @@ url = "2"
 
 arc-swap = { version = "1.6.0" }
 
-tokio = { version = "1", features = [
-    "rt",
-    "rt-multi-thread",
-    "io-util",
-    "io-std",
-    "time",
-    "process",
-    "macros",
-    "fs",
-    "parking_lot",
-] }
-tokio-stream = "0.1"
 futures-util = { version = "0.3", features = [
     "std",
     "async-await",
@@ -58,8 +46,34 @@ serde_json = "1.0"
 toml = "0.7"
 log = "~0.4"
 
-which = "4.4"
 parking_lot = "0.12.1"
+tokio-stream = "0.1"
+
+# [target.'cfg(target_family = "wasm")'.dependencies]
+# tokio = { version = "1", features = ["rt", "time", "sync", "parking_lot"] }
+
+# [target.'cfg(not(target_family = "wasm"))'.dependencies]
+# tokio = { version = "1", features = [
+# "rt",
+# "rt-multi-thread",
+# "io-util",
+# "io-std",
+# "time",
+# "process",
+# "macros",
+# "fs",
+# "parking_lot",
+# ] }
+
+# TODO(wasm32) re-enable conditional tokio features, requires a fix for https://github.com/rust-lang/cargo/issues/12821
+tokio = { version = "1", features = [
+    "rt",
+    "io-util",
+    "time",
+    "macros",
+    "sync",
+    "parking_lot",
+] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 which = "4.4"
@@ -71,5 +85,6 @@ clipboard-win = { version = "4.5", features = ["std"] }
 libc = "0.2"
 rustix = { version = "0.38", features = ["fs"] }
 
-[dev-dependencies]
-helix-tui = { path = "../helix-tui" }
+# TODO(wasm32) restore?
+# [dev-dependencies]
+# helix-tui = { path = "../helix-tui" }

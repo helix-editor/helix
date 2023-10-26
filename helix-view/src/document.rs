@@ -879,6 +879,14 @@ impl Document {
         let encoding_with_bom_info = (self.encoding, self.has_bom);
         let last_saved_time = self.last_saved_time;
 
+        #[cfg(target_arch = "wasm32")]
+        let future = futures_util::future::ready(Ok(DocumentSavedEvent {
+            revision: current_rev,
+            doc_id,
+            path,
+            text: text.clone(),
+        }));
+        #[cfg(not(target_arch = "wasm32"))]
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
             use tokio::{fs, fs::File};
@@ -1646,9 +1654,16 @@ impl Document {
         self.path.as_ref()
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// File path as a URL.
     pub fn url(&self) -> Option<Url> {
         Url::from_file_path(self.path()?).ok()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    /// File path as a URL.
+    pub fn url(&self) -> Option<Url> {
+        None
     }
 
     #[inline]

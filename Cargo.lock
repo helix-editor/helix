@@ -1324,7 +1324,6 @@ dependencies = [
  "helix-event",
  "helix-loader",
  "helix-lsp",
- "helix-tui",
  "helix-vcs",
  "libc",
  "log",

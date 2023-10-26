@@ -883,7 +883,7 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
 
-        // TODO this is just to make tests pass, probably it breaks the correct view
+        // TODO(wasm32) this is just to make tests pass, probably it breaks the correct view
         #[cfg(feature = "dap_lsp")]
         const OFFSET: usize = 0;
         #[cfg(not(feature = "dap_lsp"))]

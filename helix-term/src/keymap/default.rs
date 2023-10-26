@@ -5,7 +5,7 @@ use super::{KeyTrie, Mode};
 use helix_core::hashmap;
 
 pub fn default() -> HashMap<Mode, KeyTrie> {
-    // TODO feature gate somehow
+    // TODO(wasm32) feature gate somehow
     let normal = keymap!({ "Normal mode"
         "h" | "left" => move_char_left,
         "j" | "down" => move_visual_line_down,
