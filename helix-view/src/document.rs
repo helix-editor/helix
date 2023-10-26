@@ -661,6 +661,11 @@ impl Document {
         let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
 
+        #[cfg(not(target_arch = "wasm32"))]
+        let last_saved_time = SystemTime::now();
+        #[cfg(target_arch = "wasm32")]
+        let last_saved_time = SystemTime::UNIX_EPOCH;
+
         Self {
             id: DocumentId::default(),
             path: None,
@@ -681,7 +686,7 @@ impl Document {
             version: 0,
             history: Cell::new(History::default()),
             savepoints: Vec::new(),
-            last_saved_time: SystemTime::now(),
+            last_saved_time,
             last_saved_revision: 0,
             modified_since_accessed: false,
             #[cfg(feature = "dap_lsp")]
