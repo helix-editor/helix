@@ -33,7 +33,7 @@ jobs:
         run: |
           cd helix-web/www
           npm install ../pkg/helix-web-0.1.0.tgz
-          npm run build
+          NODE_OPTIONS=--openssl-legacy-provider npm run build
           cp node_modules/xterm/css/xterm.css dist/
 
       - name: Deploy
