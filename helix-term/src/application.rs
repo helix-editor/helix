@@ -1182,15 +1182,7 @@ impl Application {
         self.terminal.restore(terminal_config)
     }
 
-    #[cfg(target_arch = "wasm32")]
-    pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
-    where
-        S: Stream<Item = std::io::Result<TermEvent>> + Unpin,
-    {
-        Ok(0)
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
+    // TODO(wasm32) entry point for wasm32 client
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
     where
         S: Stream<Item = std::io::Result<TermEvent>> + Unpin,
