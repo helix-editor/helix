@@ -42,3 +42,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./helix-web/www/dist/
           destination_dir: ./demo
+          force_orphan: true
