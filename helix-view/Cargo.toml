@@ -51,7 +51,7 @@ parking_lot = "0.12.1"
 tokio-stream = "0.1"
 
 [target.'cfg(target_family = "wasm")'.dependencies]
-tokio = { version = "1", features = ["rt", "io-util", "time", "macros"] }
+tokio = { version = "1", features = ["io-util"] }
 gloo-timers = { version = "0.3", features = ["futures"] }
 wasm-bindgen = "0.2"
 instant = { version = "0.1", features = ["wasm-bindgen"] }

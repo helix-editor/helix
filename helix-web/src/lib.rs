@@ -1,5 +1,6 @@
 mod backend;
 mod utils;
+mod xterm;
 
 use backend::XTermJsBackend;
 use helix_term::{application::Application, args::Args, config::Config};
@@ -19,16 +20,11 @@ pub async fn main() {
     utils::set_panic_hook();
     utils::set_logging(log::Level::Debug);
 
-    // TODO(wasm32) use tokio rt?
-    // let rt = Builder::new_current_thread().build().unwrap();
-
-    // rt.block_on(async {
-
     let mut app = Application::new(
         Args::default(),
         Config::default(),
         helix_core::config::default_syntax_loader(),
-        XTermJsBackend::new(120, 150),
+        XTermJsBackend::new(),
     )
     .unwrap();
 
@@ -49,6 +45,4 @@ pub async fn main() {
     app.run(&mut input_stream).await.unwrap();
 
     alert("wow such Helix");
-
-    // });
 }

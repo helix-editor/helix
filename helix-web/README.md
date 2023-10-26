@@ -39,14 +39,13 @@ cargo build --lib --no-default-features --target wasm32-unknown-unknown
 ## Init
 
 ```sh
-cd www/
-
 nvm use 16
 
 npm install
 
-# possibly
-npm audit fix
+cd www/
+
+npm install
 ```
 
 ## Running
@@ -66,3 +65,9 @@ npm run start
 ```sh
 wasm-pack test --headless --firefox
 ```
+
+## Notes
+
+[xterm-js-sys](https://github.com/rrbutani/xterm-js-sys/tree/main) implemented `crossterm` compatibility.
+
+See customisation of `crossterm` for `wasm32`: <https://github.com/crossterm-rs/crossterm/compare/master...rrbutani:crossterm:xtermjs>

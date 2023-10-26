@@ -1400,6 +1400,7 @@ dependencies = [
  "helix-term",
  "helix-tui",
  "helix-view",
+ "js-sys",
  "log",
  "tokio",
  "wasm-bindgen",

@@ -23,11 +23,16 @@ console_log = "1.0"
 log = "0.4"
 futures-util = { version = "0.3", default-features = false }
 gloo-timers = { version = "0.3", features = ["futures"] }
-web-sys = { version = "0.3", features = [
-    'Document',
-    'Element',
-    'HtmlElement',
-    'Window',
+js-sys = "0.3"
+web-sys = { version = "0.3.39", features = [
+    "Document",
+    "Element",
+    "HtmlElement",
+    "Window",
+    "HtmlTextAreaElement",
+    "KeyboardEvent",
+    "MouseEvent",
+    "HtmlCanvasElement",
 ] }
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
