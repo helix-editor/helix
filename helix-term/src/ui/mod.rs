@@ -1,3 +1,4 @@
+#[cfg(feature = "dap_lsp")]
 mod completion;
 mod document;
 pub(crate) mod editor;
@@ -16,6 +17,7 @@ mod text;
 use crate::compositor::{Component, Compositor};
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
+#[cfg(feature = "dap_lsp")]
 pub use completion::{Completion, CompletionItem};
 pub use editor::EditorView;
 pub use markdown::Markdown;
@@ -348,6 +350,7 @@ pub mod completers {
             .collect()
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
         let Some(options) = doc!(editor)
             .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)

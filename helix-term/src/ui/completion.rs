@@ -346,7 +346,7 @@ impl Completion {
         completion_item: lsp::CompletionItem,
     ) -> Option<lsp::CompletionItem> {
         let future = language_server.resolve_completion_item(completion_item)?;
-        let response = helix_lsp::block_on(future);
+        let response = futures_executor::block_on(future);
         match response {
             Ok(value) => serde_json::from_value(value).ok(),
             Err(err) => {

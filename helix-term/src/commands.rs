@@ -1,9 +1,13 @@
+#[cfg(feature = "dap_lsp")]
 pub(crate) mod dap;
+#[cfg(feature = "dap_lsp")]
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
+#[cfg(feature = "dap_lsp")]
 pub use dap::*;
 use helix_vcs::Hunk;
+#[cfg(feature = "dap_lsp")]
 pub use lsp::*;
 use tokio::sync::oneshot;
 use tui::widgets::Row;
@@ -46,6 +50,8 @@ use anyhow::{anyhow, bail, ensure, Context as _};
 use insert::*;
 use movement::Movement;
 
+#[cfg(feature = "dap_lsp")]
+use crate::ui::CompletionItem;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
@@ -53,8 +59,8 @@ use crate::{
     job::Callback,
     keymap::ReverseKeymap,
     ui::{
-        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem, Picker,
-        Popup, Prompt, PromptEvent,
+        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, Picker, Popup, Prompt,
+        PromptEvent,
     },
 };
 
@@ -110,6 +116,7 @@ impl<'a> Context<'a> {
         self.on_next_key_callback = Some(Box::new(on_next_key_callback));
     }
 
+    #[cfg(feature = "dap_lsp")]
     #[inline]
     pub fn callback<T, F>(
         &mut self,
@@ -129,6 +136,7 @@ impl<'a> Context<'a> {
     }
 }
 
+#[cfg(feature = "dap_lsp")]
 #[inline]
 fn make_job_callback<T, F>(
     call: impl Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
@@ -170,8 +178,9 @@ pub enum MappableCommand {
 }
 
 macro_rules! static_commands {
-    ( $($name:ident, $doc:literal,)* ) => {
+    ( $($(#[cfg($attr:meta)])? $name:ident, $doc:literal,)* ) => {
         $(
+            $(#[cfg($attr)])?
             #[allow(non_upper_case_globals)]
             pub const $name: Self = Self::Static {
                 name: stringify!($name),
@@ -181,7 +190,7 @@ macro_rules! static_commands {
         )*
 
         pub const STATIC_COMMAND_LIST: &'static [Self] = &[
-            $( Self::$name, )*
+             $( $(#[cfg($attr)])? Self::$name, )*
         ];
     }
 }
@@ -307,13 +316,19 @@ impl MappableCommand {
         file_picker, "Open file picker",
         file_picker_in_current_buffer_directory, "Open file picker at current buffers's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
+        #[cfg(feature = "dap_lsp")]
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
+        #[cfg(feature = "dap_lsp")]
         symbol_picker, "Open symbol picker",
+        #[cfg(feature = "dap_lsp")]
         select_references_to_symbol_under_cursor, "Select symbol references",
+        #[cfg(feature = "dap_lsp")]
         workspace_symbol_picker, "Open workspace symbol picker",
+        #[cfg(feature = "dap_lsp")]
         diagnostics_picker, "Open diagnostic picker",
+        #[cfg(feature = "dap_lsp")]
         workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
         insert_at_line_start, "Insert at start of line",
@@ -323,17 +338,22 @@ impl MappableCommand {
         normal_mode, "Enter normal mode",
         select_mode, "Enter selection extend mode",
         exit_select_mode, "Exit selection mode",
+        #[cfg(feature = "dap_lsp")]
         goto_definition, "Goto definition",
+        #[cfg(feature = "dap_lsp")]
         goto_declaration, "Goto declaration",
         add_newline_above, "Add newline above",
         add_newline_below, "Add newline below",
+        #[cfg(feature = "dap_lsp")]
         goto_type_definition, "Goto type definition",
+        #[cfg(feature = "dap_lsp")]
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto line number <n> else file start",
         goto_file_end, "Goto file end",
         goto_file, "Goto files in selection",
         goto_file_hsplit, "Goto files in selection (hsplit)",
         goto_file_vsplit, "Goto files in selection (vsplit)",
+        #[cfg(feature = "dap_lsp")]
         goto_reference, "Goto references",
         goto_window_top, "Goto window top",
         goto_window_center, "Goto window center",
@@ -343,9 +363,13 @@ impl MappableCommand {
         goto_last_modification, "Goto last modification",
         goto_line, "Goto line",
         goto_last_line, "Goto last line",
+        #[cfg(feature = "dap_lsp")]
         goto_first_diag, "Goto first diagnostic",
+        #[cfg(feature = "dap_lsp")]
         goto_last_diag, "Goto last diagnostic",
+        #[cfg(feature = "dap_lsp")]
         goto_next_diag, "Goto next diagnostic",
+        #[cfg(feature = "dap_lsp")]
         goto_prev_diag, "Goto previous diagnostic",
         goto_next_change, "Goto next change",
         goto_prev_change, "Goto previous change",
@@ -362,6 +386,7 @@ impl MappableCommand {
         extend_to_first_nonwhitespace, "Extend to first non-blank in line",
         extend_to_line_end, "Extend to line end",
         extend_to_line_end_newline, "Extend to line end",
+        #[cfg(feature = "dap_lsp")]
         signature_help, "Show signature help",
         smart_tab, "Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.",
         insert_tab, "Insert tab char",
@@ -396,6 +421,7 @@ impl MappableCommand {
         paste_primary_clipboard_before, "Paste primary clipboard before selections",
         indent, "Indent selection",
         unindent, "Unindent selection",
+        #[cfg(feature = "dap_lsp")]
         format_selections, "Format selection",
         join_selections, "Join lines inside selection",
         join_selections_space, "Join lines inside selection and select spaces",
@@ -404,7 +430,9 @@ impl MappableCommand {
         align_selections, "Align selections in column",
         keep_primary_selection, "Keep primary selection",
         remove_primary_selection, "Remove primary selection",
+        #[cfg(feature = "dap_lsp")]
         completion, "Invoke completion popup",
+        #[cfg(feature = "dap_lsp")]
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
         rotate_selections_forward, "Rotate selections forward",
@@ -462,21 +490,37 @@ impl MappableCommand {
         goto_prev_test, "Goto previous test",
         goto_next_paragraph, "Goto next paragraph",
         goto_prev_paragraph, "Goto previous paragraph",
+        #[cfg(feature = "dap_lsp")]
         dap_launch, "Launch debug target",
+        #[cfg(feature = "dap_lsp")]
         dap_restart, "Restart debugging session",
+        #[cfg(feature = "dap_lsp")]
         dap_toggle_breakpoint, "Toggle breakpoint",
+        #[cfg(feature = "dap_lsp")]
         dap_continue, "Continue program execution",
+        #[cfg(feature = "dap_lsp")]
         dap_pause, "Pause program execution",
+        #[cfg(feature = "dap_lsp")]
         dap_step_in, "Step in",
+        #[cfg(feature = "dap_lsp")]
         dap_step_out, "Step out",
+        #[cfg(feature = "dap_lsp")]
         dap_next, "Step to next",
+        #[cfg(feature = "dap_lsp")]
         dap_variables, "List variables",
+        #[cfg(feature = "dap_lsp")]
         dap_terminate, "End debug session",
+        #[cfg(feature = "dap_lsp")]
         dap_edit_condition, "Edit breakpoint condition on current line",
+        #[cfg(feature = "dap_lsp")]
         dap_edit_log, "Edit breakpoint log message on current line",
+        #[cfg(feature = "dap_lsp")]
         dap_switch_thread, "Switch current thread",
+        #[cfg(feature = "dap_lsp")]
         dap_switch_stack_frame, "Switch stack frame",
+        #[cfg(feature = "dap_lsp")]
         dap_enable_exceptions, "Enable exception breakpoints",
+        #[cfg(feature = "dap_lsp")]
         dap_disable_exceptions, "Disable exception breakpoints",
         shell_pipe, "Pipe selections through shell command",
         shell_pipe_to, "Pipe selections into shell command ignoring output",
@@ -484,6 +528,7 @@ impl MappableCommand {
         shell_append_output, "Append shell command output after selections",
         shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend and return to shell",
+        #[cfg(feature = "dap_lsp")]
         rename_symbol, "Rename symbol",
         increment, "Increment item under cursor",
         decrement, "Decrement item under cursor",
@@ -2538,6 +2583,7 @@ fn delete_by_selection_insert_mode(
         );
     }
     doc.apply(&transaction, view.id);
+    #[cfg(feature = "dap_lsp")]
     lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
 }
 
@@ -3278,6 +3324,7 @@ fn exit_select_mode(cx: &mut Context) {
     }
 }
 
+#[cfg(feature = "dap_lsp")]
 fn goto_first_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let selection = match doc.shown_diagnostics().next() {
@@ -3287,6 +3334,7 @@ fn goto_first_diag(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(feature = "dap_lsp")]
 fn goto_last_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let selection = match doc.shown_diagnostics().last() {
@@ -3296,6 +3344,7 @@ fn goto_last_diag(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(feature = "dap_lsp")]
 fn goto_next_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -3316,6 +3365,7 @@ fn goto_next_diag(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(feature = "dap_lsp")]
 fn goto_prev_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -3453,8 +3503,8 @@ pub mod insert {
         }
     }
 
-    // It trigger completion when idle timer reaches deadline
-    // Only trigger completion if the word under cursor is longer than n characters
+    #[cfg(feature = "dap_lsp")] // It trigger completion when idle timer reaches deadline
+                                // Only trigger completion if the word under cursor is longer than n characters
     pub fn idle_completion(cx: &mut Context) {
         let config = cx.editor.config();
         let (view, doc) = current!(cx.editor);
@@ -3473,6 +3523,7 @@ pub mod insert {
         super::completion(cx);
     }
 
+    #[cfg(feature = "dap_lsp")]
     fn language_server_completion(cx: &mut Context, ch: char) {
         let config = cx.editor.config();
         if !config.auto_completion {
@@ -3498,6 +3549,7 @@ pub mod insert {
         }
     }
 
+    #[cfg(feature = "dap_lsp")]
     fn signature_help(cx: &mut Context, ch: char) {
         use helix_lsp::lsp;
         // if ch matches signature_help char, trigger
@@ -3564,6 +3616,7 @@ pub mod insert {
             doc.apply(&t, view.id);
         }
 
+        #[cfg(feature = "dap_lsp")]
         // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
         // this could also generically look at Transaction, but it's a bit annoying to look at
         // Operation instead of Change.
@@ -3794,6 +3847,7 @@ pub mod insert {
         let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
 
+        #[cfg(feature = "dap_lsp")]
         lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 
@@ -4248,6 +4302,7 @@ fn unindent(cx: &mut Context) {
     doc.apply(&transaction, view.id);
 }
 
+#[cfg(feature = "dap_lsp")]
 fn format_selections(cx: &mut Context) {
     use helix_lsp::{lsp, util::range_to_lsp_range};
 
@@ -4430,6 +4485,7 @@ fn remove_primary_selection(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(feature = "dap_lsp")]
 pub fn completion(cx: &mut Context) {
     use helix_lsp::{lsp, util::pos_to_lsp_pos};
 
@@ -5403,7 +5459,7 @@ fn shell_keep_pipe(cx: &mut Context) {
 }
 
 fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<(Tendril, bool)> {
-    tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
+    tokio::task::block_in_place(|| futures_executor::block_on(shell_impl_async(shell, cmd, input)))
 }
 
 async fn shell_impl_async(

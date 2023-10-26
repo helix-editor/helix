@@ -387,7 +387,7 @@ mod tests {
     fn duplicate_keys_should_panic() {
         keymap!({ "Normal mode"
             "i" => normal_mode,
-            "i" => goto_definition,
+            "i" => goto_file,
         });
     }
 

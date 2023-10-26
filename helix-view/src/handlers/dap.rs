@@ -3,7 +3,6 @@ use crate::{align_view, Align, Editor};
 use dap::requests::DisconnectArguments;
 use helix_core::Selection;
 use helix_dap::{self as dap, Client, ConnectionType, Payload, Request, ThreadId};
-use helix_lsp::block_on;
 use log::warn;
 use std::fmt::Write;
 use std::path::PathBuf;
@@ -119,7 +118,7 @@ pub fn breakpoints_changed(
         .collect::<Vec<_>>();
 
     let request = debugger.set_breakpoints(path, source_breakpoints);
-    match block_on(request) {
+    match futures_executor::block_on(request) {
         Ok(Some(dap_breakpoints)) => {
             for (breakpoint, dap_breakpoint) in breakpoints.iter_mut().zip(dap_breakpoints) {
                 breakpoint.id = dap_breakpoint.id;

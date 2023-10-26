@@ -1,5 +1,6 @@
 use std::fmt::Write;
 
+#[cfg(feature = "dap_lsp")]
 use helix_core::syntax::LanguageServerFeature;
 
 use crate::{
@@ -27,6 +28,7 @@ impl GutterType {
         is_focused: bool,
     ) -> GutterFn<'doc> {
         match self {
+            #[cfg(feature = "dap_lsp")]
             GutterType::Diagnostics => {
                 diagnostics_or_breakpoints(editor, doc, view, theme, is_focused)
             }
@@ -38,6 +40,7 @@ impl GutterType {
 
     pub fn width(self, view: &View, doc: &Document) -> usize {
         match self {
+            #[cfg(feature = "dap_lsp")]
             GutterType::Diagnostics => 1,
             GutterType::LineNumbers => line_numbers_width(view, doc),
             GutterType::Spacer => 1,
@@ -46,7 +49,7 @@ impl GutterType {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "dap_lsp")]
 pub fn diagnostic<'doc>(
     _editor: &'doc Editor,
     doc: &'doc Document,
@@ -281,6 +284,7 @@ pub fn breakpoints<'doc>(
     )
 }
 
+#[cfg(feature = "dap_lsp")]
 fn execution_pause_indicator<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
@@ -316,6 +320,7 @@ fn execution_pause_indicator<'doc>(
     )
 }
 
+#[cfg(feature = "dap_lsp")]
 pub fn diagnostics_or_breakpoints<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
@@ -358,18 +363,30 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
 
-        assert_eq!(view.gutters.layout.len(), 5);
-        assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
-        assert_eq!(view.gutters.layout[1].width(&view, &doc), 1);
-        assert_eq!(view.gutters.layout[2].width(&view, &doc), 3);
-        assert_eq!(view.gutters.layout[3].width(&view, &doc), 1);
-        assert_eq!(view.gutters.layout[4].width(&view, &doc), 1);
+        #[cfg(feature = "dap_lsp")]
+        {
+            assert_eq!(view.gutters.layout.len(), 5);
+            assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
+            assert_eq!(view.gutters.layout[1].width(&view, &doc), 1);
+            assert_eq!(view.gutters.layout[2].width(&view, &doc), 3);
+            assert_eq!(view.gutters.layout[3].width(&view, &doc), 1);
+            assert_eq!(view.gutters.layout[4].width(&view, &doc), 1);
+        }
+        #[cfg(not(feature = "dap_lsp"))]
+        {
+            assert_eq!(view.gutters.layout.len(), 4);
+
+            assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
+            assert_eq!(view.gutters.layout[1].width(&view, &doc), 3);
+            assert_eq!(view.gutters.layout[2].width(&view, &doc), 1);
+            assert_eq!(view.gutters.layout[3].width(&view, &doc), 1);
+        }
     }
 
     #[test]
     fn test_configured_gutter_widths() {
         let gutters = GutterConfig {
-            layout: vec![GutterType::Diagnostics],
+            layout: vec![GutterType::Spacer],
             ..Default::default()
         };
 
@@ -387,7 +404,7 @@ mod tests {
         assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
 
         let gutters = GutterConfig {
-            layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            layout: vec![GutterType::Spacer, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 10 },
         };
 
@@ -409,7 +426,7 @@ mod tests {
     #[test]
     fn test_line_numbers_gutter_width_resizes() {
         let gutters = GutterConfig {
-            layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            layout: vec![GutterType::Spacer, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 1 },
         };
 

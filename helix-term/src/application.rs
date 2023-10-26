@@ -5,6 +5,7 @@ use helix_core::{
     path::get_relative_path,
     pos_at_coords, syntax, Selection,
 };
+#[cfg(feature = "dap_lsp")]
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_pos_to_pos,
@@ -22,9 +23,10 @@ use helix_view::{
 use serde_json::json;
 use tui::backend::Backend;
 
+#[cfg(feature = "dap_lsp")]
+use crate::commands::apply_workspace_edit;
 use crate::{
     args::Args,
-    commands::apply_workspace_edit,
     compositor::{Compositor, Event},
     config::Config,
     job::Jobs,
@@ -73,6 +75,7 @@ pub struct Application {
 
     signals: Signals,
     jobs: Jobs,
+    #[cfg(feature = "dap_lsp")]
     lsp_progress: LspProgressMap,
 }
 
@@ -243,6 +246,7 @@ impl Application {
 
             signals,
             jobs: Jobs::new(),
+            #[cfg(feature = "dap_lsp")]
             lsp_progress: LspProgressMap::new(),
         };
 
@@ -558,6 +562,7 @@ impl Application {
             let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
             let id = doc.id();
             doc.detect_language(loader);
+            #[cfg(feature = "dap_lsp")]
             self.editor.refresh_language_servers(id);
         }
 
@@ -583,11 +588,13 @@ impl Application {
                 self.handle_config_events(event);
                 self.render().await;
             }
+            #[cfg(feature = "dap_lsp")]
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
                 // limit render calls for fast language server messages
                 helix_event::request_redraw();
             }
+            #[cfg(feature = "dap_lsp")]
             EditorEvent::DebuggerEvent(payload) => {
                 let needs_render = self.editor.handle_debugger_message(payload).await;
                 if needs_render {
@@ -644,6 +651,7 @@ impl Application {
         }
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub async fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,
@@ -1200,6 +1208,7 @@ impl Application {
             errs.push(err);
         }
 
+        #[cfg(feature = "dap_lsp")]
         if self.editor.close_language_servers(None).await.is_err() {
             log::error!("Timed out waiting for language servers to shutdown");
             errs.push(anyhow::format_err!(

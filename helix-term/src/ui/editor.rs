@@ -1,3 +1,5 @@
+#[cfg(feature = "dap_lsp")]
+use crate::ui::Completion;
 use crate::{
     commands::{self, OnKeyCallback},
     compositor::{Component, Context, Event, EventResult},
@@ -6,7 +8,7 @@ use crate::{
     keymap::{KeymapResult, Keymaps},
     ui::{
         document::{render_document, LinePos, TextRenderer, TranslatedPosition},
-        Completion, ProgressSpinners,
+        ProgressSpinners,
     },
 };
 
@@ -33,7 +35,9 @@ use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
-use super::{completion::CompletionItem, statusline};
+#[cfg(feature = "dap_lsp")]
+use super::completion::CompletionItem;
+use super::statusline;
 use super::{document::LineDecoration, lsp::SignatureHelp};
 
 pub struct EditorView {
@@ -41,6 +45,7 @@ pub struct EditorView {
     on_next_key: Option<OnKeyCallback>,
     pseudo_pending: Vec<KeyEvent>,
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
+    #[cfg(feature = "dap_lsp")]
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
     /// Tracks if the terminal window is focused by reaction to terminal focus events
@@ -71,6 +76,7 @@ impl EditorView {
             on_next_key: None,
             pseudo_pending: Vec::new(),
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
+            #[cfg(feature = "dap_lsp")]
             completion: None,
             spinners: ProgressSpinners::default(),
             terminal_focused: true,
@@ -107,6 +113,7 @@ impl EditorView {
             Self::highlight_cursorcolumn(doc, view, surface, theme, inner, &text_annotations);
         }
 
+        #[cfg(feature = "dap_lsp")]
         // Set DAP highlights, if needed.
         if let Some(frame) = editor.current_stack_frame() {
             let dap_line = frame.line.saturating_sub(1);
@@ -658,6 +665,7 @@ impl EditorView {
             .primary()
             .cursor(doc.text().slice(..));
 
+        #[cfg(feature = "dap_lsp")]
         let diagnostics = doc.shown_diagnostics().filter(|diagnostic| {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
         });
@@ -669,6 +677,7 @@ impl EditorView {
 
         let mut lines = Vec::new();
         let background_style = theme.get("ui.background");
+        #[cfg(feature = "dap_lsp")]
         for diagnostic in diagnostics {
             let style = Style::reset()
                 .patch(background_style)
@@ -820,9 +829,11 @@ impl EditorView {
                     self.last_insert.0 = command.clone();
                     self.last_insert.1.clear();
 
+                    #[cfg(feature = "dap_lsp")]
                     commands::signature_help_impl(cxt, commands::SignatureHelpInvoked::Automatic);
                 }
                 (Mode::Insert, Mode::Normal) => {
+                    #[cfg(feature = "dap_lsp")]
                     // if exiting insert mode, remove completion
                     self.clear_completion(cxt.editor);
                     cxt.editor.completion_request_handle = None;
@@ -959,6 +970,7 @@ impl EditorView {
         }
     }
 
+    #[cfg(feature = "dap_lsp")]
     #[allow(clippy::too_many_arguments)]
     pub fn set_completion(
         &mut self,
@@ -987,6 +999,7 @@ impl EditorView {
         Some(area)
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn clear_completion(&mut self, editor: &mut Editor) {
         self.completion = None;
         if let Some(last_completion) = editor.last_completion.take() {
@@ -1010,8 +1023,10 @@ impl EditorView {
     }
 
     pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
+        #[cfg(feature = "dap_lsp")]
         commands::compute_inlay_hints_for_all_views(cx.editor, cx.jobs);
 
+        #[cfg(feature = "dap_lsp")]
         if let Some(completion) = &mut self.completion {
             return if completion.ensure_item_resolved(cx) {
                 EventResult::Consumed(None)
@@ -1024,6 +1039,7 @@ impl EditorView {
             return EventResult::Ignored(None);
         }
 
+        #[cfg(feature = "dap_lsp")]
         crate::commands::insert::idle_completion(cx);
 
         EventResult::Consumed(None)
@@ -1083,6 +1099,7 @@ impl EditorView {
                         doc.set_selection(view_id, Selection::point(pos));
                     }
 
+                    #[cfg(feature = "dap_lsp")]
                     if view_id != prev_view_id {
                         self.clear_completion(editor);
                     }
@@ -1103,6 +1120,7 @@ impl EditorView {
                         None => return EventResult::Ignored(None),
                     };
 
+                    #[cfg(feature = "dap_lsp")]
                     if let Some(char_idx) =
                         view.pos_at_visual_coords(doc, coords.row as u16, coords.col as u16, true)
                     {
@@ -1186,6 +1204,7 @@ impl EditorView {
                         view.pos_at_visual_coords(doc, coords.row as u16, coords.col as u16, true)
                     {
                         doc.set_selection(view_id, Selection::point(pos));
+                        #[cfg(feature = "dap_lsp")]
                         if modifiers == KeyModifiers::ALT {
                             commands::MappableCommand::dap_edit_log.execute(cxt);
                         } else {
@@ -1287,6 +1306,7 @@ impl Component for EditorView {
                         Mode::Insert => {
                             // let completion swallow the event if necessary
                             let mut consumed = false;
+                            #[cfg(feature = "dap_lsp")]
                             if let Some(completion) = &mut self.completion {
                                 let res = {
                                     // use a fake context here
@@ -1331,6 +1351,7 @@ impl Component for EditorView {
                                 // record last_insert key
                                 self.last_insert.1.push(InsertEvent::Key(key));
 
+                                #[cfg(feature = "dap_lsp")]
                                 // lastly we recalculate completion
                                 if let Some(completion) = &mut self.completion {
                                     completion.update(&mut cx);
@@ -1493,6 +1514,7 @@ impl Component for EditorView {
             }
         }
 
+        #[cfg(feature = "dap_lsp")]
         if let Some(completion) = self.completion.as_mut() {
             completion.render(area, surface, cx);
         }

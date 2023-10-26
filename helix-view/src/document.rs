@@ -178,6 +178,7 @@ pub struct Document {
     pub(crate) modified_since_accessed: bool,
 
     pub(crate) diagnostics: Vec<Diagnostic>,
+    #[cfg(feature = "dap_lsp")]
     pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
 
     diff_handle: Option<DiffHandle>,
@@ -633,6 +634,7 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
+#[cfg(feature = "dap_lsp")]
 use helix_lsp::{lsp, Client, LanguageServerName};
 use url::Url;
 
@@ -670,6 +672,7 @@ impl Document {
             last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
             modified_since_accessed: false,
+            #[cfg(feature = "dap_lsp")]
             language_servers: HashMap::new(),
             diff_handle: None,
             config,
@@ -718,7 +721,7 @@ impl Document {
         Ok(doc)
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(feature = "dap_lsp")]
     /// The same as [`format`], but only returns formatting changes if auto-formatting
     /// is configured.
     pub fn auto_format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
@@ -729,7 +732,7 @@ impl Document {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(feature = "dap_lsp")]
     /// If supported, returns the changes that should be applied to this document in order
     /// to format it nicely.
     // We can't use anyhow::Result here since the output of the future has to be
@@ -864,7 +867,9 @@ impl Document {
             }
         };
 
+        #[cfg(feature = "dap_lsp")]
         let identifier = self.path().map(|_| self.identifier());
+        #[cfg(feature = "dap_lsp")]
         let language_servers = self.language_servers.clone();
 
         // mark changes up to now as saved
@@ -909,11 +914,12 @@ impl Document {
                 text: text.clone(),
             };
 
-            for (_, language_server) in language_servers {
-                if !language_server.is_initialized() {
-                    return Ok(event);
-                }
-                if let Some(identifier) = &identifier {
+            #[cfg(feature = "dap_lsp")]
+            if let Some(identifier) = identifier {
+                for (_, language_server) in language_servers {
+                    if !language_server.is_initialized() {
+                        return Ok(event);
+                    }
                     if let Some(notification) =
                         language_server.text_document_did_save(identifier.clone(), &text)
                     {
@@ -1262,6 +1268,7 @@ impl Document {
             }
 
             if emit_lsp_notification {
+                #[cfg(feature = "dap_lsp")]
                 // emit lsp notification
                 for language_server in self.language_servers() {
                     let notify = language_server.text_document_did_change(
@@ -1538,6 +1545,7 @@ impl Document {
         self.version
     }
 
+    #[cfg(feature = "dap_lsp")]
     /// maintains the order as configured in the language_servers TOML array
     pub fn language_servers(&self) -> impl Iterator<Item = &helix_lsp::Client> {
         self.language_config().into_iter().flat_map(move |config| {
@@ -1552,10 +1560,12 @@ impl Document {
         })
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn remove_language_server_by_name(&mut self, name: &str) -> Option<Arc<Client>> {
         self.language_servers.remove(name)
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn language_servers_with_feature(
         &self,
         feature: LanguageServerFeature,
@@ -1575,6 +1585,7 @@ impl Document {
         })
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn supports_language_server(&self, id: usize) -> bool {
         self.language_servers().any(|l| l.id() == id)
     }
@@ -1671,15 +1682,18 @@ impl Document {
 
     // -- LSP methods
 
+    #[cfg(feature = "dap_lsp")]
     #[inline]
     pub fn identifier(&self) -> lsp::TextDocumentIdentifier {
         lsp::TextDocumentIdentifier::new(self.url().unwrap())
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn versioned_identifier(&self) -> lsp::VersionedTextDocumentIdentifier {
         lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn position(
         &self,
         view_id: ViewId,
@@ -1699,6 +1713,7 @@ impl Document {
         &self.diagnostics
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn shown_diagnostics(&self) -> impl Iterator<Item = &Diagnostic> + DoubleEndedIterator {
         self.diagnostics.iter().filter(|d| {
             self.language_servers_with_feature(LanguageServerFeature::Diagnostics)
@@ -1868,6 +1883,7 @@ mod test {
 
     use super::*;
 
+    #[cfg(feature = "dap_lsp")]
     #[test]
     fn changeset_to_changes_ignore_line_endings() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
@@ -1906,6 +1922,7 @@ mod test {
         );
     }
 
+    #[cfg(feature = "dap_lsp")]
     #[test]
     fn changeset_to_changes() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
@@ -2072,7 +2089,7 @@ mod test {
 
                 let text = Rope::from_str(&std::fs::read_to_string(path).unwrap());
                 let mut buf: Vec<u8> = Vec::new();
-                helix_lsp::block_on(to_writer(&mut buf, (encoding, false), &text)).unwrap();
+                futures_executor::block_on(to_writer(&mut buf, (encoding, false), &text)).unwrap();
 
                 let expectation = std::fs::read(ref_path).unwrap();
                 assert_eq!(buf, expectation);
