@@ -16,13 +16,17 @@ use std::path::Path;
 use ignore::DirEntry;
 pub use keymap::macros::*;
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_arch = "wasm32")))]
 fn true_color() -> bool {
     std::env::var("COLORTERM")
         .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
         .unwrap_or(false)
 }
 #[cfg(windows)]
+fn true_color() -> bool {
+    true
+}
+#[cfg(target_arch = "wasm32")]
 fn true_color() -> bool {
     true
 }
