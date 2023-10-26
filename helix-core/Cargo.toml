@@ -24,9 +24,9 @@ unicode-segmentation = "1.10"
 unicode-width = "0.1"
 unicode-general-category = "0.6"
 # slab = "0.4.2"
-tree-sitter = { package = "tree-sitter-c2rust", version = "0.20" }
 once_cell = "1.18"
 slotmap = "1.0"
+tree-sitter.workspace = true
 arc-swap = "1"
 regex = "1"
 bitflags = "2.4"

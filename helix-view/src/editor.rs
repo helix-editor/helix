@@ -745,7 +745,7 @@ pub struct WhitespaceCharacters {
 impl Default for WhitespaceCharacters {
     fn default() -> Self {
         Self {
-            space: '·',   // U+00B7
+            space: '·',    // U+00B7
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
@@ -1775,6 +1775,9 @@ impl Editor {
         .map(|_| ())
     }
 
+    // TODO(wasm32) figure out feature gating without duplicating code
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn wait_event(&mut self) -> EditorEvent {
         // the loop only runs once or twice and would be better implemented with a recursion + const generic
         // however due to limitations with async functions that can not be implemented right now
@@ -1789,13 +1792,49 @@ impl Editor {
                 Some(config_event) = self.config_events.1.recv() => {
                     return EditorEvent::ConfigEvent(config_event)
                 }
-                // TODO(wasm32) figure out feature gating
-                // Some(message) = self.language_servers.incoming.next() => {
-                //     return EditorEvent::LanguageServerMessage(message)
-                // }
-                // Some(event) = self.debugger_events.next() => {
-                //     return EditorEvent::DebuggerEvent(event)
-                // }
+                Some(message) = self.language_servers.incoming.next() => {
+                    return EditorEvent::LanguageServerMessage(message)
+                }
+                Some(event) = self.debugger_events.next() => {
+                    return EditorEvent::DebuggerEvent(event)
+                }
+
+                _ = helix_event::redraw_requested() => {
+                    if  !self.needs_redraw{
+                        self.needs_redraw = true;
+                        let timeout = Instant::now() + Duration::from_millis(33);
+                        if timeout < self.idle_timer.deadline() && timeout < self.redraw_timer.deadline(){
+                            self.redraw_timer.as_mut().reset(timeout)
+                        }
+                    }
+                }
+
+                _ = &mut self.redraw_timer  => {
+                    self.redraw_timer.as_mut().reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
+                    return EditorEvent::Redraw
+                }
+                _ = &mut self.idle_timer  => {
+                    return EditorEvent::IdleTimer
+                }
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn wait_event(&mut self) -> EditorEvent {
+        // the loop only runs once or twice and would be better implemented with a recursion + const generic
+        // however due to limitations with async functions that can not be implemented right now
+        loop {
+            tokio::select! {
+                biased;
+
+                Some(event) = self.save_queue.next() => {
+                    self.write_count -= 1;
+                    return EditorEvent::DocumentSaved(event)
+                }
+                Some(config_event) = self.config_events.1.recv() => {
+                    return EditorEvent::ConfigEvent(config_event)
+                }
 
                 _ = helix_event::redraw_requested() => {
                     if  !self.needs_redraw{

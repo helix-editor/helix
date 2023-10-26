@@ -12,6 +12,7 @@ include = ["src/**/*", "README.md"]
 default-run = "hx"
 rust-version = "1.65"
 
+# TODO(wasm32) review defaults, enable wasm32
 [features]
 default = ["git", "crossterm", "dap_lsp"]
 dap_lsp = ["dep:helix-lsp", "dep:helix-dap"]
