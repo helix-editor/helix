@@ -339,7 +339,7 @@ dependencies = [
 [[package]]
 name = "crossterm"
 version = "0.27.0"
-source = "git+https://github.com/makemeunsee/crossterm?branch=wasm32#5426ca4efd66dbd501582916023fe6c69ed90159"
+source = "git+https://github.com/makemeunsee/crossterm?branch=wasm32#7f843da1a8c1f58d7c067fd6ee070c1a44f8e225"
 dependencies = [
  "bitflags 2.4.1",
  "crossterm_winapi",
@@ -1921,7 +1921,7 @@ dependencies = [
 [[package]]
 name = "rs-xterm-js"
 version = "0.1.0"
-source = "git+https://github.com/makemeunsee/rs-xterm-js#1e83e17dac1c78dcf4954ac319ef89600a71fef4"
+source = "git+https://github.com/makemeunsee/rs-xterm-js#a88cf395e52cea3e2fe66c9eb19240b319f54f91"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
