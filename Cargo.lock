@@ -1288,6 +1288,7 @@ dependencies = [
  "once_cell",
  "serde",
  "termini",
+ "tokio",
  "unicode-segmentation",
 ]
 
