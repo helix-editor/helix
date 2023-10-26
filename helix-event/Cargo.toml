@@ -13,17 +13,14 @@ homepage = "https://helix-editor.com"
 [dependencies]
 parking_lot = { version = "0.12", features = ["send_guard"] }
 
-# [target.'cfg(target_family = "wasm")'.dependencies]
-# tokio = { version = "1", features = ["rt", "time", "sync", "parking_lot"] }
-
-# [target.'cfg(not(target_family = "wasm"))'.dependencies]
-# tokio = { version = "1", features = [
-#     "rt",
-#     "rt-multi-thread",
-#     "time",
-#     "sync",
-#     "parking_lot",
-# ] }
-
-# TODO(wasm32) re-enable conditional tokio features, requires a fix for https://github.com/rust-lang/cargo/issues/12821
+[target.'cfg(target_family = "wasm")'.dependencies]
 tokio = { version = "1", features = ["rt", "time", "sync", "parking_lot"] }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+tokio = { version = "1", features = [
+    "rt",
+    "rt-multi-thread",
+    "time",
+    "sync",
+    "parking_lot",
+] }

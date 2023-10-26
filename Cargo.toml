@@ -12,6 +12,7 @@ members = [
   "helix-parsec",
   "xtask",
 ]
+resolver = "2"
 
 default-members = ["helix-term"]
 
