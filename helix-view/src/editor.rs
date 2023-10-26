@@ -1081,7 +1081,7 @@ impl Editor {
             registers: Registers::default(),
             status_msg: None,
             autoinfo: None,
-            idle_timer: Box::pin(sleep(conf.idle_timeout)),
+            idle_timer: Box::pin(sleep(conf.idle_timeout)), // TODO(wasm32) no tokio sleep, work around it...
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
             last_completion: None,
@@ -1800,7 +1800,7 @@ impl Editor {
                 }
 
                 _ = helix_event::redraw_requested() => {
-                    if  !self.needs_redraw{
+                    if !self.needs_redraw{
                         self.needs_redraw = true;
                         let timeout = Instant::now() + Duration::from_millis(33);
                         if timeout < self.idle_timer.deadline() && timeout < self.redraw_timer.deadline(){
@@ -1837,7 +1837,7 @@ impl Editor {
                 }
 
                 _ = helix_event::redraw_requested() => {
-                    if  !self.needs_redraw{
+                    if !self.needs_redraw{
                         self.needs_redraw = true;
                         let timeout = Instant::now() + Duration::from_millis(33);
                         if timeout < self.idle_timer.deadline() && timeout < self.redraw_timer.deadline(){

@@ -102,6 +102,12 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     rt_dirs
 }
 
+#[cfg(target_arch = "wasm32")]
+pub fn runtime_dirs() -> &'static [PathBuf] {
+    &[] // TODO(wasm32) plug something useful instead
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 /// Runtime directories ordered from highest to lowest priority
 ///
 /// All directories should be checked when looking for files.
@@ -141,14 +147,15 @@ pub fn runtime_file(rel_path: &Path) -> PathBuf {
             .unwrap_or_default()
     })
 }
+
 #[cfg(target_arch = "wasm32")]
 pub fn config_dir() -> PathBuf {
-    todo!() // TODO(wasm32)
+    PathBuf::new() // TODO(wasm32) plug something useful instead
 }
 
 #[cfg(target_arch = "wasm32")]
 pub fn cache_dir() -> PathBuf {
-    todo!() // TODO(wasm32)
+    PathBuf::new() // TODO(wasm32) plug something useful instead
 }
 
 #[cfg(not(target_arch = "wasm32"))]
