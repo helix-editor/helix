@@ -1689,7 +1689,10 @@ file-types = ["ron"]
 roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
-grammar = "rust"
+
+[[grammar]]
+name = "ron"
+source = { git = "https://github.com/zee-editor/tree-sitter-ron", rev = "7762d709a0f7c1f9e269d0125a2e8a7a69006146" }
 
 [[language]]
 name = "robot"
