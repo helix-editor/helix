@@ -17,7 +17,7 @@ wasm-bindgen-futures = "0.4"
 tokio = { version = "1.33", features = ["rt"] }
 helix-term = { path = "../helix-term", default-features = false }
 helix-tui = { path = "../helix-tui", default-features = false }
-helix-view = { path = "../helix-view", default-features = false }
+helix-view = { path = "../helix-view", default-features = false, features = ["term"] }
 helix-core = { path = "../helix-core" }
 console_log = "1.0"
 log = "0.4"
@@ -29,7 +29,8 @@ web-sys = { version = "0.3.39", features = [
     "Element",
     "Window",
 ] }
-rs-xterm-js = { path = "../../rs-xterm-js" }
+rs-xterm-js = { git = "https://github.com/makemeunsee/rs-xterm-js" }
+crossterm.workspace = true
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires

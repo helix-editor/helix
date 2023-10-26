@@ -1,15 +1,13 @@
 mod backend;
-mod crossterm;
 mod utils;
+#[path = "crossterm/mod.rs"]
+mod xtct;
 
 use backend::spawn_terminal;
-use crossterm::XtermJsCrosstermBackend;
+use crossterm::event;
 use helix_term::{application::Application, args::Args, config::Config};
-use helix_view::{
-    input::{Event, KeyEvent},
-    keyboard::{KeyCode, KeyModifiers},
-};
 use wasm_bindgen::prelude::*;
+use xtct::XtermJsCrosstermBackend;
 
 #[wasm_bindgen]
 extern "C" {
@@ -22,7 +20,8 @@ pub async fn main() {
     utils::set_logging(log::Level::Debug);
 
     let terminal = spawn_terminal();
-    let write: XtermJsCrosstermBackend = (&terminal).into();
+    let term_ref = &terminal;
+    let write: XtermJsCrosstermBackend = term_ref.into();
 
     let config = Config::default();
     let mut app = Application::new_with_write(
@@ -33,21 +32,7 @@ pub async fn main() {
     )
     .unwrap();
 
-    let mut input_stream = futures_util::stream::iter(
-        vec![Ok(Event::Key(KeyEvent {
-            code: KeyCode::Char('i'),
-            modifiers: KeyModifiers::NONE,
-        }))]
-        .into_iter()
-        .chain("Helix web - made with ❤\n天下無敵".chars().map(|c| {
-            Ok(Event::Key(KeyEvent {
-                code: KeyCode::Char(c),
-                modifiers: KeyModifiers::NONE,
-            }))
-        })),
-    );
-
-    app.run(&mut input_stream).await.unwrap();
-
-    alert("wow such Helix");
+    app.run(&mut event::EventStream::new(&terminal))
+        .await
+        .unwrap();
 }

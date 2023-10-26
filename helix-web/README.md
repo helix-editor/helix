@@ -27,18 +27,11 @@ Ideas for down the road:
 * restore/replace diff'ing (probably without `git`)
 * web workers for some operations
 
-## Building
-
-```sh
-wasm-pack build
-
-# alternatively, without webpacking and integration into the node app:
-cargo build --lib --no-default-features --target wasm32-unknown-unknown
-```
-
 ## Init
 
 ```sh
+cargo install cargo-wasm
+
 nvm use 16
 
 npm install
@@ -46,6 +39,15 @@ npm install
 cd www/
 
 npm install
+```
+
+## Building
+
+```sh
+wasm-pack build
+
+# alternatively, without webpacking and integration into the node app:
+cargo build --lib --no-default-features --target wasm32-unknown-unknown
 ```
 
 ## Running

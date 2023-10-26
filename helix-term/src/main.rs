@@ -5,8 +5,6 @@ use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
 
-use futures_util::stream::StreamExt;
-
 fn setup_logging(verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
 
@@ -158,20 +156,7 @@ FLAGS:
     let mut app = Application::new(args, config, syn_loader_conf)
         .context("unable to create new application")?;
 
-    // TODO(wasm32) it's ugly here...
-    // Ignore keyboard release events.
-    let events = EventStream::new().filter_map(|event| async move {
-        match event {
-            Ok(crossterm::event::Event::Key(crossterm::event::KeyEvent {
-                kind: crossterm::event::KeyEventKind::Release,
-                ..
-            })) => None,
-            Ok(event) => Some(Ok(event.into())),
-            Err(e) => Some(Err(e)),
-        }
-    });
-
-    let exit_code = app.run(&mut Box::pin(events)).await?;
+    let exit_code = app.run(&mut EventStream::new()).await?;
 
     Ok(exit_code)
 }

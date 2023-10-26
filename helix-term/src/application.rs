@@ -39,10 +39,9 @@ use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
 use anyhow::{Context, Error};
 
+use crossterm::event::Event as CrosstermEvent;
 #[cfg(not(target_arch = "wasm32"))]
 use crossterm::tty::IsTty;
-
-type TermEvent = helix_view::input::Event;
 
 #[cfg(not(any(windows, target_arch = "wasm32")))]
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
@@ -322,7 +321,7 @@ where
 
     pub async fn event_loop<IS>(&mut self, input_stream: &mut IS)
     where
-        IS: Stream<Item = std::io::Result<TermEvent>> + Unpin,
+        IS: Stream<Item = std::io::Result<CrosstermEvent>> + Unpin,
     {
         self.render().await;
 
@@ -335,7 +334,7 @@ where
 
     pub async fn event_loop_until_idle<IS>(&mut self, input_stream: &mut IS) -> bool
     where
-        IS: Stream<Item = std::io::Result<TermEvent>> + Unpin,
+        IS: Stream<Item = std::io::Result<CrosstermEvent>> + Unpin,
     {
         loop {
             if self.editor.should_close() {
@@ -652,7 +651,7 @@ where
         false
     }
 
-    pub async fn handle_terminal_events(&mut self, event: std::io::Result<TermEvent>) {
+    pub async fn handle_terminal_events(&mut self, event: std::io::Result<CrosstermEvent>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -660,7 +659,7 @@ where
         };
         // Handle key events
         let should_redraw = match event.unwrap() {
-            TermEvent::Resize(width, height) => {
+            CrosstermEvent::Resize(width, height) => {
                 self.terminal
                     .resize(Rect::new(0, 0, width, height))
                     .expect("Unable to resize terminal");
@@ -672,7 +671,12 @@ where
                 self.compositor
                     .handle_event(&Event::Resize(width, height), &mut cx)
             }
-            event => self.compositor.handle_event(&event, &mut cx),
+            // Ignore keyboard release events.
+            CrosstermEvent::Key(crossterm::event::KeyEvent {
+                kind: crossterm::event::KeyEventKind::Release,
+                ..
+            }) => false,
+            event => self.compositor.handle_event(&event.into(), &mut cx),
         };
 
         if should_redraw && !self.editor.should_close() {
@@ -1189,7 +1193,7 @@ where
 
     pub async fn run<IS>(&mut self, input_stream: &mut IS) -> Result<i32, Error>
     where
-        IS: Stream<Item = std::io::Result<TermEvent>> + Unpin,
+        IS: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
     {
         self.claim_term().await?;
 

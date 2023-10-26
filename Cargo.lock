@@ -339,6 +339,7 @@ dependencies = [
 [[package]]
 name = "crossterm"
 version = "0.27.0"
+source = "git+https://github.com/makemeunsee/crossterm?branch=wasm32#5426ca4efd66dbd501582916023fe6c69ed90159"
 dependencies = [
  "bitflags 2.4.1",
  "crossterm_winapi",
@@ -1394,6 +1395,7 @@ version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
  "console_log",
+ "crossterm",
  "futures-util",
  "gloo-timers",
  "helix-core",
@@ -1952,6 +1954,7 @@ dependencies = [
 [[package]]
 name = "rs-xterm-js"
 version = "0.1.0"
+source = "git+https://github.com/makemeunsee/rs-xterm-js#83faccf76bddfb8a9459786190959cb8bb3f236b"
 dependencies = [
  "js-sys",
  "wasm-bindgen",

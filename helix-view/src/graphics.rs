@@ -273,6 +273,7 @@ pub enum Color {
     Indexed(u8),
 }
 
+#[cfg(feature = "term")]
 impl From<Color> for crossterm::style::Color {
     fn from(color: Color) -> Self {
         use crossterm::style::Color as CColor;
