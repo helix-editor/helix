@@ -70,11 +70,11 @@ jobs:
           rust: stable
           target: aarch64-unknown-linux-gnu
           cross: true
-        - build: riscv64-linux
-          os: ubuntu-latest
-          rust: stable
-          target: riscv64gc-unknown-linux-gnu
-          cross: true
+        # - build: riscv64-linux
+        #   os: ubuntu-latest
+        #   rust: stable
+        #   target: riscv64gc-unknown-linux-gnu
+        #   cross: true
         - build: x86_64-macos
           os: macos-latest
           rust: stable

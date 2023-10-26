@@ -48,6 +48,9 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="23.10" date="2023-10-24">
+      <url>https://helix-editor.com/news/release-23-10-highlights/</url>
+    </release>
     <release version="23.05" date="2023-05-18">
       <url>https://github.com/helix-editor/helix/releases/tag/23.05</url>
     </release>
