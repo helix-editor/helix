@@ -39,7 +39,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "g" => { "Goto"
             "g" => goto_file_start,
             "e" => goto_last_line,
-            "f" => goto_file,
             "h" => goto_line_start,
             "l" => goto_line_end,
             "s" => goto_first_nonwhitespace,
@@ -176,8 +175,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "C-s" | "s" => hsplit,
             "C-v" | "v" => vsplit,
             "C-t" | "t" => transpose_view,
-            "f" => goto_file_hsplit,
-            "F" => goto_file_vsplit,
             "C-q" | "q" => wclose,
             "C-o" | "o" => wonly,
             "C-h" | "h" | "left" => jump_view_left,
@@ -204,8 +201,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-s" => save_selection,
 
         "space" => { "Space"
-            "f" => file_picker,
-            "F" => file_picker_in_current_directory,
             "b" => buffer_picker,
             "j" => jumplist_picker,
             "'" => last_picker,
@@ -214,8 +209,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
                 "C-t" | "t" => transpose_view,
-                "f" => goto_file_hsplit,
-                "F" => goto_file_vsplit,
                 "C-q" | "q" => wclose,
                 "C-o" | "o" => wonly,
                 "C-h" | "h" | "left" => jump_view_left,
@@ -236,7 +229,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "p" => paste_clipboard_after,
             "P" => paste_clipboard_before,
             "R" => replace_selections_with_clipboard,
-            "/" => global_search,
             "?" => command_palette,
         },
         "z" => { "View"
@@ -341,18 +333,36 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "!" => shell_insert_output,
         "A-!" => shell_append_output,
         "$" => shell_keep_pipe,
+        "g" => { "Goto"
+            "f" => goto_file,
+        },
+
+        "C-w" => { "Window"
+            "f" => goto_file_hsplit,
+            "F" => goto_file_vsplit,
+        },
+
+        "space" => { "Space"
+            "w" => { "Window"
+                "f" => goto_file_hsplit,
+                "F" => goto_file_vsplit,
+            },
+            "f" => file_picker,
+            "F" => file_picker_in_current_directory,
+            "/" => global_search,
+        },
     }));
 
     #[cfg(feature = "vcs")]
     normal.merge_nodes(keymap!({ "Normal mode"
-    "]" => { "Right bracket"
-        "g" => goto_next_change,
-        "G" => goto_last_change,
-    },
-    "[" => { "Left bracket"
-        "g" => goto_prev_change,
-        "G" => goto_first_change,
-    },
+        "]" => { "Right bracket"
+            "g" => goto_next_change,
+            "G" => goto_last_change,
+        },
+        "[" => { "Left bracket"
+            "g" => goto_prev_change,
+            "G" => goto_first_change,
+        },
     }));
 
     let mut select = normal.clone();

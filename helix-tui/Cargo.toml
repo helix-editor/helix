@@ -28,13 +28,7 @@ helix-core = { version = "0.6", path = "../helix-core" }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 helix-view = { version = "0.6", path = "../helix-view", default-features = false }
-tokio = { version = "1", features = [
-    "rt",
-    "io-util",
-    "time",
-    "macros",
-    "parking_lot",
-] }
+tokio = { version = "1", features = ["rt", "io-util", "time", "macros"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]

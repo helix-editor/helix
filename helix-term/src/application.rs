@@ -21,7 +21,7 @@ use helix_view::{
     Align, Editor,
 };
 use serde_json::json;
-use tui::backend::Backend;
+use tui::{backend::Backend, Terminal};
 
 #[cfg(feature = "dap_lsp")]
 use crate::commands::apply_workspace_edit;
@@ -35,45 +35,26 @@ use crate::{
 };
 
 use log::{debug, error, warn};
-#[cfg(not(feature = "integration"))]
-use std::io::stdout;
 use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
 use anyhow::{Context, Error};
 
 #[cfg(not(target_arch = "wasm32"))]
-use crossterm::{event::Event as TermEvent, tty::IsTty};
-#[cfg(target_arch = "wasm32")]
-type TermEvent = ();
+use crossterm::tty::IsTty;
+
+type TermEvent = helix_view::input::Event;
+
 #[cfg(not(any(windows, target_arch = "wasm32")))]
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
 #[cfg(any(windows, target_arch = "wasm32"))]
 type Signals = futures_util::stream::Empty<()>;
 
-#[cfg(not(any(feature = "integration", target_arch = "wasm32")))]
-use tui::backend::CrosstermBackend;
-
-#[cfg(feature = "integration")]
-use tui::backend::TestBackend;
-
-#[cfg(not(any(feature = "integration", target_arch = "wasm32")))]
-type TerminalBackend = CrosstermBackend<std::io::Stdout>;
-
-#[cfg(feature = "integration")]
-type TerminalBackend = TestBackend;
-
-// TODO(wasm32) plug an adequate backend instead
-#[cfg(target_arch = "wasm32")]
-use tui::backend::TestBackend;
-
-#[cfg(target_arch = "wasm32")]
-type TerminalBackend = TestBackend;
-
-type Terminal = tui::terminal::Terminal<TerminalBackend>;
-
-pub struct Application {
+pub struct Application<B>
+where
+    B: Backend,
+{
     compositor: Compositor,
-    terminal: Terminal,
+    terminal: Terminal<B>,
     pub editor: Editor,
 
     config: Arc<ArcSwap<Config>>,
@@ -111,11 +92,15 @@ fn setup_integration_logging() {
         .apply();
 }
 
-impl Application {
+impl<B> Application<B>
+where
+    B: Backend,
+{
     pub fn new(
         args: Args,
         config: Config,
         syn_loader_conf: syntax::Configuration,
+        backend: B,
     ) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
         setup_integration_logging();
@@ -144,16 +129,6 @@ impl Application {
 
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
-        #[cfg(not(any(feature = "integration", target_arch = "wasm32")))]
-        let backend = CrosstermBackend::new(stdout(), &config.editor);
-
-        #[cfg(feature = "integration")]
-        let backend = TestBackend::new(120, 150);
-
-        // TODO(wasm32) plug adequate backend
-        #[cfg(target_arch = "wasm32")]
-        let backend = TestBackend::new(120, 150);
-
         let terminal = Terminal::new(backend)?;
         let area = terminal.size().expect("couldn't get terminal size");
         let mut compositor = Compositor::new(area);
@@ -179,6 +154,7 @@ impl Application {
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None);
         } else if !args.files.is_empty() {
+            #[cfg(not(target_arch = "wasm32"))]
             if args.open_cwd {
                 // NOTE: The working directory is already set to args.files[0] in main()
                 editor.new_file(Action::VerticalSplit);
@@ -624,7 +600,6 @@ impl Application {
                 self.render().await;
             }
             EditorEvent::IdleTimer => {
-                #[cfg(not(target_arch = "wasm32"))]
                 self.editor.clear_idle_timer();
                 self.handle_idle_timeout().await;
 
@@ -638,13 +613,6 @@ impl Application {
         false
     }
 
-    #[cfg(target_arch = "wasm32")]
-    pub async fn handle_terminal_events(&mut self, event: std::io::Result<TermEvent>) {
-        // TODO(wasm32)
-        todo!()
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
     pub async fn handle_terminal_events(&mut self, event: std::io::Result<TermEvent>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
@@ -665,12 +633,7 @@ impl Application {
                 self.compositor
                     .handle_event(&Event::Resize(width, height), &mut cx)
             }
-            // Ignore keyboard release events.
-            TermEvent::Key(crossterm::event::KeyEvent {
-                kind: crossterm::event::KeyEventKind::Release,
-                ..
-            }) => false,
-            event => self.compositor.handle_event(&event.into(), &mut cx),
+            event => self.compositor.handle_event(&event, &mut cx),
         };
 
         if should_redraw && !self.editor.should_close() {
@@ -1198,7 +1161,7 @@ impl Application {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`.
-            let _ = TerminalBackend::force_restore();
+            let _ = B::force_restore();
             hook(info);
         }));
 

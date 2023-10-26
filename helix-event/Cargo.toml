@@ -14,7 +14,8 @@ homepage = "https://helix-editor.com"
 parking_lot = { version = "0.12", features = ["send_guard"] }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
-tokio = { version = "1", features = ["rt", "time", "sync", "parking_lot"] }
+# TODO(wasm32) probably dont need `rt` at least
+tokio = { version = "1", features = ["rt", "time", "sync"] }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 tokio = { version = "1", features = [

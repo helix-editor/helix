@@ -101,6 +101,7 @@ fn force_quit(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -2449,6 +2450,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: force_quit,
         signature: CommandSignature::none(),
     },
+    #[cfg(not(target_arch = "wasm32"))]
     TypableCommand {
         name: "open",
         aliases: &["o"],

@@ -33,7 +33,7 @@ use std::{
 };
 
 #[cfg(target_arch = "wasm32")]
-use gloo_timers::{callback::Timeout, future::TimeoutFuture};
+use gloo_timers::future::TimeoutFuture;
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::time::{sleep, Sleep};
 use tokio::{
@@ -66,6 +66,9 @@ use helix_lsp::lsp;
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
 use arc_swap::access::{DynAccess, DynGuard};
+
+#[cfg(target_arch = "wasm32")]
+use log::debug;
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -913,12 +916,21 @@ struct Sleep {
     deadline: Instant,
 }
 
+const THIRTY_YEARS_IN_SECS: u64 = 86400 * 365 * 30;
+
 #[cfg(target_arch = "wasm32")]
 impl Sleep {
     fn default() -> Self {
         Self {
-            timeout: TimeoutFuture::new(u32::MAX),
-            deadline: Instant::now() + Duration::from_secs(86400 * 365 * 30),
+            timeout: TimeoutFuture::new(i32::MAX as u32),
+            deadline: Instant::now() + Duration::from_secs(THIRTY_YEARS_IN_SECS),
+        }
+    }
+
+    fn new(duration: Duration) -> Self {
+        Self {
+            timeout: TimeoutFuture::new(duration.as_millis() as u32),
+            deadline: Instant::now() + duration,
         }
     }
 }
@@ -974,9 +986,7 @@ pub struct Editor {
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
 
-    #[cfg(not(target_arch = "wasm32"))]
-    // TODO(wasm32) restore idle? not sure what for
-    pub idle_timer: Pin<Box<Sleep>>,
+    idle_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
@@ -1116,9 +1126,11 @@ impl Editor {
             status_msg: None,
             autoinfo: None,
             #[cfg(not(target_arch = "wasm32"))]
-            idle_timer: Box::pin(sleep(conf.idle_timeout)), // TODO(wasm32) no tokio sleep, work around it...
+            idle_timer: Box::pin(sleep(conf.idle_timeout)),
             #[cfg(not(target_arch = "wasm32"))]
             redraw_timer: Box::pin(sleep(Duration::MAX)),
+            #[cfg(target_arch = "wasm32")]
+            idle_timer: Box::pin(Sleep::new(conf.idle_timeout)),
             #[cfg(target_arch = "wasm32")]
             redraw_timer: Box::pin(Sleep::default()),
             last_motion: None,
@@ -1170,7 +1182,21 @@ impl Editor {
         // equivalent to internal Instant::far_future() (30 years)
         self.idle_timer
             .as_mut()
-            .reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
+            .reset(Instant::now() + Duration::from_secs(THIRTY_YEARS_IN_SECS));
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn reset_idle_timer(&mut self) {
+        let config = self.config();
+        self.idle_timer
+            .as_mut()
+            .set(Sleep::new(config.idle_timeout));
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn clear_idle_timer(&mut self) {
+        // equivalent to internal Instant::far_future() (30 years)
+        self.idle_timer.as_mut().set(Sleep::default());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1824,6 +1850,7 @@ impl Editor {
     pub async fn wait_event(&mut self) -> EditorEvent {
         // the loop only runs once or twice and would be better implemented with a recursion + const generic
         // however due to limitations with async functions that can not be implemented right now
+
         loop {
             tokio::select! {
                 biased;
@@ -1853,7 +1880,7 @@ impl Editor {
                 }
 
                 _ = &mut self.redraw_timer  => {
-                    self.redraw_timer.as_mut().reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
+                    self.redraw_timer.as_mut().reset(Instant::now() + Duration::from_secs(THIRTY_YEARS_IN_SECS));
                     return EditorEvent::Redraw
                 }
                 _ = &mut self.idle_timer  => {
@@ -1880,10 +1907,11 @@ impl Editor {
                 }
 
                 _ = helix_event::redraw_requested() => {
+                    debug!("redraw requested");
                     if !self.needs_redraw{
                         self.needs_redraw = true;
                         let timeout = Instant::now() + Duration::from_millis(33);
-                        if timeout < self.redraw_timer.deadline {
+                        if timeout < self.idle_timer.deadline && timeout < self.redraw_timer.deadline {
                             self.redraw_timer.as_mut().set(Sleep {
                                 deadline: timeout,
                                 timeout: TimeoutFuture::new(33)
@@ -1893,8 +1921,13 @@ impl Editor {
                 }
 
                 _ = &mut self.redraw_timer.timeout  => {
+                    debug!("redraw timeout - {:?}", Instant::now());
                     self.redraw_timer.as_mut().set(Sleep::default());
                     return EditorEvent::Redraw
+                }
+                _ = &mut self.idle_timer.timeout => {
+                    debug!("idle timeout - {:?}", Instant::now());
+                    return EditorEvent::IdleTimer
                 }
             }
         }

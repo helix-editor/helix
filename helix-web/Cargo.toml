@@ -16,9 +16,19 @@ wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 tokio = { version = "1.33", features = ["rt"] }
 helix-term = { path = "../helix-term", default-features = false }
+helix-tui = { path = "../helix-tui", default-features = false }
+helix-view = { path = "../helix-view", default-features = false }
 helix-core = { path = "../helix-core" }
 console_log = "1.0"
 log = "0.4"
+futures-util = { version = "0.3", default-features = false }
+gloo-timers = { version = "0.3", features = ["futures"] }
+web-sys = { version = "0.3", features = [
+    'Document',
+    'Element',
+    'HtmlElement',
+    'Window',
+] }
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires

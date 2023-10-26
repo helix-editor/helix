@@ -1394,13 +1394,18 @@ version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
  "console_log",
+ "futures-util",
+ "gloo-timers",
  "helix-core",
  "helix-term",
+ "helix-tui",
+ "helix-view",
  "log",
  "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-bindgen-test",
+ "web-sys",
 ]
 
 [[package]]

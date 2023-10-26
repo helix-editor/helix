@@ -24,7 +24,7 @@ anyhow = "1"
 log = "0.4"
 
 [target.'cfg(target_family = "wasm")'.dependencies]
-tokio = { version = "1", features = ["rt", "time", "sync", "parking_lot"] }
+tokio = { version = "1", features = ["rt", "time", "sync"] }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 tokio = { version = "1", features = [

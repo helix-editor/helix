@@ -1018,7 +1018,6 @@ impl EditorView {
             }
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
         // Clear any savepoints
         editor.clear_idle_timer(); // don't retrigger
     }

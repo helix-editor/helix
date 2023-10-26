@@ -298,6 +298,7 @@ impl MappableCommand {
         extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
         make_search_word_bounded, "Modify current search to make it word bounded",
+        #[cfg(not(target_arch = "wasm32"))]
         global_search, "Global search in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
@@ -314,8 +315,11 @@ impl MappableCommand {
         insert_mode, "Insert before selection",
         append_mode, "Append after selection",
         command_mode, "Enter command mode",
+        #[cfg(not(target_arch = "wasm32"))]
         file_picker, "Open file picker",
+        #[cfg(not(target_arch = "wasm32"))]
         file_picker_in_current_buffer_directory, "Open file picker at current buffers's directory",
+        #[cfg(not(target_arch = "wasm32"))]
         file_picker_in_current_directory, "Open file picker at current working directory",
         #[cfg(feature = "dap_lsp")]
         code_action, "Perform code action",
@@ -351,8 +355,11 @@ impl MappableCommand {
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto line number <n> else file start",
         goto_file_end, "Goto file end",
+        #[cfg(not(target_arch = "wasm32"))]
         goto_file, "Goto files in selection",
+        #[cfg(not(target_arch = "wasm32"))]
         goto_file_hsplit, "Goto files in selection (hsplit)",
+        #[cfg(not(target_arch = "wasm32"))]
         goto_file_vsplit, "Goto files in selection (vsplit)",
         #[cfg(feature = "dap_lsp")]
         goto_reference, "Goto references",
@@ -1196,18 +1203,22 @@ fn goto_file_end(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn goto_file(cx: &mut Context) {
     goto_file_impl(cx, Action::Replace);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn goto_file_hsplit(cx: &mut Context) {
     goto_file_impl(cx, Action::HorizontalSplit);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn goto_file_vsplit(cx: &mut Context) {
     goto_file_impl(cx, Action::VerticalSplit);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// Goto files in selection.
 fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
@@ -2150,6 +2161,7 @@ fn make_search_word_bounded(cx: &mut Context) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn global_search(cx: &mut Context) {
     #[derive(Debug)]
     struct FileResult {
@@ -2671,7 +2683,6 @@ fn insert_mode(cx: &mut Context) {
 
     // [TODO] temporary workaround until we're not using the idle timer to
     //        trigger auto completions any more
-    #[cfg(not(target_arch = "wasm32"))]
     cx.editor.clear_idle_timer();
 }
 
@@ -2707,6 +2718,7 @@ fn append_mode(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn file_picker(cx: &mut Context) {
     let root = find_workspace().0;
     if !root.exists() {
@@ -2717,6 +2729,7 @@ fn file_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn file_picker_in_current_buffer_directory(cx: &mut Context) {
     let doc_dir = doc!(cx.editor)
         .path()
@@ -2734,6 +2747,7 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = helix_loader::current_working_dir();
     if !cwd.exists() {
@@ -4835,7 +4849,6 @@ fn move_node_bound_impl(cx: &mut Context, dir: Direction, movement: Movement) {
 
             // [TODO] temporary workaround until we're not using the idle timer to
             //        trigger auto completions any more
-            #[cfg(not(target_arch = "wasm32"))]
             editor.clear_idle_timer();
         }
     };
