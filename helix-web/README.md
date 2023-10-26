@@ -49,7 +49,7 @@ npm install
 wasm-pack build
 ```
 
-## Run
+### Run
 
 ```sh
 cd www/
