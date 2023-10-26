@@ -13,8 +13,9 @@ default-run = "hx"
 rust-version = "1.65"
 
 [features]
-default = ["git", "crossterm", "dap_lsp"]
+default = ["vcs", "git", "crossterm", "dap_lsp"]
 dap_lsp = ["dep:helix-lsp", "dep:helix-dap"]
+vcs = ["helix-vcs"]
 unicode-lines = ["helix-core/unicode-lines"]
 integration = []
 git = ["helix-vcs/git"]
@@ -28,7 +29,7 @@ helix-core = { version = "0.6", path = "../helix-core" }
 helix-event = { version = "0.6", path = "../helix-event" }
 helix-lsp = { version = "0.6", path = "../helix-lsp", optional = true }
 helix-dap = { version = "0.6", path = "../helix-dap", optional = true }
-helix-vcs = { version = "0.6", path = "../helix-vcs" }
+helix-vcs = { version = "0.6", path = "../helix-vcs", optional = true, default-features = true }
 helix-loader = { version = "0.6", path = "../helix-loader" }
 futures-executor = "0.3"
 
@@ -76,6 +77,7 @@ tokio = { version = "1", features = [
     "macros",
     "parking_lot",
 ] }
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 helix-view = { version = "0.6", path = "../helix-view", default-features = true }

@@ -102,8 +102,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "[" => { "Left bracket"
             // "d" => goto_prev_diag,
             // "D" => goto_first_diag,
-            "g" => goto_prev_change,
-            "G" => goto_first_change,
             "f" => goto_prev_function,
             "t" => goto_prev_class,
             "a" => goto_prev_parameter,
@@ -115,8 +113,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "]" => { "Right bracket"
             // "d" => goto_next_diag,
             // "D" => goto_last_diag,
-            "g" => goto_next_change,
-            "G" => goto_last_change,
             "f" => goto_next_function,
             "t" => goto_next_class,
             "a" => goto_next_parameter,
@@ -345,6 +341,18 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "!" => shell_insert_output,
         "A-!" => shell_append_output,
         "$" => shell_keep_pipe,
+    }));
+
+    #[cfg(feature = "vcs")]
+    normal.merge_nodes(keymap!({ "Normal mode"
+    "]" => { "Right bracket"
+        "g" => goto_next_change,
+        "G" => goto_last_change,
+    },
+    "[" => { "Left bracket"
+        "g" => goto_prev_change,
+        "G" => goto_first_change,
+    },
     }));
 
     let mut select = normal.clone();

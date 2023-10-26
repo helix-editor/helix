@@ -848,6 +848,7 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             EventResult::Consumed(Some(callback))
         };
 
+        #[cfg(not(target_arch = "wasm32"))]
         // So that idle timeout retriggers
         ctx.editor.reset_idle_timer();
 
@@ -984,6 +985,7 @@ impl<T: Item + Send + Sync + 'static> Component for DynamicPicker<T> {
                     None => return,
                 };
                 picker.set_options(new_options);
+                #[cfg(not(target_arch = "wasm32"))]
                 editor.reset_idle_timer();
             }));
             anyhow::Ok(callback)

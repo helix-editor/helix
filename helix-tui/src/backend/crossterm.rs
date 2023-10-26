@@ -83,6 +83,9 @@ where
     fn supports_keyboard_enhancement_protocol(&self) -> bool {
         *self.supports_keyboard_enhancement_protocol
             .get_or_init(|| {
+                #[cfg(target_arch = "wasm32")]
+                use instant::Instant;
+                #[cfg(not(target_arch = "wasm32"))]
                 use std::time::Instant;
 
                 let now = Instant::now();

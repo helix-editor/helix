@@ -159,6 +159,9 @@ pub fn regex_prompt(
 
 pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker<PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
+    #[cfg(target_arch = "wasm32")]
+    use instant::Instant;
+    #[cfg(not(target_arch = "wasm32"))]
     use std::time::Instant;
 
     let now = Instant::now();
@@ -216,19 +219,20 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
     })
     .with_preview(|_editor, path| Some((path.clone().into(), None)));
     let injector = picker.injector();
-    let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
+    let timeout = Instant::now() + std::time::Duration::from_millis(30);
 
     let mut hit_timeout = false;
     for file in &mut files {
         if injector.push(file).is_err() {
             break;
         }
-        if std::time::Instant::now() >= timeout {
+        if Instant::now() >= timeout {
             hit_timeout = true;
             break;
         }
     }
     if hit_timeout {
+        // TODO(wasm32) threads, WTF
         std::thread::spawn(move || {
             for file in files {
                 if injector.push(file).is_err() {

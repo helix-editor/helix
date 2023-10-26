@@ -12,6 +12,7 @@ use crate::{
 };
 #[cfg(feature = "dap_lsp")]
 use dap::StackFrame;
+#[cfg(feature = "vcs")]
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -31,13 +32,22 @@ use std::{
     sync::Arc,
 };
 
+#[cfg(target_arch = "wasm32")]
+use gloo_timers::{callback::Timeout, future::TimeoutFuture};
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::time::{sleep, Sleep};
 use tokio::{
     sync::{
         mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
         oneshot,
     },
-    time::{sleep, Duration, Instant, Sleep},
+    time::Duration,
 };
+
+#[cfg(target_arch = "wasm32")]
+use instant::Instant;
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::time::Instant;
 
 use anyhow::{anyhow, bail, Error};
 
@@ -95,6 +105,7 @@ impl Default for GutterConfig {
                 GutterType::Spacer,
                 GutterType::LineNumbers,
                 GutterType::Spacer,
+                #[cfg(feature = "vcs")]
                 GutterType::Diff,
             ],
             line_numbers: GutterLineNumbersConfig::default(),
@@ -638,6 +649,7 @@ pub enum GutterType {
     LineNumbers,
     /// Show one blank space
     Spacer,
+    #[cfg(feature = "vcs")]
     /// Highlight local changes
     Diff,
 }
@@ -651,6 +663,7 @@ impl std::str::FromStr for GutterType {
             "diagnostics" => Ok(Self::Diagnostics),
             "spacer" => Ok(Self::Spacer),
             "line-numbers" => Ok(Self::LineNumbers),
+            #[cfg(feature = "vcs")]
             "diff" => Ok(Self::Diff),
             _ => anyhow::bail!(
                 "Gutter type can only be `diagnostics`, `spacer`, `line-numbers` or `diff`."
@@ -893,6 +906,23 @@ pub struct Breakpoint {
 
 use futures_util::stream::{Flatten, Once};
 
+#[cfg(target_arch = "wasm32")]
+struct Sleep {
+    timeout: TimeoutFuture,
+    // deadline in ms since epoch
+    deadline: Instant,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl Sleep {
+    fn default() -> Self {
+        Self {
+            timeout: TimeoutFuture::new(u32::MAX),
+            deadline: Instant::now() + Duration::from_secs(86400 * 365 * 30),
+        }
+    }
+}
+
 pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,
@@ -915,6 +945,7 @@ pub struct Editor {
     pub language_servers: helix_lsp::Registry,
     #[cfg(feature = "dap_lsp")]
     pub diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
+    #[cfg(feature = "vcs")]
     pub diff_providers: DiffProviderRegistry,
 
     #[cfg(feature = "dap_lsp")]
@@ -943,6 +974,8 @@ pub struct Editor {
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
 
+    #[cfg(not(target_arch = "wasm32"))]
+    // TODO(wasm32) restore idle? not sure what for
     pub idle_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
@@ -1068,6 +1101,7 @@ impl Editor {
             language_servers,
             #[cfg(feature = "dap_lsp")]
             diagnostics: BTreeMap::new(),
+            #[cfg(feature = "vcs")]
             diff_providers: DiffProviderRegistry::default(),
             #[cfg(feature = "dap_lsp")]
             debugger: None,
@@ -1081,8 +1115,12 @@ impl Editor {
             registers: Registers::default(),
             status_msg: None,
             autoinfo: None,
+            #[cfg(not(target_arch = "wasm32"))]
             idle_timer: Box::pin(sleep(conf.idle_timeout)), // TODO(wasm32) no tokio sleep, work around it...
+            #[cfg(not(target_arch = "wasm32"))]
             redraw_timer: Box::pin(sleep(Duration::MAX)),
+            #[cfg(target_arch = "wasm32")]
+            redraw_timer: Box::pin(Sleep::default()),
             last_motion: None,
             last_completion: None,
             config,
@@ -1122,10 +1160,12 @@ impl Editor {
     pub fn refresh_config(&mut self) {
         let config = self.config();
         self.auto_pairs = (&config.auto_pairs).into();
+        #[cfg(not(target_arch = "wasm32"))]
         self.reset_idle_timer();
         self._refresh();
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn clear_idle_timer(&mut self) {
         // equivalent to internal Instant::far_future() (30 years)
         self.idle_timer
@@ -1133,6 +1173,7 @@ impl Editor {
             .reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn reset_idle_timer(&mut self) {
         let config = self.config();
         self.idle_timer
@@ -1490,9 +1531,11 @@ impl Editor {
                 self.config.clone(),
             )?;
 
+            #[cfg(feature = "vcs")]
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
                 doc.set_diff_base(diff_base);
             }
+            #[cfg(feature = "vcs")]
             doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
             let id = self.new_document(doc);
@@ -1840,18 +1883,18 @@ impl Editor {
                     if !self.needs_redraw{
                         self.needs_redraw = true;
                         let timeout = Instant::now() + Duration::from_millis(33);
-                        if timeout < self.idle_timer.deadline() && timeout < self.redraw_timer.deadline(){
-                            self.redraw_timer.as_mut().reset(timeout)
+                        if timeout < self.redraw_timer.deadline {
+                            self.redraw_timer.as_mut().set(Sleep {
+                                deadline: timeout,
+                                timeout: TimeoutFuture::new(33)
+                            })
                         }
                     }
                 }
 
-                _ = &mut self.redraw_timer  => {
-                    self.redraw_timer.as_mut().reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
+                _ = &mut self.redraw_timer.timeout  => {
+                    self.redraw_timer.as_mut().set(Sleep::default());
                     return EditorEvent::Redraw
-                }
-                _ = &mut self.idle_timer  => {
-                    return EditorEvent::IdleTimer
                 }
             }
         }

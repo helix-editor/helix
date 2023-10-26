@@ -2,7 +2,12 @@ use crate::{Assoc, ChangeSet, Range, Rope, Selection, Transaction};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::num::NonZeroUsize;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+#[cfg(target_arch = "wasm32")]
+use instant::Instant;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
 
 #[derive(Debug, Clone)]
 pub struct State {

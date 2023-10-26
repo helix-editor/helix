@@ -34,6 +34,7 @@ impl GutterType {
             }
             GutterType::LineNumbers => line_numbers(editor, doc, view, theme, is_focused),
             GutterType::Spacer => padding(editor, doc, view, theme, is_focused),
+            #[cfg(feature = "vcs")]
             GutterType::Diff => diff(editor, doc, view, theme, is_focused),
         }
     }
@@ -44,6 +45,7 @@ impl GutterType {
             GutterType::Diagnostics => 1,
             GutterType::LineNumbers => line_numbers_width(view, doc),
             GutterType::Spacer => 1,
+            #[cfg(feature = "vcs")]
             GutterType::Diff => 1,
         }
     }
@@ -91,7 +93,8 @@ pub fn diagnostic<'doc>(
     )
 }
 
-pub fn diff<'doc>(
+#[cfg(feature = "vcs")]
+fn diff<'doc>(
     _editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,

@@ -10,9 +10,10 @@ repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 
 [features]
-default = ["dap_lsp", "term"]
+default = ["dap_lsp", "term", "vcs"]
 dap_lsp = ["dep:helix-lsp", "dep:helix-dap"]
 term = ["crossterm"]
+vcs = ["helix-vcs"]
 
 [dependencies]
 bitflags = "2.4"
@@ -23,7 +24,7 @@ helix-loader = { version = "0.6", path = "../helix-loader" }
 helix-lsp = { version = "0.6", path = "../helix-lsp", optional = true }
 helix-dap = { version = "0.6", path = "../helix-dap", optional = true }
 crossterm = { version = "0.27", optional = true }
-helix-vcs = { version = "0.6", path = "../helix-vcs" }
+helix-vcs = { version = "0.6", path = "../helix-vcs", optional = true }
 futures-executor = "0.3"
 
 # Conversion traits
@@ -57,6 +58,9 @@ tokio = { version = "1", features = [
     "macros",
     "parking_lot",
 ] }
+gloo-timers = { version = "0.3", features = ["futures"] }
+wasm-bindgen = "0.2"
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 tokio = { version = "1", features = [
@@ -70,6 +74,7 @@ tokio = { version = "1", features = [
     "fs",
     "parking_lot",
 ] }
+gloo-timers = { version = "0.3", features = ["futures"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 which = "4.4"

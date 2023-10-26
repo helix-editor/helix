@@ -8,7 +8,13 @@ use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
+
+#[cfg(feature = "vcs")]
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
+#[cfg(not(feature = "vcs"))]
+pub type DiffProviderRegistry = ();
+#[cfg(not(feature = "vcs"))]
+pub type DiffHandle = ();
 
 use ::parking_lot::Mutex;
 use serde::de::{self, Deserialize, Deserializer};
@@ -23,6 +29,11 @@ use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
 use std::time::SystemTime;
+
+#[cfg(target_arch = "wasm32")]
+use instant::Instant;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
 
 use helix_core::{
     encoding,
@@ -181,11 +192,12 @@ pub struct Document {
     #[cfg(feature = "dap_lsp")]
     pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
 
+    #[cfg(feature = "vcs")]
     diff_handle: Option<DiffHandle>,
     version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
 
     // when document was used for most-recent-used buffer picker
-    pub focused_at: std::time::Instant,
+    pub focused_at: Instant,
 
     pub readonly: bool,
 }
@@ -674,10 +686,11 @@ impl Document {
             modified_since_accessed: false,
             #[cfg(feature = "dap_lsp")]
             language_servers: HashMap::new(),
+            #[cfg(feature = "vcs")]
             diff_handle: None,
             config,
             version_control_head: None,
-            focused_at: std::time::Instant::now(),
+            focused_at: Instant::now(),
             readonly: false,
         }
     }
@@ -1037,12 +1050,15 @@ impl Document {
 
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path) {
-            Some(diff_base) => self.set_diff_base(diff_base),
-            None => self.diff_handle = None,
-        }
+        #[cfg(feature = "vcs")]
+        {
+            match provider_registry.get_diff_base(&path) {
+                Some(diff_base) => self.set_diff_base(diff_base),
+                None => self.diff_handle = None,
+            }
 
-        self.version_control_head = provider_registry.get_current_head_name(&path);
+            self.version_control_head = provider_registry.get_current_head_name(&path);
+        }
 
         Ok(())
     }
@@ -1148,7 +1164,7 @@ impl Document {
 
     /// Mark document as recent used for MRU sorting
     pub fn mark_as_focused(&mut self) {
-        self.focused_at = std::time::Instant::now();
+        self.focused_at = Instant::now();
     }
 
     /// Remove a view's selection and inlay hints from this document.
@@ -1193,6 +1209,7 @@ impl Document {
 
         if !transaction.changes().is_empty() {
             self.version += 1;
+            #[cfg(feature = "vcs")]
             // start computing the diff in parallel
             if let Some(diff_handle) = &self.diff_handle {
                 diff_handle.update_document(self.text.clone(), false);
@@ -1599,9 +1616,14 @@ impl Document {
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
-        self.diff_handle.as_ref()
+        #[cfg(feature = "vcs")]
+        return self.diff_handle.as_ref();
+
+        #[cfg(not(feature = "vcs"))]
+        return None;
     }
 
+    #[cfg(feature = "vcs")]
     /// Intialize/updates the differ for this document with a new base.
     pub fn set_diff_base(&mut self, diff_base: Vec<u8>) {
         if let Ok((diff_base, ..)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {

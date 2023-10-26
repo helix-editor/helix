@@ -235,6 +235,8 @@ impl Application {
                     .new_file_from_stdin(Action::VerticalSplit)
                     .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
             }
+            #[cfg(target_arch = "wasm32")]
+            editor.new_file(Action::VerticalSplit);
         }
 
         editor.set_theme(theme);
@@ -622,6 +624,7 @@ impl Application {
                 self.render().await;
             }
             EditorEvent::IdleTimer => {
+                #[cfg(not(target_arch = "wasm32"))]
                 self.editor.clear_idle_timer();
                 self.handle_idle_timeout().await;
 

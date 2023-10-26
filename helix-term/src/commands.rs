@@ -6,6 +6,7 @@ pub(crate) mod typed;
 
 #[cfg(feature = "dap_lsp")]
 pub use dap::*;
+#[cfg(feature = "vcs")]
 use helix_vcs::Hunk;
 #[cfg(feature = "dap_lsp")]
 pub use lsp::*;
@@ -371,9 +372,13 @@ impl MappableCommand {
         goto_next_diag, "Goto next diagnostic",
         #[cfg(feature = "dap_lsp")]
         goto_prev_diag, "Goto previous diagnostic",
+        #[cfg(feature = "vcs")]
         goto_next_change, "Goto next change",
+        #[cfg(feature = "vcs")]
         goto_prev_change, "Goto previous change",
+        #[cfg(feature = "vcs")]
         goto_first_change, "Goto first change",
+        #[cfg(feature = "vcs")]
         goto_last_change, "Goto last change",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
@@ -2666,6 +2671,7 @@ fn insert_mode(cx: &mut Context) {
 
     // [TODO] temporary workaround until we're not using the idle timer to
     //        trigger auto completions any more
+    #[cfg(not(target_arch = "wasm32"))]
     cx.editor.clear_idle_timer();
 }
 
@@ -2742,12 +2748,16 @@ fn file_picker_in_current_directory(cx: &mut Context) {
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
+    #[cfg(target_arch = "wasm32")]
+    use instant::Instant;
+    #[cfg(not(target_arch = "wasm32"))]
+    use std::time::Instant;
     struct BufferMeta {
         id: DocumentId,
         path: Option<PathBuf>,
         is_modified: bool,
         is_current: bool,
-        focused_at: std::time::Instant,
+        focused_at: Instant,
     }
 
     impl ui::menu::Item for BufferMeta {
@@ -3394,14 +3404,17 @@ fn goto_prev_diag(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(feature = "vcs")]
 fn goto_first_change(cx: &mut Context) {
     goto_first_change_impl(cx, false);
 }
 
+#[cfg(feature = "vcs")]
 fn goto_last_change(cx: &mut Context) {
     goto_first_change_impl(cx, true);
 }
 
+#[cfg(feature = "vcs")]
 fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
     let editor = &mut cx.editor;
     let (view, doc) = current!(editor);
@@ -3422,14 +3435,17 @@ fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
     }
 }
 
+#[cfg(feature = "vcs")]
 fn goto_next_change(cx: &mut Context) {
     goto_next_change_impl(cx, Direction::Forward)
 }
 
+#[cfg(feature = "vcs")]
 fn goto_prev_change(cx: &mut Context) {
     goto_next_change_impl(cx, Direction::Backward)
 }
 
+#[cfg(feature = "vcs")]
 fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
     let count = cx.count() as u32 - 1;
     let motion = move |editor: &mut Editor| {
@@ -3477,6 +3493,7 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
     cx.editor.apply_motion(motion);
 }
 
+#[cfg(feature = "vcs")]
 /// Returns the [Range] for a [Hunk] in the given text.
 /// Additions and modifications cover the added and modified ranges.
 /// Deletions are represented as the point at the start of the deletion hunk.
@@ -4818,6 +4835,7 @@ fn move_node_bound_impl(cx: &mut Context, dir: Direction, movement: Movement) {
 
             // [TODO] temporary workaround until we're not using the idle timer to
             //        trigger auto completions any more
+            #[cfg(not(target_arch = "wasm32"))]
             editor.clear_idle_timer();
         }
     };
@@ -5202,6 +5220,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                     return;
                 }
 
+                #[cfg(feature = "vcs")]
                 let textobject_change = |range: Range| -> Range {
                     let diff_handle = doc.diff_handle().unwrap();
                     let diff = diff_handle.load();
@@ -5231,6 +5250,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'm' => textobject::textobject_pair_surround_closest(
                             text, range, objtype, count,
                         ),
+                        #[cfg(feature = "vcs")]
                         'g' => textobject_change(range),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
                         ch if !ch.is_ascii_alphanumeric() => {

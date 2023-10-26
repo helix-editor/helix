@@ -56,6 +56,8 @@ parking_lot = "0.12"
 
 thiserror = "1.0"
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 etcetera = "0.8"

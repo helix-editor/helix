@@ -1290,6 +1290,8 @@ fn reload(
 
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
+
+    #[cfg(feature = "vcs")]
     doc.reload(view, &cx.editor.diff_providers).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
     })?;
@@ -1339,6 +1341,7 @@ fn reload_all(
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
+        #[cfg(feature = "vcs")]
         doc.reload(view, &cx.editor.diff_providers)?;
         #[cfg(feature = "dap_lsp")]
         if let Some(path) = doc.path() {
@@ -2322,6 +2325,7 @@ fn run_shell_command(
     Ok(())
 }
 
+#[cfg(feature = "vcs")]
 fn reset_diff_change(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -3021,6 +3025,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: run_shell_command,
         signature: CommandSignature::all(completers::filename)
     },
+    #[cfg(feature = "vcs")]
     TypableCommand {
         name: "reset-diff-change",
         aliases: &["diffget", "diffg"],
