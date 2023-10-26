@@ -80,7 +80,6 @@ wasm-pack test --headless --firefox
 
 * `TODO(wasm32)` around the code indicate noted issues or limitations.
 * Lots of warnings; clippy would have a lot to say too.
-* Some async is broken, e.g. searching in selection ('s').
 * Emojis cause glitches, maybe an encoding issue.
 * UI behavior on mobile is broken; mobile usability is not a goal but this may
   indicate issues nonetheless.
