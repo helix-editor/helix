@@ -7,7 +7,9 @@ use wasm_bindgen::JsCast;
 pub fn spawn_terminal() -> Terminal {
     let theme = Theme::new();
     theme.set_background("#282a36");
+
     let term_opts = TerminalOptions::new();
+    term_opts.set_font_family("Fira Code");
     term_opts.set_font_size(20);
     term_opts.set_scrollback(0);
     term_opts.set_theme(&theme);
