@@ -4,9 +4,7 @@ use crate::{buffer::Cell, terminal::Config};
 
 use helix_view::graphics::{CursorKind, Rect};
 
-#[cfg(feature = "crossterm")]
 mod crossterm;
-#[cfg(feature = "crossterm")]
 pub use self::crossterm::CrosstermBackend;
 
 mod test;

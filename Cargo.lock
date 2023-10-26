@@ -339,18 +339,17 @@ dependencies = [
 [[package]]
 name = "crossterm"
 version = "0.27.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f476fe445d41c9e991fd07515a6f463074b782242ccf4a5b7b1d1012e70824df"
 dependencies = [
  "bitflags 2.4.1",
  "crossterm_winapi",
- "filedescriptor",
  "futures-core",
  "libc",
  "mio",
  "parking_lot",
+ "rs-xterm-js",
  "signal-hook",
  "signal-hook-mio",
+ "wasm-bindgen",
  "winapi",
 ]
 
@@ -531,14 +530,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "filedescriptor"
-version = "0.8.2"
+name = "filetime"
+version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7199d965852c3bac31f779ef99cbb4537f80e952e2d6aa0ffeb30cce00f4f46e"
+checksum = "5cbc844cecaee9d4443931972e1289c8ff485cb4cc2767cb03ca139ed6885153"
 dependencies = [
+ "cfg-if",
  "libc",
- "thiserror",
- "winapi",
+ "redox_syscall 0.2.16",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -1400,13 +1400,11 @@ dependencies = [
  "helix-term",
  "helix-tui",
  "helix-view",
- "js-sys",
  "log",
  "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-bindgen-test",
- "web-sys",
 ]
 
 [[package]]
@@ -1946,6 +1944,15 @@ checksum = "93411e420bcd1a75ddd1dc3caf18c23155eda2c090631a85af21ba19e97093b5"
 dependencies = [
  "smallvec",
  "str_indices",
+]
+
+[[package]]
+name = "rs-xterm-js"
+version = "0.1.0"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

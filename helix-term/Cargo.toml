@@ -13,7 +13,7 @@ default-run = "hx"
 rust-version = "1.65"
 
 [features]
-default = ["vcs", "git", "crossterm", "dap_lsp"]
+default = ["vcs", "git", "dap_lsp"]
 dap_lsp = ["dep:helix-lsp", "dep:helix-dap"]
 vcs = ["helix-vcs"]
 unicode-lines = ["helix-core/unicode-lines"]
@@ -36,7 +36,7 @@ futures-executor = "0.3"
 anyhow = "1"
 once_cell = "1.18"
 
-crossterm = { version = "0.27", features = ["event-stream"], optional = true }
+crossterm.workspace = true
 arc-swap = { version = "1.6.0" }
 
 # Logging
@@ -97,8 +97,11 @@ futures-util = { version = "0.3", features = [
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
 libc = "0.2.149"
 
-[target.'cfg(target_os = "macos")'.dependencies]
-crossterm = { version = "0.27", features = ["event-stream", "use-dev-tty"] }
+# TODO(wasm32) restore
+# [target.'cfg(target_os = "macos")'.dependencies]
+# crossterm = { version = "0.27", features = ["event-stream", "use-dev-tty"] }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
 
 [build-dependencies]
 helix-loader = { version = "0.6", path = "../helix-loader" }

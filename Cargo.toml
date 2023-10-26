@@ -36,4 +36,5 @@ package.helix-term.opt-level = 2
 
 [workspace.dependencies]
 tree-sitter = { package = "tree-sitter-c2rust", version = "0.20" }
+crossterm = { path = "../crossterm", features = ["event-stream"] }
 nucleo = "0.2.0"

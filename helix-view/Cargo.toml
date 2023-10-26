@@ -12,7 +12,7 @@ homepage = "https://helix-editor.com"
 [features]
 default = ["dap_lsp", "term", "vcs"]
 dap_lsp = ["dep:helix-lsp", "dep:helix-dap"]
-term = ["crossterm"]
+term = []                                    # TODO(wasm32) review where it's used
 vcs = ["helix-vcs"]
 
 [dependencies]
@@ -23,7 +23,7 @@ helix-event = { version = "0.6", path = "../helix-event" }
 helix-loader = { version = "0.6", path = "../helix-loader" }
 helix-lsp = { version = "0.6", path = "../helix-lsp", optional = true }
 helix-dap = { version = "0.6", path = "../helix-dap", optional = true }
-crossterm = { version = "0.27", optional = true }
+crossterm.workspace = true
 helix-vcs = { version = "0.6", path = "../helix-vcs", optional = true }
 futures-executor = "0.3"
 
