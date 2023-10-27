@@ -293,7 +293,7 @@ impl<'t> DocumentFormatter<'t> {
 
         loop {
             // softwrap word if necessary
-            if word_width + self.visual_pos.col >= self.text_fmt.viewport_width as usize {
+            if word_width + self.visual_pos.col > self.text_fmt.viewport_width as usize {
                 // wrapping this word would move too much text to the next line
                 // split the word at the line end instead
                 if word_width > self.text_fmt.max_wrap as usize {
