@@ -1,5 +1,6 @@
 use std::fmt::Write;
 use std::ops::Deref;
+use std::borrow::Borrow;
 
 use crate::job::Job;
 
@@ -1047,8 +1048,7 @@ fn replace_selections_with_primary_clipboard(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
     event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
+) -> anyhow::Result<()> { if event != PromptEvent::Validate {
         return Ok(());
     }
 
@@ -2401,10 +2401,6 @@ fn move_buffer(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
     ensure!(args.len() == 1, format!(":move takes one argument"));
     let doc = doc!(cx.editor);
 
@@ -2469,6 +2465,27 @@ fn move_buffer(
         .file_changed(new_path);
 
     Ok(())
+}
+
+fn dynamic(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.is_empty() {
+        return Ok(());
+    }
+
+    let command_name: &str = args[0].borrow();
+    if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(command_name) {
+        (command.fun)(cx, &args[1..], event)
+    } else {
+        Err(anyhow::anyhow!("no such command: '{}'", args[0]))
+    }
 }
 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
@@ -3078,6 +3095,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
     },
+    TypableCommand {
+        name: "dynamic",
+        aliases: &[],
+        doc: "Run a potentially dynamically generated command",
+        fun: dynamic,
+        signature: CommandSignature::all(completers::filename)
+    }
 ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
