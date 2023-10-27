@@ -50,6 +50,7 @@ textwrap = "0.16.0"
 
 nucleo.workspace = true
 parking_lot = "0.12"
+schemars = "0.8.15"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
