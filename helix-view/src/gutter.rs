@@ -163,6 +163,7 @@ pub fn line_numbers<'doc>(
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
     let line_number = editor.config().line_number;
+    let interval = editor.config().line_number_interval;
     let mode = editor.mode;
 
     Box::new(
@@ -190,7 +191,7 @@ pub fn line_numbers<'doc>(
                     linenr
                 };
 
-                if first_visual_line {
+                if first_visual_line && (display_num % interval == 0 || current_line == line) {
                     write!(out, "{:>1$}", display_num, width).unwrap();
                 } else {
                     write!(out, "{:>1$}", " ", width).unwrap();
