@@ -1,5 +1,5 @@
 use helix_view::editor::Config;
-use schemars::{schema_for, JsonSchema};
+use schemars::schema_for;
 
 pub fn main() {
     let schema = schema_for!(Config);
