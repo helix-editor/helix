@@ -5,6 +5,9 @@ use std::process::Command;
 const VERSION: &str = include_str!("../VERSION");
 
 fn main() {
+    #[cfg(target_os = "openbsd")]
+    let git_hash: Option<&String> = None;
+    #[cfg(not(target_os = "openbsd"))]
     let git_hash = Command::new("git")
         .args(["rev-parse", "HEAD"])
         .output()

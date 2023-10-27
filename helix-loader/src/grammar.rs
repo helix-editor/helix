@@ -92,6 +92,13 @@ fn ensure_git_is_available() -> Result<()> {
     }
 }
 
+#[cfg(target_os = "openbsd")]
+pub fn fetch_grammars() -> Result<()> {
+    println!("Command to fetch grammars disabled");
+    Ok(())
+}
+
+#[cfg(not(target_os = "openbsd"))]
 pub fn fetch_grammars() -> Result<()> {
     ensure_git_is_available()?;
 
