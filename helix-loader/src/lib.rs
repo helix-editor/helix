@@ -1,4 +1,5 @@
 pub mod config;
+#[cfg(feature = "build_grammar")]
 pub mod grammar;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};

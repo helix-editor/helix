@@ -5,7 +5,7 @@ use super::{KeyTrie, Mode};
 use helix_core::hashmap;
 
 pub fn default() -> HashMap<Mode, KeyTrie> {
-    let normal = keymap!({ "Normal mode"
+    let mut normal = keymap!({ "Normal mode"
         "h" | "left" => move_char_left,
         "j" | "down" => move_visual_line_down,
         "k" | "up" => move_visual_line_up,
@@ -43,11 +43,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "h" => goto_line_start,
             "l" => goto_line_end,
             "s" => goto_first_nonwhitespace,
-            "d" => goto_definition,
-            "D" => goto_declaration,
-            "y" => goto_type_definition,
-            "r" => goto_reference,
-            "i" => goto_implementation,
             "t" => goto_window_top,
             "c" => goto_window_center,
             "b" => goto_window_bottom,
@@ -105,10 +100,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "i" => select_textobject_inner,
         },
         "[" => { "Left bracket"
-            "d" => goto_prev_diag,
-            "D" => goto_first_diag,
-            "g" => goto_prev_change,
-            "G" => goto_first_change,
             "f" => goto_prev_function,
             "t" => goto_prev_class,
             "a" => goto_prev_parameter,
@@ -118,10 +109,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "space" => add_newline_above,
         },
         "]" => { "Right bracket"
-            "d" => goto_next_diag,
-            "D" => goto_last_diag,
-            "g" => goto_next_change,
-            "G" => goto_last_change,
             "f" => goto_next_function,
             "t" => goto_next_class,
             "a" => goto_next_parameter,
@@ -153,7 +140,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         ">" => indent,
         "<" => unindent,
-        "=" => format_selections,
         "J" => join_selections,
         "A-J" => join_selections_space,
         "K" => keep_selections,
@@ -218,33 +204,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "F" => file_picker_in_current_directory,
             "b" => buffer_picker,
             "j" => jumplist_picker,
-            "s" => symbol_picker,
-            "S" => workspace_symbol_picker,
-            "d" => diagnostics_picker,
-            "D" => workspace_diagnostics_picker,
-            "a" => code_action,
             "'" => last_picker,
-            "g" => { "Debug (experimental)" sticky=true
-                "l" => dap_launch,
-                "r" => dap_restart,
-                "b" => dap_toggle_breakpoint,
-                "c" => dap_continue,
-                "h" => dap_pause,
-                "i" => dap_step_in,
-                "o" => dap_step_out,
-                "n" => dap_next,
-                "v" => dap_variables,
-                "t" => dap_terminate,
-                "C-c" => dap_edit_condition,
-                "C-l" => dap_edit_log,
-                "s" => { "Switch"
-                    "t" => dap_switch_thread,
-                    "f" => dap_switch_stack_frame,
-                    // sl, sb
-                },
-                "e" => dap_enable_exceptions,
-                "E" => dap_disable_exceptions,
-            },
             "w" => { "Window"
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
@@ -273,9 +233,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "P" => paste_clipboard_before,
             "R" => replace_selections_with_clipboard,
             "/" => global_search,
-            "k" => hover,
-            "r" => rename_symbol,
-            "h" => select_references_to_symbol_under_cursor,
             "?" => command_palette,
         },
         "z" => { "View"
@@ -324,6 +281,79 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-a" => increment,
         "C-x" => decrement,
     });
+
+    // DAP
+    #[cfg(feature = "dap")]
+    normal.merge_nodes(keymap!({ "Normal mode"
+        "space" => { "Space"
+            "g" => { "Debug (experimental)" sticky=true
+                "l" => dap_launch,
+                "r" => dap_restart,
+                "b" => dap_toggle_breakpoint,
+                "c" => dap_continue,
+                "h" => dap_pause,
+                "i" => dap_step_in,
+                "o" => dap_step_out,
+                "n" => dap_next,
+                "v" => dap_variables,
+                "t" => dap_terminate,
+                "C-c" => dap_edit_condition,
+                "C-l" => dap_edit_log,
+                "s" => { "Switch"
+                    "t" => dap_switch_thread,
+                    "f" => dap_switch_stack_frame,
+                    // sl, sb
+                },
+                "e" => dap_enable_exceptions,
+                "E" => dap_disable_exceptions,
+            },
+        },
+    }));
+
+    // LSP
+    #[cfg(feature = "lsp")]
+    normal.merge_nodes(keymap!({ "Normal mode"
+        "g" => { "Goto"
+            "d" => goto_definition,
+            "D" => goto_declaration,
+            "y" => goto_type_definition,
+            "r" => goto_reference,
+            "i" => goto_implementation,
+        },
+        "[" => { "Left bracket"
+            "d" => goto_prev_diag,
+            "D" => goto_first_diag,
+        },
+        "]" => { "Right bracket"
+            "d" => goto_next_diag,
+            "D" => goto_last_diag,
+        },
+        "=" => format_selections,
+
+        "space" => { "Space"
+            "s" => symbol_picker,
+            "S" => workspace_symbol_picker,
+            "d" => diagnostics_picker,
+            "D" => workspace_diagnostics_picker,
+            "a" => code_action,
+            "k" => hover,
+            "r" => rename_symbol,
+            "h" => select_references_to_symbol_under_cursor,
+        },
+    }));
+
+    #[cfg(feature = "vcs")]
+    normal.merge_nodes(keymap!({ "Normal mode"
+        "]" => { "Right bracket"
+            "g" => goto_next_change,
+            "G" => goto_last_change,
+        },
+        "[" => { "Left bracket"
+            "g" => goto_prev_change,
+            "G" => goto_first_change,
+        },
+    }));
+
     let mut select = normal.clone();
     select.merge_nodes(keymap!({ "Select mode"
         "h" | "left" => extend_char_left,
@@ -359,11 +389,11 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" => extend_line_down,
         },
     }));
-    let insert = keymap!({ "Insert mode"
+
+    let mut insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
 
         "C-s" => commit_undo_checkpoint,
-        "C-x" => completion,
         "C-r" => insert_register,
 
         "C-w" | "A-backspace" => delete_word_backward,
@@ -385,6 +415,10 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "home" => goto_line_start,
         "end" => goto_line_end_newline,
     });
+    #[cfg(feature = "lsp")]
+    insert.merge_nodes(keymap!({ "Insert mode"
+        "C-x" => completion,
+    }));
     hashmap!(
         Mode::Normal => normal,
         Mode::Select => select,

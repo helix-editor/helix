@@ -15,7 +15,7 @@ homepage.workspace = true
 default = ["crossterm"]
 
 [dependencies]
-helix-view = { path = "../helix-view", features = ["term"] }
+helix-view = { path = "../helix-view", default-features = false, features = ["term"] }
 helix-core = { path = "../helix-core" }
 
 bitflags = "2.4"

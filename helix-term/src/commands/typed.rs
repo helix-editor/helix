@@ -8,6 +8,7 @@ use super::*;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{encoding, line_ending, path::get_canonicalized_path, shellwords::Shellwords};
+#[cfg(feature = "lsp")]
 use helix_lsp::{OffsetEncoding, Url};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
@@ -333,7 +334,6 @@ fn write_impl(
     force: bool,
 ) -> anyhow::Result<()> {
     let config = cx.editor.config();
-    let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
@@ -341,7 +341,9 @@ fn write_impl(
         insert_final_newline(doc, view);
     }
 
+    #[cfg(feature = "lsp")]
     let fmt = if config.auto_format {
+        let jobs = &mut cx.jobs;
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
@@ -356,6 +358,8 @@ fn write_impl(
     } else {
         None
     };
+    #[cfg(not(feature = "lsp"))]
+    let fmt: Option<()> = None;
 
     if fmt.is_none() {
         let id = doc.id();
@@ -443,6 +447,7 @@ fn new_file(
     Ok(())
 }
 
+#[cfg(feature = "lsp")]
 fn format(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -673,7 +678,6 @@ pub fn write_all_impl(
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
     let config = cx.editor.config();
-    let jobs = &mut cx.jobs;
     let saves: Vec<_> = cx
         .editor
         .documents
@@ -706,7 +710,9 @@ pub fn write_all_impl(
             insert_final_newline(doc, view_mut!(cx.editor, target_view));
         }
 
+        #[cfg(feature = "lsp")]
         let fmt = if config.auto_format {
+            let jobs = &mut cx.jobs;
             doc.auto_format().map(|fmt| {
                 let callback = make_format_callback(
                     doc_id,
@@ -720,6 +726,8 @@ pub fn write_all_impl(
         } else {
             None
         };
+        #[cfg(not(feature = "lsp"))]
+        let fmt: Option<()> = None;
 
         if fmt.is_none() {
             cx.editor.save::<PathBuf>(doc_id, None, force)?;
@@ -1270,11 +1278,16 @@ fn reload(
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_providers).map(|_| {
-        view.ensure_cursor_in_view(doc, scrolloff);
-    })?;
+
+    #[cfg(feature = "vcs")]
+    {
+        let scrolloff = cx.editor.config().scrolloff;
+        doc.reload(view, &cx.editor.diff_providers).map(|_| {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        })?;
+    }
+    #[cfg(feature = "lsp")]
     if let Some(path) = doc.path() {
         cx.editor
             .language_servers
@@ -1320,7 +1333,9 @@ fn reload_all(
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
+        #[cfg(feature = "vcs")]
         doc.reload(view, &cx.editor.diff_providers)?;
+        #[cfg(feature = "lsp")]
         if let Some(path) = doc.path() {
             cx.editor
                 .language_servers
@@ -1357,6 +1372,7 @@ fn update(
     }
 }
 
+#[cfg(feature = "lsp")]
 fn lsp_workspace_command(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1424,6 +1440,7 @@ fn lsp_workspace_command(
     Ok(())
 }
 
+#[cfg(feature = "lsp")]
 fn lsp_restart(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1472,6 +1489,7 @@ fn lsp_restart(
     Ok(())
 }
 
+#[cfg(feature = "lsp")]
 fn lsp_stop(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1680,6 +1698,7 @@ fn hsplit_new(
     Ok(())
 }
 
+#[cfg(feature = "dap")]
 fn debug_eval(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1700,12 +1719,13 @@ fn debug_eval(
         // TODO: support no frame_id
 
         let frame_id = debugger.stack_frames[&thread_id][frame].id;
-        let response = helix_lsp::block_on(debugger.eval(args.join(" "), Some(frame_id)))?;
+        let response = futures_executor::block_on(debugger.eval(args.join(" "), Some(frame_id)))?;
         cx.editor.set_status(response.result);
     }
     Ok(())
 }
 
+#[cfg(feature = "dap")]
 fn debug_start(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1723,6 +1743,7 @@ fn debug_start(
     dap_start_impl(cx, name.as_deref(), None, Some(args))
 }
 
+#[cfg(feature = "dap")]
 fn debug_remote(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1995,12 +2016,15 @@ fn language(
     }
     doc.detect_indent_and_line_ending();
 
-    let id = doc.id();
-    cx.editor.refresh_language_servers(id);
-    let doc = doc_mut!(cx.editor);
-    let diagnostics =
-        Editor::doc_diagnostics(&cx.editor.language_servers, &cx.editor.diagnostics, doc);
-    doc.replace_diagnostics(diagnostics, &[], None);
+    #[cfg(feature = "lsp")]
+    {
+        let id = doc.id();
+        cx.editor.refresh_language_servers(id);
+        let doc = doc_mut!(cx.editor);
+        let diagnostics =
+            Editor::doc_diagnostics(&cx.editor.language_servers, &cx.editor.diagnostics, doc);
+        doc.replace_diagnostics(diagnostics, &[], None);
+    }
     Ok(())
 }
 
@@ -2293,6 +2317,7 @@ fn run_shell_command(
     Ok(())
 }
 
+#[cfg(feature = "vcs")]
 fn reset_diff_change(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2421,38 +2446,41 @@ fn move_buffer(
     let old_path_as_url = doc.url().unwrap();
     let new_path_as_url = Url::from_file_path(&new_path).unwrap();
 
-    let edits: Vec<(
-        helix_lsp::Result<helix_lsp::lsp::WorkspaceEdit>,
-        OffsetEncoding,
-        String,
-    )> = doc
-        .language_servers()
-        .map(|lsp| {
-            (
-                lsp.prepare_file_rename(&old_path_as_url, &new_path_as_url),
-                lsp.offset_encoding(),
-                lsp.name().to_owned(),
-            )
-        })
-        .filter(|(f, _, _)| f.is_some())
-        .map(|(f, encoding, name)| (helix_lsp::block_on(f.unwrap()), encoding, name))
-        .collect();
+    #[cfg(feature = "lsp")]
+    {
+        let edits: Vec<(
+            helix_lsp::Result<helix_lsp::lsp::WorkspaceEdit>,
+            OffsetEncoding,
+            String,
+        )> = doc
+            .language_servers()
+            .map(|lsp| {
+                (
+                    lsp.prepare_file_rename(&old_path_as_url, &new_path_as_url),
+                    lsp.offset_encoding(),
+                    lsp.name().to_owned(),
+                )
+            })
+            .filter(|(f, _, _)| f.is_some())
+            .map(|(f, encoding, name)| (helix_lsp::block_on(f.unwrap()), encoding, name))
+            .collect();
 
-    for (lsp_reply, encoding, name) in edits {
-        match lsp_reply {
-            Ok(edit) => {
-                if let Err(e) = apply_workspace_edit(cx.editor, encoding, &edit) {
-                    log::error!(
-                        ":move command failed to apply edits from lsp {}: {:?}",
-                        name,
-                        e
-                    );
-                };
-            }
-            Err(e) => {
-                log::error!("LSP {} failed to treat willRename request: {:?}", name, e);
-            }
-        };
+        for (lsp_reply, encoding, name) in edits {
+            match lsp_reply {
+                Ok(edit) => {
+                    if let Err(e) = apply_workspace_edit(cx.editor, encoding, &edit) {
+                        log::error!(
+                            ":move command failed to apply edits from lsp {}: {:?}",
+                            name,
+                            e
+                        );
+                    };
+                }
+                Err(e) => {
+                    log::error!("LSP {} failed to treat willRename request: {:?}", name, e);
+                }
+            };
+        }
     }
 
     let doc = doc_mut!(cx.editor);
@@ -2463,14 +2491,17 @@ fn move_buffer(
         bail!("Could not move file: {}", e);
     };
 
-    doc.language_servers().for_each(|lsp| {
-        lsp.did_file_rename(&old_path_as_url, &new_path_as_url);
-    });
+    #[cfg(feature = "lsp")]
+    {
+        doc.language_servers().for_each(|lsp| {
+            lsp.did_file_rename(&old_path_as_url, &new_path_as_url);
+        });
 
-    cx.editor
-        .language_servers
-        .file_event_handler
-        .file_changed(new_path);
+        cx.editor
+            .language_servers
+            .file_event_handler
+            .file_changed(new_path);
+    }
 
     Ok(())
 }
@@ -2588,6 +2619,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: new_file,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "lsp")]
     TypableCommand {
         name: "format",
         aliases: &["fmt"],
@@ -2836,6 +2868,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: update,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "lsp")]
     TypableCommand {
         name: "lsp-workspace-command",
         aliases: &[],
@@ -2843,6 +2876,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: lsp_workspace_command,
         signature: CommandSignature::positional(&[completers::lsp_workspace_command]),
     },
+    #[cfg(feature = "lsp")]
     TypableCommand {
         name: "lsp-restart",
         aliases: &[],
@@ -2850,6 +2884,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: lsp_restart,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "lsp")]
     TypableCommand {
         name: "lsp-stop",
         aliases: &[],
@@ -2871,6 +2906,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: tree_sitter_highlight_name,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "dap")]
     TypableCommand {
         name: "debug-start",
         aliases: &["dbg"],
@@ -2878,6 +2914,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: debug_start,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "dap")]
     TypableCommand {
         name: "debug-remote",
         aliases: &["dbg-tcp"],
@@ -2885,6 +2922,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: debug_remote,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "dap")]
     TypableCommand {
         name: "debug-eval",
         aliases: &[],
@@ -3054,6 +3092,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: run_shell_command,
         signature: CommandSignature::all(completers::filename)
     },
+    #[cfg(feature = "vcs")]
     TypableCommand {
         name: "reset-diff-change",
         aliases: &["diffget", "diffg"],
