@@ -533,11 +533,17 @@ impl MappableCommand {
         dap_enable_exceptions, "Enable exception breakpoints",
         #[cfg(feature = "dap")]
         dap_disable_exceptions, "Disable exception breakpoints",
+        #[cfg(feature = "shell")]
         shell_pipe, "Pipe selections through shell command",
+        #[cfg(feature = "shell")]
         shell_pipe_to, "Pipe selections into shell command ignoring output",
+        #[cfg(feature = "shell")]
         shell_insert_output, "Insert shell command output before selections",
+        #[cfg(feature = "shell")]
         shell_append_output, "Append shell command output after selections",
+        #[cfg(feature = "shell")]
         shell_keep_pipe, "Filter selections with shell predicate",
+        #[cfg(feature = "shell")]
         suspend, "Suspend and return to shell",
         #[cfg(feature = "lsp")]
         rename_symbol, "Rename symbol",
@@ -5489,6 +5495,7 @@ fn surround_delete(cx: &mut Context) {
     })
 }
 
+#[cfg(feature = "shell")]
 #[derive(Eq, PartialEq)]
 enum ShellBehavior {
     Replace,
@@ -5497,22 +5504,27 @@ enum ShellBehavior {
     Append,
 }
 
+#[cfg(feature = "shell")]
 fn shell_pipe(cx: &mut Context) {
     shell_prompt(cx, "pipe:".into(), ShellBehavior::Replace);
 }
 
+#[cfg(feature = "shell")]
 fn shell_pipe_to(cx: &mut Context) {
     shell_prompt(cx, "pipe-to:".into(), ShellBehavior::Ignore);
 }
 
+#[cfg(feature = "shell")]
 fn shell_insert_output(cx: &mut Context) {
     shell_prompt(cx, "insert-output:".into(), ShellBehavior::Insert);
 }
 
+#[cfg(feature = "shell")]
 fn shell_append_output(cx: &mut Context) {
     shell_prompt(cx, "append-output:".into(), ShellBehavior::Append);
 }
 
+#[cfg(feature = "shell")]
 fn shell_keep_pipe(cx: &mut Context) {
     ui::prompt(
         cx,
@@ -5565,10 +5577,12 @@ fn shell_keep_pipe(cx: &mut Context) {
     );
 }
 
+#[cfg(feature = "shell")]
 fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<(Tendril, bool)> {
     tokio::task::block_in_place(|| futures_executor::block_on(shell_impl_async(shell, cmd, input)))
 }
 
+#[cfg(feature = "shell")]
 async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
@@ -5639,6 +5653,7 @@ async fn shell_impl_async(
     Ok((tendril, output.status.success()))
 }
 
+#[cfg(feature = "shell")]
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let pipe = match behavior {
         ShellBehavior::Replace | ShellBehavior::Ignore => true,
@@ -5718,6 +5733,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     view.ensure_cursor_in_view(doc, config.scrolloff);
 }
 
+#[cfg(feature = "shell")]
 fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
     ui::prompt(
         cx,

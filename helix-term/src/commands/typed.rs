@@ -2222,6 +2222,7 @@ fn refresh_config(
     Ok(())
 }
 
+#[cfg(feature = "shell")]
 fn append_output(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2236,6 +2237,7 @@ fn append_output(
     Ok(())
 }
 
+#[cfg(feature = "shell")]
 fn insert_output(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2250,6 +2252,7 @@ fn insert_output(
     Ok(())
 }
 
+#[cfg(feature = "shell")]
 fn pipe_to(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2258,10 +2261,12 @@ fn pipe_to(
     pipe_impl(cx, args, event, &ShellBehavior::Ignore)
 }
 
+#[cfg(feature = "shell")]
 fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     pipe_impl(cx, args, event, &ShellBehavior::Replace)
 }
 
+#[cfg(feature = "shell")]
 fn pipe_impl(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2277,6 +2282,7 @@ fn pipe_impl(
     Ok(())
 }
 
+#[cfg(feature = "shell")]
 fn run_shell_command(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -3057,6 +3063,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: open_log,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "shell")]
     TypableCommand {
         name: "insert-output",
         aliases: &[],
@@ -3064,6 +3071,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: insert_output,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "shell")]
     TypableCommand {
         name: "append-output",
         aliases: &[],
@@ -3071,6 +3079,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: append_output,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "shell")]
     TypableCommand {
         name: "pipe",
         aliases: &[],
@@ -3078,6 +3087,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: pipe,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "shell")]
     TypableCommand {
         name: "pipe-to",
         aliases: &[],
@@ -3085,6 +3095,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: pipe_to,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "shell")]
     TypableCommand {
         name: "run-shell-command",
         aliases: &["sh"],

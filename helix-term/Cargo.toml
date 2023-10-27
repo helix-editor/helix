@@ -13,7 +13,7 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-default = ["vcs", "git", "dap", "lsp", "build_grammar", "helix-view/term"]
+default = ["vcs", "git", "dap", "lsp", "build_grammar", "helix-view/term", "shell"]
 dap = ["dep:helix-dap", "helix-view/dap"]
 lsp = ["dep:helix-lsp", "helix-view/lsp"]
 vcs = ["helix-vcs", "helix-view/vcs"]
@@ -21,6 +21,7 @@ unicode-lines = ["helix-core/unicode-lines"]
 integration = []
 git = ["helix-vcs/git"]
 build_grammar = ["helix-loader/build_grammar"]
+shell = []
 
 [[bin]]
 name = "hx"

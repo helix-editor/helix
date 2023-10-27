@@ -271,16 +271,21 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         },
 
         "\"" => select_register,
+
+        "C-a" => increment,
+        "C-x" => decrement,
+    });
+
+    // shell
+    #[cfg(feature = "shell")]
+    normal.merge_nodes(keymap!({ "Normal mode"
         "|" => shell_pipe,
         "A-|" => shell_pipe_to,
         "!" => shell_insert_output,
         "A-!" => shell_append_output,
         "$" => shell_keep_pipe,
         "C-z" => suspend,
-
-        "C-a" => increment,
-        "C-x" => decrement,
-    });
+    }));
 
     // DAP
     #[cfg(feature = "dap")]
