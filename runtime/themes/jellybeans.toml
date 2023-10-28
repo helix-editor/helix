@@ -1,0 +1,138 @@
+#
+#    __       _ _       _                           
+#    \ \  ___| | |_   _| |__   ___  __ _ _ __  ___  
+#     \ \/ _ \ | | | | |  _ \ / _ \/ _  |  _ \/ __| 
+#  /\_/ /  __/ | | |_| | |_| |  __/ |_| | | | \__ \ 
+#  \___/ \___|_|_|\__  |____/ \___|\____|_| |_|___/ 
+#                 \___/                             
+#
+# Jellybeans
+# A take on the Jellybeans theme, please feel free to contribute! 
+#
+# Original author: @nanotech
+# Original repository: nanotech/jellybeans.vim
+# Contributors:
+# @cemalokten
+
+"attribute" = "green"
+"type" = "light_blue"
+"type.enum.variant" = "purple"
+"constructor" = "yellow"
+"constant" = "dark_orange"
+
+"constant.builtin.boolean" = "yellow"
+"constant.character" = "yellow"
+"constant.character.escape" = "red_error"
+"constant.numeric" = "dark_orange"
+"string" = "dark_green"
+"string.regexp" = "light_purple"
+"string.special" = { fg = "yellow", modifiers = ["underlined"] }
+"comment" = "light_gray"
+
+"variable" = "light_yellow"
+"variable.builtin" = { fg = "dark_green", modifiers = ["underlined"] }
+"variable.parameter" = "yellow"
+"variable.other.member" = "light_purple"
+"label" = "yellow"
+"punctuation" = "mid_blue"
+"keyword" = "mid_blue"
+"keyword.control.exception" = "purple"
+"operator" = "light_purple"
+"function" = "yellow"
+"function.macro" = "green"
+"function.builtin" = "green"
+"function.special" = "green"
+"function.method" = "yellow"
+"tag" = "light_blue"
+"special" = "green"
+"namespace" = "light_purple"
+
+"markup.bold" = { fg = "white", modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.heading" = { fg = "mid_blue", modifiers = ["bold"] }
+"markup.list" = "dark_green"
+"markup.list.numbered" = "mid_blue"
+"markup.list.unnumbered" = "mid_blue"
+"markup.link.url" = { fg = "dark_green", modifiers = ['italic', 'underlined'] }
+"markup.link.text" = "mid_blue"
+"markup.link.label" = "purple"
+"markup.quote" = "dark_green"
+"markup.raw" = "dark_green"
+"markup.raw.inline" = "mid_blue"
+"markup.raw.block" = "dark_green"
+
+"diff.plus" = "diff_plus"
+"diff.minus" = "red_accent"
+"diff.delta" = "blue_accent"
+
+# ui specific
+"ui.background" = { bg = "background" }                                            # .separator
+"ui.cursor" = { bg = "background", modifiers = ["reversed"] }
+"ui.cursor.insert" = { bg = "light_yellow", fg = "background" }
+"ui.cursor.match" = { fg = "background", bg = "dark_orange" }
+"ui.cursorline" = { bg = "darker" }
+"ui.linenr" = "dark_gray"
+"ui.linenr.selected" = { fg = "light_yellow", bg = "darker" }
+"ui.statusline" = { fg = "light_yellow", bg = "darker" }
+"ui.statusline.inactive" = { fg = "dark", bg = "darker" }
+"ui.statusline.normal" = { fg = "light_yellow", bg = "darker" }
+"ui.statusline.insert" = { fg = "darker", bg = "purple" }
+"ui.statusline.select" = { fg = "selectionFG", bg = "selection" }
+"ui.popup" = { fg = "light_yellow", bg = "darkest" }
+"ui.window" = { fg = "dark", bg = "darkest" }
+"ui.help" = { fg = "light_yellow", bg = "darkest" }
+"ui.text" = "light_yellow"
+"ui.text.focus" = { fg = "white", bg = "dark_blue" }
+"ui.virtual" = "dark"
+"ui.virtual.ruler" = { bg = "darker" }
+"ui.menu" = { fg = "light_purple", bg = "darkest" }
+"ui.menu.selected" = { fg = "white", bg = "dark_blue" }
+"ui.selection" = { bg = "darker" }
+"ui.selection.primary" = { bg = "selection", fg = "selectionFG" }
+"hint" = "blue"
+"info" = "yellow_accent"
+"warning" = "orange_accent"
+"error" = "red_error"
+"diagnostic" = { modifiers = [] }
+"diagnostic.hint" = { underline = { color = "light_purple", style = "line" } }
+"diagnostic.info" = { underline = { color = "blue_accent", style = "line" } }
+"diagnostic.warning" = { underline = { color = "yellow_accent", style = "line" } }
+"diagnostic.error" = { underline = { color = "red_error", style = "line" } }
+
+[palette]
+background = "#151515"
+darkest = "#1e1e1e"
+darker = "#292929"
+dark = "#898989"
+white = "#ffffff"
+dark_gray = "#535353"
+light_gray = "#6d6d6d"
+
+purple = "#a390f0"
+light_purple = "#CDBEF0"
+
+blue = "#52a7f6"
+light_blue = "#8fbfdc"
+mid_blue = "#8197bf"
+dark_blue = "#204474"
+blue_accent = "#2197F3"
+
+green = "#99ad6a"
+dark_green = "#84A775"
+
+red = "#CC7C8A"
+red_error = "#902020"
+red_accent = "#F44747"
+
+orange = "#efb080"
+dark_orange = "#cf6a4c"
+orange_accent = "#EE7F25"
+
+yellow = "#fad07a"
+light_yellow = "#EBEBD8"
+yellow_accent = "#DEA407"
+
+diff_plus = "#5A9F81"
+selection = "#37232D"
+selectionFG = "#F2AAC7"

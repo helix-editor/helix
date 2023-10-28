@@ -54,7 +54,7 @@ fn missing_file() {
     let file = temp_git.path().join("file.txt");
     File::create(&file).unwrap().write_all(b"foo").unwrap();
 
-    assert_eq!(Git.get_diff_base(&file), None);
+    assert!(Git.get_diff_base(&file).is_err());
 }
 
 #[test]
@@ -64,7 +64,7 @@ fn unmodified_file() {
     let contents = b"foo".as_slice();
     File::create(&file).unwrap().write_all(contents).unwrap();
     create_commit(temp_git.path(), true);
-    assert_eq!(Git.get_diff_base(&file), Some(Vec::from(contents)));
+    assert_eq!(Git.get_diff_base(&file).unwrap(), Vec::from(contents));
 }
 
 #[test]
@@ -76,7 +76,7 @@ fn modified_file() {
     create_commit(temp_git.path(), true);
     File::create(&file).unwrap().write_all(b"bar").unwrap();
 
-    assert_eq!(Git.get_diff_base(&file), Some(Vec::from(contents)));
+    assert_eq!(Git.get_diff_base(&file).unwrap(), Vec::from(contents));
 }
 
 /// Test that `get_file_head` does not return content for a directory.
@@ -89,13 +89,13 @@ fn directory() {
     std::fs::create_dir(&dir).expect("");
     let file = dir.join("file.txt");
     let contents = b"foo".as_slice();
-    File::create(&file).unwrap().write_all(contents).unwrap();
+    File::create(file).unwrap().write_all(contents).unwrap();
 
     create_commit(temp_git.path(), true);
 
     std::fs::remove_dir_all(&dir).unwrap();
     File::create(&dir).unwrap().write_all(b"bar").unwrap();
-    assert_eq!(Git.get_diff_base(&dir), None);
+    assert!(Git.get_diff_base(&dir).is_err());
 }
 
 /// Test that `get_file_head` does not return content for a symlink.
@@ -116,6 +116,6 @@ fn symlink() {
     symlink("file.txt", &file_link).unwrap();
 
     create_commit(temp_git.path(), true);
-    assert_eq!(Git.get_diff_base(&file_link), None);
-    assert_eq!(Git.get_diff_base(&file), Some(Vec::from(contents)));
+    assert!(Git.get_diff_base(&file_link).is_err());
+    assert_eq!(Git.get_diff_base(&file).unwrap(), Vec::from(contents));
 }

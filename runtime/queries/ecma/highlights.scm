@@ -46,8 +46,15 @@
 (assignment_expression
   left: (identifier) @function
   right: [(function) (arrow_function)])
-  
 
+; Function and method parameters
+;-------------------------------
+
+; Arrow function parameters in the form `p => ...` are supported by both
+; javascript and typescript grammars without conflicts.
+(arrow_function
+  parameter: (identifier) @variable.parameter)
+  
 ; Function and method calls
 ;--------------------------
 
@@ -102,7 +109,7 @@
 
 [
   ";"
-  "?."
+  (optional_chain) ; ?.
   "."
   ","
 ] @punctuation.delimiter
@@ -167,55 +174,76 @@
 ]  @punctuation.bracket
 
 [
-  "as"
   "async"
   "debugger"
   "delete"
   "extends"
   "from"
-  "function"
   "get"
-  "in"
-  "instanceof"
   "new"
-  "of"
   "set"
-  "static"
   "target"
-  "try"
   "typeof"
+  "instanceof"
   "void"
   "with"
 ] @keyword
 
 [
+  "of"
+  "as"
+  "in"
+] @keyword.operator
+
+[
+  "function"
+] @keyword.function
+
+[
   "class"
   "let"
-  "const"
   "var"
 ] @keyword.storage.type
 
 [
-  "switch"
-  "case"
+  "const"
+  "static"
+] @keyword.storage.modifier
+
+[
   "default"
-  "if"
-  "else"
   "yield"
-  "throw"
   "finally"
-  "return"
-  "catch"
-  "continue"
-  "while"
-  "break"
-  "for"
   "do"
   "await"
 ] @keyword.control
 
 [
+  "if"
+  "else"
+  "switch"
+  "case"
+  "while"
+] @keyword.control.conditional
+
+[
+  "for"
+] @keyword.control.repeat
+
+[
   "import"
   "export"
 ] @keyword.control.import 
+
+[
+  "return"
+  "break"
+  "continue"
+] @keyword.control.return
+
+[
+  "throw"
+  "try"
+  "catch"
+] @keyword.control.exception
 

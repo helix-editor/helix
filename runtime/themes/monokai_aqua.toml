@@ -1,0 +1,17 @@
+inherits = "monokai"
+
+"keyword.control.import" = { fg = "cyan", modifiers = ["italic"] }
+"keyword.function" = { fg = "cyan", modifiers = ["italic"] }
+"keyword.storage.type" = { fg = "cyan", modifiers = ["italic"] }
+
+"namespace" = { fg = "text" }
+
+"type" = { fg = "type", modifiers = ["bold"] }
+
+"ui.statusline.normal" = { fg = "light-black", bg = "cyan" }
+"ui.statusline.insert" = { fg = "light-black", bg = "green" }
+"ui.statusline.select" = { fg = "light-black", bg = "purple" }
+
+[palette]
+cyan = "#66D9EF"
+type = "#66D9EF"

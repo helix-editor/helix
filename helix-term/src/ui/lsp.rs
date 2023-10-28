@@ -53,13 +53,16 @@ impl Component for SignatureHelp {
 
         let active_param_span = self.active_param_range.map(|(start, end)| {
             vec![(
-                cx.editor.theme.find_scope_index("ui.selection").unwrap(),
+                cx.editor
+                    .theme
+                    .find_scope_index_exact("ui.selection")
+                    .unwrap(),
                 start..end,
             )]
         });
 
         let sig_text = crate::ui::markdown::highlighted_code_block(
-            self.signature.clone(),
+            &self.signature,
             &self.language,
             Some(&cx.editor.theme),
             Arc::clone(&self.config_loader),
@@ -106,7 +109,7 @@ impl Component for SignatureHelp {
         let max_text_width = (viewport.0 - PADDING).min(120);
 
         let signature_text = crate::ui::markdown::highlighted_code_block(
-            self.signature.clone(),
+            &self.signature,
             &self.language,
             None,
             Arc::clone(&self.config_loader),

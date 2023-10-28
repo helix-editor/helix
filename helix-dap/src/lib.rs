@@ -2,7 +2,7 @@ mod client;
 mod transport;
 mod types;
 
-pub use client::Client;
+pub use client::{Client, ConnectionType};
 pub use events::Event;
 pub use transport::{Payload, Response, Transport};
 pub use types::*;
@@ -14,8 +14,8 @@ pub enum Error {
     Parse(#[from] serde_json::Error),
     #[error("IO Error: {0}")]
     IO(#[from] std::io::Error),
-    #[error("request timed out")]
-    Timeout,
+    #[error("request {0} timed out")]
+    Timeout(u64),
     #[error("server closed the stream")]
     StreamClosed,
     #[error(transparent)]

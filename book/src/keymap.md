@@ -14,16 +14,18 @@
     - [Space mode](#space-mode)
       - [Popup](#popup)
     - [Unimpaired](#unimpaired)
-- [Insert Mode](#insert-mode)
+- [Insert mode](#insert-mode)
 - [Select / extend mode](#select--extend-mode)
 - [Picker](#picker)
 - [Prompt](#prompt)
 
 > 💡 Mappings marked (**LSP**) require an active language server for the file.
 
-> 💡 Mappings marked (**TS**) require a tree-sitter grammar for the filetype.
+> 💡 Mappings marked (**TS**) require a tree-sitter grammar for the file type.
 
 ## Normal mode
+
+Normal mode is the default mode when you launch helix. Return to it from other modes by typing `Escape`.
 
 ### Movement
 
@@ -32,8 +34,8 @@
 | Key                   | Description                                        | Command                     |
 | -----                 | -----------                                        | -------                     |
 | `h`, `Left`           | Move left                                          | `move_char_left`            |
-| `j`, `Down`           | Move down                                          | `move_line_down`            |
-| `k`, `Up`             | Move up                                            | `move_line_up`              |
+| `j`, `Down`           | Move down                                          | `move_visual_line_down`     |
+| `k`, `Up`             | Move up                                            | `move_visual_line_up`       |
 | `l`, `Right`          | Move right                                         | `move_char_right`           |
 | `w`                   | Move next word start                               | `move_next_word_start`      |
 | `b`                   | Move previous word start                           | `move_prev_word_start`      |
@@ -109,9 +111,10 @@
 | Key                   | Description                                                       | Command                              |
 | -----                 | -----------                                                       | -------                              |
 | `s`                   | Select all regex matches inside selections                        | `select_regex`                       |
-| `S`                   | Split selection into subselections on regex matches               | `split_selection`                    |
+| `S`                   | Split selection into sub selections on regex matches              | `split_selection`                    |
 | `Alt-s`               | Split selection on newlines                                       | `split_selection_on_newline`         |
-| `Alt-_ `              | Merge consecutive selections                                      | `merge_consecutive_selections`       |
+| `Alt-minus`           | Merge selections                                                  | `merge_selections`                   |
+| `Alt-_`               | Merge consecutive selections                                      | `merge_consecutive_selections`       |
 | `&`                   | Align selection in columns                                        | `align_selections`                   |
 | `_`                   | Trim whitespace from the selection                                | `trim_selections`                    |
 | `;`                   | Collapse selection onto a single cursor                           | `collapse_selection`                 |
@@ -130,7 +133,7 @@
 | `X`                   | Extend selection to line bounds (line-wise selection)             | `extend_to_line_bounds`              |
 | `Alt-x`               | Shrink selection to line bounds (line-wise selection)             | `shrink_to_line_bounds`              |
 | `J`                   | Join lines inside selection                                       | `join_selections`                    |
-| `Alt-J`               | Join lines inside selection and select space                      | `join_selections_space`              |
+| `Alt-J`               | Join lines inside selection and select the inserted space         | `join_selections_space`              |
 | `K`                   | Keep selections matching the regex                                | `keep_selections`                    |
 | `Alt-K`               | Remove selections matching the regex                              | `remove_selections`                  |
 | `Ctrl-c`              | Comment/uncomment the selections                                  | `toggle_comments`                    |
@@ -141,7 +144,7 @@
 
 ### Search
 
-Search commands all operate on the `/` register by default. Use `"<char>` to operate on a different one.
+Search commands all operate on the `/` register by default. To use a different register, use `"<char>`.
 
 | Key   | Description                                 | Command              |
 | ----- | -----------                                 | -------              |
@@ -166,15 +169,17 @@ These sub-modes are accessible from normal mode and typically switch back to nor
 | `Ctrl-w` | Enter [window mode](#window-mode)                  | N/A            |
 | `Space`  | Enter [space mode](#space-mode)                    | N/A            |
 
+These modes (except command mode) can be configured by
+[remapping keys](https://docs.helix-editor.com/remapping.html#minor-modes).
+
 #### View mode
 
 Accessed by typing `z` in [normal mode](#normal-mode).
 
 View mode is intended for scrolling and manipulating the view without changing
 the selection. The "sticky" variant of this mode (accessed by typing `Z` in
-normal mode) is persistent; use the Escape key to return to normal mode after
-usage (useful when you're simply looking over text and not actively editing
-it).
+normal mode) is persistent and can be exited using the escape key. This is
+useful when you're simply looking over text and not actively editing it.
 
 
 | Key                  | Description                                               | Command             |
@@ -216,13 +221,15 @@ Jumps to various locations.
 | `n`   | Go to next buffer                                | `goto_next_buffer`         |
 | `p`   | Go to previous buffer                            | `goto_previous_buffer`     |
 | `.`   | Go to last modification in current file          | `goto_last_modification`   |
+| `j`   | Move down textual (instead of visual) line       | `move_line_down`           |
+| `k`   | Move up textual (instead of visual) line         | `move_line_up`             |
 
 #### Match mode
 
 Accessed by typing `m` in [normal mode](#normal-mode).
 
 See the relevant section in [Usage](./usage.md) for an explanation about
-[surround](./usage.md#surround) and [textobject](./usage.md#textobjects) usage.
+[surround](./usage.md#surround) and [textobject](./usage.md#navigating-using-tree-sitter-textobjects) usage.
 
 | Key              | Description                                     | Command                    |
 | -----            | -----------                                     | -------                    |
@@ -239,7 +246,7 @@ TODO: Mappings for selecting syntax nodes (a superset of `[`).
 
 Accessed by typing `Ctrl-w` in [normal mode](#normal-mode).
 
-This layer is similar to Vim keybindings as Kakoune does not support window.
+This layer is similar to Vim keybindings as Kakoune does not support windows.
 
 | Key                    | Description                                          | Command           |
 | -----                  | -------------                                        | -------           |
@@ -265,30 +272,32 @@ Accessed by typing `Space` in [normal mode](#normal-mode).
 
 This layer is a kludge of mappings, mostly pickers.
 
-| Key     | Description                                                             | Command                             |
-| -----   | -----------                                                             | -------                             |
-| `f`     | Open file picker                                                        | `file_picker`                       |
-| `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`  |
-| `b`     | Open buffer picker                                                      | `buffer_picker`                     |
-| `j`     | Open jumplist picker                                                    | `jumplist_picker`                   |
-| `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                             |
-| `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                     |
-| `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`           |
-| `d`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                |
-| `D`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`      |
-| `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                     |
-| `a`     | Apply code action  (**LSP**)                                            | `code_action`                       |
-| `'`     | Open last fuzzy picker                                                  | `last_picker`                       |
-| `w`     | Enter [window mode](#window-mode)                                       | N/A                                 |
-| `p`     | Paste system clipboard after selections                                 | `paste_clipboard_after`             |
-| `P`     | Paste system clipboard before selections                                | `paste_clipboard_before`            |
-| `y`     | Join and yank selections to clipboard                                   | `yank_joined_to_clipboard`          |
-| `Y`     | Yank main selection to clipboard                                        | `yank_main_selection_to_clipboard`  |
-| `R`     | Replace selections by clipboard contents                                | `replace_selections_with_clipboard` |
-| `/`     | Global search in workspace folder                                       | `global_search`                     |
-| `?`     | Open command palette                                                    | `command_palette`                   |
+| Key     | Description                                                             | Command                                    |
+| -----   | -----------                                                             | -------                                    |
+| `f`     | Open file picker                                                        | `file_picker`                              |
+| `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`         |
+| `b`     | Open buffer picker                                                      | `buffer_picker`                            |
+| `j`     | Open jumplist picker                                                    | `jumplist_picker`                          |
+| `g`     | Debug (experimental)                                                    | N/A                                        |
+| `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                                    |
+| `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                            |
+| `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`                  |
+| `d`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                       |
+| `D`     | Open workspace diagnostics picker (**LSP**)                             | `workspace_diagnostics_picker`             |
+| `r`     | Rename symbol (**LSP**)                                                 | `rename_symbol`                            |
+| `a`     | Apply code action (**LSP**)                                             | `code_action`                              |
+| `h`     | Select symbol references (**LSP**)                                      | `select_references_to_symbol_under_cursor` |
+| `'`     | Open last fuzzy picker                                                  | `last_picker`                              |
+| `w`     | Enter [window mode](#window-mode)                                       | N/A                                        |
+| `p`     | Paste system clipboard after selections                                 | `paste_clipboard_after`                    |
+| `P`     | Paste system clipboard before selections                                | `paste_clipboard_before`                   |
+| `y`     | Yank selections to clipboard                                            | `yank_to_clipboard`                        |
+| `Y`     | Yank main selection to clipboard                                        | `yank_main_selection_to_clipboard`         |
+| `R`     | Replace selections by clipboard contents                                | `replace_selections_with_clipboard`        |
+| `/`     | Global search in workspace folder                                       | `global_search`                            |
+| `?`     | Open command palette                                                    | `command_palette`                          |
 
-> TIP: Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
+> 💡 Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
 
 ##### Popup
 
@@ -301,14 +310,14 @@ Displays documentation for item under cursor.
 
 #### Unimpaired
 
-Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
+These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaired).
 
 | Key      | Description                                  | Command               |
 | -----    | -----------                                  | -------               |
-| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`      |
 | `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`      |
-| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`     |
+| `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`      |
 | `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`      |
+| `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`     |
 | `]f`     | Go to next function (**TS**)                 | `goto_next_function`  |
 | `[f`     | Go to previous function (**TS**)             | `goto_prev_function`  |
 | `]t`     | Go to next type definition (**TS**)          | `goto_next_class`     |
@@ -323,19 +332,22 @@ Mappings in the style of [vim-unimpaired](https://github.com/tpope/vim-unimpaire
 | `[p`     | Go to previous paragraph                     | `goto_prev_paragraph` |
 | `]g`     | Go to next change                            | `goto_next_change`    |
 | `[g`     | Go to previous change                        | `goto_prev_change`    |
-| `]G`     | Go to first change                           | `goto_first_change`   |
-| `[G`     | Go to last change                            | `goto_last_change`    |
-| `[Space` | Add newline above                            | `add_newline_above`   |
+| `]G`     | Go to last change                            | `goto_last_change`    |
+| `[G`     | Go to first change                           | `goto_first_change`   |
 | `]Space` | Add newline below                            | `add_newline_below`   |
+| `[Space` | Add newline above                            | `add_newline_above`   |
 
 ## Insert mode
 
-Insert mode bindings are somewhat minimal by default. Helix is designed to
+Accessed by typing `i` in [normal mode](#normal-mode).
+
+Insert mode bindings are minimal by default. Helix is designed to
 be a modal editor, and this is reflected in the user experience and internal
-mechanics. For example, changes to the text are only saved for undos when
-escaping from insert mode to normal mode. For this reason, new users are
-strongly encouraged to learn the modal editing paradigm to get the smoothest
-experience.
+mechanics. Changes to the text are only saved for undos when
+escaping from insert mode to normal mode.
+
+> 💡 New users are strongly encouraged to learn the modal editing paradigm
+> to get the smoothest experience.
 
 | Key                                         | Description                 | Command                  |
 | -----                                       | -----------                 | -------                  |
@@ -347,7 +359,7 @@ experience.
 | `Alt-d`, `Alt-Delete`                       | Delete next word            | `delete_word_forward`    |
 | `Ctrl-u`                                    | Delete to start of line     | `kill_to_line_start`     |
 | `Ctrl-k`                                    | Delete to end of line       | `kill_to_line_end`       |
-| `Ctrl-h`, `Backspace`                       | Delete previous char        | `delete_char_backward`   |
+| `Ctrl-h`, `Backspace`, `Shift-Backspace`    | Delete previous char        | `delete_char_backward`   |
 | `Ctrl-d`, `Delete`                          | Delete next char            | `delete_char_forward`    |
 | `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`         |
 
@@ -365,8 +377,8 @@ with modal editors.
 | `Home`                                      | Move to line start          | `goto_line_start`        |
 | `End`                                       | Move to line end            | `goto_line_end_newline`  |
 
-If you want to disable them in insert mode as you become more comfortable with modal editing, you can use
-the following in your `config.toml`:
+As you become more comfortable with modal editing, you may want to disable some
+insert mode bindings. You can do this by editing your `config.toml` file.
 
 ```toml
 [keys.insert]
@@ -382,9 +394,11 @@ end = "no_op"
 
 ## Select / extend mode
 
-This mode echoes Normal mode, but changes any movements to extend
+Accessed by typing `v` in [normal mode](#normal-mode).
+
+Select mode echoes Normal mode, but changes any movements to extend
 selections rather than replace them. Goto motions are also changed to
-extend, so that `vgl` for example extends the selection to the end of
+extend, so that `vgl`, for example, extends the selection to the end of
 the line.
 
 Search is also affected. By default, `n` and `N` will remove the current
@@ -397,19 +411,20 @@ you to selectively add search terms to your selections.
 
 Keys to use within picker. Remapping currently not supported.
 
-| Key                          | Description       |
-| -----                        | -------------     |
-| `Shift-Tab`, `Up`, `Ctrl-p`  | Previous entry    |
-| `Tab`, `Down`, `Ctrl-n`      | Next entry        |
-| `PageUp`, `Ctrl-u`           | Page up           |
-| `PageDown`, `Ctrl-d`         | Page down         |
-| `Home`                       | Go to first entry |
-| `End`                        | Go to last entry  |
-| `Enter`                      | Open selected     |
-| `Ctrl-s`                     | Open horizontally |
-| `Ctrl-v`                     | Open vertically   |
-| `Ctrl-t`                     | Toggle preview    |
-| `Escape`, `Ctrl-c`           | Close picker      |
+| Key                          | Description                                                |
+| -----                        | -------------                                              |
+| `Shift-Tab`, `Up`, `Ctrl-p`  | Previous entry                                             |
+| `Tab`, `Down`, `Ctrl-n`      | Next entry                                                 |
+| `PageUp`, `Ctrl-u`           | Page up                                                    |
+| `PageDown`, `Ctrl-d`         | Page down                                                  |
+| `Home`                       | Go to first entry                                          |
+| `End`                        | Go to last entry                                           |
+| `Enter`                      | Open selected                                              |
+| `Alt-Enter`                  | Open selected in the background without closing the picker |
+| `Ctrl-s`                     | Open horizontally                                          |
+| `Ctrl-v`                     | Open vertically                                            |
+| `Ctrl-t`                     | Toggle preview                                             |
+| `Escape`, `Ctrl-c`           | Close picker                                               |
 
 ## Prompt
 
@@ -428,7 +443,7 @@ Keys to use within prompt, Remapping currently not supported.
 | `Alt-d`, `Alt-Delete`, `Ctrl-Delete`        | Delete next word                                                        |
 | `Ctrl-u`                                    | Delete to start of line                                                 |
 | `Ctrl-k`                                    | Delete to end of line                                                   |
-| `Backspace`, `Ctrl-h`                       | Delete previous char                                                    |
+| `Backspace`, `Ctrl-h`, `Shift-Backspace`    | Delete previous char                                                    |
 | `Delete`, `Ctrl-d`                          | Delete next char                                                        |
 | `Ctrl-s`                                    | Insert a word under doc cursor, may be changed to Ctrl-r Ctrl-w later   |
 | `Ctrl-p`, `Up`                              | Select previous history                                                 |
