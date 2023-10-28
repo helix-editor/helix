@@ -2439,7 +2439,7 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                 move |editor: &mut Editor, compositor: &mut Compositor| {
                     let picker = ui::file_picker(dir_path, &editor.config());
-                    compositor.push(Box::new(picker));
+                    compositor.push(Box::new(overlaid(picker)));
                 },
             ));
             Ok(call)
