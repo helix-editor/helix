@@ -19,6 +19,7 @@ helix-term = { path = "../helix-term", default-features = false }
 helix-tui = { path = "../helix-tui", default-features = false }
 helix-view = { path = "../helix-view", default-features = false, features = ["term"] }
 helix-core = { path = "../helix-core" }
+helix-loader = { path = "../helix-loader" }
 console_log = "1.0"
 log = "0.4"
 futures-util = { version = "0.3", default-features = false }

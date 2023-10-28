@@ -271,11 +271,14 @@ pub mod completers {
     }
 
     pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
+        #[cfg(not(target_arch = "wasm32"))]
         let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
         #[cfg(not(target_arch = "wasm32"))]
         for rt_dir in helix_loader::runtime_dirs() {
             names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
         }
+        #[cfg(target_arch = "wasm32")]
+        let mut names = theme::themes();
         names.push("default".into());
         names.push("base16_default".into());
         names.sort();

@@ -10,7 +10,7 @@ fn main() {
 
         let mut themes = String::new();
         themes.push_str(
-            "fn themes() -> Vec<String> {
+            "pub fn themes() -> Vec<String> {
     vec![\n",
         );
 

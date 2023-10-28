@@ -25,7 +25,7 @@ functionalities related to the following points are disabled (or should be):
 * shell commands execution and piping
 * vcs features, e.g. `git` info and diff'ing
 * cloning & compiling `tree-sitter` grammars
-* filesystem operations
+* most filesystem operations; reading/writing 'files' is crudely emulated using the Web Storage API
 
 Most features of the editor are untested, so expect bugs; see 'Known issues'.
 
@@ -95,8 +95,6 @@ wasm-pack test --headless --firefox
 
 ## Ideas for down the road:
 
-* embed themes
-* load/write configuration to/from web storage
 * restore `tree-sitter` grammars integration
 * restore/replace diff'ing (probably without `git`)
 * web workers for some operations

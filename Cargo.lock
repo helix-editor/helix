@@ -1195,6 +1195,7 @@ dependencies = [
  "unicode-general-category",
  "unicode-segmentation",
  "unicode-width",
+ "web-sys",
 ]
 
 [[package]]
@@ -1387,6 +1388,7 @@ dependencies = [
  "futures-util",
  "gloo-timers",
  "helix-core",
+ "helix-loader",
  "helix-term",
  "helix-tui",
  "helix-view",

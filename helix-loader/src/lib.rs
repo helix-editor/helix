@@ -25,9 +25,12 @@ pub fn current_working_dir() -> PathBuf {
         return path.clone();
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     let path = std::env::current_dir()
         .and_then(dunce::canonicalize)
         .expect("Couldn't determine current working directory");
+    #[cfg(target_arch = "wasm32")]
+    let path = Path::new("").to_path_buf();
     let mut cwd = CWD.write().unwrap();
     *cwd = Some(path.clone());
 
@@ -103,12 +106,6 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     rt_dirs
 }
 
-#[cfg(target_arch = "wasm32")]
-pub fn runtime_dirs() -> &'static [PathBuf] {
-    &[] // TODO(wasm32) plug something useful instead
-}
-
-#[cfg(not(target_arch = "wasm32"))]
 /// Runtime directories ordered from highest to lowest priority
 ///
 /// All directories should be checked when looking for files.
@@ -151,12 +148,7 @@ pub fn runtime_file(rel_path: &Path) -> PathBuf {
 
 #[cfg(target_arch = "wasm32")]
 pub fn config_dir() -> PathBuf {
-    PathBuf::new() // TODO(wasm32) plug something useful instead
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn cache_dir() -> PathBuf {
-    PathBuf::new() // TODO(wasm32) plug something useful instead
+    ".config/helix/".into()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -166,6 +158,11 @@ pub fn config_dir() -> PathBuf {
     let mut path = strategy.config_dir();
     path.push("helix");
     path
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn cache_dir() -> PathBuf {
+    ".cache/helix/".into()
 }
 
 #[cfg(not(target_arch = "wasm32"))]

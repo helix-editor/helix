@@ -101,7 +101,6 @@ fn force_quit(
     Ok(())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -111,6 +110,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     for arg in args {
         let (path, pos) = args::parse_file(arg);
         let path = helix_core::path::expand_tilde(&path);
+        #[cfg(not(target_arch = "wasm32"))]
         // If the path is a directory, open a file picker on that directory and update the status
         // message
         if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
@@ -126,6 +126,16 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             cx.jobs.callback(callback);
         } else {
             // Otherwise, just open the file
+            let _ = cx.editor.open(&path, Action::Replace)?;
+            let (view, doc) = current!(cx.editor);
+            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+            doc.set_selection(view.id, pos);
+            // does not affect opening a buffer without pos
+            align_view(doc, view, Align::Center);
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            // just open the file
             let _ = cx.editor.open(&path, Action::Replace)?;
             let (view, doc) = current!(cx.editor);
             let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
@@ -2450,7 +2460,6 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: force_quit,
         signature: CommandSignature::none(),
     },
-    #[cfg(not(target_arch = "wasm32"))]
     TypableCommand {
         name: "open",
         aliases: &["o"],

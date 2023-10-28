@@ -132,11 +132,6 @@ impl Loader {
             .unwrap_or_default()
     }
 
-    #[cfg(target_arch = "wasm32")]
-    pub fn read_names(path: &Path) -> Vec<String> {
-        themes()
-    }
-
     // merge one theme into the parent theme
     fn merge_themes(&self, parent_theme_toml: Value, theme_toml: Value) -> Value {
         let parent_palette = parent_theme_toml.get("palette");
@@ -163,6 +158,7 @@ impl Loader {
         merge_toml_values(theme, palette.into(), 1)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     // Loads the theme data as `toml::Value`
     fn load_toml(&self, path: PathBuf) -> Result<Value> {
         let data = std::fs::read_to_string(path)?;

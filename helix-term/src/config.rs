@@ -118,10 +118,14 @@ impl Config {
     }
 
     pub fn load_default() -> Result<Config, ConfigLoadError> {
+        #[cfg(not(target_arch = "wasm32"))]
+        let read_content = fs::read_to_string;
+        #[cfg(target_arch = "wasm32")]
+        let read_content = helix_core::storage::read_to_string;
         let global_config =
-            fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error);
-        let local_config = fs::read_to_string(helix_loader::workspace_config_file())
-            .map_err(ConfigLoadError::Error);
+            read_content(helix_loader::config_file()).map_err(ConfigLoadError::Error);
+        let local_config =
+            read_content(helix_loader::workspace_config_file()).map_err(ConfigLoadError::Error);
         Config::load(global_config, local_config)
     }
 }

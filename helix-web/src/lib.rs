@@ -23,7 +23,11 @@ pub async fn main() {
     let term_ref = &terminal;
     let write: XtermJsCrosstermBackend = term_ref.into();
 
-    let config = Config::default();
+    helix_loader::initialize_config_file(None);
+    helix_loader::initialize_log_file(None);
+
+    let config = Config::load_default().unwrap_or_default();
+
     let mut app = Application::new_with_write(
         Args::default(),
         config,
