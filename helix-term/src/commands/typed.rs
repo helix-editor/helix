@@ -2490,9 +2490,13 @@ fn help(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                             KeymapResult::NotFound | KeymapResult::Cancelled(_) => {
                                 Err(anyhow!("No command found for '{}'", arg))
                             }
-                            KeymapResult::Pending(_) => Err(anyhow!(
-                                "`:help` for branching keybinds is not yet supported."
-                            )),
+                            KeymapResult::Pending(_) => {
+                                // Clear pending keys
+                                keymaps.get(mode, crate::keymap::macros::key!(Esc));
+                                Err(anyhow!(
+                                    "`:help` for branching keybinds is not yet supported."
+                                ))
+                            }
                             KeymapResult::MatchedSequence(_) => Err(anyhow!(
                                 "`:help` for sequence bindings is not yet supported."
                             )),
