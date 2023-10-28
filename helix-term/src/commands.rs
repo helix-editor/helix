@@ -323,7 +323,9 @@ impl MappableCommand {
         file_picker_in_current_directory, "Open file picker at current working directory",
         #[cfg(feature = "dap_lsp")]
         code_action, "Perform code action",
+        #[cfg(not(target_arch = "wasm32"))]
         buffer_picker, "Open buffer picker",
+        #[cfg(not(target_arch = "wasm32"))]
         jumplist_picker, "Open jumplist picker",
         #[cfg(feature = "dap_lsp")]
         symbol_picker, "Open symbol picker",
@@ -335,6 +337,7 @@ impl MappableCommand {
         diagnostics_picker, "Open diagnostic picker",
         #[cfg(feature = "dap_lsp")]
         workspace_diagnostics_picker, "Open workspace diagnostic picker",
+        #[cfg(not(target_arch = "wasm32"))]
         last_picker, "Open last picker",
         insert_at_line_start, "Insert at start of line",
         insert_at_line_end, "Insert at end of line",
@@ -2759,6 +2762,7 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
@@ -2832,6 +2836,7 @@ fn buffer_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn jumplist_picker(cx: &mut Context) {
     struct JumpMeta {
         id: DocumentId,
@@ -3002,6 +3007,7 @@ pub fn command_palette(cx: &mut Context) {
     ));
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn last_picker(cx: &mut Context) {
     // TODO: last picker does not seem to work well with buffer_picker
     cx.callback = Some(Box::new(|compositor, cx| {

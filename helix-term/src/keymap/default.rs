@@ -201,9 +201,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-s" => save_selection,
 
         "space" => { "Space"
-            "b" => buffer_picker,
-            "j" => jumplist_picker,
-            "'" => last_picker,
             "w" => { "Window"
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
@@ -343,6 +340,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         },
 
         "space" => { "Space"
+            "b" => buffer_picker,
+            "j" => jumplist_picker,
+            "'" => last_picker,
             "w" => { "Window"
                 "f" => goto_file_hsplit,
                 "F" => goto_file_vsplit,
