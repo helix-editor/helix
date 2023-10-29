@@ -1,12 +1,10 @@
-(comment) @comment
 (single_line_comment) @comment
+(multi_line_comment) @comment
 
 (node
-    name: (identifier) @function)
+    (identifier) @function)
 (prop (identifier) @attribute)
 (type) @type
-
-(bare_identifier) @variable.other.member
 
 (keyword) @keyword
 
