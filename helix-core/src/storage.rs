@@ -10,30 +10,47 @@ pub struct WebStorage {
     id: String,
     content: Vec<u8>,
     read_pos: usize,
+    was_written: bool,
 }
 
 impl Read for WebStorage {
     fn read(&mut self, mut buf: &mut [u8]) -> Result<usize> {
+        debug!(
+            "storage, read request for max. {} bytes; already read: {}, total {}",
+            buf.len(),
+            self.read_pos,
+            self.content.len()
+        );
         let remaining = self.content.len() - self.read_pos;
         let capacity = buf.len();
         if capacity >= remaining {
-            let r = buf.write(&self.content[self.read_pos..]);
+            let from = self.read_pos;
             self.read_pos += remaining;
-            r
+            buf.write(&self.content[from..])
         } else {
-            let r = buf.write(&self.content[..capacity]);
+            let from = self.read_pos;
             self.read_pos += capacity;
-            r
+            buf.write(&self.content[from..self.read_pos])
         }
     }
 }
 
 impl Write for WebStorage {
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        debug!("storage, write request for {} bytes", buf.len());
+        if self.was_written {
+            self.content.extend_from_slice(buf);
+        } else {
+            self.content = buf.to_vec();
+        }
+        debug!("storage, storing {} bytes", self.content.len());
         let storage = storage()?;
-        if let Ok(content) = String::from_utf8(buf.to_vec()) {
+        if let Ok(content) = String::from_utf8(self.content.to_vec()) {
             match storage.set_item(&self.id, &content) {
-                Ok(_) => Ok(buf.len()),
+                Ok(_) => {
+                    self.was_written = true;
+                    Ok(buf.len())
+                }
                 Err(e) => {
                     debug!("error writing to storage {:?}", e);
                     Err(ErrorKind::Other.into())
@@ -74,6 +91,7 @@ pub fn open<P: AsRef<Path>>(path: P) -> Result<WebStorage> {
                 id: path.into_owned(),
                 content: content.into_bytes().to_vec(),
                 read_pos: 0,
+                was_written: false,
             }),
             Ok(None) => {
                 debug!("content not found in storage");
@@ -81,6 +99,7 @@ pub fn open<P: AsRef<Path>>(path: P) -> Result<WebStorage> {
                     id: path.into_owned(),
                     content: vec![],
                     read_pos: 0,
+                    was_written: false,
                 })
             }
             Err(e) => {

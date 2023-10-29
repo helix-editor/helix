@@ -82,6 +82,7 @@ wasm-pack test --headless --firefox
   be used.
 * All pickers (file, command, buffer) are broken, as they rely on `nucleo` and
   its threadpool.
+* System clipboard integration.
 
 ## How does it work
 
