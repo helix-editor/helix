@@ -5,7 +5,9 @@ use tree_sitter::{Node, QueryCursor};
 
 use crate::{
     char_idx_at_visual_offset,
-    chars::{categorize_char, char_is_line_ending, CharCategory},
+    chars::{
+        categorize_char, categorize_word_char, char_is_line_ending, CharCategory, WordCharCategory,
+    },
     doc_formatter::TextFormat,
     graphemes::{
         next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
@@ -197,6 +199,14 @@ pub fn move_prev_long_word_end(slice: RopeSlice, range: Range, count: usize) -> 
     word_move(slice, range, count, WordMotionTarget::PrevLongWordEnd)
 }
 
+pub fn move_prev_partial_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevPartialWordStart)
+}
+
+pub fn move_next_partial_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::NextPartialWordEnd)
+}
+
 fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTarget) -> Range {
     let is_prev = matches!(
         target,
@@ -204,6 +214,7 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
             | WordMotionTarget::PrevLongWordStart
             | WordMotionTarget::PrevWordEnd
             | WordMotionTarget::PrevLongWordEnd
+            | WordMotionTarget::PrevPartialWordStart
     );
 
     // Special-case early-out.
@@ -383,6 +394,10 @@ pub enum WordMotionTarget {
     NextLongWordEnd,
     PrevLongWordStart,
     PrevLongWordEnd,
+    // A "partial word" is a word which is also delimited at numbers, lower->upper
+    // case and underscores.
+    PrevPartialWordStart,
+    NextPartialWordEnd,
 }
 
 pub trait CharHelpers {
@@ -400,6 +415,7 @@ impl CharHelpers for Chars<'_> {
                 | WordMotionTarget::PrevLongWordStart
                 | WordMotionTarget::PrevWordEnd
                 | WordMotionTarget::PrevLongWordEnd
+                | WordMotionTarget::PrevPartialWordStart
         );
 
         // Reverse the iterator if needed for the motion direction.
@@ -476,6 +492,26 @@ fn is_long_word_boundary(a: char, b: char) -> bool {
     }
 }
 
+fn is_partial_word_boundary(left_ch: char, right_ch: char) -> bool {
+    match (categorize_char(left_ch), categorize_char(right_ch)) {
+        (CharCategory::Word, CharCategory::Word) => {
+            match (
+                categorize_word_char(left_ch),
+                categorize_word_char(right_ch),
+            ) {
+                // Allow leading underscore(s) or leading upper case char(s) followed
+                // by a lower case chars
+                (WordCharCategory::Underscore, WordCharCategory::Numeric)
+                | (WordCharCategory::Underscore, WordCharCategory::LowerCase)
+                | (WordCharCategory::Underscore, WordCharCategory::UpperCase)
+                | (WordCharCategory::UpperCase, WordCharCategory::LowerCase) => false,
+                (a, b) => a != b,
+            }
+        }
+        (a, b) => a != b,
+    }
+}
+
 fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> bool {
     match target {
         WordMotionTarget::NextWordStart | WordMotionTarget::PrevWordEnd => {
@@ -492,6 +528,15 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
         }
         WordMotionTarget::NextLongWordEnd | WordMotionTarget::PrevLongWordStart => {
             is_long_word_boundary(prev_ch, next_ch)
+                && (!prev_ch.is_whitespace() || char_is_line_ending(next_ch))
+        }
+        WordMotionTarget::PrevPartialWordStart => {
+            // When navigating backwards left_ch=next_ch and right_ch=prev_ch
+            is_partial_word_boundary(next_ch, prev_ch)
+                && (!prev_ch.is_whitespace() || char_is_line_ending(next_ch))
+        }
+        WordMotionTarget::NextPartialWordEnd => {
+            is_partial_word_boundary(prev_ch, next_ch)
                 && (!prev_ch.is_whitespace() || char_is_line_ending(next_ch))
         }
     }

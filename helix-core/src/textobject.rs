@@ -3,7 +3,9 @@ use std::fmt::Display;
 use ropey::RopeSlice;
 use tree_sitter::{Node, QueryCursor};
 
-use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
+use crate::chars::{
+    categorize_char, categorize_word_char, char_is_whitespace, CharCategory, WordCharCategory,
+};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
 use crate::movement::Direction;
@@ -108,6 +110,84 @@ pub fn textobject_word(
                 Range::new(word_start - whitespace_count_left, word_end)
             }
         }
+        TextObject::Movement => unreachable!(),
+    }
+}
+
+// TODO: same function as in movement.rs
+fn is_partial_word_boundary(left_ch: char, right_ch: char) -> bool {
+    match (categorize_char(left_ch), categorize_char(right_ch)) {
+        (CharCategory::Word, CharCategory::Word) => {
+            match (
+                categorize_word_char(left_ch),
+                categorize_word_char(right_ch),
+            ) {
+                // Allow leading underscore(s) or leading upper case char(s) followed
+                // by a lower case chars
+                (WordCharCategory::Underscore, WordCharCategory::Numeric)
+                | (WordCharCategory::Underscore, WordCharCategory::LowerCase)
+                | (WordCharCategory::Underscore, WordCharCategory::UpperCase)
+                | (WordCharCategory::UpperCase, WordCharCategory::LowerCase) => false,
+                (a, b) => a != b,
+            }
+        }
+        (a, b) => a != b,
+    }
+}
+
+pub fn textobject_partial_word(slice: RopeSlice, range: Range, textobject: TextObject) -> Range {
+    let pos = range.cursor(slice);
+
+    let word_range = textobject_word(slice, range, TextObject::Inside, 0, false);
+
+    // Empty or single char range
+    if word_range.anchor + 1 >= word_range.head {
+        return word_range;
+    }
+
+    let partial_word_start = {
+        let mut cur = pos;
+        let mut prev_ch = slice.char(pos);
+
+        let mut iter = slice.chars_at(pos);
+        iter.reverse();
+
+        for ch in iter {
+            if cur <= word_range.anchor || is_partial_word_boundary(ch, prev_ch) {
+                break;
+            } else {
+                prev_ch = ch;
+                cur = cur.saturating_sub(1);
+            }
+        }
+        cur
+    };
+
+    let partial_word_end = {
+        let mut cur = pos;
+        let mut prev_ch = slice.char(pos);
+
+        let iter = slice.chars_at(pos);
+        for ch in iter {
+            if cur >= word_range.head || is_partial_word_boundary(prev_ch, ch) {
+                break;
+            } else {
+                prev_ch = ch;
+                cur += 1;
+            }
+        }
+        cur
+    };
+
+    match textobject {
+        TextObject::Inside => {
+            let underscore_count_left = slice
+                .chars_at(partial_word_start)
+                .take_while(|c| *c == '_')
+                .count();
+            Range::new(partial_word_start + underscore_count_left, partial_word_end)
+        }
+        TextObject::Around => Range::new(partial_word_start, partial_word_end),
         TextObject::Movement => unreachable!(),
     }
 }

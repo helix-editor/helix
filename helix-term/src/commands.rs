@@ -257,6 +257,8 @@ impl MappableCommand {
         move_prev_long_word_start, "Move to start of previous long word",
         move_next_long_word_end, "Move to end of next long word",
         move_prev_long_word_end, "Move to end of previous long word",
+        move_prev_partial_word_start, "Move to start of previous partial word",
+        move_next_partial_word_end, "Move to end of next partial word",
         move_parent_node_end, "Move to end of the parent node",
         move_parent_node_start, "Move to beginning of the parent node",
         extend_next_word_start, "Extend to start of next word",
@@ -269,6 +271,8 @@ impl MappableCommand {
         extend_prev_long_word_end, "Extend to end of prev long word",
         extend_parent_node_end, "Extend to end of the parent node",
         extend_parent_node_start, "Extend to beginning of the parent node",
+        extend_prev_partial_word_start, "Extend to start of previous partial word",
+        extend_next_partial_word_end, "Extend to end of next partial word",
         find_till_char, "Move till next occurrence of char",
         find_next_char, "Move to next occurrence of char",
         extend_till_char, "Extend till next occurrence of char",
@@ -1110,6 +1114,14 @@ fn move_next_long_word_end(cx: &mut Context) {
     move_word_impl(cx, movement::move_next_long_word_end)
 }
 
+fn move_prev_partial_word_start(cx: &mut Context) {
+    move_word_impl(cx, movement::move_prev_partial_word_start)
+}
+
+fn move_next_partial_word_end(cx: &mut Context) {
+    move_word_impl(cx, movement::move_next_partial_word_end)
+}
+
 fn goto_para_impl<F>(cx: &mut Context, move_fn: F)
 where
     F: Fn(RopeSlice, Range, usize, Movement) -> Range + 'static,
@@ -1321,6 +1333,14 @@ fn extend_prev_long_word_end(cx: &mut Context) {
 
 fn extend_next_long_word_end(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_long_word_end)
+}
+
+fn extend_prev_partial_word_start(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_partial_word_start)
+}
+
+fn extend_next_partial_word_end(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_partial_word_end)
 }
 
 /// Separate branch to find_char designed only for `<ret>` char.
@@ -5330,6 +5350,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                     match ch {
                         'w' => textobject::textobject_word(text, range, objtype, count, false),
                         'W' => textobject::textobject_word(text, range, objtype, count, true),
+                        'v' => textobject::textobject_partial_word(text, range, objtype),
                         't' => textobject_treesitter("class", range),
                         'f' => textobject_treesitter("function", range),
                         'a' => textobject_treesitter("parameter", range),
@@ -5362,6 +5383,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     let help_text = [
         ("w", "Word"),
         ("W", "WORD"),
+        ("v", "Partial word"),
         ("p", "Paragraph"),
         ("t", "Type definition (tree-sitter)"),
         ("f", "Function (tree-sitter)"),

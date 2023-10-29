@@ -11,6 +11,15 @@ pub enum CharCategory {
     Unknown,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub enum WordCharCategory {
+    Underscore,
+    Numeric,
+    UpperCase,
+    LowerCase,
+    Unknown,
+}
+
 #[inline]
 pub fn categorize_char(ch: char) -> CharCategory {
     if char_is_line_ending(ch) {
@@ -23,6 +32,22 @@ pub fn categorize_char(ch: char) -> CharCategory {
         CharCategory::Punctuation
     } else {
         CharCategory::Unknown
+    }
+}
+
+#[inline]
+pub fn categorize_word_char(ch: char) -> WordCharCategory {
+    if ch == '_' {
+        WordCharCategory::Underscore
+    } else if ch.is_numeric() {
+        WordCharCategory::Numeric
+    } else if ch.is_uppercase() {
+        WordCharCategory::UpperCase
+    } else if ch.is_alphabetic() {
+        // Treat any alphabetic char which is not UpperCase as LowerCase
+        WordCharCategory::LowerCase
+    } else {
+        WordCharCategory::Unknown
     }
 }
 
