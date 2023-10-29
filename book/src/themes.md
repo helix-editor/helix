@@ -155,6 +155,7 @@ We use a similar set of scopes as
 
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
+  - `parameter` - Generic type parameters (`T`)
   - `enum`
     - `variant`
 - `constructor`
