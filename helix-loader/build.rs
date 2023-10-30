@@ -32,7 +32,7 @@ fn main() {
     // we need to revparse because the git dir could be anywhere if you are
     // using detached worktrees but there is no good way to obtain an OsString
     // from command output so for now we can't accept non-utf8 paths here
-    // probably rare enouch where it doesn't matter tough we could use gitoxide
+    // probably rare enough where it doesn't matter tough we could use gitoxide
     // here but that would be make it a hard dependency and slow compile times
     let Some(git_dir): Option<String> = Command::new("git")
         .args(["rev-parse", "--git-dir"])

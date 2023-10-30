@@ -79,7 +79,7 @@ fn find_pair(
                 }
             }
         }
-        // this node itselt wasn't a pair but maybe its siblings are
+        // this node itself wasn't a pair but maybe its siblings are
 
         // check if we are *on* the pair (special cased so we don't look
         // at the current node twice and to jump to the start on that case)

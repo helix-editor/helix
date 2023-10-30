@@ -264,7 +264,7 @@
   (primarySuffix (objectConstr)))
 ; object constructor
 
-; does not appear to be a way to distinguish these without verbatium matching
+; does not appear to be a way to distinguish these without verbatim matching
 ; [] @function.builtin
 ; [] @function.method
 ; [] @function.macro
