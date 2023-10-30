@@ -2,9 +2,11 @@
 (multi_line_comment) @comment
 
 (node
-    (identifier) @function)
+    (identifier) @variable)
+
 (prop (identifier) @attribute)
-(type) @type
+
+(type (_) @type) @punctuation.bracket
 
 (keyword) @keyword
 
