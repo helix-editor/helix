@@ -3128,13 +3128,7 @@ fn open(cx: &mut Context, open: Open) {
         text.push_str(&indent);
 
         if config.continue_comments {
-            handle_comment_continue(
-                doc,
-                &mut text,
-                &doc.indent_style,
-                doc.tab_width(),
-                cursor_line,
-            );
+            handle_comment_continue(doc, &mut text, cursor_line);
         }
 
         let text = text.repeat(count);
@@ -3163,19 +3157,13 @@ fn open(cx: &mut Context, open: Open) {
 
 // Currently only continues single-line comments
 // TODO: Handle block comments as well
-fn handle_comment_continue(
-    doc: &Document,
-    text: &mut String,
-    indent_style: &IndentStyle,
-    tab_width: usize,
-    cursor_line: usize,
-) {
+fn handle_comment_continue(doc: &Document, text: &mut String, cursor_line: usize) {
     let line = doc.text().line(cursor_line);
 
     if let Some(lang_config) = doc.language_config() {
         let comment_tokens = &lang_config.comment_tokens;
 
-        comment::handle_comment_continue(&line, text, indent_style, tab_width, comment_tokens);
+        comment::handle_comment_continue(&line, text, comment_tokens);
     }
 }
 
@@ -3717,13 +3705,7 @@ pub mod insert {
                     new_text.push_str(&indent);
 
                     if config.continue_comments {
-                        handle_comment_continue(
-                            doc,
-                            &mut new_text,
-                            &doc.indent_style,
-                            doc.tab_width(),
-                            current_line,
-                        );
+                        handle_comment_continue(doc, &mut new_text, current_line);
                     }
 
                     new_text.chars().count()

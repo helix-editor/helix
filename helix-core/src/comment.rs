@@ -3,11 +3,7 @@
 //! * toggle comments on lines over the selection
 //! * continue comment when opening a new line
 
-use crate::{
-    chars,
-    indent::{indent_level_at, IndentStyle},
-    Change, Rope, RopeSlice, Selection, Tendril, Transaction,
-};
+use crate::{chars, Change, Rope, RopeSlice, Selection, Tendril, Transaction};
 use std::borrow::Cow;
 
 /// Given text, a comment token, and a set of line indices, returns the following:
@@ -98,14 +94,10 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     Transaction::change(doc, changes.into_iter())
 }
 
-/// Return the comment token of the current line if it is commented, along with the
-/// position of the last character in the comment token.
+/// Return the comment token of the current line if it is commented.
 ///
 /// Return None otherwise.
-pub fn get_comment_token_and_position<'a>(
-    line: &RopeSlice,
-    tokens: &'a [String],
-) -> Option<(&'a str, usize)> {
+pub fn get_comment_token<'a>(line: &RopeSlice, tokens: &'a [String]) -> Option<&'a str> {
     // TODO: don't continue shebangs
     if tokens.is_empty() {
         return None;
@@ -124,7 +116,7 @@ pub fn get_comment_token_and_position<'a>(
                 // We don't necessarily want to break upon finding the first matching comment token
                 // Instead, we check against all of the comment tokens and end up returning the longest
                 // comment token that matches
-                result = Some((token.as_str(), pos + token.len() - 1));
+                result = Some(token.as_str());
             }
         }
     }
@@ -134,30 +126,15 @@ pub fn get_comment_token_and_position<'a>(
 
 /// Determines whether the new line following the given line should be
 /// prepended with a comment token. If it does, the `text` string is
-/// appended with the appropriate comment token and indented to the same
-/// level as the previous comment line.
+/// appended with the appropriate comment token.
 pub fn handle_comment_continue<'a>(
     line: &'a RopeSlice,
     text: &'a mut String,
-    indent_style: &'a IndentStyle,
-    tab_width: usize,
     comment_tokens: &'a [String],
 ) {
-    if let Some((token, comment_token_ending_pos)) =
-        get_comment_token_and_position(line, comment_tokens)
-    {
-        text.push_str(token);
-
-        let indent_width = indent_style.indent_width(tab_width);
-        let indent_level =
-            match indent_level_at(line, tab_width, indent_width, comment_token_ending_pos + 1) {
-                Some(indent_level) => indent_level,
-                None => 1,
-            };
-
-        let trailing_whitespace = indent_style.as_str().repeat(indent_level);
-
-        text.push_str(&trailing_whitespace);
+    if let Some(token) = get_comment_token(line, comment_tokens) {
+        let new_line = format!("{} ", token);
+        text.push_str(new_line.as_str());
     }
 }
 
@@ -218,7 +195,7 @@ mod test {
     }
 
     #[test]
-    fn test_get_comment_token_and_position() {
+    fn test_get_comment_token() {
         let tokens = vec![
             String::from("//"),
             String::from("///"),
@@ -226,90 +203,87 @@ mod test {
             String::from(";"),
         ];
 
+        assert_eq!(get_comment_token(&RopeSlice::from("# 1\n"), &tokens), None);
         assert_eq!(
-            get_comment_token_and_position(&RopeSlice::from("# 1\n"), &tokens),
+            get_comment_token(&RopeSlice::from("    // 2    \n"), &tokens),
+            Some("//")
+        );
+        assert_eq!(
+            get_comment_token(&RopeSlice::from("///3\n"), &tokens),
+            Some("///")
+        );
+        assert_eq!(
+            get_comment_token(&RopeSlice::from("/// 4\n"), &tokens),
+            Some("///")
+        );
+        assert_eq!(
+            get_comment_token(&RopeSlice::from("//! 5\n"), &tokens),
+            Some("//!")
+        );
+        assert_eq!(
+            get_comment_token(&RopeSlice::from("//! /// 6\n"), &tokens),
+            Some("//!")
+        );
+        assert_eq!(
+            get_comment_token(&RopeSlice::from("7 ///\n"), &tokens),
             None
         );
         assert_eq!(
-            get_comment_token_and_position(&RopeSlice::from("    // 2    \n"), &tokens),
-            Some(("//", 5))
+            get_comment_token(&RopeSlice::from(";8\n"), &tokens),
+            Some(";")
         );
         assert_eq!(
-            get_comment_token_and_position(&RopeSlice::from("///3\n"), &tokens),
-            Some(("///", 2))
-        );
-        assert_eq!(
-            get_comment_token_and_position(&RopeSlice::from("/// 4\n"), &tokens),
-            Some(("///", 2))
-        );
-        assert_eq!(
-            get_comment_token_and_position(&RopeSlice::from("//! 5\n"), &tokens),
-            Some(("//!", 2))
-        );
-        assert_eq!(
-            get_comment_token_and_position(&RopeSlice::from("//! /// 6\n"), &tokens),
-            Some(("//!", 2))
-        );
-        assert_eq!(
-            get_comment_token_and_position(&RopeSlice::from("7 ///\n"), &tokens),
-            None
-        );
-        assert_eq!(
-            get_comment_token_and_position(&RopeSlice::from(";8\n"), &tokens),
-            Some((";", 0))
-        );
-        assert_eq!(
-            get_comment_token_and_position(&RopeSlice::from("//////////// 9"), &tokens),
-            Some(("///", 2))
+            get_comment_token(&RopeSlice::from("//////////// 9"), &tokens),
+            Some("///")
         );
     }
 
     #[test]
     fn test_handle_comment_continue() {
         let comment_tokens = vec![String::from("//"), String::from("///")];
-        let doc = RopeSlice::from("// 1\n");
-        let mut text = String::from(doc);
+        let mut line = RopeSlice::from("// 1\n");
+        let mut text = String::from(line);
 
-        handle_comment_continue(&doc, &mut text, &IndentStyle::Spaces(4), 4, &comment_tokens);
+        handle_comment_continue(&line, &mut text, &comment_tokens);
 
         assert_eq!(text, String::from("// 1\n// "));
 
-        // doc = Rope::from("///2\n");
-        // text = String::from(&doc);
+        line = RopeSlice::from("///2\n");
+        text = String::from(line);
 
-        // handle_comment_continue(&doc, &mut text, 0, &comment_tokens);
+        handle_comment_continue(&line, &mut text, &comment_tokens);
 
-        // assert_eq!(text, String::from("///2\n/// "));
+        assert_eq!(text, String::from("///2\n/// "));
 
-        // doc = Rope::from("      // 3\n");
-        // text = String::from(&doc);
+        line = RopeSlice::from("      // 3\n");
+        text = String::from(line);
 
-        // handle_comment_continue(&doc, &mut text, 0, &comment_tokens);
+        handle_comment_continue(&line, &mut text, &comment_tokens);
 
-        // assert_eq!(text, String::from("      // 3\n      // "));
+        assert_eq!(text, String::from("      // 3\n      // "));
 
-        // doc = Rope::from("///          4\n");
-        // text = String::from(&doc);
+        line = RopeSlice::from("///          4\n");
+        text = String::from(line);
 
-        // handle_comment_continue(&doc, &mut text, 0, &comment_tokens);
+        handle_comment_continue(&line, &mut text, &comment_tokens);
 
-        // assert_eq!(text, String::from("///          4\n///          "));
+        assert_eq!(text, String::from("///          4\n///          "));
 
-        // doc = Rope::from("// \n");
-        // text = String::from(&doc);
+        line = RopeSlice::from("// \n");
+        text = String::from(line);
 
-        // handle_comment_continue(&doc, &mut text, 0, &comment_tokens);
+        handle_comment_continue(&line, &mut text, &comment_tokens);
 
-        // assert_eq!(text, String::from("// \n// "));
+        assert_eq!(text, String::from("// \n// "));
 
-        // doc = Rope::from("     // Lorem Ipsum\n     // dolor sit amet\n");
-        // text = String::from(&doc);
+        line = RopeSlice::from("     // Lorem Ipsum\n     // dolor sit amet\n");
+        text = String::from(line);
 
-        // handle_comment_continue(&doc, &mut text, 1, &comment_tokens);
+        handle_comment_continue(&line, &mut text, &comment_tokens);
 
-        // assert_eq!(
-        //     text,
-        //     String::from("     // Lorem Ipsum\n     // dolor sit amet\n     // ")
-        // );
+        assert_eq!(
+            text,
+            String::from("     // Lorem Ipsum\n     // dolor sit amet\n     // ")
+        );
     }
 }
