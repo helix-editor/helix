@@ -1,7 +1,3 @@
-[
-  (node_children)
-] @indent
+(node_children) @indent
 
-[
-  "}"
-] @outdent
+ "}" @outdent
