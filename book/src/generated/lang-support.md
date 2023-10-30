@@ -54,7 +54,7 @@
 | git-rebase | ✓ |  |  |  |
 | gleam | ✓ | ✓ |  | `gleam` |
 | glsl | ✓ | ✓ | ✓ |  |
-| go | ✓ | ✓ | ✓ | `gopls` |
+| go | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
 | godot-resource | ✓ |  |  |  |
 | gomod | ✓ |  |  | `gopls` |
 | gotmpl | ✓ |  |  | `gopls` |
@@ -89,6 +89,7 @@
 | llvm | ✓ | ✓ | ✓ |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |
 | llvm-mir-yaml | ✓ |  | ✓ |  |
+| lpf | ✓ |  |  |  |
 | lua | ✓ | ✓ | ✓ | `lua-language-server` |
 | make | ✓ |  |  |  |
 | markdoc | ✓ |  |  | `markdoc-ls` |
@@ -163,6 +164,7 @@
 | tsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
+| typst | ✓ |  |  | `typst-lsp` |
 | ungrammar | ✓ |  |  |  |
 | unison | ✓ |  |  |  |
 | uxntal | ✓ |  |  |  |
