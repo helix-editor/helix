@@ -184,30 +184,8 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
 /// To determine indentation of a newly inserted line, figure out the indentation at the last col
 /// of the previous line.
 pub fn indent_level_for_line(line: RopeSlice, tab_width: usize, indent_width: usize) -> usize {
-    if let Some(indent_level) = indent_level_at(&line, tab_width, indent_width, 0) {
-        indent_level
-    } else {
-        0
-    }
-}
-
-/// Determine the indentation level starting from the specified position index in the line.
-///
-/// Returns None if the specified index is out of bounds of the line.
-pub fn indent_level_at(
-    line: &RopeSlice,
-    tab_width: usize,
-    indent_width: usize,
-    starting_pos: usize,
-) -> Option<usize> {
-    let line_len = line.len_chars();
-
-    if starting_pos >= line_len {
-        return None;
-    }
-
     let mut len = 0;
-    for ch in line.chars_at(starting_pos) {
+    for ch in line.chars() {
         match ch {
             '\t' => len += tab_width_at(len, tab_width as u16),
             ' ' => len += 1,
@@ -215,7 +193,7 @@ pub fn indent_level_at(
         }
     }
 
-    Some(len / indent_width)
+    len / indent_width
 }
 
 /// Computes for node and all ancestors whether they are the first node on their line.
