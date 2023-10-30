@@ -13,6 +13,7 @@
   - [AppImage](#appimage)
 - [macOS](#macos)
   - [Homebrew Core](#homebrew-core)
+  - [MacPorts](#macports)
 - [Windows](#windows)
   - [Winget](#winget)
   - [Scoop](#scoop)
@@ -131,6 +132,12 @@ chmod +x helix-*.AppImage # change permission for executable mode
 
 ```sh
 brew install helix
+```
+
+### MacPorts
+
+```sh
+port install helix
 ```
 
 ## Windows
