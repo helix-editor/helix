@@ -795,7 +795,8 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
         // |         | |         |
         // +---------+ +---------+
 
-        let render_preview = self.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let render_preview =
+            self.show_preview && self.file_fn.is_some() && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
 
         let picker_width = if render_preview {
             area.width / 2
