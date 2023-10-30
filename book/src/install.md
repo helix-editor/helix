@@ -13,6 +13,7 @@
   - [AppImage](#appimage)
 - [macOS](#macos)
   - [Homebrew Core](#homebrew-core)
+  - [MacPorts](#macports)
 - [Windows](#windows)
   - [Winget](#winget)
   - [Scoop](#scoop)
