@@ -1081,7 +1081,7 @@ impl Document {
     /// is likewise auto-detected, and will remain unchanged if no line endings were detected.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
-            self.indent_config(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
+            self.indent_config(DEFAULT_INDENT, |config| config.unit.as_ref().map(|unit| IndentStyle::from_str(unit)))
         });
         if let Some(line_ending) = auto_detect_line_ending(&self.text) {
             self.line_ending = line_ending;
@@ -1116,18 +1116,15 @@ impl Document {
         };
     }
 
-    fn indent_config<T, F: Fn(&IndentationConfiguration) -> T>(&self, default: T, mapper: F) -> T {
-        self.language_config()
-            .and_then(|config| config.indent.as_ref())
-            .filter(|config| config.required)
-            .map(|config| mapper(&config.indent))
-            .or_else(|| self.config.load().indent.as_ref().map(&mapper))
-            .or_else(|| {
-                self.language_config()
-                    .and_then(|config| config.indent.as_ref())
-                    .map(|config| mapper(&config.indent))
-            })
-            .unwrap_or(default)
+    fn indent_config<T, F: Fn(IndentationConfiguration) -> Option<T>>(&self, default: T, mapper: F) -> T {
+        let mut indent = self.config.load().indent.clone();
+
+        if let Some(c) = self.language_config().and_then(|config| config.indent.as_ref()) {
+            indent.tab_width = indent.tab_width.filter(|_| !c.required).or(Some(c.tab_width));
+            indent.unit = indent.unit.filter(|_| !c.required).or(Some(c.unit.clone()));
+        }
+
+        mapper(indent).unwrap_or(default)
     }
 
     /// Reload the document from its path.

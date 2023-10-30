@@ -69,6 +69,21 @@ where
     })
 }
 
+fn deserialize_tab_width_option<'de, D>(deserializer: D) -> Result<Option<usize>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    usize::deserialize(deserializer).and_then(|n| {
+        if n > 0 && n <= 16 {
+            Ok(Some(n))
+        } else {
+            Err(serde::de::Error::custom(
+                "tab width must be a value from 1 to 16 inclusive",
+            ))
+        }
+    })
+}
+
 pub fn deserialize_auto_pairs<'de, D>(deserializer: D) -> Result<Option<AutoPairs>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -537,18 +552,20 @@ pub struct DebuggerQuirks {
     pub absolute_paths: bool,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentationConfiguration {
-    #[serde(deserialize_with = "deserialize_tab_width")]
-    pub tab_width: usize,
-    pub unit: String,
+    #[serde(deserialize_with = "deserialize_tab_width_option")]
+    pub tab_width: Option<usize>,
+    pub unit: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct LanguageIndentationConfiguration {
-    #[serde(flatten)]
-    pub indent: IndentationConfiguration,
+    #[serde(deserialize_with = "deserialize_tab_width")]
+    pub tab_width: usize,
+    pub unit: String,
     #[serde(default)]
     pub required: bool,
 }
@@ -609,6 +626,15 @@ impl FromStr for AutoPairConfig {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let enable: bool = s.parse()?;
         Ok(AutoPairConfig::Enable(enable))
+    }
+}
+
+impl Default for IndentationConfiguration {
+    fn default() -> Self {
+        IndentationConfiguration {
+            tab_width: None,
+            unit: None,
+        }
     }
 }
 
