@@ -107,6 +107,8 @@
 ; Types
 ; -----
 
+(type_parameter
+  name: (type_identifier) @type.parameter)
 (type_identifier) @type
 (predefined_type) @type.builtin
 
