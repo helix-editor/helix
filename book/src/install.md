@@ -133,6 +133,12 @@ chmod +x helix-*.AppImage # change permission for executable mode
 brew install helix
 ```
 
+### MacPorts
+
+```sh
+port install helix
+```
+
 ## Windows
 
 Install on Windows using [Winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/), [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
