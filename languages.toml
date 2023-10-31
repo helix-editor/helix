@@ -3956,3 +3956,15 @@ language-servers = ["ada-gpr-language-server"]
 [[grammar]]
 name = "gpr"
 source = { git = "https://github.com/brownts/tree-sitter-gpr", rev = "cea857d3c18d1385d1f5b66cd09ea1e44173945c" }
+
+[[language]]
+name = "ispc"
+scope = "source.ispc"
+injection-regex = "ispc"
+file-types = ["ispc"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "ispc"
+source = { git = "https://github.com/fab4100/tree-sitter-ispc", rev = "9b2f9aec2106b94b4e099fe75e73ebd8ae707c04" }
