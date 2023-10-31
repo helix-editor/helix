@@ -80,6 +80,7 @@
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | ini | ✓ |  |  |  |
+| ispc | ✓ |  |  |  |
 | janet | ✓ |  |  |  |
 | java | ✓ | ✓ | ✓ | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
