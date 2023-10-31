@@ -1,3 +1,4 @@
+#[cfg(feature = "dap_lsp")]
 mod completion;
 mod document;
 pub(crate) mod editor;
@@ -16,6 +17,7 @@ mod text;
 use crate::compositor::{Component, Compositor};
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
+#[cfg(feature = "dap_lsp")]
 pub use completion::{Completion, CompletionItem};
 pub use editor::EditorView;
 pub use markdown::Markdown;
@@ -155,6 +157,7 @@ pub fn regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker<PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
@@ -214,14 +217,14 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
     })
     .with_preview(|_editor, path| Some((path.clone().into(), None)));
     let injector = picker.injector();
-    let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
+    let timeout = Instant::now() + std::time::Duration::from_millis(30);
 
     let mut hit_timeout = false;
     for file in &mut files {
         if injector.push(file).is_err() {
             break;
         }
-        if std::time::Instant::now() >= timeout {
+        if Instant::now() >= timeout {
             hit_timeout = true;
             break;
         }
@@ -268,10 +271,14 @@ pub mod completers {
     }
 
     pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
+        #[cfg(not(target_arch = "wasm32"))]
         let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
+        #[cfg(not(target_arch = "wasm32"))]
         for rt_dir in helix_loader::runtime_dirs() {
             names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
         }
+        #[cfg(target_arch = "wasm32")]
+        let mut names = theme::themes();
         names.push("default".into());
         names.push("base16_default".into());
         names.sort();
@@ -348,6 +355,7 @@ pub mod completers {
             .collect()
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
         let Some(options) = doc!(editor)
             .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)

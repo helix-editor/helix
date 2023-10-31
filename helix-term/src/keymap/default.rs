@@ -5,7 +5,7 @@ use super::{KeyTrie, Mode};
 use helix_core::hashmap;
 
 pub fn default() -> HashMap<Mode, KeyTrie> {
-    let normal = keymap!({ "Normal mode"
+    let mut normal = keymap!({ "Normal mode"
         "h" | "left" => move_char_left,
         "j" | "down" => move_visual_line_down,
         "k" | "up" => move_visual_line_up,
@@ -39,15 +39,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "g" => { "Goto"
             "g" => goto_file_start,
             "e" => goto_last_line,
-            "f" => goto_file,
             "h" => goto_line_start,
             "l" => goto_line_end,
             "s" => goto_first_nonwhitespace,
-            "d" => goto_definition,
-            "D" => goto_declaration,
-            "y" => goto_type_definition,
-            "r" => goto_reference,
-            "i" => goto_implementation,
             "t" => goto_window_top,
             "c" => goto_window_center,
             "b" => goto_window_bottom,
@@ -105,10 +99,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "i" => select_textobject_inner,
         },
         "[" => { "Left bracket"
-            "d" => goto_prev_diag,
-            "D" => goto_first_diag,
-            "g" => goto_prev_change,
-            "G" => goto_first_change,
+            // "d" => goto_prev_diag,
+            // "D" => goto_first_diag,
             "f" => goto_prev_function,
             "t" => goto_prev_class,
             "a" => goto_prev_parameter,
@@ -118,10 +110,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "space" => add_newline_above,
         },
         "]" => { "Right bracket"
-            "d" => goto_next_diag,
-            "D" => goto_last_diag,
-            "g" => goto_next_change,
-            "G" => goto_last_change,
+            // "d" => goto_next_diag,
+            // "D" => goto_last_diag,
             "f" => goto_next_function,
             "t" => goto_next_class,
             "a" => goto_next_parameter,
@@ -153,7 +143,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         ">" => indent,
         "<" => unindent,
-        "=" => format_selections,
         "J" => join_selections,
         "A-J" => join_selections_space,
         "K" => keep_selections,
@@ -186,8 +175,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "C-s" | "s" => hsplit,
             "C-v" | "v" => vsplit,
             "C-t" | "t" => transpose_view,
-            "f" => goto_file_hsplit,
-            "F" => goto_file_vsplit,
             "C-q" | "q" => wclose,
             "C-o" | "o" => wonly,
             "C-h" | "h" | "left" => jump_view_left,
@@ -214,44 +201,11 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-s" => save_selection,
 
         "space" => { "Space"
-            "f" => file_picker,
-            "F" => file_picker_in_current_directory,
-            "b" => buffer_picker,
-            "j" => jumplist_picker,
-            "s" => symbol_picker,
-            "S" => workspace_symbol_picker,
-            "d" => diagnostics_picker,
-            "D" => workspace_diagnostics_picker,
-            "a" => code_action,
-            "'" => last_picker,
-            "g" => { "Debug (experimental)" sticky=true
-                "l" => dap_launch,
-                "r" => dap_restart,
-                "b" => dap_toggle_breakpoint,
-                "c" => dap_continue,
-                "h" => dap_pause,
-                "i" => dap_step_in,
-                "o" => dap_step_out,
-                "n" => dap_next,
-                "v" => dap_variables,
-                "t" => dap_terminate,
-                "C-c" => dap_edit_condition,
-                "C-l" => dap_edit_log,
-                "s" => { "Switch"
-                    "t" => dap_switch_thread,
-                    "f" => dap_switch_stack_frame,
-                    // sl, sb
-                },
-                "e" => dap_enable_exceptions,
-                "E" => dap_disable_exceptions,
-            },
             "w" => { "Window"
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
                 "C-t" | "t" => transpose_view,
-                "f" => goto_file_hsplit,
-                "F" => goto_file_vsplit,
                 "C-q" | "q" => wclose,
                 "C-o" | "o" => wonly,
                 "C-h" | "h" | "left" => jump_view_left,
@@ -272,10 +226,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "p" => paste_clipboard_after,
             "P" => paste_clipboard_before,
             "R" => replace_selections_with_clipboard,
-            "/" => global_search,
-            "k" => hover,
-            "r" => rename_symbol,
-            "h" => select_references_to_symbol_under_cursor,
             "?" => command_palette,
         },
         "z" => { "View"
@@ -314,16 +264,107 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         },
 
         "\"" => select_register,
-        "|" => shell_pipe,
-        "A-|" => shell_pipe_to,
-        "!" => shell_insert_output,
-        "A-!" => shell_append_output,
-        "$" => shell_keep_pipe,
         "C-z" => suspend,
 
         "C-a" => increment,
         "C-x" => decrement,
     });
+
+    // DAP
+    #[cfg(feature = "dap_lsp")]
+    normal.merge_nodes(keymap!({ "Normal mode"
+        "g" => { "Goto"
+            "d" => goto_definition,
+            "D" => goto_declaration,
+            "y" => goto_type_definition,
+            "r" => goto_reference,
+            "i" => goto_implementation,
+        },
+        "[" => { "Left bracket"
+            "d" => goto_prev_diag,
+            "D" => goto_first_diag,
+        },
+        "]" => { "Right bracket"
+            "d" => goto_next_diag,
+            "D" => goto_last_diag,
+        },
+        "=" => format_selections,
+
+        "space" => { "Space"
+            "s" => symbol_picker,
+            "S" => workspace_symbol_picker,
+            "d" => diagnostics_picker,
+            "D" => workspace_diagnostics_picker,
+            "a" => code_action,
+            "g" => { "Debug (experimental)" sticky=true
+                "l" => dap_launch,
+                "r" => dap_restart,
+                "b" => dap_toggle_breakpoint,
+                "c" => dap_continue,
+                "h" => dap_pause,
+                "i" => dap_step_in,
+                "o" => dap_step_out,
+                "n" => dap_next,
+                "v" => dap_variables,
+                "t" => dap_terminate,
+                "C-c" => dap_edit_condition,
+                "C-l" => dap_edit_log,
+                "s" => { "Switch"
+                    "t" => dap_switch_thread,
+                    "f" => dap_switch_stack_frame,
+                    // sl, sb
+                },
+                "e" => dap_enable_exceptions,
+                "E" => dap_disable_exceptions,
+            },
+            "k" => hover,
+            "r" => rename_symbol,
+            "h" => select_references_to_symbol_under_cursor,
+        },
+    }));
+
+    #[cfg(not(target_arch = "wasm32"))]
+    normal.merge_nodes(keymap!({ "Normal mode"
+        "|" => shell_pipe,
+        "A-|" => shell_pipe_to,
+        "!" => shell_insert_output,
+        "A-!" => shell_append_output,
+        "$" => shell_keep_pipe,
+        "g" => { "Goto"
+            "f" => goto_file,
+        },
+
+        "C-w" => { "Window"
+            "f" => goto_file_hsplit,
+            "F" => goto_file_vsplit,
+        },
+
+        "space" => { "Space"
+            "b" => buffer_picker,
+            "j" => jumplist_picker,
+            "'" => last_picker,
+            "w" => { "Window"
+                "f" => goto_file_hsplit,
+                "F" => goto_file_vsplit,
+            },
+            "f" => file_picker,
+            "F" => file_picker_in_current_directory,
+            "/" => global_search,
+        },
+    }));
+
+    #[cfg(feature = "vcs")]
+    normal.merge_nodes(keymap!({ "Normal mode"
+        "]" => { "Right bracket"
+            "g" => goto_next_change,
+            "G" => goto_last_change,
+        },
+        "[" => { "Left bracket"
+            "g" => goto_prev_change,
+            "G" => goto_first_change,
+        },
+    }));
+
     let mut select = normal.clone();
     select.merge_nodes(keymap!({ "Select mode"
         "h" | "left" => extend_char_left,
@@ -363,7 +404,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "esc" => normal_mode,
 
         "C-s" => commit_undo_checkpoint,
-        "C-x" => completion,
+        // "C-x" => completion,
         "C-r" => insert_register,
 
         "C-w" | "A-backspace" => delete_word_backward,

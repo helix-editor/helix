@@ -1,6 +1,7 @@
 pub mod config;
 pub mod grammar;
 
+#[cfg(not(target_arch = "wasm32"))]
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
@@ -24,9 +25,12 @@ pub fn current_working_dir() -> PathBuf {
         return path.clone();
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     let path = std::env::current_dir()
         .and_then(dunce::canonicalize)
         .expect("Couldn't determine current working directory");
+    #[cfg(target_arch = "wasm32")]
+    let path = Path::new("").to_path_buf();
     let mut cwd = CWD.write().unwrap();
     *cwd = Some(path.clone());
 
@@ -92,12 +96,13 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
 
     // fallback to location of the executable being run
     // canonicalize the path in case the executable is symlinked
-    let exe_rt_dir = std::env::current_exe()
+    if let Some(exe_rt_dir) = std::env::current_exe()
         .ok()
         .and_then(|path| std::fs::canonicalize(path).ok())
         .and_then(|path| path.parent().map(|path| path.to_path_buf().join(RT_DIR)))
-        .unwrap();
-    rt_dirs.push(exe_rt_dir);
+    {
+        rt_dirs.push(exe_rt_dir);
+    }
     rt_dirs
 }
 
@@ -141,6 +146,12 @@ pub fn runtime_file(rel_path: &Path) -> PathBuf {
     })
 }
 
+#[cfg(target_arch = "wasm32")]
+pub fn config_dir() -> PathBuf {
+    ".config/helix/".into()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub fn config_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
@@ -149,6 +160,12 @@ pub fn config_dir() -> PathBuf {
     path
 }
 
+#[cfg(target_arch = "wasm32")]
+pub fn cache_dir() -> PathBuf {
+    ".cache/helix/".into()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub fn cache_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");

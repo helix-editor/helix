@@ -1,16 +1,26 @@
-use std::io;
+use std::io::{self, Write};
 
 use crate::{buffer::Cell, terminal::Config};
 
 use helix_view::graphics::{CursorKind, Rect};
 
-#[cfg(feature = "crossterm")]
 mod crossterm;
-#[cfg(feature = "crossterm")]
 pub use self::crossterm::CrosstermBackend;
 
 mod test;
 pub use self::test::TestBackend;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub trait Buffer: Write {}
+#[cfg(not(target_arch = "wasm32"))]
+impl<T: Write> Buffer for T {}
+
+#[cfg(target_arch = "wasm32")]
+pub trait Buffer: Write {
+    fn size(&self) -> std::io::Result<Rect>;
+    fn cursor_x(&self) -> u16;
+    fn cursor_y(&self) -> u16;
+}
 
 pub trait Backend {
     fn claim(&mut self, config: Config) -> Result<(), io::Error>;

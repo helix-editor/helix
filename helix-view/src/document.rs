@@ -8,7 +8,13 @@ use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
+
+#[cfg(feature = "vcs")]
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
+#[cfg(not(feature = "vcs"))]
+pub type DiffProviderRegistry = ();
+#[cfg(not(feature = "vcs"))]
+pub type DiffHandle = ();
 
 use ::parking_lot::Mutex;
 use serde::de::{self, Deserialize, Deserializer};
@@ -22,7 +28,16 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
+
+#[cfg(target_arch = "wasm32")]
+use instant::SystemTime;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::SystemTime;
+
+#[cfg(target_arch = "wasm32")]
+use instant::Instant;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
 
 use helix_core::{
     encoding,
@@ -178,13 +193,15 @@ pub struct Document {
     pub(crate) modified_since_accessed: bool,
 
     pub(crate) diagnostics: Vec<Diagnostic>,
+    #[cfg(feature = "dap_lsp")]
     pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
 
+    #[cfg(feature = "vcs")]
     diff_handle: Option<DiffHandle>,
     version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
 
     // when document was used for most-recent-used buffer picker
-    pub focused_at: std::time::Instant,
+    pub focused_at: Instant,
 
     pub readonly: bool,
 }
@@ -548,6 +565,7 @@ fn read_and_detect_encoding<R: std::io::Read + ?Sized>(
     Ok((encoding, has_bom, decoder, read))
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 // The documentation and implementation of this function should be up-to-date with
 // its sibling function, `from_reader()`.
 //
@@ -625,6 +643,85 @@ pub async fn to_writer<'a, W: tokio::io::AsyncWriteExt + Unpin + ?Sized>(
     Ok(())
 }
 
+// TODO(wasm32) this is a copy paste of the original function, try to factor it
+#[cfg(target_arch = "wasm32")]
+// The documentation and implementation of this function should be up-to-date with
+// its sibling function, `from_reader()`.
+//
+/// Encodes the text inside `rope` into the given `encoding` and writes the
+/// encoded output into `writer.` As a `Rope` can only contain valid UTF-8,
+/// replacement characters may appear in the encoded text.
+pub fn to_writer<W: std::io::Write>(
+    writer: &mut W,
+    encoding_with_bom_info: (&'static Encoding, bool),
+    rope: &Rope,
+) -> Result<(), Error> {
+    // Text inside a `Rope` is stored as non-contiguous blocks of data called
+    // chunks. The absolute size of each chunk is unknown, thus it is impossible
+    // to predict the end of the chunk iterator ahead of time. Instead, it is
+    // determined by filtering the iterator to remove all empty chunks and then
+    // appending an empty chunk to it. This is valuable for detecting when all
+    // chunks in the `Rope` have been iterated over in the subsequent loop.
+    let (encoding, has_bom) = encoding_with_bom_info;
+
+    let iter = rope
+        .chunks()
+        .filter(|c| !c.is_empty())
+        .chain(std::iter::once(""));
+    let mut buf = [0u8; BUF_SIZE];
+
+    let mut total_written = if has_bom {
+        apply_bom(encoding, &mut buf)
+    } else {
+        0
+    };
+
+    let mut encoder = Encoder::from_encoding(encoding);
+
+    for chunk in iter {
+        let is_empty = chunk.is_empty();
+        let mut total_read = 0usize;
+
+        // An inner loop is necessary as it is possible that the input buffer
+        // may not be completely encoded on the first `encode_from_utf8()` call
+        // which would happen in cases where the output buffer is filled to
+        // capacity.
+        loop {
+            let (result, read, written, ..) =
+                encoder.encode_from_utf8(&chunk[total_read..], &mut buf[total_written..], is_empty);
+
+            // These variables act as the read and write cursors of `chunk` and `buf` respectively.
+            // They are necessary in case the output buffer fills before encoding of the entire input
+            // loop is complete. Otherwise, the loop would endlessly iterate over the same `chunk` and
+            // the data inside the output buffer would be overwritten.
+            total_read += read;
+            total_written += written;
+            match result {
+                encoding::CoderResult::InputEmpty => {
+                    debug_assert_eq!(chunk.len(), total_read);
+                    debug_assert!(buf.len() >= total_written);
+                    break;
+                }
+                encoding::CoderResult::OutputFull => {
+                    debug_assert!(chunk.len() > total_read);
+                    writer.write_all(&buf[..total_written])?;
+                    total_written = 0;
+                }
+            }
+        }
+
+        // Once the end of the iterator is reached, the output buffer is
+        // flushed and the outer loop terminates.
+        if is_empty {
+            writer.write_all(&buf[..total_written])?;
+            writer.flush()?;
+            break;
+        }
+    }
+
+    Ok(())
+}
+
 fn take_with<T, F>(mut_ref: &mut T, f: F)
 where
     T: Default,
@@ -633,6 +730,7 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
+#[cfg(feature = "dap_lsp")]
 use helix_lsp::{lsp, Client, LanguageServerName};
 use url::Url;
 
@@ -646,6 +744,11 @@ impl Document {
         let line_ending = config.load().default_line_ending.into();
         let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let last_saved_time = SystemTime::now();
+        #[cfg(target_arch = "wasm32")]
+        let last_saved_time = SystemTime::UNIX_EPOCH;
 
         Self {
             id: DocumentId::default(),
@@ -667,14 +770,16 @@ impl Document {
             version: 0,
             history: Cell::new(History::default()),
             savepoints: Vec::new(),
-            last_saved_time: SystemTime::now(),
+            last_saved_time,
             last_saved_revision: 0,
             modified_since_accessed: false,
+            #[cfg(feature = "dap_lsp")]
             language_servers: HashMap::new(),
+            #[cfg(feature = "vcs")]
             diff_handle: None,
             config,
             version_control_head: None,
-            focused_at: std::time::Instant::now(),
+            focused_at: Instant::now(),
             readonly: false,
         }
     }
@@ -695,10 +800,17 @@ impl Document {
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
-        let (rope, encoding, has_bom) = if path.exists() {
-            let mut file =
+        #[cfg(not(target_arch = "wasm32"))]
+        let exists = path.exists();
+        #[cfg(target_arch = "wasm32")]
+        let exists = helix_core::storage::exists(&path);
+        let (rope, encoding, has_bom) = if exists {
+            #[cfg(target_arch = "wasm32")]
+            let mut reader = helix_core::storage::open(&path)?;
+            #[cfg(not(target_arch = "wasm32"))]
+            let mut reader =
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
-            from_reader(&mut file, encoding)?
+            from_reader(&mut reader, encoding)?
         } else {
             let line_ending: LineEnding = config.load().default_line_ending.into();
             let encoding = encoding.unwrap_or(encoding::UTF_8);
@@ -718,6 +830,7 @@ impl Document {
         Ok(doc)
     }
 
+    #[cfg(feature = "dap_lsp")]
     /// The same as [`format`], but only returns formatting changes if auto-formatting
     /// is configured.
     pub fn auto_format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
@@ -728,6 +841,7 @@ impl Document {
         }
     }
 
+    #[cfg(feature = "dap_lsp")]
     /// If supported, returns the changes that should be applied to this document in order
     /// to format it nicely.
     // We can't use anyhow::Result here since the output of the future has to be
@@ -862,7 +976,9 @@ impl Document {
             }
         };
 
+        #[cfg(feature = "dap_lsp")]
         let identifier = self.path().map(|_| self.identifier());
+        #[cfg(feature = "dap_lsp")]
         let language_servers = self.language_servers.clone();
 
         // mark changes up to now as saved
@@ -874,31 +990,39 @@ impl Document {
 
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
-            use tokio::{fs, fs::File};
-            if let Some(parent) = path.parent() {
-                // TODO: display a prompt asking the user if the directories should be created
-                if !parent.exists() {
-                    if force {
-                        std::fs::DirBuilder::new().recursive(true).create(parent)?;
-                    } else {
-                        bail!("can't save file, parent directory does not exist (use :w! to create it)");
-                    }
-                }
-            }
-
-            // Protect against overwriting changes made externally
-            if !force {
-                if let Ok(metadata) = fs::metadata(&path).await {
-                    if let Ok(mtime) = metadata.modified() {
-                        if last_saved_time < mtime {
-                            bail!("file modified by an external process, use :w! to overwrite");
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                if let Some(parent) = path.parent() {
+                    // TODO: display a prompt asking the user if the directories should be created
+                    if !parent.exists() {
+                        if force {
+                            std::fs::DirBuilder::new().recursive(true).create(parent)?;
+                        } else {
+                            bail!("can't save file, parent directory does not exist (use :w! to create it)");
                         }
                     }
                 }
-            }
 
-            let mut file = File::create(&path).await?;
-            to_writer(&mut file, encoding_with_bom_info, &text).await?;
+                use tokio::{fs, fs::File};
+                // Protect against overwriting changes made externally
+                if !force {
+                    if let Ok(metadata) = fs::metadata(&path).await {
+                        if let Ok(mtime) = metadata.modified() {
+                            if last_saved_time < mtime {
+                                bail!("file modified by an external process, use :w! to overwrite");
+                            }
+                        }
+                    }
+                }
+
+                let mut file = File::create(&path).await?;
+                to_writer(&mut file, encoding_with_bom_info, &text).await?;
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                let mut writer = helix_core::storage::open(&path)?;
+                to_writer(&mut writer, encoding_with_bom_info, &text)?;
+            }
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
@@ -907,11 +1031,12 @@ impl Document {
                 text: text.clone(),
             };
 
-            for (_, language_server) in language_servers {
-                if !language_server.is_initialized() {
-                    return Ok(event);
-                }
-                if let Some(identifier) = &identifier {
+            #[cfg(feature = "dap_lsp")]
+            if let Some(identifier) = identifier {
+                for (_, language_server) in language_servers {
+                    if !language_server.is_initialized() {
+                        return Ok(event);
+                    }
                     if let Some(notification) =
                         language_server.text_document_did_save(identifier.clone(), &text)
                     {
@@ -1006,8 +1131,11 @@ impl Document {
         // Once we have a valid path we check if its readonly status has changed
         self.detect_readonly();
 
-        let mut file = std::fs::File::open(&path)?;
-        let (rope, ..) = from_reader(&mut file, Some(encoding))?;
+        #[cfg(target_arch = "wasm32")]
+        let mut reader = helix_core::storage::open(path).unwrap();
+        #[cfg(not(target_arch = "wasm32"))]
+        let mut reader = std::fs::File::open(&path)?;
+        let (rope, ..) = from_reader(&mut reader, Some(encoding))?;
 
         // Calculate the difference between the buffer and source text, and apply it.
         // This is not considered a modification of the contents of the file regardless
@@ -1021,12 +1149,15 @@ impl Document {
 
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path) {
-            Some(diff_base) => self.set_diff_base(diff_base),
-            None => self.diff_handle = None,
-        }
+        #[cfg(feature = "vcs")]
+        {
+            match provider_registry.get_diff_base(&path) {
+                Some(diff_base) => self.set_diff_base(diff_base),
+                None => self.diff_handle = None,
+            }
 
-        self.version_control_head = provider_registry.get_current_head_name(&path);
+            self.version_control_head = provider_registry.get_current_head_name(&path);
+        }
 
         Ok(())
     }
@@ -1132,7 +1263,7 @@ impl Document {
 
     /// Mark document as recent used for MRU sorting
     pub fn mark_as_focused(&mut self) {
-        self.focused_at = std::time::Instant::now();
+        self.focused_at = Instant::now();
     }
 
     /// Remove a view's selection and inlay hints from this document.
@@ -1177,6 +1308,7 @@ impl Document {
 
         if !transaction.changes().is_empty() {
             self.version += 1;
+            #[cfg(feature = "vcs")]
             // start computing the diff in parallel
             if let Some(diff_handle) = &self.diff_handle {
                 diff_handle.update_document(self.text.clone(), false);
@@ -1260,6 +1392,7 @@ impl Document {
             }
 
             if emit_lsp_notification {
+                #[cfg(feature = "dap_lsp")]
                 // emit lsp notification
                 for language_server in self.language_servers() {
                     let notify = language_server.text_document_did_change(
@@ -1536,6 +1669,7 @@ impl Document {
         self.version
     }
 
+    #[cfg(feature = "dap_lsp")]
     /// maintains the order as configured in the language_servers TOML array
     pub fn language_servers(&self) -> impl Iterator<Item = &helix_lsp::Client> {
         self.language_config().into_iter().flat_map(move |config| {
@@ -1550,10 +1684,12 @@ impl Document {
         })
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn remove_language_server_by_name(&mut self, name: &str) -> Option<Arc<Client>> {
         self.language_servers.remove(name)
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn language_servers_with_feature(
         &self,
         feature: LanguageServerFeature,
@@ -1573,14 +1709,20 @@ impl Document {
         })
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn supports_language_server(&self, id: usize) -> bool {
         self.language_servers().any(|l| l.id() == id)
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
-        self.diff_handle.as_ref()
+        #[cfg(feature = "vcs")]
+        return self.diff_handle.as_ref();
+
+        #[cfg(not(feature = "vcs"))]
+        return None;
     }
 
+    #[cfg(feature = "vcs")]
     /// Intialize/updates the differ for this document with a new base.
     pub fn set_diff_base(&mut self, diff_base: Vec<u8>) {
         if let Ok((diff_base, ..)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
@@ -1633,9 +1775,16 @@ impl Document {
         self.path.as_ref()
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// File path as a URL.
     pub fn url(&self) -> Option<Url> {
         Url::from_file_path(self.path()?).ok()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    /// File path as a URL.
+    pub fn url(&self) -> Option<Url> {
+        None
     }
 
     #[inline]
@@ -1669,15 +1818,18 @@ impl Document {
 
     // -- LSP methods
 
+    #[cfg(feature = "dap_lsp")]
     #[inline]
     pub fn identifier(&self) -> lsp::TextDocumentIdentifier {
         lsp::TextDocumentIdentifier::new(self.url().unwrap())
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn versioned_identifier(&self) -> lsp::VersionedTextDocumentIdentifier {
         lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn position(
         &self,
         view_id: ViewId,
@@ -1697,6 +1849,7 @@ impl Document {
         &self.diagnostics
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn shown_diagnostics(&self) -> impl Iterator<Item = &Diagnostic> + DoubleEndedIterator {
         self.diagnostics.iter().filter(|d| {
             self.language_servers_with_feature(LanguageServerFeature::Diagnostics)
@@ -1866,6 +2019,7 @@ mod test {
 
     use super::*;
 
+    #[cfg(feature = "dap_lsp")]
     #[test]
     fn changeset_to_changes_ignore_line_endings() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
@@ -1904,6 +2058,7 @@ mod test {
         );
     }
 
+    #[cfg(feature = "dap_lsp")]
     #[test]
     fn changeset_to_changes() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
@@ -2043,8 +2198,11 @@ mod test {
                 assert!(path.exists());
                 assert!(ref_path.exists());
 
-                let mut file = std::fs::File::open(path).unwrap();
-                let text = from_reader(&mut file, Some(encoding.into()))
+                #[cfg(target_arch = "wasm32")]
+                let mut reader = helix_core::storage::open(path).unwrap();
+                #[cfg(not(target_arch = "wasm32"))]
+                let mut reader = std::fs::File::open(path).unwrap();
+                let text = from_reader(&mut reader, Some(encoding.into()))
                     .unwrap()
                     .0
                     .to_string();
@@ -2070,7 +2228,7 @@ mod test {
 
                 let text = Rope::from_str(&std::fs::read_to_string(path).unwrap());
                 let mut buf: Vec<u8> = Vec::new();
-                helix_lsp::block_on(to_writer(&mut buf, (encoding, false), &text)).unwrap();
+                futures_executor::block_on(to_writer(&mut buf, (encoding, false), &text)).unwrap();
 
                 let expectation = std::fs::read(ref_path).unwrap();
                 assert_eq!(buf, expectation);

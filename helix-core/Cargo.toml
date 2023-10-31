@@ -24,13 +24,14 @@ unicode-segmentation = "1.10"
 unicode-width = "0.1"
 unicode-general-category = "0.6"
 # slab = "0.4.2"
+once_cell = "1.18"
 slotmap = "1.0"
 tree-sitter.workspace = true
-once_cell = "1.18"
 arc-swap = "1"
 regex = "1"
 bitflags = "2.4"
 ahash = "0.8.5"
+getrandom = { version = "*", features = ["js"] }
 hashbrown = { version = "0.14.2", features = ["raw"] }
 dunce = "1.0"
 
@@ -43,13 +44,24 @@ imara-diff = "0.1.0"
 
 encoding_rs = "0.8"
 
-chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
+chrono = { version = "0.4", default-features = false, features = [
+    "alloc",
+    "std",
+] }
 
-etcetera = "0.8"
 textwrap = "0.16.0"
 
 nucleo.workspace = true
 parking_lot = "0.12"
+
+thiserror = "1.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+instant = { version = "0.1", features = ["wasm-bindgen"] }
+web-sys = { version = "0.3", features = ["Storage", "Window"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+etcetera = "0.8"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }

@@ -5,6 +5,7 @@ use helix_core::{
     path::get_relative_path,
     pos_at_coords, syntax, Selection,
 };
+#[cfg(feature = "dap_lsp")]
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_pos_to_pos,
@@ -22,9 +23,10 @@ use helix_view::{
 use serde_json::json;
 use tui::backend::Backend;
 
+#[cfg(feature = "dap_lsp")]
+use crate::commands::apply_workspace_edit;
 use crate::{
     args::Args,
-    commands::apply_workspace_edit,
     compositor::{Compositor, Event},
     config::Config,
     job::Jobs,
@@ -33,16 +35,17 @@ use crate::{
 };
 
 use log::{debug, error, warn};
-#[cfg(not(feature = "integration"))]
-use std::io::stdout;
 use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
 use anyhow::{Context, Error};
 
-use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
-#[cfg(not(windows))]
+use crossterm::event::Event as CrosstermEvent;
+#[cfg(not(target_arch = "wasm32"))]
+use crossterm::tty::IsTty;
+
+#[cfg(not(any(windows, target_arch = "wasm32")))]
 use {signal_hook::consts::signal, signal_hook_tokio::Signals};
-#[cfg(windows)]
+#[cfg(any(windows, target_arch = "wasm32"))]
 type Signals = futures_util::stream::Empty<()>;
 
 #[cfg(not(feature = "integration"))]
@@ -52,16 +55,36 @@ use tui::backend::CrosstermBackend;
 use tui::backend::TestBackend;
 
 #[cfg(not(feature = "integration"))]
-type TerminalBackend = CrosstermBackend<std::io::Stdout>;
+type TerminalBackend<B> = CrosstermBackend<B>;
 
 #[cfg(feature = "integration")]
 type TerminalBackend = TestBackend;
 
-type Terminal = tui::terminal::Terminal<TerminalBackend>;
+#[cfg(not(feature = "integration"))]
+type Terminal<B> = tui::terminal::Terminal<TerminalBackend<B>>;
 
-pub struct Application {
+#[cfg(not(feature = "integration"))]
+use tui::backend::Buffer;
+
+#[cfg(feature = "integration")]
+type Terminal = tui::terminal::Terminal<TestBackend>;
+
+#[cfg(feature = "integration")]
+pub trait Buffer {}
+#[cfg(feature = "integration")]
+impl<T> Buffer for T {}
+
+pub struct Application<B>
+where
+    B: Buffer,
+{
     compositor: Compositor,
+    #[cfg(not(feature = "integration"))]
+    terminal: Terminal<B>,
+    #[cfg(feature = "integration")]
     terminal: Terminal,
+    #[cfg(feature = "integration")]
+    phantom_data: std::marker::PhantomData<B>,
     pub editor: Editor,
 
     config: Arc<ArcSwap<Config>>,
@@ -73,6 +96,7 @@ pub struct Application {
 
     signals: Signals,
     jobs: Jobs,
+    #[cfg(feature = "dap_lsp")]
     lsp_progress: LspProgressMap,
 }
 
@@ -98,12 +122,35 @@ fn setup_integration_logging() {
         .apply();
 }
 
-impl Application {
+#[cfg(not(target_arch = "wasm32"))]
+impl Application<std::io::Stdout> {
     pub fn new(
         args: Args,
         config: Config,
         syn_loader_conf: syntax::Configuration,
-    ) -> Result<Self, Error> {
+    ) -> Result<Application<std::io::Stdout>, Error> {
+        Ok(Application::new_with_write(
+            args,
+            config,
+            syn_loader_conf,
+            std::io::stdout(),
+        )?)
+    }
+}
+
+impl<B> Application<B>
+where
+    B: Buffer,
+{
+    pub fn new_with_write(
+        args: Args,
+        config: Config,
+        syn_loader_conf: syntax::Configuration,
+        buffer: B,
+    ) -> Result<Self, Error>
+    where
+        B: Buffer,
+    {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
@@ -132,7 +179,7 @@ impl Application {
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
         #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout(), &config.editor);
+        let backend = CrosstermBackend::new(buffer, &config.editor);
 
         #[cfg(feature = "integration")]
         let backend = TestBackend::new(120, 150);
@@ -162,6 +209,7 @@ impl Application {
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None);
         } else if !args.files.is_empty() {
+            #[cfg(not(target_arch = "wasm32"))]
             if args.open_cwd {
                 // NOTE: The working directory is already set to args.files[0] in main()
                 editor.new_file(Action::VerticalSplit);
@@ -209,19 +257,24 @@ impl Application {
                 let (view, doc) = current!(editor);
                 align_view(doc, view, Align::Center);
             }
-        } else if stdin().is_tty() || cfg!(feature = "integration") {
-            editor.new_file(Action::VerticalSplit);
         } else {
-            editor
-                .new_file_from_stdin(Action::VerticalSplit)
-                .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+            #[cfg(not(target_arch = "wasm32"))]
+            if stdin().is_tty() || cfg!(feature = "integration") {
+                editor.new_file(Action::VerticalSplit);
+            } else {
+                editor
+                    .new_file_from_stdin(Action::VerticalSplit)
+                    .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+            }
+            #[cfg(target_arch = "wasm32")]
+            editor.new_file(Action::VerticalSplit);
         }
 
         editor.set_theme(theme);
 
-        #[cfg(windows)]
+        #[cfg(any(windows, target_arch = "wasm32"))]
         let signals = futures_util::stream::empty();
-        #[cfg(not(windows))]
+        #[cfg(not(any(windows, target_arch = "wasm32")))]
         let signals = Signals::new([
             signal::SIGTSTP,
             signal::SIGCONT,
@@ -234,6 +287,8 @@ impl Application {
         let app = Self {
             compositor,
             terminal,
+            #[cfg(feature = "integration")]
+            phantom_data: std::marker::PhantomData,
             editor,
 
             config,
@@ -243,6 +298,7 @@ impl Application {
 
             signals,
             jobs: Jobs::new(),
+            #[cfg(feature = "dap_lsp")]
             lsp_progress: LspProgressMap::new(),
         };
 
@@ -282,9 +338,9 @@ impl Application {
         self.terminal.draw(pos, kind).unwrap();
     }
 
-    pub async fn event_loop<S>(&mut self, input_stream: &mut S)
+    pub async fn event_loop<IS>(&mut self, input_stream: &mut IS)
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        IS: Stream<Item = std::io::Result<CrosstermEvent>> + Unpin,
     {
         self.render().await;
 
@@ -295,9 +351,9 @@ impl Application {
         }
     }
 
-    pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
+    pub async fn event_loop_until_idle<IS>(&mut self, input_stream: &mut IS) -> bool
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        IS: Stream<Item = std::io::Result<CrosstermEvent>> + Unpin,
     {
         loop {
             if self.editor.should_close() {
@@ -310,22 +366,27 @@ impl Application {
                 biased;
 
                 Some(signal) = self.signals.next() => {
+                    debug!("handling signal");
                     if !self.handle_signals(signal).await {
                         return false;
                     };
                 }
                 Some(event) = input_stream.next() => {
+                    debug!("handling input");
                     self.handle_terminal_events(event).await;
                 }
                 Some(callback) = self.jobs.futures.next() => {
+                    debug!("handling future");
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render().await;
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
+                    debug!("handling wait future");
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render().await;
                 }
                 event = self.editor.wait_event() => {
+                    debug!("handling wait event");
                     let _idle_handled = self.handle_editor_event(event).await;
 
                     #[cfg(feature = "integration")]
@@ -434,13 +495,13 @@ impl Application {
         }
     }
 
-    #[cfg(windows)]
+    #[cfg(any(windows, target_arch = "wasm32"))]
     // no signal handling available on windows
     pub async fn handle_signals(&mut self, _signal: ()) -> bool {
         true
     }
 
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_arch = "wasm32")))]
     pub async fn handle_signals(&mut self, signal: i32) -> bool {
         match signal {
             signal::SIGTSTP => {
@@ -558,6 +619,7 @@ impl Application {
             let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
             let id = doc.id();
             doc.detect_language(loader);
+            #[cfg(feature = "dap_lsp")]
             self.editor.refresh_language_servers(id);
         }
 
@@ -583,11 +645,13 @@ impl Application {
                 self.handle_config_events(event);
                 self.render().await;
             }
+            #[cfg(feature = "dap_lsp")]
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
                 // limit render calls for fast language server messages
                 helix_event::request_redraw();
             }
+            #[cfg(feature = "dap_lsp")]
             EditorEvent::DebuggerEvent(payload) => {
                 let needs_render = self.editor.handle_debugger_message(payload).await;
                 if needs_render {
@@ -644,6 +708,7 @@ impl Application {
         }
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub async fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,
@@ -1150,9 +1215,9 @@ impl Application {
         self.terminal.restore(terminal_config)
     }
 
-    pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
+    pub async fn run<IS>(&mut self, input_stream: &mut IS) -> Result<i32, Error>
     where
-        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
+        IS: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
     {
         self.claim_term().await?;
 
@@ -1162,6 +1227,9 @@ impl Application {
             // We can't handle errors properly inside this closure.  And it's
             // probably not a good idea to `unwrap()` inside a panic handler.
             // So we just ignore the `Result`.
+            #[cfg(not(feature = "integration"))]
+            let _ = TerminalBackend::<B>::force_restore();
+            #[cfg(feature = "integration")]
             let _ = TerminalBackend::force_restore();
             hook(info);
         }));
@@ -1200,6 +1268,7 @@ impl Application {
             errs.push(err);
         }
 
+        #[cfg(feature = "dap_lsp")]
         if self.editor.close_language_servers(None).await.is_err() {
             log::error!("Timed out waiting for language servers to shutdown");
             errs.push(anyhow::format_err!(

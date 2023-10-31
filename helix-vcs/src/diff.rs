@@ -7,6 +7,10 @@ use imara_diff::Algorithm;
 use parking_lot::{Mutex, MutexGuard};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::task::JoinHandle;
+
+#[cfg(target_arch = "wasm32")]
+use instant::Instant;
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::time::Instant;
 
 use crate::diff::worker::DiffWorker;
@@ -82,7 +86,7 @@ impl DiffHandle {
         let timeout = if block {
             None
         } else {
-            Some(Instant::now() + tokio::time::Duration::from_millis(SYNC_DIFF_TIMEOUT))
+            Some(Instant::now() + std::time::Duration::from_millis(SYNC_DIFF_TIMEOUT))
         };
         self.update_document_impl(doc, self.inverted, Some(RenderLock { lock, timeout }))
     }

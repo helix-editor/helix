@@ -110,6 +110,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     for arg in args {
         let (path, pos) = args::parse_file(arg);
         let path = helix_core::path::expand_tilde(&path);
+        #[cfg(not(target_arch = "wasm32"))]
         // If the path is a directory, open a file picker on that directory and update the status
         // message
         if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
@@ -125,6 +126,16 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             cx.jobs.callback(callback);
         } else {
             // Otherwise, just open the file
+            let _ = cx.editor.open(&path, Action::Replace)?;
+            let (view, doc) = current!(cx.editor);
+            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+            doc.set_selection(view.id, pos);
+            // does not affect opening a buffer without pos
+            align_view(doc, view, Align::Center);
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            // just open the file
             let _ = cx.editor.open(&path, Action::Replace)?;
             let (view, doc) = current!(cx.editor);
             let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
@@ -339,6 +350,7 @@ fn write_impl(
         insert_final_newline(doc, view);
     }
 
+    #[cfg(feature = "dap_lsp")]
     let fmt = if config.auto_format {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
@@ -354,6 +366,8 @@ fn write_impl(
     } else {
         None
     };
+    #[cfg(not(feature = "dap_lsp"))]
+    let fmt: Option<()> = None;
 
     if fmt.is_none() {
         let id = doc.id();
@@ -441,6 +455,7 @@ fn new_file(
     Ok(())
 }
 
+#[cfg(feature = "dap_lsp")]
 fn format(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -717,6 +732,7 @@ pub fn write_all_impl(
             insert_final_newline(doc, view_mut!(cx.editor, target_view));
         }
 
+        #[cfg(feature = "dap_lsp")]
         let fmt = if config.auto_format {
             doc.auto_format().map(|fmt| {
                 let callback = make_format_callback(
@@ -731,6 +747,8 @@ pub fn write_all_impl(
         } else {
             None
         };
+        #[cfg(not(feature = "dap_lsp"))]
+        let fmt: Option<()> = None;
 
         if fmt.is_none() {
             cx.editor.save::<PathBuf>(doc_id, None, force)?;
@@ -1283,9 +1301,12 @@ fn reload(
 
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
+
+    #[cfg(feature = "vcs")]
     doc.reload(view, &cx.editor.diff_providers).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
     })?;
+    #[cfg(feature = "dap_lsp")]
     if let Some(path) = doc.path() {
         cx.editor
             .language_servers
@@ -1331,7 +1352,9 @@ fn reload_all(
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
+        #[cfg(feature = "vcs")]
         doc.reload(view, &cx.editor.diff_providers)?;
+        #[cfg(feature = "dap_lsp")]
         if let Some(path) = doc.path() {
             cx.editor
                 .language_servers
@@ -1368,6 +1391,7 @@ fn update(
     }
 }
 
+#[cfg(feature = "dap_lsp")]
 fn lsp_workspace_command(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1435,6 +1459,7 @@ fn lsp_workspace_command(
     Ok(())
 }
 
+#[cfg(feature = "dap_lsp")]
 fn lsp_restart(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1483,6 +1508,7 @@ fn lsp_restart(
     Ok(())
 }
 
+#[cfg(feature = "dap_lsp")]
 fn lsp_stop(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -1691,6 +1717,7 @@ fn hsplit_new(
     Ok(())
 }
 
+#[cfg(feature = "dap_lsp")]
 fn debug_eval(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1717,6 +1744,7 @@ fn debug_eval(
     Ok(())
 }
 
+#[cfg(feature = "dap_lsp")]
 fn debug_start(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1734,6 +1762,7 @@ fn debug_start(
     dap_start_impl(cx, name.as_deref(), None, Some(args))
 }
 
+#[cfg(feature = "dap_lsp")]
 fn debug_remote(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2007,6 +2036,7 @@ fn language(
     doc.detect_indent_and_line_ending();
 
     let id = doc.id();
+    #[cfg(feature = "dap_lsp")]
     cx.editor.refresh_language_servers(id);
     Ok(())
 }
@@ -2205,6 +2235,7 @@ fn refresh_config(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn append_output(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2219,6 +2250,7 @@ fn append_output(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn insert_output(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2233,6 +2265,7 @@ fn insert_output(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn pipe_to(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2241,10 +2274,12 @@ fn pipe_to(
     pipe_impl(cx, args, event, &ShellBehavior::Ignore)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     pipe_impl(cx, args, event, &ShellBehavior::Replace)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn pipe_impl(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2260,6 +2295,7 @@ fn pipe_impl(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn run_shell_command(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2300,6 +2336,7 @@ fn run_shell_command(
     Ok(())
 }
 
+#[cfg(feature = "vcs")]
 fn reset_diff_change(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2521,6 +2558,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: new_file,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "dap_lsp")]
     TypableCommand {
         name: "format",
         aliases: &["fmt"],
@@ -2769,6 +2807,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: update,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "dap_lsp")]
     TypableCommand {
         name: "lsp-workspace-command",
         aliases: &[],
@@ -2776,6 +2815,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: lsp_workspace_command,
         signature: CommandSignature::positional(&[completers::lsp_workspace_command]),
     },
+    #[cfg(feature = "dap_lsp")]
     TypableCommand {
         name: "lsp-restart",
         aliases: &[],
@@ -2783,6 +2823,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: lsp_restart,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "dap_lsp")]
     TypableCommand {
         name: "lsp-stop",
         aliases: &[],
@@ -2804,6 +2845,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: tree_sitter_highlight_name,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "dap_lsp")]
     TypableCommand {
         name: "debug-start",
         aliases: &["dbg"],
@@ -2811,6 +2853,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: debug_start,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "dap_lsp")]
     TypableCommand {
         name: "debug-remote",
         aliases: &["dbg-tcp"],
@@ -2818,6 +2861,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: debug_remote,
         signature: CommandSignature::none(),
     },
+    #[cfg(feature = "dap_lsp")]
     TypableCommand {
         name: "debug-eval",
         aliases: &[],
@@ -2952,6 +2996,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: open_log,
         signature: CommandSignature::none(),
     },
+    #[cfg(not(target_arch = "wasm32"))]
     TypableCommand {
         name: "insert-output",
         aliases: &[],
@@ -2959,6 +3004,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: insert_output,
         signature: CommandSignature::none(),
     },
+    #[cfg(not(target_arch = "wasm32"))]
     TypableCommand {
         name: "append-output",
         aliases: &[],
@@ -2966,6 +3012,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: append_output,
         signature: CommandSignature::none(),
     },
+    #[cfg(not(target_arch = "wasm32"))]
     TypableCommand {
         name: "pipe",
         aliases: &[],
@@ -2973,6 +3020,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: pipe,
         signature: CommandSignature::none(),
     },
+    #[cfg(not(target_arch = "wasm32"))]
     TypableCommand {
         name: "pipe-to",
         aliases: &[],
@@ -2980,6 +3028,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: pipe_to,
         signature: CommandSignature::none(),
     },
+    #[cfg(not(target_arch = "wasm32"))]
     TypableCommand {
         name: "run-shell-command",
         aliases: &["sh"],
@@ -2987,6 +3036,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: run_shell_command,
         signature: CommandSignature::all(completers::filename)
     },
+    #[cfg(feature = "vcs")]
     TypableCommand {
         name: "reset-diff-change",
         aliases: &["diffget", "diffg"],

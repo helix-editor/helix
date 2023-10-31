@@ -815,7 +815,7 @@ mod tests {
         let mut view = View::new(
             DocumentId::default(),
             GutterConfig {
-                layout: vec![GutterType::Diagnostics],
+                layout: vec![GutterType::Spacer],
                 line_numbers: GutterLineNumbersConfig::default(),
             },
         );

@@ -15,6 +15,9 @@ use toml::{map::Map, Value};
 use crate::graphics::UnderlineStyle;
 pub use crate::graphics::{Color, Modifier, Style};
 
+#[cfg(target_arch = "wasm32")]
+include!(concat!(env!("OUT_DIR"), "/themes.rs"));
+
 pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
     let bytes = include_bytes!("../../theme.toml");
     toml::from_str(str::from_utf8(bytes).unwrap()).expect("Failed to parse base default theme")
@@ -79,9 +82,14 @@ impl Loader {
     /// However, it is not recommended that users do this as it will make tracing
     /// errors more difficult.
     fn load_theme(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<Value> {
+        #[cfg(not(target_arch = "wasm32"))]
         let path = self.path(name, visited_paths)?;
 
+        #[cfg(not(target_arch = "wasm32"))]
         let theme_toml = self.load_toml(path)?;
+        #[cfg(target_arch = "wasm32")]
+        let theme_toml: Value =
+            toml::from_str(get_theme(name).ok_or_else(|| anyhow!("theme not found"))?)?;
 
         let inherits = theme_toml.get("inherits");
 
@@ -108,6 +116,7 @@ impl Loader {
         Ok(theme_toml)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn read_names(path: &Path) -> Vec<String> {
         std::fs::read_dir(path)
             .map(|entries| {
@@ -149,6 +158,7 @@ impl Loader {
         merge_toml_values(theme, palette.into(), 1)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     // Loads the theme data as `toml::Value`
     fn load_toml(&self, path: PathBuf) -> Result<Value> {
         let data = std::fs::read_to_string(path)?;

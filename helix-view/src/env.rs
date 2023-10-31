@@ -1,3 +1,4 @@
+#[cfg(not(target_arch = "wasm32"))]
 pub fn binary_exists(binary_name: &str) -> bool {
     which::which(binary_name).is_ok()
 }

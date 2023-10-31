@@ -60,9 +60,9 @@ impl DiffWorker {
             // Calculating diffs is computationally expensive and should
             // not run inside an async function to avoid blocking other futures.
             // Note: tokio::task::block_in_place does not work during tests
-            #[cfg(test)]
+            #[cfg(any(test, target_arch = "wasm32"))]
             process_accumulated_events();
-            #[cfg(not(test))]
+            #[cfg(not(any(test, target_arch = "wasm32")))]
             tokio::task::block_in_place(process_accumulated_events);
 
             self.apply_hunks(interner.diff_base(), interner.doc());

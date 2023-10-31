@@ -10,11 +10,14 @@ use crate::{
     view::ViewPosition,
     Align, Document, DocumentId, View, ViewId,
 };
+#[cfg(feature = "dap_lsp")]
 use dap::StackFrame;
+#[cfg(feature = "vcs")]
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
+#[cfg(feature = "dap_lsp")]
 use helix_lsp::Call;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -29,13 +32,22 @@ use std::{
     sync::Arc,
 };
 
+#[cfg(target_arch = "wasm32")]
+use gloo_timers::future::TimeoutFuture;
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::time::{sleep, Sleep};
 use tokio::{
     sync::{
         mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
         oneshot,
     },
-    time::{sleep, Duration, Instant, Sleep},
+    time::Duration,
 };
+
+#[cfg(target_arch = "wasm32")]
+use instant::Instant;
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::time::Instant;
 
 use anyhow::{anyhow, bail, Error};
 
@@ -46,12 +58,17 @@ use helix_core::{
     Change, LineEnding, NATIVE_LINE_ENDING,
 };
 use helix_core::{Position, Selection};
+#[cfg(feature = "dap_lsp")]
 use helix_dap as dap;
+#[cfg(feature = "dap_lsp")]
 use helix_lsp::lsp;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
 use arc_swap::access::{DynAccess, DynGuard};
+
+#[cfg(target_arch = "wasm32")]
+use log::debug;
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -86,10 +103,12 @@ impl Default for GutterConfig {
     fn default() -> Self {
         Self {
             layout: vec![
+                #[cfg(feature = "dap_lsp")]
                 GutterType::Diagnostics,
                 GutterType::Spacer,
                 GutterType::LineNumbers,
                 GutterType::Spacer,
+                #[cfg(feature = "vcs")]
                 GutterType::Diff,
             ],
             line_numbers: GutterLineNumbersConfig::default(),
@@ -237,6 +256,7 @@ pub struct Config {
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
+    #[cfg(feature = "dap_lsp")]
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
     /// Automatic save on focus lost. Defaults to false.
@@ -341,7 +361,12 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
     })
 }
 
-#[cfg(not(any(windows, target_os = "wasm32")))]
+#[cfg(target_arch = "wasm32")]
+pub fn get_terminal_provider() -> Option<TerminalConfig> {
+    None
+}
+
+#[cfg(not(any(windows, target_arch = "wasm32")))]
 pub fn get_terminal_provider() -> Option<TerminalConfig> {
     use crate::env::{binary_exists, env_var_is_set};
 
@@ -421,6 +446,7 @@ impl Default for StatusLineConfig {
         Self {
             left: vec![
                 E::Mode,
+                #[cfg(feature = "dap_lsp")]
                 E::Spinner,
                 E::FileName,
                 E::ReadOnlyIndicator,
@@ -428,6 +454,7 @@ impl Default for StatusLineConfig {
             ],
             center: vec![],
             right: vec![
+                #[cfg(feature = "dap_lsp")]
                 E::Diagnostics,
                 E::Selections,
                 E::Register,
@@ -464,6 +491,7 @@ pub enum StatusLineElement {
     /// The editor mode (Normal, Insert, Visual/Selection)
     Mode,
 
+    #[cfg(feature = "dap_lsp")]
     /// The LSP activity spinner
     Spinner,
 
@@ -488,9 +516,11 @@ pub enum StatusLineElement {
     /// The file type (language ID or "text")
     FileType,
 
+    #[cfg(feature = "dap_lsp")]
     /// A summary of the number of errors and warnings
     Diagnostics,
 
+    #[cfg(feature = "dap_lsp")]
     /// A summary of the number of errors and warnings on file and workspace
     WorkspaceDiagnostics,
 
@@ -615,12 +645,14 @@ impl std::str::FromStr for LineNumber {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum GutterType {
+    #[cfg(feature = "dap_lsp")]
     /// Show diagnostics and other features like breakpoints
     Diagnostics,
     /// Show line numbers
     LineNumbers,
     /// Show one blank space
     Spacer,
+    #[cfg(feature = "vcs")]
     /// Highlight local changes
     Diff,
 }
@@ -630,9 +662,11 @@ impl std::str::FromStr for GutterType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
+            #[cfg(feature = "dap_lsp")]
             "diagnostics" => Ok(Self::Diagnostics),
             "spacer" => Ok(Self::Spacer),
             "line-numbers" => Ok(Self::LineNumbers),
+            #[cfg(feature = "vcs")]
             "diff" => Ok(Self::Diff),
             _ => anyhow::bail!(
                 "Gutter type can only be `diagnostics`, `spacer`, `line-numbers` or `diff`."
@@ -817,6 +851,7 @@ impl Default for Config {
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
+            #[cfg(feature = "dap_lsp")]
             auto_format: true,
             auto_save: false,
             idle_timeout: Duration::from_millis(250),
@@ -874,6 +909,32 @@ pub struct Breakpoint {
 
 use futures_util::stream::{Flatten, Once};
 
+#[cfg(target_arch = "wasm32")]
+struct Sleep {
+    timeout: TimeoutFuture,
+    // deadline in ms since epoch
+    deadline: Instant,
+}
+
+const THIRTY_YEARS_IN_SECS: u64 = 86400 * 365 * 30;
+
+#[cfg(target_arch = "wasm32")]
+impl Sleep {
+    fn default() -> Self {
+        Self {
+            timeout: TimeoutFuture::new(i32::MAX as u32),
+            deadline: Instant::now() + Duration::from_secs(THIRTY_YEARS_IN_SECS),
+        }
+    }
+
+    fn new(duration: Duration) -> Self {
+        Self {
+            timeout: TimeoutFuture::new(duration.as_millis() as u32),
+            deadline: Instant::now() + duration,
+        }
+    }
+}
+
 pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,
@@ -892,11 +953,16 @@ pub struct Editor {
     pub registers: Registers,
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
+    #[cfg(feature = "dap_lsp")]
     pub language_servers: helix_lsp::Registry,
+    #[cfg(feature = "dap_lsp")]
     pub diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
+    #[cfg(feature = "vcs")]
     pub diff_providers: DiffProviderRegistry,
 
+    #[cfg(feature = "dap_lsp")]
     pub debugger: Option<dap::Client>,
+    #[cfg(feature = "dap_lsp")]
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
@@ -920,7 +986,7 @@ pub struct Editor {
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
 
-    pub idle_timer: Pin<Box<Sleep>>,
+    idle_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
@@ -958,7 +1024,9 @@ pub type Motion = Box<dyn Fn(&mut Editor)>;
 pub enum EditorEvent {
     DocumentSaved(DocumentSavedEventResult),
     ConfigEvent(ConfigEvent),
+    #[cfg(feature = "dap_lsp")]
     LanguageServerMessage((usize, Call)),
+    #[cfg(feature = "dap_lsp")]
     DebuggerEvent(dap::Payload),
     IdleTimer,
     Redraw,
@@ -1018,6 +1086,7 @@ impl Editor {
         syn_loader: Arc<syntax::Loader>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
+        #[cfg(feature = "dap_lsp")]
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
@@ -1038,10 +1107,15 @@ impl Editor {
             macro_recording: None,
             macro_replaying: Vec::new(),
             theme: theme_loader.default(),
+            #[cfg(feature = "dap_lsp")]
             language_servers,
+            #[cfg(feature = "dap_lsp")]
             diagnostics: BTreeMap::new(),
+            #[cfg(feature = "vcs")]
             diff_providers: DiffProviderRegistry::default(),
+            #[cfg(feature = "dap_lsp")]
             debugger: None,
+            #[cfg(feature = "dap_lsp")]
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
             syn_loader,
@@ -1051,8 +1125,14 @@ impl Editor {
             registers: Registers::default(),
             status_msg: None,
             autoinfo: None,
+            #[cfg(not(target_arch = "wasm32"))]
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
+            #[cfg(not(target_arch = "wasm32"))]
             redraw_timer: Box::pin(sleep(Duration::MAX)),
+            #[cfg(target_arch = "wasm32")]
+            idle_timer: Box::pin(Sleep::new(conf.idle_timeout)),
+            #[cfg(target_arch = "wasm32")]
+            redraw_timer: Box::pin(Sleep::default()),
             last_motion: None,
             last_completion: None,
             config,
@@ -1096,18 +1176,34 @@ impl Editor {
         self._refresh();
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn clear_idle_timer(&mut self) {
         // equivalent to internal Instant::far_future() (30 years)
         self.idle_timer
             .as_mut()
-            .reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
+            .reset(Instant::now() + Duration::from_secs(THIRTY_YEARS_IN_SECS));
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub fn clear_idle_timer(&mut self) {
+        // equivalent to internal Instant::far_future() (30 years)
+        self.idle_timer.as_mut().set(Sleep::default());
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn reset_idle_timer(&mut self) {
         let config = self.config();
         self.idle_timer
             .as_mut()
             .reset(Instant::now() + config.idle_timeout);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn reset_idle_timer(&mut self) {
+        let config = self.config();
+        self.idle_timer
+            .as_mut()
+            .set(Sleep::new(config.idle_timeout));
     }
 
     pub fn clear_status(&mut self) {
@@ -1182,16 +1278,19 @@ impl Editor {
         self._refresh();
     }
 
+    #[cfg(feature = "dap_lsp")]
     #[inline]
     pub fn language_server_by_id(&self, language_server_id: usize) -> Option<&helix_lsp::Client> {
         self.language_servers.get_by_id(language_server_id)
     }
 
+    #[cfg(feature = "dap_lsp")]
     /// Refreshes the language server for a given document
     pub fn refresh_language_servers(&mut self, doc_id: DocumentId) {
         self.launch_language_servers(doc_id)
     }
 
+    #[cfg(feature = "dap_lsp")]
     /// Launch a language server for a given document
     fn launch_language_servers(&mut self, doc_id: DocumentId) {
         if !self.config().lsp.enable {
@@ -1457,12 +1556,15 @@ impl Editor {
                 self.config.clone(),
             )?;
 
+            #[cfg(feature = "vcs")]
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
                 doc.set_diff_base(diff_base);
             }
+            #[cfg(feature = "vcs")]
             doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
             let id = self.new_document(doc);
+            #[cfg(feature = "dap_lsp")]
             self.launch_language_servers(id);
 
             id
@@ -1493,6 +1595,7 @@ impl Editor {
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
 
+        #[cfg(feature = "dap_lsp")]
         for language_server in doc.language_servers() {
             // TODO: track error
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
@@ -1571,15 +1674,18 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
         let doc_save_future = doc.save(path, force)?;
 
+        #[cfg(feature = "dap_lsp")]
         // When a file is written to, notify the file event handler.
         // Note: This can be removed once proper file watching is implemented.
-        let handler = self.language_servers.file_event_handler.clone();
-        let future = async move {
-            let res = doc_save_future.await;
-            if let Ok(event) = &res {
-                handler.file_changed(event.path.clone());
+        let doc_save_future = {
+            let handler = self.language_servers.file_event_handler.clone();
+            async move {
+                let res = doc_save_future.await;
+                if let Ok(event) = &res {
+                    handler.file_changed(event.path.clone());
+                }
+                res
             }
-            res
         };
 
         use futures_util::stream;
@@ -1587,7 +1693,7 @@ impl Editor {
         self.saves
             .get(&doc_id)
             .ok_or_else(|| anyhow::format_err!("saves are closed for this document!"))?
-            .send(stream::once(Box::pin(future)))
+            .send(stream::once(Box::pin(doc_save_future)))
             .map_err(|err| anyhow!("failed to send save event: {}", err))?;
 
         self.write_count += 1;
@@ -1710,6 +1816,7 @@ impl Editor {
         }
     }
 
+    #[cfg(feature = "dap_lsp")]
     /// Closes language servers with timeout. The default timeout is 10000 ms, use
     /// `timeout` parameter to override this.
     pub async fn close_language_servers(
@@ -1736,9 +1843,13 @@ impl Editor {
         .map(|_| ())
     }
 
+    // TODO(wasm32) figure out feature gating without duplicating code
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn wait_event(&mut self) -> EditorEvent {
         // the loop only runs once or twice and would be better implemented with a recursion + const generic
         // however due to limitations with async functions that can not be implemented right now
+
         loop {
             tokio::select! {
                 biased;
@@ -1758,7 +1869,7 @@ impl Editor {
                 }
 
                 _ = helix_event::redraw_requested() => {
-                    if  !self.needs_redraw{
+                    if !self.needs_redraw{
                         self.needs_redraw = true;
                         let timeout = Instant::now() + Duration::from_millis(33);
                         if timeout < self.idle_timer.deadline() && timeout < self.redraw_timer.deadline(){
@@ -1768,10 +1879,55 @@ impl Editor {
                 }
 
                 _ = &mut self.redraw_timer  => {
-                    self.redraw_timer.as_mut().reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
+                    self.redraw_timer.as_mut().reset(Instant::now() + Duration::from_secs(THIRTY_YEARS_IN_SECS));
                     return EditorEvent::Redraw
                 }
                 _ = &mut self.idle_timer  => {
+                    return EditorEvent::IdleTimer
+                }
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn wait_event(&mut self) -> EditorEvent {
+        // the loop only runs once or twice and would be better implemented with a recursion + const generic
+        // however due to limitations with async functions that can not be implemented right now
+        loop {
+            tokio::select! {
+                biased;
+
+                Some(event) = self.save_queue.next() => {
+                    debug!("save event");
+                    self.write_count -= 1;
+                    return EditorEvent::DocumentSaved(event)
+                }
+                Some(config_event) = self.config_events.1.recv() => {
+                    debug!("config event");
+                    return EditorEvent::ConfigEvent(config_event)
+                }
+
+                _ = helix_event::redraw_requested() => {
+                    debug!("redraw requested");
+                    if !self.needs_redraw{
+                        self.needs_redraw = true;
+                        let timeout = Instant::now() + Duration::from_millis(33);
+                        if timeout < self.idle_timer.deadline && timeout < self.redraw_timer.deadline {
+                            self.redraw_timer.as_mut().set(Sleep {
+                                deadline: timeout,
+                                timeout: TimeoutFuture::new(33)
+                            })
+                        }
+                    }
+                }
+
+                _ = &mut self.redraw_timer.timeout  => {
+                    debug!("redraw timeout - {:?}", Instant::now());
+                    self.redraw_timer.as_mut().set(Sleep::default());
+                    return EditorEvent::Redraw
+                }
+                _ = &mut self.idle_timer.timeout => {
+                    debug!("idle timeout - {:?}", Instant::now());
                     return EditorEvent::IdleTimer
                 }
             }
@@ -1827,6 +1983,7 @@ impl Editor {
         }
     }
 
+    #[cfg(feature = "dap_lsp")]
     pub fn current_stack_frame(&self) -> Option<&StackFrame> {
         self.debugger
             .as_ref()

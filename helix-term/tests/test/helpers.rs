@@ -9,10 +9,12 @@ use std::{
 use anyhow::bail;
 use crossterm::event::{Event, KeyEvent};
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
-use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
+use helix_term::{args::Args, config::Config, keymap::merge_keys};
 use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+
+type Application = helix_term::application::Application<std::io::Stdout>;
 
 #[derive(Clone, Debug)]
 pub struct TestCase {
