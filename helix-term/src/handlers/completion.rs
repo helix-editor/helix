@@ -32,18 +32,29 @@ use crate::ui::{self, CompletionItem, Popup};
 use super::Handlers;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum TriggerKind {
+pub(crate) enum TriggerKind {
     Auto,
     TriggerChar,
     Manual,
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Trigger {
+pub(crate) struct Trigger {
     pos: usize,
     view: ViewId,
     doc: DocumentId,
     kind: TriggerKind,
+}
+
+impl Trigger {
+    pub(crate) fn new(pos: usize, view: ViewId, doc: DocumentId, kind: TriggerKind) -> Self {
+        Self {
+            pos,
+            view,
+            doc,
+            kind,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -284,7 +295,7 @@ fn request_completion(
     });
 }
 
-fn show_completion(
+pub(crate) fn show_completion(
     editor: &mut Editor,
     compositor: &mut Compositor,
     items: Vec<CompletionItem>,

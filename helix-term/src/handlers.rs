@@ -22,7 +22,7 @@ fn rope_ends_with(text: &str, rope: RopeSlice<'_>) -> bool {
         .map_or(false, |end| end == text)
 }
 
-mod completion;
+pub(crate) mod completion;
 mod signature_help;
 
 pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {

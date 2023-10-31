@@ -4,33 +4,30 @@ use helix_core::{
     path::expand_tilde,
     regex::Regex,
     shellwords::Shellwords,
+    syntax::Configuration,
     Range, Selection, Tendril,
 };
-use helix_loader::{current_working_dir, set_current_working_dir};
+use helix_event::register_hook;
+use helix_loader::merge_toml_values;
+use helix_lsp::lsp::CompletionItem;
 use helix_view::{
     document::Mode,
     editor::{Action, ConfigEvent},
     extension::document_id_to_usize,
     input::KeyEvent,
-    Document, DocumentId, Editor,
+    Document, DocumentId, Editor, Theme,
 };
 use once_cell::sync::Lazy;
 use serde_json::Value;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
     rerrs::ErrorKind,
-    rvals::{as_underlying_type, AsRefMutSteelValFromRef, FromSteelVal, IntoSteelVal, SteelString},
+    rvals::{as_underlying_type, AsRefMutSteelValFromRef, FromSteelVal, IntoSteelVal},
     steel_vm::{engine::Engine, register_fn::RegisterFn},
-    SteelErr, SteelVal,
+    steelerr, SteelErr, SteelVal,
 };
 
-use std::{
-    borrow::Cow,
-    collections::{HashMap, VecDeque},
-    ops::Deref,
-    path::PathBuf,
-    sync::Mutex,
-};
+use std::{borrow::Cow, cell::RefCell, collections::HashMap, ops::Deref, path::PathBuf, rc::Rc};
 use std::{
     collections::HashSet,
     sync::{Arc, RwLock},
@@ -42,9 +39,10 @@ use crate::{
     commands::insert,
     compositor::{self, Component, Compositor},
     config::Config,
+    events::{OnModeSwitch, PostCommand, PostInsertChar},
     job::{self, Callback},
     keymap::{self, merge_keys, KeyTrie, KeymapResult},
-    ui::{self, menu::Item, Popup, Prompt, PromptEvent},
+    ui::{self, Popup, Prompt, PromptEvent},
 };
 
 use components::SteelDynamicComponent;
@@ -104,10 +102,131 @@ thread_local! {
         SteelVal::boxed(SteelVal::empty_hashmap());
 
     pub static GLOBAL_KEYBINDING_MAP: SteelVal = get_keymap().into_steelval().unwrap();
+
+    static THEME_MAP: ThemeContainer = ThemeContainer::new();
+
+    static LANGUAGE_CONFIGURATIONS: LanguageConfigurationContainer = LanguageConfigurationContainer::new();
+}
+
+// Any configurations that we'd like to overlay from the toml
+struct LanguageConfigurationContainer {
+    configuration: Rc<RefCell<Option<toml::Value>>>,
+}
+
+impl LanguageConfigurationContainer {
+    fn new() -> Self {
+        Self {
+            configuration: Rc::new(RefCell::new(None)),
+        }
+    }
+}
+
+impl Custom for LanguageConfigurationContainer {}
+
+impl LanguageConfigurationContainer {
+    fn add_configuration(&self, config_as_string: String) -> Result<(), String> {
+        let left = self
+            .configuration
+            .replace(Some(toml::Value::Boolean(false)));
+
+        if let Some(left) = left {
+            let right = serde_json::from_str(&config_as_string).map_err(|err| err.to_string());
+
+            // panic!("{:#?}", right);
+
+            match right {
+                Ok(right) => {
+                    self.configuration
+                        .replace(Some(merge_toml_values(left, right, 3)));
+
+                    Ok(())
+                }
+                Err(e) => Err(e),
+            }
+        } else {
+            let right = serde_json::from_str(&config_as_string).map_err(|err| err.to_string())?;
+
+            self.configuration.replace(Some(right));
+
+            Ok(())
+        }
+    }
+
+    fn as_language_configuration(&self) -> Option<Result<Configuration, toml::de::Error>> {
+        if let Some(right) = self.configuration.borrow().clone() {
+            let config = helix_loader::config::user_lang_config();
+
+            let res = config
+                .map(|left| merge_toml_values(left, right, 3))
+                .and_then(|x| x.try_into());
+
+            Some(res)
+            // )
+        } else {
+            None
+        }
+    }
+
+    fn get_language_configuration() -> Option<Result<Configuration, toml::de::Error>> {
+        LANGUAGE_CONFIGURATIONS.with(|x| x.as_language_configuration())
+    }
+}
+
+struct ThemeContainer {
+    themes: Rc<RefCell<HashMap<String, Theme>>>,
+}
+
+impl Custom for ThemeContainer {}
+
+impl ThemeContainer {
+    fn new() -> Self {
+        Self {
+            themes: Rc::new(RefCell::new(HashMap::new())),
+        }
+    }
+
+    fn get(name: &str) -> Option<Theme> {
+        THEME_MAP.with(|x| x.themes.borrow().get(name).cloned())
+    }
+
+    fn names() -> Vec<String> {
+        THEME_MAP.with(|x| x.themes.borrow().keys().cloned().collect())
+    }
+
+    fn register(name: String, theme: Theme) {
+        THEME_MAP.with(|x| x.themes.borrow_mut().insert(name, theme));
+    }
+}
+
+fn load_language_configuration_api(engine: &mut Engine) {
+    let mut module = BuiltInModule::new("helix/core/languages".to_string());
+
+    module.register_fn(
+        "register-language-configuration!",
+        |language_configuration: String| -> Result<(), String> {
+            LANGUAGE_CONFIGURATIONS.with(|x| x.add_configuration(language_configuration))
+        },
+    );
+
+    module.register_fn("flush-configuration", refresh_language_configuration);
+
+    engine.register_module(module);
 }
 
 fn load_theme_api(engine: &mut Engine) {
-    todo!()
+    let mut module = BuiltInModule::new("helix/core/themes");
+
+    module.register_fn(
+        "register-theme!",
+        |name: String, theme_as_json_string: String| -> Result<(), String> {
+            Ok(ThemeContainer::register(
+                name,
+                serde_json::from_str(&theme_as_json_string).map_err(|err| err.to_string())?,
+            ))
+        },
+    );
+
+    engine.register_module(module);
 }
 
 fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
@@ -121,6 +240,11 @@ fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
     module.register_fn("keymap?", api.is_keymap);
 
     module.register_fn("helix-deep-copy-keymap", api.deep_copy_keymap);
+
+    // Alternatively, could store these values in a steel module, like so:
+    // let keymap_core_map = helix_loader::runtime_file(&PathBuf::from("steel").join("keymap.scm"));
+    // let require_module = format!("(require {})", keymap_core_map.to_str().unwrap());
+    // engine.run(&require_module).unwrap();
 
     // This should be associated with a corresponding scheme module to wrap this up
     module.register_value(
@@ -165,11 +289,57 @@ fn load_static_commands(engine: &mut Engine) {
         }
     }
 
+    // Adhoc static commands that probably needs evaluating
+    module.register_fn("insert_char", insert_char);
+    module.register_fn("insert_string", insert_string);
+    module.register_fn("current_selection", get_selection);
+    module.register_fn("current-highlighted-text!", get_highlighted_text);
+    module.register_fn("get-current-line-number", current_line_number);
+    module.register_fn("current-selection-object", current_selection);
+    module.register_fn("set-current-selection-object!", set_selection);
+    module.register_fn("run-in-engine!", run_in_engine);
+    module.register_fn("get-helix-scm-path", get_helix_scm_path);
+    module.register_fn("get-init-scm-path", get_init_scm_path);
+    module.register_fn("get-helix-cwd", get_helix_cwd);
+    module.register_fn("search-in-directory", search_in_directory);
+    module.register_fn("regex-selection", regex_selection);
+    module.register_fn("replace-selection-with", replace_selection);
+    module.register_fn("show-completion-prompt-with", show_completion_prompt);
+    module.register_fn("move-window-far-left", move_window_to_the_left);
+    module.register_fn("move-window-far-right", move_window_to_the_right);
+
+    module.register_fn("block-on-shell-command", run_shell_command_text);
+
+    module.register_fn("cx->current-file", current_path);
+
     engine.register_module(module);
 }
 
 fn load_typed_commands(engine: &mut Engine) {
     let mut module = BuiltInModule::new("helix/core/typable".to_string());
+
+    {
+        let func = |cx: &mut Context, args: &[Cow<str>], event: PromptEvent| {
+            let mut cx = compositor::Context {
+                editor: cx.editor,
+                scroll: None,
+                jobs: cx.jobs,
+            };
+
+            set_options(&mut cx, args, event)
+        };
+
+        module.register_fn("set-options", func);
+    }
+
+    module.register_value(
+        "PromptEvent::Validate",
+        PromptEvent::Validate.into_steelval().unwrap(),
+    );
+    module.register_value(
+        "PromptEvent::Update",
+        PromptEvent::Update.into_steelval().unwrap(),
+    );
 
     // Register everything in the typable command list. Now these are all available
     for command in TYPABLE_COMMAND_LIST {
@@ -189,16 +359,78 @@ fn load_typed_commands(engine: &mut Engine) {
     engine.register_module(module);
 }
 
-fn load_editor_api(engine: &mut Engine, api: EditorApi) {
-    todo!()
+fn load_editor_api(engine: &mut Engine, _api: EditorApi) {
+    let mut module = BuiltInModule::new("helix/core/editor");
+
+    RegisterFn::<
+        _,
+        steel::steel_vm::register_fn::MarkerWrapper7<(
+            Context<'_>,
+            helix_view::Editor,
+            helix_view::Editor,
+            Context<'static>,
+        )>,
+        helix_view::Editor,
+    >::register_fn(&mut module, "cx-editor!", get_editor);
+
+    module.register_fn("set-scratch-buffer-name!", set_scratch_buffer_name);
+
+    module.register_fn("editor-focus", current_focus);
+    module.register_fn("editor->doc-id", get_document_id);
+    module.register_fn("doc-id->usize", document_id_to_usize);
+    module.register_fn("editor-switch!", switch);
+    module.register_fn("editor-set-focus!", Editor::focus);
+    module.register_fn("editor-mode", editor_get_mode);
+    module.register_fn("editor-set-mode!", editor_set_mode);
+    module.register_fn("editor-doc-in-view?", is_document_in_view);
+
+    // TODO: These are some horrendous type annotations, however... they do work.
+    // If the type annotations are a bit more ergonomic, we might be able to get away with this
+    // (i.e. if they're sensible enough)
+    RegisterFn::<
+        _,
+        steel::steel_vm::register_fn::MarkerWrapper8<(
+            helix_view::Editor,
+            DocumentId,
+            Document,
+            Document,
+            helix_view::Editor,
+        )>,
+        Document,
+    >::register_fn(&mut module, "editor->get-document", get_document);
+
+    // Check if the doc exists first
+    module.register_fn("editor-doc-exists?", document_exists);
+    module.register_fn("Document-path", document_path);
+    module.register_fn("Document-focused-at", document_focused_at);
+    module.register_fn("editor-all-documents", editor_all_documents);
+
+    module.register_fn("helix.context?", is_context);
+    module.register_type::<DocumentId>("DocumentId?");
+
+    module.register_fn("editor-cursor", Editor::cursor);
+
+    module.register_fn("cx->cursor", |cx: &mut Context| cx.editor.cursor());
+
+    // TODO:
+    // Position related functions. These probably should be defined alongside the actual impl for Custom in the core crate
+    module.register_fn("Position::new", helix_core::Position::new);
+    module.register_fn("Position::default", helix_core::Position::default);
+    module.register_fn("Position-row", |position: helix_core::Position| {
+        position.row
+    });
+
+    module.register_fn("cx->themes", get_themes);
+
+    engine.register_module(module);
 }
 
 fn load_document_api(engine: &mut Engine, api: DocumentApi) {
-    todo!()
+    todo!("Decide what should go in the document API!")
 }
 
 fn load_component_api(engine: &mut Engine, api: ComponentApi) {
-    todo!()
+    todo!("Decide what should go in the component API")
 }
 
 pub struct SteelScriptingEngine;
@@ -243,27 +475,22 @@ impl super::PluginSystem for SteelScriptingEngine {
         args: &[Cow<str>],
     ) -> bool {
         if ENGINE.with(|x| x.borrow().global_exists(name)) {
-            let args = steel::List::from(
-                args.iter()
-                    .map(|x| x.clone().into_steelval().unwrap())
-                    .collect::<Vec<_>>(),
-            );
+            let mut args = args
+                .iter()
+                .map(|x| x.clone().into_steelval().unwrap())
+                .collect::<Vec<_>>();
 
             if let Err(e) = ENGINE.with(|x| {
                 let mut guard = x.borrow_mut();
 
                 {
-                    guard.register_value("_helix_args", steel::rvals::SteelVal::ListV(args));
+                    guard.with_mut_reference::<Context, Context>(cx).consume(
+                        move |engine, mut arguments| {
+                            arguments.append(&mut args);
 
-                    let res = guard.run_with_reference::<Context, Context>(
-                        cx,
-                        "*context*",
-                        &format!("(apply {} (cons *context* _helix_args))", name),
-                    );
-
-                    guard.register_value("_helix_args", steel::rvals::SteelVal::Void);
-
-                    res
+                            engine.call_function_by_name_with_args(name, arguments)
+                        },
+                    )
                 }
             }) {
                 cx.editor.set_error(format!("{}", e));
@@ -287,19 +514,13 @@ impl super::PluginSystem for SteelScriptingEngine {
 
             // We're finalizing the event - we actually want to call the function
             if event == PromptEvent::Validate {
-                // TODO: @Matt - extract this whole API call here to just be inside the engine module
-                // For what its worth, also explore a more elegant API for calling apply with some arguments,
-                // this does work, but its a little opaque.
                 if let Err(e) = ENGINE.with(|x| {
-                    let args = steel::List::from(
-                        args[1..]
-                            .iter()
-                            .map(|x| x.clone().into_steelval().unwrap())
-                            .collect::<Vec<_>>(),
-                    );
+                    let mut args = args[1..]
+                        .iter()
+                        .map(|x| x.clone().into_steelval().unwrap())
+                        .collect::<Vec<_>>();
 
                     let mut guard = x.borrow_mut();
-                    // let mut maybe_callback = None;
 
                     let res = {
                         let mut cx = Context {
@@ -311,17 +532,13 @@ impl super::PluginSystem for SteelScriptingEngine {
                             jobs: cx.jobs,
                         };
 
-                        guard.register_value("_helix_args", steel::rvals::SteelVal::ListV(args));
+                        guard
+                            .with_mut_reference(&mut cx)
+                            .consume(|engine, mut arguments| {
+                                arguments.append(&mut args);
 
-                        let res = guard.run_with_reference::<Context, Context>(
-                            &mut cx,
-                            "*context*",
-                            &format!("(apply {} (cons *context* _helix_args))", parts[0]),
-                        );
-
-                        guard.register_value("_helix_args", steel::rvals::SteelVal::Void);
-
-                        res
+                                engine.call_function_by_name_with_args(&parts[0], arguments)
+                            })
                     };
 
                     res
@@ -358,6 +575,24 @@ impl super::PluginSystem for SteelScriptingEngine {
             .iter()
             .map(|x| x.clone().into())
             .collect::<Vec<_>>()
+    }
+
+    fn load_theme(&self, name: &str) -> Option<helix_view::Theme> {
+        ThemeContainer::get(name)
+    }
+
+    fn themes(&self) -> Option<Vec<String>> {
+        let names = ThemeContainer::names();
+
+        if !names.is_empty() {
+            Some(names)
+        } else {
+            None
+        }
+    }
+
+    fn load_language_configuration(&self) -> Option<Result<Configuration, toml::de::Error>> {
+        LanguageConfigurationContainer::get_language_configuration()
     }
 }
 
@@ -600,10 +835,7 @@ fn run_initialization_script(cx: &mut Context) {
             return;
         }
 
-        let helix_path =
-            "__module-mangler".to_string() + helix_module_path.as_os_str().to_str().unwrap();
-
-        if let Ok(module) = guard.extract_value(&helix_path) {
+        if let Ok(module) = guard.get_module(helix_module_path) {
             if let steel::rvals::SteelVal::HashMapV(m) = module {
                 let exported = m
                     .iter()
@@ -677,112 +909,8 @@ fn run_initialization_script(cx: &mut Context) {
 // pub static KEYBINDING_QUEUE: Lazy<SharedKeyBindingsEventQueue> =
 //     Lazy::new(|| SharedKeyBindingsEventQueue::new());
 
-pub static CALLBACK_QUEUE: Lazy<CallbackQueue> = Lazy::new(|| CallbackQueue::new());
-
 pub static EXPORTED_IDENTIFIERS: Lazy<ExportedIdentifiers> =
     Lazy::new(|| ExportedIdentifiers::default());
-
-pub static STATUS_LINE_MESSAGE: Lazy<StatusLineMessage> = Lazy::new(|| StatusLineMessage::new());
-
-pub struct StatusLineMessage {
-    message: Arc<RwLock<Option<String>>>,
-}
-
-impl StatusLineMessage {
-    pub fn new() -> Self {
-        Self {
-            message: std::sync::Arc::new(std::sync::RwLock::new(None)),
-        }
-    }
-
-    pub fn set(message: String) {
-        *STATUS_LINE_MESSAGE.message.write().unwrap() = Some(message);
-    }
-
-    pub fn get() -> Option<String> {
-        STATUS_LINE_MESSAGE.message.read().unwrap().clone()
-    }
-}
-
-// impl Item for SteelVal {
-//     type Data = ();
-
-//     // TODO: This shouldn't copy the data every time
-//     fn format(&self, _data: &Self::Data) -> tui::widgets::Row {
-//         let formatted = self.to_string();
-
-//         formatted
-//             .strip_prefix("\"")
-//             .unwrap_or(&formatted)
-//             .strip_suffix("\"")
-//             .unwrap_or(&formatted)
-//             .to_owned()
-//             .into()
-//     }
-// }
-
-pub struct CallbackQueue {
-    queue: Arc<Mutex<VecDeque<String>>>,
-}
-
-impl CallbackQueue {
-    pub fn new() -> Self {
-        Self {
-            queue: Arc::new(Mutex::new(VecDeque::new())),
-        }
-    }
-
-    pub fn enqueue(value: String) {
-        CALLBACK_QUEUE.queue.lock().unwrap().push_back(value);
-    }
-
-    // Dequeue should probably be a R/W lock?
-    // pub fn dequeue() -> Option<String> {
-    //     CALLBACK_QUEUE.queue.lock().unwrap().pop_front()
-    // }
-}
-
-/// In order to send events from the engine back to the configuration, we can created a shared
-/// queue that the engine and the config push and pull from. Alternatively, we could use a channel
-/// directly, however this was easy enough to set up.
-// pub struct SharedKeyBindingsEventQueue {
-//     raw_bindings: Arc<Mutex<Vec<String>>>,
-// }
-
-// impl SharedKeyBindingsEventQueue {
-//     pub fn new() -> Self {
-//         Self {
-//             raw_bindings: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
-//         }
-//     }
-
-//     pub fn merge(other_as_json: String) {
-//         KEYBINDING_QUEUE
-//             .raw_bindings
-//             .lock()
-//             .unwrap()
-//             .push(other_as_json);
-//     }
-
-//     pub fn get() -> Option<HashMap<Mode, KeyTrie>> {
-//         let guard = KEYBINDING_QUEUE.raw_bindings.lock().unwrap();
-
-//         if let Some(first) = guard.get(0).clone() {
-//             let mut initial = serde_json::from_str(first).unwrap();
-
-//             // while let Some(remaining_event) = guard.pop_front() {
-//             for remaining_event in guard.iter() {
-//                 let bindings = serde_json::from_str(remaining_event).unwrap();
-
-//                 merge_keys(&mut initial, bindings);
-//             }
-
-//             return Some(initial);
-//         }
-
-//         None
-//     }
-// }
 
 impl Custom for PromptEvent {}
 
@@ -792,10 +920,6 @@ steel::custom_reference!(Context<'a>);
 
 fn get_editor<'a>(cx: &'a mut Context<'a>) -> &'a mut Editor {
     cx.editor
-}
-
-fn get_ro_editor<'a>(cx: &'a mut Context<'a>) -> &'a Editor {
-    &cx.editor
 }
 
 fn get_themes(cx: &mut Context) -> Vec<String> {
@@ -824,13 +948,6 @@ impl FromSteelVal for compositor::EventResult {
         }
     }
 }
-
-// impl CustomReference for tui::buffer::Buffer {}
-
-// TODO: Call the function inside the component, using the global engine. Consider running in its own engine
-// but leaving it all in the same one is kinda nice
-
-// Does this work?
 
 struct WrappedDynComponent {
     inner: Option<Box<dyn Component>>,
@@ -894,18 +1011,112 @@ impl Component for BoxDynComponent {
     }
 }
 
-// Make this be prompt event validate?
-fn call_function_in_external_engine(
-    ctx: &mut Context,
-    name: String,
-    args: Vec<String>,
-    engine_type: String,
-) {
-    // Wire up entire plugins separately?
-    match engine_type.as_str() {
-        "rhai" => todo!(),
-        _ => {}
+// OnModeSwitch<'a, 'cx> { old_mode: Mode, new_mode: Mode, cx: &'a mut commands::Context<'cx> }
+// PostInsertChar<'a, 'cx> { c: char, cx: &'a mut commands::Context<'cx> }
+// PostCommand<'a, 'cx> { command: & 'a MappableCommand, cx: &'a mut commands::Context<'cx> }
+
+#[derive(Debug, Clone, Copy)]
+struct OnModeSwitchEvent {
+    old_mode: Mode,
+    new_mode: Mode,
+}
+
+impl Custom for OnModeSwitchEvent {}
+
+// MappableCommands can be values too!
+impl Custom for MappableCommand {}
+
+fn register_hook(event_kind: String, function_name: String) -> steel::UnRecoverableResult {
+    match event_kind.as_str() {
+        "on-mode-switch" => {
+            register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
+                if ENGINE.with(|x| x.borrow().global_exists(&function_name)) {
+                    if let Err(e) = ENGINE.with(|x| {
+                        let mut guard = x.borrow_mut();
+
+                        let minimized_event = OnModeSwitchEvent {
+                            old_mode: event.old_mode,
+                            new_mode: event.new_mode,
+                        };
+
+                        guard
+                            .with_mut_reference(event.cx)
+                            .consume(|engine, mut args| {
+                                args.push(minimized_event.into_steelval().unwrap());
+                                engine.call_function_by_name_with_args(&function_name, args)
+                            })
+                    }) {
+                        event.cx.editor.set_error(format!("{}", e));
+                    }
+                }
+
+                Ok(())
+            });
+
+            Ok(SteelVal::Void).into()
+        }
+        "post-insert-char" => {
+            register_hook!(move |event: &mut PostInsertChar<'_, '_>| {
+                if ENGINE.with(|x| x.borrow().global_exists(&function_name)) {
+                    if let Err(e) = ENGINE.with(|x| {
+                        let mut guard = x.borrow_mut();
+
+                        guard
+                            .with_mut_reference(event.cx)
+                            .consume(|engine, mut args| {
+                                args.push(event.c.into());
+                                engine.call_function_by_name_with_args(&function_name, args)
+                            })
+                    }) {
+                        event.cx.editor.set_error(format!("{}", e));
+                    }
+                }
+
+                Ok(())
+            });
+
+            Ok(SteelVal::Void).into()
+        }
+        "post-command" => {
+            register_hook!(move |event: &mut PostCommand<'_, '_>| {
+                if ENGINE.with(|x| x.borrow().global_exists(&function_name)) {
+                    if let Err(e) = ENGINE.with(|x| {
+                        let mut guard = x.borrow_mut();
+
+                        guard
+                            .with_mut_reference(event.cx)
+                            .consume(|engine, mut args| {
+                                args.push(event.command.clone().into_steelval().unwrap());
+                                engine.call_function_by_name_with_args(&function_name, args)
+                            })
+                    }) {
+                        event.cx.editor.set_error(format!("{}", e));
+                    }
+                }
+
+                Ok(())
+            });
+
+            Ok(SteelVal::Void).into()
+        }
+        // Unimplemented!
+        // "document-did-change" => {
+        //     todo!()
+        // }
+        // "selection-did-change" => {
+        //     todo!()
+        // }
+        _ => steelerr!(Generic => "Unable to register hook: Unknown event type: {}", event_kind)
+            .into(),
     }
+}
+
+fn load_rope_api(engine: &mut Engine) {
+    let mut rope_slice_module = rope_module();
+
+    rope_slice_module.register_fn("document->slice", document_to_text);
+
+    engine.register_module(rope_slice_module);
 }
 
 fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> {
@@ -913,8 +1124,22 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     log::info!("Loading engine!");
 
+    // TODO: Load (require-builtin helix/core/editor) in more or less every file that needs it
+    load_editor_api(&mut engine, EditorApi);
+    load_typed_commands(&mut engine);
+    load_static_commands(&mut engine);
+    load_keymap_api(&mut engine, KeyMapApi::new());
+    load_theme_api(&mut engine);
+    load_rope_api(&mut engine);
+    load_language_configuration_api(&mut engine);
+
+    // Async context used for referencing the context?
+    engine.register_value("*helix-async-context*", SteelVal::Void);
+
     // Include this?
-    engine.register_fn("call-function-in-context", call_function_in_external_engine);
+    // engine.register_fn("call-function-in-context", call_function_in_external_engine);
+
+    engine.register_fn("register-hook!", register_hook);
 
     engine.register_value("*context*", SteelVal::Void);
 
@@ -924,16 +1149,6 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
 
     engine.register_fn("hx.custom-insert-newline", custom_insert_newline);
     engine.register_fn("hx.cx->pos", cx_pos_within_text);
-
-    engine.register_fn("enqueue-callback!", CallbackQueue::enqueue);
-
-    load_keymap_api(&mut engine, KeyMapApi::new());
-
-    let mut rope_slice_module = rope_module();
-
-    rope_slice_module.register_fn("document->slice", document_to_text);
-
-    engine.register_module(rope_slice_module);
 
     // Find the workspace
     engine.register_fn("helix-find-workspace", || {
@@ -1002,6 +1217,8 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
     engine.register_fn(
         "Prompt::new",
         |prompt: String, callback_fn: SteelVal| -> WrappedDynComponent {
+            let callback_fn_guard = callback_fn.as_rooted();
+
             let prompt = Prompt::new(
                 prompt.into(),
                 None,
@@ -1022,7 +1239,7 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
                         jobs: cx.jobs,
                     };
 
-                    let cloned_func = callback_fn.clone();
+                    let cloned_func = callback_fn_guard.value();
 
                     if let Err(e) = ENGINE.with(|x| {
                         x.borrow_mut()
@@ -1077,13 +1294,6 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
             }
         },
     );
-
-    // engine.register_fn("Picker::new", |values: Vec<String>| todo!());
-
-    // engine.register_fn(
-    //     "Picker::new",
-    //     |contents: &mut Wrapped
-    // )
 
     engine.register_fn("Component::Text", |contents: String| WrappedDynComponent {
         inner: Some(Box::new(crate::ui::Text::new(contents))),
@@ -1141,175 +1351,7 @@ fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine:
         },
     );
 
-    let module = BuiltInModule::new("helix/core/keybindings".to_string());
-    // module.register_fn("set-keybindings!", SharedKeyBindingsEventQueue::merge);
-
-    RegisterFn::<
-        _,
-        steel::steel_vm::register_fn::MarkerWrapper7<(
-            Context<'_>,
-            helix_view::Editor,
-            helix_view::Editor,
-            Context<'static>,
-        )>,
-        helix_view::Editor,
-    >::register_fn(&mut engine, "cx-editor!", get_editor);
-
-    engine.register_fn("set-scratch-buffer-name!", set_scratch_buffer_name);
-
-    engine.register_fn("editor-focus", current_focus);
-    engine.register_fn("editor->doc-id", get_document_id);
-    engine.register_fn("doc-id->usize", document_id_to_usize);
-    engine.register_fn("editor-switch!", switch);
-    engine.register_fn("editor-set-focus!", Editor::focus);
-    engine.register_fn("editor-mode", editor_get_mode);
-    engine.register_fn("editor-set-mode!", editor_set_mode);
-    engine.register_fn("editor-doc-in-view?", is_document_in_view);
-
-    // engine.register_fn("editor->get-document", get_document);
-
-    // TODO: These are some horrendous type annotations, however... they do work?
-    // If the type annotations are a bit more ergonomic, we might be able to get away with this
-    // (i.e. if they're sensible enough)
-    RegisterFn::<
-        _,
-        steel::steel_vm::register_fn::MarkerWrapper8<(
-            helix_view::Editor,
-            DocumentId,
-            Document,
-            Document,
-            helix_view::Editor,
-        )>,
-        Document,
-    >::register_fn(&mut engine, "editor->get-document", get_document);
-
-    // Check if the doc exists first
-    engine.register_fn("editor-doc-exists?", document_exists);
-    engine.register_fn("Document-path", document_path);
-    engine.register_fn("Document-focused-at", document_focused_at);
-    engine.register_fn("editor-all-documents", editor_all_documents);
-
-    engine.register_fn("helix.context?", is_context);
-    engine.register_type::<DocumentId>("DocumentId?");
-
-    // RegisterFn::<
-    //     _,
-    //     steel::steel_vm::register_fn::MarkerWrapper7<(
-    //         Context<'_>,
-    //         helix_view::Editor,
-    //         helix_view::Editor,
-    //         Context<'static>,
-    //     )>,
-    //     helix_view::Editor,
-    // >::register_fn(&mut engine, "cx-editor-ro!", get_ro_editor);
-
-    engine.register_fn("editor-cursor", Editor::cursor);
-
-    engine.register_fn("cx->cursor", |cx: &mut Context| cx.editor.cursor());
-
-    // TODO:
-    // Position related functions. These probably should be defined alongside the actual impl for Custom in the core crate
-    engine.register_fn("Position::new", helix_core::Position::new);
-    engine.register_fn("Position::default", helix_core::Position::default);
-    engine.register_fn("Position-row", |position: helix_core::Position| {
-        position.row
-    });
-
-    engine.register_fn("cx->themes", get_themes);
-    engine.register_fn("set-status-line!", StatusLineMessage::set);
-
-    engine.register_module(module);
-
-    let mut module = BuiltInModule::new("helix/core/typable".to_string());
-
-    {
-        let func = |cx: &mut Context, args: &[Cow<str>], event: PromptEvent| {
-            let mut cx = compositor::Context {
-                editor: cx.editor,
-                scroll: None,
-                jobs: cx.jobs,
-            };
-
-            set_options(&mut cx, args, event)
-        };
-
-        module.register_fn("set-options", func);
-    }
-
-    module.register_value(
-        "PromptEvent::Validate",
-        PromptEvent::Validate.into_steelval().unwrap(),
-    );
-    module.register_value(
-        "PromptEvent::Update",
-        PromptEvent::Update.into_steelval().unwrap(),
-    );
-
-    // Register everything in the typable command list. Now these are all available
-    for command in TYPABLE_COMMAND_LIST {
-        let func = |cx: &mut Context, args: &[Cow<str>], event: PromptEvent| {
-            let mut cx = compositor::Context {
-                editor: cx.editor,
-                scroll: None,
-                jobs: cx.jobs,
-            };
-
-            (command.fun)(&mut cx, args, event)
-        };
-
-        module.register_fn(command.name, func);
-    }
-
-    engine.register_module(module);
-
-    let mut module = BuiltInModule::new("helix/core/static".to_string());
-
-    for command in TYPABLE_COMMAND_LIST {
-        let func = |cx: &mut Context| {
-            let mut cx = compositor::Context {
-                editor: cx.editor,
-                scroll: None,
-                jobs: cx.jobs,
-            };
-
-            (command.fun)(&mut cx, &[], PromptEvent::Validate)
-        };
-
-        module.register_fn(command.name, func);
-    }
-
-    // Register everything in the static command list as well
-    // These just accept the context, no arguments
-    for command in MappableCommand::STATIC_COMMAND_LIST {
-        if let MappableCommand::Static { name, fun, .. } = command {
-            module.register_fn(name, fun);
-        }
-    }
-
-    module.register_fn("insert_char", insert_char);
-    module.register_fn("insert_string", insert_string);
-    module.register_fn("current_selection", get_selection);
-    module.register_fn("current-highlighted-text!", get_highlighted_text);
-    module.register_fn("get-current-line-number", current_line_number);
-
-    module.register_fn("current-selection-object", current_selection);
-    module.register_fn("set-current-selection-object!", set_selection);
-
-    module.register_fn("run-in-engine!", run_in_engine);
-    module.register_fn("get-helix-scm-path", get_helix_scm_path);
-    module.register_fn("get-init-scm-path", get_init_scm_path);
-
-    module.register_fn("get-helix-cwd", get_helix_cwd);
-
-    module.register_fn("search-in-directory", search_in_directory);
-    module.register_fn("regex-selection", regex_selection);
-    module.register_fn("replace-selection-with", replace_selection);
-
-    module.register_fn("block-on-shell-command", run_shell_command_text);
-
-    module.register_fn("cx->current-file", current_path);
-
-    engine.register_module(module);
+    // TODO: Load (require-builtin helix/core/editor) in more or less every file that needs it
 
     engine.register_fn("push-component!", push_component);
     engine.register_fn("enqueue-thread-local-callback", enqueue_command);
@@ -1466,12 +1508,12 @@ fn set_scratch_buffer_name(cx: &mut Context, name: String) {
     }
 }
 
-fn cx_current_focus(cx: &mut Context) -> helix_view::ViewId {
-    cx.editor.tree.focus
-}
+// TODO: Use this over handing around the editor reference, probably
+// fn cx_current_focus(cx: &mut Context) -> helix_view::ViewId {
+//     cx.editor.tree.focus
+// }
 
 // TODO: Expose the below in a separate module, make things a bit more clear!
-
 fn current_focus(editor: &mut Editor) -> helix_view::ViewId {
     editor.tree.focus
 }
@@ -1567,6 +1609,8 @@ fn push_component(cx: &mut Context, component: &mut WrappedDynComponent) {
 }
 
 fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
+    let rooted = callback_fn.as_rooted();
+
     let callback = async move {
         let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
             move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
@@ -1579,7 +1623,7 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
                     jobs,
                 };
 
-                let cloned_func = callback_fn.clone();
+                let cloned_func = rooted.value();
 
                 if let Err(e) = ENGINE.with(|x| {
                     x.borrow_mut()
@@ -1599,6 +1643,8 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
 
 // Apply arbitrary delay for update rate...
 fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: SteelVal) {
+    let rooted = callback_fn.as_rooted();
+
     let callback = async move {
         let delay = delay.int_or_else(|| panic!("FIX ME")).unwrap();
 
@@ -1615,7 +1661,7 @@ fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: St
                     jobs,
                 };
 
-                let cloned_func = callback_fn.clone();
+                let cloned_func = rooted.value();
 
                 if let Err(e) = ENGINE.with(|x| {
                     x.borrow_mut()
@@ -1638,6 +1684,9 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
     if !value.is_future() {
         return;
     }
+
+    let rooted = callback_fn.as_rooted();
+
     let callback = async move {
         let future_value = value.as_future().unwrap().await;
 
@@ -1652,7 +1701,7 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
                     jobs,
                 };
 
-                let cloned_func = callback_fn.clone();
+                let cloned_func = rooted.value();
 
                 match future_value {
                     Ok(inner) => {
@@ -1736,6 +1785,15 @@ fn set_options(
     Ok(())
 }
 
+pub fn refresh_language_configuration(cx: &mut Context) -> anyhow::Result<()> {
+    cx.editor
+        .config_events
+        .0
+        .send(ConfigEvent::UpdateLanguageConfiguration)?;
+
+    Ok(())
+}
+
 pub fn cx_pos_within_text(cx: &mut Context) -> usize {
     let (view, doc) = current_ref!(cx.editor);
 
@@ -1748,7 +1806,7 @@ pub fn cx_pos_within_text(cx: &mut Context) -> usize {
     pos
 }
 
-pub fn get_helix_cwd(cx: &mut Context) -> Option<String> {
+pub fn get_helix_cwd(_cx: &mut Context) -> Option<String> {
     helix_loader::current_working_dir()
         .as_os_str()
         .to_str()
@@ -1887,4 +1945,59 @@ fn replace_selection(cx: &mut Context, value: String) {
         });
 
     doc.apply(&transaction, view.id);
+}
+
+fn show_completion_prompt(cx: &mut Context, items: Vec<String>) {
+    let (view, doc) = current!(cx.editor);
+
+    let items = items
+        .into_iter()
+        .map(|x| crate::ui::CompletionItem {
+            item: CompletionItem::new_simple(x, "".to_string()),
+            language_server_id: usize::MAX,
+            resolved: true,
+        })
+        .collect();
+
+    let text = doc.text();
+    let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+
+    let trigger = crate::handlers::completion::Trigger::new(
+        cursor,
+        view.id,
+        doc.id(),
+        crate::handlers::completion::TriggerKind::Manual,
+    );
+
+    let savepoint = doc.savepoint(view);
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                crate::handlers::completion::show_completion(
+                    editor, compositor, items, trigger, savepoint,
+                );
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+}
+
+fn move_window_to_the_left(cx: &mut Context) {
+    while cx
+        .editor
+        .tree
+        .swap_split_in_direction(helix_view::tree::Direction::Left)
+        .is_some()
+    {}
+}
+
+fn move_window_to_the_right(cx: &mut Context) {
+    while cx
+        .editor
+        .tree
+        .swap_split_in_direction(helix_view::tree::Direction::Right)
+        .is_some()
+    {}
 }

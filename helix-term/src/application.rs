@@ -381,6 +381,18 @@ impl Application {
     pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
         match config_event {
             ConfigEvent::Refresh => self.refresh_config(),
+            ConfigEvent::UpdateLanguageConfiguration => match self.refresh_language_config() {
+                Ok(_) => {
+                    // If we don't stash the theme here, the syntax highlighting is broken
+                    let current_theme = std::mem::take(&mut self.editor.theme);
+                    self.editor.set_theme(current_theme);
+
+                    self.editor.set_status("Language config refreshed");
+                }
+                Err(err) => {
+                    self.editor.set_error(err.to_string());
+                }
+            },
 
             // Since only the Application can make changes to Editor's config,
             // the Editor must send up a new copy of a modified config so that
@@ -409,7 +421,8 @@ impl Application {
 
     /// refresh language config after config change
     fn refresh_language_config(&mut self) -> Result<(), Error> {
-        let syntax_config = helix_core::config::user_syntax_loader()
+        let syntax_config = crate::commands::engine::ScriptingEngine::load_language_configuration()
+            .unwrap_or_else(|| helix_core::config::user_syntax_loader())
             .map_err(|err| anyhow::anyhow!("Failed to load language config: {}", err))?;
 
         self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
@@ -427,15 +440,19 @@ impl Application {
         let theme = config
             .theme
             .as_ref()
-            .and_then(|theme| {
-                self.theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
+            .and_then(|theme| crate::commands::engine::ScriptingEngine::load_theme(theme))
+            .or_else(|| {
+                // Check the name again
+                config.theme.as_ref().and_then(|theme| {
+                    self.theme_loader
+                        .load(theme)
+                        .map_err(|e| {
+                            log::warn!("failed to load theme `{}` - {}", theme, e);
+                            e
+                        })
+                        .ok()
+                        .filter(|theme| (true_color || theme.is_16_color()))
+                })
             })
             .unwrap_or_else(|| self.theme_loader.default_theme(true_color));
 
@@ -443,7 +460,6 @@ impl Application {
         Ok(())
     }
 
-    // TODO: @Matt - consider querying the engine for keybindings
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()
