@@ -4207,6 +4207,7 @@ fn indent(cx: &mut Context) {
         }),
     );
     doc.apply(&transaction, view.id);
+    exit_select_mode(cx);
 }
 
 fn unindent(cx: &mut Context) {
@@ -4246,6 +4247,7 @@ fn unindent(cx: &mut Context) {
     let transaction = Transaction::change(doc.text(), changes.into_iter());
 
     doc.apply(&transaction, view.id);
+    exit_select_mode(cx);
 }
 
 fn format_selections(cx: &mut Context) {
