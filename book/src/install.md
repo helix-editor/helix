@@ -207,7 +207,7 @@ RUSTFLAGS="-C target-feature=-crt-static"
    This command will create the `hx` executable and construct the tree-sitter
    grammars in the local `runtime` folder.
 
-> ❗💡 In case you do not want to build grammars, set an environment variable `HELIX_DISABLE_AUTO_GRAMMAR_BUILD` = 1
+> 💡 If you do not want to fetch or build grammars, set an environment variable `HELIX_DISABLE_AUTO_GRAMMAR_BUILD`
 
 > 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
 > grammars with `hx --grammar fetch` and compile them with
