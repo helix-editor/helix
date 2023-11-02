@@ -162,10 +162,10 @@ impl Application {
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None);
         } else if !args.files.is_empty() {
-            if args.open_cwd {
-                // NOTE: The working directory is already set to args.files[0] in main()
+            let first = &args.files[0].0; // we know it's not empty
+            if first.is_dir() {
                 editor.new_file(Action::VerticalSplit);
-                let picker = ui::file_picker(".".into(), &config.load().editor);
+                let picker = ui::file_picker(first.into(), &config.load().editor);
                 compositor.push(Box::new(overlaid(picker)));
             } else {
                 let nr_of_files = args.files.len();

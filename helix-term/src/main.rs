@@ -130,7 +130,6 @@ FLAGS:
     // If the first file is a directory, it will be the working directory and a file picker will be opened
     if let Some((path, _)) = args.files.first().filter(|p| p.0.is_dir()) {
         helix_loader::set_current_working_dir(path)?;
-        args.open_cwd = true; // Signal Application that we want to open the picker on "."
     }
 
     let config = match Config::load_default() {
