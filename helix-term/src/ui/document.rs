@@ -307,7 +307,7 @@ pub fn render_text<'t>(
 pub struct TextRenderer<'a> {
     pub surface: &'a mut Surface,
     pub text_style: Style,
-    pub whitespace_style: Style,
+    pub whitespace_style: Style, // TODO: this prop can be removed
     pub indent_guide_char: String,
     pub indent_guide_style: Style,
     pub newline: String,
@@ -395,7 +395,7 @@ impl<'a> TextRenderer<'a> {
     pub fn draw_grapheme(
         &mut self,
         grapheme: Grapheme,
-        mut style: Style,
+        style: Style,
         is_virtual: bool,
         last_indent_level: &mut usize,
         is_in_indent_area: &mut bool,
@@ -403,12 +403,6 @@ impl<'a> TextRenderer<'a> {
     ) {
         let cut_off_start = self.col_offset.saturating_sub(position.col);
         let is_whitespace = grapheme.is_whitespace();
-
-        // TODO is it correct to apply the whitespace style to all unicode white spaces?
-        if is_whitespace {
-            style = style.patch(self.whitespace_style);
-        }
-
         let width = grapheme.width();
         let space = if is_virtual { " " } else { &self.space };
         let nbsp = if is_virtual { " " } else { &self.nbsp };

@@ -748,6 +748,13 @@ impl<T: Item + 'static> Picker<T> {
                 }
                 highlights = Box::new(helix_core::syntax::merge(highlights, spans));
             }
+            let whitespace_highlights = EditorView::doc_whitespace_highlights(
+                doc,
+                offset.anchor,
+                area.height,
+                &cx.editor.theme,
+            );
+            highlights = Box::new(helix_core::syntax::merge(highlights, whitespace_highlights));
             let mut decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
 
             if let Some((start, end)) = range {

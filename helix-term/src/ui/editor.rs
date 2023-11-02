@@ -145,6 +145,10 @@ impl EditorView {
             highlights = Box::new(syntax::merge(highlights, diagnostic));
         }
 
+        let whitespace_highlights =
+            Self::doc_whitespace_highlights(doc, view.offset.anchor, inner.height, theme);
+        highlights = Box::new(syntax::merge(highlights, whitespace_highlights));
+
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             let highlights = syntax::merge(
                 highlights,
@@ -391,6 +395,63 @@ impl EditorView {
         }
 
         [default_vec, info_vec, hint_vec, warning_vec, error_vec]
+    }
+
+    /// Get highlight spans for whitespace in a document view.
+    pub fn doc_whitespace_highlights(
+        doc: &Document,
+        anchor: usize,
+        height: u16,
+        theme: &Theme,
+    ) -> Vec<(usize, std::ops::Range<usize>)> {
+        let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+
+        theme
+            .find_scope_index_exact("ui.virtual.whitespace")
+            .map(|whitespace_scope| {
+                let text = doc.text().slice(..);
+                let row = text.char_to_line(anchor.min(text.len_chars()));
+
+                let range = {
+                    // Calculate viewport char ranges:
+                    // Saturating subs to make it inclusive zero indexing.
+                    let last_line = text.len_lines().saturating_sub(1);
+                    let last_visible_line =
+                        (row + height as usize).saturating_sub(1).min(last_line);
+                    let start = text.line_to_char(row.min(last_line));
+                    let end = text.line_to_char(last_visible_line + 1);
+
+                    start..end
+                };
+
+                // Aggregate adjacent whitespace characters into a single span
+                // Necessary to avoid splitting \r\n, which would result in highlighting offset mismatches
+                let mut cur_span: Option<std::ops::Range<usize>> = None;
+                for i in range {
+                    let c = text.char(i);
+                    if c.is_whitespace() {
+                        match cur_span {
+                            None => {
+                                cur_span = Some(i..i + 1);
+                            }
+                            Some(span) => {
+                                if span.end == i {
+                                    // Current span is adjacent to previous span
+                                    cur_span = Some(span.start..i + 1);
+                                } else {
+                                    spans.push((whitespace_scope, span));
+                                    cur_span = Some(i..i + 1);
+                                }
+                            }
+                        }
+                    }
+                }
+                cur_span.map(|span| {
+                    spans.push((whitespace_scope, span));
+                });
+            });
+
+        spans
     }
 
     /// Get highlight spans for selections in a document view.
