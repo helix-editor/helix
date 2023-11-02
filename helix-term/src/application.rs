@@ -161,15 +161,20 @@ impl Application {
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None);
-        } else if !args.files.is_empty() {
-            let first = &args.files[0].0; // we know it's not empty
+        } else if let Some((first, _)) = args.files.first() {
+            let mut skip_files = 0;
+
+            // If the first file is a directory, skip it and open a picker
             if first.is_dir() {
-                editor.new_file(Action::VerticalSplit);
                 let picker = ui::file_picker(first.into(), &config.load().editor);
                 compositor.push(Box::new(overlaid(picker)));
-            } else {
+                skip_files = 1;
+            }
+
+            // If there are any more files specified, open them
+            if args.files.len() > skip_files {
                 let nr_of_files = args.files.len();
-                for (i, (file, pos)) in args.files.into_iter().enumerate() {
+                for (i, (file, pos)) in args.files.into_iter().skip(skip_files).enumerate() {
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
@@ -208,6 +213,8 @@ impl Application {
                 // does not affect views without pos since it is at the top
                 let (view, doc) = current!(editor);
                 align_view(doc, view, Align::Center);
+            } else {
+                editor.new_file(Action::VerticalSplit);
             }
         } else if stdin().is_tty() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
