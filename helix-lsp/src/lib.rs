@@ -924,9 +924,9 @@ fn start_client(
             Ok(glob) => {
                 if !root_path
                     .read_dir()?
-                    .filter_map(|e| e.ok())
-                    .map(|e| e.file_name())
-                    .any(|filename| glob.is_match(filename))
+                    .flatten()
+                    .map(|entry| entry.file_name())
+                    .any(|entry| glob.is_match(entry))
                 {
                     return Ok(None);
                 }
