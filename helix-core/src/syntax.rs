@@ -371,6 +371,9 @@ pub struct LanguageServerConfiguration {
     pub config: Option<serde_json::Value>,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub required_root_patterns: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
