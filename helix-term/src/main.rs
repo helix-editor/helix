@@ -125,10 +125,8 @@ FLAGS:
     // Application::new() depends on this logic so it must be updated if this changes.
     if let Some(path) = &args.working_directory {
         helix_loader::set_current_working_dir(path)?;
-    }
-
-    // If the first file is a directory, it will be the working directory and a file picker will be opened
-    if let Some((path, _)) = args.files.first().filter(|p| p.0.is_dir()) {
+    } else if let Some((path, _)) = args.files.first().filter(|p| p.0.is_dir()) {
+        // If the first file is a directory, it will be the working directory unless -w was specified
         helix_loader::set_current_working_dir(path)?;
     }
 
