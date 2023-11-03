@@ -3897,12 +3897,12 @@ fn yank(cx: &mut Context) {
 }
 
 fn yank_to_clipboard(cx: &mut Context) {
-    yank_impl(cx.editor, '*');
+    yank_impl(cx.editor, '+');
     exit_select_mode(cx);
 }
 
 fn yank_to_primary_clipboard(cx: &mut Context) {
-    yank_impl(cx.editor, '+');
+    yank_impl(cx.editor, '*');
     exit_select_mode(cx);
 }
 
@@ -3959,13 +3959,13 @@ fn yank_joined(cx: &mut Context) {
 
 fn yank_joined_to_clipboard(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    yank_joined_impl(cx.editor, line_ending.as_str(), '*');
+    yank_joined_impl(cx.editor, line_ending.as_str(), '+');
     exit_select_mode(cx);
 }
 
 fn yank_joined_to_primary_clipboard(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    yank_joined_impl(cx.editor, line_ending.as_str(), '+');
+    yank_joined_impl(cx.editor, line_ending.as_str(), '*');
     exit_select_mode(cx);
 }
 
@@ -3982,12 +3982,12 @@ fn yank_primary_selection_impl(editor: &mut Editor, register: char) {
 }
 
 fn yank_main_selection_to_clipboard(cx: &mut Context) {
-    yank_primary_selection_impl(cx.editor, '*');
+    yank_primary_selection_impl(cx.editor, '+');
     exit_select_mode(cx);
 }
 
 fn yank_main_selection_to_primary_clipboard(cx: &mut Context) {
-    yank_primary_selection_impl(cx.editor, '+');
+    yank_primary_selection_impl(cx.editor, '*');
     exit_select_mode(cx);
 }
 
@@ -4088,19 +4088,19 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
 }
 
 fn paste_clipboard_after(cx: &mut Context) {
-    paste(cx.editor, '*', Paste::After, cx.count());
-}
-
-fn paste_clipboard_before(cx: &mut Context) {
-    paste(cx.editor, '*', Paste::Before, cx.count());
-}
-
-fn paste_primary_clipboard_after(cx: &mut Context) {
     paste(cx.editor, '+', Paste::After, cx.count());
 }
 
-fn paste_primary_clipboard_before(cx: &mut Context) {
+fn paste_clipboard_before(cx: &mut Context) {
     paste(cx.editor, '+', Paste::Before, cx.count());
+}
+
+fn paste_primary_clipboard_after(cx: &mut Context) {
+    paste(cx.editor, '*', Paste::After, cx.count());
+}
+
+fn paste_primary_clipboard_before(cx: &mut Context) {
+    paste(cx.editor, '*', Paste::Before, cx.count());
 }
 
 fn replace_with_yanked(cx: &mut Context) {
@@ -4138,11 +4138,11 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
-    replace_with_yanked_impl(cx.editor, '*', cx.count());
+    replace_with_yanked_impl(cx.editor, '+', cx.count());
 }
 
 fn replace_selections_with_primary_clipboard(cx: &mut Context) {
-    replace_with_yanked_impl(cx.editor, '+', cx.count());
+    replace_with_yanked_impl(cx.editor, '*', cx.count());
 }
 
 fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
