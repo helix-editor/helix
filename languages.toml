@@ -2340,7 +2340,7 @@ injection-regex = "kdl"
 
 [[grammar]]
 name = "kdl"
-source = { git = "https://github.com/Unoqwy/tree-sitter-kdl", rev = "e1cd292c6d15df6610484e1d4b5c987ecad52373" }
+source = { git = "https://github.com/amaanq/tree-sitter-kdl", rev = "3ca569b9f9af43593c24f9e7a21f02f43a13bb88" }
 
 [[language]]
 name = "xml"

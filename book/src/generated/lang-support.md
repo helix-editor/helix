@@ -81,7 +81,7 @@
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ | `julia` |
 | just | ✓ | ✓ | ✓ |  |
-| kdl | ✓ |  |  |  |
+| kdl | ✓ | ✓ | ✓ |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |
 | lean | ✓ |  |  | `lean` |
