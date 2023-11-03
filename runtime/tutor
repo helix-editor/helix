@@ -1184,6 +1184,46 @@ multiple cursors, they won't be uncommented but commented again.
 
 
 
+=================================================================
+=                   12 USING MATCH MODE                         =
+=================================================================
+
+From normal mode, type m to enter the match mode. This is
+convenient to work with bracket pairs and the likes, and with
+their content.
+
+Jump to any parenthesis or bracket on the --> lines below, and
+type mm ; this will jump to the matching parenthesis or bracket.
+
+Move to within the first "inside" word below; you can:
+- select the content inside the parenthesis with mi( or mi) or
+any other smart use of the match options; this will select
+only the content, not the surrounding ()
+- select the content around the parenthesis with ma( or similar,
+this will select also the surrounding pair of ()
+- delete the surrounding () with md( or md)
+- replace the () with [] with mr([
+
+Select the "surround me" words, and surround them with "" using
+ms"
+
+Play around matching the different levels of surrouding in the
+following lines to learn to work with a superposition of pairs.
+
+ --> "some stuff" (inside parenthesis), [inside brackets]
+ --> surround me with something!
+ --> and some more stuff (outside the [inside])
+ --> it is also possible to surround THIS word
+
+
+
+
+
+
+
+
+
+
 
 
 =================================================================
