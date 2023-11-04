@@ -3286,7 +3286,7 @@ fn exit_select_mode(cx: &mut Context) {
 fn goto_first_or_last_diag_impl(cx: &mut Context, direction: Direction, min_severity: Severity) {
     let (view, doc) = current!(cx.editor);
 
-    let is_severe = |diag: &&Diagnostic| diag.severity.is_some_and(|s| s >= min_severity);
+    let is_severe = |diag: &&Diagnostic| diag.severity.unwrap_or(Severity::Hint) >= min_severity;
 
     let diagnostic = match direction {
         Direction::Forward => doc.shown_diagnostics().find(is_severe),
@@ -3308,18 +3308,16 @@ fn goto_last_diag(cx: &mut Context) {
     goto_first_or_last_diag_impl(cx, Direction::Backward, Severity::Hint)
 }
 fn goto_first_error(cx: &mut Context) {
-    // TODO get severity from config
     goto_first_or_last_diag_impl(cx, Direction::Forward, Severity::Error)
 }
 fn goto_last_error(cx: &mut Context) {
-    // TODO get severity from config
     goto_first_or_last_diag_impl(cx, Direction::Backward, Severity::Error)
 }
 
 fn goto_next_or_prev_diag_impl(cx: &mut Context, direction: Direction, min_severity: Severity) {
     let (view, doc) = current!(cx.editor);
 
-    let is_severe = |diag: &&Diagnostic| diag.severity.is_some_and(|s| s >= min_severity);
+    let is_severe = |diag: &&Diagnostic| diag.severity.unwrap_or(Severity::Hint) >= min_severity;
 
     let cursor_pos = doc
         .selection(view.id)
