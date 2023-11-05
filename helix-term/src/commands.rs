@@ -984,6 +984,7 @@ fn align_selections(cx: &mut Context) {
 
     let transaction = Transaction::change(doc.text(), changes.into_iter());
     doc.apply(&transaction, view.id);
+    exit_select_mode(cx);
 }
 
 fn goto_window(cx: &mut Context, align: Align) {
