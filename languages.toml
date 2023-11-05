@@ -1142,7 +1142,7 @@ formatter = { command = "purs-tidy", args = ["format"] }
 
 [[grammar]]
 name = "purescript"
-source = { git = "https://github.com/maskhjarna/tree-sitter-purescript", rev = "0e36a885a941078bf40e559026be425764dc27bf" }
+source = { git = "https://github.com/postsolar/tree-sitter-purescript", rev = "593193b9bf0f46d5eee708a4e53044d2a9054897" }
 
 [[language]]
 name = "zig"
