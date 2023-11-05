@@ -5684,6 +5684,7 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
         let transaction = Transaction::change(doc.text(), changes.into_iter());
         let transaction = transaction.with_selection(new_selection);
         doc.apply(&transaction, view.id);
+        exit_select_mode(cx);
     }
 }
 
