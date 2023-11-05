@@ -4144,10 +4144,12 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
     replace_with_yanked_impl(cx.editor, '+', cx.count());
+    exit_select_mode(cx);
 }
 
 fn replace_selections_with_primary_clipboard(cx: &mut Context) {
     replace_with_yanked_impl(cx.editor, '*', cx.count());
+    exit_select_mode(cx);
 }
 
 fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
