@@ -4085,22 +4085,27 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
     };
     let (view, doc) = current!(cx.editor);
     paste_impl(&[contents], doc, view, paste, count, cx.editor.mode);
+    exit_select_mode(cx);
 }
 
 fn paste_clipboard_after(cx: &mut Context) {
     paste(cx.editor, '+', Paste::After, cx.count());
+    exit_select_mode(cx);
 }
 
 fn paste_clipboard_before(cx: &mut Context) {
     paste(cx.editor, '+', Paste::Before, cx.count());
+    exit_select_mode(cx);
 }
 
 fn paste_primary_clipboard_after(cx: &mut Context) {
     paste(cx.editor, '*', Paste::After, cx.count());
+    exit_select_mode(cx);
 }
 
 fn paste_primary_clipboard_before(cx: &mut Context) {
     paste(cx.editor, '*', Paste::Before, cx.count());
+    exit_select_mode(cx);
 }
 
 fn replace_with_yanked(cx: &mut Context) {
@@ -4160,6 +4165,7 @@ fn paste_after(cx: &mut Context) {
         Paste::After,
         cx.count(),
     );
+    exit_select_mode(cx);
 }
 
 fn paste_before(cx: &mut Context) {
@@ -4169,6 +4175,7 @@ fn paste_before(cx: &mut Context) {
         Paste::Before,
         cx.count(),
     );
+    exit_select_mode(cx);
 }
 
 fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
