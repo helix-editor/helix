@@ -1528,6 +1528,7 @@ where
     });
 
     doc.apply(&transaction, view.id);
+    exit_select_mode(cx);
 }
 
 fn switch_case(cx: &mut Context) {
