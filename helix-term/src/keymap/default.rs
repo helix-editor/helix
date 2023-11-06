@@ -34,9 +34,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "B" => move_prev_long_word_start,
         "E" => move_next_long_word_end,
 
-        "H" => move_prev_partial_word_start,
-        "L" => move_next_partial_word_end,
-
         "v" => select_mode,
         "G" => goto_line,
         "g" => { "Goto"
@@ -347,8 +344,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "W" => extend_next_long_word_start,
         "B" => extend_prev_long_word_start,
         "E" => extend_next_long_word_end,
-        "H" => extend_prev_partial_word_start,
-        "L" => extend_next_partial_word_end,
 
         "A-e" => extend_parent_node_end,
         "A-b" => extend_parent_node_start,
