@@ -448,9 +448,9 @@ impl EditorView {
                 }
             }
         }
-        cur_span.map(|span| {
+        if let Some(span) = cur_span {
             spans.push((whitespace_scope, span));
-        });
+        }
 
         spans
     }
