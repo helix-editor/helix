@@ -8,6 +8,8 @@
 
 [(class_name) (class_type_name) (type_constructor)] @type
 
+(type_variable) @type.parameter
+
 [(constructor_name) (tag)] @constructor
 
 ; Functions
