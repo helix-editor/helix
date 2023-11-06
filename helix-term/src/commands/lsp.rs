@@ -18,7 +18,7 @@ use tui::{
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
 use helix_core::{
-    path, syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection,
+    path, regex, syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection,
 };
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
@@ -1236,12 +1236,33 @@ pub fn signature_help_impl_with_future(
                 let param = signature.parameters.as_ref()?.get(param_idx)?;
                 match &param.label {
                     lsp::ParameterLabel::Simple(param_label) => {
-                        // rfind will be more reliable than find:
-                        // Consider 'def modify_foo(foo)'. Find will hightlight
-                        // the function name (wrong). rfind will highlight the param.
-                        let start = signature.label.rfind(param_label.as_str())?;
+                        fn try_find_param_in_signature_regex(
+                            param: &str,
+                            signature: &str,
+                        ) -> Option<(usize, usize)> {
+                            let escaped_param = regex::escape(param);
+                            let pattern = format!(r"\b{}\b", escaped_param);
+                            let regex = regex::Regex::new(&pattern).ok()?;
+                            let param_match = regex.find_iter(signature).last()?;
+                            let start_without_boundary = param_match.start() + 1;
+                            let end_without_boundary = param_match.end() - 1;
+                            Some((start_without_boundary, end_without_boundary))
+                        }
 
-                        Some((start, start + param_label.len()))
+                        fn try_find_param_simple(
+                            param: &str,
+                            signature: &str,
+                        ) -> Option<(usize, usize)> {
+                            let start = signature.rfind(param)?;
+                            let end = start + param.len();
+                            Some((start, end))
+                        }
+
+                        // A simple find is not sufficient. Consider 'def modify_foo(foo)'.
+                        // A find would hightlight the function name instead of the parameter.
+                        // If something fails with the regex, we fall back to rfind.
+                        try_find_param_in_signature_regex(&param_label, &signature.label)
+                            .or_else(|| try_find_param_simple(&param_label, &signature.label))
                     }
                     lsp::ParameterLabel::LabelOffsets([start, end]) => {
                         // LS sends offsets based on utf-16 based string representation
