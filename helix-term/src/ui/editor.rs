@@ -136,6 +136,10 @@ impl EditorView {
             highlights = Box::new(syntax::merge(highlights, overlay_highlights));
         }
 
+        let whitespace_highlights =
+            Self::doc_whitespace_highlights(doc, view.offset.anchor, inner.height, theme);
+        highlights = Box::new(syntax::merge(highlights, whitespace_highlights));
+
         for diagnostic in Self::doc_diagnostics_highlights(doc, theme) {
             // Most of the `diagnostic` Vecs are empty most of the time. Skipping
             // a merge for any empty Vec saves a significant amount of work.
@@ -144,10 +148,6 @@ impl EditorView {
             }
             highlights = Box::new(syntax::merge(highlights, diagnostic));
         }
-
-        let whitespace_highlights =
-            Self::doc_whitespace_highlights(doc, view.offset.anchor, inner.height, theme);
-        highlights = Box::new(syntax::merge(highlights, whitespace_highlights));
 
         let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
             let highlights = syntax::merge(

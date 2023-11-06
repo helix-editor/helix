@@ -742,12 +742,6 @@ impl<T: Item + 'static> Picker<T> {
                 area.height,
                 &cx.editor.theme,
             );
-            for spans in EditorView::doc_diagnostics_highlights(doc, &cx.editor.theme) {
-                if spans.is_empty() {
-                    continue;
-                }
-                highlights = Box::new(helix_core::syntax::merge(highlights, spans));
-            }
             let whitespace_highlights = EditorView::doc_whitespace_highlights(
                 doc,
                 offset.anchor,
@@ -755,6 +749,12 @@ impl<T: Item + 'static> Picker<T> {
                 &cx.editor.theme,
             );
             highlights = Box::new(helix_core::syntax::merge(highlights, whitespace_highlights));
+            for spans in EditorView::doc_diagnostics_highlights(doc, &cx.editor.theme) {
+                if spans.is_empty() {
+                    continue;
+                }
+                highlights = Box::new(helix_core::syntax::merge(highlights, spans));
+            }
             let mut decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
 
             if let Some((start, end)) = range {
