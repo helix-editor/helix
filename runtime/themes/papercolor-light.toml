@@ -52,6 +52,7 @@
 
 "type" = { fg = "bright2", modifiers = ["bold"] }
 "type.builtin" = { fg = "bright2", modifiers = ["bold"] }
+"type.parameter" = { fg = "foreground" }
 "type.enum" = { fg = "foreground" }
 "type.enum.variant" = { fg = "foreground" }
 
