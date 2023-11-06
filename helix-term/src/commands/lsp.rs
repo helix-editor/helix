@@ -1235,9 +1235,13 @@ pub fn signature_help_impl_with_future(
                     .unwrap_or(0) as usize;
                 let param = signature.parameters.as_ref()?.get(param_idx)?;
                 match &param.label {
-                    lsp::ParameterLabel::Simple(string) => {
-                        let start = signature.label.find(string.as_str())?;
-                        Some((start, start + string.len()))
+                    lsp::ParameterLabel::Simple(param_label) => {
+                        // rfind will be more reliable than find:
+                        // Consider 'def modify_foo(foo)'. Find will hightlight
+                        // the function name (wrong). rfind will highlight the param.
+                        let start = signature.label.rfind(param_label.as_str())?;
+
+                        Some((start, start + param_label.len()))
                     }
                     lsp::ParameterLabel::LabelOffsets([start, end]) => {
                         // LS sends offsets based on utf-16 based string representation
