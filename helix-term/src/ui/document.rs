@@ -307,7 +307,6 @@ pub fn render_text<'t>(
 pub struct TextRenderer<'a> {
     pub surface: &'a mut Surface,
     pub text_style: Style,
-    pub whitespace_style: Style, // TODO: this prop can be removed
     pub indent_guide_char: String,
     pub indent_guide_style: Style,
     pub newline: String,
@@ -374,7 +373,6 @@ impl<'a> TextRenderer<'a> {
             space,
             tab,
             virtual_tab,
-            whitespace_style: theme.get("ui.virtual.whitespace"),
             indent_width,
             starting_indent: col_offset / indent_width as usize
                 + (col_offset % indent_width as usize != 0) as usize

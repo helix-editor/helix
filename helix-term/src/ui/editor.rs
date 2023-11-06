@@ -404,52 +404,53 @@ impl EditorView {
         height: u16,
         theme: &Theme,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
-        let mut spans: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+        let whitespace_scope = match theme.find_scope_index_exact("ui.virtual.whitespace") {
+            Some(scope) => scope,
+            None => return Vec::new(),
+        };
 
-        theme
-            .find_scope_index_exact("ui.virtual.whitespace")
-            .map(|whitespace_scope| {
-                let text = doc.text().slice(..);
-                let row = text.char_to_line(anchor.min(text.len_chars()));
+        let text = doc.text().slice(..);
+        let row = text.char_to_line(anchor.min(text.len_chars()));
 
-                let range = {
-                    // Calculate viewport char ranges:
-                    // Saturating subs to make it inclusive zero indexing.
-                    let last_line = text.len_lines().saturating_sub(1);
-                    let last_visible_line =
-                        (row + height as usize).saturating_sub(1).min(last_line);
-                    let start = text.line_to_char(row.min(last_line));
-                    let end = text.line_to_char(last_visible_line + 1);
+        let range = {
+            // Calculate viewport char ranges:
+            // Saturating subs to make it inclusive zero indexing.
+            let last_line = text.len_lines().saturating_sub(1);
+            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+            let start = text.line_to_char(row.min(last_line));
+            let end = text.line_to_char(last_visible_line + 1);
 
-                    start..end
-                };
+            start..end
+        };
 
-                // Aggregate adjacent whitespace characters into a single span
-                // Necessary to avoid splitting \r\n, which would result in highlighting offset mismatches
-                let mut cur_span: Option<std::ops::Range<usize>> = None;
-                for i in range {
-                    let c = text.char(i);
-                    if c.is_whitespace() {
-                        match cur_span {
-                            None => {
-                                cur_span = Some(i..i + 1);
-                            }
-                            Some(span) => {
-                                if span.end == i {
-                                    // Current span is adjacent to previous span
-                                    cur_span = Some(span.start..i + 1);
-                                } else {
-                                    spans.push((whitespace_scope, span));
-                                    cur_span = Some(i..i + 1);
-                                }
-                            }
+        let mut spans: Vec<(usize, std::ops::Range<usize>)> =
+            Vec::with_capacity(10 * height as usize);
+
+        // Aggregate adjacent whitespace characters into a single span
+        // Necessary to avoid splitting \r\n, which would result in highlighting offset mismatches
+        let mut cur_span: Option<std::ops::Range<usize>> = None;
+        for i in range {
+            let c = text.char(i);
+            if c.is_whitespace() {
+                match cur_span {
+                    None => {
+                        cur_span = Some(i..i + 1);
+                    }
+                    Some(span) => {
+                        if span.end == i {
+                            // Current span is adjacent to previous span
+                            cur_span = Some(span.start..i + 1);
+                        } else {
+                            spans.push((whitespace_scope, span));
+                            cur_span = Some(i..i + 1);
                         }
                     }
                 }
-                cur_span.map(|span| {
-                    spans.push((whitespace_scope, span));
-                });
-            });
+            }
+        }
+        cur_span.map(|span| {
+            spans.push((whitespace_scope, span));
+        });
 
         spans
     }
