@@ -1,9 +1,9 @@
-//! This module contains the functionality toggle comments on lines over the selection
-//! using the comment character defined in the user's `languages.toml`
+//! This module contains the functionality for the following comment-related features
+//! using the comment character defined in the user's `languages.toml`:
+//! * toggle comments on lines over the selection
+//! * continue comment when opening a new line
 
-use crate::{
-    find_first_non_whitespace_char, Change, Rope, RopeSlice, Selection, Tendril, Transaction,
-};
+use crate::{chars, Change, Rope, RopeSlice, Selection, Tendril, Transaction};
 use std::borrow::Cow;
 
 /// Given text, a comment token, and a set of line indices, returns the following:
@@ -27,7 +27,7 @@ fn find_line_comment(
     let token_len = token.chars().count();
     for line in lines {
         let line_slice = text.line(line);
-        if let Some(pos) = find_first_non_whitespace_char(line_slice) {
+        if let Some(pos) = chars::find_first_non_whitespace_char(&line_slice) {
             let len = line_slice.len_chars();
 
             if pos < min {
@@ -94,12 +94,56 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     Transaction::change(doc, changes.into_iter())
 }
 
+/// Return the comment token of the current line if it is commented.
+///
+/// Return None otherwise.
+pub fn get_comment_token<'a>(line: &RopeSlice, tokens: &'a [String]) -> Option<&'a str> {
+    // TODO: don't continue shebangs
+    if tokens.is_empty() {
+        return None;
+    }
+
+    let mut result = None;
+
+    if let Some(pos) = chars::find_first_non_whitespace_char(line) {
+        let len = line.len_chars();
+
+        for token in tokens {
+            // line can be shorter than pos + token length
+            let fragment = Cow::from(line.slice(pos..std::cmp::min(pos + token.len(), len)));
+
+            if fragment == *token {
+                // We don't necessarily want to break upon finding the first matching comment token
+                // Instead, we check against all of the comment tokens and end up returning the longest
+                // comment token that matches
+                result = Some(token.as_str());
+            }
+        }
+    }
+
+    result
+}
+
+/// Determines whether the new line following the given line should be
+/// prepended with a comment token. If it does, the `text` string is
+/// appended with the appropriate comment token.
+pub fn handle_comment_continue<'a>(
+    line: &'a RopeSlice,
+    text: &'a mut String,
+    comment_tokens: &'a [String],
+) {
+    if let Some(token) = get_comment_token(line, comment_tokens) {
+        let new_line = format!("{} ", token);
+        text.push_str(new_line.as_str());
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    fn test_find_line_comment() {
+    fn test_toggle_line_comments() {
         // four lines, two space indented, except for line 1 which is blank.
         let mut doc = Rope::from("  1\n\n  2\n  3");
         // select whole document
@@ -148,5 +192,49 @@ mod test {
         assert!(selection.len() == 1); // to ignore the selection unused warning
 
         // TODO: account for uncommenting with uneven comment indentation
+    }
+
+    #[test]
+    fn test_get_comment_token() {
+        let tokens = vec![
+            String::from("//"),
+            String::from("///"),
+            String::from("//!"),
+            String::from(";"),
+        ];
+
+        assert_eq!(get_comment_token(&RopeSlice::from("# 1\n"), &tokens), None);
+        assert_eq!(
+            get_comment_token(&RopeSlice::from("    // 2    \n"), &tokens),
+            Some("//")
+        );
+        assert_eq!(
+            get_comment_token(&RopeSlice::from("///3\n"), &tokens),
+            Some("///")
+        );
+        assert_eq!(
+            get_comment_token(&RopeSlice::from("/// 4\n"), &tokens),
+            Some("///")
+        );
+        assert_eq!(
+            get_comment_token(&RopeSlice::from("//! 5\n"), &tokens),
+            Some("//!")
+        );
+        assert_eq!(
+            get_comment_token(&RopeSlice::from("//! /// 6\n"), &tokens),
+            Some("//!")
+        );
+        assert_eq!(
+            get_comment_token(&RopeSlice::from("7 ///\n"), &tokens),
+            None
+        );
+        assert_eq!(
+            get_comment_token(&RopeSlice::from(";8\n"), &tokens),
+            Some(";")
+        );
+        assert_eq!(
+            get_comment_token(&RopeSlice::from("//////////// 9"), &tokens),
+            Some("///")
+        );
     }
 }

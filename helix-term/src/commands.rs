@@ -10,9 +10,9 @@ use tui::widgets::Row;
 pub use typed::*;
 
 use helix_core::{
-    char_idx_at_visual_offset, comment,
+    char_idx_at_visual_offset, chars, comment,
     doc_formatter::TextFormat,
-    encoding, find_first_non_whitespace_char, find_workspace, graphemes,
+    encoding, find_workspace, graphemes,
     history::UndoKind,
     increment, indent,
     indent::IndentStyle,
@@ -814,7 +814,7 @@ fn kill_to_line_start(cx: &mut Context) {
             let head = if anchor == first_char && line != 0 {
                 // select until previous line
                 line_end_char_index(&text, line - 1)
-            } else if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
+            } else if let Some(pos) = chars::find_first_non_whitespace_char(&text.line(line)) {
                 if first_char + pos < anchor {
                     // select until first non-blank in line if cursor is after it
                     first_char + pos
@@ -876,7 +876,7 @@ fn goto_first_nonwhitespace_impl(view: &mut View, doc: &mut Document, movement: 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.cursor_line(text);
 
-        if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
+        if let Some(pos) = chars::find_first_non_whitespace_char(&text.line(line)) {
             let pos = pos + text.line_to_char(line);
             range.put_cursor(text, pos, movement == Movement::Extend)
         } else {
@@ -3004,7 +3004,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             // move cursor to the fallback position
             let pos = match cursor_fallback {
                 IndentFallbackPos::LineStart => {
-                    find_first_non_whitespace_char(text.line(cursor_line))
+                    chars::find_first_non_whitespace_char(&text.line(cursor_line))
                         .map(|ws_offset| ws_offset + cursor_line_start)
                         .unwrap_or(cursor_line_start)
                 }
@@ -3077,6 +3077,7 @@ fn open(cx: &mut Context, open: Open) {
     enter_insert_mode(cx);
     let (view, doc) = current!(cx.editor);
 
+    let config = doc.config.load();
     let text = doc.text().slice(..);
     let contents = doc.text();
     let selection = doc.selection(view.id);
@@ -3125,6 +3126,11 @@ fn open(cx: &mut Context, open: Open) {
         let mut text = String::with_capacity(1 + indent_len);
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
+
+        if config.continue_comments {
+            handle_comment_continue(doc, &mut text, cursor_line);
+        }
+
         let text = text.repeat(count);
 
         // calculate new selection ranges
@@ -3144,6 +3150,21 @@ fn open(cx: &mut Context, open: Open) {
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
+
+    // Since we might have added a comment token, move to the end of the line.
+    goto_line_end_newline(cx);
+}
+
+// Currently only continues single-line comments
+// TODO: Handle block comments as well
+fn handle_comment_continue(doc: &Document, text: &mut String, cursor_line: usize) {
+    let line = doc.text().line(cursor_line);
+
+    if let Some(lang_config) = doc.language_config() {
+        let comment_tokens = &lang_config.comment_tokens;
+
+        comment::handle_comment_continue(&line, text, comment_tokens);
+    }
 }
 
 // o inserts a new line after each line with a selection
@@ -3613,6 +3634,7 @@ pub mod insert {
 
     pub fn insert_newline(cx: &mut Context) {
         let (view, doc) = current_ref!(cx.editor);
+        let config = doc.config.load();
         let text = doc.text().slice(..);
 
         let contents = doc.text();
@@ -3681,6 +3703,11 @@ pub mod insert {
                     new_text.reserve_exact(1 + indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
+
+                    if config.continue_comments {
+                        handle_comment_continue(doc, &mut new_text, current_line);
+                    }
+
                     new_text.chars().count()
                 };
 
@@ -4514,7 +4541,6 @@ pub fn completion(cx: &mut Context) {
     // TODO: trigger_offset should be the cursor offset but we also need a starting offset from where we want to apply
     // completion filtering. For example logger.te| should filter the initial suggestion list with "te".
 
-    use helix_core::chars;
     let mut iter = text.chars_at(cursor);
     iter.reverse();
     let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
@@ -4583,7 +4609,7 @@ fn toggle_comments(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let token = doc
         .language_config()
-        .and_then(|lc| lc.comment_token.as_ref())
+        .and_then(|lc| lc.comment_tokens.get(0))
         .map(|tc| tc.as_ref());
     let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id), token);
 
