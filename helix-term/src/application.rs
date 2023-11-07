@@ -161,20 +161,20 @@ impl Application {
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None);
-        } else if let Some((first, _)) = args.files.first() {
-            let mut skip_files = 0;
+        } else if !args.files.is_empty() {
+            let mut files_it = args.files.into_iter().peekable();
 
             // If the first file is a directory, skip it and open a picker
-            if first.is_dir() {
-                let picker = ui::file_picker(first.into(), &config.load().editor);
+            if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
+                let picker = ui::file_picker(first, &config.load().editor);
                 compositor.push(Box::new(overlaid(picker)));
-                skip_files = 1;
             }
 
             // If there are any more files specified, open them
-            if args.files.len() > skip_files {
-                let nr_of_files = args.files.len();
-                for (i, (file, pos)) in args.files.into_iter().skip(skip_files).enumerate() {
+            if files_it.peek().is_some() {
+                let mut nr_of_files = 0;
+                for (file, pos) in files_it {
+                    nr_of_files += 1;
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
@@ -186,7 +186,7 @@ impl Application {
                         // option. If neither of those two arguments are passed
                         // in, just load the files normally.
                         let action = match args.split {
-                            _ if i == 0 => Action::VerticalSplit,
+                            _ if nr_of_files == 1 => Action::VerticalSplit,
                             Some(Layout::Vertical) => Action::VerticalSplit,
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
                             None => Action::Load,
