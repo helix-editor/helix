@@ -1278,6 +1278,7 @@ roots = []
 file-types = ["rkt", "rktd", "rktl", "scrbl"]
 shebangs = ["racket"]
 comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
 language-servers = [ "racket" ]
 grammar = "scheme"
 

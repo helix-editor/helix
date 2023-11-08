@@ -16,7 +16,7 @@
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
-| common-lisp | ✓ |  |  | `cl-lsp` |
+| common-lisp | ✓ |  | ✓ | `cl-lsp` |
 | cpon | ✓ |  | ✓ |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
 | crystal | ✓ | ✓ |  | `crystalline` |
@@ -128,7 +128,7 @@
 | python | ✓ | ✓ | ✓ | `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
 | r | ✓ |  |  | `R` |
-| racket | ✓ |  |  | `racket` |
+| racket | ✓ |  | ✓ | `racket` |
 | regex | ✓ |  |  |  |
 | rego | ✓ |  |  | `regols` |
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
@@ -140,7 +140,7 @@
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | sage | ✓ | ✓ |  |  |
 | scala | ✓ |  | ✓ | `metals` |
-| scheme | ✓ |  |  |  |
+| scheme | ✓ |  | ✓ |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
 | slint | ✓ |  | ✓ | `slint-lsp` |
 | smithy | ✓ |  |  | `cs` |
