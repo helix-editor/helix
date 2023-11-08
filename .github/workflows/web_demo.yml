@@ -15,10 +15,10 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup LLVM16
-        uses: cpp-actions/setup-llvm@v1
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v1
         with:
-          llvm-version: "16"
+          version: "16"
 
       - name: Set up cache
         uses: Swatinem/rust-cache@v2
