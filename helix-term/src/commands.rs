@@ -5218,7 +5218,7 @@ fn select_next_word(cx: &mut Context) {
     let current_selection = get_current_selection(cx);
     select_textobject_for_char(cx, 'w', textobject::TextObject::Inside, cx.count());
     let new_selection = get_current_selection(cx);
-    if current_selection == new_selection {
+    if selection_eq(current_selection, new_selection) {
         move_next_word_end(cx);
         select_textobject_for_char(cx, 'w', textobject::TextObject::Inside, cx.count());
     }
@@ -5228,7 +5228,7 @@ fn select_next_long_word(cx: &mut Context) {
     let current_selection = get_current_selection(cx);
     select_textobject_for_char(cx, 'W', textobject::TextObject::Inside, cx.count());
     let new_selection = get_current_selection(cx);
-    if current_selection == new_selection {
+    if selection_eq(current_selection, new_selection) {
         move_next_long_word_end(cx);
         select_textobject_for_char(cx, 'W', textobject::TextObject::Inside, cx.count());
     }
@@ -5239,7 +5239,7 @@ fn select_prev_word(cx: &mut Context) {
     select_textobject_for_char(cx, 'w', textobject::TextObject::Inside, cx.count());
     flip_selections(cx);
     let new_selection = get_current_selection(cx);
-    if current_selection == new_selection {
+    if selection_eq(current_selection, new_selection) {
         move_prev_word_start(cx);
         select_textobject_for_char(cx, 'w', textobject::TextObject::Inside, cx.count());
         flip_selections(cx);
@@ -5251,7 +5251,7 @@ fn select_prev_long_word(cx: &mut Context) {
     select_textobject_for_char(cx, 'W', textobject::TextObject::Inside, cx.count());
     flip_selections(cx);
     let new_selection = get_current_selection(cx);
-    if current_selection == new_selection {
+    if selection_eq(current_selection, new_selection) {
         move_prev_long_word_start(cx);
         select_textobject_for_char(cx, 'W', textobject::TextObject::Inside, cx.count());
         flip_selections(cx);
@@ -5261,6 +5261,13 @@ fn select_prev_long_word(cx: &mut Context) {
 fn get_current_selection(cx: &mut Context) -> Selection {
     let (view, doc) = current!(cx.editor);
     doc.selection(view.id).clone()
+}
+
+fn selection_eq(s1: Selection, s2: Selection) -> bool {
+    s1.ranges()
+        .iter()
+        .zip(s2.ranges().iter())
+        .all(|(&r1, &r2)| r1.eq(r2))
 }
 
 fn surround_add(cx: &mut Context) {
