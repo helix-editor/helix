@@ -2,11 +2,10 @@ use std::str::from_utf8;
 
 /// Default built-in languages.toml.
 pub fn default_lang_config() -> toml::Value {
-    // TODO(wasm32) enable only some languages
-    // #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(target_arch = "wasm32"))]
     let default_config = include_bytes!("../../languages.toml");
-    // #[cfg(target_arch = "wasm32")]
-    // let default_config = include_bytes!("../../languages_web.toml");
+    #[cfg(target_arch = "wasm32")]
+    let default_config = include_bytes!("../../languages_wasm32.toml");
     toml::from_str(from_utf8(default_config).unwrap())
         .expect("Could not parse built-in languages.toml to valid toml")
 }
