@@ -11,6 +11,7 @@ use ahash::RandomState;
 use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
 use hashbrown::raw::RawTable;
+use log::debug;
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
@@ -601,6 +602,7 @@ impl TextObjectQuery {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn read_query(language: &str, filename: &str) -> String {
     static INHERITS_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()-]+)\s*").unwrap());
@@ -617,6 +619,52 @@ pub fn read_query(language: &str, filename: &str) -> String {
         })
         .to_string()
 }
+#[cfg(target_arch = "wasm32")]
+pub fn read_query(language: &str, filename: &str) -> String {
+    const C_HIGHLIGHTS: &str = include_str!("../../runtime/queries/c/highlights.scm");
+    const C_INJECTIONS: &str = include_str!("../../runtime/queries/c/injections.scm");
+
+    const JAVA_HIGHLIGHTS: &str = include_str!("../../runtime/queries/java/highlights.scm");
+    const JAVA_INJECTIONS: &str = include_str!("../../runtime/queries/java/injections.scm");
+
+    const REGEX_HIGHLIGHTS: &str = include_str!("../../runtime/queries/regex/highlights.scm");
+
+    const RUST_HIGHLIGHTS: &str = include_str!("../../runtime/queries/rust/highlights.scm");
+    const RUST_INJECTIONS: &str = include_str!("../../runtime/queries/rust/injections.scm");
+    const RUST_LOCALS: &str = include_str!("../../runtime/queries/rust/locals.scm");
+
+    const TOML_HIGHLIGHTS: &str = include_str!("../../runtime/queries/toml/highlights.scm");
+    const TOML_INJECTIONS: &str = include_str!("../../runtime/queries/toml/injections.scm");
+
+    match language {
+        "c" => match filename {
+            "highlights.scm" => C_HIGHLIGHTS.to_string(),
+            "injections.scm" => C_INJECTIONS.to_string(),
+            _ => String::default(),
+        },
+        "java" => match filename {
+            "highlights.scm" => JAVA_HIGHLIGHTS.to_string(),
+            "injections.scm" => JAVA_INJECTIONS.to_string(),
+            _ => String::default(),
+        },
+        "regex" => match filename {
+            "highlights.scm" => REGEX_HIGHLIGHTS.to_string(),
+            _ => String::default(),
+        },
+        "rust" => match filename {
+            "highlights.scm" => RUST_HIGHLIGHTS.to_string(),
+            "injections.scm" => RUST_INJECTIONS.to_string(),
+            "locals.scm" => RUST_LOCALS.to_string(),
+            _ => String::default(),
+        },
+        "toml" => match filename {
+            "highlights.scm" => TOML_HIGHLIGHTS.to_string(),
+            "injections.scm" => TOML_INJECTIONS.to_string(),
+            _ => String::default(),
+        },
+        _ => String::default(),
+    }
+}
 
 impl LanguageConfiguration {
     fn initialize_highlight(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
@@ -628,6 +676,10 @@ impl LanguageConfiguration {
         let locals_query = read_query(&self.language_id, "locals.scm");
 
         if highlights_query.is_empty() {
+            log::error!(
+                "No tree sitter queries available for language {}",
+                self.language_id
+            );
             None
         } else {
             let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
@@ -1614,7 +1666,8 @@ impl<'a> Iterator for ChunksBytes<'a> {
 }
 
 pub struct RopeProvider<'a>(pub RopeSlice<'a>);
-impl<'a> TextProvider<'a> for RopeProvider<'a> {
+
+impl<'a> TextProvider<&'a [u8]> for RopeProvider<'a> {
     type I = ChunksBytes<'a>;
 
     fn text(&mut self, node: Node) -> Self::I {
@@ -1628,7 +1681,7 @@ impl<'a> TextProvider<'a> for RopeProvider<'a> {
 struct HighlightIterLayer<'a> {
     _tree: Option<Tree>,
     cursor: QueryCursor,
-    captures: RefCell<iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>>>>,
+    captures: RefCell<iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>, &'a [u8]>>>,
     config: &'a HighlightConfiguration,
     highlight_end_stack: Vec<usize>,
     scope_stack: Vec<LocalScope<'a>>,

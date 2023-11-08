@@ -35,6 +35,6 @@ package.helix-tui.opt-level = 2
 package.helix-term.opt-level = 2
 
 [workspace.dependencies]
-tree-sitter = { package = "tree-sitter-c2rust", version = "0.20" }
+tree-sitter = { package = "tree-sitter-c2rust", git = "https://github.com/makemeunsee/tree-sitter-c2rust" }
 crossterm = { git = "https://github.com/makemeunsee/crossterm", branch = "wasm32", features = ["event-stream"] }
 nucleo = "0.2.0"

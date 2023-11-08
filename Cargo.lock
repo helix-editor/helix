@@ -1382,6 +1382,7 @@ dependencies = [
 name = "helix-web"
 version = "0.1.0"
 dependencies = [
+ "cc",
  "console_error_panic_hook",
  "console_log",
  "crossterm",
@@ -2375,10 +2376,10 @@ dependencies = [
 [[package]]
 name = "tree-sitter-c2rust"
 version = "0.20.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee40a4d9cf5a30c199935f346887588239daceae4d1418d81b789276fffb8d91"
+source = "git+https://github.com/makemeunsee/tree-sitter-c2rust#f3e377823e8b7cdda872205f63235b85bcb09969"
 dependencies = [
  "c2rust-bitfields",
+ "instant",
  "once_cell",
  "regex",
 ]

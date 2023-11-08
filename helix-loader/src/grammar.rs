@@ -62,8 +62,23 @@ const BUILD_TARGET: &str = env!("BUILD_TARGET");
 const REMOTE_NAME: &str = "origin";
 
 #[cfg(target_arch = "wasm32")]
+extern "C" {
+    fn tree_sitter_c() -> Language;
+    fn tree_sitter_java() -> Language;
+    fn tree_sitter_regex() -> Language;
+    fn tree_sitter_rust() -> Language;
+    fn tree_sitter_toml() -> Language;
+}
+#[cfg(target_arch = "wasm32")]
 pub fn get_language(name: &str) -> Result<Language> {
-    unimplemented!()
+    match name {
+        "c" => Ok(unsafe { tree_sitter_c() }),
+        "java" => Ok(unsafe { tree_sitter_java() }),
+        "regex" => Ok(unsafe { tree_sitter_regex() }),
+        "rust" => Ok(unsafe { tree_sitter_rust() }),
+        "toml" => Ok(unsafe { tree_sitter_toml() }),
+        _ => Err(anyhow::anyhow!("{} is not supported", name)),
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

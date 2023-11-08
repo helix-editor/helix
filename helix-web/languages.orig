@@ -1,0 +1,56 @@
+# indicates a probably fixable issue for this lang
+! indicates a nastier issue
+diff
+bash
+dockerfile
+javascript
+mermaid
+dot
+gitignore
+protobuf
+sql
+glsl
+json
+go
+python
+svelte
+# nix # grammar out of sync with TS
+elm
+julia
+r
+swift
+ocaml
+clojure
+erlang
+graphql
+kotlin
+cmake
+latex
+opencl
+xml
+forth
+haskell
+ruby
+yaml
+! cpp ! breaks npm, 'cant resolve env'
+fortran
+pascal
+css
+c-sharp
+fsharp
+llvm
+! scala ! 'free' calls in scanner
+zig
+hosts
+lua
+scheme
+d
+html
+make
+perl
+scss
+typescript
+dart
+markdoc
+php
+markdown
