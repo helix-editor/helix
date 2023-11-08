@@ -31,7 +31,7 @@ jobs:
       - name: Build Helix webpack
         run: |
           cd helix-web
-          wasm-pack build
+          wasm-pack build -t bundler . -vvv
           wasm-pack pack
 
       - name: Install node modules and build static app
