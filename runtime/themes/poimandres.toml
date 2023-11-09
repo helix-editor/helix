@@ -35,7 +35,7 @@ string = { fg = "brightMint" }
 "markup.heading" = { fg = "brightMint" }
 "markup.bold" = { fg = "bluishGrayBrighter", modifiers = ["bold"] }
 "markup.italic" = { fg = "bluishGrayBrighter", modifiers = ["italic"] }
-"markup.strikethrough" = { modifiers = ["italic", "crossed-out"] }
+"markup.strikethrough" = { modifiers = ["italic", "crossed_out"] }
 
 # UI
 "markup.link.url" = { fg = "lightBlue", modifiers = ["underlined"] }
