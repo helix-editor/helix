@@ -126,7 +126,7 @@ fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Resul
     let rel_path = file.strip_prefix(repo_dir)?;
     let tree = commit.tree()?;
     let tree_entry = tree
-        .lookup_entry_by_path(rel_path)?
+        .lookup_entry_by_path(rel_path, &mut Vec::new())?
         .context("file is untracked")?;
     match tree_entry.mode() {
         // not a file, everything is new, do not show diff

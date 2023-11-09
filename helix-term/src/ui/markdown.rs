@@ -10,14 +10,15 @@ use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag};
 
 use helix_core::{
     syntax::{self, HighlightEvent, InjectionLanguageMarker, Syntax},
-    Rope,
+    RopeSlice,
 };
 use helix_view::{
     graphics::{Margin, Rect, Style},
+    theme::Modifier,
     Theme,
 };
 
-fn styled_multiline_text<'a>(text: String, style: Style) -> Text<'a> {
+fn styled_multiline_text<'a>(text: &str, style: Style) -> Text<'a> {
     let spans: Vec<_> = text
         .lines()
         .map(|line| Span::styled(line.to_string(), style))
@@ -27,7 +28,7 @@ fn styled_multiline_text<'a>(text: String, style: Style) -> Text<'a> {
 }
 
 pub fn highlighted_code_block<'a>(
-    text: String,
+    text: &str,
     language: &str,
     theme: Option<&Theme>,
     config_loader: Arc<syntax::Loader>,
@@ -45,13 +46,13 @@ pub fn highlighted_code_block<'a>(
         None => return styled_multiline_text(text, code_style),
     };
 
-    let rope = Rope::from(text.as_ref());
+    let ropeslice = RopeSlice::from(text);
     let syntax = config_loader
         .language_configuration_for_injection_string(&InjectionLanguageMarker::Name(
             language.into(),
         ))
         .and_then(|config| config.highlight_config(theme.scopes()))
-        .map(|config| Syntax::new(&rope, config, Arc::clone(&config_loader)));
+        .and_then(|config| Syntax::new(ropeslice, config, Arc::clone(&config_loader)));
 
     let syntax = match syntax {
         Some(s) => s,
@@ -59,7 +60,7 @@ pub fn highlighted_code_block<'a>(
     };
 
     let highlight_iter = syntax
-        .highlight_iter(rope.slice(..), None, None)
+        .highlight_iter(ropeslice, None, None)
         .map(|e| e.unwrap());
     let highlight_iter: Box<dyn Iterator<Item = HighlightEvent>> =
         if let Some(spans) = additional_highlight_spans {
@@ -183,7 +184,9 @@ impl Markdown {
         // Transform text in `<code>` blocks into `Event::Code`
         let mut in_code = false;
         let parser = parser.filter_map(|event| match event {
-            Event::Html(tag) if *tag == *"<code>" => {
+            Event::Html(tag)
+                if tag.starts_with("<code") && matches!(tag.chars().nth(5), Some(' ' | '>')) =>
+            {
                 in_code = true;
                 None
             }
@@ -267,7 +270,7 @@ impl Markdown {
                             CodeBlockKind::Indented => "",
                         };
                         let tui_text = highlighted_code_block(
-                            text.to_string(),
+                            &text,
                             language,
                             theme,
                             Arc::clone(&self.config_loader),
@@ -275,17 +278,21 @@ impl Markdown {
                         );
                         lines.extend(tui_text.lines.into_iter());
                     } else {
-                        let style = if let Some(Tag::Heading(level, ..)) = tags.last() {
-                            match level {
+                        let style = match tags.last() {
+                            Some(Tag::Heading(level, ..)) => match level {
                                 HeadingLevel::H1 => heading_styles[0],
                                 HeadingLevel::H2 => heading_styles[1],
                                 HeadingLevel::H3 => heading_styles[2],
                                 HeadingLevel::H4 => heading_styles[3],
                                 HeadingLevel::H5 => heading_styles[4],
                                 HeadingLevel::H6 => heading_styles[5],
+                            },
+                            Some(Tag::Emphasis) => text_style.add_modifier(Modifier::ITALIC),
+                            Some(Tag::Strong) => text_style.add_modifier(Modifier::BOLD),
+                            Some(Tag::Strikethrough) => {
+                                text_style.add_modifier(Modifier::CROSSED_OUT)
                             }
-                        } else {
-                            text_style
+                            _ => text_style,
                         };
                         spans.push(Span::styled(text, style));
                     }

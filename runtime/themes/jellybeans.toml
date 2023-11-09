@@ -22,7 +22,7 @@
 
 "constant.builtin.boolean" = "yellow"
 "constant.character" = "yellow"
-"constant.characted.escape" = "red_error"
+"constant.character.escape" = "red_error"
 "constant.numeric" = "dark_orange"
 "string" = "dark_green"
 "string.regexp" = "light_purple"

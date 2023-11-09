@@ -12,12 +12,13 @@ homepage = "https://helix-editor.com"
 
 [dependencies]
 helix-core = { version = "0.6", path = "../helix-core" }
+helix-event = { version = "0.6", path = "../helix-event" }
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot", "macros"] }
 parking_lot = "0.12"
 arc-swap = { version = "1.6.0" }
 
-gix = { version = "0.44.1", default-features = false , optional = true }
+gix = { version = "0.55.0", default-features = false , optional = true }
 imara-diff = "0.1.5"
 anyhow = "1"
 
@@ -27,4 +28,4 @@ log = "0.4"
 git = ["gix"]
 
 [dev-dependencies]
-tempfile = "3.4"
+tempfile = "3.8"

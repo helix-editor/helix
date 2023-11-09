@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use super::macros::keymap;
-use super::{Keymap, Mode};
+use super::{KeyTrie, Mode};
 use helix_core::hashmap;
 
-pub fn default() -> HashMap<Mode, Keymap> {
+pub fn default() -> HashMap<Mode, KeyTrie> {
     let normal = keymap!({ "Normal mode"
         "h" | "left" => move_char_left,
         "j" | "down" => move_visual_line_down,
@@ -79,6 +79,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "s" => select_regex,
         "A-s" => split_selection_on_newline,
+        "A-minus" => merge_selections,
         "A-_" => merge_consecutive_selections,
         "S" => split_selection,
         ";" => collapse_selection,
@@ -87,6 +88,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "A-i" | "A-down" => shrink_selection,
         "A-p" | "A-left" => select_prev_sibling,
         "A-n" | "A-right" => select_next_sibling,
+        "A-e" => move_parent_node_end,
+        "A-b" => move_parent_node_start,
 
         "%" => select_all,
         "x" => extend_line_below,
@@ -264,7 +267,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
                     "C-v" | "v" => vsplit_new,
                 },
             },
-            "y" => yank_joined_to_clipboard,
+            "y" => yank_to_clipboard,
             "Y" => yank_main_selection_to_clipboard,
             "p" => paste_clipboard_after,
             "P" => paste_clipboard_before,
@@ -335,6 +338,9 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "B" => extend_prev_long_word_start,
         "E" => extend_next_long_word_end,
 
+        "A-e" => extend_parent_node_end,
+        "A-b" => extend_parent_node_start,
+
         "n" => extend_search_next,
         "N" => extend_search_prev,
 
@@ -367,7 +373,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "C-h" | "backspace" | "S-backspace" => delete_char_backward,
         "C-d" | "del" => delete_char_forward,
         "C-j" | "ret" => insert_newline,
-        "tab" => insert_tab,
+        "tab" => smart_tab,
+        "S-tab" => insert_tab,
 
         "up" => move_visual_line_up,
         "down" => move_visual_line_down,
@@ -379,8 +386,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "end" => goto_line_end_newline,
     });
     hashmap!(
-        Mode::Normal => Keymap::new(normal),
-        Mode::Select => Keymap::new(select),
-        Mode::Insert => Keymap::new(insert),
+        Mode::Normal => normal,
+        Mode::Select => select,
+        Mode::Insert => insert,
     )
 }

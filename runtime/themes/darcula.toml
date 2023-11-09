@@ -8,7 +8,8 @@
 "ui.gutter" = { bg = "grey01" }
 "ui.popup" = { fg = "grey05", bg = "grey00" }
 "ui.window" = { bg = "grey01" }
-"ui.selection" = { bg = "grey03" }
+"ui.selection" = { bg = "grey02" }
+"ui.selection.primary" = { bg = "blue" }
 "ui.statusline" = { fg = "grey04", bg = "grey02" }
 "ui.statusline.insert" = { bg = "white", fg = "grey01" }
 "ui.statusline.select" = { bg = "orange", fg = "grey01" }
@@ -61,7 +62,7 @@
 "markup.link.url" = { fg = "lightblue", modifiers = ["underlined"] }
 "markup.link.text" = "white"
 "markup.quote" = "darkgreen"
-"markup.raw" = "white"
+"markup.raw" = "purple"
 
 "diff.plus" = "green"
 "diff.delta" = "grey"
@@ -97,3 +98,4 @@ green = "#32cd32"
 grey = "#808080"
 darkgreen = "#629755"
 lightblue = "#6897bb"
+blue = "#104158"

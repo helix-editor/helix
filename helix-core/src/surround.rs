@@ -397,15 +397,10 @@ mod test {
 
         let selections: SmallVec<[Range; 1]> = spec
             .match_indices('^')
-            .into_iter()
             .map(|(i, _)| Range::point(i))
             .collect();
 
-        let expectations: Vec<usize> = spec
-            .match_indices('_')
-            .into_iter()
-            .map(|(i, _)| i)
-            .collect();
+        let expectations: Vec<usize> = spec.match_indices('_').map(|(i, _)| i).collect();
 
         (rope, Selection::new(selections, 0), expectations)
     }

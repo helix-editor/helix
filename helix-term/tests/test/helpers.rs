@@ -244,7 +244,7 @@ pub fn test_editor_config() -> helix_view::editor::Config {
 /// character, and if one doesn't exist already, appends the system's
 /// appropriate line ending to the end of a string.
 pub fn platform_line(input: &str) -> String {
-    let line_end = helix_core::DEFAULT_LINE_ENDING.as_str();
+    let line_end = helix_core::NATIVE_LINE_ENDING.as_str();
 
     // we can assume that the source files in this code base will always
     // be LF, so indoc strings will always insert LF
@@ -320,6 +320,14 @@ impl AppBuilder {
     }
 
     pub fn build(self) -> anyhow::Result<Application> {
+        if let Some(path) = &self.args.working_directory {
+            bail!("Changing the working directory to {path:?} is not yet supported for integration tests");
+        }
+
+        if let Some((path, _)) = self.args.files.first().filter(|p| p.0.is_dir()) {
+            bail!("Having the directory {path:?} in args.files[0] is not yet supported for integration tests");
+        }
+
         let mut app = Application::new(self.args, self.config, self.syn_conf)?;
 
         if let Some((text, selection)) = self.input {
@@ -350,7 +358,7 @@ pub fn assert_file_has_content(file: &mut File, content: &str) -> anyhow::Result
 
     let mut file_content = String::new();
     file.read_to_string(&mut file_content)?;
-    assert_eq!(content, file_content);
+    assert_eq!(file_content, content);
 
     Ok(())
 }
