@@ -11,7 +11,6 @@ use ahash::RandomState;
 use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
 use hashbrown::raw::RawTable;
-use log::debug;
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
@@ -29,7 +28,10 @@ use std::{
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
 
-use helix_loader::grammar::{get_language, load_runtime_file};
+#[cfg(not(target_arch = "wasm32"))]
+use helix_loader::grammar::load_runtime_file;
+
+use helix_loader::grammar::get_language;
 
 fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
 where

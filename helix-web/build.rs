@@ -9,7 +9,7 @@ fn main() -> std::io::Result<()> {
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("tutor.rs");
     fs::write(&dest_path, &tutor)?;
-    println!("cargo:rerun-if-changed=tutor.rs");
+    println!("cargo:rerun-if-changed=../runtime/tutor");
 
     let mut build = cc::Build::new();
     build.file("src/wasm-sysroot/wctype.c");
@@ -18,6 +18,7 @@ fn main() -> std::io::Result<()> {
 
     const PARSER_C: &str = "parser.c";
     const SCANNER_C: &str = "scanner.c";
+
     println!("cargo:rerun-if-changed=languages");
     for language in std::fs::read_to_string("languages")?.lines() {
         let base_path = format!("../runtime/grammars/sources/{}/src/", language);

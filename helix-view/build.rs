@@ -48,6 +48,6 @@ fn main() {
         let out_dir = env::var_os("OUT_DIR").unwrap();
         let dest_path = Path::new(&out_dir).join("themes.rs");
         fs::write(&dest_path, &themes).unwrap();
-        println!("cargo:rerun-if-changed=themes.rs");
+        println!("cargo:rerun-if-changed=../runtime/themes/");
     }
 }
