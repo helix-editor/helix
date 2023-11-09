@@ -1,3 +1,4 @@
+use helix_loader::grammar::fetch_grammars;
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -11,6 +12,8 @@ fn main() -> std::io::Result<()> {
     fs::write(&dest_path, &tutor)?;
     println!("cargo:rerun-if-changed=../runtime/tutor");
 
+    fetch_grammars().expect("Failed to fetch tree-sitter grammars");
+
     let mut build = cc::Build::new();
     build.file("src/wasm-sysroot/wctype.c");
     build.include("src/wasm-sysroot/");
@@ -22,14 +25,15 @@ fn main() -> std::io::Result<()> {
     println!("cargo:rerun-if-changed=languages");
     for language in std::fs::read_to_string("languages")?.lines() {
         let base_path = format!("../runtime/grammars/sources/{}/src/", language);
+
         let mut build = cc::Build::new();
         build.include("src/wasm-sysroot/");
         build.include(&base_path);
+
         let parser_c = Path::new(&base_path).join(PARSER_C);
         println!("cargo:rerun-if-changed={}", parser_c.display());
-        if parser_c.exists() {
-            build.file(&parser_c);
-        }
+        build.file(&parser_c);
+
         let scanner_c = Path::new(&base_path).join(SCANNER_C);
         if scanner_c.exists() {
             println!("cargo:rerun-if-changed={}", scanner_c.display());
@@ -37,5 +41,6 @@ fn main() -> std::io::Result<()> {
         }
         build.compile(language);
     }
+
     Ok(())
 }

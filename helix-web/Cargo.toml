@@ -43,7 +43,9 @@ console_error_panic_hook = { version = "0.1.7", optional = true }
 wasm-bindgen-test = "0.3.34"
 
 [build-dependencies]
-cc = { version = "1" }
+cc = "1"
+helix-loader = { version = "0.6", path = "../helix-loader", features = ["build"] }
+
 [profile.release]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"

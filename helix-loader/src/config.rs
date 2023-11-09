@@ -4,8 +4,18 @@ use std::str::from_utf8;
 pub fn default_lang_config() -> toml::Value {
     #[cfg(not(target_arch = "wasm32"))]
     let default_config = include_bytes!("../../languages.toml");
+    #[cfg(any(target_arch = "wasm32", feature = "build"))]
+    let wasm32_config = include_bytes!("../../languages_wasm32.toml");
+    #[cfg(feature = "build")]
+    let wasm_build = std::matches!(std::env::var("CARGO_CFG_TARGET_ARCH"), Ok(s) if s == "wasm32");
+    #[cfg(feature = "build")]
+    let default_config: &[u8] = if wasm_build {
+        wasm32_config
+    } else {
+        default_config
+    };
     #[cfg(target_arch = "wasm32")]
-    let default_config = include_bytes!("../../languages_wasm32.toml");
+    let default_config = wasm32_config;
     toml::from_str(from_utf8(default_config).unwrap())
         .expect("Could not parse built-in languages.toml to valid toml")
 }
