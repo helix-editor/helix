@@ -324,12 +324,10 @@ pub fn render_text<'t>(
                 overlay_style_span.0
             };
 
-        let virt = grapheme.is_virtual();
         renderer.draw_grapheme(
-            grapheme.grapheme,
+            grapheme,
             grapheme_syntax_style,
             grapheme_overlay_style,
-            virt,
             &mut last_line_indent_level,
             &mut is_in_indent_area,
             pos,
@@ -433,14 +431,15 @@ impl<'a> TextRenderer<'a> {
     /// Draws a single `grapheme` at the current render position with a specified `style`.
     pub fn draw_grapheme(
         &mut self,
-        grapheme: Grapheme,
+        formatted_grapheme: helix_core::doc_formatter::FormattedGrapheme,
         syntax_style: Style,
         overlay_style: Style,
-        is_virtual: bool,
         last_indent_level: &mut usize,
         is_in_indent_area: &mut bool,
         position: Position,
     ) {
+        let is_virtual = formatted_grapheme.is_virtual();
+        let grapheme = formatted_grapheme.grapheme;
         let cut_off_start = self.col_offset.saturating_sub(position.col);
         let is_whitespace = grapheme.is_whitespace();
 
