@@ -28,7 +28,6 @@ use helix_core::{
     textobject,
     tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
-    url::Url,
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
     RopeReader, RopeSlice, Selection, SmallVec, Tendril, Transaction,
 };
@@ -61,8 +60,13 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use futures_util::{stream::FuturesUnordered, TryStreamExt};
-use std::{collections::HashMap, fmt, future::Future};
-use std::{collections::HashSet, num::NonZeroUsize};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+    future::Future,
+    io::Read,
+    num::NonZeroUsize,
+};
 
 use std::{
     borrow::Cow,
@@ -71,6 +75,7 @@ use std::{
 
 use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
+use url::Url;
 
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
@@ -1199,23 +1204,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         }
 
         if let Ok(url) = Url::parse(p) {
-            // file:// urls are opened inside helix
-            if url.scheme() != "file" {
-                let commands = open::commands(url.as_str());
-                cx.jobs.callback(async {
-                    for cmd in commands {
-                        let mut command = tokio::process::Command::new(cmd.get_program());
-                        command.args(cmd.get_args());
-                        if command.output().await.is_ok() {
-                            return Ok(job::Callback::Editor(Box::new(|_| {})));
-                        }
-                    }
-                    Ok(job::Callback::Editor(Box::new(move |editor| {
-                        editor.set_error("Open file failed: no command found")
-                    })))
-                });
-                return;
-            }
+            return open_url(cx, url, action);
         }
 
         let path = &rel_path.join(p);
@@ -1226,6 +1215,59 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             cx.editor.set_error(format!("Open file failed: {:?}", e));
         }
     }
+}
+
+/// Opens url. If the URL is a valid textual file it is open in helix, other
+/// the file is open using external program.
+fn open_url(cx: &mut Context, url: Url, action: Action) {
+    let (_, doc) = current_ref!(cx.editor);
+    let rel_path = doc
+        .relative_path()
+        .map(|path| path.parent().unwrap().to_path_buf())
+        .unwrap_or_default();
+
+    if url.scheme() != "file" {
+        return open_external_url(cx, url);
+    }
+
+    let content_type = std::fs::File::open(url.path()).and_then(|file| {
+        // Read up to 1kb to detect the content type
+        let mut read_buffer = Vec::new();
+        let n = file.take(1024).read_to_end(&mut read_buffer)?;
+        Ok(content_inspector::inspect(&read_buffer[..n]))
+    });
+
+    // we attempt to open binary files - files that can't be open in helix - using external
+    // program as well, e.g. pdf files or images
+    match content_type {
+        Ok(content_inspector::ContentType::BINARY) => open_external_url(cx, url),
+        Ok(_) | Err(_) => {
+            let path = &rel_path.join(url.path());
+            if path.is_dir() {
+                let picker = ui::file_picker(path.into(), &cx.editor.config());
+                cx.push_layer(Box::new(overlaid(picker)));
+            } else if let Err(e) = cx.editor.open(path, action) {
+                cx.editor.set_error(format!("Open file failed: {:?}", e));
+            }
+        }
+    }
+}
+
+/// Opens URL in external program.
+fn open_external_url(cx: &mut Context, url: Url) {
+    let commands = open::commands(url.as_str());
+    cx.jobs.callback(async {
+        for cmd in commands {
+            let mut command = tokio::process::Command::new(cmd.get_program());
+            command.args(cmd.get_args());
+            if command.output().await.is_ok() {
+                return Ok(job::Callback::Editor(Box::new(|_| {})));
+            }
+        }
+        Ok(job::Callback::Editor(Box::new(move |editor| {
+            editor.set_error("Opening URL in external program failed")
+        })))
+    });
 }
 
 fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)

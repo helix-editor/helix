@@ -1140,7 +1140,6 @@ dependencies = [
  "unicode-general-category",
  "unicode-segmentation",
  "unicode-width",
- "url",
 ]
 
 [[package]]
@@ -1249,6 +1248,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "toml",
+ "url",
  "which",
 ]
 
