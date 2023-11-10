@@ -38,6 +38,15 @@ where
         .map(|buf| Regex::new(&buf).map_err(serde::de::Error::custom))
         .transpose()
 }
+fn deserialize_regex_vec<'de, D>(deserializer: D) -> Result<Vec<Regex>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Vec::<String>::deserialize(deserializer)?
+        .into_iter()
+        .map(|buf| Regex::new(&buf).map_err(serde::de::Error::custom))
+        .collect()
+}
 
 fn deserialize_lsp_config<'de, D>(deserializer: D) -> Result<Option<serde_json::Value>, D::Error>
 where
@@ -101,7 +110,9 @@ pub struct LanguageConfiguration {
     pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
-    pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_regex_vec")]
+    pub first_line_regexs: Vec<Regex>, // regex patterns that will be tested against the first line of a file in order to determine whether this language applies to the file
+    pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
     pub text_width: Option<usize>,
     pub soft_wrap: Option<SoftWrap>,
@@ -745,6 +756,7 @@ pub struct Loader {
     language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
     language_config_ids_by_suffix: HashMap<String, usize>,
     language_config_ids_by_shebang: HashMap<String, usize>,
+    language_config_ids_by_first_line_regex: Vec<(Regex, usize)>,
 
     language_server_configs: HashMap<String, LanguageServerConfiguration>,
 
@@ -759,6 +771,7 @@ impl Loader {
             language_config_ids_by_extension: HashMap::new(),
             language_config_ids_by_suffix: HashMap::new(),
             language_config_ids_by_shebang: HashMap::new(),
+            language_config_ids_by_first_line_regex: Vec::new(),
             scopes: ArcSwap::from_pointee(Vec::new()),
         };
 
@@ -781,6 +794,11 @@ impl Loader {
                 loader
                     .language_config_ids_by_shebang
                     .insert(shebang.clone(), language_id);
+            }
+            for first_line_regex in &config.first_line_regexs {
+                loader
+                    .language_config_ids_by_first_line_regex
+                    .push((first_line_regex.clone(), language_id));
             }
 
             loader.language_configs.push(Arc::new(config));
@@ -830,6 +848,17 @@ impl Loader {
             .and_then(|cap| self.language_config_ids_by_shebang.get(&cap[1]));
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
+    }
+
+    pub fn language_config_for_first_line_regex(
+        &self,
+        source: RopeSlice,
+    ) -> Option<Arc<LanguageConfiguration>> {
+        let line = Cow::from(source.line(0));
+        self.language_config_ids_by_first_line_regex
+            .iter()
+            .find(|(regex, _)| regex.is_match(&line))
+            .and_then(|(_, id)| self.language_configs.get(*id).cloned())
     }
 
     pub fn language_config_for_scope(&self, scope: &str) -> Option<Arc<LanguageConfiguration>> {
@@ -2777,5 +2806,62 @@ mod test {
 
         let results = load_runtime_file("rust", "does-not-exist");
         assert!(results.is_err());
+    }
+
+    #[test]
+    fn test_detect_file_with_first_line_regex() {
+        let loader = Loader::new(Configuration {
+            language: vec![LanguageConfiguration {
+                language_id: "strace".into(),
+                language_server_language_id: None,
+                scope: "scope.strace".into(),
+                file_types: vec![],
+                shebangs: vec![],
+                first_line_regexs: vec![
+                    Regex::new("execve").unwrap(),
+                    Regex::new("^[0-9:.]* *execve").unwrap(),
+                ],
+                roots: vec![],
+                comment_token: None,
+                text_width: None,
+                soft_wrap: None,
+                auto_format: false,
+                formatter: None,
+                diagnostic_severity: Severity::Info,
+                grammar: None,
+                injection_regex: None,
+                highlight_config: OnceCell::new(),
+                language_servers: vec![],
+                indent: None,
+                indent_query: OnceCell::new(),
+                textobject_query: OnceCell::new(),
+                debugger: None,
+                auto_pairs: None,
+                rulers: None,
+                workspace_lsp_roots: None,
+            }],
+            language_server: HashMap::new(),
+        });
+        assert!(loader
+            .language_config_for_first_line_regex(
+                ["execve", "arch_prctl(0x3001"].join("\n").as_str().into()
+            )
+            .is_some());
+        assert!(loader
+            .language_config_for_first_line_regex(
+                ["447845 execve", "arch_prctl(0x3001"]
+                    .join("\n")
+                    .as_str()
+                    .into()
+            )
+            .is_some());
+        assert!(loader
+            .language_config_for_first_line_regex(
+                ["random", "arch_prctl(0x3001"].join("\n").as_str().into()
+            )
+            .is_none());
+        assert!(loader
+            .language_config_for_first_line_regex(["random", "execve"].join("\n").as_str().into())
+            .is_none());
     }
 }
