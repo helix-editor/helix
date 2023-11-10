@@ -12,7 +12,12 @@ fn main() -> std::io::Result<()> {
     fs::write(&dest_path, &tutor)?;
     println!("cargo:rerun-if-changed=../runtime/tutor");
 
-    fetch_grammars().expect("Failed to fetch tree-sitter grammars");
+    let languages: Vec<String> = std::fs::read_to_string("languages")?
+        .lines()
+        .map(|s| s.to_string())
+        .collect();
+
+    fetch_grammars(Some(&languages)).expect("Failed to fetch tree-sitter grammars");
 
     let mut build = cc::Build::new();
     build.file("src/wasm-sysroot/wctype.c");
@@ -23,12 +28,14 @@ fn main() -> std::io::Result<()> {
     const SCANNER_C: &str = "scanner.c";
 
     println!("cargo:rerun-if-changed=languages");
-    for language in std::fs::read_to_string("languages")?.lines() {
+    for language in languages {
         let base_path = format!("../runtime/grammars/sources/{}/src/", language);
 
         let mut build = cc::Build::new();
-        build.include("src/wasm-sysroot/");
-        build.include(&base_path);
+        build
+            .opt_level(3)
+            .include("src/wasm-sysroot/")
+            .include(&base_path);
 
         let parser_c = Path::new(&base_path).join(PARSER_C);
         println!("cargo:rerun-if-changed={}", parser_c.display());
@@ -39,7 +46,7 @@ fn main() -> std::io::Result<()> {
             println!("cargo:rerun-if-changed={}", scanner_c.display());
             build.file(&scanner_c);
         }
-        build.compile(language);
+        build.compile(&language);
     }
 
     Ok(())

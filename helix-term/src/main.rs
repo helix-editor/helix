@@ -105,7 +105,7 @@ FLAGS:
     }
 
     if args.fetch_grammars {
-        helix_loader::grammar::fetch_grammars()?;
+        helix_loader::grammar::fetch_grammars(None)?;
         return Ok(0);
     }
 

@@ -44,7 +44,7 @@ wasm-bindgen-test = "0.3.34"
 
 [build-dependencies]
 cc = "1"
-helix-loader = { version = "0.6", path = "../helix-loader", features = ["build"] }
+helix-loader = { version = "0.6", path = "../helix-loader" }
 
 [profile.release]
 # Tell `rustc` to optimize for small code size.

@@ -110,12 +110,15 @@ fn ensure_git_is_available() -> Result<()> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn fetch_grammars() -> Result<()> {
+pub fn fetch_grammars(white_list: Option<&Vec<String>>) -> Result<()> {
     ensure_git_is_available()?;
 
     // We do not need to fetch local grammars.
     let mut grammars = get_grammar_configs()?;
     grammars.retain(|grammar| !matches!(grammar.source, GrammarSource::Local { .. }));
+    if let Some(white_list) = white_list {
+        grammars.retain(|grammar| white_list.contains(&grammar.grammar_id));
+    }
 
     println!("Fetching {} grammars", grammars.len());
     let results = run_parallel(grammars, fetch_grammar);

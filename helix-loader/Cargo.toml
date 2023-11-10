@@ -15,7 +15,6 @@ path = "src/main.rs"
 
 [features]
 default = []
-build = []
 
 [dependencies]
 anyhow = "1"
