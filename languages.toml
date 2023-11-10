@@ -24,6 +24,7 @@ dot-language-server = { command = "dot-language-server", args = ["--stdio"] }
 elixir-ls = { command = "elixir-ls", config = { elixirLS.dialyzerEnabled = false } }
 elm-language-server = { command = "elm-language-server" }
 elvish = { command = "elvish", args = ["-lsp"] }
+ember = { command = "ember-language-server", args=["--stdio"] }
 erlang-ls = { command = "erlang_ls" }
 forc = { command = "forc", args = ["lsp"] }
 forth-lsp = { command = "forth-lsp" }
@@ -2942,3 +2943,17 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "dbml"
 source = { git = "https://github.com/dynamotn/tree-sitter-dbml", rev = "2e2fa5640268c33c3d3f27f7e676f631a9c68fd9" }
+
+[[language]]
+name = "handlebars"
+injection-regex = "hbs"
+roots = ["package.json"]
+file-types = ["hbs"]
+grammar = "glimmer"
+language-servers = ["ember"]
+formatter = { command = "prettier", args = ['--parser', 'glimmer'] }
+scope = "source.glimmer"
+
+[[grammar]]
+name = "glimmer"
+source = { git = "https://github.com/alexlafroscia/tree-sitter-glimmer", rev = "f9746dc1d0707717fbba84cb5c22a71586af23e1" }

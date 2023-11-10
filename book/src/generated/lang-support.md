@@ -62,6 +62,7 @@
 | gotmpl | ✓ |  |  | `gopls` |
 | gowork | ✓ |  |  | `gopls` |
 | graphql | ✓ |  |  | `graphql-lsp` |
+| handlebars | ✓ |  |  | `ember-language-server` |
 | hare | ✓ |  |  |  |
 | haskell | ✓ | ✓ |  | `haskell-language-server-wrapper` |
 | haskell-persistent | ✓ |  |  |  |
