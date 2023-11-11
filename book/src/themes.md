@@ -155,6 +155,7 @@ We use a similar set of scopes as
 
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
+  - `parameter` - Generic type parameters (`T`)
   - `enum`
     - `variant`
 - `constructor`
@@ -245,9 +246,12 @@ We use a similar set of scopes as
 
 - `diff` - version control changes
   - `plus` - additions
+    - `gutter` - gutter indicator
   - `minus` - deletions
+    - `gutter` - gutter indicator
   - `delta` - modifications
     - `moved` - renamed or moved files/changes
+    - `gutter` - gutter indicator
 
 #### Interface
 

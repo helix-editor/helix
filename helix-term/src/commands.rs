@@ -2186,7 +2186,10 @@ fn global_search(cx: &mut Context) {
                     let searcher = SearcherBuilder::new()
                         .binary_detection(BinaryDetection::quit(b'\x00'))
                         .build();
-                    WalkBuilder::new(search_root)
+
+                    let mut walk_builder = WalkBuilder::new(search_root);
+
+                    walk_builder
                         .hidden(file_picker_config.hidden)
                         .parents(file_picker_config.parents)
                         .ignore(file_picker_config.ignore)
@@ -2197,73 +2200,77 @@ fn global_search(cx: &mut Context) {
                         .max_depth(file_picker_config.max_depth)
                         .filter_entry(move |entry| {
                             filter_picker_entry(entry, &absolute_root, dedup_symlinks)
-                        })
-                        .build_parallel()
-                        .run(|| {
-                            let mut searcher = searcher.clone();
-                            let matcher = matcher.clone();
-                            let injector = injector_.clone();
-                            let documents = &documents;
-                            Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
-                                let entry = match entry {
-                                    Ok(entry) => entry,
-                                    Err(_) => return WalkState::Continue,
-                                };
-
-                                match entry.file_type() {
-                                    Some(entry) if entry.is_file() => {}
-                                    // skip everything else
-                                    _ => return WalkState::Continue,
-                                };
-
-                                let mut stop = false;
-                                let sink = sinks::UTF8(|line_num, _| {
-                                    stop = injector
-                                        .push(FileResult::new(entry.path(), line_num as usize - 1))
-                                        .is_err();
-
-                                    Ok(!stop)
-                                });
-                                let doc = documents.iter().find(|&(doc_path, _)| {
-                                    doc_path
-                                        .as_ref()
-                                        .map_or(false, |doc_path| doc_path == entry.path())
-                                });
-
-                                let result = if let Some((_, doc)) = doc {
-                                    // there is already a buffer for this file
-                                    // search the buffer instead of the file because it's faster
-                                    // and captures new edits without requiring a save
-                                    if searcher.multi_line_with_matcher(&matcher) {
-                                        // in this case a continous buffer is required
-                                        // convert the rope to a string
-                                        let text = doc.to_string();
-                                        searcher.search_slice(&matcher, text.as_bytes(), sink)
-                                    } else {
-                                        searcher.search_reader(
-                                            &matcher,
-                                            RopeReader::new(doc.slice(..)),
-                                            sink,
-                                        )
-                                    }
-                                } else {
-                                    searcher.search_path(&matcher, entry.path(), sink)
-                                };
-
-                                if let Err(err) = result {
-                                    log::error!(
-                                        "Global search error: {}, {}",
-                                        entry.path().display(),
-                                        err
-                                    );
-                                }
-                                if stop {
-                                    WalkState::Quit
-                                } else {
-                                    WalkState::Continue
-                                }
-                            })
                         });
+
+                    walk_builder
+                        .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
+                    walk_builder.add_custom_ignore_filename(".helix/ignore");
+
+                    walk_builder.build_parallel().run(|| {
+                        let mut searcher = searcher.clone();
+                        let matcher = matcher.clone();
+                        let injector = injector_.clone();
+                        let documents = &documents;
+                        Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
+                            let entry = match entry {
+                                Ok(entry) => entry,
+                                Err(_) => return WalkState::Continue,
+                            };
+
+                            match entry.file_type() {
+                                Some(entry) if entry.is_file() => {}
+                                // skip everything else
+                                _ => return WalkState::Continue,
+                            };
+
+                            let mut stop = false;
+                            let sink = sinks::UTF8(|line_num, _| {
+                                stop = injector
+                                    .push(FileResult::new(entry.path(), line_num as usize - 1))
+                                    .is_err();
+
+                                Ok(!stop)
+                            });
+                            let doc = documents.iter().find(|&(doc_path, _)| {
+                                doc_path
+                                    .as_ref()
+                                    .map_or(false, |doc_path| doc_path == entry.path())
+                            });
+
+                            let result = if let Some((_, doc)) = doc {
+                                // there is already a buffer for this file
+                                // search the buffer instead of the file because it's faster
+                                // and captures new edits without requiring a save
+                                if searcher.multi_line_with_matcher(&matcher) {
+                                    // in this case a continous buffer is required
+                                    // convert the rope to a string
+                                    let text = doc.to_string();
+                                    searcher.search_slice(&matcher, text.as_bytes(), sink)
+                                } else {
+                                    searcher.search_reader(
+                                        &matcher,
+                                        RopeReader::new(doc.slice(..)),
+                                        sink,
+                                    )
+                                }
+                            } else {
+                                searcher.search_path(&matcher, entry.path(), sink)
+                            };
+
+                            if let Err(err) = result {
+                                log::error!(
+                                    "Global search error: {}, {}",
+                                    entry.path().display(),
+                                    err
+                                );
+                            }
+                            if stop {
+                                WalkState::Quit
+                            } else {
+                                WalkState::Continue
+                            }
+                        })
+                    });
                 });
 
                 cx.jobs.callback(async move {
@@ -3892,12 +3899,12 @@ fn yank(cx: &mut Context) {
 }
 
 fn yank_to_clipboard(cx: &mut Context) {
-    yank_impl(cx.editor, '*');
+    yank_impl(cx.editor, '+');
     exit_select_mode(cx);
 }
 
 fn yank_to_primary_clipboard(cx: &mut Context) {
-    yank_impl(cx.editor, '+');
+    yank_impl(cx.editor, '*');
     exit_select_mode(cx);
 }
 
@@ -3954,13 +3961,13 @@ fn yank_joined(cx: &mut Context) {
 
 fn yank_joined_to_clipboard(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    yank_joined_impl(cx.editor, line_ending.as_str(), '*');
+    yank_joined_impl(cx.editor, line_ending.as_str(), '+');
     exit_select_mode(cx);
 }
 
 fn yank_joined_to_primary_clipboard(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    yank_joined_impl(cx.editor, line_ending.as_str(), '+');
+    yank_joined_impl(cx.editor, line_ending.as_str(), '*');
     exit_select_mode(cx);
 }
 
@@ -3977,12 +3984,12 @@ fn yank_primary_selection_impl(editor: &mut Editor, register: char) {
 }
 
 fn yank_main_selection_to_clipboard(cx: &mut Context) {
-    yank_primary_selection_impl(cx.editor, '*');
+    yank_primary_selection_impl(cx.editor, '+');
     exit_select_mode(cx);
 }
 
 fn yank_main_selection_to_primary_clipboard(cx: &mut Context) {
-    yank_primary_selection_impl(cx.editor, '+');
+    yank_primary_selection_impl(cx.editor, '*');
     exit_select_mode(cx);
 }
 
@@ -4083,19 +4090,19 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
 }
 
 fn paste_clipboard_after(cx: &mut Context) {
-    paste(cx.editor, '*', Paste::After, cx.count());
-}
-
-fn paste_clipboard_before(cx: &mut Context) {
-    paste(cx.editor, '*', Paste::Before, cx.count());
-}
-
-fn paste_primary_clipboard_after(cx: &mut Context) {
     paste(cx.editor, '+', Paste::After, cx.count());
 }
 
-fn paste_primary_clipboard_before(cx: &mut Context) {
+fn paste_clipboard_before(cx: &mut Context) {
     paste(cx.editor, '+', Paste::Before, cx.count());
+}
+
+fn paste_primary_clipboard_after(cx: &mut Context) {
+    paste(cx.editor, '*', Paste::After, cx.count());
+}
+
+fn paste_primary_clipboard_before(cx: &mut Context) {
+    paste(cx.editor, '*', Paste::Before, cx.count());
 }
 
 fn replace_with_yanked(cx: &mut Context) {
@@ -4133,11 +4140,11 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
-    replace_with_yanked_impl(cx.editor, '*', cx.count());
+    replace_with_yanked_impl(cx.editor, '+', cx.count());
 }
 
 fn replace_selections_with_primary_clipboard(cx: &mut Context) {
-    replace_with_yanked_impl(cx.editor, '+', cx.count());
+    replace_with_yanked_impl(cx.editor, '*', cx.count());
 }
 
 fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {

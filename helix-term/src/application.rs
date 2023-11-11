@@ -162,9 +162,8 @@ impl Application {
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None);
         } else if !args.files.is_empty() {
-            let first = &args.files[0].0; // we know it's not empty
-            if first.is_dir() {
-                helix_loader::set_current_working_dir(first.clone())?;
+            if args.open_cwd {
+                // NOTE: The working directory is already set to args.files[0] in main()
                 editor.new_file(Action::VerticalSplit);
                 let picker = ui::file_picker(".".into(), &config.load().editor);
                 compositor.push(Box::new(overlaid(picker)));

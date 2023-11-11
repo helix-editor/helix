@@ -22,6 +22,8 @@ jobs:
           override: true
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
 
       - name: Run cargo check
         run: cargo check
@@ -40,6 +42,8 @@ jobs:
         uses: dtolnay/rust-toolchain@1.65
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
 
       - name: Cache test tree-sitter grammar
         uses: actions/cache@v3
@@ -71,6 +75,8 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
 
       - name: Run cargo fmt
         run: cargo fmt --all --check
@@ -94,6 +100,8 @@ jobs:
         uses: dtolnay/rust-toolchain@1.65
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
 
       - name: Validate queries
         run: cargo xtask query-check

@@ -365,7 +365,7 @@ impl EditorView {
         let mut warning_vec = Vec::new();
         let mut error_vec = Vec::new();
 
-        for diagnostic in doc.diagnostics() {
+        for diagnostic in doc.shown_diagnostics() {
             // Separate diagnostics into different Vecs by severity.
             let (vec, scope) = match diagnostic.severity {
                 Some(Severity::Info) => (&mut info_vec, info),
