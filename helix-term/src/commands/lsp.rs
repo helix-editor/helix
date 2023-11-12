@@ -1,8 +1,4 @@
-use futures_util::{
-    future::{join_all, BoxFuture},
-    stream::FuturesUnordered,
-    FutureExt,
-};
+use futures_util::{future::join_all, stream::FuturesUnordered, FutureExt};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -928,18 +924,17 @@ fn goto_impl(
     }
 }
 
-fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Location> {
+fn to_locations(definitions: lsp::GotoDefinitionResponse) -> Vec<lsp::Location> {
     match definitions {
-        Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
-        Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
-        Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
+        lsp::GotoDefinitionResponse::Scalar(location) => vec![location],
+        lsp::GotoDefinitionResponse::Array(locations) => locations,
+        lsp::GotoDefinitionResponse::Link(locations) => locations
             .into_iter()
             .map(|location_link| lsp::Location {
                 uri: location_link.target_uri,
                 range: location_link.target_range,
             })
             .collect(),
-        None => Vec::new(),
     }
 }
 
@@ -950,19 +945,84 @@ where
 {
     let (view, doc) = current!(cx.editor);
 
-    let language_server = language_server_with_feature!(cx.editor, doc, feature);
-    let offset_encoding = language_server.offset_encoding();
-    let pos = doc.position(view.id, offset_encoding);
-    let future = request_provider(language_server, pos, doc.identifier()).unwrap();
+    let mut seen_language_servers = HashSet::new();
+    let mut future: FuturesUnordered<_> = doc
+        .language_servers_with_feature(feature)
+        .filter(|ls| seen_language_servers.insert(ls.id()))
+        .map(|ls| {
+            let offset_encoding = ls.offset_encoding();
+            let pos = doc.position(view.id, offset_encoding);
+            request_provider(ls, pos, doc.identifier())
+                .unwrap()
+                .map(move |res| {
+                    res.map(|mut resp| {
+                        if !resp.is_null() {
+                            resp = serde_json::json!([offset_encoding as usize, resp]);
+                        }
+                        resp
+                    })
+                })
+        })
+        .collect();
+
+    if future.is_empty() {
+        cx.editor
+            .set_status(format!("No configured language server supports {feature}"));
+        return;
+    }
+
+    let future = async move {
+        let mut locations = vec![];
+        while let Some(value) = future.next().await {
+            match value {
+                Ok(value) if !value.is_null() => locations.push(value),
+                Err(err) => log::debug!(target: "goto_simple_impl", "{err}"),
+                Ok(_) => {}
+            }
+        }
+        Ok(serde_json::Value::Array(locations))
+    };
 
     cx.callback(
         future,
-        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
-            let items = to_locations(response);
-            if items.is_empty() {
-                editor.set_error("No definition found.");
-            } else {
-                goto_impl(editor, compositor, items, offset_encoding);
+        move |editor, compositor, response: Vec<(usize, lsp::GotoDefinitionResponse)>| {
+            let (encodings, locations): (Vec<_>, Vec<_>) = response.into_iter().unzip();
+            if locations.is_empty() {
+                editor.set_status("No definitions found.");
+                return;
+            }
+            let unique_encodings = {
+                let mut cloned = encodings.clone();
+                cloned.sort();
+                cloned.dedup();
+                cloned
+            };
+            const MAPPINGS: [OffsetEncoding; 3] = [
+                OffsetEncoding::Utf8,
+                OffsetEncoding::Utf32,
+                OffsetEncoding::Utf16,
+            ];
+            if unique_encodings.len() == 1 {
+                let locations = locations
+                    .into_iter()
+                    .flat_map(to_locations)
+                    .collect::<Vec<_>>();
+                goto_impl(editor, compositor, locations, MAPPINGS[unique_encodings[0]]);
+                return;
+            }
+            for (idx, location) in locations.into_iter().enumerate() {
+                // TODO: Handle multiple locations
+                match location {
+                    lsp::GotoDefinitionResponse::Scalar(single) => {
+                        goto_impl(editor, compositor, vec![single], MAPPINGS[encodings[idx]]);
+                        return;
+                    }
+                    lsp::GotoDefinitionResponse::Array(many) => {
+                        goto_impl(editor, compositor, many, MAPPINGS[encodings[idx]]);
+                        return;
+                    }
+                    _ => {}
+                }
             }
         },
     );
@@ -1049,6 +1109,12 @@ pub fn hover(cx: &mut Context) {
         if let Some(resp) = server.text_document_hover(doc.identifier(), pos, None) {
             future.push(resp);
         }
+    }
+
+    if future.is_empty() {
+        cx.editor
+            .set_status("No configured language server supports hover");
+        return;
     }
 
     let future = join_all(future).map(|data| {
