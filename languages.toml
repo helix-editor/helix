@@ -1440,7 +1440,7 @@ file-types = [{ glob = "Makefile" }, { glob = "makefile" }, "make", "mk", "mak",
 shebangs = ["make", "gmake"]
 injection-regex = "(make|makefile|Makefile|mk)"
 comment-token = "#"
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 4, unit = "\t", required = true }
 
 [[grammar]]
 name = "make"
