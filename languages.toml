@@ -3069,7 +3069,7 @@ file-types = ["nim", "nims", "nimble"]
 shebangs = []
 comment-token = "#"
 block-comment-tokens = { start = "#[", end = "]#" }
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 2, unit = "  ", required = true }
 language-servers = [ "nimlangserver" ]
 
 [language.auto-pairs]
