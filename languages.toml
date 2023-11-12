@@ -1943,7 +1943,7 @@ source = { git = "https://github.com/ap29600/tree-sitter-odin", rev = "b219207e4
 name = "meson"
 scope = "source.meson"
 injection-regex = "meson"
-file-types = ["meson.build"]
+file-types = ["meson.build", "meson_options.txt"]
 roots = []
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
