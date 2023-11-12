@@ -291,6 +291,8 @@ pub struct Config {
     pub insert_final_newline: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
+    /// Whether to jump between tmux panes when a view jump is triggered at the edge of the editor. Defaults to `false`.
+    pub jump_tmux_panes: bool
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -846,6 +848,7 @@ impl Default for Config {
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
+            jump_tmux_panes: false
         }
     }
 }
@@ -1630,10 +1633,15 @@ impl Editor {
         self.focus(self.tree.prev());
     }
 
-    pub fn focus_direction(&mut self, direction: tree::Direction) {
+    pub fn focus_direction(&mut self, direction: tree::Direction) -> anyhow::Result<(), ()> {
         let current_view = self.tree.focus;
+
         if let Some(id) = self.tree.find_split_in_direction(current_view, direction) {
-            self.focus(id)
+            self.focus(id);
+
+            Ok(())
+        } else {
+            Err(())
         }
     }
 

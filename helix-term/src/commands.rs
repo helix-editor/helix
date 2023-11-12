@@ -4858,19 +4858,46 @@ fn rotate_view_reverse(cx: &mut Context) {
 }
 
 fn jump_view_right(cx: &mut Context) {
-    cx.editor.focus_direction(tree::Direction::Right)
+    jump_view(cx, tree::Direction::Right);
 }
 
 fn jump_view_left(cx: &mut Context) {
-    cx.editor.focus_direction(tree::Direction::Left)
+    jump_view(cx, tree::Direction::Left);
 }
 
 fn jump_view_up(cx: &mut Context) {
-    cx.editor.focus_direction(tree::Direction::Up)
+    jump_view(cx, tree::Direction::Up);
 }
 
 fn jump_view_down(cx: &mut Context) {
-    cx.editor.focus_direction(tree::Direction::Down)
+    jump_view(cx, tree::Direction::Down);
+}
+
+fn jump_view(cx: &mut Context, direction: tree::Direction) {
+    if cx.editor.focus_direction(direction).is_err() {
+        jump_tmux_view(cx, direction);
+    }
+}
+
+fn jump_tmux_view(cx: &mut Context, direction: tree::Direction) {
+    let config = &cx.editor.config();
+
+    if config.jump_tmux_panes {
+        if let Ok(tmux_env) = std::env::var("TMUX") {
+            if let Some((tmux_socket, _)) = tmux_env.split_once(",") {
+                let cmd = format!("tmux -S {} select-pane -{}", tmux_socket, match direction {
+                    tree::Direction::Left => "L",
+                    tree::Direction::Down => "D",
+                    tree::Direction::Up => "U",
+                    tree::Direction::Right => "R",
+                });
+
+                if let Some(err) = shell_impl(&config.shell, &cmd, None).err() {
+                    cx.editor.set_error(err.to_string());
+                }
+            }
+        }
+    }
 }
 
 fn swap_view_right(cx: &mut Context) {
