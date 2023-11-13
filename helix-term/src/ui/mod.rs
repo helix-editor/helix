@@ -175,6 +175,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
         .git_exclude(config.file_picker.git_exclude)
         .sort_by_file_name(|name1, name2| name1.cmp(name2))
         .max_depth(config.file_picker.max_depth)
+        .require_git(config.file_picker.require_git)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
 
     walk_builder.add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
