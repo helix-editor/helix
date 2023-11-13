@@ -101,7 +101,8 @@ pub struct LanguageConfiguration {
     pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
-    pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
+    #[serde(default)]
+    pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
     pub text_width: Option<usize>,
     pub soft_wrap: Option<SoftWrap>,
