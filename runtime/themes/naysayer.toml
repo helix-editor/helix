@@ -20,13 +20,13 @@
 "ui.help" = { fg = "text", bg = "bg" }
 "ui.popup" = { fg = "text", bg = "bg" }
 "ui.menu" = { fg = "text", bg = "bg" }
-"ui.menu.selected" = { fg = "text", bg = "bg" }
+"ui.menu.selected" = { fg = "text", bg = "bg", modifiers = ['underlined'] }
 "ui.window" = { bg = "bg" }
 "diagnostic.error" = { bg = "error", fg = "text", modifiers = ["bold"] }
 "diagnostic.warning" = { bg = "warning", fg = "text", modifiers = ["bold"] }
 "diagnostic.hint" = { bg = "cyan", modifiers = ["bold"] }
 "ui.bufferline" = { fg = "text", bg = "bg" }
-"ui.bufferline.active" = { fg = "text", bg = "bg" }
+"ui.bufferline.active" = { fg = "text", bg = "bg", modifiers = ['underlined'] }
 "ui.gutter.selected" = { bg = "highlight-line", modifiers = ["bold"] }
 "ui.highlight" = { bg = "highlight-line" }
 
