@@ -1324,18 +1324,18 @@ an error warning at the bottom bar and do nothing.
 
 You can enter the match mode with the "m" key; this will show the
 actions available in a popup. This will allow you to:
- * jump to matching pair of delimiters with "mm" (you must have
- a delimiter belonging to a pair under your cursor)
- * select inside a pair of delimiters surrounding your cursor (i.e. select the content
- but not the delimiters) with "mi(" and similar
- * select around a pair of delimiters surrounding your cursor (i.e. select the content
- and the delimiters) with "ma(" and similar
+ * jump to matching pair of delimiters with "mm" (you must have a
+ delimiter belonging to a pair under your cursor)
+ * select inside a pair of delimiters surrounding your cursor
+ (i.e. select the content but not the delimiters) with "mi("
+ and similar
+ * select around a pair of delimiters surrounding your cursor
+ (i.e. select the content and the delimiters) with "ma(" and
+ similar
  * delete surrounding delimiters with "md(" and similar
  * add surrounding delimiters around the selection with "ms("
- * replace a pair of delimiters surrounding your selection with "mr(["
- to replace for example surrounding () with []
-
-
+ * replace a pair of delimiters surrounding your selection with
+ "mr([" to replace for example surrounding () with []
 
 
 
