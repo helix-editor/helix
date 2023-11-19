@@ -333,7 +333,9 @@ impl<'a> TextAnnotations<'a> {
         layer: &'a [InlineAnnotation],
         highlight: Option<Highlight>,
     ) -> &mut Self {
-        self.inline_annotations.push((layer, highlight).into());
+        if !layer.is_empty() {
+            self.inline_annotations.push((layer, highlight).into());
+        }
         self
     }
 
@@ -348,7 +350,9 @@ impl<'a> TextAnnotations<'a> {
     /// If multiple layers contain overlay at the same position
     /// the overlay from the layer added last will be show.
     pub fn add_overlay(&mut self, layer: &'a [Overlay], highlight: Option<Highlight>) -> &mut Self {
-        self.overlays.push((layer, highlight).into());
+        if !layer.is_empty() {
+            self.overlays.push((layer, highlight).into());
+        }
         self
     }
 
