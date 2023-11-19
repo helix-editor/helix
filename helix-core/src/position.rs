@@ -1,4 +1,8 @@
-use std::{borrow::Cow, cmp::Ordering};
+use std::{
+    borrow::Cow,
+    cmp::Ordering,
+    ops::{Add, AddAssign, Sub, SubAssign},
+};
 
 use crate::{
     chars::char_is_line_ending,
@@ -14,6 +18,38 @@ use crate::{
 pub struct Position {
     pub row: usize,
     pub col: usize,
+}
+
+impl AddAssign for Position {
+    fn add_assign(&mut self, rhs: Self) {
+        self.row += rhs.row;
+        self.col += rhs.col;
+    }
+}
+
+impl SubAssign for Position {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.row -= rhs.row;
+        self.col -= rhs.col;
+    }
+}
+
+impl Sub for Position {
+    type Output = Position;
+
+    fn sub(mut self, rhs: Self) -> Self::Output {
+        self -= rhs;
+        self
+    }
+}
+
+impl Add for Position {
+    type Output = Position;
+
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self += rhs;
+        self
+    }
 }
 
 impl Position {
