@@ -182,7 +182,7 @@ pub struct DocumentFormatter<'t> {
     line_pos: usize,
     exhausted: bool,
 
-    inline_anntoation_graphemes: Option<(Graphemes<'t>, Option<Highlight>)>,
+    inline_annotation_graphemes: Option<(Graphemes<'t>, Option<Highlight>)>,
 
     // softwrap specific
     /// The indentation of the current line
@@ -227,7 +227,7 @@ impl<'t> DocumentFormatter<'t> {
             word_buf: Vec::with_capacity(64),
             word_i: 0,
             line_pos: block_line_idx,
-            inline_anntoation_graphemes: None,
+            inline_annotation_graphemes: None,
         }
     }
 
@@ -237,7 +237,7 @@ impl<'t> DocumentFormatter<'t> {
     ) -> Option<(&'t str, Option<Highlight>)> {
         loop {
             if let Some(&mut (ref mut annotation, highlight)) =
-                self.inline_anntoation_graphemes.as_mut()
+                self.inline_annotation_graphemes.as_mut()
             {
                 if let Some(grapheme) = annotation.next() {
                     return Some((grapheme, highlight));
@@ -247,7 +247,7 @@ impl<'t> DocumentFormatter<'t> {
             if let Some((annotation, highlight)) =
                 self.annotations.next_inline_annotation_at(char_pos)
             {
-                self.inline_anntoation_graphemes = Some((
+                self.inline_annotation_graphemes = Some((
                     UnicodeSegmentation::graphemes(&*annotation.text, true),
                     highlight,
                 ))
