@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::doc_formatter::{DocumentFormatter, TextFormat};
 use crate::text_annotations::{InlineAnnotation, Overlay, TextAnnotations};
 
@@ -105,7 +103,7 @@ fn overlay_text(text: &str, char_pos: usize, softwrap: bool, overlays: &[Overlay
     DocumentFormatter::new_at_prev_checkpoint(
         text.into(),
         &TextFormat::new_test(softwrap),
-        TextAnnotations::default().add_overlay(overlays.into(), None),
+        TextAnnotations::default().add_overlay(overlays, None),
         char_pos,
     )
     .0
@@ -142,7 +140,7 @@ fn annotate_text(text: &str, softwrap: bool, annotations: &[InlineAnnotation]) -
     DocumentFormatter::new_at_prev_checkpoint(
         text.into(),
         &TextFormat::new_test(softwrap),
-        TextAnnotations::default().add_inline_annotations(annotations.into(), None),
+        TextAnnotations::default().add_inline_annotations(annotations, None),
         0,
     )
     .0
@@ -164,15 +162,24 @@ fn annotation() {
         "foo foo foo foo \n.foo foo foo foo \n.foo foo foo  "
     );
 }
+
 #[test]
 fn annotation_and_overlay() {
+    let annotations = [InlineAnnotation {
+        char_idx: 0,
+        text: "fooo".into(),
+    }];
+    let overlay = [Overlay {
+        char_idx: 0,
+        grapheme: "\t".into(),
+    }];
     assert_eq!(
         DocumentFormatter::new_at_prev_checkpoint(
             "bbar".into(),
             &TextFormat::new_test(false),
             TextAnnotations::default()
-                .add_inline_annotations(Rc::new([InlineAnnotation::new(0, "fooo")]), None)
-                .add_overlay(Rc::new([Overlay::new(0, "\t")]), None),
+                .add_inline_annotations(annotations.as_slice(), None)
+                .add_overlay(overlay.as_slice(), None),
             0,
         )
         .0
