@@ -23,18 +23,18 @@ impl<'t> DocumentFormatter<'t> {
         let viewport_width = self.text_fmt.viewport_width;
         let mut line = 0;
 
-        for (grapheme, pos) in self {
-            if pos.row != line {
+        for grapheme in self {
+            if grapheme.visual_pos.row != line {
                 line += 1;
-                assert_eq!(pos.row, line);
-                write!(res, "\n{}", ".".repeat(pos.col)).unwrap();
+                assert_eq!(grapheme.visual_pos.row, line);
+                write!(res, "\n{}", ".".repeat(grapheme.visual_pos.col)).unwrap();
                 assert!(
-                    pos.col <= viewport_width as usize,
+                    grapheme.visual_pos.col <= viewport_width as usize,
                     "softwrapped failed {}<={viewport_width}",
-                    pos.col
+                    grapheme.visual_pos.col
                 );
             }
-            write!(res, "{}", grapheme.grapheme).unwrap();
+            write!(res, "{}", grapheme.raw).unwrap();
         }
 
         res
@@ -48,7 +48,6 @@ fn softwrap_text(text: &str) -> String {
         &TextAnnotations::default(),
         0,
     )
-    .0
     .collect_to_str()
 }
 
@@ -106,7 +105,6 @@ fn overlay_text(text: &str, char_pos: usize, softwrap: bool, overlays: &[Overlay
         TextAnnotations::default().add_overlay(overlays, None),
         char_pos,
     )
-    .0
     .collect_to_str()
 }
 
@@ -143,7 +141,6 @@ fn annotate_text(text: &str, softwrap: bool, annotations: &[InlineAnnotation]) -
         TextAnnotations::default().add_inline_annotations(annotations, None),
         0,
     )
-    .0
     .collect_to_str()
 }
 
@@ -182,7 +179,6 @@ fn annotation_and_overlay() {
                 .add_overlay(overlay.as_slice(), None),
             0,
         )
-        .0
         .collect_to_str(),
         "fooo  bar "
     );
