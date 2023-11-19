@@ -1953,7 +1953,7 @@ impl Document {
             .language_config()
             .and_then(|config| config.text_width)
             .unwrap_or(config.text_width);
-        let soft_wrap_at_text_width = self
+        let mut soft_wrap_at_text_width = self
             .language_config()
             .and_then(|config| {
                 config
@@ -1964,12 +1964,13 @@ impl Document {
             .or(config.soft_wrap.wrap_at_text_width)
             .unwrap_or(false);
         if soft_wrap_at_text_width {
-            // We increase max_line_len by 1 because softwrap considers the newline character
-            // as part of the line length while the "typical" expectation is that this is not the case.
-            // In particular other commands like :reflow do not count the line terminator.
-            // This is technically inconsistent for the last line as that line never has a line terminator
-            // but having the last visual line exceed the width by 1 seems like a rare edge case.
-            viewport_width = viewport_width.min(text_width as u16 + 1)
+            // if the viewport is smaller than the specified
+            // width then this setting has no effcet
+            if text_width >= viewport_width as usize {
+                soft_wrap_at_text_width = false;
+            } else {
+                viewport_width = text_width as u16;
+            }
         }
         let config = self.config.load();
         let editor_soft_wrap = &config.soft_wrap;
@@ -2006,6 +2007,7 @@ impl Document {
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
                 .map(Highlight),
+            soft_wrap_at_text_width,
         }
     }
 

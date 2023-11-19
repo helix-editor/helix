@@ -10,6 +10,7 @@
 //! called a "block" and the caller must advance it as needed.
 
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::mem::replace;
 
@@ -41,6 +42,11 @@ impl GraphemeSource {
     /// Returns whether this grapheme is virtual inline text
     pub fn is_virtual(self) -> bool {
         matches!(self, GraphemeSource::VirtualText { .. })
+    }
+
+    pub fn is_eof(self) -> bool {
+        // all doc chars except the EOF char have non-zero codepoints
+        matches!(self, GraphemeSource::Document { codepoints: 0 })
     }
 
     pub fn doc_chars(self) -> usize {
@@ -117,6 +123,14 @@ impl<'a> GraphemeWithSource<'a> {
         self.grapheme.is_whitespace()
     }
 
+    fn is_newline(&self) -> bool {
+        matches!(self.grapheme, Grapheme::Newline)
+    }
+
+    fn is_eof(&self) -> bool {
+        self.source.is_eof()
+    }
+
     fn width(&self) -> usize {
         self.grapheme.width()
     }
@@ -135,6 +149,7 @@ pub struct TextFormat {
     pub wrap_indicator: Box<str>,
     pub wrap_indicator_highlight: Option<Highlight>,
     pub viewport_width: u16,
+    pub soft_wrap_at_text_width: bool,
 }
 
 // test implementation is basically only used for testing or when softwrap is always disabled
@@ -148,6 +163,7 @@ impl Default for TextFormat {
             wrap_indicator: Box::from(" "),
             viewport_width: 17,
             wrap_indicator_highlight: None,
+            soft_wrap_at_text_width: false,
         }
     }
 }
@@ -318,7 +334,25 @@ impl<'t> DocumentFormatter<'t> {
                 .change_position(visual_x, self.text_fmt.tab_width);
             word_width += grapheme.width();
         }
+        if let Some(grapheme) = &mut self.peeked_grapheme {
+            let visual_x = self.visual_pos.col + word_width;
+            grapheme
+                .grapheme
+                .change_position(visual_x, self.text_fmt.tab_width);
+        }
         word_width
+    }
+
+    fn peek_grapheme(&mut self, col: usize, char_pos: usize) -> Option<&GraphemeWithSource<'t>> {
+        if self.peeked_grapheme.is_none() {
+            self.peeked_grapheme = self.advance_grapheme(col, char_pos);
+        }
+        self.peeked_grapheme.as_ref()
+    }
+
+    fn next_grapheme(&mut self, col: usize, char_pos: usize) -> Option<GraphemeWithSource<'t>> {
+        self.peek_grapheme(col, char_pos);
+        self.peeked_grapheme.take()
     }
 
     fn advance_to_next_word(&mut self) {
@@ -326,31 +360,42 @@ impl<'t> DocumentFormatter<'t> {
         let mut word_width = 0;
         let mut word_chars = 0;
 
+        if self.exhausted {
+            return;
+        }
+
         loop {
-            // softwrap word if necessary
-            if word_width + self.visual_pos.col >= self.text_fmt.viewport_width as usize {
-                // wrapping this word would move too much text to the next line
-                // split the word at the line end instead
-                if word_width > self.text_fmt.max_wrap as usize {
-                    // Usually we stop accomulating graphemes as soon as softwrapping becomes necessary.
-                    // However if the last grapheme is multiple columns wide it might extend beyond the EOL.
-                    // The condition below ensures that this grapheme is not cutoff and instead wrapped to the next line
-                    if word_width + self.visual_pos.col > self.text_fmt.viewport_width as usize {
-                        self.peeked_grapheme = self.word_buf.pop();
-                    }
+            let mut col = self.visual_pos.col + word_width;
+            let char_pos = self.char_pos + word_chars;
+            match col.cmp(&(self.text_fmt.viewport_width as usize)) {
+                // The EOF char and newline chars are always selectable in helix. That means
+                // that wrapping happens "too-early" if a word fits a line perfectly. This
+                // is intentional so that all selectable graphemes are always visisble (and
+                // therefore the cursor never dissapears). However if the user manually set a
+                // lower softwrap width then this is undesirable. Just increasing the viewport-
+                // width by one doesn't work because if a line is wrapped multiple times then
+                // some words may extend past the specified width.
+                //
+                // So we special case a word that ends exactly at line bounds and is followed
+                // by a newline/eof character here.
+                Ordering::Equal
+                    if self.text_fmt.soft_wrap_at_text_width
+                        && self.peek_grapheme(col, char_pos).map_or(false, |grapheme| {
+                            grapheme.is_newline() || grapheme.is_eof()
+                        }) => {}
+                Ordering::Equal if word_width > self.text_fmt.max_wrap as usize => return,
+                Ordering::Greater if word_width > self.text_fmt.max_wrap as usize => {
+                    self.peeked_grapheme = self.word_buf.pop();
                     return;
                 }
-
-                word_width = self.wrap_word();
+                Ordering::Equal | Ordering::Greater => {
+                    word_width = self.wrap_word();
+                    col = self.visual_pos.col + word_width;
+                }
+                Ordering::Less => (),
             }
 
-            let grapheme = if let Some(grapheme) = self.peeked_grapheme.take() {
-                grapheme
-            } else if let Some(grapheme) =
-                self.advance_grapheme(self.visual_pos.col + word_width, self.char_pos + word_chars)
-            {
-                grapheme
-            } else {
+            let Some(grapheme) = self.next_grapheme(col, char_pos) else {
                 return;
             };
             word_chars += grapheme.doc_chars();
@@ -376,7 +421,6 @@ impl<'t> DocumentFormatter<'t> {
     pub fn next_char_pos(&self) -> usize {
         self.char_pos
     }
-
     /// returns the visual position at the end of the last yielded grapheme
     pub fn next_visual_pos(&self) -> Position {
         self.visual_pos
