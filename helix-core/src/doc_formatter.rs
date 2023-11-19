@@ -11,7 +11,7 @@
 
 use std::borrow::Cow;
 use std::fmt::Debug;
-use std::mem::{replace, take};
+use std::mem::replace;
 
 #[cfg(test)]
 mod test;
@@ -166,9 +166,6 @@ pub struct DocumentFormatter<'t> {
     line_pos: usize,
     exhausted: bool,
 
-    /// Line breaks to be reserved for virtual text
-    /// at the next line break
-    virtual_lines: usize,
     inline_anntoation_graphemes: Option<(Graphemes<'t>, Option<Highlight>)>,
 
     // softwrap specific
@@ -209,7 +206,6 @@ impl<'t> DocumentFormatter<'t> {
             graphemes: RopeGraphemes::new(text.slice(block_char_idx..)),
             char_pos: block_char_idx,
             exhausted: false,
-            virtual_lines: 0,
             indent_level: None,
             peeked_grapheme: None,
             word_buf: Vec::with_capacity(64),
@@ -250,7 +246,6 @@ impl<'t> DocumentFormatter<'t> {
             if let Some((grapheme, highlight)) = self.next_inline_annotation_grapheme(char_pos) {
                 (grapheme.into(), GraphemeSource::VirtualText { highlight })
             } else if let Some(grapheme) = self.graphemes.next() {
-                self.virtual_lines += self.annotations.annotation_lines_at(self.char_pos);
                 let codepoints = grapheme.len_chars() as u32;
 
                 let overlay = self.annotations.overlay_at(char_pos);
@@ -293,8 +288,11 @@ impl<'t> DocumentFormatter<'t> {
             0
         };
 
+        let virtual_lines =
+            self.annotations
+                .virtual_lines_at(self.char_pos, self.visual_pos, self.line_pos);
         self.visual_pos.col = indent_carry_over as usize;
-        self.visual_pos.row += 1 + take(&mut self.virtual_lines);
+        self.visual_pos.row += 1 + virtual_lines;
         let mut i = 0;
         let mut word_width = 0;
         let wrap_indicator = UnicodeSegmentation::graphemes(&*self.text_fmt.wrap_indicator, true)
@@ -404,24 +402,32 @@ impl<'t> Iterator for DocumentFormatter<'t> {
             self.advance_grapheme(self.visual_pos.col, self.char_pos)?
         };
 
-        let visual_pos = self.visual_pos;
-        let char_pos = self.char_pos;
+        let grapheme = FormattedGrapheme {
+            raw: grapheme.grapheme,
+            source: grapheme.source,
+            visual_pos: self.visual_pos,
+            line_idx: self.line_pos,
+            char_idx: self.char_pos,
+        };
+
         self.char_pos += grapheme.doc_chars();
-        let line_idx = self.line_pos;
-        if grapheme.grapheme == Grapheme::Newline {
-            self.visual_pos.row += 1;
-            self.visual_pos.row += take(&mut self.virtual_lines);
+        if !grapheme.is_virtual() {
+            self.annotations.process_virtual_text_anchors(&grapheme);
+        }
+        if grapheme.raw == Grapheme::Newline {
+            // move to end of newline char
+            self.visual_pos.col += 1;
+            let virtual_lines =
+                self.annotations
+                    .virtual_lines_at(self.char_pos, self.visual_pos, self.line_pos);
+            self.visual_pos.row += 1 + virtual_lines;
             self.visual_pos.col = 0;
-            self.line_pos += 1;
+            if !grapheme.is_virtual() {
+                self.line_pos += 1;
+            }
         } else {
             self.visual_pos.col += grapheme.width();
         }
-        Some(FormattedGrapheme {
-            raw: grapheme.grapheme,
-            source: grapheme.source,
-            visual_pos,
-            line_idx,
-            char_idx: char_pos,
-        })
+        Some(grapheme)
     }
 }
