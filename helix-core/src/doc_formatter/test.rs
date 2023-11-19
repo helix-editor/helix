@@ -12,6 +12,7 @@ impl TextFormat {
             wrap_indicator_highlight: None,
             // use a prime number to allow lining up too often with repeat
             viewport_width: 17,
+            soft_wrap_at_text_width: false,
         }
     }
 }
@@ -21,6 +22,7 @@ impl<'t> DocumentFormatter<'t> {
         use std::fmt::Write;
         let mut res = String::new();
         let viewport_width = self.text_fmt.viewport_width;
+        let soft_wrap_at_text_width = self.text_fmt.soft_wrap_at_text_width;
         let mut line = 0;
 
         for grapheme in self {
@@ -28,6 +30,8 @@ impl<'t> DocumentFormatter<'t> {
                 line += 1;
                 assert_eq!(grapheme.visual_pos.row, line);
                 write!(res, "\n{}", ".".repeat(grapheme.visual_pos.col)).unwrap();
+            }
+            if !soft_wrap_at_text_width {
                 assert!(
                     grapheme.visual_pos.col <= viewport_width as usize,
                     "softwrapped failed {}<={viewport_width}",
@@ -95,6 +99,22 @@ fn long_word_softwrap() {
     assert_eq!(
         softwrap_text("\t\txxxx1xxx 2xxxx3xxxx4xxxx5xxxx6xxxx7xxxx8xxxx9xxx\n"),
         "    xxxx1xxx 2xxx\n.....x3xxxx4xxxx5\n.....xxxx6xxxx7xx\n.....xx8xxxx9xxx \n "
+    );
+}
+
+fn softwrap_text_at_text_width(text: &str) -> String {
+    let mut text_fmt = TextFormat::new_test(true);
+    text_fmt.soft_wrap_at_text_width = true;
+    let annotations = TextAnnotations::default();
+    let mut formatter =
+        DocumentFormatter::new_at_prev_checkpoint(text.into(), &text_fmt, &annotations, 0);
+    formatter.collect_to_str()
+}
+#[test]
+fn long_word_softwrap_text_width() {
+    assert_eq!(
+        softwrap_text_at_text_width("xxxxxxxx1xxxx2xxx\nxxxxxxxx1xxxx2xxx"),
+        "xxxxxxxx1xxxx2xxx \nxxxxxxxx1xxxx2xxx "
     );
 }
 
