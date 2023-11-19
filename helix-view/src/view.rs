@@ -393,11 +393,6 @@ impl View {
         text: RopeSlice,
         pos: usize,
     ) -> Option<Position> {
-        if pos < self.offset.anchor {
-            // Line is not visible on screen
-            return None;
-        }
-
         let viewport = self.inner_area(doc);
         let text_fmt = doc.text_format(viewport.width, None);
         let annotations = self.text_annotations(doc, None);
