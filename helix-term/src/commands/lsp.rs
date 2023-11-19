@@ -1315,11 +1315,11 @@ fn compute_inlay_hints_for_view(
                 view_id,
                 DocumentInlayHints {
                     id: new_doc_inlay_hints_id,
-                    type_inlay_hints: type_inlay_hints.into(),
-                    parameter_inlay_hints: parameter_inlay_hints.into(),
-                    other_inlay_hints: other_inlay_hints.into(),
-                    padding_before_inlay_hints: padding_before_inlay_hints.into(),
-                    padding_after_inlay_hints: padding_after_inlay_hints.into(),
+                    type_inlay_hints,
+                    parameter_inlay_hints,
+                    other_inlay_hints,
+                    padding_before_inlay_hints,
+                    padding_after_inlay_hints,
                 },
             );
             doc.inlay_hints_oudated = false;
