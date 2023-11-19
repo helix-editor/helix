@@ -157,16 +157,14 @@ pub fn visual_offset_from_block(
     annotations: &TextAnnotations,
 ) -> (Position, usize) {
     let mut last_pos = Position::default();
-    let (formatter, block_start) =
+    let mut formatter =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, annotations, anchor);
-    let mut char_pos = block_start;
+    let block_start = formatter.next_char_pos();
 
-    for (grapheme, vpos) in formatter {
-        last_pos = vpos;
-        char_pos += grapheme.doc_chars();
-
-        if char_pos > pos {
-            return (last_pos, block_start);
+    while let Some(grapheme) = formatter.next() {
+        last_pos = grapheme.visual_pos;
+        if formatter.next_char_pos() > pos {
+            return (grapheme.visual_pos, block_start);
         }
     }
 
@@ -189,22 +187,21 @@ pub fn visual_offset_from_anchor(
     annotations: &TextAnnotations,
     max_rows: usize,
 ) -> Result<(Position, usize), VisualOffsetError> {
-    let (formatter, block_start) =
+    let mut formatter =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, annotations, anchor);
-    let mut char_pos = block_start;
     let mut anchor_line = None;
     let mut found_pos = None;
     let mut last_pos = Position::default();
 
+    let block_start = formatter.next_char_pos();
     if pos < block_start {
         return Err(VisualOffsetError::PosBeforeAnchorRow);
     }
 
-    for (grapheme, vpos) in formatter {
-        last_pos = vpos;
-        char_pos += grapheme.doc_chars();
+    while let Some(grapheme) = formatter.next() {
+        last_pos = grapheme.visual_pos;
 
-        if char_pos > pos {
+        if formatter.next_char_pos() > pos {
             if let Some(anchor_line) = anchor_line {
                 last_pos.row -= anchor_line;
                 return Ok((last_pos, block_start));
@@ -212,7 +209,7 @@ pub fn visual_offset_from_anchor(
                 found_pos = Some(last_pos);
             }
         }
-        if char_pos > anchor && anchor_line.is_none() {
+        if formatter.next_char_pos() > anchor && anchor_line.is_none() {
             if let Some(mut found_pos) = found_pos {
                 return if found_pos.row == last_pos.row {
                     found_pos.row = 0;
@@ -226,7 +223,7 @@ pub fn visual_offset_from_anchor(
         }
 
         if let Some(anchor_line) = anchor_line {
-            if vpos.row >= anchor_line + max_rows {
+            if grapheme.visual_pos.row >= anchor_line + max_rows {
                 return Err(VisualOffsetError::PosAfterMaxRow);
             }
         }
@@ -404,34 +401,33 @@ pub fn char_idx_at_visual_block_offset(
     text_fmt: &TextFormat,
     annotations: &TextAnnotations,
 ) -> (usize, usize) {
-    let (formatter, mut char_idx) =
+    let mut formatter =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, annotations, anchor);
-    let mut last_char_idx = char_idx;
+    let mut last_char_idx = formatter.next_char_pos();
     let mut last_char_idx_on_line = None;
     let mut last_row = 0;
-    for (grapheme, grapheme_pos) in formatter {
-        match grapheme_pos.row.cmp(&row) {
+    for grapheme in &mut formatter {
+        match grapheme.visual_pos.row.cmp(&row) {
             Ordering::Equal => {
-                if grapheme_pos.col + grapheme.width() > column {
+                if grapheme.visual_pos.col + grapheme.width() > column {
                     if !grapheme.is_virtual() {
-                        return (char_idx, 0);
+                        return (grapheme.char_idx, 0);
                     } else if let Some(char_idx) = last_char_idx_on_line {
                         return (char_idx, 0);
                     }
                 } else if !grapheme.is_virtual() {
-                    last_char_idx_on_line = Some(char_idx)
+                    last_char_idx_on_line = Some(grapheme.char_idx)
                 }
             }
             Ordering::Greater => return (last_char_idx, row - last_row),
             _ => (),
         }
 
-        last_char_idx = char_idx;
-        last_row = grapheme_pos.row;
-        char_idx += grapheme.doc_chars();
+        last_char_idx = grapheme.char_idx;
+        last_row = grapheme.visual_pos.row;
     }
 
-    (char_idx, 0)
+    (formatter.next_char_pos(), 0)
 }
 
 #[cfg(test)]
