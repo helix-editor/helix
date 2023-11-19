@@ -24,6 +24,7 @@
 | cue | ✓ |  |  | `cuelsp` |
 | d | ✓ | ✓ | ✓ | `serve-d` |
 | dart | ✓ |  | ✓ | `dart` |
+| dbml | ✓ |  |  |  |
 | devicetree | ✓ |  |  |  |
 | dhall | ✓ | ✓ |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |
