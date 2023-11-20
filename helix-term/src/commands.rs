@@ -3350,7 +3350,7 @@ fn exit_select_mode(cx: &mut Context) {
 
 fn goto_first_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let selection = match doc.shown_diagnostics().next() {
+    let selection = match doc.diagnostics().first() {
         Some(diag) => Selection::single(diag.range.start, diag.range.end),
         None => return,
     };
@@ -3359,7 +3359,7 @@ fn goto_first_diag(cx: &mut Context) {
 
 fn goto_last_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let selection = match doc.shown_diagnostics().last() {
+    let selection = match doc.diagnostics().last() {
         Some(diag) => Selection::single(diag.range.start, diag.range.end),
         None => return,
     };
@@ -3375,9 +3375,10 @@ fn goto_next_diag(cx: &mut Context) {
         .cursor(doc.text().slice(..));
 
     let diag = doc
-        .shown_diagnostics()
+        .diagnostics()
+        .iter()
         .find(|diag| diag.range.start > cursor_pos)
-        .or_else(|| doc.shown_diagnostics().next());
+        .or_else(|| doc.diagnostics().first());
 
     let selection = match diag {
         Some(diag) => Selection::single(diag.range.start, diag.range.end),
@@ -3395,10 +3396,11 @@ fn goto_prev_diag(cx: &mut Context) {
         .cursor(doc.text().slice(..));
 
     let diag = doc
-        .shown_diagnostics()
+        .diagnostics()
+        .iter()
         .rev()
         .find(|diag| diag.range.start < cursor_pos)
-        .or_else(|| doc.shown_diagnostics().last());
+        .or_else(|| doc.diagnostics().last());
 
     let selection = match diag {
         // NOTE: the selection is reversed because we're jumping to the
@@ -4185,9 +4187,13 @@ fn replace_with_yanked(cx: &mut Context) {
 }
 
 fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
-    let Some(values) = editor.registers
+    let Some(values) = editor
+        .registers
         .read(register, editor)
-        .filter(|values| values.len() > 0) else { return };
+        .filter(|values| values.len() > 0)
+    else {
+        return;
+    };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
     let (view, doc) = current!(editor);
@@ -4224,7 +4230,9 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
 }
 
 fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
-    let Some(values) = editor.registers.read(register, editor) else { return };
+    let Some(values) = editor.registers.read(register, editor) else {
+        return;
+    };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
     let (view, doc) = current!(editor);

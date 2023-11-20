@@ -1795,7 +1795,6 @@ impl HighlightConfiguration {
                 let mut best_index = None;
                 let mut best_match_len = 0;
                 for (i, recognized_name) in recognized_names.iter().enumerate() {
-                    let recognized_name = recognized_name;
                     let mut len = 0;
                     let mut matches = true;
                     for (i, part) in recognized_name.split('.').enumerate() {

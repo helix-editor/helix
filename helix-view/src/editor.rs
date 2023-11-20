@@ -42,7 +42,7 @@ use anyhow::{anyhow, bail, Error};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
-    syntax::{self, AutoPairConfig, IndentationHeuristic, SoftWrap},
+    syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
     Change, LineEnding, Position, Selection, NATIVE_LINE_ENDING,
 };
 use helix_dap as dap;
@@ -1477,6 +1477,10 @@ impl Editor {
                 self.config.clone(),
             )?;
 
+            let diagnostics =
+                Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, &doc);
+            doc.replace_diagnostics(diagnostics, &[], None);
+
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
                 doc.set_diff_base(diff_base);
             }
@@ -1704,6 +1708,60 @@ impl Editor {
     pub fn document_by_path_mut<P: AsRef<Path>>(&mut self, path: P) -> Option<&mut Document> {
         self.documents_mut()
             .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+    }
+
+    /// Returns all supported diagnostics for the document
+    pub fn doc_diagnostics<'a>(
+        language_servers: &'a helix_lsp::Registry,
+        diagnostics: &'a BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
+        document: &Document,
+    ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
+        Editor::doc_diagnostics_with_filter(language_servers, diagnostics, document, |_, _| true)
+    }
+
+    /// Returns all supported diagnostics for the document
+    /// filtered by `filter` which is invocated with the raw `lsp::Diagnostic` and the language server id it came from
+    pub fn doc_diagnostics_with_filter<'a>(
+        language_servers: &'a helix_lsp::Registry,
+        diagnostics: &'a BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
+
+        document: &Document,
+        filter: impl Fn(&lsp::Diagnostic, usize) -> bool + 'a,
+    ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
+        let text = document.text().clone();
+        let language_config = document.language.clone();
+        document
+            .path()
+            .and_then(|path| url::Url::from_file_path(path).ok()) // TODO log error?
+            .and_then(|uri| diagnostics.get(&uri))
+            .map(|diags| {
+                diags.iter().filter_map(move |(diagnostic, lsp_id)| {
+                    let ls = language_servers.get_by_id(*lsp_id)?;
+                    language_config
+                        .as_ref()
+                        .and_then(|c| {
+                            c.language_servers.iter().find(|features| {
+                                features.name == ls.name()
+                                    && features.has_feature(LanguageServerFeature::Diagnostics)
+                            })
+                        })
+                        .and_then(|_| {
+                            if filter(diagnostic, *lsp_id) {
+                                Document::lsp_diagnostic_to_diagnostic(
+                                    &text,
+                                    language_config.as_deref(),
+                                    diagnostic,
+                                    *lsp_id,
+                                    ls.offset_encoding(),
+                                )
+                            } else {
+                                None
+                            }
+                        })
+                })
+            })
+            .into_iter()
+            .flatten()
     }
 
     /// Gets the primary cursor position in screen coordinates,

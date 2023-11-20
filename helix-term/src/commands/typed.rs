@@ -1502,7 +1502,7 @@ fn lsp_stop(
 
         for doc in cx.editor.documents_mut() {
             if let Some(client) = doc.remove_language_server_by_name(ls_name) {
-                doc.clear_diagnostics(client.id());
+                doc.clear_diagnostics(Some(client.id()));
             }
         }
     }

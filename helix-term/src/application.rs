@@ -1,14 +1,8 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{
-    chars::char_is_word,
-    diagnostic::{DiagnosticTag, NumberOrString},
-    path::get_relative_path,
-    pos_at_coords, syntax, Selection,
-};
+use helix_core::{path::get_relative_path, pos_at_coords, syntax, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
-    util::lsp_pos_to_pos,
     LspProgressMap,
 };
 use helix_view::{
@@ -731,7 +725,6 @@ impl Application {
                             log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
                             return;
                         }
-                        let offset_encoding = language_server.offset_encoding();
                         // have to inline the function because of borrow checking...
                         let doc = self.editor.documents.values_mut()
                             .find(|doc| doc.path().map(|p| p == &path).unwrap_or(false))
@@ -745,11 +738,10 @@ impl Application {
                                 true
                             });
 
-                        if let Some(doc) = doc {
+                        let mut unchanged_diag_sources = Vec::new();
+                        if let Some(doc) = &doc {
                             let lang_conf = doc.language.clone();
-                            let text = doc.text().clone();
 
-                            let mut unchaged_diag_sources_ = Vec::new();
                             if let Some(lang_conf) = &lang_conf {
                                 if let Some(old_diagnostics) =
                                     self.editor.diagnostics.get(&params.uri)
@@ -774,118 +766,11 @@ impl Application {
                                             })
                                             .map(|(d, _)| d);
                                         if new_diagnostics.eq(old_diagnostics) {
-                                            unchaged_diag_sources_.push(source.clone())
+                                            unchanged_diag_sources.push(source.clone())
                                         }
                                     }
                                 }
                             }
-
-                            let unchaged_diag_sources = &unchaged_diag_sources_;
-                            let diagnostics =
-                                params.diagnostics.iter().filter_map(move |diagnostic| {
-                                    use helix_core::diagnostic::{Diagnostic, Range, Severity::*};
-                                    use lsp::DiagnosticSeverity;
-
-                                    if diagnostic.source.as_ref().map_or(false, |source| {
-                                        unchaged_diag_sources.contains(source)
-                                    }) {
-                                        return None;
-                                    }
-
-                                    // TODO: convert inside server
-                                    let start = if let Some(start) = lsp_pos_to_pos(
-                                        &text,
-                                        diagnostic.range.start,
-                                        offset_encoding,
-                                    ) {
-                                        start
-                                    } else {
-                                        log::warn!("lsp position out of bounds - {:?}", diagnostic);
-                                        return None;
-                                    };
-
-                                    let end = if let Some(end) =
-                                        lsp_pos_to_pos(&text, diagnostic.range.end, offset_encoding)
-                                    {
-                                        end
-                                    } else {
-                                        log::warn!("lsp position out of bounds - {:?}", diagnostic);
-                                        return None;
-                                    };
-                                    let severity =
-                                        diagnostic.severity.map(|severity| match severity {
-                                            DiagnosticSeverity::ERROR => Error,
-                                            DiagnosticSeverity::WARNING => Warning,
-                                            DiagnosticSeverity::INFORMATION => Info,
-                                            DiagnosticSeverity::HINT => Hint,
-                                            severity => unreachable!(
-                                                "unrecognized diagnostic severity: {:?}",
-                                                severity
-                                            ),
-                                        });
-
-                                    if let Some(lang_conf) = &lang_conf {
-                                        if let Some(severity) = severity {
-                                            if severity < lang_conf.diagnostic_severity {
-                                                return None;
-                                            }
-                                        }
-                                    };
-
-                                    let code = match diagnostic.code.clone() {
-                                        Some(x) => match x {
-                                            lsp::NumberOrString::Number(x) => {
-                                                Some(NumberOrString::Number(x))
-                                            }
-                                            lsp::NumberOrString::String(x) => {
-                                                Some(NumberOrString::String(x))
-                                            }
-                                        },
-                                        None => None,
-                                    };
-
-                                    let tags = if let Some(tags) = &diagnostic.tags {
-                                        let new_tags = tags
-                                            .iter()
-                                            .filter_map(|tag| match *tag {
-                                                lsp::DiagnosticTag::DEPRECATED => {
-                                                    Some(DiagnosticTag::Deprecated)
-                                                }
-                                                lsp::DiagnosticTag::UNNECESSARY => {
-                                                    Some(DiagnosticTag::Unnecessary)
-                                                }
-                                                _ => None,
-                                            })
-                                            .collect();
-
-                                        new_tags
-                                    } else {
-                                        Vec::new()
-                                    };
-
-                                    let ends_at_word = start != end
-                                        && end != 0
-                                        && text.get_char(end - 1).map_or(false, char_is_word);
-                                    let starts_at_word = start != end
-                                        && text.get_char(start).map_or(false, char_is_word);
-
-                                    Some(Diagnostic {
-                                        range: Range { start, end },
-                                        ends_at_word,
-                                        starts_at_word,
-                                        zero_width: start == end,
-                                        line: diagnostic.range.start.line as usize,
-                                        message: diagnostic.message.clone(),
-                                        severity,
-                                        code,
-                                        tags,
-                                        source: diagnostic.source.clone(),
-                                        data: diagnostic.data.clone(),
-                                        language_server_id: server_id,
-                                    })
-                                });
-
-                            doc.replace_diagnostics(diagnostics, unchaged_diag_sources, server_id);
                         }
 
                         let diagnostics = params.diagnostics.into_iter().map(|d| (d, server_id));
@@ -910,6 +795,24 @@ impl Application {
                         diagnostics.sort_unstable_by_key(|(d, server_id)| {
                             (d.severity, d.range.start, *server_id)
                         });
+
+                        if let Some(doc) = doc {
+                            doc.replace_diagnostics(
+                                Editor::doc_diagnostics_with_filter(
+                                    &self.editor.language_servers,
+                                    &self.editor.diagnostics,
+                                    doc,
+                                    |diagnostic, ls_id| {
+                                        ls_id == server_id
+                                            && diagnostic.source.as_ref().map_or(true, |source| {
+                                                !unchanged_diag_sources.contains(source)
+                                            })
+                                    },
+                                ),
+                                &unchanged_diag_sources,
+                                Some(server_id),
+                            );
+                        }
                     }
                     Notification::ShowMessage(params) => {
                         log::warn!("unhandled window/showMessage: {:?}", params);
@@ -1017,7 +920,7 @@ impl Application {
 
                         // Clear any diagnostics for documents with this server open.
                         for doc in self.editor.documents_mut() {
-                            doc.clear_diagnostics(server_id);
+                            doc.clear_diagnostics(Some(server_id));
                         }
 
                         // Remove the language server from the registry.
