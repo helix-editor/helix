@@ -301,33 +301,25 @@ pub fn render_text<'t>(
             pos,
         );
 
-        let grapheme_syntax_style =
+        let (syntax_style, overlay_style) =
             if let GraphemeSource::VirtualText { highlight } = grapheme.source {
-                let style = renderer.text_style;
+                let mut style = renderer.text_style;
                 if let Some(highlight) = highlight {
-                    style.patch(theme.highlight(highlight.0))
-                } else {
-                    style
+                    style = style.patch(theme.highlight(highlight.0))
                 }
+                (style, Style::default())
             } else {
-                syntax_style_span.0
-            };
-        let grapheme_overlay_style =
-            if let GraphemeSource::VirtualText { highlight } = grapheme.source {
-                let style = renderer.text_style;
-                if let Some(highlight) = highlight {
-                    style.patch(theme.highlight(highlight.0))
-                } else {
-                    style
-                }
-            } else {
-                overlay_style_span.0
+                (syntax_style_span.0, overlay_style_span.0)
             };
 
+        let is_virtual = grapheme.is_virtual();
         renderer.draw_grapheme(
-            grapheme,
-            grapheme_syntax_style,
-            grapheme_overlay_style,
+            grapheme.grapheme,
+            GraphemeStyle {
+                syntax_style,
+                overlay_style,
+            },
+            is_virtual,
             &mut last_line_indent_level,
             &mut is_in_indent_area,
             pos,
@@ -357,6 +349,11 @@ pub struct TextRenderer<'a> {
     pub draw_indent_guides: bool,
     pub col_offset: usize,
     pub viewport: Rect,
+}
+
+pub struct GraphemeStyle {
+    syntax_style: Style,
+    overlay_style: Style,
 }
 
 impl<'a> TextRenderer<'a> {
@@ -431,24 +428,22 @@ impl<'a> TextRenderer<'a> {
     /// Draws a single `grapheme` at the current render position with a specified `style`.
     pub fn draw_grapheme(
         &mut self,
-        formatted_grapheme: helix_core::doc_formatter::FormattedGrapheme,
-        syntax_style: Style,
-        overlay_style: Style,
+        grapheme: Grapheme,
+        grapheme_style: GraphemeStyle,
+        is_virtual: bool,
         last_indent_level: &mut usize,
         is_in_indent_area: &mut bool,
         position: Position,
     ) {
-        let is_virtual = formatted_grapheme.is_virtual();
-        let grapheme = formatted_grapheme.grapheme;
         let cut_off_start = self.col_offset.saturating_sub(position.col);
         let is_whitespace = grapheme.is_whitespace();
 
         // TODO is it correct to apply the whitespace style to all unicode white spaces?
-        let mut style = syntax_style;
+        let mut style = grapheme_style.syntax_style;
         if is_whitespace {
             style = style.patch(self.whitespace_style);
         }
-        style = style.patch(overlay_style);
+        style = style.patch(grapheme_style.overlay_style);
 
         let width = grapheme.width();
         let space = if is_virtual { " " } else { &self.space };
