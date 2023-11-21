@@ -755,12 +755,13 @@ impl Default for IndentGuidesConfig {
 }
 
 /// Line ending configuration.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LineEndingConfig {
     /// The platform's native line ending.
     ///
     /// `crlf` on Windows, otherwise `lf`.
+    #[default]
     Native,
     /// Line feed.
     LF,
@@ -775,12 +776,6 @@ pub enum LineEndingConfig {
     /// Next line.
     #[cfg(feature = "unicode-lines")]
     Nel,
-}
-
-impl Default for LineEndingConfig {
-    fn default() -> Self {
-        LineEndingConfig::Native
-    }
 }
 
 impl From<LineEndingConfig> for LineEnding {
