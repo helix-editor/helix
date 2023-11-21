@@ -1,143 +1,41 @@
-[
- "break"
- "case"
- "continue"
- "default"
- "else"
- "enum"
- "return"
- "sizeof"
- "struct"
- "switch"
- "typedef"
- "union"
- "soa"
- "task"
- "launch"
- "unmasked"
- "template"
- "typename"
- (sync_expression)
- ] @keyword
+; inherits: c
 
 [
- "in"
- "new"
- "delete"
- ] @keyword.operator
+  "soa"
+  "task"
+  "launch"
+  "unmasked"
+  "template"
+  "typename"
+  (sync_expression)
+] @keyword
 
 [
- "do"
- "for"
- "while"
- "cdo"
- "cfor"
- "cwhile"
- "foreach"
- "foreach_tiled"
- "foreach_active"
- "foreach_unique"
- ] @repeat
+  "in"
+  "new"
+  "delete"
+] @keyword.operator
 
 [
- "if"
- "cif"
- ] @conditional
+  "cdo"
+  "cfor"
+  "cwhile"
+  "foreach"
+  "foreach_tiled"
+  "foreach_active"
+  "foreach_unique"
+] @repeat
 
 [
- "int8"
- "int16"
- "int32"
- "int64"
- "uint8"
- "uint16"
- "uint32"
- "uint64"
- "float16"
- "ptrdiff_t"
- ] @type.builtin
+  "cif"
+] @conditional
 
 [
- "const"
- "volatile"
- "varying"
- "uniform"
- ] @type.qualifier
+  "varying"
+  "uniform"
+] @type.qualifier
 
-[
- "export"
- "extern"
- "inline"
- "noinline"
- "static"
- ] @type.qualifier
-
-"__vectorcall" @attribute
 "__regcall" @attribute
-
-[
- "#define"
- "#elif"
- "#else"
- "#endif"
- "#if"
- "#ifdef"
- "#ifndef"
- "#include"
- (preproc_directive)
- ] @preproc
-
-[
- "--"
- "-"
- "-="
- "->"
- "="
- "!="
- "*"
- "&"
- "&&"
- "+"
- "++"
- "+="
- "<"
- "=="
- ">"
- "||"
- ] @operator
-
-"." @delimiter
-";" @delimiter
-
-(string_literal) @string
-(system_lib_string) @string
-
-(null) @constant
-(number_literal) @number
-(char_literal) @number
-
-(call_expression
-  function: (identifier) @function)
-(call_expression
-  function: (field_expression
-              field: (field_identifier) @function))
-(function_declarator
-  declarator: (identifier) @function)
-(preproc_function_def
-  name: (identifier) @function.special)
-
-(field_identifier) @property
-(statement_identifier) @label
-(type_identifier) @type
-(primitive_type) @type
-(sized_type_specifier) @type
-
-((identifier) @constant
-              (#match? @constant "^[A-Z][A-Z\\d_]*$"))
-
-(identifier) @variable
-
-(comment) @comment
 
 (overload_declarator name: _ @function)
 (foreach_statement range_operator: _ @operator)
@@ -151,48 +49,48 @@
 
 ; built-in variables
 ((identifier) @variable.builtin
-              (#any-of? @variable.builtin
-               "programCount"
-               "programIndex"
-               "taskCount"
-               "taskCount0"
-               "taskCount1"
-               "taskCount2"
-               "taskIndex"
-               "taskIndex0"
-               "taskIndex1"
-               "taskIndex2"
-               "threadCount"
-               "threadIndex"
-               ))
+  (#any-of? @variable.builtin
+   "programCount"
+   "programIndex"
+   "taskCount"
+   "taskCount0"
+   "taskCount1"
+   "taskCount2"
+   "taskIndex"
+   "taskIndex0"
+   "taskIndex1"
+   "taskIndex2"
+   "threadCount"
+   "threadIndex"
+   ))
 
 ; preprocessor constants
 ((identifier) @constant.builtin
-              (#any-of? @constant.builtin
-               "ISPC"
-               "ISPC_FP16_SUPPORTED"
-               "ISPC_FP64_SUPPORTED"
-               "ISPC_LLVM_INTRINSICS_ENABLED"
-               "ISPC_MAJOR_VERSION"
-               "ISPC_MINOR_VERSION"
-               "ISPC_POINTER_SIZE"
-               "ISPC_TARGET_AVX"
-               "ISPC_TARGET_AVX2"
-               "ISPC_TARGET_AVX512KNL"
-               "ISPC_TARGET_AVX512SKX"
-               "ISPC_TARGET_AVX512SPR"
-               "ISPC_TARGET_NEON"
-               "ISPC_TARGET_SSE2"
-               "ISPC_TARGET_SSE4"
-               "ISPC_UINT_IS_DEFINED"
-               "PI"
-               "TARGET_ELEMENT_WIDTH"
-               "TARGET_WIDTH"
-               ))
+  (#any-of? @constant.builtin
+   "ISPC"
+   "ISPC_FP16_SUPPORTED"
+   "ISPC_FP64_SUPPORTED"
+   "ISPC_LLVM_INTRINSICS_ENABLED"
+   "ISPC_MAJOR_VERSION"
+   "ISPC_MINOR_VERSION"
+   "ISPC_POINTER_SIZE"
+   "ISPC_TARGET_AVX"
+   "ISPC_TARGET_AVX2"
+   "ISPC_TARGET_AVX512KNL"
+   "ISPC_TARGET_AVX512SKX"
+   "ISPC_TARGET_AVX512SPR"
+   "ISPC_TARGET_NEON"
+   "ISPC_TARGET_SSE2"
+   "ISPC_TARGET_SSE4"
+   "ISPC_UINT_IS_DEFINED"
+   "PI"
+   "TARGET_ELEMENT_WIDTH"
+   "TARGET_WIDTH"
+   ))
 
 ; standard library built-in
 ((type_identifier) @type.builtin
-                   (#lua-match? @type.builtin "^RNGState"))
+  (#lua-match? @type.builtin "^RNGState"))
 
 (call_expression
   function: (identifier) @function.builtin
