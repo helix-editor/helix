@@ -26,7 +26,7 @@ helix-vcs = { version = "0.6", path = "../helix-vcs" }
 
 # Conversion traits
 once_cell = "1.18"
-url = "2"
+url = "2.4.1"
 
 arc-swap = { version = "1.6.0" }
 
