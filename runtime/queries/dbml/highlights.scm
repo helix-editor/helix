@@ -44,5 +44,5 @@
   ":"
   "."
   ","
-] @punctuation.delimeter
+] @punctuation.delimiter
 
