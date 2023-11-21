@@ -25,7 +25,7 @@
 (index_block) @class
 
 ; string and number constants
-("'''") @string.escape
+("'''") @constant.character.escape
 (string) @string
 (number) @constant.numeric
 
