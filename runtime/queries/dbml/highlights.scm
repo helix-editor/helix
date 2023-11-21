@@ -8,7 +8,6 @@
 (keyword_ref) @keyword
 
 ; identify blocks and definitions
-(block) @class
 (definition) @function
 
 ; for identifiers
