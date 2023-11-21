@@ -1217,10 +1217,10 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     }
 }
 
-/// Opens url. If the URL is a valid textual file it is open in helix, other
-/// the file is open using external program.
+/// Opens the given url. If the URL points to a valid textual file it is open in helix.
+//  Otherwise, the file is open using external program.
 fn open_url(cx: &mut Context, url: Url, action: Action) {
-    let (_, doc) = current_ref!(cx.editor);
+    let doc = doc!(cx.editor);
     let rel_path = doc
         .relative_path()
         .map(|path| path.parent().unwrap().to_path_buf())
