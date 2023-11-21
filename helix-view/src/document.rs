@@ -8,7 +8,7 @@ use helix_core::chars::char_is_word;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
-use helix_core::text_annotations::InlineAnnotation;
+use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
@@ -125,6 +125,7 @@ pub struct Document {
     ///
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
+    pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
     /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
     /// update from the LSP
     pub inlay_hints_oudated: bool,
@@ -665,6 +666,7 @@ impl Document {
             version_control_head: None,
             focused_at: std::time::Instant::now(),
             readonly: false,
+            jump_labels: HashMap::new(),
         }
     }
 
@@ -1138,6 +1140,7 @@ impl Document {
     pub fn remove_view(&mut self, view_id: ViewId) {
         self.selections.remove(&view_id);
         self.inlay_hints.remove(&view_id);
+        self.jump_labels.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
@@ -1941,6 +1944,14 @@ impl Document {
     /// Set the inlay hints for this document and `view_id`.
     pub fn set_inlay_hints(&mut self, view_id: ViewId, inlay_hints: DocumentInlayHints) {
         self.inlay_hints.insert(view_id, inlay_hints);
+    }
+
+    pub fn set_jump_labels(&mut self, view_id: ViewId, labels: Vec<Overlay>) {
+        self.jump_labels.insert(view_id, labels);
+    }
+
+    pub fn remove_jump_labels(&mut self, view_id: ViewId) {
+        self.jump_labels.remove(&view_id);
     }
 
     /// Get the inlay hints for this document and `view_id`.
