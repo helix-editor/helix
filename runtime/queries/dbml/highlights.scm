@@ -27,7 +27,7 @@
 ; string and number constants
 ("'''") @string.escape
 (string) @string
-(number) @constant  
+(number) @constant.numeric
 
 ; brackets
 [
