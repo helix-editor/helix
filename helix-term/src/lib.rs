@@ -12,7 +12,11 @@ pub mod keymap;
 pub mod ui;
 use std::path::Path;
 
+use futures_util::Future;
 use ignore::DirEntry;
+use url::Url;
+
+pub use keymap::macros::*;
 
 #[cfg(not(windows))]
 fn true_color() -> bool {
@@ -45,4 +49,23 @@ fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> b
     }
 
     true
+}
+
+/// Opens URL in external program.
+fn open_external_url_callback(
+    url: Url,
+) -> impl Future<Output = Result<job::Callback, anyhow::Error>> + Send + 'static {
+    let commands = open::commands(url.as_str());
+    async {
+        for cmd in commands {
+            let mut command = tokio::process::Command::new(cmd.get_program());
+            command.args(cmd.get_args());
+            if command.output().await.is_ok() {
+                return Ok(job::Callback::Editor(Box::new(|_| {})));
+            }
+        }
+        Ok(job::Callback::Editor(Box::new(move |editor| {
+            editor.set_error("Opening URL in external program failed")
+        })))
+    }
 }

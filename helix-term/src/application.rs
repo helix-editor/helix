@@ -8,7 +8,7 @@ use helix_core::{
 };
 use helix_lsp::{
     lsp::{self, notification::Notification},
-    util::lsp_pos_to_pos,
+    util::{lsp_pos_to_pos, lsp_range_to_range},
     LspProgressMap,
 };
 use helix_view::{
@@ -1174,6 +1174,63 @@ impl Application {
                                 }
                             }
                         }
+                        Ok(serde_json::Value::Null)
+                    }
+                    Ok(MethodCall::ShowDocument(params)) => {
+                        let language_server = language_server!();
+                        let offset_encoding = language_server.offset_encoding();
+
+                        if params.external.unwrap_or_default() {
+                            self.jobs
+                                .callback(crate::open_external_url_callback(params.uri));
+                            return;
+                        }
+
+                        let path = match params.uri.to_file_path() {
+                            Ok(path) => path,
+                            Err(_) => {
+                                log::error!("Unsupported file URI: {}", params.uri);
+                                return;
+                            }
+                        };
+
+                        let action = match params.take_focus {
+                            Some(true) => helix_view::editor::Action::Replace,
+                            _ => helix_view::editor::Action::HorizontalSplit,
+                        };
+
+                        let doc = match self.editor.open(&path, action) {
+                            Ok(id) => doc_mut!(self.editor, &id),
+                            Err(err) => {
+                                log::error!("failed to open path: {:?}: {:?}", params.uri, err);
+                                return;
+                            }
+                        };
+
+                        if let Some(range) = params.selection {
+                            // TODO: convert inside server
+                            let new_range = if let Some(new_range) =
+                                lsp_range_to_range(doc.text(), range, offset_encoding)
+                            {
+                                new_range
+                            } else {
+                                log::warn!("lsp position out of bounds - {:?}", range);
+                                return;
+                            };
+
+                            let view = view_mut!(self.editor);
+
+                            // we flip the range so that the cursor sits on the start of the symbol
+                            // (for example start of the function).
+                            doc.set_selection(
+                                view.id,
+                                Selection::single(new_range.head, new_range.anchor),
+                            );
+                            if action.align_view(view, doc.id()) {
+                                align_view(doc, view, Align::Center);
+                            }
+                        }
+
                         Ok(serde_json::Value::Null)
                     }
                 };
