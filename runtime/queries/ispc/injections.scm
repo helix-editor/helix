@@ -1,3 +1,1 @@
-(preproc_arg) @c
-
-(comment) @comment
+; inherits: c

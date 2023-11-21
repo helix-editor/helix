@@ -98,7 +98,7 @@
 | iex | ✓ |  |  |  |
 | ini | ✓ |  |  |  |
 | inko | ✓ | ✓ | ✓ |  |
-| ispc | ✓ |  |  |  |
+| ispc | ✓ |  | ✓ |  |
 | janet | ✓ |  |  |  |
 | java | ✓ | ✓ | ✓ | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
