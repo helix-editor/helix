@@ -57,6 +57,10 @@ pulldown-cmark = { version = "0.9", default-features = false }
 # file type detection
 content_inspector = "0.2.4"
 
+# opening URLs
+open = "5.0.0"
+url = "2.4.1"
+
 # config
 toml = "0.7"
 
