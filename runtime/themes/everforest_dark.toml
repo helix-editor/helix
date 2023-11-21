@@ -40,6 +40,7 @@
 "constructor" = "green"
 "module" = "yellow"
 "special" = "blue"
+"ui.virtual.jump-label" = { fg = "#00dfff", modifiers = ["bold"] }
 
 "markup.heading.marker" = "grey1"
 "markup.heading.1" = { fg = "red", modifiers = ["bold"] }

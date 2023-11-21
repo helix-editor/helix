@@ -22,7 +22,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use std::{
     borrow::Cow,
     cell::Cell,
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     fs,
     io::{self, stdin},
     num::NonZeroUsize,
@@ -212,6 +212,23 @@ impl Default for FilePickerConfig {
     }
 }
 
+fn deserialize_alphabet<'de, D>(deserializer: D) -> Result<Vec<char>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+
+    let str = String::deserialize(deserializer)?;
+    let chars: Vec<_> = str.chars().collect();
+    let unique_chars: HashSet<_> = chars.iter().copied().collect();
+    if unique_chars.len() != chars.len() {
+        return Err(<D::Error as Error>::custom(
+            "jump-label-alphabet must contain unique characters",
+        ));
+    }
+    Ok(chars)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
@@ -305,6 +322,9 @@ pub struct Config {
     /// Which indent heuristic to use when a new line is inserted
     #[serde(default)]
     pub indent_heuristic: IndentationHeuristic,
+    /// labels characters used in jumpmode
+    #[serde(skip_serializing, deserialize_with = "deserialize_alphabet")]
+    pub jump_label_alphabet: Vec<char>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -870,6 +890,7 @@ impl Default for Config {
             smart_tab: Some(SmartTabConfig::default()),
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
+            jump_label_alphabet: ('a'..='z').collect(),
         }
     }
 }
