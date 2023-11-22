@@ -188,7 +188,7 @@ pub fn render_text<'t>(
         theme,
     };
     let mut overlay_styles = StyleIter {
-        text_style: renderer.text_style,
+        text_style: Style::default(),
         active_highlights: Vec::with_capacity(64),
         highlight_iter: overlay_highlight_iter,
         theme,
