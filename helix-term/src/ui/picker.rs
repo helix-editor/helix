@@ -736,20 +736,17 @@ impl<T: Item + 'static> Picker<T> {
                 }
             }
 
-            let syntax_highlights = EditorView::doc_syntax_highlights(
+            let mut highlights = EditorView::doc_syntax_highlights(
                 doc,
                 offset.anchor,
                 area.height,
                 &cx.editor.theme,
             );
-
-            let mut overlay_highlights =
-                EditorView::empty_highlight_iter(doc, offset.anchor, area.height);
             for spans in EditorView::doc_diagnostics_highlights(doc, &cx.editor.theme) {
                 if spans.is_empty() {
                     continue;
                 }
-                overlay_highlights = Box::new(helix_core::syntax::merge(overlay_highlights, spans));
+                highlights = Box::new(helix_core::syntax::merge(highlights, spans));
             }
             let mut decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
 
@@ -780,8 +777,7 @@ impl<T: Item + 'static> Picker<T> {
                 offset,
                 // TODO: compute text annotations asynchronously here (like inlay hints)
                 &TextAnnotations::default(),
-                syntax_highlights,
-                overlay_highlights,
+                highlights,
                 &cx.editor.theme,
                 &mut decorations,
                 &mut [],
