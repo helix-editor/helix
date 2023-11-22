@@ -47,6 +47,7 @@ mint = { command = "mint", args = ["ls"] }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
 nls = { command = "nls" }
+nu-lsp = { command = "nu", args = [ "--lsp" ] }
 ocamllsp = { command = "ocamllsp" }
 ols = { command = "ols", args = [] }
 omnisharp = { command = "OmniSharp", args = [ "--languageserver" ] }
@@ -1783,6 +1784,7 @@ file-types = ["nu"]
 shebangs = ["nu"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+language-servers = [ "nu-lsp" ]
 
 [[grammar]]
 name = "nu"
