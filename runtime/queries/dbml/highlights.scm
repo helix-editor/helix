@@ -20,9 +20,6 @@
 ("TableGroup" ) @type
 ("database_type" ) @variable
 
-; Index related highlighting
-(index_block) @class
-
 ; string and number constants
 ("'''") @constant.character.escape
 (string) @string
