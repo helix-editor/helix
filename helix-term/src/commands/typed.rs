@@ -3027,7 +3027,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: CommandSignature::none(),
     },
     TypableCommand {
-      name: "languages-open",
+        name: "languages-open",
         aliases: &[],
         doc: "Open the user languages.toml file.",
         fun: open_languages,
