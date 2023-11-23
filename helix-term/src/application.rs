@@ -1199,7 +1199,7 @@ impl Application {
                                     Ok(path) => {
                                         let action = match take_focus {
                                             Some(true) => helix_view::editor::Action::Replace,
-                                            _ => helix_view::editor::Action::HorizontalSplit,
+                                            _ => helix_view::editor::Action::VerticalSplit,
                                         };
 
                                         match self.editor.open(&path, action) {
