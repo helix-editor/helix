@@ -291,6 +291,21 @@ pub struct Config {
     pub insert_final_newline: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
+    /// Enables custom background opacity
+    pub bg_opacity: Opacity,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "kebab-case")]
+pub enum Opacity {
+    Transparent,
+    Theme,
+}
+
+impl Default for Opacity {
+    fn default() -> Self {
+        Self::Theme
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -846,6 +861,7 @@ impl Default for Config {
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
+            bg_opacity: Opacity::default(),
         }
     }
 }
