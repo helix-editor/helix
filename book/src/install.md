@@ -65,10 +65,7 @@ sudo apt install helix
 
 ### Fedora/RHEL
 
-Enable the `COPR` repository for Helix:
-
 ```sh
-sudo dnf copr enable varlad/helix
 sudo dnf install helix
 ```
 
