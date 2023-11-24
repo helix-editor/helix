@@ -1195,11 +1195,11 @@ convenient to work with bracket pairs and the likes, and with
 their content.
 
 There are several actions that can be performed in match mode,
-as indicated by the help pop up. To jump to a matching ([{ pair,
-simply press "mm". For example on the lines below (starting with
--->), move the cursor in normal mode to (, and press "mm" to jump
+as indicated by the help pop-up. To jump to a matching ([{ pair,
+simply press mm. For example on the lines below (starting with
+-->), move the cursor in normal mode to (, and then press mm to jump
 to the matching ). You can do the same on the line below: for example
-move to ], and press "mm" to jump to [ .
+move to ], and press mm to jump to [ .
 
 --> you can (jump between matching parenthesis)
 --> or between matching [ square brackets ]
