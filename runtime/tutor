@@ -1190,9 +1190,7 @@ multiple cursors, they won't be uncommented but commented again.
 =                   12.1 USING MATCH MODE JUMP                  =
 =================================================================
 
-From normal mode, type "m" to enter the match mode. This is
-convenient to work with bracket pairs and the likes, and with
-their content.
+To switch to match mode from normal mode, type m. This feature is particularly useful for handling bracket pairs and their contents.
 
 There are several actions that can be performed in match mode,
 as indicated by the help pop-up. To jump to a matching ([{ pair,
