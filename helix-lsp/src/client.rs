@@ -1562,27 +1562,4 @@ impl Client {
 
         Some(self.call::<lsp::request::CodeLensRequest>(params))
     }
-
-    pub fn code_lens_resolve(
-        &self,
-        code_lens: lsp::CodeLens,
-    ) -> Option<impl Future<Output = Result<Option<lsp::CodeLens>>>> {
-        let capabilities = self.capabilities.get().unwrap();
-
-        // Return early if the server does not support resolving code lens.
-        match capabilities.code_lens_provider {
-            Some(lsp::CodeLensOptions {
-                resolve_provider: Some(true),
-                ..
-            }) => (),
-            _ => return None,
-        }
-
-        let request = self.call::<lsp::request::CodeLensResolve>(code_lens);
-        Some(async move {
-            let json = request.await?;
-            let response: Option<lsp::CodeLens> = serde_json::from_value(json)?;
-            Ok(response)
-        })
-    }
 }

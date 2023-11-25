@@ -451,6 +451,8 @@ impl View {
         add_annotations(other_inlay_hints, other_style);
         add_annotations(padding_after_inlay_hints, None);
 
+        // TODO: lens line annotation
+
         text_annotations
     }
 
