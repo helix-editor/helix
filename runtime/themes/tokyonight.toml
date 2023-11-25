@@ -50,6 +50,7 @@
 "ui.virtual.whitespace" = { fg = "foreground_gutter" }
 "ui.virtual.inlay-hint" = { fg = "comment" }
 "ui.window" = { fg = "black" }
+"ui.wordmatch" = { modifiers = ["bold"] }
 
 "error" = { fg = "red" }
 "warning" = { fg = "yellow" }

@@ -264,6 +264,16 @@ pub mod util {
         Some(Range::new(start, end))
     }
 
+    pub fn lsp_range_to_ops_range(
+        doc: &Rope,
+        range: lsp::Range,
+        offset_encoding: OffsetEncoding,
+    ) -> Option<std::ops::Range<usize>> {
+        let start = lsp_pos_to_pos(doc, range.start, offset_encoding)?;
+        let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
+
+        Some(start..end)
+    }
     /// If the LS did not provide a range for the completion or the range of the
     /// primary cursor can not be used for the secondary cursor, this function
     /// can be used to find the completion range for a cursor
@@ -284,6 +294,7 @@ pub mod util {
         }
         (start, end)
     }
+
     fn completion_range(
         text: RopeSlice,
         edit_offset: Option<(i128, i128)>,

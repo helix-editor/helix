@@ -5,7 +5,10 @@ use helix_lsp::{
         self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
         NumberOrString,
     },
-    util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
+    util::{
+        diagnostic_to_lsp_diagnostic, lsp_range_to_ops_range, lsp_range_to_range,
+        range_to_lsp_range,
+    },
     Client, OffsetEncoding,
 };
 use serde_json::Value;
@@ -1490,6 +1493,47 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
                 .collect();
             let selection = Selection::new(ranges, primary_index);
             doc.set_selection(view.id, selection);
+        },
+    );
+}
+
+pub fn highlight_symbol_under_cursor(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let language_server =
+        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::DocumentHighlight);
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = doc.position(view.id, offset_encoding);
+
+    let Some(future) = language_server.text_document_document_highlight(doc.identifier(), pos, None) else {
+        return;
+    };
+
+    cx.callback(
+        future,
+        move |editor, _compositor, response: Option<Vec<lsp::DocumentHighlight>>| {
+            let Some(highlights) = response else {
+                // Reset the cursor_word
+                editor.cursor_highlights = Arc::new(Vec::new());
+                return;
+            };
+            let (_, doc) = current!(editor);
+            let language_server = language_server_with_feature!(
+                editor,
+                doc,
+                LanguageServerFeature::DocumentHighlight
+            );
+            let offset_encoding = language_server.offset_encoding();
+            let text = doc.text();
+
+            editor.cursor_highlights = Arc::new(
+                highlights
+                    .iter()
+                    .filter_map(|highlight| {
+                        lsp_range_to_ops_range(text, highlight.range, offset_encoding)
+                    })
+                    .collect(),
+            );
         },
     );
 }

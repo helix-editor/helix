@@ -283,6 +283,8 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
+    /// Whether or not the word under the cursor shall be highlighted
+    pub cursor_word: bool,
     /// Workspace specific lsp ceiling dirs
     pub workspace_lsp_roots: Vec<PathBuf>,
     /// Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`.
@@ -835,6 +837,7 @@ impl Default for Config {
                 enable: Some(false),
                 ..SoftWrap::default()
             },
+            cursor_word: false,
             text_width: 80,
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
@@ -937,6 +940,9 @@ pub struct Editor {
     /// avoid calculating the cursor position multiple
     /// times during rendering and should not be set by other functions.
     pub cursor_cache: Cell<Option<Option<Position>>>,
+
+    /// Contains all the cursor word highlights
+    pub cursor_highlights: Arc<Vec<std::ops::Range<usize>>>,
     /// When a new completion request is sent to the server old
     /// unfinished request must be dropped. Each completion
     /// request is associated with a channel that cancels
@@ -1056,6 +1062,7 @@ impl Editor {
             config_events: unbounded_channel(),
             needs_redraw: false,
             cursor_cache: Cell::new(None),
+            cursor_highlights: Arc::new(Vec::new()),
             completion_request_handle: None,
         }
     }

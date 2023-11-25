@@ -11,6 +11,7 @@ use crate::{
 };
 
 use helix_core::{
+    chars::char_is_word,
     diagnostic::NumberOrString,
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
@@ -136,6 +137,14 @@ impl EditorView {
             highlights = Box::new(syntax::merge(highlights, overlay_highlights));
         }
 
+        if config.cursor_word {
+            if let Some(cursor_word_highlights) =
+                Self::collect_cursor_word_highlights(doc, editor, view, viewport, theme)
+            {
+                highlights = Box::new(syntax::merge(highlights, cursor_word_highlights));
+            }
+        }
+
         for diagnostic in Self::doc_diagnostics_highlights(doc, theme) {
             // Most of the `diagnostic` Vecs are empty most of the time. Skipping
             // a merge for any empty Vec saves a significant amount of work.
@@ -255,6 +264,103 @@ impl EditorView {
             .filter(|ruler| ruler < &viewport.width)
             .map(|ruler| viewport.clip_left(ruler).with_width(1))
             .for_each(|area| surface.set_style(area, ruler_theme))
+    }
+
+    /// Gets the word under the cursor
+    pub fn cursor_word<'a>(doc: &'a Document, view: &View) -> Option<&'a str> {
+        let text = doc.text().slice(..);
+        let cursor = doc.selection(view.id).primary().cursor(text);
+        let char_under_cursor = text.get_char(cursor);
+        if !char_under_cursor.map_or(false, char_is_word) {
+            return None;
+        }
+
+        let chars_at_cursor = text.chars_at(cursor);
+        let reversed_chars = chars_at_cursor.clone().reversed();
+        let start = cursor.saturating_sub(reversed_chars.take_while(|c| char_is_word(*c)).count());
+        let end = cursor + chars_at_cursor.take_while(|c| char_is_word(*c)).count();
+
+        text.slice(start..end).as_str()
+    }
+
+    /// Calculates the ranges of the word under the cursor and returns the result
+    fn calculate_cursor_word(
+        doc: &Document,
+        view: &View,
+        viewport: Rect,
+        scope_index: usize,
+    ) -> Vec<(usize, std::ops::Range<usize>)> {
+        let text = doc.text().slice(..);
+        let mut result = Vec::new();
+
+        let Some(cursor_word) = Self::cursor_word(doc, view) else {
+            return result;
+        };
+
+        let row = text.char_to_line(view.offset.anchor.min(text.len_chars()));
+        let line_range = {
+            // Calculate the lines in view
+            let last_line = text.len_lines().saturating_sub(1);
+            let last_visible_line = (row + viewport.height as usize).min(last_line);
+            let first_visible_line = row;
+
+            first_visible_line..last_visible_line
+        };
+
+        let relevant_lines = text
+            .slice(text.line_to_char(line_range.start)..text.line_to_char(line_range.end))
+            .chunks();
+
+        for (line, line_number) in relevant_lines.zip(line_range) {
+            result.extend(
+                line.match_indices(cursor_word)
+                    .map(|(i, _)| i)
+                    .filter(|i| line[..*i].chars().next_back().map_or(false, char_is_word))
+                    .filter(|i| {
+                        !line
+                            .chars()
+                            .nth(i + cursor_word.len())
+                            .map_or(false, char_is_word)
+                    })
+                    .map(|i| line_number + i)
+                    .map(|start| (scope_index, { start..start + cursor_word.len() })),
+            );
+        }
+
+        result
+    }
+
+    /// Apply the decoration for the word to be highlighted
+    pub fn collect_cursor_word_highlights(
+        doc: &Document,
+        editor: &Editor,
+        view: &View,
+        viewport: Rect,
+        theme: &Theme,
+    ) -> Option<Vec<(usize, std::ops::Range<usize>)>> {
+        let scope_index = theme.find_scope_index("ui.wordmatch")?;
+        let mut result: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+        let lsp_supports_highlights = doc
+            .language_servers_with_feature(syntax::LanguageServerFeature::DocumentHighlight)
+            .count()
+            > 0;
+
+        match lsp_supports_highlights {
+            true => result.extend(
+                editor
+                    .cursor_highlights
+                    .iter()
+                    .map(|range| (scope_index, range.to_owned())),
+            ),
+            false => result.extend(Self::calculate_cursor_word(
+                doc,
+                view,
+                viewport,
+                scope_index,
+            )),
+        }
+
+        Some(result)
     }
 
     pub fn overlay_syntax_highlights(
@@ -1018,6 +1124,10 @@ impl EditorView {
             } else {
                 EventResult::Ignored(None)
             };
+        }
+
+        if cx.editor.config().cursor_word {
+            crate::commands::highlight_symbol_under_cursor(cx);
         }
 
         if cx.editor.mode != Mode::Insert || !cx.editor.config().auto_completion {
