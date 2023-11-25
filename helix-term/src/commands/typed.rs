@@ -2175,7 +2175,7 @@ fn open_languages(
         return Ok(());
     }
 
-    cx.editor.open(&helix_loader::lang_config_file(), Action::Replace)?;
+    cx.editor.open(&helix_loader::languages_file(), Action::Replace)?;
     Ok(())
 }
 

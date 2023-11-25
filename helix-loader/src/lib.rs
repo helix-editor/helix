@@ -169,7 +169,7 @@ pub fn workspace_config_file() -> PathBuf {
     find_workspace().0.join(".helix").join("config.toml")
 }
 
-pub fn lang_config_file() -> PathBuf {
+pub fn languages_file() -> PathBuf {
     config_dir().join("languages.toml")
 }
 
