@@ -3041,7 +3041,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "languages-open",
-        aliases: &[],
+        aliases: &["langs-open"],
         doc: "Open the user languages.toml file.",
         fun: open_languages,
         signature: CommandSignature::none(),  
@@ -3055,7 +3055,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "languages-open-workspace",
-        aliases: &[],
+        aliases: &["langs-open-workspace"],
         doc: "Open the workspace languages.toml file",
         fun: open_workspace_langs,
         signature: CommandSignature::none(), 
