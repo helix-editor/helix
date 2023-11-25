@@ -2,7 +2,7 @@ use super::{Context, Editor};
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, Jobs},
-    ui::{self, overlay::overlayed, FilePicker, Picker, Popup, Prompt, PromptEvent, Text},
+    ui::{self, overlay::overlaid, Picker, Popup, Prompt, PromptEvent, Text},
 };
 use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
@@ -12,7 +12,7 @@ use helix_view::editor::Breakpoint;
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tui::text::Spans;
+use tui::{text::Spans, widgets::Row};
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -25,7 +25,7 @@ use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select
 impl ui::menu::Item for StackFrame {
     type Data = ();
 
-    fn label(&self, _data: &Self::Data) -> Spans {
+    fn format(&self, _data: &Self::Data) -> Row {
         self.name.as_str().into() // TODO: include thread_states in the label
     }
 }
@@ -33,7 +33,7 @@ impl ui::menu::Item for StackFrame {
 impl ui::menu::Item for DebugTemplate {
     type Data = ();
 
-    fn label(&self, _data: &Self::Data) -> Spans {
+    fn format(&self, _data: &Self::Data) -> Row {
         self.name.as_str().into()
     }
 }
@@ -41,7 +41,7 @@ impl ui::menu::Item for DebugTemplate {
 impl ui::menu::Item for Thread {
     type Data = ThreadStates;
 
-    fn label(&self, thread_states: &Self::Data) -> Spans {
+    fn format(&self, thread_states: &Self::Data) -> Row {
         format!(
             "{} ({})",
             self.name,
@@ -73,21 +73,19 @@ fn thread_picker(
             let debugger = debugger!(editor);
 
             let thread_states = debugger.thread_states.clone();
-            let picker = FilePicker::new(
-                threads,
-                thread_states,
-                move |cx, thread, _action| callback_fn(cx.editor, thread),
-                move |editor, thread| {
-                    let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
-                    let frame = frames.get(0)?;
-                    let path = frame.source.as_ref()?.path.clone()?;
-                    let pos = Some((
-                        frame.line.saturating_sub(1),
-                        frame.end_line.unwrap_or(frame.line).saturating_sub(1),
-                    ));
-                    Some((path.into(), pos))
-                },
-            );
+            let picker = Picker::new(threads, thread_states, move |cx, thread, _action| {
+                callback_fn(cx.editor, thread)
+            })
+            .with_preview(move |editor, thread| {
+                let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
+                let frame = frames.get(0)?;
+                let path = frame.source.as_ref()?.path.clone()?;
+                let pos = Some((
+                    frame.line.saturating_sub(1),
+                    frame.end_line.unwrap_or(frame.line).saturating_sub(1),
+                ));
+                Some((path.into(), pos))
+            });
             compositor.push(Box::new(picker));
         },
     );
@@ -219,7 +217,7 @@ pub fn dap_start_impl(
         }
     }
 
-    args.insert("cwd", to_value(std::env::current_dir().unwrap())?);
+    args.insert("cwd", to_value(helix_loader::current_working_dir())?);
 
     let args = to_value(args).unwrap();
 
@@ -270,7 +268,7 @@ pub fn dap_launch(cx: &mut Context) {
 
     let templates = config.templates.clone();
 
-    cx.push_layer(Box::new(overlayed(Picker::new(
+    cx.push_layer(Box::new(overlaid(Picker::new(
         templates,
         (),
         |cx, template, _action| {
@@ -287,6 +285,36 @@ pub fn dap_launch(cx: &mut Context) {
             cx.jobs.callback(callback);
         },
     ))));
+}
+
+pub fn dap_restart(cx: &mut Context) {
+    let debugger = match &cx.editor.debugger {
+        Some(debugger) => debugger,
+        None => {
+            cx.editor.set_error("Debugger is not running");
+            return;
+        }
+    };
+    if !debugger
+        .capabilities()
+        .supports_restart_request
+        .unwrap_or(false)
+    {
+        cx.editor
+            .set_error("Debugger does not support session restarts");
+        return;
+    }
+    if debugger.starting_request_args().is_none() {
+        cx.editor
+            .set_error("No arguments found with which to restart the sessions");
+        return;
+    }
+
+    dap_callback(
+        cx.jobs,
+        debugger.restart(),
+        |editor, _compositor, _resp: ()| editor.set_status("Debugging session restarted"),
+    );
 }
 
 fn debug_parameter_prompt(
@@ -311,8 +339,12 @@ fn debug_parameter_prompt(
     .to_owned();
 
     let completer = match field_type {
-        "filename" => ui::completers::filename,
-        "directory" => ui::completers::directory,
+        "filename" => |editor: &Editor, input: &str| {
+            ui::completers::filename_with_git_ignore(editor, input, false)
+        },
+        "directory" => |editor: &Editor, input: &str| {
+            ui::completers::directory_with_git_ignore(editor, input, false)
+        },
         _ => ui::completers::none,
     };
 
@@ -475,19 +507,36 @@ pub fn dap_variables(cx: &mut Context) {
 
     if debugger.thread_id.is_none() {
         cx.editor
-            .set_status("Cannot access variables while target is running");
+            .set_status("Cannot access variables while target is running.");
         return;
     }
     let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
         (Some(frame), Some(thread_id)) => (frame, thread_id),
         _ => {
             cx.editor
-                .set_status("Cannot find current stack frame to access variables");
+                .set_status("Cannot find current stack frame to access variables.");
             return;
         }
     };
 
-    let frame_id = debugger.stack_frames[&thread_id][frame].id;
+    let thread_frame = match debugger.stack_frames.get(&thread_id) {
+        Some(thread_frame) => thread_frame,
+        None => {
+            cx.editor
+                .set_error("Failed to get stack frame for thread: {thread_id}");
+            return;
+        }
+    };
+    let stack_frame = match thread_frame.get(frame) {
+        Some(stack_frame) => stack_frame,
+        None => {
+            cx.editor
+                .set_error("Failed to get stack frame for thread {thread_id} and frame {frame}.");
+            return;
+        }
+    };
+
+    let frame_id = stack_frame.id;
     let scopes = match block_on(debugger.scopes(frame_id)) {
         Ok(s) => s,
         Err(e) => {
@@ -533,13 +582,13 @@ pub fn dap_variables(cx: &mut Context) {
 
     let contents = Text::from(tui::text::Text::from(variables));
     let popup = Popup::new("dap-variables", contents);
-    cx.push_layer(Box::new(popup));
+    cx.replace_or_push_layer("dap-variables", popup);
 }
 
 pub fn dap_terminate(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    let request = debugger.disconnect();
+    let request = debugger.disconnect(None);
     dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
         // editor.set_error(format!("Failed to disconnect: {}", e));
         editor.debugger = None;
@@ -681,39 +730,35 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
 
     let frames = debugger.stack_frames[&thread_id].clone();
 
-    let picker = FilePicker::new(
-        frames,
-        (),
-        move |cx, frame, _action| {
-            let debugger = debugger!(cx.editor);
-            // TODO: this should be simpler to find
-            let pos = debugger.stack_frames[&thread_id]
-                .iter()
-                .position(|f| f.id == frame.id);
-            debugger.active_frame = pos;
+    let picker = Picker::new(frames, (), move |cx, frame, _action| {
+        let debugger = debugger!(cx.editor);
+        // TODO: this should be simpler to find
+        let pos = debugger.stack_frames[&thread_id]
+            .iter()
+            .position(|f| f.id == frame.id);
+        debugger.active_frame = pos;
 
-            let frame = debugger.stack_frames[&thread_id]
-                .get(pos.unwrap_or(0))
-                .cloned();
-            if let Some(frame) = &frame {
-                jump_to_stack_frame(cx.editor, frame);
-            }
-        },
-        move |_editor, frame| {
-            frame
-                .source
-                .as_ref()
-                .and_then(|source| source.path.clone())
-                .map(|path| {
-                    (
-                        path.into(),
-                        Some((
-                            frame.line.saturating_sub(1),
-                            frame.end_line.unwrap_or(frame.line).saturating_sub(1),
-                        )),
-                    )
-                })
-        },
-    );
+        let frame = debugger.stack_frames[&thread_id]
+            .get(pos.unwrap_or(0))
+            .cloned();
+        if let Some(frame) = &frame {
+            jump_to_stack_frame(cx.editor, frame);
+        }
+    })
+    .with_preview(move |_editor, frame| {
+        frame
+            .source
+            .as_ref()
+            .and_then(|source| source.path.clone())
+            .map(|path| {
+                (
+                    path.into(),
+                    Some((
+                        frame.line.saturating_sub(1),
+                        frame.end_line.unwrap_or(frame.line).saturating_sub(1),
+                    )),
+                )
+            })
+    });
     cx.push_layer(Box::new(picker))
 }

@@ -1,4 +1,6 @@
-use std::path::Path;
+use anyhow::{bail, Result};
+use arc_swap::ArcSwap;
+use std::{path::Path, sync::Arc};
 
 #[cfg(feature = "git")]
 pub use git::Git;
@@ -17,14 +19,19 @@ pub trait DiffProvider {
     /// if this provider is used.
     /// The data is returned as raw byte without any decoding or encoding performed
     /// to ensure all file encodings are handled correctly.
-    fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>>;
+    fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>>;
+    fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>>;
 }
 
 #[doc(hidden)]
 pub struct Dummy;
 impl DiffProvider for Dummy {
-    fn get_diff_base(&self, _file: &Path) -> Option<Vec<u8>> {
-        None
+    fn get_diff_base(&self, _file: &Path) -> Result<Vec<u8>> {
+        bail!("helix was compiled without git support")
+    }
+
+    fn get_current_head_name(&self, _file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
+        bail!("helix was compiled without git support")
     }
 }
 
@@ -36,7 +43,27 @@ impl DiffProviderRegistry {
     pub fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>> {
         self.providers
             .iter()
-            .find_map(|provider| provider.get_diff_base(file))
+            .find_map(|provider| match provider.get_diff_base(file) {
+                Ok(res) => Some(res),
+                Err(err) => {
+                    log::info!("{err:#?}");
+                    log::info!("failed to open diff base for {}", file.display());
+                    None
+                }
+            })
+    }
+
+    pub fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
+        self.providers
+            .iter()
+            .find_map(|provider| match provider.get_current_head_name(file) {
+                Ok(res) => Some(res),
+                Err(err) => {
+                    log::info!("{err:#?}");
+                    log::info!("failed to obtain current head name for {}", file.display());
+                    None
+                }
+            })
     }
 }
 

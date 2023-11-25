@@ -5,11 +5,16 @@
 ; overrides are unnecessary.
 ; -------
 
-
-
 ; -------
 ; Types
 ; -------
+
+(type_parameters
+  (type_identifier) @type.parameter)
+(constrained_type_parameter
+  left: (type_identifier) @type.parameter)
+(optional_type_parameter
+  name: (type_identifier) @type.parameter)
 
 ; ---
 ; Primitives
@@ -47,7 +52,8 @@
   "'" @label
   (identifier) @label)
 (loop_label
-  (identifier) @type)
+  "'" @label
+  (identifier) @label)
 
 ; ---
 ; Punctuation
@@ -104,8 +110,6 @@
 (closure_parameters
 	(identifier) @variable.parameter)
 
-
-
 ; -------
 ; Keywords
 ; -------
@@ -131,9 +135,7 @@
 [
   "break"
   "continue"
-
   "return"
-
   "await"
 ] @keyword.control.return
 
@@ -156,10 +158,7 @@
   "trait"
   "for"
 
-  "unsafe"
   "default"
-  "macro_rules!"
-
   "async"
 ] @keyword
 
@@ -167,13 +166,13 @@
   "struct"
   "enum"
   "union"
-
   "type"
 ] @keyword.storage.type
 
 "let" @keyword.storage
-
 "fn" @keyword.function
+"unsafe" @keyword.special
+"macro_rules!" @function.macro
 
 (mutable_specifier) @keyword.storage.modifier.mut
 
@@ -204,11 +203,11 @@
 
 (call_expression
   function: [
-    ((identifier) @type.variant
-      (#match? @type.variant "^[A-Z]"))
+    ((identifier) @type.enum.variant
+      (#match? @type.enum.variant "^[A-Z]"))
     (scoped_identifier
-      name: ((identifier) @type.variant
-        (#match? @type.variant "^[A-Z]")))
+      name: ((identifier) @type.enum.variant
+        (#match? @type.enum.variant "^[A-Z]")))
   ])
 
 ; ---
@@ -238,8 +237,6 @@
 
 ((identifier) @type
   (#match? @type "^[A-Z]"))
-
-
 
 ; -------
 ; Functions
@@ -271,6 +268,13 @@
 ; ---
 ; Macros
 ; ---
+
+(attribute
+  (identifier) @special
+  arguments: (token_tree (identifier) @type)
+  (#eq? @special "derive")
+)
+
 (attribute
   (identifier) @function.macro)
 (attribute
@@ -295,8 +299,6 @@
 
 (metavariable) @variable.parameter
 (fragment_specifier) @type
-
-
 
 ; -------
 ; Operators
@@ -343,8 +345,6 @@
   "'"
 ] @operator
 
-
-
 ; -------
 ; Paths
 ; -------
@@ -374,8 +374,6 @@
   name: (identifier) @namespace)
 (scoped_type_identifier
   path: (identifier) @namespace)
-
-
 
 ; -------
 ; Remaining Identifiers

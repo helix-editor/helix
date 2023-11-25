@@ -14,6 +14,7 @@
 "variable" = "#715ab1"
 "variable.builtin" = "#715ab1"
 "variable.parameter" = "#7590db"
+"variable.other.member" = "#002db3"
 "type" = "#6c3163"
 "type.builtin" = "#6c3163"
 "constructor" = { fg = "#4e3163", modifiers = ["bold"] }
@@ -34,6 +35,7 @@
 "markup.list" = "theme_red"
 "markup.bold" = { fg = "theme_yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "theme_magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "theme_yellow", modifiers = ["underlined"] }
 "markup.link.text" = "theme_red"
 "markup.quote" = "theme_cyan"
@@ -72,7 +74,10 @@
 "ui.virtual" = "base-dim"
 "ui.virtual.ruler" = { bg = "bg1" }
 
-"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { style = "curl", color = "meta" } }
+"diagnostic.error" = { underline = { style = "curl", color = "#e0211d" } }
+"diagnostic.info" = { underline = { style = "curl", color = "theme_yellow" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "bg2" } }
 
 [palette]
 base = "#655370"

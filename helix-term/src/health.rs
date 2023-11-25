@@ -52,7 +52,7 @@ pub fn general() -> std::io::Result<()> {
     let config_file = helix_loader::config_file();
     let lang_file = helix_loader::lang_config_file();
     let log_file = helix_loader::log_file();
-    let rt_dir = helix_loader::runtime_dir();
+    let rt_dirs = helix_loader::runtime_dirs();
     let clipboard_provider = get_clipboard_provider();
 
     if config_file.exists() {
@@ -66,17 +66,31 @@ pub fn general() -> std::io::Result<()> {
         writeln!(stdout, "Language file: default")?;
     }
     writeln!(stdout, "Log file: {}", log_file.display())?;
-    writeln!(stdout, "Runtime directory: {}", rt_dir.display())?;
-
-    if let Ok(path) = std::fs::read_link(&rt_dir) {
-        let msg = format!("Runtime directory is symlinked to {}", path.display());
-        writeln!(stdout, "{}", msg.yellow())?;
-    }
-    if !rt_dir.exists() {
-        writeln!(stdout, "{}", "Runtime directory does not exist.".red())?;
-    }
-    if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
-        writeln!(stdout, "{}", "Runtime directory is empty.".red())?;
+    writeln!(
+        stdout,
+        "Runtime directories: {}",
+        rt_dirs
+            .iter()
+            .map(|d| d.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(";")
+    )?;
+    for rt_dir in rt_dirs.iter() {
+        if let Ok(path) = std::fs::read_link(rt_dir) {
+            let msg = format!(
+                "Runtime directory {} is symlinked to: {}",
+                rt_dir.display(),
+                path.display()
+            );
+            writeln!(stdout, "{}", msg.yellow())?;
+        }
+        if !rt_dir.exists() {
+            let msg = format!("Runtime directory does not exist: {}", rt_dir.display());
+            writeln!(stdout, "{}", msg.yellow())?;
+        } else if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
+            let msg = format!("Runtime directory is empty: {}", rt_dir.display());
+            writeln!(stdout, "{}", msg.yellow())?;
+        }
     }
     writeln!(stdout, "Clipboard provider: {}", clipboard_provider.name())?;
 
@@ -167,8 +181,8 @@ pub fn languages_all() -> std::io::Result<()> {
         .language
         .sort_unstable_by_key(|l| l.language_id.clone());
 
-    let check_binary = |cmd: Option<String>| match cmd {
-        Some(cmd) => match which::which(&cmd) {
+    let check_binary = |cmd: Option<&str>| match cmd {
+        Some(cmd) => match which::which(cmd) {
             Ok(_) => column(&format!("✓ {}", cmd), Color::Green),
             Err(_) => column(&format!("✘ {}", cmd), Color::Red),
         },
@@ -178,13 +192,15 @@ pub fn languages_all() -> std::io::Result<()> {
     for lang in &syn_loader_conf.language {
         column(&lang.language_id, Color::Reset);
 
-        let lsp = lang
-            .language_server
-            .as_ref()
-            .map(|lsp| lsp.command.to_string());
-        check_binary(lsp);
+        let mut cmds = lang.language_servers.iter().filter_map(|ls| {
+            syn_loader_conf
+                .language_server
+                .get(&ls.name)
+                .map(|config| config.command.as_str())
+        });
+        check_binary(cmds.next());
 
-        let dap = lang.debugger.as_ref().map(|dap| dap.command.to_string());
+        let dap = lang.debugger.as_ref().map(|dap| dap.command.as_str());
         check_binary(dap);
 
         for ts_feat in TsFeature::all() {
@@ -195,6 +211,12 @@ pub fn languages_all() -> std::io::Result<()> {
         }
 
         writeln!(stdout)?;
+
+        for cmd in cmds {
+            column("", Color::Reset);
+            check_binary(Some(cmd));
+            writeln!(stdout)?;
+        }
     }
 
     Ok(())
@@ -250,11 +272,12 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
         }
     };
 
-    probe_protocol(
+    probe_protocols(
         "language server",
-        lang.language_server
-            .as_ref()
-            .map(|lsp| lsp.command.to_string()),
+        lang.language_servers
+            .iter()
+            .filter_map(|ls| syn_loader_conf.language_server.get(&ls.name))
+            .map(|config| config.command.as_str()),
     )?;
 
     probe_protocol(
@@ -264,6 +287,33 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
 
     for ts_feat in TsFeature::all() {
         probe_treesitter_feature(&lang_str, *ts_feat)?
+    }
+
+    Ok(())
+}
+
+/// Display diagnostics about multiple LSPs and DAPs.
+fn probe_protocols<'a, I: Iterator<Item = &'a str> + 'a>(
+    protocol_name: &str,
+    server_cmds: I,
+) -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+    let mut server_cmds = server_cmds.peekable();
+
+    write!(stdout, "Configured {}s:", protocol_name)?;
+    if server_cmds.peek().is_none() {
+        writeln!(stdout, "{}", " None".yellow())?;
+        return Ok(());
+    }
+    writeln!(stdout)?;
+
+    for cmd in server_cmds {
+        let (path, icon) = match which::which(cmd) {
+            Ok(path) => (path.display().to_string().green(), "✓".green()),
+            Err(_) => (format!("'{}' not found in $PATH", cmd).red(), "✘".red()),
+        };
+        writeln!(stdout, "  {} {}: {}", icon, cmd, path)?;
     }
 
     Ok(())
@@ -281,9 +331,9 @@ fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::R
     writeln!(stdout, "Configured {}: {}", protocol_name, cmd_name)?;
 
     if let Some(cmd) = server_cmd {
-        let path = match which::which(cmd) {
+        let path = match which::which(&cmd) {
             Ok(path) => path.display().to_string().green(),
-            Err(_) => "Not found in $PATH".to_string().red(),
+            Err(_) => format!("'{}' not found in $PATH", cmd).red(),
         };
         writeln!(stdout, "Binary for {}: {}", protocol_name, path)?;
     }

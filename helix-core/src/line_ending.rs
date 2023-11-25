@@ -1,9 +1,9 @@
 use crate::{Rope, RopeSlice};
 
 #[cfg(target_os = "windows")]
-pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::Crlf;
+pub const NATIVE_LINE_ENDING: LineEnding = LineEnding::Crlf;
 #[cfg(not(target_os = "windows"))]
-pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::LF;
+pub const NATIVE_LINE_ENDING: LineEnding = LineEnding::LF;
 
 /// Represents one of the valid Unicode line endings.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -200,6 +200,13 @@ pub fn line_end_char_index(slice: &RopeSlice, line: usize) -> usize {
     slice.line_to_char(line + 1)
         - get_line_ending(&slice.line(line))
             .map(|le| le.len_chars())
+            .unwrap_or(0)
+}
+
+pub fn line_end_byte_index(slice: &RopeSlice, line: usize) -> usize {
+    slice.line_to_byte(line + 1)
+        - get_line_ending(&slice.line(line))
+            .map(|le| le.as_str().len())
             .unwrap_or(0)
 }
 

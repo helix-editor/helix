@@ -77,6 +77,7 @@
   "if"
   "import"
   "let"
+  "panic"
   "todo"
   "try"
   "type"

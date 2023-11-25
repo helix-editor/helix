@@ -1,141 +1,26 @@
-; Function calls
+(keyword) @keyword
+(operator) @operator
 
-(call_expression
-  function: (identifier) @function)
+(int_literal)   @constant.numeric.integer
+(float_literal) @constant.numeric.float
+(rune_literal)  @constant.character
+(bool_literal) @constant.builtin.boolean
+(nil) @constant.builtin
 
-(call_expression
-  function: (selector_expression
-    field: (field_identifier) @function))
+(type_identifier)    @type
+(package_identifier) @namespace
+(label_identifier)   @label
 
-
-; ; Function definitions
-
-(function_declaration
-  name: (identifier) @function)
-
-(proc_group
-  (identifier) @function)
-
-; ; Identifiers
-
-(type_identifier) @type
-(field_identifier) @variable.other.member
-(identifier) @variable
-
-(const_declaration
-  (identifier) @constant)
-(const_declaration_with_type
-  (identifier) @constant)
-
-"any" @type
-
-(directive_identifier) @constant
-
-; ; Operators
-
-[
-  "?"
-  "-"
-  "-="
-  ":="
-  "!"
-  "!="
-  "*"
-  "*"
-  "*="
-  "/"
-  "/="
-  "&"
-  "&&"
-  "&="
-  "%"
-  "%="
-  "^"
-  "+"
-  "+="
-  "<-"
-  "<"
-  "<<"
-  "<<="
-  "<="
-  "="
-  "=="
-  ">"
-  ">="
-  ">>"
-  ">>="
-  "|"
-  "|="
-  "||"
-  "~"
-  ".."
-  "..<"
-  "..="
-  "::"
-] @operator
-
-; ; Keywords
-
-[
-  ; "asm"
-  "auto_cast"
-  ; "bit_set"
-  "cast"
-  ; "context"
-  ; "or_else"
-  ; "or_return"
-  "in"
-  ; "not_in"
-  "distinct"
-  "foreign"
-  "transmute"
-  ; "typeid"
-
-  "break"
-  "case"
-  "continue"
-  "defer"
-  "else"
-  "using"
-  "when"
-  "where"
-  "fallthrough"
-  "for"
-  "proc"
-  "if"
-  "import"
-  "map"
-  "package"
-  "return"
-  "struct"
-  "union"
-  "enum"
-  "switch"
-  "dynamic"
-] @keyword
-
-; ; Literals
-
-[
-  (interpreted_string_literal)
-  (raw_string_literal)
-  (rune_literal)
-] @string
-
+(interpreted_string_literal) @string
+(raw_string_literal) @string
 (escape_sequence) @constant.character.escape
 
-(int_literal) @constant.numeric.integer
-(float_literal) @constant.numeric.float
-(imaginary_literal) @constant.numeric
+(comment) @comment
+(const_identifier) @constant
 
-[
-  (true)
-  (false)
-] @constant.builtin.boolean
 
-[
-  (nil)
-  (undefined)
-] @constant.builtin
+(compiler_directive) @keyword.directive
+(calling_convention) @string.special.symbol
 
-(comment) @comment.line
+(identifier) @variable
+(pragma_identifier) @keyword.directive

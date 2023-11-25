@@ -26,9 +26,10 @@
 "ui.statusline.select" = { fg = "nord0", bg = "nord15" }
 
 
-"diagnostic.error" = {fg="nord11", modifiers=["bold"]}
-"diagnostic.warning" = {bg="nord13", modifiers=["bold"]}
-"diagnostic.hint" = {fg="nord13", modifiers=["bold"]}
+"diagnostic.error" = { underline = { color = "nord11", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "nord13", style = "curl" } }
+"diagnostic.info" = { underline = { color = "nord13", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "nord13", style = "curl" } }
 
 "constant.numeric" = {fg="nord15"}
 "constant.builtin" = {fg="nord15"}

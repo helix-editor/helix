@@ -1,10 +1,11 @@
 ## Checklist
 
 Helix releases are versioned in the Calendar Versioning scheme:
-`YY.0M(.MICRO)`, for example `22.05` for May of 2022. In these instructions
+`YY.0M(.MICRO)`, for example, `22.05` for May of 2022. In these instructions
 we'll use `<tag>` as a placeholder for the tag being published.
 
 * Merge the changelog PR
+* Add new `<release>` entry in `contrib/Helix.appdata.xml` with release information according to the [AppStream spec](https://www.freedesktop.org/software/appstream/docs/sect-Metadata-Releases.html)
 * Tag and push
     * `git tag -s -m "<tag>" -a <tag> && git push`
     * Make sure to switch to master and pull first
@@ -29,7 +30,7 @@ we'll use `<tag>` as a placeholder for the tag being published.
 
 The changelog is currently created manually by reading through commits in the
 log since the last release. GitHub's compare view is a nice way to approach
-this. For example when creating the 22.07 release notes, this compare link
+this. For example, when creating the 22.07 release notes, this compare link
 may be used
 
 ```

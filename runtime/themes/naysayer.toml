@@ -1,0 +1,91 @@
+# Author: Nick Saika <n@nesv.ca>
+#
+# This theme is a port of naysayer-theme.el:
+#    https://github.com/nickav/naysayer-theme.el
+
+"ui.background" = { bg = "bg" }
+"ui.text" = "text"
+"ui.linenr" = { bg = "bg", fg = "line-fg" }
+"ui.linenr.selected" = { bg = "highlight-line", fg = "line-fg" }
+"ui.selection" = { bg = "selection" }
+"ui.cursorline" = { bg = "highlight-line" }
+"ui.statusline" = { fg = "bg", bg = "text" }
+"ui.statusline.inactive" = { fg = "text", bg = "bg" }
+"ui.virtual" = "indent"
+"ui.virtual.ruler" = { bg = "line-fg" }
+"ui.cursor.match" = { bg = "cyan" }
+"ui.cursor" = { bg = "white" }
+"ui.debug" = { fg = "orange" }
+"ui.highlight.frameline" = { bg = "#da8581" }
+"ui.help" = { fg = "text", bg = "bg" }
+"ui.popup" = { fg = "text", bg = "bg" }
+"ui.menu" = { fg = "text", bg = "bg" }
+"ui.menu.selected" = { fg = "text", bg = "bg", modifiers = ['underlined'] }
+"ui.window" = { bg = "bg" }
+"diagnostic.error" = { bg = "error", fg = "text", modifiers = ["bold"] }
+"diagnostic.warning" = { bg = "warning", fg = "text", modifiers = ["bold"] }
+"diagnostic.hint" = { bg = "cyan", modifiers = ["bold"] }
+"ui.bufferline" = { fg = "text", bg = "bg" }
+"ui.bufferline.active" = { fg = "text", bg = "bg", modifiers = ['underlined'] }
+"ui.gutter.selected" = { bg = "highlight-line", modifiers = ["bold"] }
+"ui.highlight" = { bg = "highlight-line" }
+
+# Scopes: Syntax Highlighting.
+"attribute" = "text"
+"type" = "text"
+"type.builtin" = "builtin"
+"constructor" = "functions"
+"constant" = "constants"
+"constant.builtin" = "builtin"
+"constant.builtin.boolean" = "builtin"
+"constant.character" = "text"
+"constant.numeric" = "numbers"
+"string" = "strings"
+"comment" = "comments"
+"variable" = "variables"
+"variable.builtin" = "builtin"
+"punctuation" = "punctuation"
+"keyword" = "keywords"
+"function" = "functions"
+"function.method" = "methods"
+"function.builtin" = "builtin"
+"function.macro" = "macros"
+"function.special" = "macros"
+"tag.builtin" = "builtin"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"diff.plus" = { fg = "green" }
+"diff.minus" = { fg = "red" }
+"diff.delta" = { fg = "blue" }
+
+[palette]
+bg = "#062329"
+text = "#d1b897"
+builtin = "#ffffff"
+selection = "#0000ff"
+comments = "#44b340"
+punctuation = "#8cde94"
+keywords = "#ffffff"
+variables = "#c1d1e3"
+functions = "#ffffff"
+methods = "#c1d1e3"
+strings = "#2ec90c"
+constants = "#7ad0c6"
+macros = "#8cde94"
+numbers = "#7ad0c6"
+white = "#ffffff"
+error = "#ff0000"
+warning = "#ffaa00"
+highlight-line = "#0b3335"
+line-fg = "#126367"
+indent = "#aaaaaa"
+
+yellow = "#e6db74"
+orange = "#fd971f"
+red = "#f92672"
+magenta = "#fd5ff0"
+blue = "#66d9ef"
+green = "#a6e22e"
+cyan = "#a1efe4"
+violet = "#a381ff"
