@@ -2,9 +2,40 @@
 # Adapted from https://protesilaos.com/emacs/modus-themes, by Protesilaos Stavrou
 # Source: https://github.com/protesilaos/modus-themes/blob/main/modus-vivendi-tritanopia-theme.el
 # Version 4.3.0
-#
 
 inherits = "modus_vivendi"
+
+"type" = "blue-warmer"
+"constructor" = "blue-warmer"
+"constant" = "green-cooler"
+"constant.character.escape" = "red-cooler"
+"string" = "cyan"
+"comment" = "red-faint"
+"variable.parameter" = "cyan-cooler"
+"keyword" = "red-cooler"
+"keyword.directive" = "red-warmer"
+"function" = "cyan-warmer"
+"function.macro" = "magenta"
+"tag" = "red-cooler"
+
+"markup.heading.2" = { fg = "red-faint", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "cyan-faint", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "magenta-faint", modifiers = ["bold"] }
+"markup.link.url" = { fg = "cyan-cooler" }
+"markup.link.text" = { fg = "cyan", modifiers = ["underlined"] }
+
+"ui.cursor" = { fg = "bg-main", bg = "red-intense" }
+"ui.cursor.primary.normal" = { fg = "bg-main", bg = "red-intense" }
+
+"diagnostic.error" = { underline = { color = "red-warmer", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "magenta", style = "curl" } }
+"diagnostic.info" = { underline = { color = "cyan", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "blue", style = "curl" } }
+
+error = "red-warmer"
+warning = "magenta"
+info = "cyan"
+hint = "blue"
 
 [palette]
 # Basic values
