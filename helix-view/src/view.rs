@@ -454,6 +454,8 @@ impl View {
             .add_inline_annotations(other_inlay_hints, other_style)
             .add_inline_annotations(padding_after_inlay_hints, None);
 
+        // TODO: lens line annotation
+
         text_annotations
     }
 
