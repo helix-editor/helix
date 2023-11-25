@@ -158,6 +158,7 @@ impl EditorView {
                     view,
                     theme,
                     &config.cursor_shape,
+                    self.terminal_focused,
                 ),
             );
             let focused_view_elements = Self::highlight_focused_view_elements(view, doc, theme);
@@ -420,6 +421,7 @@ impl EditorView {
         view: &View,
         theme: &Theme,
         cursor_shape_config: &CursorShapeConfig,
+        is_terminal_focused: bool,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
@@ -490,13 +492,17 @@ impl EditorView {
                         cursor_start
                     };
                 spans.push((selection_scope, range.anchor..selection_end));
-                if !selection_is_primary || cursor_is_block {
+                // add block cursors
+                // skip primary cursor if terminal is unfocused - crossterm cursor is used in that case
+                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                if !selection_is_primary || cursor_is_block {
+                // add block cursors
+                // skip primary cursor if terminal is unfocused - crossterm cursor is used in that case
+                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
                 // non block cursors look like they exclude the cursor
@@ -1520,8 +1526,15 @@ impl Component for EditorView {
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         match editor.cursor() {
-            // All block cursors are drawn manually
-            (pos, CursorKind::Block) => (pos, CursorKind::Hidden),
+            // all block cursors are drawn manually
+            (pos, CursorKind::Block) => {
+                if self.terminal_focused {
+                    (pos, CursorKind::Hidden)
+                } else {
+                    // use crossterm cursor when terminal loses focus
+                    (pos, CursorKind::Underline)
+                }
+            }
             cursor => cursor,
         }
     }
