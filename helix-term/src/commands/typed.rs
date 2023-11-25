@@ -2193,7 +2193,7 @@ fn open_workspace_config(
     Ok(())
 }
 
-fn open_workspace_langs(
+fn open_workspace_languages(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
     event: PromptEvent
@@ -3057,7 +3057,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "languages-open-workspace",
         aliases: &["langs-open-workspace"],
         doc: "Open the workspace languages.toml file",
-        fun: open_workspace_langs,
+        fun: open_workspace_languages,
         signature: CommandSignature::none(), 
     },
     TypableCommand {
