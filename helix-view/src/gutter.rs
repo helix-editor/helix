@@ -85,7 +85,7 @@ pub fn diagnostic<'doc>(
             }) {
                 return Some(style);
             };
-            if let Some(_) = lenses.iter().find(|l| l.line == line) {
+            if lenses.iter().any(|l| l.line == line) {
                 write!(out, "▶").ok();
                 return Some(info);
             }
