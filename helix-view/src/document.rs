@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Context, Error};
 use arc_swap::access::DynAccess;
 use arc_swap::ArcSwap;
-use futures_util::future::BoxFuture;
+use futures_util::future::{self, BoxFuture};
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
@@ -872,9 +872,21 @@ impl Document {
         let encoding_with_bom_info = (self.encoding, self.has_bom);
         let last_saved_time = self.last_saved_time;
 
+        if let Some(identifier) = &identifier {
+            for ls in self.language_servers_with_feature(LanguageServerFeature::WillSave) {
+                if let Some(notification) = ls.test_document_will_save(identifier.clone()) {
+                    tokio::spawn(async move {
+                        // TODO: handle errors
+                        let _ = notification.await;
+                    });
+                };
+            }
+        }
+
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
             use tokio::{fs, fs::File};
+
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -907,15 +919,14 @@ impl Document {
                 text: text.clone(),
             };
 
-            for (_, language_server) in language_servers {
-                if !language_server.is_initialized() {
-                    return Ok(event);
-                }
-                if let Some(identifier) = &identifier {
-                    if let Some(notification) =
-                        language_server.text_document_did_save(identifier.clone(), &text)
-                    {
-                        notification.await?;
+            if let Some(identifier) = &identifier {
+                for (_, language_server) in language_servers {
+                    if language_server.is_initialized() {
+                        if let Some(notification) =
+                            language_server.text_document_did_save(identifier.clone(), &text)
+                        {
+                            notification.await?;
+                        }
                     }
                 }
             }

@@ -8,8 +8,8 @@ use helix_core::{find_workspace, path, syntax::LanguageServerFeature, ChangeSet,
 use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp::{
     notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
-    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, WorkspaceFolder,
-    WorkspaceFoldersChangeEvent,
+    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, TextDocumentSaveReason,
+    WorkspaceFolder, WorkspaceFoldersChangeEvent,
 };
 use lsp_types as lsp;
 use parking_lot::Mutex;
@@ -287,6 +287,27 @@ impl Client {
             LanguageServerFeature::Format => matches!(
                 capabilities.document_formatting_provider,
                 Some(OneOf::Left(true) | OneOf::Right(_))
+            ),
+            LanguageServerFeature::Save => matches!(
+                capabilities.text_document_sync,
+                Some(TextDocumentSyncCapability::Options(
+                    TextDocumentSyncOptions {
+                        save: Some(
+                            TextDocumentSyncSaveOptions::Supported(true)
+                                | TextDocumentSyncSaveOptions::SaveOptions(SaveOptions { .. })
+                        ),
+                        ..
+                    }
+                ))
+            ),
+            LanguageServerFeature::WillSave => matches!(
+                capabilities.text_document_sync,
+                Some(TextDocumentSyncCapability::Options(
+                    TextDocumentSyncOptions {
+                        will_save: Some(true),
+                        ..
+                    }
+                ))
             ),
             LanguageServerFeature::GotoDeclaration => matches!(
                 capabilities.declaration_provider,
@@ -961,6 +982,18 @@ impl Client {
     }
 
     // will_save / will_save_wait_until
+
+    pub fn test_document_will_save(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+    ) -> Option<impl Future<Output = Result<()>>> {
+        Some(self.notify::<lsp::notification::WillSaveTextDocument>(
+            lsp::WillSaveTextDocumentParams {
+                text_document,
+                reason: TextDocumentSaveReason::MANUAL,
+            },
+        ))
+    }
 
     pub fn text_document_did_save(
         &self,
