@@ -10,8 +10,8 @@ use helix_loader::{self, VERSION_AND_GIT_HASH};
 use helix_stdx::path;
 use lsp::{
     notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
-    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, Url,
-    WorkspaceFolder, WorkspaceFoldersChangeEvent,
+    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp,
+    TextDocumentSaveReason, TextEdit, Url, WorkspaceFolder, WorkspaceFoldersChangeEvent,
 };
 use lsp_types as lsp;
 use parking_lot::Mutex;
@@ -279,6 +279,27 @@ impl Client {
             LanguageServerFeature::Format => matches!(
                 capabilities.document_formatting_provider,
                 Some(OneOf::Left(true) | OneOf::Right(_))
+            ),
+            LanguageServerFeature::Save => matches!(
+                capabilities.text_document_sync,
+                Some(TextDocumentSyncCapability::Options(
+                    TextDocumentSyncOptions {
+                        save: Some(
+                            TextDocumentSyncSaveOptions::Supported(true)
+                                | TextDocumentSyncSaveOptions::SaveOptions(SaveOptions { .. })
+                        ),
+                        ..
+                    }
+                ))
+            ),
+            LanguageServerFeature::WillSave => matches!(
+                capabilities.text_document_sync,
+                Some(TextDocumentSyncCapability::Options(
+                    TextDocumentSyncOptions {
+                        will_save: Some(true),
+                        ..
+                    }
+                ))
             ),
             LanguageServerFeature::GotoDeclaration => matches!(
                 capabilities.declaration_provider,
@@ -776,6 +797,7 @@ impl Client {
 
     // -------------------------------------------------------------------------------------------
     // Text document
+    // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_synchronization
     // -------------------------------------------------------------------------------------------
 
     pub fn text_document_did_open(
@@ -960,7 +982,34 @@ impl Client {
         })
     }
 
-    // will_save / will_save_wait_until
+    pub fn text_document_will_save(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+    ) -> Option<impl Future<Output = Result<()>>> {
+        Some(self.notify::<lsp::notification::WillSaveTextDocument>(
+            lsp::WillSaveTextDocumentParams {
+                text_document,
+                reason: TextDocumentSaveReason::MANUAL,
+            },
+        ))
+    }
+
+    pub fn text_document_will_save_wait_until(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+    ) -> Option<impl Future<Output = Result<Vec<lsp::TextEdit>>>> {
+        let request =
+            self.call::<lsp::request::WillSaveWaitUntil>(lsp::WillSaveTextDocumentParams {
+                text_document,
+                reason: TextDocumentSaveReason::MANUAL,
+            });
+
+        Some(async move {
+            let json = request.await?;
+            let response: Option<Vec<TextEdit>> = serde_json::from_value(json)?;
+            Ok(response.unwrap_or_default())
+        })
+    }
 
     pub fn text_document_did_save(
         &self,
@@ -991,6 +1040,11 @@ impl Client {
             },
         ))
     }
+
+    // -------------------------------------------------------------------------------------------
+    // Language features
+    // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#languageFeatures
+    // -------------------------------------------------------------------------------------------
 
     pub fn completion(
         &self,

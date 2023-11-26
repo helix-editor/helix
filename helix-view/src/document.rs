@@ -871,6 +871,25 @@ impl Document {
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
             use tokio::{fs, fs::File};
+
+            if let Some(identifier) = &identifier {
+                for language_server in language_servers.values() {
+                    if language_server.is_initialized() {
+                        let Some(notification) =
+                            language_server.text_document_will_save(identifier.clone())
+                        else {
+                            continue
+                        };
+
+                        if let Err(err) = helix_lsp::block_on(notification) {
+                            log::error!(
+                                "failed to send textDocument/willSave notification: {err:?}"
+                            );
+                        }
+                    }
+                }
+            };
+
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -903,15 +922,20 @@ impl Document {
                 text: text.clone(),
             };
 
-            for (_, language_server) in language_servers {
-                if !language_server.is_initialized() {
-                    return Ok(event);
-                }
-                if let Some(identifier) = &identifier {
-                    if let Some(notification) =
-                        language_server.text_document_did_save(identifier.clone(), &text)
-                    {
-                        notification.await?;
+            if let Some(identifier) = &identifier {
+                for language_server in language_servers.values() {
+                    if language_server.is_initialized() {
+                        let Some(notification) =
+                            language_server.text_document_did_save(identifier.clone(), &text)
+                        else {
+                            continue
+                        };
+
+                        if let Err(err) = helix_lsp::block_on(notification) {
+                            log::error!(
+                                "failed to send textDocument/didSave notification: {err:?}"
+                            );
+                        }
                     }
                 }
             }
