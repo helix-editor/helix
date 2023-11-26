@@ -892,7 +892,6 @@ pub struct Editor {
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
-    pub code_lenses: BTreeMap<lsp::Url, Vec<lsp::CodeLens>>,
     pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
@@ -1039,7 +1038,6 @@ impl Editor {
             theme: theme_loader.default(),
             language_servers,
             diagnostics: BTreeMap::new(),
-            code_lenses: BTreeMap::new(),
             diff_providers: DiffProviderRegistry::default(),
             debugger: None,
             debugger_events: SelectAll::new(),

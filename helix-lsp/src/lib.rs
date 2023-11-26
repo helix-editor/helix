@@ -550,6 +550,7 @@ pub enum MethodCall {
     WorkspaceConfiguration(lsp::ConfigurationParams),
     RegisterCapability(lsp::RegistrationParams),
     UnregisterCapability(lsp::UnregistrationParams),
+    CodeLensRefresh,
 }
 
 impl MethodCall {
@@ -577,6 +578,7 @@ impl MethodCall {
                 let params: lsp::UnregistrationParams = params.parse()?;
                 Self::UnregisterCapability(params)
             }
+            lsp::request::CodeLensRefresh::METHOD => Self::CodeLensRefresh,
             _ => {
                 return Err(Error::Unhandled);
             }
