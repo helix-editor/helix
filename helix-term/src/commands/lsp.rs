@@ -1777,8 +1777,6 @@ pub fn request_code_lenses(cx: &mut Context) {
         request,
         move |editor, _compositor, lenses: Option<Vec<lsp::CodeLens>>| {
             if let Some(lenses) = lenses {
-                log::error!("lenses got: {:?}", lenses);
-
                 let doc = doc_mut!(editor, &doc_id);
                 let doc_text = doc.text();
 
@@ -1787,7 +1785,7 @@ pub fn request_code_lenses(cx: &mut Context) {
                     .map(|l| map_code_lens(doc_text, l, offset_enc, language_server_id))
                     .collect();
 
-                doc.set_code_lens(lenses.clone());
+                doc.set_code_lens(lenses);
             } else {
                 editor.set_status("no lens found");
             }
