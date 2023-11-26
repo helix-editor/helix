@@ -555,6 +555,7 @@ pub enum MethodCall {
     RegisterCapability(lsp::RegistrationParams),
     UnregisterCapability(lsp::UnregistrationParams),
     ShowDocument(lsp::ShowDocumentParams),
+    CodeLensRefresh,
 }
 
 impl MethodCall {
@@ -586,6 +587,7 @@ impl MethodCall {
                 let params: lsp::ShowDocumentParams = params.parse()?;
                 Self::ShowDocument(params)
             }
+            lsp::request::CodeLensRefresh::METHOD => Self::CodeLensRefresh,
             _ => {
                 return Err(Error::Unhandled);
             }

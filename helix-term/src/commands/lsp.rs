@@ -1343,7 +1343,7 @@ fn compute_inlay_hints_for_view(
     Some(callback)
 }
 
-fn map_code_lens(
+pub(crate) fn map_code_lens(
     doc_text: &Rope,
     cl: &lsp::CodeLens,
     offset_enc: OffsetEncoding,
@@ -1365,71 +1365,63 @@ fn map_code_lens(
 
 pub fn code_lens_under_cursor(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let doc_text = doc.text();
 
     let language_server =
         language_server_with_feature!(cx.editor, doc, LanguageServerFeature::CodeLens);
 
     let offset_encoding = language_server.offset_encoding();
     let pos = doc.position(view.id, offset_encoding);
-    let path = match doc.path() {
-        Some(path) => path,
-        None => {
+
+    let current_line_lenses: Vec<CodeLens> = doc
+        .code_lens()
+        .iter()
+        .filter(|cl| {
+            // TODO: fix the check
+            cl.line == pos.line as usize
+        })
+        .cloned()
+        .collect();
+
+    if current_line_lenses.is_empty() {
+        cx.editor.set_status("No code lens available");
+        return;
+    }
+
+    let mut picker = ui::Menu::new(current_line_lenses, (), move |editor, code_lens, event| {
+        if event != PromptEvent::Validate {
             return;
         }
-    };
 
-    if let Some(lenses) = cx.editor.code_lenses.get(path) {
-        let lenses: Vec<CodeLens> = lenses
-            .iter()
-            .filter(|cl| {
-                // TODO: fix the check
-                cl.range.start.line == pos.line
-            })
-            .map(|cl| map_code_lens(doc_text, cl, offset_encoding, language_server.id()))
-            .collect();
-
-        if lenses.is_empty() {
-            cx.editor.set_status("No code lens available");
-            return;
-        }
-
-        let mut picker = ui::Menu::new(lenses, (), move |editor, code_lens, event| {
-            if event != PromptEvent::Validate {
-                return;
-            }
-
-            let code_lens = code_lens.unwrap();
-            let Some(language_server) = editor.language_server_by_id(code_lens.language_server_id)
+        let code_lens = code_lens.unwrap();
+        let Some(language_server) = editor.language_server_by_id(code_lens.language_server_id)
                 else {
                     editor.set_error("Language Server disappeared");
                     return;
                 };
 
-            let lens = code_lens.clone();
-            if let Some(cmd) = lens.command {
-                let future = match language_server.command(cmd) {
-                    Some(future) => future,
-                    None => {
-                        editor.set_error("Language server does not support executing commands");
-                        return;
-                    }
-                };
+        let lens = code_lens.clone();
+        if let Some(cmd) = lens.command {
+            let future = match language_server.command(cmd) {
+                Some(future) => future,
+                None => {
+                    editor.set_error("Language server does not support executing commands");
+                    return;
+                }
+            };
 
-                tokio::spawn(async move {
-                    let res = future.await;
+            tokio::spawn(async move {
+                let res = future.await;
 
-                    if let Err(e) = res {
-                        log::error!("execute LSP command: {}", e);
-                    }
-                });
-            }
-        });
-        picker.move_down(); // pre-select the first item
+                if let Err(e) = res {
+                    log::error!("execute LSP command: {}", e);
+                }
+            });
+        }
+    });
+    picker.move_down(); // pre-select the first item
 
-        let popup = Popup::new("code-lens", picker).with_scrollbar(false);
-        cx.push_layer(Box::new(popup));
-    };
+    let popup = Popup::new("code-lens", picker).with_scrollbar(false);
+    cx.push_layer(Box::new(popup));
 }
 
 // TODO: should be run the same way as diagnostic - shouldn't require manual
@@ -1455,17 +1447,12 @@ pub fn request_code_lenses(cx: &mut Context) {
 
     cx.callback(
         request,
-        move |editor, compositor, lenses: Option<Vec<lsp::CodeLens>>| {
+        move |editor, _compositor, lenses: Option<Vec<lsp::CodeLens>>| {
             if let Some(lenses) = lenses {
                 log::error!("lenses got: {:?}", lenses);
 
                 let doc = doc_mut!(editor, &doc_id);
                 let doc_text = doc.text();
-                if let Some(current_url) = doc.path() {
-                    editor
-                        .code_lenses
-                        .insert(current_url.into(), lenses.clone());
-                };
 
                 let lenses: Vec<CodeLens> = lenses
                     .iter()
