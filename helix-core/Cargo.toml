@@ -1,22 +1,22 @@
 [package]
 name = "helix-core"
-version = "0.6.0"
-authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+description = "Helix editor core editing primitives"
+include = ["src/**/*", "README.md"]
+version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Helix editor core editing primitives"
-categories = ["editor"]
-repository = "https://github.com/helix-editor/helix"
-homepage = "https://helix-editor.com"
-include = ["src/**/*", "README.md"]
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [features]
 unicode-lines = ["ropey/unicode_lines"]
 integration = []
 
 [dependencies]
-helix-loader = { version = "0.6", path = "../helix-loader" }
+helix-loader = { path = "../helix-loader" }
 
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 smallvec = "1.11"
