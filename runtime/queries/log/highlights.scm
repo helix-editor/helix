@@ -1,5 +1,5 @@
-(trace) @ui.virtual.inlay-hint
-(debug) @diff.plus
+(trace) @comment
+(debug) @hint
 (info) @info
 (warn) @warning
 (error) @error
