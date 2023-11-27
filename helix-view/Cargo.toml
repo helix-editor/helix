@@ -2,8 +2,9 @@
 name = "helix-view"
 version = "0.6.0"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
-edition = "2021"
-license = "MPL-2.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 description = "UI abstractions for use in backends"
 categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
