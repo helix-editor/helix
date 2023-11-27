@@ -782,7 +782,10 @@ pub fn execute_lsp_command(editor: &mut Editor, language_server_id: usize, cmd: 
     });
 }
 
-pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
+pub fn apply_document_resource_op(
+    editor: &mut Editor,
+    op: &lsp::ResourceOp,
+) -> std::io::Result<()> {
     use lsp::ResourceOp;
     use std::fs;
     match op {
@@ -833,7 +836,14 @@ pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
             if ignore_if_exists && to.exists() {
                 Ok(())
             } else {
-                fs::rename(from, &to)
+                fs::rename(&from, &to)?;
+
+                // If this file is open, update the Document's path.
+                if let Some(doc) = editor.document_by_path_mut(from) {
+                    doc.set_path(Some(&to));
+                }
+
+                Ok(())
             }
         }
     }
@@ -872,9 +882,10 @@ pub fn apply_workspace_edit(
     offset_encoding: OffsetEncoding,
     workspace_edit: &lsp::WorkspaceEdit,
 ) -> Result<(), ApplyEditError> {
-    let mut apply_edits = |uri: &helix_lsp::Url,
-                           version: Option<i32>,
-                           text_edits: Vec<lsp::TextEdit>|
+    let apply_edits = |editor: &mut Editor,
+                       uri: &helix_lsp::Url,
+                       version: Option<i32>,
+                       text_edits: Vec<lsp::TextEdit>|
      -> Result<(), ApplyEditErrorKind> {
         let path = match uri.to_file_path() {
             Ok(path) => path,
@@ -948,6 +959,7 @@ pub fn apply_workspace_edit(
                         .cloned()
                         .collect();
                     apply_edits(
+                        editor,
                         &document_edit.text_document.uri,
                         document_edit.text_document.version,
                         edits,
@@ -963,9 +975,11 @@ pub fn apply_workspace_edit(
                 for (i, operation) in operations.iter().enumerate() {
                     match operation {
                         lsp::DocumentChangeOperation::Op(op) => {
-                            apply_document_resource_op(op).map_err(|io| ApplyEditError {
-                                kind: ApplyEditErrorKind::IoError(io),
-                                failed_change_idx: i,
+                            apply_document_resource_op(editor, op).map_err(|io| {
+                                ApplyEditError {
+                                    kind: ApplyEditErrorKind::IoError(io),
+                                    failed_change_idx: i,
+                                }
                             })?;
                         }
 
@@ -982,6 +996,7 @@ pub fn apply_workspace_edit(
                                 .cloned()
                                 .collect();
                             apply_edits(
+                                editor,
                                 &document_edit.text_document.uri,
                                 document_edit.text_document.version,
                                 edits,
@@ -1003,7 +1018,7 @@ pub fn apply_workspace_edit(
         log::debug!("workspace changes: {:?}", changes);
         for (i, (uri, text_edits)) in changes.iter().enumerate() {
             let text_edits = text_edits.to_vec();
-            apply_edits(uri, None, text_edits).map_err(|kind| ApplyEditError {
+            apply_edits(editor, uri, None, text_edits).map_err(|kind| ApplyEditError {
                 kind,
                 failed_change_idx: i,
             })?;
