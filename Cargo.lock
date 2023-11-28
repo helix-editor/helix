@@ -141,12 +141,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d261e256854913907f67ed06efbc3338dfe6179796deefc1ff763fc1aee5535"
 
 [[package]]
-name = "bytecount"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c676a478f63e9fa2dd5368a42f28bba0d6c560b775f38583c8bbaa7fcd67c9c"
-
-[[package]]
 name = "bytes"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1021,9 +1015,9 @@ dependencies = [
 
 [[package]]
 name = "grep-matcher"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3902ca28f26945fe35cad349d776f163981d777fee382ccd6ef451126f51b319"
+checksum = "47a3141a10a43acfedc7c98a60a834d7ba00dfe7bec9071cbfc19b55b292ac02"
 dependencies = [
  "memchr",
 ]
@@ -1045,17 +1039,17 @@ dependencies = [
 
 [[package]]
 name = "grep-searcher"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5601c4b9f480f0c9ebb40b1f6cbf447b8a50c5369223937a6c5214368c58779f"
+checksum = "fda02a2d9a8c9375ee678bfcba5919b31854c617b6b4f60edec7c9f1dceb84b9"
 dependencies = [
  "bstr",
- "bytecount",
  "encoding_rs",
  "encoding_rs_io",
  "grep-matcher",
  "log",
- "memmap2 0.5.10",
+ "memchr",
+ "memmap2 0.9.0",
 ]
 
 [[package]]
@@ -1487,18 +1481,18 @@ checksum = "8f232d6ef707e1956a43342693d2a31e72989554d58299d7a88738cc95b0d35c"
 
 [[package]]
 name = "memmap2"
-version = "0.5.10"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83faa42c0a078c393f6b29d5db232d8be22776a891f8f56e5284faee4a20b327"
+checksum = "f49388d20533534cd19360ad3d6a7dadc885944aa802ba3995040c5ec11288c6"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "memmap2"
-version = "0.7.1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f49388d20533534cd19360ad3d6a7dadc885944aa802ba3995040c5ec11288c6"
+checksum = "deaba38d7abf1d4cca21cc89e932e542ba2b9258664d2a9ef0e61512039c9375"
 dependencies = [
  "libc",
 ]
