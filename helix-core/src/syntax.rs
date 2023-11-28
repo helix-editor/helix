@@ -101,7 +101,8 @@ pub struct LanguageConfiguration {
     pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
-    pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
+    #[serde(default)]
+    pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
     pub text_width: Option<usize>,
     pub soft_wrap: Option<SoftWrap>,
@@ -211,10 +212,7 @@ impl<'de> Deserialize<'de> for FileType {
             {
                 match map.next_entry::<String, String>()? {
                     Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix({
-                        // FIXME: use `suffix.replace('/', std::path::MAIN_SEPARATOR_STR)`
-                        //        if MSRV is updated to 1.68
-                        let mut separator = [0; 1];
-                        suffix.replace('/', std::path::MAIN_SEPARATOR.encode_utf8(&mut separator))
+                        suffix.replace('/', std::path::MAIN_SEPARATOR_STR)
                     })),
                     Some((key, _value)) => Err(serde::de::Error::custom(format!(
                         "unknown key in `file-types` list: {}",

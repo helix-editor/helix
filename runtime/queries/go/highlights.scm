@@ -11,6 +11,18 @@
   function: (selector_expression
     field: (field_identifier) @function.method))
 
+
+; Types
+
+(type_parameter_list
+  (parameter_declaration
+    name: (identifier) @type.parameter))
+
+((type_identifier) @type.builtin
+  (match? @type.builtin "^(any|bool|byte|comparable|complex128|complex64|error|float32|float64|int|int16|int32|int64|int8|rune|string|uint|uint16|uint32|uint64|uint8|uintptr)$"))
+
+(type_identifier) @type
+
 ; Function definitions
 
 (function_declaration
@@ -30,10 +42,6 @@
 (parameter_declaration (identifier) @variable.parameter)
 (variadic_parameter_declaration (identifier) @variable.parameter)
 
-((type_identifier) @type.builtin
-  (match? @type.builtin "^(any|bool|byte|comparable|complex128|complex64|error|float32|float64|int|int16|int32|int64|int8|rune|string|uint|uint16|uint32|uint64|uint8|uintptr)$"))
-
-(type_identifier) @type
 (type_spec 
   name: (type_identifier) @constructor)
 (field_identifier) @variable.other.member

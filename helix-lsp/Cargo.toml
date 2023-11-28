@@ -2,8 +2,9 @@
 name = "helix-lsp"
 version = "0.6.0"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
-edition = "2021"
-license = "MPL-2.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 description = "LSP client implementation for Helix project"
 categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
@@ -19,13 +20,13 @@ helix-parsec = { version = "0.6", path = "../helix-parsec" }
 anyhow = "1.0"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-globset = "0.4.13"
+globset = "0.4.14"
 log = "0.4"
 lsp-types = { version = "0.94" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-tokio = { version = "1.32", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "sync"] }
+tokio = { version = "1.34", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "sync"] }
 tokio-stream = "0.1.14"
-which = "4.4"
+which = "5.0.0"
 parking_lot = "0.12.1"

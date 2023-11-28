@@ -155,6 +155,7 @@ We use a similar set of scopes as
 
 - `type` - Types
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
+  - `parameter` - Generic type parameters (`T`)
   - `enum`
     - `variant`
 - `constructor`
@@ -295,11 +296,14 @@ These scopes are used for theming the editor interface:
 | `ui.statusline.insert`            | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.select`            | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.separator`         | Separator character in statusline                                                              |
+| `ui.bufferline`                   | Style for the buffer line                                                                      |
+| `ui.bufferline.active`            | Style for the active buffer in buffer line                                                        |
+| `ui.bufferline.background`        | Style for bufferline background                                                                |
 | `ui.popup`                        | Documentation popups (e.g. Space + k)                                                          |
 | `ui.popup.info`                   | Prompt for multiple key options                                                                |
 | `ui.window`                       | Borderlines separating splits                                                                  |
 | `ui.help`                         | Description box for commands                                                                   |
-| `ui.text`                         | Command prompts, popup text, etc.                                                              |
+| `ui.text`                         | Default text style, command prompts, popup text, etc.                                          |
 | `ui.text.focus`                   | The currently selected line in the picker                                                      |
 | `ui.text.inactive`                | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`                    | The key: command text in `ui.popup.info` boxes                                                 |

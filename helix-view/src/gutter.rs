@@ -9,8 +9,7 @@ use crate::{
 };
 
 fn count_digits(n: usize) -> usize {
-    // TODO: use checked_log10 when MSRV reaches 1.67
-    std::iter::successors(Some(n), |&n| (n >= 10).then_some(n / 10)).count()
+    (usize::checked_ilog10(n).unwrap_or(0) + 1) as usize
 }
 
 pub type GutterFn<'doc> = Box<dyn FnMut(usize, bool, bool, &mut String) -> Option<Style> + 'doc>;

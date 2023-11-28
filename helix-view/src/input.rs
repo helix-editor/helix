@@ -549,7 +549,7 @@ pub fn parse_macro(keys_str: &str) -> anyhow::Result<Vec<KeyEvent>> {
         if c == ">" {
             keys_res = Err(anyhow!("Unmatched '>'"));
         } else if c != "<" {
-            keys.push(c);
+            keys.push(if c == "-" { keys::MINUS } else { c });
             i += end_i;
         } else {
             match s.find('>').context("'>' expected") {
@@ -805,6 +805,64 @@ mod test {
                 },
                 KeyEvent {
                     code: KeyCode::Char('r'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Enter,
+                    modifiers: KeyModifiers::NONE,
+                },
+            ])
+        );
+
+        assert_eq!(
+            parse_macro(":w aa-bb.txt<ret>").ok(),
+            Some(vec![
+                KeyEvent {
+                    code: KeyCode::Char(':'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('w'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char(' '),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('a'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('a'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('-'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('b'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('b'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('.'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('t'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('x'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('t'),
                     modifiers: KeyModifiers::NONE,
                 },
                 KeyEvent {

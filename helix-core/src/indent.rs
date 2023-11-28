@@ -271,7 +271,9 @@ impl Indentation {
     }
 
     /// Add an indent capture to this indent.
-    /// All the captures that are added in this way should be on the same line.
+    /// Only captures that apply to the same line should be added together in this way (otherwise use `add_line`)
+    /// and the captures should be added starting from the innermost tree-sitter node (currently this only matters
+    /// if multiple `@align` patterns occur on the same line).
     fn add_capture(&mut self, added: IndentCaptureType) {
         match added {
             IndentCaptureType::Indent => {
@@ -295,7 +297,9 @@ impl Indentation {
                 self.outdent = 0;
             }
             IndentCaptureType::Align(align) => {
-                self.align = Some(align);
+                if self.align.is_none() {
+                    self.align = Some(align);
+                }
             }
         }
     }

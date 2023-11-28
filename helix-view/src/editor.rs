@@ -727,7 +727,7 @@ pub struct WhitespaceCharacters {
 impl Default for WhitespaceCharacters {
     fn default() -> Self {
         Self {
-            space: '·',    // U+00B7
+            space: '·',   // U+00B7
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
@@ -755,12 +755,13 @@ impl Default for IndentGuidesConfig {
 }
 
 /// Line ending configuration.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LineEndingConfig {
     /// The platform's native line ending.
     ///
     /// `crlf` on Windows, otherwise `lf`.
+    #[default]
     Native,
     /// Line feed.
     LF,
@@ -775,12 +776,6 @@ pub enum LineEndingConfig {
     /// Next line.
     #[cfg(feature = "unicode-lines")]
     Nel,
-}
-
-impl Default for LineEndingConfig {
-    fn default() -> Self {
-        LineEndingConfig::Native
-    }
 }
 
 impl From<LineEndingConfig> for LineEnding {
