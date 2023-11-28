@@ -266,11 +266,37 @@ fn diag_picker(
     _current_path: Option<lsp::Url>,
     format: DiagnosticsFormat,
 ) -> Picker<PickerDiagnostic> {
+    use ignore::gitignore::{Gitignore, GitignoreBuilder};
     // TODO: drop current_path comparison and instead use workspace: bool flag?
+
+    let ignore = {
+        let root = helix_core::find_workspace().0;
+        let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
+        let mut builder = GitignoreBuilder::new(absolute_root);
+
+        builder.add(helix_loader::config_dir().join("ignore"));
+        builder.add(".helix/ignore");
+
+        let out = builder.build().unwrap_or_else(|err| {
+            log::error!("error while building gitignore: {:?}", err);
+            Gitignore::empty()
+        });
+        out
+    };
 
     // flatten the map to a vec of (url, diag) pairs
     let mut flat_diag = Vec::new();
     for (url, diags) in diagnostics {
+        let ignore_allows = match url.to_file_path() {
+            Ok(path) => !ignore.matched_path_or_any_parents(&path, false).is_ignore(),
+            // fail safely
+            Err(()) => true,
+        };
+
+        if !ignore_allows {
+            continue;
+        }
+
         flat_diag.reserve(diags.len());
 
         for (diag, ls) in diags {
