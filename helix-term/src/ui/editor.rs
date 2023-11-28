@@ -469,7 +469,7 @@ impl EditorView {
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                if !selection_is_primary || cursor_is_block {
+                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     // Bar and underline cursors are drawn by the terminal
                     // BUG: If the editor area loses focus while having a bar or
                     // underline cursor (eg. when a regex prompt has focus) then
