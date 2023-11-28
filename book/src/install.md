@@ -195,6 +195,15 @@ RUSTFLAGS="-C target-feature=-crt-static"
    cd helix
    ```
 
+   By default, git will checkout the master branch, which is the latest
+   development version of helix. To get a specific release, you can
+   checkout the code for that release after running the above commands
+   by running:
+
+   ```sh
+   git checkout tags/23.10
+   ```
+
 2. Compile from source:
 
    ```sh
