@@ -2303,7 +2303,8 @@ file-types = [
   "xliff",
   "xpdl",
   "xul",
-  "xoml"
+  "xoml",
+  "musicxml"
 ]
 indent = { tab-width = 2, unit = "  " }
 
