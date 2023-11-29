@@ -70,6 +70,9 @@ punctuation = "fg-dim"
 "ui.statusline.insert" = { fg = "green-warmer" }
 "ui.statusline.select" = { fg = "magenta-warmer" }
 
+"ui.bufferline" = { bg = "bg-tab-bar" }
+"ui.bufferline.active" = { bg = "bg-tab-current", fg = "fg-mode-line-active" }
+
 "ui.popup" = { fg = "fg-main", bg = "bg-dim" }
 "ui.window" = { fg = "fg-dim" }
 "ui.help" = { fg = "fg-main", bg = "bg-dim" }
