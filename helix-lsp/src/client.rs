@@ -1,4 +1,5 @@
 use crate::{
+    file_operations::FileOperationsInterest,
     find_lsp_workspace, jsonrpc,
     transport::{Payload, Transport},
     Call, Error, OffsetEncoding, Result,
@@ -9,20 +10,20 @@ use helix_loader::{self, VERSION_AND_GIT_HASH};
 use helix_stdx::path;
 use lsp::{
     notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
-    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, WorkspaceFolder,
-    WorkspaceFoldersChangeEvent,
+    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, Url,
+    WorkspaceFolder, WorkspaceFoldersChangeEvent,
 };
 use lsp_types as lsp;
 use parking_lot::Mutex;
 use serde::Deserialize;
 use serde_json::Value;
-use std::future::Future;
-use std::process::Stdio;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
 };
 use std::{collections::HashMap, path::PathBuf};
+use std::{future::Future, sync::OnceLock};
+use std::{path::Path, process::Stdio};
 use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},
@@ -51,6 +52,7 @@ pub struct Client {
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
+    pub(crate) file_operation_interest: OnceLock<FileOperationsInterest>,
     config: Option<Value>,
     root_path: std::path::PathBuf,
     root_uri: Option<lsp::Url>,
@@ -233,6 +235,7 @@ impl Client {
             server_tx,
             request_counter: AtomicU64::new(0),
             capabilities: OnceCell::new(),
+            file_operation_interest: OnceLock::new(),
             config,
             req_timeout,
             root_path,
@@ -276,6 +279,11 @@ impl Client {
         self.capabilities
             .get()
             .expect("language server not yet initialized!")
+    }
+
+    pub(crate) fn file_operations_intests(&self) -> &FileOperationsInterest {
+        self.file_operation_interest
+            .get_or_init(|| FileOperationsInterest::new(self.capabilities()))
     }
 
     /// Client has to be initialized otherwise this function panics
@@ -717,27 +725,27 @@ impl Client {
         })
     }
 
-    pub fn prepare_file_rename(
+    pub fn will_rename(
         &self,
-        old_uri: &lsp::Url,
-        new_uri: &lsp::Url,
+        old_path: &Path,
+        new_path: &Path,
+        is_dir: bool,
     ) -> Option<impl Future<Output = Result<lsp::WorkspaceEdit>>> {
-        let capabilities = self.capabilities.get().unwrap();
-
-        // Return early if the server does not support willRename feature
-        match &capabilities.workspace {
-            Some(workspace) => match &workspace.file_operations {
-                Some(op) => {
-                    op.will_rename.as_ref()?;
-                }
-                _ => return None,
-            },
-            _ => return None,
+        let capabilities = self.file_operations_intests();
+        if !capabilities.will_rename.has_interest(old_path, is_dir) {
+            return None;
         }
-
+        let url_from_path = |path| {
+            let url = if is_dir {
+                Url::from_directory_path(path)
+            } else {
+                Url::from_file_path(path)
+            };
+            Some(url.ok()?.to_string())
+        };
         let files = vec![lsp::FileRename {
-            old_uri: old_uri.to_string(),
-            new_uri: new_uri.to_string(),
+            old_uri: url_from_path(old_path)?,
+            new_uri: url_from_path(new_path)?,
         }];
         let request = self.call_with_timeout::<lsp::request::WillRenameFiles>(
             lsp::RenameFilesParams { files },
@@ -751,27 +759,28 @@ impl Client {
         })
     }
 
-    pub fn did_file_rename(
+    pub fn did_rename(
         &self,
-        old_uri: &lsp::Url,
-        new_uri: &lsp::Url,
+        old_path: &Path,
+        new_path: &Path,
+        is_dir: bool,
     ) -> Option<impl Future<Output = std::result::Result<(), Error>>> {
-        let capabilities = self.capabilities.get().unwrap();
-
-        // Return early if the server does not support DidRename feature
-        match &capabilities.workspace {
-            Some(workspace) => match &workspace.file_operations {
-                Some(op) => {
-                    op.did_rename.as_ref()?;
-                }
-                _ => return None,
-            },
-            _ => return None,
+        let capabilities = self.file_operations_intests();
+        if !capabilities.did_rename.has_interest(new_path, is_dir) {
+            return None;
         }
+        let url_from_path = |path| {
+            let url = if is_dir {
+                Url::from_directory_path(path)
+            } else {
+                Url::from_file_path(path)
+            };
+            Some(url.ok()?.to_string())
+        };
 
         let files = vec![lsp::FileRename {
-            old_uri: old_uri.to_string(),
-            new_uri: new_uri.to_string(),
+            old_uri: url_from_path(old_path)?,
+            new_uri: url_from_path(new_path)?,
         }];
         Some(self.notify::<lsp::notification::DidRenameFiles>(lsp::RenameFilesParams { files }))
     }

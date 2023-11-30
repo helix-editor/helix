@@ -1,5 +1,6 @@
 mod client;
 pub mod file_event;
+mod file_operations;
 pub mod jsonrpc;
 pub mod snippet;
 mod transport;

@@ -23,7 +23,8 @@ use std::{
     borrow::Cow,
     cell::Cell,
     collections::{BTreeMap, HashMap},
-    io::stdin,
+    fs,
+    io::{self, stdin},
     num::NonZeroUsize,
     path::{Path, PathBuf},
     pin::Pin,
@@ -45,6 +46,7 @@ use helix_core::{
 };
 use helix_dap as dap;
 use helix_lsp::lsp;
+use helix_stdx::path::canonicalize;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -1215,6 +1217,90 @@ impl Editor {
         self.launch_language_servers(doc_id)
     }
 
+    /// moves/renames a path, invoking any event handlers (currently only lsp)
+    /// and calling `set_doc_path` if the file is open in the editor
+    pub fn move_path(&mut self, old_path: &Path, new_path: &Path) -> io::Result<()> {
+        let new_path = canonicalize(new_path);
+        // sanity check
+        if old_path == new_path {
+            return Ok(());
+        }
+        let is_dir = old_path.is_dir();
+        let language_servers: Vec<_> = self
+            .language_servers
+            .iter_clients()
+            .filter(|client| client.is_initialized())
+            .cloned()
+            .collect();
+        for language_server in language_servers {
+            let Some(request) = language_server.will_rename(old_path, &new_path, is_dir) else {
+                continue;
+            };
+            let edit = match helix_lsp::block_on(request) {
+                Ok(edit) => edit,
+                Err(err) => {
+                    log::error!("invalid willRename response: {err:?}");
+                    continue;
+                }
+            };
+            if let Err(err) = self.apply_workspace_edit(language_server.offset_encoding(), &edit) {
+                log::error!("failed to apply workspace edit: {err:?}")
+            }
+        }
+        fs::rename(old_path, &new_path)?;
+        if let Some(doc) = self.document_by_path(old_path) {
+            self.set_doc_path(doc.id(), &new_path);
+        }
+        let is_dir = new_path.is_dir();
+        for ls in self.language_servers.iter_clients() {
+            if let Some(notification) = ls.did_rename(old_path, &new_path, is_dir) {
+                tokio::spawn(notification);
+            };
+        }
+        self.language_servers
+            .file_event_handler
+            .file_changed(old_path.to_owned());
+        self.language_servers
+            .file_event_handler
+            .file_changed(new_path);
+        Ok(())
+    }
+
+    pub fn set_doc_path(&mut self, doc_id: DocumentId, path: &Path) {
+        let doc = doc_mut!(self, &doc_id);
+        let old_path = doc.path();
+
+        if let Some(old_path) = old_path {
+            // sanity check, should not occur but some callers (like an LSP) may
+            // create bogus calls
+            if old_path == path {
+                return;
+            }
+            // if we are open in LSPs send did_close notification
+            for language_server in doc.language_servers() {
+                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+            }
+        }
+        // we need to clear the list of language servers here so that
+        // refresh_doc_language/refresh_language_servers doesn't resend
+        // text_document_did_close. Since we called `text_document_did_close`
+        // we have fully unregistered this document from its LS
+        doc.language_servers.clear();
+        doc.set_path(Some(path));
+        self.refresh_doc_language(doc_id)
+    }
+
+    pub fn refresh_doc_language(&mut self, doc_id: DocumentId) {
+        let loader = self.syn_loader.clone();
+        let doc = doc_mut!(self, &doc_id);
+        doc.detect_language(loader);
+        doc.detect_indent_and_line_ending();
+        self.refresh_language_servers(doc_id);
+        let doc = doc_mut!(self, &doc_id);
+        let diagnostics = Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, doc);
+        doc.replace_diagnostics(diagnostics, &[], None);
+    }
+
     /// Launch a language server for a given document
     fn launch_language_servers(&mut self, doc_id: DocumentId) {
         if !self.config().lsp.enable {
@@ -1257,7 +1343,7 @@ impl Editor {
                 .collect::<HashMap<_, _>>()
         });
 
-        if language_servers.is_empty() {
+        if language_servers.is_empty() && doc.language_servers.is_empty() {
             return;
         }
 
