@@ -15,7 +15,7 @@ homepage.workspace = true
 [features]
 default = ["git"]
 unicode-lines = ["helix-core/unicode-lines"]
-integration = []
+integration = ["helix-event/integration_test"]
 git = ["helix-vcs/git"]
 
 [[bin]]
