@@ -5,7 +5,6 @@ pub(crate) mod typed;
 pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
-use tokio::sync::oneshot;
 use tui::widgets::Row;
 pub use typed::*;
 
@@ -33,7 +32,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, CompleteAction},
+    editor::Action,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -52,14 +51,10 @@ use crate::{
     filter_picker_entry,
     job::Callback,
     keymap::ReverseKeymap,
-    ui::{
-        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem, Picker,
-        Popup, Prompt, PromptEvent,
-    },
+    ui::{self, overlay::overlaid, Picker, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Jobs};
-use futures_util::{stream::FuturesUnordered, TryStreamExt};
 use std::{
     collections::{HashMap, HashSet},
     fmt,
@@ -2593,7 +2588,6 @@ fn delete_by_selection_insert_mode(
         );
     }
     doc.apply(&transaction, view.id);
-    lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
 }
 
 fn delete_selection(cx: &mut Context) {
@@ -2667,10 +2661,6 @@ fn insert_mode(cx: &mut Context) {
         .transform(|range| Range::new(range.to(), range.from()));
 
     doc.set_selection(view.id, selection);
-
-    // [TODO] temporary workaround until we're not using the idle timer to
-    //        trigger auto completions any more
-    cx.editor.clear_idle_timer();
 }
 
 // inserts at the end of each selection
@@ -3497,9 +3487,9 @@ fn hunk_range(hunk: Hunk, text: RopeSlice) -> Range {
 
 pub mod insert {
     use crate::events::PostInsertChar;
+
     use super::*;
     pub type Hook = fn(&Rope, &Selection, char) -> Option<Transaction>;
-    pub type PostHook = fn(&mut Context, char);
 
     /// Exclude the cursor in range.
     fn exclude_cursor(text: RopeSlice, range: Range, cursor: Range) -> Range {
@@ -3510,88 +3500,6 @@ pub mod insert {
             )
         } else {
             range
-        }
-    }
-
-    // It trigger completion when idle timer reaches deadline
-    // Only trigger completion if the word under cursor is longer than n characters
-    pub fn idle_completion(cx: &mut Context) {
-        let config = cx.editor.config();
-        let (view, doc) = current!(cx.editor);
-        let text = doc.text().slice(..);
-        let cursor = doc.selection(view.id).primary().cursor(text);
-
-        use helix_core::chars::char_is_word;
-        let mut iter = text.chars_at(cursor);
-        iter.reverse();
-        for _ in 0..config.completion_trigger_len {
-            match iter.next() {
-                Some(c) if char_is_word(c) => {}
-                _ => return,
-            }
-        }
-        super::completion(cx);
-    }
-
-    fn language_server_completion(cx: &mut Context, ch: char) {
-        let config = cx.editor.config();
-        if !config.auto_completion {
-            return;
-        }
-
-        use helix_lsp::lsp;
-        // if ch matches completion char, trigger completion
-        let doc = doc_mut!(cx.editor);
-        let trigger_completion = doc
-            .language_servers_with_feature(LanguageServerFeature::Completion)
-            .any(|ls| {
-                // TODO: what if trigger is multiple chars long
-                matches!(&ls.capabilities().completion_provider, Some(lsp::CompletionOptions {
-                    trigger_characters: Some(triggers),
-                    ..
-                }) if triggers.iter().any(|trigger| trigger.contains(ch)))
-            });
-
-        if trigger_completion {
-            cx.editor.clear_idle_timer();
-            super::completion(cx);
-        }
-    }
-
-    fn signature_help(cx: &mut Context, ch: char) {
-        use helix_lsp::lsp;
-        // if ch matches signature_help char, trigger
-        let doc = doc_mut!(cx.editor);
-        // TODO support multiple language servers (not just the first that is found), likely by merging UI somehow
-        let Some(language_server) = doc
-            .language_servers_with_feature(LanguageServerFeature::SignatureHelp)
-            .next()
-        else {
-            return;
-        };
-
-        let capabilities = language_server.capabilities();
-
-        if let lsp::ServerCapabilities {
-            signature_help_provider:
-                Some(lsp::SignatureHelpOptions {
-                    trigger_characters: Some(triggers),
-                    // TODO: retrigger_characters
-                    ..
-                }),
-            ..
-        } = capabilities
-        {
-            // TODO: what if trigger is multiple chars long
-            let is_trigger = triggers.iter().any(|trigger| trigger.contains(ch));
-            // lsp doesn't tell us when to close the signature help, so we request
-            // the help information again after common close triggers which should
-            // return None, which in turn closes the popup.
-            let close_triggers = &[')', ';', '.'];
-
-            if is_trigger || close_triggers.contains(&ch) {
-                super::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
-            }
         }
     }
 
@@ -3624,12 +3532,6 @@ pub mod insert {
             doc.apply(&t, view.id);
         }
 
-        // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
-        // this could also generically look at Transaction, but it's a bit annoying to look at
-        // Operation instead of Change.
-        for hook in &[language_server_completion, signature_help] {
-            hook(cx, c);
-        }
         helix_event::dispatch(PostInsertChar { c, cx });
     }
 
@@ -3855,8 +3757,6 @@ pub mod insert {
             });
         let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
-
-        lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 
     pub fn delete_char_forward(cx: &mut Context) {
@@ -4510,151 +4410,14 @@ fn remove_primary_selection(cx: &mut Context) {
 }
 
 pub fn completion(cx: &mut Context) {
-    use helix_lsp::{lsp, util::pos_to_lsp_pos};
-
     let (view, doc) = current!(cx.editor);
+    let range = doc.selection(view.id).primary();
+    let text = doc.text().slice(..);
+    let cursor = range.cursor(text);
 
-    let savepoint = if let Some(CompleteAction::Selected { savepoint }) = &cx.editor.last_completion
-    {
-        savepoint.clone()
-    } else {
-        doc.savepoint(view)
-    };
-
-    let text = savepoint.text.clone();
-    let cursor = savepoint.cursor();
-
-    let mut seen_language_servers = HashSet::new();
-
-    let mut futures: FuturesUnordered<_> = doc
-        .language_servers_with_feature(LanguageServerFeature::Completion)
-        .filter(|ls| seen_language_servers.insert(ls.id()))
-        .map(|language_server| {
-            let language_server_id = language_server.id();
-            let offset_encoding = language_server.offset_encoding();
-            let pos = pos_to_lsp_pos(&text, cursor, offset_encoding);
-            let doc_id = doc.identifier();
-            let completion_request = language_server.completion(doc_id, pos, None).unwrap();
-
-            async move {
-                let json = completion_request.await?;
-                let response: Option<lsp::CompletionResponse> = serde_json::from_value(json)?;
-
-                let items = match response {
-                    Some(lsp::CompletionResponse::Array(items)) => items,
-                    // TODO: do something with is_incomplete
-                    Some(lsp::CompletionResponse::List(lsp::CompletionList {
-                        is_incomplete: _is_incomplete,
-                        items,
-                    })) => items,
-                    None => Vec::new(),
-                }
-                .into_iter()
-                .map(|item| CompletionItem {
-                    item,
-                    language_server_id,
-                    resolved: false,
-                })
-                .collect();
-
-                anyhow::Ok(items)
-            }
-        })
-        .collect();
-
-    // setup a channel that allows the request to be canceled
-    let (tx, rx) = oneshot::channel();
-    // set completion_request so that this request can be canceled
-    // by setting completion_request, the old channel stored there is dropped
-    // and the associated request is automatically dropped
-    cx.editor.completion_request_handle = Some(tx);
-    let future = async move {
-        let items_future = async move {
-            let mut items = Vec::new();
-            // TODO if one completion request errors, all other completion requests are discarded (even if they're valid)
-            while let Some(mut lsp_items) = futures.try_next().await? {
-                items.append(&mut lsp_items);
-            }
-            anyhow::Ok(items)
-        };
-        tokio::select! {
-            biased;
-            _ = rx => {
-                Ok(Vec::new())
-            }
-            res = items_future => {
-                res
-            }
-        }
-    };
-
-    let trigger_offset = cursor;
-
-    // TODO: trigger_offset should be the cursor offset but we also need a starting offset from where we want to apply
-    // completion filtering. For example logger.te| should filter the initial suggestion list with "te".
-
-    use helix_core::chars;
-    let mut iter = text.chars_at(cursor);
-    iter.reverse();
-    let offset = iter.take_while(|ch| chars::char_is_word(*ch)).count();
-    let start_offset = cursor.saturating_sub(offset);
-
-    let trigger_doc = doc.id();
-    let trigger_view = view.id;
-
-    // FIXME: The commands Context can only have a single callback
-    // which means it gets overwritten when executing keybindings
-    // with multiple commands or macros. This would mean that completion
-    // might be incorrectly applied when repeating the insertmode action
-    //
-    // TODO: to solve this either make cx.callback a Vec of callbacks or
-    // alternatively move `last_insert` to `helix_view::Editor`
-    cx.callback = Some(Box::new(
-        move |compositor: &mut Compositor, _cx: &mut compositor::Context| {
-            let ui = compositor.find::<ui::EditorView>().unwrap();
-            ui.last_insert.1.push(InsertEvent::RequestCompletion);
-        },
-    ));
-
-    cx.jobs.callback(async move {
-        let items = future.await?;
-        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
-            let (view, doc) = current_ref!(editor);
-            // check if the completion request is stale.
-            //
-            // Completions are completed asynchronously and therefore the user could
-            //switch document/view or leave insert mode. In all of thoise cases the
-            // completion should be discarded
-            if editor.mode != Mode::Insert || view.id != trigger_view || doc.id() != trigger_doc {
-                return;
-            }
-
-            if items.is_empty() {
-                // editor.set_error("No completion available");
-                return;
-            }
-            let size = compositor.size();
-            let ui = compositor.find::<ui::EditorView>().unwrap();
-            let completion_area = ui.set_completion(
-                editor,
-                savepoint,
-                items,
-                start_offset,
-                trigger_offset,
-                size,
-            );
-            let size = compositor.size();
-            let signature_help_area = compositor
-                .find_id::<Popup<SignatureHelp>>(SignatureHelp::ID)
-                .map(|signature_help| signature_help.area(size, editor));
-            // Delete the signature help popup if they intersect.
-            if matches!((completion_area, signature_help_area),(Some(a), Some(b)) if a.intersects(b))
-            {
-                compositor.remove(SignatureHelp::ID);
-            }
-        };
-        Ok(Callback::EditorCompositor(Box::new(call)))
-    });
+    cx.editor
+        .handlers
+        .trigger_completions(cursor, doc.id(), view.id);
 }
 
 // comments
@@ -4833,10 +4596,6 @@ fn move_node_bound_impl(cx: &mut Context, dir: Direction, movement: Movement) {
             );
 
             doc.set_selection(view.id, selection);
-
-            // [TODO] temporary workaround until we're not using the idle timer to
-            //        trigger auto completions any more
-            editor.clear_idle_timer();
         }
     };
 
