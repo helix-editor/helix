@@ -6,13 +6,17 @@ pub mod args;
 pub mod commands;
 pub mod compositor;
 pub mod config;
+pub mod events;
 pub mod health;
 pub mod job;
 pub mod keymap;
 pub mod ui;
+
 use std::path::Path;
 
 use futures_util::Future;
+mod handlers;
+
 use ignore::DirEntry;
 use url::Url;
 

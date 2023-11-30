@@ -12,5 +12,18 @@ homepage.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot"] }
-parking_lot = { version = "0.12", features = ["send_guard"] }
+ahash = "0.8.3"
+hashbrown = "0.14.0"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot", "macros"] }
+# the event registry is essentially read only but must be an rwlock so we can
+# setup new events on initialization, hardware-lock-elision hugely benefits this case
+# as it essentially makes the lock entirely free as long as there is no writes 
+parking_lot = { version = "0.12", features = ["hardware-lock-elision"] }
+once_cell = "1.18"
+
+anyhow = "1"
+log = "0.4"
+futures-executor = "0.3.28"
+
+[features]
+integration_test = []

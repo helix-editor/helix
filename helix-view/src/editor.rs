@@ -2,6 +2,7 @@ use crate::{
     align_view,
     document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint},
     graphics::{CursorKind, Rect},
+    handlers::Handlers,
     info::Info,
     input::KeyEvent,
     register::Registers,
@@ -960,6 +961,7 @@ pub struct Editor {
     /// field is set and any old requests are automatically
     /// canceled as a result
     pub completion_request_handle: Option<oneshot::Sender<()>>,
+    pub handlers: Handlers,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
