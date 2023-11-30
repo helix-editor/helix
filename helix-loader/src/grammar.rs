@@ -509,7 +509,7 @@ fn build_tree_sitter_library(
 
         if let Some(scanner_path) = scanner_path.as_ref() {
             if scanner_path.extension() == Some("c".as_ref()) {
-                command.arg("-xc").arg("-std=c11").arg(scanner_path);
+                command.arg("-xc").arg("-std=gnu11").arg(scanner_path);
             } else {
                 let mut cpp_command = Command::new(compiler.path());
                 cpp_command.current_dir(src_path);
@@ -526,7 +526,7 @@ fn build_tree_sitter_library(
                     .arg(header_path)
                     .arg("-o")
                     .arg(&object_file)
-                    .arg("-std=c++14")
+                    .arg("-std=gnu++14")
                     .arg("-c")
                     .arg(scanner_path);
                 let output = cpp_command
@@ -544,7 +544,7 @@ fn build_tree_sitter_library(
                 _path_guard = TempPath::from_path(object_file);
             }
         }
-        command.arg("-xc").arg("-std=c11").arg(parser_path);
+        command.arg("-xc").arg("-std=gnu11").arg(parser_path);
         if cfg!(all(
             unix,
             not(any(target_os = "macos", target_os = "illumos"))
