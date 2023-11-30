@@ -1165,6 +1165,7 @@ version = "23.10.0"
 dependencies = [
  "dunce",
  "etcetera",
+ "ropey",
  "tempfile",
 ]
 

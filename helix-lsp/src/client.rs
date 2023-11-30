@@ -9,7 +9,7 @@ use helix_loader::{self, VERSION_AND_GIT_HASH};
 use helix_stdx::path;
 use lsp::{
     notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
-    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, WorkspaceFolder,
+    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, WorkspaceFolder,
     WorkspaceFoldersChangeEvent,
 };
 use lsp_types as lsp;
@@ -999,6 +999,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
+        context: lsp::CompletionContext,
     ) -> Option<impl Future<Output = Result<Value>>> {
         let capabilities = self.capabilities.get().unwrap();
 
@@ -1010,13 +1011,12 @@ impl Client {
                 text_document,
                 position,
             },
+            context: Some(context),
             // TODO: support these tokens by async receiving and updating the choice list
             work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             partial_result_params: lsp::PartialResultParams {
                 partial_result_token: None,
             },
-            context: None,
-            // lsp::CompletionContext { trigger_kind: , trigger_character: Some(), }
         };
 
         Some(self.call::<lsp::request::Completion>(params))
@@ -1063,7 +1063,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<SignatureHelp>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support signature help.
@@ -1079,7 +1079,8 @@ impl Client {
             // lsp::SignatureHelpContext
         };
 
-        Some(self.call::<lsp::request::SignatureHelpRequest>(params))
+        let res = self.call::<lsp::request::SignatureHelpRequest>(params);
+        Some(async move { Ok(serde_json::from_value(res.await?)?) })
     }
 
     pub fn text_document_range_inlay_hints(
