@@ -96,20 +96,34 @@ impl<T: Item> Menu<T> {
         }
     }
 
-    pub fn score(&mut self, pattern: &str) {
-        // reuse the matches allocation
-        self.matches.clear();
+    pub fn score(&mut self, pattern: &str, incremental: bool) {
         let mut matcher = MATCHER.lock();
         matcher.config = Config::DEFAULT;
         let pattern = Atom::new(pattern, CaseMatching::Ignore, AtomKind::Fuzzy, false);
         let mut buf = Vec::new();
-        let matches = self.options.iter().enumerate().filter_map(|(i, option)| {
-            let text = option.filter_text(&self.editor_data);
-            pattern
-                .score(Utf32Str::new(&text, &mut buf), &mut matcher)
-                .map(|score| (i as u32, score as u32))
-        });
-        self.matches.extend(matches);
+        if incremental {
+            self.matches.retain_mut(|(index, score)| {
+                let option = &self.options[*index as usize];
+                let text = option.filter_text(&self.editor_data);
+                let new_score = pattern.score(Utf32Str::new(&text, &mut buf), &mut matcher);
+                match new_score {
+                    Some(new_score) => {
+                        *score = new_score as u32;
+                        true
+                    }
+                    None => false,
+                }
+            })
+        } else {
+            self.matches.clear();
+            let matches = self.options.iter().enumerate().filter_map(|(i, option)| {
+                let text = option.filter_text(&self.editor_data);
+                pattern
+                    .score(Utf32Str::new(&text, &mut buf), &mut matcher)
+                    .map(|score| (i as u32, score as u32))
+            });
+            self.matches.extend(matches);
+        }
         self.matches
             .sort_unstable_by_key(|&(i, score)| (Reverse(score), i));
 
