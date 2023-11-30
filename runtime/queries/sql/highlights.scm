@@ -131,6 +131,7 @@
   (keyword_partition)
   (keyword_group)
   (keyword_with)
+  (keyword_without)
   (keyword_as)
   (keyword_having)
   (keyword_limit)
@@ -227,6 +228,7 @@
   (keyword_input)
   (keyword_name)
   (keyword_oid)
+  (keyword_oids)
   (keyword_options)
   (keyword_plpgsql)
   (keyword_precision)
@@ -264,6 +266,44 @@
   (keyword_user)
   (keyword_valid)
   (keyword_action)
+  (keyword_definer)
+  (keyword_invoker)
+  (keyword_security)
+  (keyword_extension)
+  (keyword_version)
+  (keyword_out)
+  (keyword_inout)
+  (keyword_variadic)
+  (keyword_session)
+  (keyword_isolation)
+  (keyword_level)
+  (keyword_serializable)
+  (keyword_repeatable)
+  (keyword_read)
+  (keyword_write)
+  (keyword_committed)
+  (keyword_uncommitted)
+  (keyword_deferrable)
+  (keyword_names)
+  (keyword_zone)
+  (keyword_immediate)
+  (keyword_deferred)
+  (keyword_constraints)
+  (keyword_snapshot)
+  (keyword_characteristics)
+  (keyword_off)
+  (keyword_follows)
+  (keyword_precedes)
+  (keyword_each)
+  (keyword_instead)
+  (keyword_of)
+  (keyword_initially)
+  (keyword_old)
+  (keyword_new)
+  (keyword_referencing)
+  (keyword_statement)
+  (keyword_execute)
+  (keyword_procedure)
 ] @keyword
 
 [
@@ -373,10 +413,8 @@
   ">="
   ">"
   "<>"
-  "->"
-  "->>"
-  "#>"
-  "#>>"
+  (op_other)
+  (op_unary_other)
 ] @operator
 
 [

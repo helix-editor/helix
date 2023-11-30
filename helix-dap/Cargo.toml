@@ -2,8 +2,9 @@
 name = "helix-dap"
 version = "0.6.0"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
-edition = "2018"
-license = "MPL-2.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 description = "DAP client implementation for Helix project"
 categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
@@ -19,7 +20,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "net", "sync"] }
-which = "4.4"
+which = "5.0.0"
 
 [dev-dependencies]
 fern = "0.6"

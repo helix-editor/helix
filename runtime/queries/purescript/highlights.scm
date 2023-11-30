@@ -1,4 +1,20 @@
 ; ----------------------------------------------------------------------------
+; Record fields would need to come before literal strings in order to be captured correctly
+
+ (record_accessor
+    field: [ (variable)
+             (string)
+             (triple_quote_string)
+           ] @variable.other.member)
+
+ (exp_record_access
+    field: [ (variable)
+             (string)
+             (triple_quote_string)
+           ] @variable.other.member)
+
+
+; ----------------------------------------------------------------------------
 ; Literals and comments
 
  (integer) @constant.numeric.integer
@@ -117,8 +133,7 @@
 
  (row_field (field_name) @variable.other.member)
  (record_field (field_name) @variable.other.member)
- (record_accessor (variable) @variable.other.member)
- (exp_record_access (variable) @variable.other.member)
+ (record_field (field_pun) @variable.other.member)
 
  (signature name: (variable) @type)
  (function name: (variable) @function)
@@ -126,8 +141,8 @@
  (derive_declaration (instance_name) @function)
 
  ; true or false
-((variable) @constant.builtin.boolean
- (#match? @constant.builtin.boolean "^(true|false)$"))
+ ((variable) @constant.builtin.boolean
+  (#match? @constant.builtin.boolean "^(true|false)$"))
 
  ; The former one works for `tree-sitter highlight` but not in Helix/Kakoune.
  ; The latter two work in Helix (but not Kakoune) and are a good compromise between not highlighting anything at all

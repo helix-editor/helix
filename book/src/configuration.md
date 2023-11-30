@@ -166,14 +166,14 @@ All git related options are only enabled in a git repository.
 
 | Key | Description | Default |
 |--|--|---------|
-|`hidden` | Enables ignoring hidden files | true
-|`follow-symlinks` | Follow symlinks instead of ignoring them | true
-|`deduplicate-links` | Ignore symlinks that point at files already shown in the picker | true
-|`parents` | Enables reading ignore files from parent directories | true
-|`ignore` | Enables reading `.ignore` files | true
-|`git-ignore` | Enables reading `.gitignore` files | true
-|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludefile` option | true
-|`git-exclude` | Enables reading `.git/info/exclude` files | true
+|`hidden` | Enables ignoring hidden files | `true`
+|`follow-symlinks` | Follow symlinks instead of ignoring them | `true`
+|`deduplicate-links` | Ignore symlinks that point at files already shown in the picker | `true`
+|`parents` | Enables reading ignore files from parent directories | `true`
+|`ignore` | Enables reading `.ignore` files | `true`
+|`git-ignore` | Enables reading `.gitignore` files | `true`
+|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludefile` option | `true`
+|`git-exclude` | Enables reading `.git/info/exclude` files | `true`
 |`max-depth` | Set with an integer value for maximum depth to recurse | Defaults to `None`.
 
 ### `[editor.auto-pairs]` Section

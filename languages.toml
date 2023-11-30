@@ -47,6 +47,7 @@ mint = { command = "mint", args = ["ls"] }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
 nls = { command = "nls" }
+nu-lsp = { command = "nu", args = [ "--lsp" ] }
 ocamllsp = { command = "ocamllsp" }
 ols = { command = "ols", args = [] }
 omnisharp = { command = "OmniSharp", args = [ "--languageserver" ] }
@@ -95,7 +96,7 @@ command = "ansible-language-server"
 args = ["--stdio"]
 
 [language-server.lua-language-server]
-command = "lua-language-server" 
+command = "lua-language-server"
 
 [language-server.lua-language-server.config.Lua.hint]
 enable = true
@@ -975,7 +976,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "beancount"
-source = { git = "https://github.com/polarmutex/tree-sitter-beancount", rev = "4cbd1f09cd07c1f1fabf867c2cf354f9da53cc4c" }
+source = { git = "https://github.com/polarmutex/tree-sitter-beancount", rev = "f3741a3a68ade59ec894ed84a64673494d2ba8f3" }
 
 [[language]]
 name = "ocaml"
@@ -1108,7 +1109,7 @@ formatter = { command = "purs-tidy", args = ["format"] }
 
 [[grammar]]
 name = "purescript"
-source = { git = "https://github.com/postsolar/tree-sitter-purescript", rev = "593193b9bf0f46d5eee708a4e53044d2a9054897" }
+source = { git = "https://github.com/postsolar/tree-sitter-purescript", rev = "5ef5592674ea42de75fc2792972e4ea0b6e3da6c" }
 
 [[language]]
 name = "zig"
@@ -1218,7 +1219,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "perl"
-source = { git = "https://github.com/tree-sitter-perl/tree-sitter-perl", rev = "9f3166800d40267fa68ed8273e96baf74f390517" }
+source = { git = "https://github.com/tree-sitter-perl/tree-sitter-perl", rev = "e99bb5283805db4cb86c964722d709df21b0ac16" }
 
 [[language]]
 name = "pod"
@@ -1264,7 +1265,7 @@ injection-regex = "comment"
 
 [[grammar]]
 name = "comment"
-source = { git = "https://github.com/stsewd/tree-sitter-comment", rev = "5dd3c62f1bbe378b220fe16b317b85247898639e" }
+source = { git = "https://github.com/stsewd/tree-sitter-comment", rev = "a37ca370310ac6f89b6e0ebf2b86b2219780494e" }
 
 [[language]]
 name = "wgsl"
@@ -1288,7 +1289,7 @@ injection-regex = "llvm"
 
 [[grammar]]
 name = "llvm"
-source = { git = "https://github.com/benwilliamgraham/tree-sitter-llvm", rev = "3b213925b9c4f42c1acfe2e10bfbb438d9c6834d" }
+source = { git = "https://github.com/benwilliamgraham/tree-sitter-llvm", rev = "e9948edc41e9e5869af99dddb2b5ff5cc5581af6" }
 
 [[language]]
 name = "llvm-mir"
@@ -1742,7 +1743,7 @@ injection-regex = "sql"
 
 [[grammar]]
 name = "sql"
-source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "eeab7240a11098724e6f95bc57cc3ceaf5487d5f" }
+source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "25be0b8f17e9189ad9e1b875869d025c5aec1286" }
 
 [[language]]
 name = "gdscript"
@@ -1783,6 +1784,7 @@ file-types = ["nu"]
 shebangs = ["nu"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+language-servers = [ "nu-lsp" ]
 
 [[grammar]]
 name = "nu"
@@ -2045,7 +2047,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ungrammar"
-source = { git = "https://github.com/Philipp-M/tree-sitter-ungrammar", rev = "0113de880a58ea14f2a75802e9b99fcc25003d9c" }
+source = { git = "https://github.com/Philipp-M/tree-sitter-ungrammar", rev = "a7e104629cff5a8b7367187610631e8f5eb7c6ea" }
 
 [[language]]
 name = "dot"
@@ -2171,7 +2173,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "astro"
-source = { git = "https://github.com/virchau13/tree-sitter-astro", rev = "5f5c3e73c45967df9aa42f861fad2d77cd4e0900" }
+source = { git = "https://github.com/virchau13/tree-sitter-astro", rev = "947e93089e60c66e681eba22283f4037841451e7" }
 
 [[language]]
 name = "bass"
@@ -2301,7 +2303,8 @@ file-types = [
   "xliff",
   "xpdl",
   "xul",
-  "xoml"
+  "xoml",
+  "musicxml"
 ]
 indent = { tab-width = 2, unit = "  " }
 
@@ -2541,7 +2544,7 @@ comment-token = "("
 
 [[grammar]]
 name = "uxntal"
-source = { git = "https://github.com/Jummit/tree-sitter-uxntal", rev = "9297e95ef74380b0ad84c4fd98f91e9f6e4319e6" }
+source = { git = "https://github.com/Jummit/tree-sitter-uxntal", rev = "d68406066648cd6db4c6a2f11ec305af02079884" }
 
 [[language]]
 name = "yuck"
@@ -2662,7 +2665,7 @@ grammar = "rego"
 
 [[grammar]]
 name = "rego"
-source = { git = "https://github.com/FallenAngel97/tree-sitter-rego", rev = "b2667c975f07b33be3ceb83bea5cfbad88095866" }
+source = { git = "https://github.com/FallenAngel97/tree-sitter-rego", rev = "9ac75e71b2d791e0aadeef68098319d86a2a14cf" }
 
 [[language]]
 name = "nim"
@@ -2741,6 +2744,20 @@ name = "just"
 source = { git = "https://github.com/IndianBoy42/tree-sitter-just", rev = "8af0aab79854aaf25b620a52c39485849922f766" }
 
 [[language]]
+name = "gn"
+scope = "source.gn"
+injection-regex = "gn"
+file-types = ["gn", "gni"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "gn", args = ["format", "--stdin"] }
+
+[[grammar]]
+name = "gn"
+source = { git = "https://github.com/willcassella/tree-sitter-gn", rev = "e18d6e36a79b20dafb58f19d407bd38b0e60260e" }
+
+[[language]]
 name = "blueprint"
 scope = "source.blueprint"
 injection-regex = "blueprint"
@@ -2764,7 +2781,7 @@ indent = { tab-width = 3, unit = "   " }
 
 [[grammar]]
 name = "forth"
-source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "304ed77beb113e37af38b20ff14e3c37bf350d10" }
+source = { git = "https://github.com/alexanderbrevig/tree-sitter-forth", rev = "90189238385cf636b9ee99ce548b9e5b5e569d48" }
 
 [[language]]
 name = "fsharp"
@@ -2900,7 +2917,7 @@ file-types = ["gmi"]
 
 [[grammar]]
 name = "gemini"
-source = { git = "https://git.sr.ht/~sfr/tree-sitter-gemini", rev = "3cc5e4bdf572d5df4277fc2e54d6299bd59a54b3" }
+source = { git = "https://git.sr.ht/~nbsp/tree-sitter-gemini", rev = "3cc5e4bdf572d5df4277fc2e54d6299bd59a54b3" }
 
 [[language]]
 name = "templ"
@@ -2914,3 +2931,24 @@ language-servers = [ "templ" ]
 [[grammar]]
 name = "templ"
 source = { git = "https://github.com/vrischmann/tree-sitter-templ", rev = "ea56ac0655243490a4929a988f4eaa91dfccc995" }
+
+[[language]]
+name = "dbml"
+scope = "source.dbml"
+injection-regex = "dbml"
+file-types = ["dbml"]
+comment-token = ";"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "dbml"
+source = { git = "https://github.com/dynamotn/tree-sitter-dbml", rev = "2e2fa5640268c33c3d3f27f7e676f631a9c68fd9" }
+
+[[language]]
+name = "log"
+scope = "source.log"
+file-types = ["log"]
+
+[[grammar]]
+name = "log"
+source = { git = "https://github.com/Tudyx/tree-sitter-log", rev = "62cfe307e942af3417171243b599cc7deac5eab9" }

@@ -116,16 +116,18 @@ FLAGS:
 
     setup_logging(args.verbosity).context("failed to initialize logging")?;
 
+    // Before setting the working directory, resolve all the paths in args.files
+    for (path, _) in args.files.iter_mut() {
+        *path = helix_core::path::get_canonicalized_path(path);
+    }
+
     // NOTE: Set the working directory early so the correct configuration is loaded. Be aware that
     // Application::new() depends on this logic so it must be updated if this changes.
     if let Some(path) = &args.working_directory {
         helix_loader::set_current_working_dir(path)?;
-    }
-
-    // If the first file is a directory, it will be the working directory and a file picker will be opened
-    if let Some((path, _)) = args.files.first().filter(|p| p.0.is_dir()) {
+    } else if let Some((path, _)) = args.files.first().filter(|p| p.0.is_dir()) {
+        // If the first file is a directory, it will be the working directory unless -w was specified
         helix_loader::set_current_working_dir(path)?;
-        args.open_cwd = true; // Signal Application that we want to open the picker on "."
     }
 
     let config = match Config::load_default() {
