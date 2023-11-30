@@ -1048,13 +1048,33 @@ impl EditorView {
 }
 
 impl EditorView {
+    /// must be called whenever the editor processed input that
+    /// is not a `KeyEvent`. In these cases any pending keys/on next
+    /// key callbacks must be canceled.
+    fn handle_non_key_input(&mut self, cxt: &mut commands::Context) {
+        cxt.editor.status_msg = None;
+        cxt.editor.reset_idle_timer();
+        // HACKS: create a fake key event that will never trigger any actual map
+        // and therefore simply acts as "dismiss"
+        let null_key_event = KeyEvent {
+            code: KeyCode::Null,
+            modifiers: KeyModifiers::empty(),
+        };
+        // dismiss any pending keys
+        if let Some(on_next_key) = self.on_next_key.take() {
+            on_next_key(cxt, null_key_event);
+        }
+        self.handle_keymap_event(cxt.editor.mode, cxt, null_key_event);
+        self.pseudo_pending.clear();
+    }
+
     fn handle_mouse_event(
         &mut self,
         event: &MouseEvent,
         cxt: &mut commands::Context,
     ) -> EventResult {
         if event.kind != MouseEventKind::Moved {
-            cxt.editor.reset_idle_timer();
+            self.handle_non_key_input(cxt)
         }
 
         let config = cxt.editor.config();
@@ -1279,6 +1299,7 @@ impl Component for EditorView {
 
         match event {
             Event::Paste(contents) => {
+                self.handle_non_key_input(&mut cx);
                 cx.count = cx.editor.count;
                 commands::paste_bracketed_value(&mut cx, contents.clone());
                 cx.editor.count = None;
