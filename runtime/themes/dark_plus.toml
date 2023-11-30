@@ -29,7 +29,7 @@
 "string.regexp"             = "gold"
 "tag"                       = "blue2"
 "type"                      = "type"
-"type.builtin"              = "blue2"
+"type.builtin"              = "type"
 "type.enum.variant"         = "constant"
 "variable"                  = "variable"
 "variable.builtin"          = "blue2"
