@@ -2,6 +2,7 @@ use crate::{
     commands::{self, OnKeyCallback},
     compositor::{Component, Context, Event, EventResult},
     job::{self, Callback},
+    events::{OnModeSwitch, PostCommand},
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{
@@ -835,11 +836,18 @@ impl EditorView {
 
         let mut execute_command = |command: &commands::MappableCommand| {
             command.execute(cxt);
+            helix_event::dispatch(PostCommand { command, cx: cxt });
             let current_mode = cxt.editor.mode();
             match (last_mode, current_mode) {
                 (Mode::Normal, Mode::Insert) => {
                     // HAXX: if we just entered insert mode from normal, clear key buf
                     // and record the command that got us into this mode.
+            if current_mode != last_mode {
+                helix_event::dispatch(OnModeSwitch {
+                    old_mode: last_mode,
+                    new_mode: current_mode,
+                    cx: cxt,
+                });
 
                     // how we entered insert mode is important, and we should track that so
                     // we can repeat the side effect.
@@ -1004,7 +1012,7 @@ impl EditorView {
         }
 
         let area = completion.area(size, editor);
-        editor.last_completion = None;
+        editor.last_completion = Some(CompleteAction::Triggered);
         self.last_insert.1.push(InsertEvent::TriggerCompletion);
 
         // TODO : propagate required size on resize to completion too
@@ -1265,7 +1273,7 @@ impl Component for EditorView {
             editor: context.editor,
             count: None,
             register: None,
-            callback: None,
+            callback: Vec::new(),
             on_next_key_callback: None,
             jobs: context.jobs,
         };
@@ -1375,7 +1383,7 @@ impl Component for EditorView {
                 }
 
                 // appease borrowck
-                let callback = cx.callback.take();
+                let callbacks = take(&mut cx.callback);
 
                 // if the command consumed the last view, skip the render.
                 // on the next loop cycle the Application will then terminate.
@@ -1394,6 +1402,16 @@ impl Component for EditorView {
                 if mode != Mode::Insert {
                     doc.append_changes_to_history(view);
                 }
+                let callback = if callbacks.is_empty() {
+                    None
+                } else {
+                    let callback: crate::compositor::Callback = Box::new(move |compositor, cx| {
+                        for callback in callbacks {
+                            callback(compositor, cx)
+                        }
+                    });
+                    Some(callback)
+                };
 
                 EventResult::Consumed(callback)
             }

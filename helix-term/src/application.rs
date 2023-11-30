@@ -1,6 +1,10 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{pos_at_coords, syntax, Selection};
+use helix_core::{
+    chars::char_is_word,
+    diagnostic::{DiagnosticTag, NumberOrString},
+    pos_at_coords, syntax, Selection,
+};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -24,6 +28,7 @@ use crate::{
     commands::apply_workspace_edit,
     compositor::{Compositor, Event},
     config::Config,
+    handlers,
     job::Jobs,
     keymap::Keymaps,
     ui::{self, overlay::overlaid},
@@ -138,6 +143,7 @@ impl Application {
         let area = terminal.size().expect("couldn't get terminal size");
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
+        let handlers = handlers::setup(config.clone());
         let mut editor = Editor::new(
             area,
             theme_loader.clone(),
@@ -145,6 +151,7 @@ impl Application {
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
+            handlers,
         );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -321,9 +328,20 @@ impl Application {
                 Some(event) = input_stream.next() => {
                     self.handle_terminal_events(event).await;
                 }
-                Some(callback) = self.jobs.futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                Some(callback) = self.jobs.callbacks.recv() => {
+                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, Ok(Some(callback)));
                     self.render().await;
+                }
+                Some(msg) = self.jobs.status_messages.recv() => {
+                    let severity = match msg.severity{
+                        helix_event::status::Severity::Hint => Severity::Hint,
+                        helix_event::status::Severity::Info => Severity::Info,
+                        helix_event::status::Severity::Warning => Severity::Warning,
+                        helix_event::status::Severity::Error => Severity::Error,
+                    };
+                    // TODO: show multiple status messages at once to avoid clobbering
+                    self.editor.status_msg = Some((msg.message, severity));
+                    helix_event::request_redraw();
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);

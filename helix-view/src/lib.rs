@@ -1,17 +1,15 @@
 #[macro_use]
 pub mod macros;
 
+pub mod base64;
 pub mod clipboard;
 pub mod document;
 pub mod editor;
 pub mod env;
+pub mod events;
 pub mod graphics;
 pub mod gutter;
-pub mod handlers {
-    pub mod dap;
-    pub mod lsp;
-}
-pub mod base64;
+pub mod handlers;
 pub mod info;
 pub mod input;
 pub mod keyboard;
