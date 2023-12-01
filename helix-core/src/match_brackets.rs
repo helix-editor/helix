@@ -9,14 +9,17 @@ use crate::Syntax;
 const MAX_PLAINTEXT_SCAN: usize = 10000;
 const MATCH_LIMIT: usize = 16;
 
-// Limit matching pairs to only ( ) { } [ ] < > ' ' " "
-const PAIRS: &[(char, char)] = &[
+// Limit matching pairs
+pub const PAIRS: &[(char, char)] = &[
     ('(', ')'),
     ('{', '}'),
     ('[', ']'),
     ('<', '>'),
     ('\'', '\''),
     ('\"', '\"'),
+    ('«', '»'),
+    ('「', '」'),
+    ('（', '）'),
 ];
 
 /// Returns the position of the matching bracket under cursor.
@@ -36,16 +39,16 @@ pub fn find_matching_bracket(syntax: &Syntax, doc: RopeSlice, pos: usize) -> Opt
     find_pair(syntax, doc, pos, false)
 }
 
-// Returns the position of the bracket that is closing the current scope.
-//
-// If the cursor is on an opening or closing bracket, the function
-// behaves equivalent to [`find_matching_bracket`].
-//
-// If the cursor position is within a scope, the function searches
-// for the surrounding scope that is surrounded by brackets and
-// returns the position of the closing bracket for that scope.
-//
-// If no surrounding scope is found, the function returns `None`.
+/// Returns the position of the bracket that is closing the current scope.
+///
+/// If the cursor is on an opening or closing bracket, the function
+/// behaves equivalent to [`find_matching_bracket`].
+///
+/// If the cursor position is within a scope, the function searches
+/// for the surrounding scope that is surrounded by brackets and
+/// returns the position of the closing bracket for that scope.
+///
+/// If no surrounding scope is found, the function returns `None`.
 #[must_use]
 pub fn find_matching_bracket_fuzzy(syntax: &Syntax, doc: RopeSlice, pos: usize) -> Option<usize> {
     find_pair(syntax, doc, pos, true)
@@ -187,6 +190,32 @@ pub fn find_matching_bracket_plaintext(doc: RopeSlice, cursor_pos: usize) -> Opt
     None
 }
 
+/// Given any char in [`PAIRS`], return the open and closing chars. If not found in
+/// [`PAIRS`] return (ch, ch).
+///
+/// ```
+/// use helix_core::match_brackets::get_pair;
+///
+/// assert_eq!(get_pair('['), ('[', ']'));
+/// assert_eq!(get_pair('}'), ('{', '}'));
+/// assert_eq!(get_pair('"'), ('"', '"'));
+/// ```
+pub fn get_pair(ch: char) -> (char, char) {
+    PAIRS
+        .iter()
+        .find(|(open, close)| *open == ch || *close == ch)
+        .copied()
+        .unwrap_or((ch, ch))
+}
+
+pub fn is_open_pair(ch: char) -> bool {
+    PAIRS.iter().any(|(open, _)| *open == ch)
+}
+
+pub fn is_close_pair(ch: char) -> bool {
+    PAIRS.iter().any(|(_, close)| *close == ch)
+}
+
 fn is_valid_bracket(c: char) -> bool {
     PAIRS.iter().any(|(l, r)| *l == c || *r == c)
 }
@@ -220,7 +249,7 @@ fn as_close_pair(doc: RopeSlice, node: &Node) -> Option<char> {
         .find_map(|&(open, close_)| (close_ == close).then_some(open))
 }
 
-/// Checks if `node` or its siblings (at most MATCH_LIMIT nodes) is the specified closing char
+/// Checks if `node` or its siblings (at most `MATCH_LIMIT` nodes) is the specified closing char
 ///
 /// # Returns
 ///

@@ -106,6 +106,14 @@ async fn surround_by_character() -> anyhow::Result<()> {
     ))
     .await?;
 
+    // Selection direction is preserved
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "mi{",
+        "(so [many {#[|good]#} text] here)",
+    ))
+    .await?;
+
     Ok(())
 }
 
