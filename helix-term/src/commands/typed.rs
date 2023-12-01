@@ -2477,7 +2477,7 @@ pub fn process_cmd(
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     let input: Cow<str> = if event == PromptEvent::Validate {
-        helix_view::editor::expand_args(cx.editor, input)?
+        helix_view::editor::expand_variables(cx.editor, input)?
     } else {
         Cow::Borrowed(input)
     };
