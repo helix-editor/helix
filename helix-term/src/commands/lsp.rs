@@ -49,7 +49,7 @@ use std::{
 /// If there is no configured language server that supports the feature, this displays a status message.
 /// Using this macro in a context where the editor automatically queries the LSP
 /// (instead of when the user explicitly does so via a keybind like `gd`)
-/// will spam the "No configured language server supports <feature>" status message confusingly.
+/// will spam the "No configured language server supports \<feature>" status message confusingly.
 #[macro_export]
 macro_rules! language_server_with_feature {
     ($editor:expr, $doc:expr, $feature:expr) => {{

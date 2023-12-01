@@ -213,7 +213,7 @@ impl Buffer {
             && y < self.area.bottom()
     }
 
-    /// Returns the index in the Vec<Cell> for the given global (x, y) coordinates.
+    /// Returns the index in the `Vec<Cell>` for the given global (x, y) coordinates.
     ///
     /// Global coordinates are offset by the Buffer's area offset (`x`/`y`).
     ///
@@ -242,7 +242,7 @@ impl Buffer {
         ((y - self.area.y) as usize) * (self.area.width as usize) + ((x - self.area.x) as usize)
     }
 
-    /// Returns the index in the Vec<Cell> for the given global (x, y) coordinates,
+    /// Returns the index in the `Vec<Cell>` for the given global (x, y) coordinates,
     /// or `None` if the coordinates are outside the buffer's area.
     fn index_of_opt(&self, x: u16, y: u16) -> Option<usize> {
         if self.in_bounds(x, y) {

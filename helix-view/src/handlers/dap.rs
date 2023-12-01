@@ -369,9 +369,7 @@ impl Editor {
                     {
                         Ok(process) => process,
                         Err(err) => {
-                            // TODO replace the pretty print {:?} with a regular format {}
-                            // when the MSRV is raised to 1.60.0
-                            self.set_error(format!("Error starting external terminal: {:?}", err));
+                            self.set_error(format!("Error starting external terminal: {}", err));
                             return true;
                         }
                     };

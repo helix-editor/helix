@@ -2,8 +2,9 @@
 name = "helix-core"
 version = "0.6.0"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
-edition = "2021"
-license = "MPL-2.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 description = "Helix editor core editing primitives"
 categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
@@ -31,7 +32,7 @@ arc-swap = "1"
 regex = "1"
 bitflags = "2.4"
 ahash = "0.8.6"
-hashbrown = { version = "0.14.2", features = ["raw"] }
+hashbrown = { version = "0.14.3", features = ["raw"] }
 dunce = "1.0"
 
 log = "0.4"
