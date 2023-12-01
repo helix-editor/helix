@@ -2471,6 +2471,18 @@ fn move_buffer(
     Ok(())
 }
 
+fn echo(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let args = args.join(" ");
+
+    cx.editor.set_status(args);
+
+    Ok(())
+}
+
 pub fn process_cmd(
     cx: &mut compositor::Context,
     input: &str,
@@ -3118,6 +3130,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "echo",
+        aliases: &[],
+        doc: "Print the processed input to the editor status",
+        fun: echo,
+        signature: CommandSignature::all(completers::variables)
     },
 ];
 

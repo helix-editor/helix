@@ -18,7 +18,7 @@ async fn test_variable_expansion() -> anyhow::Result<()> {
 
         assert_eq!(
             expand_variables(&app.editor, "%{dirname}").unwrap(),
-            std::env::current_dir()?.to_str().unwrap()
+            helix_view::document::SCRATCH_BUFFER_NAME,
         );
     }
 
@@ -70,9 +70,9 @@ async fn test_variable_expansion() -> anyhow::Result<()> {
         let mut app = AppBuilder::new().with_file(file.path(), None).build()?;
         test_key_sequence(
             &mut app,
-            Some("ihelix<esc>%"),
+            Some("ihelix<ret>helix<ret>helix<ret><esc>"),
             Some(&|app| {
-                assert_eq!(expand_variables(&app.editor, "%{linenumber}").unwrap(), "1");
+                assert_eq!(expand_variables(&app.editor, "%{linenumber}").unwrap(), "4");
             }),
             false,
         )

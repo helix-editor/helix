@@ -382,6 +382,13 @@ pub mod completers {
         })
     }
 
+    pub fn variables(_: &Editor, input: &str) -> Vec<Completion> {
+        fuzzy_match(input, helix_view::editor::VARIABLES, false)
+            .into_iter()
+            .map(|(name, _)| ((0..), name.to_owned().into()))
+            .collect()
+    }
+
     #[derive(Copy, Clone, PartialEq, Eq)]
     enum FileMatch {
         /// Entry should be ignored
