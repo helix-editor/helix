@@ -172,7 +172,7 @@ All git related options are only enabled in a git repository.
 |`parents` | Enables reading ignore files from parent directories | `true`
 |`ignore` | Enables reading `.ignore` files | `true`
 |`git-ignore` | Enables reading `.gitignore` files | `true`
-|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludefile` option | `true`
+|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `true`
 |`git-exclude` | Enables reading `.git/info/exclude` files | `true`
 |`max-depth` | Set with an integer value for maximum depth to recurse | Defaults to `None`.
 
