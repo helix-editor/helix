@@ -7,7 +7,7 @@
 }
 
 #page-wrapper.page-wrapper {
-    transform: none;
+    transform: none !important;
     margin-inline-start: 0px;
     overflow-y: initial;
 }
