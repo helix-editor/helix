@@ -4390,28 +4390,39 @@ fn format_selections(cx: &mut Context) {
 fn join_selections_impl(cx: &mut Context, select_space: bool) {
     use movement::skip_while;
     let (view, doc) = current!(cx.editor);
-    let text = doc.text();
-    let slice = doc.text().slice(..);
 
     let mut changes = Vec::new();
-    let fragment = Tendril::from(" ");
 
     for selection in doc.selection(view.id) {
-        let (start, mut end) = selection.line_range(slice);
-        if start == end {
-            end = (end + 1).min(text.len_lines() - 1);
-        }
-        let lines = start..end;
+        let slice = doc.text().slice(..);
+        let text = doc.text();
 
-        changes.reserve(lines.len());
+        let selected_lines = {
+            let (start, mut end) = selection.line_range(slice);
+            if start == end {
+                end = (end + 1).min(text.len_lines() - 1);
+            }
+            start..end
+        };
 
-        for line in lines {
-            let start = line_end_char_index(&slice, line);
-            let mut end = text.line_to_char(line + 1);
+        for selected_line in selected_lines {
+            let start = line_end_char_index(&slice, selected_line);
+            let mut end = text.line_to_char(selected_line + 1);
             end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
 
             // need to skip from start, not end
-            let change = (start, end, Some(fragment.clone()));
+            let change = {
+                let separator = {
+                    let line_contains_only_space = text.char(end) == '\n';
+                    if line_contains_only_space {
+                        None
+                    } else {
+                        Some(Tendril::from(" "))
+                    }
+                };
+
+                (start, end, separator)
+            };
             changes.push(change);
         }
     }
@@ -4423,9 +4434,6 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
 
     changes.sort_unstable_by_key(|(from, _to, _text)| *from);
     changes.dedup();
-
-    // TODO: joining multiple empty lines should be replaced by a single space.
-    // need to merge change ranges that touch
 
     // select inserted spaces
     let transaction = if select_space {
