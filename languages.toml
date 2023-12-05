@@ -1333,6 +1333,7 @@ file-types = ["md", "markdown", "PULLREQ_EDITMSG", "mkd", "mdwn", "mdown", "mark
 roots = [".marksman.toml"]
 language-servers = [ "marksman" ]
 indent = { tab-width = 2, unit = "  " }
+soft-wrap.enable = true
 
 [[grammar]]
 name = "markdown"
