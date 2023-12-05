@@ -4413,7 +4413,7 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
             // need to skip from start, not end
             let change = {
                 let separator = {
-                    let line_contains_only_space = text.char(end) == '\n';
+                    let line_contains_only_space = LineEnding::from_char(text.char(end)).is_some();
                     if line_contains_only_space {
                         None
                     } else {
