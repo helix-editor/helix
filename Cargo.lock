@@ -1017,9 +1017,9 @@ dependencies = [
 
 [[package]]
 name = "grep-searcher"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fda02a2d9a8c9375ee678bfcba5919b31854c617b6b4f60edec7c9f1dceb84b9"
+checksum = "ba536ae4f69bec62d8839584dd3153d3028ef31bb229f04e09fb5a9e5a193c54"
 dependencies = [
  "bstr",
  "encoding_rs",
