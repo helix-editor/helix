@@ -1,22 +1,23 @@
 [package]
 name = "helix-tui"
-version = "0.6.0"
-authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
-description = """
-A library to build rich terminal user interfaces or dashboards
-"""
+description = """A library to build rich terminal user interfaces or dashboards"""
+include = ["src/**/*", "README.md"]
+version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-categories = ["editor"]
-repository = "https://github.com/helix-editor/helix"
-homepage = "https://helix-editor.com"
-include = ["src/**/*", "README.md"]
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [features]
 default = ["crossterm"]
 
 [dependencies]
+helix-view = { path = "../helix-view", features = ["term"] }
+helix-core = { path = "../helix-core" }
+
 bitflags = "2.4"
 cassowary = "0.3"
 unicode-segmentation = "1.10"
@@ -25,5 +26,3 @@ termini = "1.0"
 serde = { version = "1", "optional" = true, features = ["derive"]}
 once_cell = "1.18"
 log = "~0.4"
-helix-view = { version = "0.6", path = "../helix-view", features = ["term"] }
-helix-core = { version = "0.6", path = "../helix-core" }

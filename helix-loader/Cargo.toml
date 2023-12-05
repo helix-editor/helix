@@ -1,14 +1,14 @@
 [package]
 name = "helix-loader"
-version = "0.6.0"
-description = "A post-modern text editor."
-authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+description = "Build bootstrapping for Helix crates"
+version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-categories = ["editor"]
-repository = "https://github.com/helix-editor/helix"
-homepage = "https://helix-editor.com"
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [[bin]]
 name = "hx-loader"

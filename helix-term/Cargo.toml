@@ -1,16 +1,16 @@
 [package]
 name = "helix-term"
-version = "0.6.0"
 description = "A post-modern text editor."
-authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
-edition.workspace = true
-license.workspace = true
-categories = ["editor", "command-line-utilities"]
-repository = "https://github.com/helix-editor/helix"
-homepage = "https://helix-editor.com"
 include = ["src/**/*", "README.md"]
 default-run = "hx"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [features]
 default = ["git"]
@@ -23,13 +23,13 @@ name = "hx"
 path = "src/main.rs"
 
 [dependencies]
-helix-core = { version = "0.6", path = "../helix-core" }
-helix-event = { version = "0.6", path = "../helix-event" }
-helix-view = { version = "0.6", path = "../helix-view" }
-helix-lsp = { version = "0.6", path = "../helix-lsp" }
-helix-dap = { version = "0.6", path = "../helix-dap" }
-helix-vcs = { version = "0.6", path = "../helix-vcs" }
-helix-loader = { version = "0.6", path = "../helix-loader" }
+helix-core = { path = "../helix-core" }
+helix-event = { path = "../helix-event" }
+helix-view = { path = "../helix-view" }
+helix-lsp = { path = "../helix-lsp" }
+helix-dap = { path = "../helix-dap" }
+helix-vcs = { path = "../helix-vcs" }
+helix-loader = { path = "../helix-loader" }
 
 anyhow = "1"
 once_cell = "1.18"
@@ -79,7 +79,7 @@ libc = "0.2.150"
 crossterm = { version = "0.27", features = ["event-stream", "use-dev-tty"] }
 
 [build-dependencies]
-helix-loader = { version = "0.6", path = "../helix-loader" }
+helix-loader = { path = "../helix-loader" }
 
 [dev-dependencies]
 smallvec = "1.11"

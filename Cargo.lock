@@ -1048,7 +1048,7 @@ dependencies = [
 
 [[package]]
 name = "helix-core"
-version = "0.6.0"
+version = "23.10.0"
 dependencies = [
  "ahash",
  "arc-swap",
@@ -1083,7 +1083,7 @@ dependencies = [
 
 [[package]]
 name = "helix-dap"
-version = "0.6.0"
+version = "23.10.0"
 dependencies = [
  "anyhow",
  "fern",
@@ -1098,7 +1098,7 @@ dependencies = [
 
 [[package]]
 name = "helix-event"
-version = "0.6.0"
+version = "23.10.0"
 dependencies = [
  "parking_lot",
  "tokio",
@@ -1106,7 +1106,7 @@ dependencies = [
 
 [[package]]
 name = "helix-loader"
-version = "0.6.0"
+version = "23.10.0"
 dependencies = [
  "anyhow",
  "cc",
@@ -1125,7 +1125,7 @@ dependencies = [
 
 [[package]]
 name = "helix-lsp"
-version = "0.6.0"
+version = "23.10.0"
 dependencies = [
  "anyhow",
  "futures-executor",
@@ -1147,11 +1147,11 @@ dependencies = [
 
 [[package]]
 name = "helix-parsec"
-version = "0.6.0"
+version = "23.10.0"
 
 [[package]]
 name = "helix-term"
-version = "0.6.0"
+version = "23.10.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1193,7 +1193,7 @@ dependencies = [
 
 [[package]]
 name = "helix-tui"
-version = "0.6.0"
+version = "23.10.0"
 dependencies = [
  "bitflags 2.4.1",
  "cassowary",
@@ -1209,7 +1209,7 @@ dependencies = [
 
 [[package]]
 name = "helix-vcs"
-version = "0.6.0"
+version = "23.10.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1225,7 +1225,7 @@ dependencies = [
 
 [[package]]
 name = "helix-view"
-version = "0.6.0"
+version = "23.10.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2610,7 +2610,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.6.0"
+version = "23.10.0"
 dependencies = [
  "helix-core",
  "helix-loader",

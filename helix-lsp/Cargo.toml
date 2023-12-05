@@ -1,21 +1,21 @@
 [package]
 name = "helix-lsp"
-version = "0.6.0"
-authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+description = "LSP client implementation for Helix project"
+version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "LSP client implementation for Helix project"
-categories = ["editor"]
-repository = "https://github.com/helix-editor/helix"
-homepage = "https://helix-editor.com"
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-helix-core = { version = "0.6", path = "../helix-core" }
-helix-loader = { version = "0.6", path = "../helix-loader" }
-helix-parsec = { version = "0.6", path = "../helix-parsec" }
+helix-core = { path = "../helix-core" }
+helix-loader = { path = "../helix-loader" }
+helix-parsec = { path = "../helix-parsec" }
 
 anyhow = "1.0"
 futures-executor = "0.3"

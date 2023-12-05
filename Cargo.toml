@@ -40,6 +40,11 @@ tree-sitter = { version = "0.20", git = "https://github.com/tree-sitter/tree-sit
 nucleo = "0.2.0"
 
 [workspace.package]
+version = "23.10.0"
 edition = "2021"
+authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+categories = ["editor"]
+repository = "https://github.com/helix-editor/helix"
+homepage = "https://helix-editor.com"
 license = "MPL-2.0"
 rust-version = "1.70"
