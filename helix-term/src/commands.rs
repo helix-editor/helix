@@ -4390,24 +4390,24 @@ fn format_selections(cx: &mut Context) {
 fn join_selections_impl(cx: &mut Context, select_space: bool) {
     use movement::skip_while;
     let (view, doc) = current!(cx.editor);
+    let text = doc.text();
+    let slice = text.slice(..);
 
     let mut changes = Vec::new();
 
     for selection in doc.selection(view.id) {
-        let slice = doc.text().slice(..);
-        let text = doc.text();
-
-        let selected_lines = {
+        let lines = {
             let (start, mut end) = selection.line_range(slice);
             if start == end {
                 end = (end + 1).min(text.len_lines() - 1);
             }
             start..end
         };
+        changes.reserve(lines.len());
 
-        for selected_line in selected_lines {
-            let start = line_end_char_index(&slice, selected_line);
-            let mut end = text.line_to_char(selected_line + 1);
+        for line in lines {
+            let start = line_end_char_index(&slice, line);
+            let mut end = text.line_to_char(line + 1);
             end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
 
             // need to skip from start, not end
@@ -4446,9 +4446,9 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
             })
             .collect();
         let selection = Selection::new(ranges, 0);
-        Transaction::change(doc.text(), changes.into_iter()).with_selection(selection)
+        Transaction::change(text, changes.into_iter()).with_selection(selection)
     } else {
-        Transaction::change(doc.text(), changes.into_iter())
+        Transaction::change(text, changes.into_iter())
     };
 
     doc.apply(&transaction, view.id);
