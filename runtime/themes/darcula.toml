@@ -35,7 +35,11 @@
 "constant.numeric" = "lightblue"
 "constant.character.escape" = "white"
 "attribute" = "yellow"
-"type" = "orange"
+"type" = "white"
+"type.builtin" = "orange"
+"type.parameter" = { fg = "white", modifiers = ["bold"] }
+"type.enum" = "white"
+"type.enum.variant" = "orange"
 "string"  = "darkgreen"
 "function" = "yellow"
 "function.macro" = "green"
