@@ -1668,6 +1668,7 @@ source = { git = "https://github.com/r-lib/tree-sitter-r", rev = "cc04302e1bff76
 [[language]]
 name = "rmarkdown"
 scope = "source.rmd"
+language-id = "rmd"
 injection-regex = "(r|R)md"
 file-types = ["rmd", "Rmd"]
 indent = { tab-width = 2, unit = "  " }
