@@ -4396,13 +4396,12 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
     let mut changes = Vec::new();
 
     for selection in doc.selection(view.id) {
-        let lines = {
-            let (start, mut end) = selection.line_range(slice);
-            if start == end {
-                end = (end + 1).min(text.len_lines() - 1);
-            }
-            start..end
-        };
+        let (start, mut end) = selection.line_range(slice);
+        if start == end {
+            end = (end + 1).min(text.len_lines() - 1);
+        }
+        let lines = start..end;
+
         changes.reserve(lines.len());
 
         for line in lines {
