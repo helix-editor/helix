@@ -4409,21 +4409,13 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
             let mut end = text.line_to_char(line + 1);
             end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
 
-            // need to skip from start, not end
-            let change = {
-                let separator = {
-                    let line_end_index = line_end_char_index(&slice, line + 1);
-                    let line_contains_only_space = end == line_end_index;
-                    if line_contains_only_space {
-                        None
-                    } else {
-                        Some(Tendril::from(" "))
-                    }
-                };
-
-                (start, end, separator)
+            let separator = if end == line_end_char_index(&slice, line + 1) {
+                // the joining line contains only space-characters => don't include a whitespace when joining
+                None
+            } else {
+                Some(Tendril::from(" "))
             };
-            changes.push(change);
+            changes.push((start, end, separator));
         }
     }
 
