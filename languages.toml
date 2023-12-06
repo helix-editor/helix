@@ -2220,7 +2220,7 @@ formatter = { command = "dfmt" }
 
 [[grammar]]
 name = "d"
-source = { git = "https://github.com/gdamore/tree-sitter-d", rev="601c4a1e8310fb2f3c43fa8a923d0d27497f3c04" }
+source = { git = "https://github.com/gdamore/tree-sitter-d", rev = "5566f8ce8fc24186fad06170bbb3c8d97c935d74" }
 
 [[language]]
 name = "vhs"
