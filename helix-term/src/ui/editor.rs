@@ -1423,9 +1423,16 @@ impl Component for EditorView {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // clear with background color
-        surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
+
+        // clear with background color
+        let surface_theme = cx.editor.theme.get("ui.background");
+        let surface_theme = match config.bg_opacity {
+            helix_view::editor::Opacity::Transparent => surface_theme.bg(Color::Reset),
+            helix_view::editor::Opacity::Theme => surface_theme,
+        };
+
+        surface.set_style(area, surface_theme);
 
         // check if bufferline should be rendered
         use helix_view::editor::BufferLine;
