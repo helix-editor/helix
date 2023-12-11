@@ -27,7 +27,7 @@ anyhow = "1"
 crossterm = { version = "0.27", optional = true }
 
 # Conversion traits
-once_cell = "1.18"
+once_cell = "1.19"
 url = "2.5.0"
 
 arc-swap = { version = "1.6.0" }
