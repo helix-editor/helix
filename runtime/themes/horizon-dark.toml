@@ -26,7 +26,7 @@ namespace = "orange"
 "ui.gutter" = "gray"
 "ui.gutter.selected" = "blue-gray"
 "ui.selection" = { bg = "selection" }
-"ui.virtual.indent-guide" = { fg = "gray"}
+"ui.virtual.indent-guide" = { fg = "gray" }
 "ui.virtual.whitespace" = { fg = "blue-gray" }
 "ui.statusline" = { bg = "dark-bg", fg = "blue-gray" }
 "ui.popup" = { bg = "bg", fg = "gray" }
@@ -40,8 +40,8 @@ namespace = "orange"
 "diagnostic" = { underline = { style = "curl" } }
 "diagnostic.hint" = { underline = { color = "green", style = "curl" } }
 "diagnostic.info" = { underline = { color = "blue", style = "curl" } }
-"diagnostics.error" = { underline = { color = "red", style = "curl"} }
-"diagnostics.warning" = { underline = { color = "orange", style = "curl"} }
+"diagnostics.error" = { underline = { color = "red", style = "curl" } }
+"diagnostics.warning" = { underline = { color = "orange", style = "curl" } }
 
 warning = { fg = "orange", modifiers = ["bold"] }
 error = { fg = "red", modifiers = ["bold"] }
