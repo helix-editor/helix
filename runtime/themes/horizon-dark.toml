@@ -24,9 +24,10 @@ namespace = "orange"
 "ui.cursor.primary" = { modifiers = ["reversed"] }
 "ui.cursor.match" = { bg = "selection" }
 "ui.gutter" = "gray"
-"ui.gutter.selected" = "orange"
+"ui.gutter.selected" = "blue-gray"
 "ui.selection" = { bg = "selection" }
 "ui.virtual.indent-guide" = { fg = "gray"}
+"ui.virtual.whitespace" = { fg = "blue-gray" }
 "ui.statusline" = { bg = "dark-bg", fg = "blue-gray" }
 "ui.popup" = { bg = "bg", fg = "gray" }
 "ui.help" = { bg = "bg", fg = "white" }
