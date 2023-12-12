@@ -1,0 +1,187 @@
+# This theme is inspired by doom-ir-black with some adjustments for higher contrast.
+#
+# Author: Schweber (https://github.com/Schweber)
+
+
+### Syntax highlight
+# "attributes" = "yellow" # Class attributes, html tag attributes
+"attributes" = "blue" # Class attributes, html tag attributes
+"comment" = "grey"
+# "comment.line" = "grey"
+# "comment.block" = { fg = "green", modifiers = ["italic"] }
+# "comment.block.documentation" = { fg = "green", modifiers = ["italic"] }
+"constant" = "green"
+# "constant" = "green-alt"
+# "constant.builtin" = "green-alt"
+# "constant.builtin.boolean" = "green-alt"
+# "constant.character" = "green-alt"
+# "constant.character.escape" = "green-alt"
+# "constant.numeric" = "green-alt"
+# "constant.numeric.integer" = "green-alt"
+# "constant.numeric.float" = "green-alt"
+
+"constructor" = "aqua"
+
+"function" = "magenta"
+# "function.builtin" = "blue"
+"function.method" = "magenta-light"
+"function.macro" = "magenta-light"
+"function.special" = "magenta-light"
+
+"keyword" = "blue"
+# "keyword.control" = "purple"
+# "keyword.control.conditional" = "purple"
+# "keyword.control.repeat" = "purple"
+# "keyword.control.import" = "purple"
+# "keyword.control.return" = "purple"
+# "keyword.control.exception" = "purple"
+# "keyword.operator" = "blue"
+# "keyword.directive" = "blue"
+# "keyword.function" = "blue"
+# "keyword.storage" = "blue"
+# "keyword.storage.type" = "blue"
+# "keyword.storage.modifier" = "blue"
+
+"label" = "blue"
+
+"namespace" = "purple" # importierte crates
+
+"operator" = "white"
+
+"punctuation" = { fg = "blue" }
+# "punctuation.bracket" = { fg = "blue" }
+"punctuation.delimiter" = { fg = "white", modifiers = ["bold"] }
+# "punctuation.special" = { fg = "blue" }
+
+"string" = "green"
+# "string.regexp" = "green"
+# "string.special" = "green"
+# "string.special.path" = "green"
+# "string.special.url" = "green"
+# "string.special.symbol" = "green"
+
+"tag" = { fg = "cyan" }
+
+"type" = "white"
+# "type.builtin" = "white"
+
+"variable" = "magenta"
+"variable.builtin" = "magenta-light"
+"variable.parameter" = "white"
+"variable.other" = "magenta-light"
+"variable.other.member" = "magenta-light"
+
+### Interface
+"ui.background" = { bg = "black" }
+"ui.window" = { fg = "aqua" }
+"special" = "green"                          # file picker fuzzy match
+"ui.background.separator" = { fg = "white" }
+"ui.text" = "white"
+"ui.text.inactive" = "grey"
+"ui.text.focus" = { modifiers = ["reversed"] } # file picker selected
+"ui.text.info" = { fg = "grey" }
+
+"ui.virtual.indent-guide" = "grey-dark"
+"ui.virtual.inlay-hint" = "grey" # lsp type hint 
+"ui.virtual.ruler" = { fg = "white", bg = "grey" }
+"ui.virtual.whitespace" = "grey"
+"ui.virtual.wrap" = "grey-dark"
+
+"ui.statusline" = { fg = "white", bg = "deep_blue" }
+"ui.statusline.inactive" = { fg = "grey", bg = "deep_blue" }
+# "ui.statusline.normal" = { fg = "black", bg = "aqua" }
+# "ui.statusline.insert" = { fg = "black", bg = "orange" }
+# "ui.statusline.select" = { fg = "black", bg = "purple" }
+# "ui.statusline.separator" = { fg = "aqua", bg = "white" }
+
+# "ui.bufferline" = { fg = "grey", bg = "base2" }
+# "ui.bufferline.active" = { fg = "white", bg = "base4" }
+# "ui.bufferline.background" = { bg = "bg" }
+"ui.cursor" = { fg = "black", bg = "white" }
+# "ui.cursor.insert" = { fg = "black", bg = "white" }
+# "ui.cursor.select" = { fg = "black", bg = "white" }
+"ui.cursor.match" = { bg = "grey", modifiers = ["dim"] }
+"ui.cursor.primary" = { fg = "black", bg = "white", modifiers = ["slow_blink"] }
+"ui.cursor.secondary" = "white"
+# "ui.cursorline" = { bg = "grey-dark" }
+"ui.cursorline.primary" = { bg = "grey-darker" }
+# "ui.cursorline.primary" = { bg = "deep_blue", underline = { color = "orange", style = "double_line" } }
+# "ui.cursorline.secondary" = { bg = "dark_blue", underline = { color = "white", style = "line" } }
+"ui.selection" = { fg = "dark_blue", bg = "grey" }
+"ui.selection.primary" = { fg = "deep_blue", bg = "grey" }
+
+"ui.menu" = { fg = "white", bg = "deep_blue" }
+"ui.menu.selected" = { fg = "orange", underline = { style = "line" } }
+"ui.menu.scroll" = { fg = "aqua", bg = "black" }
+"ui.help" = { fg = "white", bg = "deep_blue" }
+
+"ui.popup" = { bg = "deep_blue" }
+"ui.popup.info" = { fg = "white", bg = "deep_blue" }
+
+"ui.gutter" = { bg = "black" }
+"ui.gutter.selected" = { bg = "black" }
+"ui.linenr" = { fg = "grey", bg = "black" }
+"ui.linenr.selected" = { fg = "yellow", bg = "black", modifiers = ["bold"] }
+
+# Diagnostic
+"diagnostic" = { fg = "grey" }
+"diagnostic.info" = { underline = { color = "white", style = "dotted" } }
+"diagnostic.hint" = { underline = { color = "yellow", style = "dashed" } }
+"diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"info" = "grey"
+"hint" = "yellow"
+"warning" = "orange"
+"error" = "red"
+"debug" = "red"
+
+"diff.plus" = "green"
+"diff.delta" = "blue"
+# "diff.delta.moved" = "blue"
+"diff.minus" = "pink"
+
+
+# Markup 
+"markup.heading" = { fg = "yellow", modifiers = [
+  "bold",
+], underline = { color = "yellow", style = "double_line" } }
+"markup.list" = "pink"
+"markup.bold" = { fg = "emerald_green", modifiers = ["bold"] }
+"markup.italic" = { fg = "blue", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link" = { fg = "orange" }
+"markup.link.label" = { fg = "green" }
+"markup.link.text" = "pink"
+"markup.link.url" = { fg = "blue", underline = { color = "blue", style = "line" } }
+"markup.quote" = "yellow"
+"markup.raw" = "brown"
+"markup.raw.block" = { fg = "green", bg = "base4" }
+"markup.raw.inline" = { fg = "green", bg = "base4" }
+
+
+[palette]
+aqua = "#6fc3df"
+black = "#000000"
+blue = "#00ffff"
+brown = "#ce9178"
+cyan = "#C6C5FE"
+dark-blue = "#2257A0"
+dark-cyan = "#5699AF"
+deep_blue = "#142743"
+emerald_green = "#4ec9b0"
+green = "#A8FF60"
+green-alt = "#99CC99"
+grey = "#919191"
+grey-dark = "#2E2E2E"
+grey-darker = "#121212"
+magenta = "#ff4bff"
+magenta-light = "#ff7cfd"
+orange = "#E9C062"
+orange-alt = "#FFD2A7"
+pink = "#ff5c8d"
+purple = "#c586c0"
+red = "#ff6c60"
+teal = "#00A0A0"
+violet = "#a9a1e1"
+white = "#ffffff"
+yellow = "#FFFF00"
