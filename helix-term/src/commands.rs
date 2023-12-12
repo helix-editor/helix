@@ -1197,10 +1197,8 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 
         match shellexpand::full(&path) {
             Ok(path) => paths.push(path.to_string()),
-            Err(e) => {
-                cx.editor.set_error(format!("{}", e));
-            }
-        }
+            Err(e) => cx.editor.set_error(format!("{}", e)),
+        };
     }
 
     for sel in paths {
