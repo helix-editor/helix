@@ -1176,6 +1176,8 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     let primary = selections.primary();
     // Checks whether there is only one selection with a width of 1
     if selections.len() == 1 && primary.len() == 1 {
+        paths.clear();
+
         let count = cx.count();
         let text_slice = text.slice(..);
         // In this case it selects the WORD under the cursor
@@ -1187,14 +1189,18 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             true,
         );
         // Trims some surrounding chars so that the actual file is opened.
-        let surrounding_chars: &[_] = &['\'', '"', '(', ')'];
-        paths.clear();
-        paths.push(
-            current_word
-                .fragment(text_slice)
-                .trim_matches(surrounding_chars)
-                .to_string(),
-        );
+        let surrounding_chars: &[_] = &['\'', '"', '(', ')', ',', ';', '{', '}', '[', ']'];
+        let path = current_word
+            .fragment(text_slice)
+            .trim_matches(surrounding_chars)
+            .to_string();
+
+        match shellexpand::full(&path) {
+            Ok(path) => paths.push(path.to_string()),
+            Err(e) => {
+                cx.editor.set_error(format!("{}", e));
+            }
+        }
     }
 
     for sel in paths {
