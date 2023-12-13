@@ -1180,79 +1180,8 @@ impl Application {
                         let language_server = language_server!();
                         let offset_encoding = language_server.offset_encoding();
 
-                        let success = match params {
-                            lsp::ShowDocumentParams {
-                                external: Some(true),
-                                uri,
-                                ..
-                            } => {
-                                self.jobs.callback(crate::open_external_url_callback(uri));
-                                true
-                            }
-                            lsp::ShowDocumentParams {
-                                uri,
-                                selection,
-                                take_focus,
-                                ..
-                            } => {
-                                match uri.to_file_path() {
-                                    Ok(path) => {
-                                        let action = match take_focus {
-                                            Some(true) => helix_view::editor::Action::Replace,
-                                            _ => helix_view::editor::Action::VerticalSplit,
-                                        };
-
-                                        match self.editor.open(&path, action) {
-                                            Ok(id) => {
-                                                let doc = doc_mut!(self.editor, &id);
-                                                if let Some(range) = selection {
-                                                    // TODO: convert inside server
-                                                    if let Some(new_range) = lsp_range_to_range(
-                                                        doc.text(),
-                                                        range,
-                                                        offset_encoding,
-                                                    ) {
-                                                        let view = view_mut!(self.editor);
-
-                                                        // we flip the range so that the cursor sits on the start of the symbol
-                                                        // (for example start of the function).
-                                                        doc.set_selection(
-                                                            view.id,
-                                                            Selection::single(
-                                                                new_range.head,
-                                                                new_range.anchor,
-                                                            ),
-                                                        );
-                                                        if action.align_view(view, doc.id()) {
-                                                            align_view(doc, view, Align::Center);
-                                                        }
-                                                    } else {
-                                                        log::warn!(
-                                                            "lsp position out of bounds - {:?}",
-                                                            range
-                                                        );
-                                                    };
-                                                };
-                                                true
-                                            }
-                                            Err(err) => {
-                                                log::error!(
-                                                    "failed to open path: {:?}: {:?}",
-                                                    uri,
-                                                    err
-                                                );
-                                                false
-                                            }
-                                        }
-                                    }
-                                    Err(err) => {
-                                        log::error!("unsupported file URI: {}: {:?}", uri, err);
-                                        false
-                                    }
-                                }
-                            }
-                        };
-                        Ok(json!(lsp::ShowDocumentResult { success }))
+                        let result = self.handle_show_document(params, offset_encoding);
+                        Ok(json!(result))
                     }
                 };
 
@@ -1260,6 +1189,68 @@ impl Application {
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }
+    }
+
+    fn handle_show_document(
+        &mut self,
+        params: lsp::ShowDocumentParams,
+        offset_encoding: helix_lsp::OffsetEncoding,
+    ) -> lsp::ShowDocumentResult {
+        if let lsp::ShowDocumentParams {
+            external: Some(true),
+            uri,
+            ..
+        } = params
+        {
+            self.jobs.callback(crate::open_external_url_callback(uri));
+            return lsp::ShowDocumentResult { success: true };
+        };
+
+        let lsp::ShowDocumentParams {
+            uri,
+            selection,
+            take_focus,
+            ..
+        } = params;
+
+        let path = match uri.to_file_path() {
+            Ok(path) => path,
+            Err(err) => {
+                log::error!("unsupported file URI: {}: {:?}", uri, err);
+                return lsp::ShowDocumentResult { success: false };
+            }
+        };
+
+        let action = match take_focus {
+            Some(true) => helix_view::editor::Action::Replace,
+            _ => helix_view::editor::Action::VerticalSplit,
+        };
+
+        let doc_id = match self.editor.open(&path, action) {
+            Ok(id) => id,
+            Err(err) => {
+                log::error!("failed to open path: {:?}: {:?}", uri, err);
+                return lsp::ShowDocumentResult { success: false };
+            }
+        };
+
+        let doc = doc_mut!(self.editor, &doc_id);
+        if let Some(range) = selection {
+            // TODO: convert inside server
+            if let Some(new_range) = lsp_range_to_range(doc.text(), range, offset_encoding) {
+                let view = view_mut!(self.editor);
+
+                // we flip the range so that the cursor sits on the start of the symbol
+                // (for example start of the function).
+                doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
+                if action.align_view(view, doc.id()) {
+                    align_view(doc, view, Align::Center);
+                }
+            } else {
+                log::warn!("lsp position out of bounds - {:?}", range);
+            };
+        };
+        lsp::ShowDocumentResult { success: true }
     }
 
     async fn claim_term(&mut self) -> std::io::Result<()> {
