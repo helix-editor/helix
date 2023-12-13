@@ -156,7 +156,7 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
     // ';' is behind the path
     test_key_sequence(
         &mut AppBuilder::new().with_file(file.path(), None).build()?,
-        Some("iimport 'one.js';<esc>hgf"),
+        Some("iimport 'one.js';<esc>B;gf"),
         Some(&|app| {
             assert_eq!(1, match_paths(app, vec!["one.js"]));
         }),
