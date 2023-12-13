@@ -11,11 +11,11 @@ use crate::{
     Align, Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
-use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::Call;
+use helix_vcs::Git;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -71,6 +71,15 @@ where
             .try_into()
             .map_err(|_| serde::ser::Error::custom("duration value overflowed u64"))?,
     )
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DiffSource {
+    #[default]
+    Git,
+    File,
+    None,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -291,6 +300,9 @@ pub struct Config {
     pub insert_final_newline: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
+    #[serde(default)]
+    /// What the diff gutter should diff against
+    pub diff_source: DiffSource,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -841,6 +853,7 @@ impl Default for Config {
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
+            diff_source: DiffSource::default(),
         }
     }
 }
@@ -889,7 +902,7 @@ pub struct Editor {
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
-    pub diff_providers: DiffProviderRegistry,
+    pub diff_provider: Git,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -1035,7 +1048,7 @@ impl Editor {
             theme: theme_loader.default(),
             language_servers,
             diagnostics: BTreeMap::new(),
-            diff_providers: DiffProviderRegistry::default(),
+            diff_provider: Git,
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
@@ -1452,10 +1465,7 @@ impl Editor {
                 self.config.clone(),
             )?;
 
-            if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
-                doc.set_diff_base(diff_base);
-            }
-            doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
+            doc.update_diff_base(&path, &self.diff_provider, self.config().diff_source);
 
             let id = self.new_document(doc);
             self.launch_language_servers(id);
@@ -1826,6 +1836,15 @@ impl Editor {
         self.debugger
             .as_ref()
             .and_then(|debugger| debugger.current_stack_frame())
+    }
+
+    pub fn update_diff_base(&mut self) {
+        let diff_source = self.config().diff_source;
+        for doc in self.documents.values_mut() {
+            if let Some(path) = doc.path().cloned() {
+                doc.update_diff_base(&path, &self.diff_provider, diff_source);
+            }
+        }
     }
 }
 

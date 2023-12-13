@@ -8,7 +8,7 @@ use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
-use helix_vcs::{DiffHandle, DiffProviderRegistry};
+use helix_vcs::{DiffHandle, Git};
 
 use ::parking_lot::Mutex;
 use serde::de::{self, Deserialize, Deserializer};
@@ -33,7 +33,7 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
-use crate::editor::Config;
+use crate::editor::{Config, DiffSource};
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -994,7 +994,8 @@ impl Document {
     pub fn reload(
         &mut self,
         view: &mut View,
-        provider_registry: &DiffProviderRegistry,
+        diff_provider: &Git,
+        diff_source: DiffSource,
     ) -> Result<(), Error> {
         let encoding = self.encoding;
         let path = self
@@ -1021,12 +1022,7 @@ impl Document {
 
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path) {
-            Some(diff_base) => self.set_diff_base(diff_base),
-            None => self.diff_handle = None,
-        }
-
-        self.version_control_head = provider_registry.get_current_head_name(&path);
+        self.update_diff_base(&path, diff_provider, diff_source);
 
         Ok(())
     }
@@ -1582,27 +1578,63 @@ impl Document {
     }
 
     /// Intialize/updates the differ for this document with a new base.
-    pub fn set_diff_base(&mut self, diff_base: Vec<u8>) {
+    fn set_diff_base_bytes(&mut self, diff_base: Vec<u8>) {
         if let Ok((diff_base, ..)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
-            if let Some(differ) = &self.diff_handle {
-                differ.update_diff_base(diff_base);
-                return;
-            }
-            self.diff_handle = Some(DiffHandle::new(diff_base, self.text.clone()))
+            self.set_diff_base(diff_base);
         } else {
             self.diff_handle = None;
         }
     }
 
-    pub fn version_control_head(&self) -> Option<Arc<Box<str>>> {
-        self.version_control_head.as_ref().map(|a| a.load_full())
+    fn set_diff_base(&mut self, diff_base: Rope) {
+        if let Some(differ) = &self.diff_handle {
+            differ.update_diff_base(diff_base);
+            return;
+        }
+        self.diff_handle = Some(DiffHandle::new(diff_base, self.text.clone()))
     }
 
-    pub fn set_version_control_head(
-        &mut self,
-        version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
-    ) {
-        self.version_control_head = version_control_head;
+    pub fn update_diff_base(&mut self, path: &Path, diff_provider: &Git, diff_source: DiffSource) {
+        match diff_source {
+            DiffSource::Git => match diff_provider.get_diff_base(path) {
+                Ok(diff_base) => self.set_diff_base_bytes(diff_base),
+                Err(err) => {
+                    log::info!("{err:#?}");
+                    log::info!("failed to open diff base for for {}", path.display());
+                    self.diff_handle = None;
+                }
+            },
+            DiffSource::File => {
+                if self.is_modified() {
+                    match std::fs::read(path) {
+                        Ok(bytes) => self.set_diff_base_bytes(bytes),
+                        Err(err) => {
+                            log::info!("{err:#?}");
+                            log::info!("failed to open diff base for for {}", path.display());
+                            self.diff_handle = None;
+                        }
+                    }
+                } else {
+                    self.set_diff_base(self.text.clone());
+                }
+            }
+            DiffSource::None => {
+                self.diff_handle = None;
+            }
+        }
+
+        self.version_control_head = match diff_provider.get_current_head_name(path) {
+            Ok(res) => Some(res),
+            Err(err) => {
+                log::info!("{err:#?}");
+                log::info!("failed to obtain current head name for {}", path.display());
+                None
+            }
+        };
+    }
+
+    pub fn version_control_head(&self) -> Option<Arc<Box<str>>> {
+        self.version_control_head.as_ref().map(|a| a.load_full())
     }
 
     #[inline]
