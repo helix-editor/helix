@@ -1178,22 +1178,39 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     if selections.len() == 1 && primary.len() == 1 {
         paths.clear();
 
-        let count = cx.count();
-        let text_slice = text.slice(..);
-        // In this case it selects the WORD under the cursor
-        let current_word = textobject::textobject_word(
-            text_slice,
-            primary,
-            textobject::TextObject::Inside,
-            count,
-            true,
-        );
-        // Trims some surrounding chars so that the actual file is opened.
-        let surrounding_chars: &[_] = &['\'', '"', '(', ')', ',', ';', '{', '}', '[', ']'];
-        let path = current_word
-            .fragment(text_slice)
-            .trim_matches(surrounding_chars)
-            .to_string();
+        let is_valid_path_char = |c: &char| {
+            let valid_chars: &[char] = if cfg!(target_os = "windows") {
+                &[
+                    '@', '/', '\\', '.', '-', '_', '+', ',', '#', '$', '%', '{', '}', '[', ']',
+                    ':', '!', '~', '=',
+                ]
+            } else {
+                &['@', '/', '.', '-', '_', '+', ',', '#', '$', '%', '~', '=']
+            };
+            valid_chars.contains(&c) || c.is_alphabetic()
+        };
+
+        let path = {
+            let cursor = primary.cursor(text.slice(..));
+
+            let head = text
+                .chars_at(cursor)
+                .reversed()
+                .fold(Vec::new(), |mut acc, c| {
+                    acc.push(c);
+                    acc
+                })
+                .into_iter()
+                .rev()
+                .collect::<String>();
+
+            let tail = text
+                .chars_at(cursor)
+                .take_while(is_valid_path_char)
+                .collect::<String>();
+
+            format!("{}{}", head, tail)
+        };
 
         match shellexpand::full(&path) {
             Ok(path) => paths.push(path.to_string()),
