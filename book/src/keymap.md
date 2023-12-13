@@ -25,7 +25,7 @@
 
 ## Normal mode
 
-Normal mode is the default mode when you launch helix. Return to it from other modes by typing `Escape`.
+Normal mode is the default mode when you launch helix. You can return to it from other modes by pressing the `Escape` key.
 
 ### Movement
 
