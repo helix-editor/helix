@@ -1191,26 +1191,35 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         };
 
         let path = {
-            let cursor = primary.cursor(text.slice(..));
+            let start = {
+                let cursor_pos = primary.cursor(text.slice(..));
 
-            let head = text
-                .chars_at(cursor)
+                let pre_cursor_pos = cursor_pos.saturating_sub(1);
+                let post_cursor_pos = cursor_pos.saturating_add(1);
+
+                if is_valid_path_char(&text.char(cursor_pos)) {
+                    text.chars_at(cursor_pos)
+                } else if is_valid_path_char(&text.char(pre_cursor_pos)) {
+                    text.chars_at(pre_cursor_pos)
+                } else {
+                    text.chars_at(post_cursor_pos)
+                }
+            };
+
+            let head = start
+                .clone()
                 .reversed()
-                .fold(Vec::new(), |mut acc, c| {
-                    acc.push(c);
-                    acc
-                })
-                .into_iter()
+                .take_while(is_valid_path_char)
+                .collect::<String>()
+                .chars()
                 .rev()
                 .collect::<String>();
 
-            let tail = text
-                .chars_at(cursor)
-                .take_while(is_valid_path_char)
-                .collect::<String>();
+            let tail = start.take_while(is_valid_path_char).collect::<String>();
 
             format!("{}{}", head, tail)
         };
+        log::debug!("Goto file path: {}", path);
 
         match shellexpand::full(&path) {
             Ok(path) => paths.push(path.to_string()),
