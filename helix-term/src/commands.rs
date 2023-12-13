@@ -1187,7 +1187,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             } else {
                 &['@', '/', '.', '-', '_', '+', ',', '#', '$', '%', '~', '=']
             };
-            valid_chars.contains(&c) || c.is_alphabetic()
+            valid_chars.contains(c) || c.is_alphabetic()
         };
 
         let path = {
