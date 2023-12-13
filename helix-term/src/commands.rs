@@ -298,6 +298,8 @@ impl MappableCommand {
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
+        select_line_up, "Select current line, if already selected, extend or shrink line above based on the anchor",
+        select_line_down, "Select current line, if already selected, extend or shrink line below based on the anchor",
         extend_to_line_bounds, "Extend selection to line bounds",
         shrink_to_line_bounds, "Shrink selection to line bounds",
         delete_selection, "Delete selection",
@@ -2413,7 +2415,64 @@ fn extend_line_below(cx: &mut Context) {
 fn extend_line_above(cx: &mut Context) {
     extend_line_impl(cx, Extend::Above);
 }
+fn select_line_down(cx: &mut Context) {
+    select_line_impl(cx, Extend::Below);
+}
+fn select_line_up(cx: &mut Context) {
+    select_line_impl(cx, Extend::Above);
+}
+fn select_line_impl(cx: &mut Context, extend: Extend) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
 
+    let text = doc.text();
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let (start_line, end_line) = range.line_range(text.slice(..));
+
+        let start = text.line_to_char(start_line);
+        let end = text.line_to_char(
+            (end_line + 1) // newline of end_line
+                .min(text.len_lines()),
+        );
+        let direction = range.direction();
+        // extend or shrink to previous/next line if current line is selected
+        // extending or shrinking depends on the current direction of the selection
+        let (anchor, head) = if range.from() == start && range.to() == end {
+            match extend {
+                Extend::Above => match direction {
+                    Direction::Forward => {
+                        (start, text.line_to_char(end_line.saturating_sub(count - 1)))
+                    }
+                    Direction::Backward => {
+                        (end, text.line_to_char(start_line.saturating_sub(count)))
+                    }
+                },
+                Extend::Below => match direction {
+                    Direction::Forward => (
+                        start,
+                        text.line_to_char((end_line + count + 1).min(text.len_lines())),
+                    ),
+                    Direction::Backward => (
+                        end,
+                        text.line_to_char((start_line + count).min(text.len_lines())),
+                    ),
+                },
+            }
+        } else {
+            match extend {
+                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count - 1))),
+                Extend::Below => (
+                    start,
+                    text.line_to_char((end_line + count).min(text.len_lines())),
+                ),
+            }
+        };
+
+        Range::new(anchor, head)
+    });
+
+    doc.set_selection(view.id, selection);
+}
 fn extend_line_impl(cx: &mut Context, extend: Extend) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
