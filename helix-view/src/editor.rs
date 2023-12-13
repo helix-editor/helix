@@ -32,7 +32,7 @@ use std::{
 use tokio::{
     sync::{
         mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-        oneshot, Notify, RwLock,
+        oneshot,
     },
     time::{sleep, Duration, Instant, Sleep},
 };
@@ -244,7 +244,7 @@ pub struct Config {
     /// Set a global text_width
     pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
-    /// Used for autocompletion, set to 0 for instant. Defaults to 400ms.
+    /// Used for autocompletion, set to 0 for instant. Defaults to 250ms.
     #[serde(
         serialize_with = "serialize_duration_millis",
         deserialize_with = "deserialize_duration_millis"
@@ -287,6 +287,8 @@ pub struct Config {
     pub workspace_lsp_roots: Vec<PathBuf>,
     /// Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`.
     pub default_line_ending: LineEndingConfig,
+    /// Whether to automatically insert a trailing line-ending on write if missing. Defaults to `true`.
+    pub insert_final_newline: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
 }
@@ -730,7 +732,7 @@ pub struct WhitespaceCharacters {
 impl Default for WhitespaceCharacters {
     fn default() -> Self {
         Self {
-            space: '·',    // U+00B7
+            space: '·',   // U+00B7
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
@@ -758,12 +760,13 @@ impl Default for IndentGuidesConfig {
 }
 
 /// Line ending configuration.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LineEndingConfig {
     /// The platform's native line ending.
     ///
     /// `crlf` on Windows, otherwise `lf`.
+    #[default]
     Native,
     /// Line feed.
     LF,
@@ -778,12 +781,6 @@ pub enum LineEndingConfig {
     /// Next line.
     #[cfg(feature = "unicode-lines")]
     Nel,
-}
-
-impl Default for LineEndingConfig {
-    fn default() -> Self {
-        LineEndingConfig::Native
-    }
 }
 
 impl From<LineEndingConfig> for LineEnding {
@@ -822,7 +819,7 @@ impl Default for Config {
             auto_completion: true,
             auto_format: true,
             auto_save: false,
-            idle_timeout: Duration::from_millis(400),
+            idle_timeout: Duration::from_millis(250),
             preview_completion_insert: true,
             completion_trigger_len: 2,
             auto_info: true,
@@ -847,6 +844,7 @@ impl Default for Config {
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
+            insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
         }
     }
@@ -930,10 +928,6 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
-    /// Allows asynchronous tasks to control the rendering
-    /// The `Notify` allows asynchronous tasks to request the editor to perform a redraw
-    /// The `RwLock` blocks the editor from performing the render until an exclusive lock can be acquired
-    pub redraw_handle: RedrawHandle,
     pub needs_redraw: bool,
     /// Cached position of the cursor calculated during rendering.
     /// The content of `cursor_cache` is returned by `Editor::cursor` if
@@ -959,8 +953,6 @@ pub struct Editor {
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
-
-pub type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
 
 #[derive(Debug)]
 pub enum EditorEvent {
@@ -1067,7 +1059,6 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
-            redraw_handle: Default::default(),
             needs_redraw: false,
             cursor_cache: Cell::new(None),
             completion_request_handle: None,
@@ -1197,71 +1188,80 @@ impl Editor {
     }
 
     /// Refreshes the language server for a given document
-    pub fn refresh_language_servers(&mut self, doc_id: DocumentId) -> Option<()> {
+    pub fn refresh_language_servers(&mut self, doc_id: DocumentId) {
         self.launch_language_servers(doc_id)
     }
 
     /// Launch a language server for a given document
-    fn launch_language_servers(&mut self, doc_id: DocumentId) -> Option<()> {
+    fn launch_language_servers(&mut self, doc_id: DocumentId) {
         if !self.config().lsp.enable {
-            return None;
+            return;
         }
         // if doc doesn't have a URL it's a scratch buffer, ignore it
-        let doc = self.documents.get_mut(&doc_id)?;
-        let doc_url = doc.url()?;
+        let Some(doc) = self.documents.get_mut(&doc_id) else {
+            return;
+        };
+        let Some(doc_url) = doc.url() else {
+            return;
+        };
         let (lang, path) = (doc.language.clone(), doc.path().cloned());
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
 
-        // try to find language servers based on the language name
-        let language_servers = lang.as_ref().and_then(|language| {
+        // store only successfully started language servers
+        let language_servers = lang.as_ref().map_or_else(HashMap::default, |language| {
             self.language_servers
                 .get(language, path.as_ref(), root_dirs, config.lsp.snippets)
-                .map_err(|e| {
-                    log::error!(
-                        "Failed to initialize the language servers for `{}` {{ {} }}",
-                        language.scope(),
-                        e
-                    )
+                .filter_map(|(lang, client)| match client {
+                    Ok(client) => Some((lang, client)),
+                    Err(err) => {
+                        log::error!(
+                            "Failed to initialize the language servers for `{}` - `{}` {{ {} }}",
+                            language.scope(),
+                            lang,
+                            err
+                        );
+                        None
+                    }
                 })
-                .ok()
+                .collect::<HashMap<_, _>>()
         });
 
-        if let Some(language_servers) = language_servers {
-            let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
+        if language_servers.is_empty() {
+            return;
+        }
 
-            // only spawn new language servers if the servers aren't the same
+        let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
-            let doc_language_servers_not_in_registry =
-                doc.language_servers.iter().filter(|(name, doc_ls)| {
-                    language_servers
-                        .get(*name)
-                        .map_or(true, |ls| ls.id() != doc_ls.id())
-                });
-
-            for (_, language_server) in doc_language_servers_not_in_registry {
-                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
-            }
-
-            let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
-                doc.language_servers
+        // only spawn new language servers if the servers aren't the same
+        let doc_language_servers_not_in_registry =
+            doc.language_servers.iter().filter(|(name, doc_ls)| {
+                language_servers
                     .get(*name)
-                    .map_or(true, |doc_ls| ls.id() != doc_ls.id())
+                    .map_or(true, |ls| ls.id() != doc_ls.id())
             });
 
-            for (_, language_server) in language_servers_not_in_doc {
-                // TODO: this now races with on_init code if the init happens too quickly
-                tokio::spawn(language_server.text_document_did_open(
-                    doc_url.clone(),
-                    doc.version(),
-                    doc.text(),
-                    language_id.clone(),
-                ));
-            }
-
-            doc.language_servers = language_servers;
+        for (_, language_server) in doc_language_servers_not_in_registry {
+            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
-        Some(())
+
+        let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
+            doc.language_servers
+                .get(*name)
+                .map_or(true, |doc_ls| ls.id() != doc_ls.id())
+        });
+
+        for (_, language_server) in language_servers_not_in_doc {
+            // TODO: this now races with on_init code if the init happens too quickly
+            tokio::spawn(language_server.text_document_did_open(
+                doc_url.clone(),
+                doc.version(),
+                doc.text(),
+                language_id.clone(),
+            ));
+        }
+
+        doc.language_servers = language_servers;
     }
 
     fn _refresh(&mut self) {
@@ -1458,12 +1458,12 @@ impl Editor {
             )?;
 
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
-                doc.set_diff_base(diff_base, self.redraw_handle.clone());
+                doc.set_diff_base(diff_base);
             }
             doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
             let id = self.new_document(doc);
-            let _ = self.launch_language_servers(id);
+            self.launch_language_servers(id);
 
             id
         };
@@ -1757,7 +1757,7 @@ impl Editor {
                     return EditorEvent::DebuggerEvent(event)
                 }
 
-                _ = self.redraw_handle.0.notified() => {
+                _ = helix_event::redraw_requested() => {
                     if  !self.needs_redraw{
                         self.needs_redraw = true;
                         let timeout = Instant::now() + Duration::from_millis(33);

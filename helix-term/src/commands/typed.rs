@@ -5,7 +5,9 @@ use crate::job::Job;
 
 use super::*;
 
-use helix_core::{encoding, shellwords::Shellwords};
+use helix_core::fuzzy::fuzzy_match;
+use helix_core::{encoding, line_ending, path::get_canonicalized_path, shellwords::Shellwords};
+use helix_lsp::{OffsetEncoding, Url};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
@@ -329,12 +331,16 @@ fn write_impl(
     path: Option<&Cow<str>>,
     force: bool,
 ) -> anyhow::Result<()> {
-    let editor_auto_fmt = cx.editor.config().auto_format;
+    let config = cx.editor.config();
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
-    let fmt = if editor_auto_fmt {
+    if config.insert_final_newline {
+        insert_final_newline(doc, view);
+    }
+
+    let fmt = if config.auto_format {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
@@ -356,6 +362,16 @@ fn write_impl(
     }
 
     Ok(())
+}
+
+fn insert_final_newline(doc: &mut Document, view: &mut View) {
+    let text = doc.text();
+    if line_ending::get_line_ending(&text.slice(..)).is_none() {
+        let eof = Selection::point(text.len_chars());
+        let insert = Transaction::insert(text, &eof, doc.line_ending.as_str().into());
+        doc.apply(&insert, view.id);
+        doc.append_changes_to_history(view);
+    }
 }
 
 fn write(
@@ -657,11 +673,10 @@ pub fn write_all_impl(
     write_scratch: bool,
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
-    let auto_format = cx.editor.config().auto_format;
+    let config = cx.editor.config();
     let jobs = &mut cx.jobs;
     let current_view = view!(cx.editor);
 
-    // save all documents
     let saves: Vec<_> = cx
         .editor
         .documents
@@ -692,32 +707,35 @@ pub fn write_all_impl(
                 current_view.id
             };
 
-            let fmt = if auto_format {
-                doc.auto_format().map(|fmt| {
-                    let callback = make_format_callback(
-                        doc.id(),
-                        doc.version(),
-                        target_view,
-                        fmt,
-                        Some((None, force)),
-                    );
-                    jobs.add(Job::with_callback(callback).wait_before_exiting());
-                })
-            } else {
-                None
-            };
-
-            if fmt.is_none() {
-                return Some(doc.id());
-            }
-
-            None
+            Some((doc.id(), target_view))
         })
         .collect();
 
-    // manually call save for the rest of docs that don't have a formatter
-    for id in saves {
-        cx.editor.save::<PathBuf>(id, None, force)?;
+    for (doc_id, target_view) in saves {
+        let doc = doc_mut!(cx.editor, &doc_id);
+
+        if config.insert_final_newline {
+            insert_final_newline(doc, view_mut!(cx.editor, target_view));
+        }
+
+        let fmt = if config.auto_format {
+            doc.auto_format().map(|fmt| {
+                let callback = make_format_callback(
+                    doc_id,
+                    doc.version(),
+                    target_view,
+                    fmt,
+                    Some((None, force)),
+                );
+                jobs.add(Job::with_callback(callback).wait_before_exiting());
+            })
+        } else {
+            None
+        };
+
+        if fmt.is_none() {
+            cx.editor.save::<PathBuf>(doc_id, None, force)?;
+        }
     }
 
     if !errors.is_empty() && !force {
@@ -904,7 +922,7 @@ fn yank_main_selection_to_clipboard(
         return Ok(());
     }
 
-    yank_primary_selection_impl(cx.editor, '*');
+    yank_primary_selection_impl(cx.editor, '+');
     Ok(())
 }
 
@@ -939,7 +957,7 @@ fn yank_joined_to_clipboard(
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_impl(cx.editor, separator, '*');
+    yank_joined_impl(cx.editor, separator, '+');
     Ok(())
 }
 
@@ -952,7 +970,7 @@ fn yank_main_selection_to_primary_clipboard(
         return Ok(());
     }
 
-    yank_primary_selection_impl(cx.editor, '+');
+    yank_primary_selection_impl(cx.editor, '*');
     Ok(())
 }
 
@@ -968,7 +986,7 @@ fn yank_joined_to_primary_clipboard(
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_impl(cx.editor, separator, '+');
+    yank_joined_impl(cx.editor, separator, '*');
     Ok(())
 }
 
@@ -981,7 +999,7 @@ fn paste_clipboard_after(
         return Ok(());
     }
 
-    paste(cx.editor, '*', Paste::After, 1);
+    paste(cx.editor, '+', Paste::After, 1);
     Ok(())
 }
 
@@ -994,7 +1012,7 @@ fn paste_clipboard_before(
         return Ok(());
     }
 
-    paste(cx.editor, '*', Paste::Before, 1);
+    paste(cx.editor, '+', Paste::Before, 1);
     Ok(())
 }
 
@@ -1007,7 +1025,7 @@ fn paste_primary_clipboard_after(
         return Ok(());
     }
 
-    paste(cx.editor, '+', Paste::After, 1);
+    paste(cx.editor, '*', Paste::After, 1);
     Ok(())
 }
 
@@ -1020,7 +1038,7 @@ fn paste_primary_clipboard_before(
         return Ok(());
     }
 
-    paste(cx.editor, '+', Paste::Before, 1);
+    paste(cx.editor, '*', Paste::Before, 1);
     Ok(())
 }
 
@@ -1033,7 +1051,7 @@ fn replace_selections_with_clipboard(
         return Ok(());
     }
 
-    replace_with_yanked_impl(cx.editor, '*', 1);
+    replace_with_yanked_impl(cx.editor, '+', 1);
     Ok(())
 }
 
@@ -1046,7 +1064,7 @@ fn replace_selections_with_primary_clipboard(
         return Ok(());
     }
 
-    replace_with_yanked_impl(cx.editor, '+', 1);
+    replace_with_yanked_impl(cx.editor, '*', 1);
     Ok(())
 }
 
@@ -1265,12 +1283,10 @@ fn reload(
     }
 
     let scrolloff = cx.editor.config().scrolloff;
-    let redraw_handle = cx.editor.redraw_handle.clone();
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_providers, redraw_handle)
-        .map(|_| {
-            view.ensure_cursor_in_view(doc, scrolloff);
-        })?;
+    doc.reload(view, &cx.editor.diff_providers).map(|_| {
+        view.ensure_cursor_in_view(doc, scrolloff);
+    })?;
     if let Some(path) = doc.path() {
         cx.editor
             .language_servers
@@ -1316,8 +1332,7 @@ fn reload_all(
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
-        let redraw_handle = cx.editor.redraw_handle.clone();
-        doc.reload(view, &cx.editor.diff_providers, redraw_handle)?;
+        doc.reload(view, &cx.editor.diff_providers)?;
         if let Some(path) = doc.path() {
             cx.editor
                 .language_servers
@@ -1529,6 +1544,84 @@ fn tree_sitter_scopes(
     Ok(())
 }
 
+fn tree_sitter_highlight_name(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    fn find_highlight_at_cursor(
+        cx: &mut compositor::Context<'_>,
+    ) -> Option<helix_core::syntax::Highlight> {
+        use helix_core::syntax::HighlightEvent;
+
+        let (view, doc) = current!(cx.editor);
+        let syntax = doc.syntax()?;
+        let text = doc.text().slice(..);
+        let cursor = doc.selection(view.id).primary().cursor(text);
+        let byte = text.char_to_byte(cursor);
+        let node = syntax
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(byte, byte)?;
+        // Query the same range as the one used in syntax highlighting.
+        let range = {
+            // Calculate viewport byte ranges:
+            let row = text.char_to_line(view.offset.anchor.min(text.len_chars()));
+            // Saturating subs to make it inclusive zero indexing.
+            let last_line = text.len_lines().saturating_sub(1);
+            let height = view.inner_area(doc).height;
+            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+            let start = text.line_to_byte(row.min(last_line));
+            let end = text.line_to_byte(last_visible_line + 1);
+
+            start..end
+        };
+
+        let mut highlight = None;
+
+        for event in syntax.highlight_iter(text, Some(range), None) {
+            match event.unwrap() {
+                HighlightEvent::Source { start, end }
+                    if start == node.start_byte() && end == node.end_byte() =>
+                {
+                    return highlight;
+                }
+                HighlightEvent::HighlightStart(hl) => {
+                    highlight = Some(hl);
+                }
+                _ => (),
+            }
+        }
+
+        None
+    }
+
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let Some(highlight) = find_highlight_at_cursor(cx) else {
+        return Ok(());
+    };
+
+    let content = cx.editor.theme.scope(highlight.0).to_string();
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let content = ui::Markdown::new(content, editor.syn_loader.clone());
+                let popup = Popup::new("hover", content).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 fn vsplit(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1538,10 +1631,8 @@ fn vsplit(
         return Ok(());
     }
 
-    let id = view!(cx.editor).doc;
-
     if args.is_empty() {
-        cx.editor.switch(id, Action::VerticalSplit);
+        split(cx.editor, Action::VerticalSplit);
     } else {
         for arg in args {
             cx.editor
@@ -1561,10 +1652,8 @@ fn hsplit(
         return Ok(());
     }
 
-    let id = view!(cx.editor).doc;
-
     if args.is_empty() {
-        cx.editor.switch(id, Action::HorizontalSplit);
+        split(cx.editor, Action::HorizontalSplit);
     } else {
         for arg in args {
             cx.editor
@@ -2297,6 +2386,103 @@ fn clear_register(
     Ok(())
 }
 
+fn redraw(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let callback = Box::pin(async move {
+        let call: job::Callback =
+            job::Callback::EditorCompositor(Box::new(|_editor, compositor| {
+                compositor.need_full_redraw();
+            }));
+
+        Ok(call)
+    });
+
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
+fn move_buffer(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(args.len() == 1, format!(":move takes one argument"));
+    let doc = doc!(cx.editor);
+
+    let new_path = get_canonicalized_path(&PathBuf::from(args.first().unwrap().to_string()));
+    let old_path = doc
+        .path()
+        .ok_or_else(|| anyhow!("Scratch buffer cannot be moved. Use :write instead"))?
+        .clone();
+    let old_path_as_url = doc.url().unwrap();
+    let new_path_as_url = Url::from_file_path(&new_path).unwrap();
+
+    let edits: Vec<(
+        helix_lsp::Result<helix_lsp::lsp::WorkspaceEdit>,
+        OffsetEncoding,
+        String,
+    )> = doc
+        .language_servers()
+        .map(|lsp| {
+            (
+                lsp.prepare_file_rename(&old_path_as_url, &new_path_as_url),
+                lsp.offset_encoding(),
+                lsp.name().to_owned(),
+            )
+        })
+        .filter(|(f, _, _)| f.is_some())
+        .map(|(f, encoding, name)| (helix_lsp::block_on(f.unwrap()), encoding, name))
+        .collect();
+
+    for (lsp_reply, encoding, name) in edits {
+        match lsp_reply {
+            Ok(edit) => {
+                if let Err(e) = apply_workspace_edit(cx.editor, encoding, &edit) {
+                    log::error!(
+                        ":move command failed to apply edits from lsp {}: {:?}",
+                        name,
+                        e
+                    );
+                };
+            }
+            Err(e) => {
+                log::error!("LSP {} failed to treat willRename request: {:?}", name, e);
+            }
+        };
+    }
+
+    let doc = doc_mut!(cx.editor);
+
+    doc.set_path(Some(new_path.as_path()));
+    if let Err(e) = std::fs::rename(&old_path, &new_path) {
+        doc.set_path(Some(old_path.as_path()));
+        bail!("Could not move file: {}", e);
+    };
+
+    doc.language_servers().for_each(|lsp| {
+        lsp.did_file_rename(&old_path_as_url, &new_path_as_url);
+    });
+
+    cx.editor
+        .language_servers
+        .file_event_handler
+        .file_changed(new_path);
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -2687,6 +2873,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: CommandSignature::none(),
     },
     TypableCommand {
+        name: "tree-sitter-highlight-name",
+        aliases: &[],
+        doc: "Display name of tree-sitter highlight scope under the cursor.",
+        fun: tree_sitter_highlight_name,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
         name: "debug-start",
         aliases: &["dbg"],
         doc: "Start a debug session from a given template with given parameters.",
@@ -2883,6 +3076,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: clear_register,
         signature: CommandSignature::none(),
     },
+    TypableCommand {
+        name: "redraw",
+        aliases: &[],
+        doc: "Clear and re-render the whole UI",
+        fun: redraw,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "move",
+        aliases: &[],
+        doc: "Move the current buffer and its corresponding file to a different path",
+        fun: move_buffer,
+        signature: CommandSignature::positional(&[completers::filename]),
+    },
 ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
@@ -2902,28 +3109,18 @@ pub(super) fn command_mode(cx: &mut Context) {
         ":".into(),
         Some(':'),
         |editor: &Editor, input: &str| {
-            static FUZZY_MATCHER: Lazy<fuzzy_matcher::skim::SkimMatcherV2> =
-                Lazy::new(fuzzy_matcher::skim::SkimMatcherV2::default);
-
             let shellwords = Shellwords::from(input);
             let words = shellwords.words();
 
             if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
-                // If the command has not been finished yet, complete commands.
-                let mut matches: Vec<_> = typed::TYPABLE_COMMAND_LIST
-                    .iter()
-                    .filter_map(|command| {
-                        FUZZY_MATCHER
-                            .fuzzy_match(command.name, input)
-                            .map(|score| (command.name, score))
-                    })
-                    .collect();
-
-                matches.sort_unstable_by_key(|(_file, score)| std::cmp::Reverse(*score));
-                matches
-                    .into_iter()
-                    .map(|(name, _)| (0.., name.into()))
-                    .collect()
+                fuzzy_match(
+                    input,
+                    TYPABLE_COMMAND_LIST.iter().map(|command| command.name),
+                    false,
+                )
+                .into_iter()
+                .map(|(name, _)| (0.., name.into()))
+                .collect()
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.

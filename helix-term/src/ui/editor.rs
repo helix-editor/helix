@@ -43,6 +43,8 @@ pub struct EditorView {
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
+    /// Tracks if the terminal window is focused by reaction to terminal focus events
+    terminal_focused: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -71,6 +73,7 @@ impl EditorView {
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
+            terminal_focused: true,
         }
     }
 
@@ -121,16 +124,20 @@ impl EditorView {
             line_decorations.push(Box::new(line_decoration));
         }
 
-        let mut highlights =
+        let syntax_highlights =
             Self::doc_syntax_highlights(doc, view.offset.anchor, inner.height, theme);
-        let overlay_highlights = Self::overlay_syntax_highlights(
+
+        let mut overlay_highlights =
+            Self::empty_highlight_iter(doc, view.offset.anchor, inner.height);
+        let overlay_syntax_highlights = Self::overlay_syntax_highlights(
             doc,
             view.offset.anchor,
             inner.height,
             &text_annotations,
         );
-        if !overlay_highlights.is_empty() {
-            highlights = Box::new(syntax::merge(highlights, overlay_highlights));
+        if !overlay_syntax_highlights.is_empty() {
+            overlay_highlights =
+                Box::new(syntax::merge(overlay_highlights, overlay_syntax_highlights));
         }
 
         for diagnostic in Self::doc_diagnostics_highlights(doc, theme) {
@@ -139,29 +146,28 @@ impl EditorView {
             if diagnostic.is_empty() {
                 continue;
             }
-            highlights = Box::new(syntax::merge(highlights, diagnostic));
+            overlay_highlights = Box::new(syntax::merge(overlay_highlights, diagnostic));
         }
 
-        let highlights: Box<dyn Iterator<Item = HighlightEvent>> = if is_focused {
+        if is_focused {
             let highlights = syntax::merge(
-                highlights,
+                overlay_highlights,
                 Self::doc_selection_highlights(
                     editor.mode(),
                     doc,
                     view,
                     theme,
                     &config.cursor_shape,
+                    self.terminal_focused,
                 ),
             );
             let focused_view_elements = Self::highlight_focused_view_elements(view, doc, theme);
             if focused_view_elements.is_empty() {
-                Box::new(highlights)
+                overlay_highlights = Box::new(highlights)
             } else {
-                Box::new(syntax::merge(highlights, focused_view_elements))
+                overlay_highlights = Box::new(syntax::merge(highlights, focused_view_elements))
             }
-        } else {
-            Box::new(highlights)
-        };
+        }
 
         let gutter_overflow = view.gutter_offset(doc) == 0;
         if !gutter_overflow {
@@ -171,7 +177,7 @@ impl EditorView {
                 view,
                 view.area,
                 theme,
-                is_focused,
+                is_focused & self.terminal_focused,
                 &mut line_decorations,
             );
         }
@@ -194,7 +200,8 @@ impl EditorView {
             doc,
             view.offset,
             &text_annotations,
-            highlights,
+            syntax_highlights,
+            overlay_highlights,
             theme,
             &mut line_decorations,
             &mut translated_positions,
@@ -254,27 +261,39 @@ impl EditorView {
             .for_each(|area| surface.set_style(area, ruler_theme))
     }
 
-    pub fn overlay_syntax_highlights(
+    fn viewport_byte_range(
+        text: helix_core::RopeSlice,
+        row: usize,
+        height: u16,
+    ) -> std::ops::Range<usize> {
+        // Calculate viewport byte ranges:
+        // Saturating subs to make it inclusive zero indexing.
+        let last_line = text.len_lines().saturating_sub(1);
+        let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+        let start = text.line_to_byte(row.min(last_line));
+        let end = text.line_to_byte(last_visible_line + 1);
+
+        start..end
+    }
+
+    pub fn empty_highlight_iter(
         doc: &Document,
         anchor: usize,
         height: u16,
-        text_annotations: &TextAnnotations,
-    ) -> Vec<(usize, std::ops::Range<usize>)> {
+    ) -> Box<dyn Iterator<Item = HighlightEvent>> {
         let text = doc.text().slice(..);
         let row = text.char_to_line(anchor.min(text.len_chars()));
 
-        let range = {
-            // Calculate viewport byte ranges:
-            // Saturating subs to make it inclusive zero indexing.
-            let last_line = text.len_lines().saturating_sub(1);
-            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
-            let start = text.line_to_byte(row.min(last_line));
-            let end = text.line_to_byte(last_visible_line + 1);
-
-            start..end
-        };
-
-        text_annotations.collect_overlay_highlights(range)
+        // Calculate viewport byte ranges:
+        // Saturating subs to make it inclusive zero indexing.
+        let range = Self::viewport_byte_range(text, row, height);
+        Box::new(
+            [HighlightEvent::Source {
+                start: text.byte_to_char(range.start),
+                end: text.byte_to_char(range.end),
+            }]
+            .into_iter(),
+        )
     }
 
     /// Get syntax highlights for a document in a view represented by the first line
@@ -289,16 +308,7 @@ impl EditorView {
         let text = doc.text().slice(..);
         let row = text.char_to_line(anchor.min(text.len_chars()));
 
-        let range = {
-            // Calculate viewport byte ranges:
-            // Saturating subs to make it inclusive zero indexing.
-            let last_line = text.len_lines().saturating_sub(1);
-            let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
-            let start = text.line_to_byte(row.min(last_line));
-            let end = text.line_to_byte(last_visible_line + 1);
-
-            start..end
-        };
+        let range = Self::viewport_byte_range(text, row, height);
 
         match doc.syntax() {
             Some(syntax) => {
@@ -329,6 +339,20 @@ impl EditorView {
                 .into_iter(),
             ),
         }
+    }
+
+    pub fn overlay_syntax_highlights(
+        doc: &Document,
+        anchor: usize,
+        height: u16,
+        text_annotations: &TextAnnotations,
+    ) -> Vec<(usize, std::ops::Range<usize>)> {
+        let text = doc.text().slice(..);
+        let row = text.char_to_line(anchor.min(text.len_chars()));
+
+        let range = Self::viewport_byte_range(text, row, height);
+
+        text_annotations.collect_overlay_highlights(range)
     }
 
     /// Get highlight spans for document diagnostics
@@ -362,7 +386,7 @@ impl EditorView {
         let mut warning_vec = Vec::new();
         let mut error_vec = Vec::new();
 
-        for diagnostic in doc.diagnostics() {
+        for diagnostic in doc.shown_diagnostics() {
             // Separate diagnostics into different Vecs by severity.
             let (vec, scope) = match diagnostic.severity {
                 Some(Severity::Info) => (&mut info_vec, info),
@@ -397,6 +421,7 @@ impl EditorView {
         view: &View,
         theme: &Theme,
         cursor_shape_config: &CursorShapeConfig,
+        is_terminal_focused: bool,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
@@ -444,7 +469,7 @@ impl EditorView {
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                if !selection_is_primary || cursor_is_block {
+                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     // Bar and underline cursors are drawn by the terminal
                     // BUG: If the editor area loses focus while having a bar or
                     // underline cursor (eg. when a regex prompt has focus) then
@@ -467,13 +492,17 @@ impl EditorView {
                         cursor_start
                     };
                 spans.push((selection_scope, range.anchor..selection_end));
-                if !selection_is_primary || cursor_is_block {
+                // add block cursors
+                // skip primary cursor if terminal is unfocused - crossterm cursor is used in that case
+                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                if !selection_is_primary || cursor_is_block {
+                // add block cursors
+                // skip primary cursor if terminal is unfocused - crossterm cursor is used in that case
+                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
                 // non block cursors look like they exclude the cursor
@@ -1070,6 +1099,7 @@ impl EditorView {
                 let editor = &mut cxt.editor;
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
+                    let prev_view_id = view!(editor).id;
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
 
                     if modifiers == KeyModifiers::ALT {
@@ -1077,6 +1107,10 @@ impl EditorView {
                         doc.set_selection(view_id, selection.push(Range::point(pos)));
                     } else {
                         doc.set_selection(view_id, Selection::point(pos));
+                    }
+
+                    if view_id != prev_view_id {
+                        self.clear_completion(editor);
                     }
 
                     editor.focus(view_id);
@@ -1372,13 +1406,17 @@ impl Component for EditorView {
 
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
             Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
-            Event::FocusGained => EventResult::Ignored(None),
+            Event::FocusGained => {
+                self.terminal_focused = true;
+                EventResult::Consumed(None)
+            }
             Event::FocusLost => {
                 if context.editor.config().auto_save {
                     if let Err(e) = commands::typed::write_all_impl(context, false, false) {
                         context.editor.set_error(format!("{}", e));
                     }
                 }
+                self.terminal_focused = false;
                 EventResult::Consumed(None)
             }
         }
@@ -1488,8 +1526,15 @@ impl Component for EditorView {
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         match editor.cursor() {
-            // All block cursors are drawn manually
-            (pos, CursorKind::Block) => (pos, CursorKind::Hidden),
+            // all block cursors are drawn manually
+            (pos, CursorKind::Block) => {
+                if self.terminal_focused {
+                    (pos, CursorKind::Hidden)
+                } else {
+                    // use crossterm cursor when terminal loses focus
+                    (pos, CursorKind::Underline)
+                }
+            }
             cursor => cursor,
         }
     }

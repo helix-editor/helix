@@ -480,3 +480,49 @@ fn bar() {#(\n|)#\
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_join_selections() -> anyhow::Result<()> {
+    // normal join
+    test((
+        platform_line(indoc! {"\
+            #[a|]#bc
+            def
+        "}),
+        "J",
+        platform_line(indoc! {"\
+            #[a|]#bc def
+        "}),
+    ))
+    .await?;
+
+    // join with empty line
+    test((
+        platform_line(indoc! {"\
+            #[a|]#bc
+
+            def
+        "}),
+        "JJ",
+        platform_line(indoc! {"\
+            #[a|]#bc def
+        "}),
+    ))
+    .await?;
+
+    // join with additional space in non-empty line
+    test((
+        platform_line(indoc! {"\
+            #[a|]#bc
+
+                def
+        "}),
+        "JJ",
+        platform_line(indoc! {"\
+            #[a|]#bc def
+        "}),
+    ))
+    .await?;
+
+    Ok(())
+}

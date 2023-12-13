@@ -320,6 +320,14 @@ impl AppBuilder {
     }
 
     pub fn build(self) -> anyhow::Result<Application> {
+        if let Some(path) = &self.args.working_directory {
+            bail!("Changing the working directory to {path:?} is not yet supported for integration tests");
+        }
+
+        if let Some((path, _)) = self.args.files.first().filter(|p| p.0.is_dir()) {
+            bail!("Having the directory {path:?} in args.files[0] is not yet supported for integration tests");
+        }
+
         let mut app = Application::new(self.args, self.config, self.syn_conf)?;
 
         if let Some((text, selection)) = self.input {
@@ -350,7 +358,7 @@ pub fn assert_file_has_content(file: &mut File, content: &str) -> anyhow::Result
 
     let mut file_content = String::new();
     file.read_to_string(&mut file_content)?;
-    assert_eq!(content, file_content);
+    assert_eq!(file_content, content);
 
     Ok(())
 }

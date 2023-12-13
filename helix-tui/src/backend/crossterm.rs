@@ -32,10 +32,21 @@ fn vte_version() -> Option<usize> {
 }
 
 /// Describes terminal capabilities like extended underline, truecolor, etc.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 struct Capabilities {
     /// Support for undercurled, underdashed, etc.
     has_extended_underlines: bool,
+    /// Support for resetting the cursor style back to normal.
+    reset_cursor_command: String,
+}
+
+impl Default for Capabilities {
+    fn default() -> Self {
+        Self {
+            has_extended_underlines: false,
+            reset_cursor_command: "\x1B[0 q".to_string(),
+        }
+    }
 }
 
 impl Capabilities {
@@ -54,6 +65,10 @@ impl Capabilities {
                     || t.extended_cap("Su").is_some()
                     || vte_version() >= Some(5102)
                     || matches!(term_program().as_deref(), Some("WezTerm")),
+                reset_cursor_command: t
+                    .utf8_string_cap(termini::StringCapability::CursorNormal)
+                    .unwrap_or("\x1B[0 q")
+                    .to_string(),
             },
         }
     }
@@ -154,7 +169,8 @@ where
 
     fn restore(&mut self, config: Config) -> io::Result<()> {
         // reset cursor shape
-        write!(self.buffer, "\x1B[0 q")?;
+        self.buffer
+            .write_all(self.capabilities.reset_cursor_command.as_bytes())?;
         if config.enable_mouse_capture {
             execute!(self.buffer, DisableMouseCapture)?;
         }
@@ -328,6 +344,9 @@ impl ModifierDiff {
         if removed.contains(Modifier::SLOW_BLINK) || removed.contains(Modifier::RAPID_BLINK) {
             queue!(w, SetAttribute(CAttribute::NoBlink))?;
         }
+        if removed.contains(Modifier::HIDDEN) {
+            queue!(w, SetAttribute(CAttribute::NoHidden))?;
+        }
 
         let added = self.to - self.from;
         if added.contains(Modifier::REVERSED) {
@@ -350,6 +369,9 @@ impl ModifierDiff {
         }
         if added.contains(Modifier::RAPID_BLINK) {
             queue!(w, SetAttribute(CAttribute::RapidBlink))?;
+        }
+        if added.contains(Modifier::HIDDEN) {
+            queue!(w, SetAttribute(CAttribute::Hidden))?;
         }
 
         Ok(())

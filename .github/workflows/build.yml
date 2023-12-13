@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install stable toolchain
         uses: helix-editor/rust-toolchain@v1
         with:
@@ -22,6 +22,8 @@ jobs:
           override: true
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
 
       - name: Run cargo check
         run: cargo check
@@ -34,12 +36,14 @@ jobs:
       HELIX_LOG_LEVEL: info
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.65
+        uses: dtolnay/rust-toolchain@1.70
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
 
       - name: Cache test tree-sitter grammar
         uses: actions/cache@v3
@@ -63,14 +67,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.65
+        uses: dtolnay/rust-toolchain@1.70
         with:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
 
       - name: Run cargo fmt
         run: cargo fmt --all --check
@@ -88,12 +94,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.65
+        uses: dtolnay/rust-toolchain@1.70
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
 
       - name: Validate queries
         run: cargo xtask query-check

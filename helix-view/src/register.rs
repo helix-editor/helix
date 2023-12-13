@@ -75,8 +75,8 @@ impl Registers {
                 self.clipboard_provider.as_ref(),
                 self.inner.get(&name),
                 match name {
-                    '*' => ClipboardType::Clipboard,
-                    '+' => ClipboardType::Selection,
+                    '+' => ClipboardType::Clipboard,
+                    '*' => ClipboardType::Selection,
                     _ => unreachable!(),
                 },
             )),
@@ -95,8 +95,8 @@ impl Registers {
                 self.clipboard_provider.set_contents(
                     values.join(NATIVE_LINE_ENDING.as_str()),
                     match name {
-                        '*' => ClipboardType::Clipboard,
-                        '+' => ClipboardType::Selection,
+                        '+' => ClipboardType::Clipboard,
+                        '*' => ClipboardType::Selection,
                         _ => unreachable!(),
                     },
                 )?;
@@ -118,8 +118,8 @@ impl Registers {
             '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support pushing")),
             '*' | '+' => {
                 let clipboard_type = match name {
-                    '*' => ClipboardType::Clipboard,
-                    '+' => ClipboardType::Selection,
+                    '+' => ClipboardType::Clipboard,
+                    '*' => ClipboardType::Selection,
                     _ => unreachable!(),
                 };
                 let contents = self.clipboard_provider.get_contents(clipboard_type)?;
@@ -172,8 +172,8 @@ impl Registers {
                     ('#', "<selection indices>"),
                     ('.', "<selection contents>"),
                     ('%', "<document path>"),
-                    ('*', "<system clipboard>"),
-                    ('+', "<primary clipboard>"),
+                    ('+', "<system clipboard>"),
+                    ('*', "<primary clipboard>"),
                 ]
                 .iter()
                 .copied(),
@@ -190,8 +190,8 @@ impl Registers {
         match name {
             '*' | '+' => {
                 self.clear_clipboard(match name {
-                    '*' => ClipboardType::Clipboard,
-                    '+' => ClipboardType::Selection,
+                    '+' => ClipboardType::Clipboard,
+                    '*' => ClipboardType::Selection,
                     _ => unreachable!(),
                 });
                 self.inner.remove(&name);

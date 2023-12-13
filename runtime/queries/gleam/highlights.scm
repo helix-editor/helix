@@ -21,6 +21,8 @@
 
 ; Functions
 (unqualified_import (identifier) @function)
+(unqualified_import "type" (type_identifier) @type)
+(unqualified_import (type_identifier) @constructor)
 (function
   name: (identifier) @function)
 (external_function
@@ -43,6 +45,13 @@
 (tuple_access
   index: (integer) @variable.other.member)
 
+; Attributes
+(attribute
+  "@" @attribute
+  name: (identifier) @attribute)
+
+(attribute_value (identifier) @constant)
+
 ; Type names
 (remote_type_identifier) @type
 (type_identifier) @type
@@ -60,10 +69,6 @@
 (identifier) @variable
 (discard) @comment.unused
 
-; Operators
-(binary_expression
-  operator: _ @operator)
-
 ; Keywords
 [
   (visibility_modifier) ; "pub"
@@ -72,6 +77,7 @@
   "assert"
   "case"
   "const"
+  ; DEPRECATED: 'external' was removed in v0.30.
   "external"
   "fn"
   "if"
@@ -79,10 +85,15 @@
   "let"
   "panic"
   "todo"
-  "try"
   "type"
   "use"
 ] @keyword
+
+; Operators
+(binary_expression
+  operator: _ @operator)
+(boolean_negation "!" @operator)
+(integer_negation "-" @operator)
 
 ; Punctuation
 [

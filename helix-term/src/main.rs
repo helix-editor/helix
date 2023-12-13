@@ -66,6 +66,8 @@ FLAGS:
     -V, --version                  Prints version information
     --vsplit                       Splits all given files vertically into different windows
     --hsplit                       Splits all given files horizontally into different windows
+    -w, --working-dir <path>       Specify an initial working directory
+    +N                             Open the first given file at line number N
 ",
         env!("CARGO_PKG_NAME"),
         VERSION_AND_GIT_HASH,
@@ -74,7 +76,7 @@ FLAGS:
         helix_loader::default_log_file().display(),
     );
 
-    let args = Args::parse_args().context("could not parse arguments")?;
+    let mut args = Args::parse_args().context("could not parse arguments")?;
 
     helix_loader::initialize_config_file(args.config_file.clone());
     helix_loader::initialize_log_file(args.log_file.clone());
@@ -113,6 +115,20 @@ FLAGS:
     }
 
     setup_logging(args.verbosity).context("failed to initialize logging")?;
+
+    // Before setting the working directory, resolve all the paths in args.files
+    for (path, _) in args.files.iter_mut() {
+        *path = helix_core::path::get_canonicalized_path(path);
+    }
+
+    // NOTE: Set the working directory early so the correct configuration is loaded. Be aware that
+    // Application::new() depends on this logic so it must be updated if this changes.
+    if let Some(path) = &args.working_directory {
+        helix_loader::set_current_working_dir(path)?;
+    } else if let Some((path, _)) = args.files.first().filter(|p| p.0.is_dir()) {
+        // If the first file is a directory, it will be the working directory unless -w was specified
+        helix_loader::set_current_working_dir(path)?;
+    }
 
     let config = match Config::load_default() {
         Ok(config) => config,
