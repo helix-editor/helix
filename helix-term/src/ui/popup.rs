@@ -3,7 +3,10 @@ use crate::{
     compositor::{Callback, Component, Context, Event, EventResult},
     ctrl, key,
 };
-use tui::buffer::Buffer as Surface;
+use tui::{
+    buffer::Buffer as Surface,
+    widgets::{Paragraph, Widget},
+};
 
 use helix_core::Position;
 use helix_view::{
@@ -26,6 +29,7 @@ pub struct Popup<T: Component> {
     ignore_escape_key: bool,
     id: &'static str,
     has_scrollbar: bool,
+    may_show_scroll_hint: bool,
 }
 
 impl<T: Component> Popup<T> {
@@ -42,6 +46,7 @@ impl<T: Component> Popup<T> {
             ignore_escape_key: false,
             id,
             has_scrollbar: true,
+            may_show_scroll_hint: true,
         }
     }
 
@@ -198,10 +203,12 @@ impl<T: Component> Component for Popup<T> {
             }
             ctrl!('d') => {
                 self.scroll(self.size.1 as usize / 2, true);
+                self.may_show_scroll_hint = false;
                 EventResult::Consumed(None)
             }
             ctrl!('u') => {
                 self.scroll(self.size.1 as usize / 2, false);
+                self.may_show_scroll_hint = false;
                 EventResult::Consumed(None)
             }
             _ => {
@@ -285,6 +292,17 @@ impl<T: Component> Component for Popup<T> {
                         // Draw scroll track
                         cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
                     }
+                }
+                if self.may_show_scroll_hint {
+                    let msg = "Use C-u & C-d to scroll";
+                    Paragraph::new(msg)
+                        .style(cx.editor.theme.get("ui.virtual.inlay-hint"))
+                        .render(
+                            area.with_height(1)
+                                .clip_left(area.width.saturating_sub(2 + msg.len() as u16))
+                                .with_width(msg.len() as u16),
+                            surface,
+                        );
                 }
             }
         }
