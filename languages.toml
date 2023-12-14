@@ -2960,5 +2960,4 @@ injection-regex = "janet"
 file-types = ["janet"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-roots = []
 grammar = "clojure"
