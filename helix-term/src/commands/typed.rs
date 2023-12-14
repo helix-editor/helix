@@ -476,8 +476,7 @@ fn set_indent_style(
         cx.editor.set_status(match style {
             Tabs => "tabs".to_owned(),
             Spaces(1) => "1 space".to_owned(),
-            Spaces(n) if (2..=8).contains(&n) => format!("{} spaces", n),
-            _ => unreachable!(), // Shouldn't happen.
+            Spaces(n) => format!("{} spaces", n),
         });
         return Ok(());
     }
