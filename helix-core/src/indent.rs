@@ -22,7 +22,7 @@ pub enum IndentStyle {
 
 // 16 spaces
 const INDENTS: &str = "                ";
-const MAX_INDENT: u8 = 16;
+pub const MAX_INDENT: u8 = 16;
 
 impl IndentStyle {
     /// Creates an `IndentStyle` from an indentation string.
