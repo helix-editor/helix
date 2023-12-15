@@ -58,6 +58,8 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `Ctrl-i`              | Jump forward on the jumplist                       | `jump_forward`              |
 | `Ctrl-o`              | Jump backward on the jumplist                      | `jump_backward`             |
 | `Ctrl-s`              | Save the current selection to the jumplist         | `save_selection`            |
+| `Shift-C`             | Add additional cursor under cursor                 |                             |
+| `,`                   | Collapse multiple cursors back into one            |                             |
 
 ### Changes
 
