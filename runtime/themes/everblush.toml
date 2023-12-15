@@ -68,6 +68,7 @@
 "ui.virtual.whitespace" = { fg = "comment" }
 "ui.virtual.wrap" = { fg = "comment" }
 "ui.virtual.indent-guide" = { fg = "comment" }
+"ui.virtual.inlay-hint" = { fg = "comment" }
 "ui.window" = { fg = "black" }
 
 "error" = { fg = "red" }

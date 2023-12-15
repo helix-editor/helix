@@ -112,9 +112,9 @@ impl Preview<'_, '_> {
     /// Alternate text to show for the preview.
     fn placeholder(&self) -> &str {
         match *self {
-            Self::EditorDocument(_) => "<File preview>",
+            Self::EditorDocument(_) => "<Invalid file location>",
             Self::Cached(preview) => match preview {
-                CachedPreview::Document(_) => "<File preview>",
+                CachedPreview::Document(_) => "<Invalid file location>",
                 CachedPreview::Binary => "<Binary file>",
                 CachedPreview::LargeFile => "<File too large to preview>",
                 CachedPreview::NotFound => "<File not found>",
@@ -693,8 +693,14 @@ impl<T: Item + 'static> Picker<T> {
         if let Some((path, range)) = self.current_file(cx.editor) {
             let preview = self.get_preview(path, cx.editor);
             let doc = match preview.document() {
-                Some(doc) => doc,
-                None => {
+                Some(doc)
+                    if range.map_or(true, |(start, end)| {
+                        start <= end && end <= doc.text().len_lines()
+                    }) =>
+                {
+                    doc
+                }
+                _ => {
                     let alt_text = preview.placeholder();
                     let x = inner.x + inner.width.saturating_sub(alt_text.len() as u16) / 2;
                     let y = inner.y + inner.height / 2;
@@ -704,31 +710,46 @@ impl<T: Item + 'static> Picker<T> {
             };
 
             let mut offset = ViewPosition::default();
-            if let Some(range) = range {
-                let text_fmt = doc.text_format(inner.width, None);
-                let annotations = TextAnnotations::default();
-                (offset.anchor, offset.vertical_offset) = char_idx_at_visual_offset(
-                    doc.text().slice(..),
-                    doc.text().line_to_char(range.0),
-                    // align to middle
-                    -(inner.height as isize / 2),
-                    0,
-                    &text_fmt,
-                    &annotations,
-                );
+            if let Some((start_line, end_line)) = range {
+                let height = end_line - start_line;
+                let text = doc.text().slice(..);
+                let start = text.line_to_char(start_line);
+                let middle = text.line_to_char(start_line + height / 2);
+                if height < inner.height as usize {
+                    let text_fmt = doc.text_format(inner.width, None);
+                    let annotations = TextAnnotations::default();
+                    (offset.anchor, offset.vertical_offset) = char_idx_at_visual_offset(
+                        text,
+                        middle,
+                        // align to middle
+                        -(inner.height as isize / 2),
+                        0,
+                        &text_fmt,
+                        &annotations,
+                    );
+                    if start < offset.anchor {
+                        offset.anchor = start;
+                        offset.vertical_offset = 0;
+                    }
+                } else {
+                    offset.anchor = start;
+                }
             }
 
-            let mut highlights = EditorView::doc_syntax_highlights(
+            let syntax_highlights = EditorView::doc_syntax_highlights(
                 doc,
                 offset.anchor,
                 area.height,
                 &cx.editor.theme,
             );
+
+            let mut overlay_highlights =
+                EditorView::empty_highlight_iter(doc, offset.anchor, area.height);
             for spans in EditorView::doc_diagnostics_highlights(doc, &cx.editor.theme) {
                 if spans.is_empty() {
                     continue;
                 }
-                highlights = Box::new(helix_core::syntax::merge(highlights, spans));
+                overlay_highlights = Box::new(helix_core::syntax::merge(overlay_highlights, spans));
             }
             let mut decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
 
@@ -759,7 +780,8 @@ impl<T: Item + 'static> Picker<T> {
                 offset,
                 // TODO: compute text annotations asynchronously here (like inlay hints)
                 &TextAnnotations::default(),
-                highlights,
+                syntax_highlights,
+                overlay_highlights,
                 &cx.editor.theme,
                 &mut decorations,
                 &mut [],
@@ -777,7 +799,8 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
         // |         | |         |
         // +---------+ +---------+
 
-        let render_preview = self.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let render_preview =
+            self.show_preview && self.file_fn.is_some() && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
 
         let picker_width = if render_preview {
             area.width / 2

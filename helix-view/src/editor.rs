@@ -42,7 +42,7 @@ use anyhow::{anyhow, bail, Error};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
-    syntax::{self, AutoPairConfig, SoftWrap},
+    syntax::{self, AutoPairConfig, IndentationHeuristic, SoftWrap},
     Change, LineEnding, NATIVE_LINE_ENDING,
 };
 use helix_core::{Position, Selection};
@@ -291,6 +291,9 @@ pub struct Config {
     pub insert_final_newline: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
+    /// Which indent heuristic to use when a new line is inserted
+    #[serde(default)]
+    pub indent_heuristic: IndentationHeuristic,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -727,7 +730,7 @@ pub struct WhitespaceCharacters {
 impl Default for WhitespaceCharacters {
     fn default() -> Self {
         Self {
-            space: '·',    // U+00B7
+            space: '·',   // U+00B7
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
@@ -755,12 +758,13 @@ impl Default for IndentGuidesConfig {
 }
 
 /// Line ending configuration.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LineEndingConfig {
     /// The platform's native line ending.
     ///
     /// `crlf` on Windows, otherwise `lf`.
+    #[default]
     Native,
     /// Line feed.
     LF,
@@ -775,12 +779,6 @@ pub enum LineEndingConfig {
     /// Next line.
     #[cfg(feature = "unicode-lines")]
     Nel,
-}
-
-impl Default for LineEndingConfig {
-    fn default() -> Self {
-        LineEndingConfig::Native
-    }
 }
 
 impl From<LineEndingConfig> for LineEnding {
@@ -846,6 +844,7 @@ impl Default for Config {
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
+            indent_heuristic: IndentationHeuristic::default(),
         }
     }
 }
@@ -1188,71 +1187,80 @@ impl Editor {
     }
 
     /// Refreshes the language server for a given document
-    pub fn refresh_language_servers(&mut self, doc_id: DocumentId) -> Option<()> {
+    pub fn refresh_language_servers(&mut self, doc_id: DocumentId) {
         self.launch_language_servers(doc_id)
     }
 
     /// Launch a language server for a given document
-    fn launch_language_servers(&mut self, doc_id: DocumentId) -> Option<()> {
+    fn launch_language_servers(&mut self, doc_id: DocumentId) {
         if !self.config().lsp.enable {
-            return None;
+            return;
         }
         // if doc doesn't have a URL it's a scratch buffer, ignore it
-        let doc = self.documents.get_mut(&doc_id)?;
-        let doc_url = doc.url()?;
+        let Some(doc) = self.documents.get_mut(&doc_id) else {
+            return;
+        };
+        let Some(doc_url) = doc.url() else {
+            return;
+        };
         let (lang, path) = (doc.language.clone(), doc.path().cloned());
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
 
-        // try to find language servers based on the language name
-        let language_servers = lang.as_ref().and_then(|language| {
+        // store only successfully started language servers
+        let language_servers = lang.as_ref().map_or_else(HashMap::default, |language| {
             self.language_servers
                 .get(language, path.as_ref(), root_dirs, config.lsp.snippets)
-                .map_err(|e| {
-                    log::error!(
-                        "Failed to initialize the language servers for `{}` {{ {} }}",
-                        language.scope(),
-                        e
-                    )
+                .filter_map(|(lang, client)| match client {
+                    Ok(client) => Some((lang, client)),
+                    Err(err) => {
+                        log::error!(
+                            "Failed to initialize the language servers for `{}` - `{}` {{ {} }}",
+                            language.scope(),
+                            lang,
+                            err
+                        );
+                        None
+                    }
                 })
-                .ok()
+                .collect::<HashMap<_, _>>()
         });
 
-        if let Some(language_servers) = language_servers {
-            let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
+        if language_servers.is_empty() {
+            return;
+        }
 
-            // only spawn new language servers if the servers aren't the same
+        let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
-            let doc_language_servers_not_in_registry =
-                doc.language_servers.iter().filter(|(name, doc_ls)| {
-                    language_servers
-                        .get(*name)
-                        .map_or(true, |ls| ls.id() != doc_ls.id())
-                });
-
-            for (_, language_server) in doc_language_servers_not_in_registry {
-                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
-            }
-
-            let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
-                doc.language_servers
+        // only spawn new language servers if the servers aren't the same
+        let doc_language_servers_not_in_registry =
+            doc.language_servers.iter().filter(|(name, doc_ls)| {
+                language_servers
                     .get(*name)
-                    .map_or(true, |doc_ls| ls.id() != doc_ls.id())
+                    .map_or(true, |ls| ls.id() != doc_ls.id())
             });
 
-            for (_, language_server) in language_servers_not_in_doc {
-                // TODO: this now races with on_init code if the init happens too quickly
-                tokio::spawn(language_server.text_document_did_open(
-                    doc_url.clone(),
-                    doc.version(),
-                    doc.text(),
-                    language_id.clone(),
-                ));
-            }
-
-            doc.language_servers = language_servers;
+        for (_, language_server) in doc_language_servers_not_in_registry {
+            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
-        Some(())
+
+        let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
+            doc.language_servers
+                .get(*name)
+                .map_or(true, |doc_ls| ls.id() != doc_ls.id())
+        });
+
+        for (_, language_server) in language_servers_not_in_doc {
+            // TODO: this now races with on_init code if the init happens too quickly
+            tokio::spawn(language_server.text_document_did_open(
+                doc_url.clone(),
+                doc.version(),
+                doc.text(),
+                language_id.clone(),
+            ));
+        }
+
+        doc.language_servers = language_servers;
     }
 
     fn _refresh(&mut self) {
@@ -1454,7 +1462,7 @@ impl Editor {
             doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
             let id = self.new_document(doc);
-            let _ = self.launch_language_servers(id);
+            self.launch_language_servers(id);
 
             id
         };

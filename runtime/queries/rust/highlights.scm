@@ -9,6 +9,13 @@
 ; Types
 ; -------
 
+(type_parameters
+  (type_identifier) @type.parameter)
+(constrained_type_parameter
+  left: (type_identifier) @type.parameter)
+(optional_type_parameter
+  name: (type_identifier) @type.parameter)
+
 ; ---
 ; Primitives
 ; ---
