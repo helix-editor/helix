@@ -15,7 +15,7 @@
 "ui.statusline.select" = { bg = "orange", fg = "grey01" }
 "ui.help" = { fg = "grey04", bg = "grey01" }
 "ui.cursor" = { fg = "grey04", modifiers = ["reversed"] }
-"ui.cursor.primary" = { fg = "grey05", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "grey02", bg = "grey05" }
 "ui.cursor.match" = { fg = "white", modifiers = ["underlined"] }
 "ui.cursorline.primary" = { bg = "grey02" }
 "ui.cursorline.secondary" = { bg = "grey02" }
