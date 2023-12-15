@@ -6,6 +6,7 @@ use crate::job::Job;
 use super::*;
 
 use helix_core::fuzzy::fuzzy_match;
+use helix_core::indent::MAX_INDENT;
 use helix_core::{encoding, line_ending, path::get_canonicalized_path, shellwords::Shellwords};
 use helix_lsp::{OffsetEncoding, Url};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
@@ -488,7 +489,7 @@ fn set_indent_style(
         Some(arg) => arg
             .parse::<u8>()
             .ok()
-            .filter(|n| (1..=8).contains(n))
+            .filter(|n| (1..=MAX_INDENT).contains(n))
             .map(Spaces),
         _ => None,
     };
@@ -2605,7 +2606,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "indent-style",
         aliases: &[],
-        doc: "Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)",
+        doc: "Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)",
         fun: set_indent_style,
         signature: CommandSignature::none(),
     },
