@@ -39,11 +39,11 @@
     (identifier) @variable.parameter))
 
 ; (p?: t)
-; (p?: t = 1) // Invalid but still posible to hihglight.
+; (p?: t = 1) // Invalid but still possible to highlight.
 (optional_parameter 
   (identifier) @variable.parameter)
 
-; (...p?: t) // Invalid but still posible to hihglight.
+; (...p?: t) // Invalid but still possible to highlight.
 (optional_parameter
   (rest_pattern
     (identifier) @variable.parameter))
@@ -59,7 +59,7 @@
     (pair_pattern
       value: (identifier) @variable.parameter)))
 
-; ([ p ]?: t[]) // Invalid but still posible to hihglight.
+; ([ p ]?: t[]) // Invalid but still possible to highlight.
 (optional_parameter
   (array_pattern
     (identifier) @variable.parameter))
