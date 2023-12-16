@@ -216,6 +216,7 @@ you will need to add queries.</li>
 <li>Refer to the
 <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#queries">tree-sitter website</a>
 for more information on writing queries.</li>
+<li>A list of highlight captures can be found <a href="https://docs.helix-editor.com/themes.html#scopes">on the themes page</a>.</li>
 </ol>
 <blockquote>
 <p>💡 In Helix, the first matching query takes precedence when evaluating
@@ -232,6 +233,7 @@ to fetch the grammars and <code>hx --grammar build</code> to build any out-of-da
 grammars.</li>
 <li>If a parser is causing a segfault, or you want to remove it, make sure to
 remove the compiled parser located at <code>runtime/grammars/&lt;name&gt;.so</code>.</li>
+<li>If you are attempting to add queries and Helix is unable to locate them, ensure that the environment variable <code>HELIX_RUNTIME</code> is set to the location of the <code>runtime</code> folder you're developing in.</li>
 </ul>
 
                     </main>
