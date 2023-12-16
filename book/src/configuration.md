@@ -177,6 +177,21 @@ All git related options are only enabled in a git repository.
 |`git-exclude` | Enables reading `.git/info/exclude` files | `true`
 |`max-depth` | Set with an integer value for maximum depth to recurse | Defaults to `None`.
 
+Ignore files can be placed locally as `.ignore` or put in your home directory as `~/.ignore`. They support the usual ignore and negative ignore (unignore) rules used in `.gitignore` files.
+
+Additionally, you can use Helix-specific ignore files by creating a local `.helix/ignore` file in the current workspace or a global `ignore` file located in your Helix config directory:
+- Linux and Mac: `~/.config/helix/ignore`
+- Windows: `%AppData%\helix\ignore`
+
+Example:
+
+```ini
+# unignore in file picker and global search
+!.github/
+!.gitignore
+!.gitattributes
+```
+
 ### `[editor.auto-pairs]` Section
 
 Enables automatic insertion of pairs to parentheses, brackets, etc. Can be a
