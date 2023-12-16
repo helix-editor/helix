@@ -3,6 +3,7 @@
 
 [language-server]
 
+als = { command = "als" }
 awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
 bass = { command = "bass", args = ["--lsp"] }
@@ -2919,6 +2920,32 @@ file-types = ["gmi"]
 [[grammar]]
 name = "gemini"
 source = { git = "https://git.sr.ht/~nbsp/tree-sitter-gemini", rev = "3cc5e4bdf572d5df4277fc2e54d6299bd59a54b3" }
+
+[[language]]
+name = "agda"
+scope = "source.agda"
+injection-regex = "agda"
+file-types = ["agda"]
+roots = []
+comment-token = "--"
+# language-servers = [ "als" ]
+# the agda language server is of questionable functionality.
+auto-format = false
+indent = { tab-width = 2, unit = "  " }
+
+[language.auto-pairs]
+'"' = '"'
+"'" = "'"
+'{' = '}'
+'(' = ')'
+'[' = ']'
+
+# [language.debugger]
+# ?? can this be used for proof assistant support? explore
+
+[[grammar]]
+name = "agda"
+source = { git = "https://github.com/tree-sitter/tree-sitter-agda", rev = "c21c3a0f996363ed17b8ac99d827fe5a4821f217" }
 
 [[language]]
 name = "templ"
