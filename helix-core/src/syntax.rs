@@ -442,6 +442,22 @@ pub struct IndentationConfiguration {
     pub unit: String,
 }
 
+/// How the indentation for a newly inserted line should be determined.
+/// If the selected heuristic is not available (e.g. because the current
+/// language has no tree-sitter indent queries), a simpler one will be used.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum IndentationHeuristic {
+    /// Just copy the indentation of the line that the cursor is currently on.
+    Simple,
+    /// Use tree-sitter indent queries to compute the expected absolute indentation level of the new line.
+    TreeSitter,
+    /// Use tree-sitter indent queries to compute the expected difference in indentation between the new line
+    /// and the line before. Add this to the actual indentation level of the line before.
+    #[default]
+    Hybrid,
+}
+
 /// Configuration for auto pairs
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields, untagged)]

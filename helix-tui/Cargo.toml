@@ -24,5 +24,5 @@ unicode-segmentation = "1.10"
 crossterm = { version = "0.27", optional = true }
 termini = "1.0"
 serde = { version = "1", "optional" = true, features = ["derive"]}
-once_cell = "1.18"
+once_cell = "1.19"
 log = "~0.4"
