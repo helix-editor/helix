@@ -969,20 +969,19 @@ impl Client {
     ) -> Option<impl Future<Output = Result<()>>> {
         let capabilities = self.capabilities.get().unwrap();
 
-        let include_text = match &capabilities.text_document_sync {
-            Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
-                save: Some(options),
+        let include_text = match &capabilities.text_document_sync.as_ref()? {
+            lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
+                save: options,
                 ..
-            })) => match options {
+            }) => match options.as_ref()? {
                 lsp::TextDocumentSyncSaveOptions::Supported(true) => false,
                 lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp_types::SaveOptions {
                     include_text,
                 }) => include_text.unwrap_or(false),
-                // Supported(false)
-                _ => return None,
+                lsp::TextDocumentSyncSaveOptions::Supported(false) => return None,
             },
-            // unsupported
-            _ => return None,
+            // see: https://github.com/microsoft/language-server-protocol/issues/288
+            lsp::TextDocumentSyncCapability::Kind(..) => false,
         };
 
         Some(self.notify::<lsp::notification::DidSaveTextDocument>(
