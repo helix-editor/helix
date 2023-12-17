@@ -1489,6 +1489,18 @@ not visible in the Helix file picker and global search.</p>
 <tr><td><code>max-depth</code></td><td>Set with an integer value for maximum depth to recurse</td><td>Defaults to <code>None</code>.</td></tr>
 </tbody></table>
 </div>
+<p>Ignore files can be placed locally as <code>.ignore</code> or put in your home directory as <code>~/.ignore</code>. They support the usual ignore and negative ignore (unignore) rules used in <code>.gitignore</code> files.</p>
+<p>Additionally, you can use Helix-specific ignore files by creating a local <code>.helix/ignore</code> file in the current workspace or a global <code>ignore</code> file located in your Helix config directory:</p>
+<ul>
+<li>Linux and Mac: <code>~/.config/helix/ignore</code></li>
+<li>Windows: <code>%AppData%\helix\ignore</code></li>
+</ul>
+<p>Example:</p>
+<pre><code class="language-ini"># unignore in file picker and global search
+!.github/
+!.gitignore
+!.gitattributes
+</code></pre>
 <h3 id="editorauto-pairs-section"><a class="header" href="#editorauto-pairs-section"><code>[editor.auto-pairs]</code> Section</a></h3>
 <p>Enables automatic insertion of pairs to parentheses, brackets, etc. Can be a
 simple boolean value, or a specific mapping of pairs of single characters.</p>
