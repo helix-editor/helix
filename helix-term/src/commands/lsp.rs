@@ -38,7 +38,7 @@ use crate::{
 
 use std::{
     cmp::Ordering,
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt::Write,
     future::Future,
     path::PathBuf,
@@ -1635,6 +1635,80 @@ fn compute_inlay_hints_for_view(
                     padding_after_inlay_hints.push(InlineAnnotation::new(char_idx, " "));
                 }
             }
+
+            fn collect_to_map<'a>(
+                doc_text: &helix_core::Rope,
+                hints: &'a Vec<InlineAnnotation>,
+            ) -> HashMap<usize, helix_core::SmallVec<[&'a str; 1]>> {
+                let mut v = HashMap::new();
+                for hint in hints {
+                    let char_idx = hint.char_idx;
+                    let char_pos = helix_core::coords_at_pos(doc_text.byte_slice(..), char_idx);
+                    let char_index = helix_core::line_ending::line_end_char_index(
+                        &doc_text.slice(..),
+                        char_pos.row,
+                    );
+
+                    let refm = match v.get_mut(&char_index) {
+                        Some(l) => l,
+                        None => {
+                            v.insert(char_index, helix_core::SmallVec::<[&str; 1]>::new());
+                            v.get_mut(&char_index).unwrap()
+                        }
+                    };
+
+                    refm.push(hint.text.as_str());
+                }
+                v
+            }
+
+            fn inlay_map_to_vec(
+                map: HashMap<usize, helix_core::SmallVec<[&str; 1]>>,
+                type_hint_prefix: &str,
+            ) -> Vec<InlineAnnotation> {
+                map.into_iter()
+                    .map(|(char_index, hints)| {
+                        let type_hint_midfix = ",";
+                        let type_hint_suffix = "";
+
+                        let mut type_built_string = String::with_capacity(
+                            hints
+                                .iter()
+                                .map(|it| it.len() + type_hint_midfix.len())
+                                .sum::<usize>()
+                                + type_hint_suffix.len()
+                                + type_hint_prefix.len(),
+                        );
+
+                        type_built_string.push_str(type_hint_prefix);
+                        for hint in hints {
+                            type_built_string.push_str(hint);
+                            type_built_string.push_str(type_hint_midfix);
+                        }
+                        for _ in 0..type_hint_midfix.len() {
+                            type_built_string.pop();
+                        }
+                        type_built_string.push_str(type_hint_suffix);
+
+                        InlineAnnotation::new(char_index, type_built_string)
+                    })
+                    .collect()
+            }
+
+            let type_hint_line_index_map = collect_to_map(doc_text, &type_inlay_hints);
+            let param_hint_line_index_map = collect_to_map(doc_text, &parameter_inlay_hints);
+
+            type_inlay_hints = inlay_map_to_vec(type_hint_line_index_map, " > ");
+            parameter_inlay_hints = inlay_map_to_vec(param_hint_line_index_map, " < ");
+
+            padding_after_inlay_hints = type_inlay_hints
+                .iter()
+                .map(|it| InlineAnnotation::new(it.char_idx, " "))
+                .collect();
+            padding_before_inlay_hints = parameter_inlay_hints
+                .iter()
+                .map(|it| InlineAnnotation::new(it.char_idx, " "))
+                .collect();
 
             doc.set_inlay_hints(
                 view_id,
