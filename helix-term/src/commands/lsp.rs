@@ -1636,79 +1636,29 @@ fn compute_inlay_hints_for_view(
                 }
             }
 
-            fn collect_to_map<'a>(
-                doc_text: &helix_core::Rope,
-                hints: &'a Vec<InlineAnnotation>,
-            ) -> HashMap<usize, helix_core::SmallVec<[&'a str; 1]>> {
-                let mut v = HashMap::new();
-                for hint in hints {
-                    let char_idx = hint.char_idx;
-                    let char_pos = helix_core::coords_at_pos(doc_text.byte_slice(..), char_idx);
-                    let char_index = helix_core::line_ending::line_end_char_index(
-                        &doc_text.slice(..),
-                        char_pos.row,
-                    );
-
-                    let refm = match v.get_mut(&char_index) {
-                        Some(l) => l,
-                        None => {
-                            v.insert(char_index, helix_core::SmallVec::<[&str; 1]>::new());
-                            v.get_mut(&char_index).unwrap()
-                        }
+            let vimmise_inlays = |hints: &mut Vec<InlineAnnotation>, prefix| {
+                hints.iter_mut().map(|it| {
+                    it.char_idx = helix_core::line_ending::line_end_char_index(&doc_text.slice(..), doc_text.char_to_line(it.char_idx));
+                    (it.char_idx, it)
+                }).fold(HashMap::<usize, Vec<&mut InlineAnnotation>>::new(), |mut map, (id, annot)| {
+                    match map.get_mut(&id) {
+                        Some(v) => v.push(annot),
+                        None => {map.insert(id, vec![annot]);}
                     };
+                    map
+                }).into_iter().for_each(|(_, mut v)| {
+                    v[0].text.insert_str(0, prefix);
+                    v.iter_mut().for_each(|s| s.text.push_str(","));
+                    let last = v.last_mut().unwrap();
+                    last.text.truncate(last.text.len() - 1);
+                });
+            };
 
-                    refm.push(hint.text.as_str());
-                }
-                v
-            }
-
-            fn inlay_map_to_vec(
-                map: HashMap<usize, helix_core::SmallVec<[&str; 1]>>,
-                type_hint_prefix: &str,
-            ) -> Vec<InlineAnnotation> {
-                map.into_iter()
-                    .map(|(char_index, hints)| {
-                        let type_hint_midfix = ",";
-                        let type_hint_suffix = "";
-
-                        let mut type_built_string = String::with_capacity(
-                            hints
-                                .iter()
-                                .map(|it| it.len() + type_hint_midfix.len())
-                                .sum::<usize>()
-                                + type_hint_suffix.len()
-                                + type_hint_prefix.len(),
-                        );
-
-                        type_built_string.push_str(type_hint_prefix);
-                        for hint in hints {
-                            type_built_string.push_str(hint);
-                            type_built_string.push_str(type_hint_midfix);
-                        }
-                        for _ in 0..type_hint_midfix.len() {
-                            type_built_string.pop();
-                        }
-                        type_built_string.push_str(type_hint_suffix);
-
-                        InlineAnnotation::new(0, type_built_string)
-                    })
-                    .collect()
-            }
-
-            let type_hint_line_index_map = collect_to_map(doc_text, &type_inlay_hints);
-            let param_hint_line_index_map = collect_to_map(doc_text, &parameter_inlay_hints);
-
-            type_inlay_hints = inlay_map_to_vec(type_hint_line_index_map, " > ");
-            parameter_inlay_hints = inlay_map_to_vec(param_hint_line_index_map, " < ");
-
-            padding_after_inlay_hints = type_inlay_hints
-                .iter()
-                .map(|it| InlineAnnotation::new(it.char_idx, " "))
-                .collect();
-            padding_before_inlay_hints = parameter_inlay_hints
-                .iter()
-                .map(|it| InlineAnnotation::new(it.char_idx, " "))
-                .collect();
+            vimmise_inlays(&mut type_inlay_hints, " => ");
+            vimmise_inlays(&mut parameter_inlay_hints, " <= ");
+            vimmise_inlays(&mut other_inlay_hints, " == ");
+            padding_after_inlay_hints = vec![];
+            padding_before_inlay_hints = vec![];
 
             doc.set_inlay_hints(
                 view_id,
