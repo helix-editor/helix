@@ -11,7 +11,7 @@
 | blueprint | ✓ |  |  | `blueprint-compiler` |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
-| cabal |  |  |  |  |
+| cabal |  |  |  | `haskell-language-server-wrapper` |
 | cairo | ✓ | ✓ | ✓ | `cairo-language-server` |
 | capnp | ✓ |  | ✓ |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
