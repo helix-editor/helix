@@ -377,9 +377,9 @@ impl Default for VimInlayConfig {
     fn default() -> Self {
         Self {
             enable: false,
-            type_inlay_prefix: String::from(" => "),
-            parameter_inlay_prefix: String::from(" <= "),
-            other_inlay_prefix: String::from(" == "),
+            type_inlay_prefix: String::from(" -> "),
+            parameter_inlay_prefix: String::from(" <- "),
+            other_inlay_prefix: String::from(" - "),
         }
     }
 }
