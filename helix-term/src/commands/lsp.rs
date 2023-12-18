@@ -1690,7 +1690,7 @@ fn compute_inlay_hints_for_view(
                         }
                         type_built_string.push_str(type_hint_suffix);
 
-                        InlineAnnotation::new(char_index, type_built_string)
+                        InlineAnnotation::new(0, type_built_string)
                     })
                     .collect()
             }
