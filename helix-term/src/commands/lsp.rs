@@ -1654,11 +1654,17 @@ fn compute_inlay_hints_for_view(
                 });
             };
 
-            vimmise_inlays(&mut type_inlay_hints, " => ");
-            vimmise_inlays(&mut parameter_inlay_hints, " <= ");
-            vimmise_inlays(&mut other_inlay_hints, " == ");
-            padding_after_inlay_hints = vec![];
-            padding_before_inlay_hints = vec![];
+            {
+                let cfg = doc.config.load();
+                let vim_cfg = &cfg.lsp.vim_inlay_hints;
+                if vim_cfg.enable {
+                    vimmise_inlays(&mut type_inlay_hints, vim_cfg.type_inlay_prefix.as_str());
+                    vimmise_inlays(&mut parameter_inlay_hints, vim_cfg.parameter_inlay_prefix.as_str());
+                    vimmise_inlays(&mut other_inlay_hints, vim_cfg.other_inlay_prefix.as_str());
+                    padding_after_inlay_hints = vec![];
+                    padding_before_inlay_hints = vec![];
+                }
+            }
 
             doc.set_inlay_hints(
                 view_id,
@@ -1671,6 +1677,7 @@ fn compute_inlay_hints_for_view(
                     padding_after_inlay_hints: padding_after_inlay_hints.into(),
                 },
             );
+
             doc.inlay_hints_oudated = false;
         },
     );
