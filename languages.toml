@@ -346,7 +346,8 @@ file-types = [
   "jsonld",
   ".vuerc",
   "composer.lock",
-  ".watchmanconfig"
+  ".watchmanconfig",
+  "avsc"
 ]
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
