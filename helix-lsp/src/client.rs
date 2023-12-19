@@ -667,6 +667,7 @@ impl Client {
                 version: Some(String::from(VERSION_AND_GIT_HASH)),
             }),
             locale: None, // TODO
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
         };
 
         self.request::<lsp::request::Initialize>(params).await
