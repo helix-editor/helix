@@ -19,7 +19,6 @@ pub struct RenderContext<'a> {
     pub view: &'a View,
     pub focused: bool,
     pub spinners: &'a ProgressSpinners,
-    pub parts: RenderBuffer<'a>,
 }
 
 impl<'a> RenderContext<'a> {
@@ -36,16 +35,8 @@ impl<'a> RenderContext<'a> {
             view,
             focused,
             spinners,
-            parts: RenderBuffer::default(),
         }
     }
-}
-
-#[derive(Default)]
-pub struct RenderBuffer<'a> {
-    pub left: Spans<'a>,
-    pub center: Spans<'a>,
-    pub right: Spans<'a>,
 }
 
 pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface) {
@@ -57,68 +48,67 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     surface.set_style(viewport.with_height(1), base_style);
 
-    // Left side of the status line.
-
-    let config = context.editor.config();
-
-    let element_ids = &config.statusline.left;
-    context.parts.left = element_ids
-        .iter()
-        .map(|element_id| get_render_function(*element_id))
-        .flat_map(|render| render(context).0)
-        .collect::<Vec<Span>>()
-        .into();
+    let statusline = render_statusline(context, viewport.width as usize);
 
     surface.set_spans(
         viewport.x,
         viewport.y,
-        &context.parts.left,
-        context.parts.left.width() as u16,
+        &statusline,
+        statusline.width() as u16,
     );
+}
 
-    // Right side of the status line.
+pub fn render_statusline<'a>(context: &mut RenderContext, width: usize) -> Spans<'a> {
+    let config = context.editor.config();
 
-    let element_ids = &config.statusline.right;
-    context.parts.right = element_ids
+    let element_ids = &config.statusline.left;
+    let mut left = element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
         .flat_map(|render| render(context).0)
-        .collect::<Vec<Span>>()
-        .into();
-
-    surface.set_spans(
-        viewport.x
-            + viewport
-                .width
-                .saturating_sub(context.parts.right.width() as u16),
-        viewport.y,
-        &context.parts.right,
-        context.parts.right.width() as u16,
-    );
-
-    // Center of the status line.
+        .collect::<Vec<Span>>();
 
     let element_ids = &config.statusline.center;
-    context.parts.center = element_ids
+    let mut center = element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
         .flat_map(|render| render(context).0)
-        .collect::<Vec<Span>>()
-        .into();
+        .collect::<Vec<Span>>();
 
-    // Width of the empty space between the left and center area and between the center and right area.
-    let spacing = 1u16;
+    let element_ids = &config.statusline.right;
+    let mut right = element_ids
+        .iter()
+        .map(|element_id| get_render_function(*element_id))
+        .flat_map(|render| render(context).0)
+        .collect::<Vec<Span>>();
 
-    let edge_width = context.parts.left.width().max(context.parts.right.width()) as u16;
-    let center_max_width = viewport.width.saturating_sub(2 * edge_width + 2 * spacing);
-    let center_width = center_max_width.min(context.parts.center.width() as u16);
+    let left_area_width: usize = left.iter().map(|s| s.width()).sum();
+    let center_area_width: usize = center.iter().map(|s| s.width()).sum();
+    let right_area_width: usize = right.iter().map(|s| s.width()).sum();
 
-    surface.set_spans(
-        viewport.x + viewport.width / 2 - center_width / 2,
-        viewport.y,
-        &context.parts.center,
-        center_width,
-    );
+    let min_spacing_between_areas = 1usize;
+    let sides_space_required = left_area_width + right_area_width + min_spacing_between_areas;
+    let total_space_required = sides_space_required + center_area_width + min_spacing_between_areas;
+
+    let mut statusline: Vec<Span> = vec![];
+
+    if center_area_width > 0 && total_space_required <= width {
+        let center_margin = (width - center_area_width) / 2;
+        statusline.append(&mut left);
+        statusline.push(" ".repeat(center_margin - left_area_width).into());
+        statusline.append(&mut center);
+        statusline.push(" ".repeat(center_margin - right_area_width).into());
+        statusline.append(&mut right);
+    } else if right_area_width > 0 && sides_space_required <= width {
+        let side_areas_width = left_area_width + right_area_width;
+        statusline.append(&mut left);
+        statusline.push(" ".repeat(width - side_areas_width).into());
+        statusline.append(&mut right);
+    } else if left_area_width <= width {
+        statusline.append(&mut left);
+    }
+
+    statusline.into()
 }
 
 fn get_render_function<'a>(
