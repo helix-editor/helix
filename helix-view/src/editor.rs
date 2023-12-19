@@ -43,9 +43,8 @@ pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig, IndentationHeuristic, SoftWrap},
-    Change, LineEnding, NATIVE_LINE_ENDING,
+    Change, LineEnding, Position, Selection, NATIVE_LINE_ENDING,
 };
-use helix_core::{Position, Selection};
 use helix_dap as dap;
 use helix_lsp::lsp;
 
@@ -291,6 +290,8 @@ pub struct Config {
     pub insert_final_newline: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
+    /// Draw border around popups.
+    pub popup_border: PopupBorderConfig,
     /// Which indent heuristic to use when a new line is inserted
     #[serde(default)]
     pub indent_heuristic: IndentationHeuristic,
@@ -797,6 +798,15 @@ impl From<LineEndingConfig> for LineEnding {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PopupBorderConfig {
+    None,
+    All,
+    Popup,
+    Menu,
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -844,6 +854,7 @@ impl Default for Config {
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
+            popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
         }
     }
@@ -1062,6 +1073,16 @@ impl Editor {
             cursor_cache: Cell::new(None),
             completion_request_handle: None,
         }
+    }
+
+    pub fn popup_border(&self) -> bool {
+        self.config().popup_border == PopupBorderConfig::All
+            || self.config().popup_border == PopupBorderConfig::Popup
+    }
+
+    pub fn menu_border(&self) -> bool {
+        self.config().popup_border == PopupBorderConfig::All
+            || self.config().popup_border == PopupBorderConfig::Menu
     }
 
     pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {

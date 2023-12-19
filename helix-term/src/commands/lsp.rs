@@ -23,6 +23,7 @@ use helix_core::{
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
     editor::Action,
+    graphics::Margin,
     theme::Style,
     Document, View,
 };
@@ -744,7 +745,16 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup = Popup::new("code-action", picker).with_scrollbar(false);
+            let margin = if editor.menu_border() {
+                Margin::vertical(1)
+            } else {
+                Margin::none()
+            };
+
+            let popup = Popup::new("code-action", picker)
+                .with_scrollbar(false)
+                .margin(margin);
+
             compositor.replace_or_push("code-action", popup);
         };
 
