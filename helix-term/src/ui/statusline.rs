@@ -61,7 +61,6 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 pub fn render_statusline<'a>(context: &mut RenderContext, width: usize) -> Spans<'a> {
     let config = context.editor.config();
 
-<<<<<<< HEAD
     let element_ids = &config.statusline.left;
     let mut left = element_ids
         .iter()
@@ -75,35 +74,20 @@ pub fn render_statusline<'a>(context: &mut RenderContext, width: usize) -> Spans
         .map(|element_id| get_render_function(*element_id))
         .flat_map(|render| render(context).0)
         .collect::<Vec<Span>>();
-=======
-    let element_ids = &config.statusline.right;
-    context.parts.right = element_ids
+
+    let element_ids = &config.statusline.left;
+    let mut left = element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
         .flat_map(|render| render(context).0)
-        .collect::<Vec<Span>>()
-        .into();
-
-    surface.set_spans(
-        viewport.x
-            + viewport
-                .width
-                .saturating_sub(context.parts.right.width() as u16),
-        viewport.y,
-        &context.parts.right,
-        context.parts.right.width() as u16,
-    );
-
-    // Center of the status line.
+        .collect::<Vec<Span>>();
 
     let element_ids = &config.statusline.center;
-    context.parts.center = element_ids
+    let mut center = element_ids
         .iter()
         .map(|element_id| get_render_function(*element_id))
         .flat_map(|render| render(context).0)
-        .collect::<Vec<Span>>()
-        .into();
->>>>>>> 368a1c01 (Refactor statusline elements to return Spans)
+        .collect::<Vec<Span>>();
 
     let element_ids = &config.statusline.right;
     let mut right = element_ids
@@ -396,7 +380,6 @@ fn render_file_name<'a>(context: &RenderContext) -> Spans<'a> {
     Span::raw(title).into()
 }
 
-<<<<<<< HEAD
 fn render_file_absolute_path<'a>(context: &RenderContext) -> Spans<'a> {
     let title = {
         let path = context.doc.path();
@@ -410,8 +393,6 @@ fn render_file_absolute_path<'a>(context: &RenderContext) -> Spans<'a> {
     Span::raw(title).into()
 }
 
-=======
->>>>>>> 368a1c01 (Refactor statusline elements to return Spans)
 fn render_file_modification_indicator<'a>(context: &RenderContext) -> Spans<'a> {
     let title = (if context.doc.is_modified() {
         "[+]"
