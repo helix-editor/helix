@@ -3,7 +3,7 @@ use arc_swap::ArcSwap;
 use std::path::Path;
 use std::sync::Arc;
 
-use gix::objs::tree::EntryMode;
+use gix::objs::tree::EntryKind;
 use gix::sec::trust::DefaultForLevel;
 use gix::{Commit, ObjectId, Repository, ThreadSafeRepository};
 
@@ -128,12 +128,12 @@ fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Resul
     let tree_entry = tree
         .lookup_entry_by_path(rel_path, &mut Vec::new())?
         .context("file is untracked")?;
-    match tree_entry.mode() {
+    match tree_entry.mode().kind() {
         // not a file, everything is new, do not show diff
-        mode @ (EntryMode::Tree | EntryMode::Commit | EntryMode::Link) => {
+        mode @ (EntryKind::Tree | EntryKind::Commit | EntryKind::Link) => {
             bail!("entry at {} is not a file but a {mode:?}", file.display())
         }
         // found a file
-        EntryMode::Blob | EntryMode::BlobExecutable => Ok(tree_entry.object_id()),
+        EntryKind::Blob | EntryKind::BlobExecutable => Ok(tree_entry.object_id()),
     }
 }

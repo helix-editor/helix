@@ -2,7 +2,17 @@ use std::borrow::Cow;
 use std::path::Path;
 use std::process::Command;
 
-const VERSION: &str = include_str!("../VERSION");
+const MAJOR: &str = env!("CARGO_PKG_VERSION_MAJOR");
+const MINOR: &str = env!("CARGO_PKG_VERSION_MINOR");
+const PATCH: &str = env!("CARGO_PKG_VERSION_PATCH");
+
+fn get_calver() -> String {
+    if PATCH == "0" {
+        format!("{MAJOR}.{MINOR}")
+    } else {
+        format!("{MAJOR}.{MINOR}.{PATCH}")
+    }
+}
 
 fn main() {
     let git_hash = Command::new("git")
@@ -12,9 +22,10 @@ fn main() {
         .filter(|output| output.status.success())
         .and_then(|x| String::from_utf8(x.stdout).ok());
 
+    let calver = get_calver();
     let version: Cow<_> = match &git_hash {
-        Some(git_hash) => format!("{} ({})", VERSION, &git_hash[..8]).into(),
-        None => VERSION.into(),
+        Some(git_hash) => format!("{} ({})", calver, &git_hash[..8]).into(),
+        None => calver.into(),
     };
 
     println!(
@@ -22,7 +33,6 @@ fn main() {
         std::env::var("TARGET").unwrap()
     );
 
-    println!("cargo:rerun-if-changed=../VERSION");
     println!("cargo:rustc-env=VERSION_AND_GIT_HASH={}", version);
 
     if git_hash.is_none() {

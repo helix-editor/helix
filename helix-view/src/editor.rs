@@ -42,7 +42,7 @@ use anyhow::{anyhow, bail, Error};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
-    syntax::{self, AutoPairConfig, SoftWrap},
+    syntax::{self, AutoPairConfig, IndentationHeuristic, SoftWrap},
     Change, LineEnding, Position, Selection, NATIVE_LINE_ENDING,
 };
 use helix_dap as dap;
@@ -292,6 +292,9 @@ pub struct Config {
     pub smart_tab: Option<SmartTabConfig>,
     /// Draw border around popups.
     pub popup_border: PopupBorderConfig,
+    /// Which indent heuristic to use when a new line is inserted
+    #[serde(default)]
+    pub indent_heuristic: IndentationHeuristic,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -728,7 +731,7 @@ pub struct WhitespaceCharacters {
 impl Default for WhitespaceCharacters {
     fn default() -> Self {
         Self {
-            space: '·',    // U+00B7
+            space: '·',   // U+00B7
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
@@ -756,12 +759,13 @@ impl Default for IndentGuidesConfig {
 }
 
 /// Line ending configuration.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LineEndingConfig {
     /// The platform's native line ending.
     ///
     /// `crlf` on Windows, otherwise `lf`.
+    #[default]
     Native,
     /// Line feed.
     LF,
@@ -776,12 +780,6 @@ pub enum LineEndingConfig {
     /// Next line.
     #[cfg(feature = "unicode-lines")]
     Nel,
-}
-
-impl Default for LineEndingConfig {
-    fn default() -> Self {
-        LineEndingConfig::Native
-    }
 }
 
 impl From<LineEndingConfig> for LineEnding {
@@ -857,6 +855,7 @@ impl Default for Config {
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
             popup_border: PopupBorderConfig::None,
+            indent_heuristic: IndentationHeuristic::default(),
         }
     }
 }

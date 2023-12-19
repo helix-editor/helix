@@ -101,7 +101,8 @@ pub struct LanguageConfiguration {
     pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
-    pub roots: Vec<String>,        // these indicate project roots <.git, Cargo.toml>
+    #[serde(default)]
+    pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
     pub comment_token: Option<String>,
     pub text_width: Option<usize>,
     pub soft_wrap: Option<SoftWrap>,
@@ -211,10 +212,7 @@ impl<'de> Deserialize<'de> for FileType {
             {
                 match map.next_entry::<String, String>()? {
                     Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix({
-                        // FIXME: use `suffix.replace('/', std::path::MAIN_SEPARATOR_STR)`
-                        //        if MSRV is updated to 1.68
-                        let mut separator = [0; 1];
-                        suffix.replace('/', std::path::MAIN_SEPARATOR.encode_utf8(&mut separator))
+                        suffix.replace('/', std::path::MAIN_SEPARATOR_STR)
                     })),
                     Some((key, _value)) => Err(serde::de::Error::custom(format!(
                         "unknown key in `file-types` list: {}",
@@ -442,6 +440,22 @@ pub struct IndentationConfiguration {
     #[serde(deserialize_with = "deserialize_tab_width")]
     pub tab_width: usize,
     pub unit: String,
+}
+
+/// How the indentation for a newly inserted line should be determined.
+/// If the selected heuristic is not available (e.g. because the current
+/// language has no tree-sitter indent queries), a simpler one will be used.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum IndentationHeuristic {
+    /// Just copy the indentation of the line that the cursor is currently on.
+    Simple,
+    /// Use tree-sitter indent queries to compute the expected absolute indentation level of the new line.
+    TreeSitter,
+    /// Use tree-sitter indent queries to compute the expected difference in indentation between the new line
+    /// and the line before. Add this to the actual indentation level of the line before.
+    #[default]
+    Hybrid,
 }
 
 /// Configuration for auto pairs

@@ -6,7 +6,9 @@ use crate::job::Job;
 use super::*;
 
 use helix_core::fuzzy::fuzzy_match;
-use helix_core::{encoding, line_ending, shellwords::Shellwords};
+use helix_core::indent::MAX_INDENT;
+use helix_core::{encoding, line_ending, path::get_canonicalized_path, shellwords::Shellwords};
+use helix_lsp::{OffsetEncoding, Url};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
@@ -475,8 +477,7 @@ fn set_indent_style(
         cx.editor.set_status(match style {
             Tabs => "tabs".to_owned(),
             Spaces(1) => "1 space".to_owned(),
-            Spaces(n) if (2..=8).contains(&n) => format!("{} spaces", n),
-            _ => unreachable!(), // Shouldn't happen.
+            Spaces(n) => format!("{} spaces", n),
         });
         return Ok(());
     }
@@ -488,7 +489,7 @@ fn set_indent_style(
         Some(arg) => arg
             .parse::<u8>()
             .ok()
-            .filter(|n| (1..=8).contains(n))
+            .filter(|n| (1..=MAX_INDENT).contains(n))
             .map(Spaces),
         _ => None,
     };
@@ -920,7 +921,7 @@ fn yank_main_selection_to_clipboard(
         return Ok(());
     }
 
-    yank_primary_selection_impl(cx.editor, '*');
+    yank_primary_selection_impl(cx.editor, '+');
     Ok(())
 }
 
@@ -955,7 +956,7 @@ fn yank_joined_to_clipboard(
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_impl(cx.editor, separator, '*');
+    yank_joined_impl(cx.editor, separator, '+');
     Ok(())
 }
 
@@ -968,7 +969,7 @@ fn yank_main_selection_to_primary_clipboard(
         return Ok(());
     }
 
-    yank_primary_selection_impl(cx.editor, '+');
+    yank_primary_selection_impl(cx.editor, '*');
     Ok(())
 }
 
@@ -984,7 +985,7 @@ fn yank_joined_to_primary_clipboard(
     let doc = doc!(cx.editor);
     let default_sep = Cow::Borrowed(doc.line_ending.as_str());
     let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_impl(cx.editor, separator, '+');
+    yank_joined_impl(cx.editor, separator, '*');
     Ok(())
 }
 
@@ -997,7 +998,7 @@ fn paste_clipboard_after(
         return Ok(());
     }
 
-    paste(cx.editor, '*', Paste::After, 1);
+    paste(cx.editor, '+', Paste::After, 1);
     Ok(())
 }
 
@@ -1010,7 +1011,7 @@ fn paste_clipboard_before(
         return Ok(());
     }
 
-    paste(cx.editor, '*', Paste::Before, 1);
+    paste(cx.editor, '+', Paste::Before, 1);
     Ok(())
 }
 
@@ -1023,7 +1024,7 @@ fn paste_primary_clipboard_after(
         return Ok(());
     }
 
-    paste(cx.editor, '+', Paste::After, 1);
+    paste(cx.editor, '*', Paste::After, 1);
     Ok(())
 }
 
@@ -1036,7 +1037,7 @@ fn paste_primary_clipboard_before(
         return Ok(());
     }
 
-    paste(cx.editor, '+', Paste::Before, 1);
+    paste(cx.editor, '*', Paste::Before, 1);
     Ok(())
 }
 
@@ -1049,7 +1050,7 @@ fn replace_selections_with_clipboard(
         return Ok(());
     }
 
-    replace_with_yanked_impl(cx.editor, '*', 1);
+    replace_with_yanked_impl(cx.editor, '+', 1);
     Ok(())
 }
 
@@ -1062,7 +1063,7 @@ fn replace_selections_with_primary_clipboard(
         return Ok(());
     }
 
-    replace_with_yanked_impl(cx.editor, '+', 1);
+    replace_with_yanked_impl(cx.editor, '*', 1);
     Ok(())
 }
 
@@ -2407,6 +2408,80 @@ fn redraw(
     Ok(())
 }
 
+fn move_buffer(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(args.len() == 1, format!(":move takes one argument"));
+    let doc = doc!(cx.editor);
+
+    let new_path = get_canonicalized_path(&PathBuf::from(args.first().unwrap().to_string()));
+    let old_path = doc
+        .path()
+        .ok_or_else(|| anyhow!("Scratch buffer cannot be moved. Use :write instead"))?
+        .clone();
+    let old_path_as_url = doc.url().unwrap();
+    let new_path_as_url = Url::from_file_path(&new_path).unwrap();
+
+    let edits: Vec<(
+        helix_lsp::Result<helix_lsp::lsp::WorkspaceEdit>,
+        OffsetEncoding,
+        String,
+    )> = doc
+        .language_servers()
+        .map(|lsp| {
+            (
+                lsp.prepare_file_rename(&old_path_as_url, &new_path_as_url),
+                lsp.offset_encoding(),
+                lsp.name().to_owned(),
+            )
+        })
+        .filter(|(f, _, _)| f.is_some())
+        .map(|(f, encoding, name)| (helix_lsp::block_on(f.unwrap()), encoding, name))
+        .collect();
+
+    for (lsp_reply, encoding, name) in edits {
+        match lsp_reply {
+            Ok(edit) => {
+                if let Err(e) = apply_workspace_edit(cx.editor, encoding, &edit) {
+                    log::error!(
+                        ":move command failed to apply edits from lsp {}: {:?}",
+                        name,
+                        e
+                    );
+                };
+            }
+            Err(e) => {
+                log::error!("LSP {} failed to treat willRename request: {:?}", name, e);
+            }
+        };
+    }
+
+    let doc = doc_mut!(cx.editor);
+
+    doc.set_path(Some(new_path.as_path()));
+    if let Err(e) = std::fs::rename(&old_path, &new_path) {
+        doc.set_path(Some(old_path.as_path()));
+        bail!("Could not move file: {}", e);
+    };
+
+    doc.language_servers().for_each(|lsp| {
+        lsp.did_file_rename(&old_path_as_url, &new_path_as_url);
+    });
+
+    cx.editor
+        .language_servers
+        .file_event_handler
+        .file_changed(new_path);
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -2530,7 +2605,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "indent-style",
         aliases: &[],
-        doc: "Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)",
+        doc: "Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)",
         fun: set_indent_style,
         signature: CommandSignature::none(),
     },
@@ -3006,6 +3081,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Clear and re-render the whole UI",
         fun: redraw,
         signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "move",
+        aliases: &[],
+        doc: "Move the current buffer and its corresponding file to a different path",
+        fun: move_buffer,
+        signature: CommandSignature::positional(&[completers::filename]),
     },
 ];
 

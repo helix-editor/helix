@@ -57,9 +57,12 @@
 "markup.raw.inline" = "green"
 "markup.raw.block" = "green"
 
-"diff.plus" = "diff_green"
-"diff.minus" = "diff_red"
-"diff.delta" = "diff_blue"
+"diff.plus" = "green"
+"diff.plus.gutter" = "gutter_green"
+"diff.minus" = "red"
+"diff.minus.gutter" = "gutter_red"
+"diff.delta" = "blue"
+"diff.delta.gutter" = "gutter_blue"
 
 # ui specific
 "ui.background" = { bg = "shade00" }
@@ -121,7 +124,7 @@ foreground = "#25293c"
 
 comment_gray = "#808080"
 
-diff_blue = "#C3D6E8"
+gutter_blue = "#C3D6E8"
 faint_blue = "#E8Eef1"
 lighter_blue = "#d0eaff"
 light_blue = "#99ccff"
@@ -134,7 +137,7 @@ darker_blue = "#000080"
 purple = "#660E7A"
 light_purple = "#ED9CFF"
 
-diff_green = "#C9DEC1"
+gutter_green = "#C9DEC1"
 green = "#00733B"
 light_green = "#5DCE87"
 green_blue = "#458383"
@@ -146,6 +149,6 @@ dark_yellow = "#7A7A43"
 light_orange = "#f9c881"
 orange = "#F49810"
 
-diff_red = "#EBBCBC"
+gutter_red = "#EBBCBC"
 red = "#d90016"
 dark_red = "#7F0000"
