@@ -206,7 +206,7 @@ pub fn languages_all() -> std::io::Result<()> {
         let formatter = lang
             .formatter
             .as_ref()
-            .map(|formatter| formatter.command.to_string());
+            .map(|formatter| formatter.command.as_str());
         check_binary(formatter);
 
         for ts_feat in TsFeature::all() {
