@@ -1,0 +1,80 @@
+# Syntax
+string = "orange"
+constant = "purple"
+"constant.numeric" = "orange"
+"constant.builtin" = "orange"
+variable = "red"
+comment = "light-gray"
+special = "purple"
+"punctuation.bracket" = "purple"
+keyword = "purple"
+function = "blue"
+label = "orange"
+type = "orange"
+namespace = "orange"
+
+# User Interface
+"ui.background" = { bg = "bg", fg = "gray" }
+"ui.background.separator" = "light-gray"
+"ui.text" = "white"
+"ui.text.focus" = "green"
+"ui.text.inactive" = "selection"
+"ui.text.info" = "orange"
+"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursor.primary" = { modifiers = ["reversed"] }
+"ui.cursor.match" = { bg = "selection" }
+"ui.gutter" = "gray"
+"ui.gutter.selected" = "light-gray"
+"ui.selection" = { bg = "selection" }
+"ui.virtual.indent-guide" = { fg = "gray"}
+"ui.virtual.whitespace" = { fg = "light-gray"}
+"ui.statusline" = { bg = "dark-bg", fg = "light-gray" }
+"ui.popup" = { bg = "dark-bg", fg = "orange" }
+"ui.help" = { bg = "dark-bg", fg = "orange" }
+"ui.menu" = { bg = "dark-bg", fg = "light-gray" }
+"ui.menu.selected" = { bg = "selection", fg = "orange" }
+"ui.window" = "selection"
+"ui.bufferline" = { bg = "dark-bg", fg = "light-gray" }
+"ui.bufferline.active" = { bg = "dark-bg", fg = "orange" }
+
+# Diagnostics
+"diagnostic" = { underline = { style = "curl" } }
+"diagnostic.hint" = { underline = { color = "green", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostics.error" = { underline = { color = "red", style = "curl"} }
+"diagnostics.warning" = { underline = { color = "orange", style = "curl"} }
+
+warning = { fg = "orange", modifiers = ["bold"] }
+error = { fg = "red", modifiers = ["bold"] }
+info = { fg = "blue", modifiers = ["bold"] }
+hint = { fg = "green", modifiers = ["bold"] }
+
+# Markup
+"markup.heading" = "pink"
+"markup.list" = "light-gray"
+"markup.list.checked" = "green"
+"markup.list.unchecked" = "light-gray"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link" = "blue"
+"markup.quote" = "orange"
+"markup.raw" = "orange"
+
+"diff.plus" =  "green"
+"diff.minus" = "red"
+"diff.delta" = "orange"
+
+[palette]
+white = "#D5D8DA"
+gray = "#2E303E"
+light-gray = "#6C6F93"
+bg = "#1C1E26"
+dark-bg = "#16161C"
+pink = "#EE64AE"
+selection = "#353747"
+green = "#27D796"
+orange = "#FAB795"
+purple = "#B877DB"
+red = "#E95678"
+blue = "#25B2BC"

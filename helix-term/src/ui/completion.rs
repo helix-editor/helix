@@ -2,6 +2,7 @@ use crate::compositor::{Component, Context, Event, EventResult};
 use helix_view::{
     document::SavePoint,
     editor::CompleteAction,
+    graphics::Margin,
     theme::{Modifier, Style},
     ViewId,
 };
@@ -326,9 +327,18 @@ impl Completion {
                 }
             };
         });
+
+        let margin = if editor.menu_border() {
+            Margin::vertical(1)
+        } else {
+            Margin::none()
+        };
+
         let popup = Popup::new(Self::ID, menu)
             .with_scrollbar(false)
-            .ignore_escape_key(true);
+            .ignore_escape_key(true)
+            .margin(margin);
+
         let mut completion = Self {
             popup,
             start_offset,
@@ -569,6 +579,12 @@ impl Component for Completion {
         // clear area
         let background = cx.editor.theme.get("ui.popup");
         surface.clear_with(doc_area, background);
+
+        if cx.editor.popup_border() {
+            use tui::widgets::{Block, Borders, Widget};
+            Widget::render(Block::default().borders(Borders::ALL), doc_area, surface);
+        }
+
         markdown_doc.render(doc_area, surface, cx);
     }
 }

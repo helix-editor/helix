@@ -160,17 +160,21 @@ impl Application {
             let path = helix_loader::runtime_file(Path::new("tutor"));
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
-            doc_mut!(editor).set_path(None)?;
+            doc_mut!(editor).set_path(None);
         } else if !args.files.is_empty() {
-            let first = &args.files[0].0; // we know it's not empty
-            if first.is_dir() {
-                helix_loader::set_current_working_dir(first.clone())?;
-                editor.new_file(Action::VerticalSplit);
-                let picker = ui::file_picker(".".into(), &config.load().editor);
+            let mut files_it = args.files.into_iter().peekable();
+
+            // If the first file is a directory, skip it and open a picker
+            if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
+                let picker = ui::file_picker(first, &config.load().editor);
                 compositor.push(Box::new(overlaid(picker)));
-            } else {
-                let nr_of_files = args.files.len();
-                for (i, (file, pos)) in args.files.into_iter().enumerate() {
+            }
+
+            // If there are any more files specified, open them
+            if files_it.peek().is_some() {
+                let mut nr_of_files = 0;
+                for (file, pos) in files_it {
+                    nr_of_files += 1;
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
                             "expected a path to file, found a directory. (to open a directory pass it as first argument)"
@@ -182,7 +186,7 @@ impl Application {
                         // option. If neither of those two arguments are passed
                         // in, just load the files normally.
                         let action = match args.split {
-                            _ if i == 0 => Action::VerticalSplit,
+                            _ if nr_of_files == 1 => Action::VerticalSplit,
                             Some(Layout::Vertical) => Action::VerticalSplit,
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
                             None => Action::Load,
@@ -209,6 +213,8 @@ impl Application {
                 // does not affect views without pos since it is at the top
                 let (view, doc) = current!(editor);
                 align_view(doc, view, Align::Center);
+            } else {
+                editor.new_file(Action::VerticalSplit);
             }
         } else if stdin().is_tty() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
@@ -251,22 +257,19 @@ impl Application {
     }
 
     async fn render(&mut self) {
+        if self.compositor.full_redraw {
+            self.terminal.clear().expect("Cannot clear the terminal");
+            self.compositor.full_redraw = false;
+        }
+
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
             scroll: None,
         };
 
-        // Acquire mutable access to the redraw_handle lock
-        // to ensure that there are no tasks running that want to block rendering
-        drop(cx.editor.redraw_handle.1.write().await);
+        helix_event::start_frame();
         cx.editor.needs_redraw = false;
-        {
-            // exhaust any leftover redraw notifications
-            let notify = cx.editor.redraw_handle.0.notified();
-            tokio::pin!(notify);
-            notify.enable();
-        }
 
         let area = self
             .terminal
@@ -288,7 +291,7 @@ impl Application {
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
     where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
     {
         self.render().await;
 
@@ -301,7 +304,7 @@ impl Application {
 
     pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
     where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
     {
         loop {
             if self.editor.should_close() {
@@ -554,16 +557,7 @@ impl Application {
         let bytes = doc_save_event.text.len_bytes();
 
         if doc.path() != Some(&doc_save_event.path) {
-            if let Err(err) = doc.set_path(Some(&doc_save_event.path)) {
-                log::error!(
-                    "error setting path for doc '{:?}': {}",
-                    doc.path(),
-                    err.to_string(),
-                );
-
-                self.editor.set_error(err.to_string());
-                return;
-            }
+            doc.set_path(Some(&doc_save_event.path));
 
             let loader = self.editor.syn_loader.clone();
 
@@ -599,13 +593,16 @@ impl Application {
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
                 // limit render calls for fast language server messages
-                self.editor.redraw_handle.0.notify_one();
+                helix_event::request_redraw();
             }
             EditorEvent::DebuggerEvent(payload) => {
                 let needs_render = self.editor.handle_debugger_message(payload).await;
                 if needs_render {
                     self.render().await;
                 }
+            }
+            EditorEvent::Redraw => {
+                self.render().await;
             }
             EditorEvent::IdleTimer => {
                 self.editor.clear_idle_timer();
@@ -621,10 +618,7 @@ impl Application {
         false
     }
 
-    pub async fn handle_terminal_events(
-        &mut self,
-        event: Result<CrosstermEvent, crossterm::ErrorKind>,
-    ) {
+    pub async fn handle_terminal_events(&mut self, event: std::io::Result<CrosstermEvent>) {
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,
@@ -1165,7 +1159,7 @@ impl Application {
 
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
     where
-        S: Stream<Item = crossterm::Result<crossterm::event::Event>> + Unpin,
+        S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
     {
         self.claim_term().await?;
 

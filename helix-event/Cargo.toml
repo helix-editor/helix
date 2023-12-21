@@ -1,0 +1,16 @@
+[package]
+name = "helix-event"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot"] }
+parking_lot = { version = "0.12", features = ["send_guard"] }

@@ -23,6 +23,7 @@ use helix_core::{
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
     editor::Action,
+    graphics::Margin,
     theme::Style,
     Document, View,
 };
@@ -49,7 +50,7 @@ use std::{
 /// If there is no configured language server that supports the feature, this displays a status message.
 /// Using this macro in a context where the editor automatically queries the LSP
 /// (instead of when the user explicitly does so via a keybind like `gd`)
-/// will spam the "No configured language server supports <feature>" status message confusingly.
+/// will spam the "No configured language server supports \<feature>" status message confusingly.
 #[macro_export]
 macro_rules! language_server_with_feature {
     ($editor:expr, $doc:expr, $feature:expr) => {{
@@ -744,7 +745,16 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup = Popup::new("code-action", picker).with_scrollbar(false);
+            let margin = if editor.menu_border() {
+                Margin::vertical(1)
+            } else {
+                Margin::none()
+            };
+
+            let popup = Popup::new("code-action", picker)
+                .with_scrollbar(false)
+                .margin(margin);
+
             compositor.replace_or_push("code-action", popup);
         };
 

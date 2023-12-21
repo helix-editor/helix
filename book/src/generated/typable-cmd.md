@@ -17,7 +17,7 @@
 | `:write-buffer-close!`, `:wbc!` | Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt) |
 | `:new`, `:n` | Create a new scratch buffer. |
 | `:format`, `:fmt` | Format the file using the LSP formatter. |
-| `:indent-style` | Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.) |
+| `:indent-style` | Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.) |
 | `:line-ending` | Set the document's default line ending. Options: crlf, lf. |
 | `:earlier`, `:ear` | Jump back to an earlier point in edit history. Accepts a number of steps or a time span. |
 | `:later`, `:lat` | Jump to a later point in edit history. Accepts a number of steps or a time span. |
@@ -55,6 +55,7 @@
 | `:lsp-restart` | Restarts the language servers used by the current doc |
 | `:lsp-stop` | Stops the language servers that are used by the current doc |
 | `:tree-sitter-scopes` | Display tree sitter scopes, primarily for theming and development. |
+| `:tree-sitter-highlight-name` | Display name of tree-sitter highlight scope under the cursor. |
 | `:debug-start`, `:dbg` | Start a debug session from a given template with given parameters. |
 | `:debug-remote`, `:dbg-tcp` | Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters. |
 | `:debug-eval` | Evaluate expression in current debug context. |
@@ -83,3 +84,5 @@
 | `:run-shell-command`, `:sh` | Run a shell command |
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
+| `:redraw` | Clear and re-render the whole UI |
+| `:move` | Move the current buffer and its corresponding file to a different path |
