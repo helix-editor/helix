@@ -286,15 +286,15 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     )?;
 
     probe_protocol(
+        "debug adapter",
+        lang.debugger.as_ref().map(|dap| dap.command.to_string()),
+    )?;
+
+    probe_protocol(
         "formatter",
         lang.formatter
             .as_ref()
             .map(|formatter| formatter.command.to_string()),
-    )?;
-
-    probe_protocol(
-        "debug adapter",
-        lang.debugger.as_ref().map(|dap| dap.command.to_string()),
     )?;
 
     for ts_feat in TsFeature::all() {
