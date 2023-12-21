@@ -6,4 +6,4 @@ integration-test = "test --features integration --profile integration --workspac
 # But such binaries do not support loading libraries using `dlopen()` ("libloading" crate),
 # which is required for loading treesitter grammars.
 [target.'cfg(target_env = "musl")']
-rustflags = ["-C", "target-feature=-crt-static"]
+rustflags = "-C target-feature=-crt-static"
