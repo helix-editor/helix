@@ -15,6 +15,8 @@ static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCe
 
 static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
+static SHADA_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+
 pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(default_config_file);
     ensure_parent_dir(&config_file);
@@ -25,6 +27,12 @@ pub fn initialize_log_file(specified_file: Option<PathBuf>) {
     let log_file = specified_file.unwrap_or_else(default_log_file);
     ensure_parent_dir(&log_file);
     LOG_FILE.set(log_file).ok();
+}
+
+pub fn initialize_shada_file(specified_file: Option<PathBuf>) {
+    let shada_file = specified_file.unwrap_or_else(default_shada_file);
+    ensure_parent_dir(&shada_file);
+    SHADA_FILE.set(shada_file).ok();
 }
 
 /// A list of runtime directories from highest to lowest priority
@@ -126,8 +134,16 @@ pub fn config_dir() -> PathBuf {
 
 pub fn cache_dir() -> PathBuf {
     // TODO: allow env var override
-    let strategy = choose_base_strategy().expect("Unable to find the config directory!");
+    let strategy = choose_base_strategy().expect("Unable to find the cache directory!");
     let mut path = strategy.cache_dir();
+    path.push("helix");
+    path
+}
+
+pub fn state_dir() -> PathBuf {
+    // TODO: allow env var override
+    let strategy = choose_base_strategy().expect("Unable to find the state directory!");
+    let mut path = strategy.state_dir().unwrap();
     path.push("helix");
     path
 }
@@ -140,6 +156,10 @@ pub fn log_file() -> PathBuf {
     LOG_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }
 
+pub fn shada_file() -> PathBuf {
+    SHADA_FILE.get().map(|path| path.to_path_buf()).unwrap()
+}
+
 pub fn workspace_config_file() -> PathBuf {
     find_workspace().0.join(".helix").join("config.toml")
 }
@@ -150,6 +170,10 @@ pub fn lang_config_file() -> PathBuf {
 
 pub fn default_log_file() -> PathBuf {
     cache_dir().join("helix.log")
+}
+
+pub fn default_shada_file() -> PathBuf {
+    state_dir().join("helix.shada")
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`
