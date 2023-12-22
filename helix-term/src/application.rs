@@ -26,6 +26,7 @@ use crate::{
     handlers,
     job::Jobs,
     keymap::Keymaps,
+    shada,
     ui::{self, overlay::overlaid},
 };
 
@@ -1231,6 +1232,8 @@ impl Application {
                 "Timed out waiting for language servers to shutdown"
             ));
         }
+
+        shada::write_shada_file();
 
         errs
     }
