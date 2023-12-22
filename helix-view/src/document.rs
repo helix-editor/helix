@@ -187,6 +187,8 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+
+    pub previous_diagnostic_id: Option<String>,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -676,6 +678,7 @@ impl Document {
             version_control_head: None,
             focused_at: std::time::Instant::now(),
             readonly: false,
+            previous_diagnostic_id: None,
         }
     }
 

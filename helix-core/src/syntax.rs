@@ -233,22 +233,26 @@ impl<'de> Deserialize<'de> for FileType {
 #[serde(rename_all = "kebab-case")]
 pub enum LanguageServerFeature {
     Format,
+    // Goto, use bitflags, combining previous Goto members?
     GotoDeclaration,
     GotoDefinition,
     GotoTypeDefinition,
     GotoReference,
     GotoImplementation,
-    // Goto, use bitflags, combining previous Goto members?
+
     SignatureHelp,
     Hover,
     DocumentHighlight,
     Completion,
     CodeAction,
     WorkspaceCommand,
+    // Symbols, use bitflags, see above?
     DocumentSymbols,
     WorkspaceSymbols,
-    // Symbols, use bitflags, see above?
+
+    // Diagnostic in any form that is displayed on the gutter and screen
     Diagnostics,
+    PullDiagnostics,
     RenameSymbol,
     InlayHints,
 }
@@ -272,6 +276,7 @@ impl Display for LanguageServerFeature {
             DocumentSymbols => "document-symbols",
             WorkspaceSymbols => "workspace-symbols",
             Diagnostics => "diagnostics",
+            PullDiagnostics => "pull-diagnostics",
             RenameSymbol => "rename-symbol",
             InlayHints => "inlay-hints",
         };
