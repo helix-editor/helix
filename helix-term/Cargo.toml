@@ -68,6 +68,9 @@ toml = "0.8"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
+# shada
+rmp-serde = "1.1.2"
+
 # ripgrep for global search
 grep-regex = "0.1.13"
 grep-searcher = "0.1.14"
