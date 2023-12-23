@@ -162,6 +162,7 @@ where
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
+        helix_view::editor::StatusLineElement::DocPos => render_doc_pos,
     }
 }
 
@@ -197,6 +198,22 @@ where
             None
         },
     );
+}
+
+fn render_doc_pos<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    // Simple representation of how many documents are opened and which
+    // position the current opened one is
+    let docs_len: usize = context.editor.documents.len();
+    let doc_id: helix_view::DocumentId = context.doc.id();
+    let doc_pos: usize = match context.editor.documents.keys().position(|&key| key == doc_id) {
+        Some(p) => p + 1,
+        None => 0,
+    };
+
+    write(context, format!("[{}/{}] ", doc_pos, docs_len), None);
 }
 
 // TODO think about handling multiple language servers
