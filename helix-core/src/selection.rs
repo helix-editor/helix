@@ -613,12 +613,12 @@ impl Selection {
         self.normalize()
     }
 
-    // Ensures the selection adheres to the following invariants:
-    // 1. All ranges are grapheme aligned.
-    // 2. All ranges are at least 1 character wide, unless at the
-    //    very end of the document.
-    // 3. Ranges are non-overlapping.
-    // 4. Ranges are sorted by their position in the text.
+    /// Ensures the selection adheres to the following invariants:
+    /// 1. All ranges are grapheme aligned.
+    /// 2. All ranges are at least 1 character wide, unless at the
+    ///    very end of the document.
+    /// 3. Ranges are non-overlapping.
+    /// 4. Ranges are sorted by their position in the text.
     pub fn ensure_invariants(self, text: RopeSlice) -> Self {
         self.transform(|r| r.min_width_1(text).grapheme_aligned(text))
             .normalize()

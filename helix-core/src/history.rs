@@ -429,21 +429,19 @@ struct SelectionRevision {
     selection: Selection,
 }
 
-impl Default for SelectionHistory {
-    fn default() -> Self {
+impl SelectionHistory {
+    pub fn new(selection: Selection, revision: usize) -> Self {
         Self {
             revisions: vec![SelectionRevision {
-                revision: 0,
+                revision,
                 parent: 0,
                 last_child: None,
-                selection: Selection::point(0),
+                selection,
             }],
             current: 0,
         }
     }
-}
 
-impl SelectionHistory {
     pub fn commit_revision(&mut self, selection: Selection, revision: usize) {
         let new_current = self.revisions.len();
         self.revisions[self.current].last_child = NonZeroUsize::new(new_current);
@@ -466,6 +464,7 @@ impl SelectionHistory {
         }
         let revision = &self.revisions[self.current];
         let selection = revision.selection.clone();
+        self.current = revision.parent;
 
         if let Some(tx) = history.between(revision.revision, history.current_revision()) {
             Some(Transaction::default().with_selection(selection.map(tx.changes())))

@@ -1101,10 +1101,19 @@ impl Document {
     }
 
     /// Select text within the [`Document`].
-    pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
+    pub fn set_selection(&mut self, view_id: ViewId, mut selection: Selection) {
         // TODO: use a transaction?
-        self.selections
-            .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
+        selection = selection.ensure_invariants(self.text().slice(..));
+        self.selections.insert(view_id, selection.clone());
+
+        // TODO: Selection history
+        let current_revision = self.get_last_saved_revision();
+        if let Some(history) = self.selection_history.get_mut(&view_id) {
+            history.commit_revision(selection, current_revision);
+        } else {
+            let history = SelectionHistory::new(selection, current_revision);
+            self.selection_history.insert(view_id, history);
+        }
     }
 
     /// Find the origin selection of the text in a document, i.e. where
@@ -1347,9 +1356,32 @@ impl Document {
         self.undo_redo_impl(view, false)
     }
 
-    pub fn soft_undo_redo_impl(&mut self, view: &mut View, undo: bool) {
+    fn soft_undo_redo_impl(&mut self, view: &mut View, undo: bool) -> bool {
         let history = self.history.get_mut();
-        let selection_history = self.selection_history.get(&view.id);
+        let selection_history = self.selection_history.get_mut(&view.id).unwrap();
+        let tx = if undo {
+            selection_history.undo(history)
+        } else {
+            selection_history.redo(history)
+        };
+        let success = if let Some(ref tx) = tx {
+            self.apply_impl(tx, view.id, false)
+        } else {
+            false
+        };
+
+        if success {
+            view.sync_changes(self);
+        }
+        success
+    }
+
+    pub fn soft_undo(&mut self, view: &mut View) -> bool {
+        self.soft_undo_redo_impl(view, true)
+    }
+
+    pub fn soft_redo(&mut self, view: &mut View) -> bool {
+        self.soft_undo_redo_impl(view, false)
     }
 
     /// Creates a reference counted snapshot (called savpepoint) of the document.

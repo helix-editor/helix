@@ -380,6 +380,8 @@ impl MappableCommand {
         kill_to_line_end, "Delete till end of line",
         undo, "Undo change",
         redo, "Redo change",
+        soft_undo, "Undo selection change",
+        soft_redo, "Redo selection change",
         earlier, "Move backward in history",
         later, "Move forward in history",
         commit_undo_checkpoint, "Commit changes to new checkpoint",
@@ -3934,9 +3936,24 @@ fn redo(cx: &mut Context) {
 fn soft_undo(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
+    for _ in 0..count {
+        if !doc.soft_undo(view) {
+            cx.editor.set_status("Already at oldest selection");
+            break;
+        }
+    }
 }
 
-fn soft_redo(cx: &mut Context) {}
+fn soft_redo(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    for _ in 0..count {
+        if !doc.soft_redo(view) {
+            cx.editor.set_status("Already at newest selection");
+            break;
+        }
+    }
+}
 
 fn earlier(cx: &mut Context) {
     let count = cx.count();
