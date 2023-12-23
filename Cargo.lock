@@ -1294,6 +1294,7 @@ name = "helix-core"
 version = "24.3.0"
 dependencies = [
  "ahash",
+ "anyhow",
  "arc-swap",
  "bitflags 2.5.0",
  "chrono",

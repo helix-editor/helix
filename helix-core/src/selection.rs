@@ -3,6 +3,7 @@
 //!
 //! All positioning is done via `char` offsets into the buffer.
 use crate::{
+    combinators::*,
     graphemes::{
         ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
         prev_grapheme_boundary,
@@ -394,6 +395,45 @@ impl From<(usize, usize)> for Range {
 pub struct Selection {
     ranges: SmallVec<[Range; 1]>,
     primary_index: usize,
+}
+
+impl Selection {
+    pub fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        write_usize(writer, self.primary_index)?;
+        write_vec(writer, self.ranges(), |writer, range| {
+            write_usize(writer, range.anchor)?;
+            write_usize(writer, range.head)?;
+            write_option(writer, range.old_visual_position.as_ref(), |writer, pos| {
+                write_u32(writer, pos.0)?;
+                write_u32(writer, pos.1)?;
+                Ok(())
+            })?;
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
+    pub fn deserialize<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let primary_index = read_usize(reader)?;
+        let ranges = read_vec(reader, |reader| {
+            let anchor = read_usize(reader)?;
+            let head = read_usize(reader)?;
+            let old_visual_position = read_option(reader, |reader| {
+                let res = (read_u32(reader)?, read_u32(reader)?);
+                Ok(res)
+            })?;
+            Ok(Range {
+                anchor,
+                head,
+                old_visual_position,
+            })
+        })?;
+        Ok(Self {
+            ranges: ranges.into(),
+            primary_index,
+        })
+    }
 }
 
 #[allow(clippy::len_without_is_empty)] // a Selection is never empty
