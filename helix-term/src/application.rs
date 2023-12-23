@@ -1269,6 +1269,7 @@ impl Application {
             ));
         }
 
+        #[cfg(not(feature = "integration"))]
         shada::write_shada_file();
 
         errs
