@@ -217,29 +217,26 @@ impl History {
         let right = self.path_up(b, lca);
 
         if inversion {
+            // When A, the starting node, is later than B, the target node, we are looking for a path backwards from A to the LCA and then to B.
             let left_txns = left
                 .iter()
                 .rev()
                 .map(|&n| self.revisions[n].inversion.clone());
             let right_txns = right.iter().map(|&n| self.revisions[n].transaction.clone());
-            left_txns.chain(right_txns).reduce(|acc, tx| tx.compose(acc));
+            left_txns
+                .chain(right_txns)
+                .reduce(|acc, tx| tx.compose(acc))
         } else {
-            let left_txns = left.iter().map()
+            // When A, the starting node, is earlier than B, the target node, we are looking for a path backwards from B to the LCA and then to A.
+            let left_txns = left.iter().map(|&n| self.revisions[n].transaction.clone());
+            let right_txns = right
+                .iter()
+                .rev()
+                .map(|&n| self.revisions[n].transaction.clone());
+            right_txns
+                .chain(left_txns)
+                .reduce(|acc, tx| tx.compose(acc))
         }
-
-        let up_txns = up
-            .iter()
-            .rev()
-            .map(|&n| self.revisions[n].inversion.clone());
-        let down_txns = down.iter().map(|&n| self.revisions[n].transaction.clone());
-        let tx = down_txns.chain(up_txns).reduce(|acc, tx| tx.compose(acc))?;
-
-        if (a == b) {
-            // Invert
-        } else {
-            // Return as-is
-        }
-        None
     }
 
     /// Create a [`Transaction`] that will jump to a specific revision in the history.
@@ -468,32 +465,26 @@ impl SelectionHistory {
             return None;
         }
         let revision = &self.revisions[self.current];
+        let selection = revision.selection.clone();
 
-        // TODO: Does `changes_since` also handle revision > current_revision?
-        if let Some(tx) = history.changes_since(revision.revision) {
-            let selection = revision.selection.clone().map(tx.changes());
-            Some(Transaction::default().with_selection(selection))
+        if let Some(tx) = history.between(revision.revision, history.current_revision()) {
+            Some(Transaction::default().with_selection(selection.map(tx.changes())))
         } else {
-            Some(Transaction::default().with_selection(revision.selection.clone()))
+            Some(Transaction::default().with_selection(selection))
         }
     }
 
     pub fn redo(&mut self, history: &History) -> Option<Transaction> {
         let current_revision = &self.revisions[self.current];
         let last_child = current_revision.last_child?;
-        let revision = self.revisions[last_child.get()];
+        let revision = &self.revisions[last_child.get()];
+        let selection = revision.selection.clone();
         self.current = last_child.get();
 
-        // TODO: Does `changes_since` also handle revision > current_revision?
-        if let Some(tx) = history.changes_since(revision.revision) {
-            let selection = revision.selection.clone().map(tx.changes());
-            Some(Transaction::default().with_selection(selection))
-        }
-
-        if current_revision.revision == revision {
-            Some(Transaction::default().with_selection(selection))
+        if let Some(tx) = history.between(revision.revision, history.current_revision()) {
+            Some(Transaction::default().with_selection(selection.map(tx.changes())))
         } else {
-            None
+            Some(Transaction::default().with_selection(selection))
         }
     }
 }
