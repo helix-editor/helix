@@ -18,7 +18,7 @@ use tui::{
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
 use helix_core::{
-    path, syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection,
+    path, syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Range, Selection,
 };
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
@@ -506,7 +506,7 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
-struct CodeActionOrCommandItem {
+pub struct CodeActionOrCommandItem {
     lsp_item: lsp::CodeActionOrCommand,
     language_server_id: usize,
 }
@@ -583,34 +583,8 @@ pub fn code_action(cx: &mut Context) {
 
     let selection_range = doc.selection(view.id).primary();
 
-    let mut seen_language_servers = HashSet::new();
-
-    let mut futures: FuturesUnordered<_> = doc
-        .language_servers_with_feature(LanguageServerFeature::CodeAction)
-        .filter(|ls| seen_language_servers.insert(ls.id()))
-        // TODO this should probably already been filtered in something like "language_servers_with_feature"
-        .filter_map(|language_server| {
-            let offset_encoding = language_server.offset_encoding();
-            let language_server_id = language_server.id();
-            let range = range_to_lsp_range(doc.text(), selection_range, offset_encoding);
-            // Filter and convert overlapping diagnostics
-            let code_action_context = lsp::CodeActionContext {
-                diagnostics: doc
-                    .diagnostics()
-                    .iter()
-                    .filter(|&diag| {
-                        selection_range
-                            .overlaps(&helix_core::Range::new(diag.range.start, diag.range.end))
-                    })
-                    .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, offset_encoding))
-                    .collect(),
-                only: None,
-                trigger_kind: Some(CodeActionTriggerKind::INVOKED),
-            };
-            let code_action_request =
-                language_server.code_actions(doc.identifier(), range, code_action_context)?;
-            Some((code_action_request, language_server_id))
-        })
+    let mut futures: FuturesUnordered<_> = code_actions_for_range(doc, selection_range)
+        .into_iter()
         .map(|(request, ls_id)| async move {
             let json = request.await?;
             let response: Option<lsp::CodeActionResponse> = serde_json::from_value(json)?;
@@ -698,50 +672,7 @@ pub fn code_action(cx: &mut Context) {
 
                 // always present here
                 let action = action.unwrap();
-                let Some(language_server) = editor.language_server_by_id(action.language_server_id)
-                else {
-                    editor.set_error("Language Server disappeared");
-                    return;
-                };
-                let offset_encoding = language_server.offset_encoding();
-
-                match &action.lsp_item {
-                    lsp::CodeActionOrCommand::Command(command) => {
-                        log::debug!("code action command: {:?}", command);
-                        execute_lsp_command(editor, action.language_server_id, command.clone());
-                    }
-                    lsp::CodeActionOrCommand::CodeAction(code_action) => {
-                        log::debug!("code action: {:?}", code_action);
-                        // we support lsp "codeAction/resolve" for `edit` and `command` fields
-                        let mut resolved_code_action = None;
-                        if code_action.edit.is_none() || code_action.command.is_none() {
-                            if let Some(future) =
-                                language_server.resolve_code_action(code_action.clone())
-                            {
-                                if let Ok(response) = helix_lsp::block_on(future) {
-                                    if let Ok(code_action) =
-                                        serde_json::from_value::<CodeAction>(response)
-                                    {
-                                        resolved_code_action = Some(code_action);
-                                    }
-                                }
-                            }
-                        }
-                        let resolved_code_action =
-                            resolved_code_action.as_ref().unwrap_or(code_action);
-
-                        if let Some(ref workspace_edit) = resolved_code_action.edit {
-                            log::debug!("edit: {:?}", workspace_edit);
-                            let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
-                        }
-
-                        // if code action provides both edit and command first the edit
-                        // should be applied and then the command
-                        if let Some(command) = &code_action.command {
-                            execute_lsp_command(editor, action.language_server_id, command.clone());
-                        }
-                    }
-                }
+                apply_code_action(editor, action);
             });
             picker.move_down(); // pre-select the first item
 
@@ -760,6 +691,130 @@ pub fn code_action(cx: &mut Context) {
 
         Ok(Callback::EditorCompositor(Box::new(call)))
     });
+}
+
+pub fn code_actions_for_range(
+    doc: &Document,
+    range: helix_core::Range,
+) -> Vec<(impl Future<Output = Result<Value, helix_lsp::Error>>, usize)> {
+    let mut seen_language_servers = HashSet::new();
+
+    doc.language_servers_with_feature(LanguageServerFeature::CodeAction)
+        .filter(|ls| seen_language_servers.insert(ls.id()))
+        // TODO this should probably already been filtered in something like "language_servers_with_feature"
+        .filter_map(|language_server| {
+            let offset_encoding = language_server.offset_encoding();
+            let lsp_range = range_to_lsp_range(doc.text(), range, offset_encoding);
+
+            language_server
+                .code_actions(
+                    doc.identifier(),
+                    lsp_range,
+                    // Filter and convert overlapping diagnostics
+                    lsp::CodeActionContext {
+                        diagnostics: doc
+                            .diagnostics()
+                            .iter()
+                            .filter(|&diag| {
+                                range.overlaps(&helix_core::Range::new(
+                                    diag.range.start,
+                                    diag.range.end,
+                                ))
+                            })
+                            .map(|diag| {
+                                diagnostic_to_lsp_diagnostic(doc.text(), diag, offset_encoding)
+                            })
+                            .collect(),
+                        only: None,
+                        trigger_kind: Some(CodeActionTriggerKind::INVOKED),
+                    },
+                )
+                .map(|request| (request, language_server.id()))
+        })
+        .collect::<Vec<_>>()
+}
+
+/// Finds the first matching code action over all language servers
+pub fn code_action_on_save(
+    doc: &Document,
+    code_action_on_save: String,
+) -> impl Future<Output = Option<CodeActionOrCommandItem>> {
+    let full_range = Range::new(0, doc.text().len_chars());
+    let futures = code_actions_for_range(doc, full_range);
+
+    async move {
+        for (request, language_server_id) in futures {
+            if let Ok(json) = request.await {
+                if let Ok(Some(available_code_actions)) =
+                    serde_json::from_value::<Option<helix_lsp::lsp::CodeActionResponse>>(json)
+                {
+                    if let Some(lsp_item) =
+                        available_code_actions
+                            .into_iter()
+                            .find(|action| match action {
+                                helix_lsp::lsp::CodeActionOrCommand::CodeAction(x)
+                                    if x.disabled.is_none() =>
+                                {
+                                    match &x.kind {
+                                        Some(kind) => code_action_on_save == kind.as_str(),
+                                        None => false,
+                                    }
+                                }
+                                _ => false,
+                            })
+                    {
+                        return Some(CodeActionOrCommandItem {
+                            lsp_item,
+                            language_server_id,
+                        });
+                    }
+                }
+            }
+        }
+        None
+    }
+}
+
+pub fn apply_code_action(editor: &mut Editor, action: &CodeActionOrCommandItem) {
+    let Some(language_server) = editor.language_server_by_id(action.language_server_id)
+                else {
+                    editor.set_error("Language Server disappeared");
+                    return;
+                };
+    let offset_encoding = language_server.offset_encoding();
+
+    match &action.lsp_item {
+        lsp::CodeActionOrCommand::Command(command) => {
+            log::debug!("code action command: {:?}", command);
+            execute_lsp_command(editor, action.language_server_id, command.clone());
+        }
+        lsp::CodeActionOrCommand::CodeAction(code_action) => {
+            log::debug!("code action: {:?}", code_action);
+            // we support lsp "codeAction/resolve" for `edit` and `command` fields
+            let mut resolved_code_action = None;
+            if code_action.edit.is_none() || code_action.command.is_none() {
+                if let Some(future) = language_server.resolve_code_action(code_action.clone()) {
+                    if let Ok(response) = helix_lsp::block_on(future) {
+                        if let Ok(code_action) = serde_json::from_value::<CodeAction>(response) {
+                            resolved_code_action = Some(code_action);
+                        }
+                    }
+                }
+            }
+            let resolved_code_action = resolved_code_action.as_ref().unwrap_or(code_action);
+
+            if let Some(ref workspace_edit) = resolved_code_action.edit {
+                log::debug!("edit: {:?}", workspace_edit);
+                let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
+            }
+
+            // if code action provides both edit and command first the edit
+            // should be applied and then the command
+            if let Some(command) = &code_action.command {
+                execute_lsp_command(editor, action.language_server_id, command.clone());
+            }
+        }
+    }
 }
 
 impl ui::menu::Item for lsp::Command {

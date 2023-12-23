@@ -69,6 +69,7 @@ These configuration keys are available:
 | `soft-wrap` | [editor.softwrap](./configuration.md#editorsoft-wrap-section)
 | `text-width`          |  Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap-at-text-width` is set, defaults to `editor.text-width`   |
 | `workspace-lsp-roots`     | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml`. Overwrites the setting of the same name in `config.toml` if set. |
+| `code-actions-on-save`    | List of LSP code actions to be run in order on save, for example `["source.organizeImports"]` |
 
 ### File-type detection and the `file-types` key
 

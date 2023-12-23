@@ -50,7 +50,7 @@ use crate::{
     args,
     compositor::{self, Component, Compositor},
     filter_picker_entry,
-    job::Callback,
+    job::{Callback, OnSaveCallbackData},
     keymap::ReverseKeymap,
     ui::{
         self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem, Picker,
@@ -3100,38 +3100,105 @@ async fn make_format_callback(
     doc_version: i32,
     view_id: ViewId,
     format: impl Future<Output = Result<Transaction, FormatterError>> + Send + 'static,
-    write: Option<(Option<PathBuf>, bool)>,
 ) -> anyhow::Result<job::Callback> {
     let format = format.await;
 
     let call: job::Callback = Callback::Editor(Box::new(move |editor| {
-        if !editor.documents.contains_key(&doc_id) || !editor.tree.contains(view_id) {
-            return;
-        }
-
-        let scrolloff = editor.config().scrolloff;
-        let doc = doc_mut!(editor, &doc_id);
-        let view = view_mut!(editor, view_id);
-
-        if let Ok(format) = format {
-            if doc.version() == doc_version {
-                doc.apply(&format, view.id);
-                doc.append_changes_to_history(view);
-                doc.detect_indent_and_line_ending();
-                view.ensure_cursor_in_view(doc, scrolloff);
-            } else {
-                log::info!("discarded formatting changes because the document changed");
-            }
-        }
-
-        if let Some((path, force)) = write {
-            let id = doc.id();
-            if let Err(err) = editor.save(id, path, force) {
-                editor.set_error(format!("Error saving: {}", err));
-            }
-        }
+        format_callback(doc_id, doc_version, view_id, format, editor);
     }));
 
+    Ok(call)
+}
+
+pub fn format_callback(
+    doc_id: DocumentId,
+    doc_version: i32,
+    view_id: ViewId,
+    format: Result<Transaction, FormatterError>,
+    editor: &mut Editor,
+) {
+    if !editor.documents.contains_key(&doc_id) || !editor.tree.contains(view_id) {
+        return;
+    }
+
+    let scrolloff = editor.config().scrolloff;
+    let doc = doc_mut!(editor, &doc_id);
+    let view = view_mut!(editor, view_id);
+
+    if let Ok(format) = format {
+        if doc.version() == doc_version {
+            doc.apply(&format, view.id);
+            doc.append_changes_to_history(view);
+            doc.detect_indent_and_line_ending();
+            view.ensure_cursor_in_view(doc, scrolloff);
+        } else {
+            log::info!("discarded formatting changes because the document changed");
+        }
+    }
+}
+
+pub async fn on_save_callback(
+    editor: &mut Editor,
+    doc_id: DocumentId,
+    view_id: ViewId,
+    path: Option<PathBuf>,
+    force: bool,
+) {
+    let doc = doc!(editor, &doc_id);
+    if let Some(code_actions_on_save_cfg) = doc
+        .language_config()
+        .map(|c| c.code_actions_on_save.clone())
+    {
+        for code_action_on_save_cfg in code_actions_on_save_cfg {
+            log::debug!(
+                "Attempting code action on save {:?}",
+                code_action_on_save_cfg
+            );
+            let doc = doc!(editor, &doc_id);
+            let lsp_item_result = code_action_on_save(doc, code_action_on_save_cfg.clone()).await;
+
+            if let Some(lsp_item) = lsp_item_result {
+                log::debug!("Applying code action on save {:?}", code_action_on_save_cfg);
+                apply_code_action(editor, &lsp_item);
+            } else {
+                log::debug!(
+                    "Code action on save not found {:?}",
+                    code_action_on_save_cfg
+                );
+                editor.set_error(format!(
+                    "Code Action not found: {:?}",
+                    code_action_on_save_cfg
+                ));
+            }
+        }
+    }
+
+    if editor.config().auto_format {
+        let doc = doc!(editor, &doc_id);
+        if let Some(fmt) = doc.auto_format() {
+            format_callback(doc.id(), doc.version(), view_id, fmt.await, editor);
+        }
+    }
+
+    if let Err(err) = editor.save::<PathBuf>(doc_id, path, force) {
+        editor.set_error(format!("Error saving: {}", err));
+    }
+}
+
+pub async fn make_on_save_callback(
+    doc_id: DocumentId,
+    view_id: ViewId,
+    path: Option<PathBuf>,
+    force: bool,
+) -> anyhow::Result<job::Callback> {
+    let call: job::Callback = Callback::OnSave(Box::new({
+        OnSaveCallbackData {
+            doc_id,
+            view_id,
+            path,
+            force,
+        }
+    }));
     Ok(call)
 }
 
