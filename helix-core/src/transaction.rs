@@ -1,6 +1,7 @@
 use ropey::RopeSlice;
 use smallvec::SmallVec;
 
+use crate::combinators::*;
 use crate::{chars::char_is_word, Range, Rope, Selection, Tendril};
 use std::{borrow::Cow, iter::once};
 
@@ -378,7 +379,9 @@ impl ChangeSet {
             macro_rules! map {
                 ($map: expr, $i: expr) => {
                     loop {
-                        let Some((pos, assoc)) = positions.peek_mut() else { return; };
+                        let Some((pos, assoc)) = positions.peek_mut() else {
+                            return;
+                        };
                         if **pos < old_pos {
                             // Positions are not sorted, revert to the last Operation that
                             // contains this position and continue iterating from there.
@@ -405,7 +408,9 @@ impl ChangeSet {
                             debug_assert!(old_pos <= **pos, "Reverse Iter across changeset works");
                             continue 'outer;
                         }
-                        let Some(new_pos) = $map(**pos, *assoc) else { break; };
+                        let Some(new_pos) = $map(**pos, *assoc) else {
+                            break;
+                        };
                         **pos = new_pos;
                         positions.next();
                     }
@@ -500,6 +505,66 @@ impl ChangeSet {
 pub struct Transaction {
     changes: ChangeSet,
     selection: Option<Selection>,
+}
+
+impl Transaction {
+    pub fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        write_option(writer, self.selection.as_ref(), |writer, selection| {
+            selection.serialize(writer)
+        })?;
+
+        write_usize(writer, self.changes.len)?;
+        write_usize(writer, self.changes.len_after)?;
+        write_vec(writer, self.changes.changes(), |writer, operation| {
+            let variant = match operation {
+                Operation::Retain(_) => 0,
+                Operation::Delete(_) => 1,
+                Operation::Insert(_) => 2,
+            };
+            write_byte(writer, variant)?;
+            match operation {
+                Operation::Retain(n) | Operation::Delete(n) => {
+                    write_usize(writer, *n)?;
+                }
+
+                Operation::Insert(tendril) => {
+                    write_string(writer, tendril.as_str())?;
+                }
+            }
+
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
+    pub fn deserialize<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let selection = read_option(reader, Selection::deserialize)?;
+
+        let len = read_usize(reader)?;
+        let len_after = read_usize(reader)?;
+        let changes = read_vec(reader, |reader| {
+            let res = match read_byte(reader)? {
+                0 => Operation::Retain(read_usize(reader)?),
+                1 => Operation::Delete(read_usize(reader)?),
+                2 => Operation::Insert(read_string(reader)?.into()),
+                _ => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "invalid variant",
+                    ))
+                }
+            };
+            Ok(res)
+        })?;
+        let changes = ChangeSet {
+            changes,
+            len,
+            len_after,
+        };
+
+        Ok(Transaction { changes, selection })
+    }
 }
 
 impl Transaction {
