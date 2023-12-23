@@ -6,6 +6,7 @@ use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
+use helix_core::history::SelectionHistory;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
@@ -165,6 +166,7 @@ pub struct Document {
     // it back as it separated from the edits. We could split out the parts manually but that will
     // be more troublesome.
     pub history: Cell<History>,
+    pub selection_history: HashMap<ViewId, SelectionHistory>,
     pub config: Arc<dyn DynAccess<Config>>,
 
     savepoints: Vec<Weak<SavePoint>>,
@@ -666,6 +668,7 @@ impl Document {
             diagnostics: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
+            selection_history: HashMap::default(),
             savepoints: Vec::new(),
             last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
@@ -1342,6 +1345,11 @@ impl Document {
     /// Redo the last modification to the [`Document`]. Returns whether the redo was successful.
     pub fn redo(&mut self, view: &mut View) -> bool {
         self.undo_redo_impl(view, false)
+    }
+
+    pub fn soft_undo_redo_impl(&mut self, view: &mut View, undo: bool) {
+        let history = self.history.get_mut();
+        let selection_history = self.selection_history.get(&view.id);
     }
 
     /// Creates a reference counted snapshot (called savpepoint) of the document.

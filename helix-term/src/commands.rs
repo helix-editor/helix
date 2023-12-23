@@ -3931,6 +3931,13 @@ fn redo(cx: &mut Context) {
     }
 }
 
+fn soft_undo(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+}
+
+fn soft_redo(cx: &mut Context) {}
+
 fn earlier(cx: &mut Context) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
@@ -4185,9 +4192,13 @@ fn replace_with_yanked(cx: &mut Context) {
 }
 
 fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
-    let Some(values) = editor.registers
+    let Some(values) = editor
+        .registers
         .read(register, editor)
-        .filter(|values| values.len() > 0) else { return };
+        .filter(|values| values.len() > 0)
+    else {
+        return;
+    };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
     let (view, doc) = current!(editor);
@@ -4224,7 +4235,9 @@ fn replace_selections_with_primary_clipboard(cx: &mut Context) {
 }
 
 fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
-    let Some(values) = editor.registers.read(register, editor) else { return };
+    let Some(values) = editor.registers.read(register, editor) else {
+        return;
+    };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
 
     let (view, doc) = current!(editor);
