@@ -70,6 +70,7 @@ use crate::{
 };
 
 use crate::job::{self, Jobs};
+use futures_util::future::join_all;
 use std::{
     char::{ToLowercase, ToUppercase},
     cmp::Ordering,
@@ -507,7 +508,7 @@ impl MappableCommand {
         paste_primary_clipboard_before, "Paste primary clipboard before selections",
         indent, "Indent selection",
         unindent, "Unindent selection",
-        format_selections, "Format selection",
+        format_selections, "Format selections",
         join_selections, "Join lines inside selection",
         join_selections_space, "Join lines inside selection and select spaces",
         keep_selections, "Keep selections matching regex",
@@ -5073,29 +5074,16 @@ fn unindent(cx: &mut Context) {
 
 fn format_selections(cx: &mut Context) {
     use helix_lsp::{lsp, util::range_to_lsp_range};
+    // TODO(matoous): use rangesFormatting once support (LSP 3.18)
+    // ref: https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#textDocument_rangeFormatting
 
     let (view, doc) = current!(cx.editor);
     let view_id = view.id;
 
-    // via lsp if available
     // TODO: else via tree-sitter indentation calculations
-
-    if doc.selection(view_id).len() != 1 {
-        cx.editor
-            .set_error("format_selections only supports a single selection for now");
-        return;
-    }
-
-    // TODO extra LanguageServerFeature::FormatSelections?
-    // maybe such that LanguageServerFeature::Format contains it as well
     let Some(language_server) = doc
-        .language_servers_with_feature(LanguageServerFeature::Format)
-        .find(|ls| {
-            matches!(
-                ls.capabilities().document_range_formatting_provider,
-                Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
-            )
-        })
+        .language_servers_with_feature(LanguageServerFeature::FormatSelection)
+        .next()
     else {
         cx.editor
             .set_error("No configured language server supports range formatting");
@@ -5106,16 +5094,15 @@ fn format_selections(cx: &mut Context) {
     let ranges: Vec<lsp::Range> = doc
         .selection(view_id)
         .iter()
+        // request and process range formatting in reverse order from last selection
+        // to the first selection to reduce the chances of collisions (change in earlier
+        // sections could cause offsets in later sections, can't happen the other way around).
+        .rev()
         .map(|range| range_to_lsp_range(doc.text(), *range, offset_encoding))
         .collect();
 
-    // TODO: handle fails
-    // TODO: concurrent map over all ranges
-
-    let range = ranges[0];
-
-    let future = language_server
-        .text_document_range_formatting(
+    let futures = ranges.into_iter().filter_map(|range| {
+        language_server.text_document_range_formatting(
             doc.identifier(),
             range,
             lsp::FormattingOptions {
@@ -5125,32 +5112,43 @@ fn format_selections(cx: &mut Context) {
             },
             None,
         )
-        .unwrap();
+    });
 
     let text = doc.text().clone();
     let doc_id = doc.id();
     let doc_version = doc.version();
 
     tokio::spawn(async move {
-        match future.await {
-            Ok(Some(res)) => {
-                let transaction =
-                    helix_lsp::util::generate_transaction_from_edits(&text, res, offset_encoding);
-                job::dispatch(move |editor, _compositor| {
-                    let Some(doc) = editor.document_mut(doc_id) else {
-                        return;
-                    };
-                    // Updating a desynced document causes problems with applying the transaction
-                    if doc.version() != doc_version {
-                        return;
-                    }
-                    doc.apply(&transaction, view_id);
-                })
-                .await
+        let results = join_all(futures).await;
+
+        let all_edits = results
+            .into_iter()
+            .filter_map(|result| match result {
+                // TODO: handle colliding edits (edits outside the range) and edits that result into collision.
+                // See: https://github.com/helix-editor/helix/issues/3209#issuecomment-1197463913
+                Ok(Some(edits)) => Some(edits),
+                Ok(None) => None,
+                Err(err) => {
+                    log::error!("format sections failed: {err}");
+                    None
+                }
+            })
+            .flatten()
+            .collect();
+
+        let transaction =
+            helix_lsp::util::generate_transaction_from_edits(&text, all_edits, offset_encoding);
+        job::dispatch(move |editor, _compositor| {
+            let Some(doc) = editor.document_mut(doc_id) else {
+                return;
+            };
+            // Updating a desynced document causes problems with applying the transaction.
+            if doc.version() != doc_version {
+                return;
             }
-            Err(err) => log::error!("format sections failed: {err}"),
-            Ok(None) => (),
-        }
+            doc.apply(&transaction, view_id);
+        })
+        .await;
     });
 }
 
