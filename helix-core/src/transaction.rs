@@ -23,6 +23,22 @@ pub enum Operation {
 pub enum Assoc {
     Before,
     After,
+    BeforeSticky,
+    AfterSticky,
+}
+
+impl Assoc {
+    pub fn before(self) -> bool {
+        matches!(self, Assoc::Before | Assoc::BeforeSticky)
+    }
+
+    pub fn after(self) -> bool {
+        matches!(self, Assoc::After | Assoc::AfterSticky)
+    }
+
+    pub fn sticky(self) -> bool {
+        matches!(self, Assoc::BeforeSticky | Assoc::AfterSticky)
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -424,9 +440,14 @@ impl ChangeSet {
                         old_end = old_pos + len;
                         // in range of replaced text
                         map!(
-                            |pos, assoc| (old_end > pos).then(|| {
+                            |pos, assoc: Assoc| (old_end > pos).then(|| {
+                                // if the deleted and inserted text have the exact same size
+                                // keep the relative offset into the new text
+                                if *len == ins && assoc.sticky() {
+                                    return new_pos + (pos - old_pos);
+                                }
                                 // at point or tracking before
-                                if pos == old_pos || assoc == Assoc::Before {
+                                if pos == old_pos || assoc.before() {
                                     new_pos
                                 } else {
                                     // place to end of insert
@@ -438,9 +459,9 @@ impl ChangeSet {
                     } else {
                         // at insert point
                         map!(
-                            |pos, assoc| (old_pos == pos).then(|| {
+                            |pos, assoc: Assoc| (old_pos == pos).then(|| {
                                 // return position before inserted text
-                                if assoc == Assoc::Before {
+                                if assoc.before() {
                                     new_pos
                                 } else {
                                     // after text
@@ -463,10 +484,14 @@ impl ChangeSet {
 
     /// Map a position through the changes.
     ///
-    /// `assoc` indicates which side to associate the position with. `Before` will keep the
+    /// `assoc` indicates which size to associate the position with. `Before` will keep the
     /// position close to the character before, and will place it before insertions over that
     /// range, or at that point. `After` will move it forward, placing it at the end of such
     /// insertions.
+    ///
+    /// The "stick" variants of these two indicate that `pos` should remain
+    //// unchanged for exact replacements. This is desirable for cursors but
+    //// undesirable for other things like diagnostics
     pub fn map_pos(&self, mut pos: usize, assoc: Assoc) -> usize {
         self.update_positions(once((&mut pos, assoc)));
         pos
