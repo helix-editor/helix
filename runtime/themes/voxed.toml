@@ -13,11 +13,10 @@ variable = "tan"
 "variable.parameter" = { fg = "white" }
 "variable.builtin" = "white"
 type = "light-blue"
-"type.builtin" = "typeish" # TODO: distinguish?
+"type.builtin" = "functionish" # TODO: distinguish?
 constructor = "lilac"
 function = "functionish"
 "function.macro" = "lilac"
-# Maybe use green? #B8BB26 or gruvgreen
 "function.builtin" = "typeish" 
 tag = "almond"
 comment = "bgray"
@@ -47,9 +46,10 @@ label = "honey"
 # TODO: diferentiate doc comment
 # concat (ERROR) @error.syntax and "MISSING ;" selectors for errors
 
-# NOTE: If you want the background transparent set bg to empty
-# bg = ""
-"ui.background" = { fg = "#25262B", bg = "#25262B" }
+# NOTE: bg is empty so it is transparent on the terminal
+# if you want the bg to not be transparent rename give bg
+# the same value as fg and remove fg :)
+"ui.background" = { fg = "#25262B", bg = "" }
 "ui.background.separator" = { fg = "sglow" }
 "ui.linenr" = { fg = "light-grey", modifiers = ["italic"] }
 "ui.linenr.selected" = { fg = "bpink", modifiers = ["bold"] }
