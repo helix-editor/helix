@@ -24,7 +24,7 @@ constant = "tan"
 "constant.builtin" = "#D38588"
 #string = "#B8BB26" or gruvgreen -- Green if you prefer it for strings
 string = "redish"
-"constant.numeric" = "chamois"
+"constant.numeric" = "functionish"
 "constant.character.escape" = "honey"
 # used for lifetimes
 label = "honey"
