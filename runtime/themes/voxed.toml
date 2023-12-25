@@ -31,12 +31,14 @@ string = "redish"
 label = "honey"
 
 "markup.heading" = "functionish"
-"markup.bold" = { modifiers = ["bold"] }
-"markup.italic" = { modifiers = ["italic"] }
+"markup.list" = "status-two"
+"markup.quote" = "tan"
+"markup.bold" = { fg = "sglow", modifiers = ["bold"] }
+"markup.italic" = { fg = "sglow", modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "sglow", modifiers = ["underlined"] }
 "markup.link.text" = "greenish"
-"markup.raw" = "bgray"
+"markup.raw" = "light-grey"
 
 "diff.plus" = "#7DDF64"
 "diff.minus" = "#F22B29"
