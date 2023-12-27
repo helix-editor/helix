@@ -1,6 +1,6 @@
 attribute = "buff"
 keyword = "sglow"
-"keyword.directive" = "bgray" # -- preprocessor comments (#if in C)
+"keyword.directive" = "bgrey" # -- preprocessor comments (#if in C)
 namespace = "lilac"
 punctuation = "white"
 "punctuation.delimiter" = "lavender"
@@ -19,7 +19,7 @@ function = "functionish"
 "function.macro" = "lilac"
 "function.builtin" = "typeish" 
 tag = "almond"
-comment = "bgray"
+comment = "bgrey"
 constant = "tan"
 "constant.builtin" = "#D38588"
 #string = "#B8BB26" or gruvgreen -- Green if you prefer it for strings
@@ -54,20 +54,20 @@ label = "honey"
 "ui.linenr" = { fg = "light-grey", modifiers = ["italic"] }
 "ui.linenr.selected" = { fg = "bpink", modifiers = ["bold"] }
 "ui.statusline" = { fg = "status-two", bg = "light-grey", modifiers = ["bold", "dim"] }
-"ui.statusline.inactive" = { fg = "black", bg = "bgray-two" }
-"ui.popup" = { fg = "bgray", bg = "" }
+"ui.statusline.inactive" = { fg = "black", bg = "bgrey-two" }
+"ui.popup" = { fg = "bgrey", bg = "" }
 "ui.window" = { fg = "white" }
 "ui.help" = { bg = "#3f4047", fg = "light-grey" }
 
 "ui.text" = { fg = "lavender" }
-"ui.text.focus" = { fg = "maize", bg = "bgray" }
+"ui.text.focus" = { fg = "maize", bg = "bgrey" }
 "ui.text.inactive" = "sirocco"
 "ui.virtual" = { fg = "comet" }
-
+"ui.virtual.ruler" = { bg = "light-grey" }
 "ui.virtual.indent-guide" = { fg = "comet" }
 
 "ui.selection" = { bg = "maize" }
-"ui.selection.primary" = { fg = "white", bg = "bgray" }
+"ui.selection.primary" = { fg = "white", bg = "bgrey" }
 # TODO: namespace ui.cursor as ui.selection.cursor?
 "ui.cursor.select" = { bg = "delta" }
 "ui.cursor.insert" = { bg = "white" }
@@ -77,15 +77,15 @@ label = "honey"
 "ui.highlight" = { bg = "bossanova" }
 "ui.highlight.frameline" = { bg = "#634450" }
 "ui.debug" = { fg = "#634450" }
-"ui.debug.breakpoint" = { fg = "apricot" }
+"ui.debug.breakpoint" = { fg = "bpink" }
 "ui.menu" = { fg = "white", bg = "#23232d" }
-"ui.menu.selected" = { fg = "white", bg = "bgray" }
-"ui.menu.scroll" = { fg = "lavender", bg = "comet" }
+"ui.menu.selected" = { fg = "white", bg = "bgrey" }
+"ui.menu.scroll" = { fg = "white", bg = "white" }
 
 "diagnostic.hint" = { underline = { color = "silver", style = "curl" } }
 "diagnostic.info" = { underline = { color = "delta", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "lightning", style = "curl" } }
-"diagnostic.error" = { underline = { color = "apricot", style = "curl" } }
+"diagnostic.error" = { underline = { color = "bpink", style = "curl" } }
 
 warning = "bpink"
 error = "bsienna"
@@ -100,11 +100,11 @@ functionish = "#b784a3"
 bsienna = "#D5896F"
 bpink = "#FF5964"
 maize = "#FFE74C"
-bgray = "#8c8681"
+bgrey = "#8c8681"
 sglow = "#FFCF56"
 status = "#15616D"
 status-two = "#3879A1"
 redish = "#E76B74"
 light-grey = "#b7afa8"
-bgray-two = "#706b68"
+bgrey-two = "#706b68"
 gruvgreen = "#B8BB26"
