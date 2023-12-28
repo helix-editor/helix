@@ -1,11 +1,11 @@
 attribute = "buff"
 keyword = "sglow"
 "keyword.directive" = "bgrey" # -- preprocessor comments (#if in C)
-namespace = "lilac"
+namespace = "blue"
 punctuation = "white"
-"punctuation.delimiter" = "lavender"
+"punctuation.delimiter" = "functionish"
 operator = "greenish"
-special = "honey"
+special = "maize"
 "variable.other.member" = "bsienna"
 variable = "tan"
 # variable = "almond" # TODO: metavariables only
@@ -14,20 +14,20 @@ variable = "tan"
 "variable.builtin" = "white"
 type = "light-blue"
 "type.builtin" = "functionish" # TODO: distinguish?
-constructor = "lilac"
+constructor = "typeish"
 function = "functionish"
-"function.macro" = "lilac"
+"function.macro" = "blue"
 "function.builtin" = "typeish" 
-tag = "almond"
+tag = "functionish"
 comment = "bgrey"
 constant = "tan"
 "constant.builtin" = "#D38588"
 #string = "#B8BB26" or gruvgreen -- Green if you prefer it for strings
 string = "redish"
 "constant.numeric" = "functionish"
-"constant.character.escape" = "honey"
+"constant.character.escape" = "cyan"
 # used for lifetimes
-label = "honey"
+label = "yellow"
 
 "markup.heading" = "functionish"
 "markup.list" = "status-two"
@@ -49,7 +49,7 @@ label = "honey"
 # NOTE: bg is empty so it is transparent on the terminal
 # if you want the bg to not be transparent rename give bg
 # the same value as fg and remove fg :)
-"ui.background" = { fg = "#25262B", bg = "#25262B" }
+"ui.background" = { bg = "#25262B" }
 "ui.background.separator" = { fg = "sglow" }
 "ui.linenr" = { fg = "light-grey", modifiers = ["italic"] }
 "ui.linenr.selected" = { fg = "bpink", modifiers = ["bold"] }
@@ -59,22 +59,22 @@ label = "honey"
 "ui.window" = { fg = "white" }
 "ui.help" = { bg = "#3f4047", fg = "light-grey" }
 
-"ui.text" = { fg = "lavender" }
+"ui.text" = { fg = "white" }
 "ui.text.focus" = { fg = "maize", bg = "bgrey" }
-"ui.text.inactive" = "sirocco"
-"ui.virtual" = { fg = "comet" }
+"ui.text.inactive" = "bgrey"
+"ui.virtual" = { fg = "blue" }
 "ui.virtual.ruler" = { bg = "light-grey" }
-"ui.virtual.indent-guide" = { fg = "comet" }
+"ui.virtual.indent-guide" = { fg = "bpink" }
 
 "ui.selection" = { bg = "maize" }
 "ui.selection.primary" = { fg = "white", bg = "bgrey" }
 # TODO: namespace ui.cursor as ui.selection.cursor?
-"ui.cursor.select" = { bg = "delta" }
+"ui.cursor.select" = { bg = "white" }
 "ui.cursor.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
 "ui.cursor" = { modifiers = ["reversed"] }
-"ui.cursorline.primary" = { bg = "bossanova" }
-"ui.highlight" = { bg = "bossanova" }
+"ui.cursorline.primary" = { bg = "white" }
+"ui.highlight" = { bg = "white" }
 "ui.highlight.frameline" = { bg = "#634450" }
 "ui.debug" = { fg = "#634450" }
 "ui.debug.breakpoint" = { fg = "bpink" }
@@ -82,9 +82,9 @@ label = "honey"
 "ui.menu.selected" = { fg = "white", bg = "bgrey" }
 "ui.menu.scroll" = { fg = "white", bg = "white" }
 
-"diagnostic.hint" = { underline = { color = "silver", style = "curl" } }
-"diagnostic.info" = { underline = { color = "delta", style = "curl" } }
-"diagnostic.warning" = { underline = { color = "lightning", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "maize", style = "curl" } }
+"diagnostic.info" = { underline = { color = "sglow", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "redish", style = "curl" } }
 "diagnostic.error" = { underline = { color = "bpink", style = "curl" } }
 
 warning = "bpink"
