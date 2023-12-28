@@ -27,7 +27,6 @@ use crate::{
     handlers,
     job::Jobs,
     keymap::Keymaps,
-    session,
     ui::{self, overlay::overlaid},
 };
 
@@ -1268,9 +1267,6 @@ impl Application {
                 "Timed out waiting for language servers to shutdown"
             ));
         }
-
-        #[cfg(not(feature = "integration"))]
-        session::write_session_file();
 
         errs
     }

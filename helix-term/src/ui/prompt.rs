@@ -1,5 +1,5 @@
 use crate::compositor::{Component, Compositor, Context, Event, EventResult};
-use crate::{alt, ctrl, key, shift, ui};
+use crate::{alt, ctrl, key, session, shift, ui};
 use arc_swap::ArcSwap;
 use helix_core::syntax;
 use helix_view::document::Mode;
@@ -613,6 +613,8 @@ impl Component for Prompt {
                                 {
                                     cx.editor.set_error(err.to_string());
                                 }
+                                #[cfg(not(feature = "integration"))]
+                                session::push_history(register, &self.line);
                             };
                         }
 

@@ -1,68 +1,19 @@
-use bincode::{encode_into_std_write, Decode, Encode};
-use helix_loader::{session_file, VERSION_AND_GIT_HASH};
-// use helix_view::view::ViewPosition;
-use std::{
-    fs::File,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use helix_loader::command_histfile;
+use std::{fs::OpenOptions, io::Write};
 
-// TODO: should this be non-exhaustive?
-#[derive(Debug, Encode, Decode)]
-struct Header {
-    generator: String,
-    version: String,
-    max_kbyte: u32,
-    pid: u32,
-}
+pub fn push_history(register: char, line: &str) {
+    let filepath = match register {
+        ':' => command_histfile(),
+        _ => return,
+    };
 
-// TODO: should this be non-exhaustive?
-#[derive(Debug, Encode, Decode)]
-struct FilePosition {
-    path: String,
-    // position: ViewPosition,
-}
-
-// TODO: should this be non-exhaustive?
-#[derive(Debug, Encode, Decode)]
-enum EntryData {
-    Header(Header),
-    FilePosition(FilePosition),
-}
-
-// TODO: should this be non-exhaustive?
-#[derive(Debug, Encode, Decode)]
-struct Entry {
-    timestamp: u64,
-    data: EntryData,
-}
-
-fn timestamp_now() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-}
-
-fn generate_header() -> Entry {
-    Entry {
-        timestamp: timestamp_now(),
-        data: EntryData::Header(Header {
-            generator: "helix".to_string(),
-            version: VERSION_AND_GIT_HASH.to_string(),
-            max_kbyte: 100,
-            pid: std::process::id(),
-        }),
-    }
-}
-
-pub fn write_session_file() {
-    // TODO: merge existing file if exists
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(filepath)
+        // TODO: do something about this unwrap
+        .unwrap();
 
     // TODO: do something about this unwrap
-    let mut session_file = File::create(session_file()).unwrap();
-
-    let header = generate_header();
-
-    // TODO: do something about this unwrap
-    encode_into_std_write(&header, &mut session_file, bincode::config::standard()).unwrap();
+    writeln!(file, "{}", line).unwrap();
 }
