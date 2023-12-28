@@ -295,6 +295,7 @@ impl MappableCommand {
         search_selection, "Use current selection as search pattern",
         make_search_word_bounded, "Modify current search to make it word bounded",
         global_search, "Global search in workspace folder",
+        local_search, "Local search in the current buffer",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
@@ -2387,6 +2388,121 @@ fn global_search(cx: &mut Context) {
             } else {
                 // Otherwise do nothing
                 // log::warn!("Global Search Invalid Pattern")
+            }
+        },
+    );
+}
+
+fn local_search(cx: &mut Context) {
+    struct Document {
+        text: String,
+        line: usize,
+    }
+
+    impl ui::menu::Item for Document {
+        type Data = Option<PathBuf>;
+
+        fn format(&self, _: &Self::Data) -> Row {
+            self.text.clone().into()
+        }
+    }
+
+    let config = cx.editor.config();
+    let smart_case = config.search.smart_case;
+
+    let reg = cx.register.unwrap_or('/');
+    let completions = search_completions(cx, Some(reg));
+    ui::regex_prompt(
+        cx,
+        "local-search:".into(),
+        None,
+        move |_editor, input| {
+            completions
+                .iter()
+                .filter(|comp| comp.starts_with(input))
+                .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
+                .collect()
+        },
+        move |cx, regex, event| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+            cx.editor.registers.last_search_register = reg;
+            if let Ok(matcher) = RegexMatcherBuilder::new()
+                .case_smart(smart_case)
+                .build(regex.as_str())
+            {
+                let focus = cx.editor.tree.focus;
+                let view = cx.editor.tree.get(focus);
+
+                let doc_id = view.doc;
+                let doc_text = cx.editor.document(doc_id).map(|doc| doc.text().to_owned());
+
+                let current_path = doc_mut!(cx.editor).path().cloned();
+                let (picker, injector) = Picker::stream(current_path);
+
+                let injector_ = injector.clone();
+                std::thread::spawn(move || {
+                    let injector = injector_;
+                    let sink = sinks::UTF8(|line, str| {
+                        Ok(injector
+                            .push(Document {
+                                text: str.trim_end().to_string(),
+                                line: line as usize - 1,
+                            })
+                            .is_ok())
+                    });
+
+                    let mut searcher = SearcherBuilder::new()
+                        .binary_detection(BinaryDetection::quit(b'\x00'))
+                        .build();
+
+                    let Some(text) = doc_text.map(|doc| doc.to_string()) else {
+                        log::warn!("Local Search Invalid Document ID");
+                        return;
+                    };
+
+                    if let Err(err) = searcher.search_slice(&matcher, text.as_bytes(), sink) {
+                        log::warn!("Local Search Error: {err}");
+                    }
+                });
+
+                cx.jobs.callback(async move {
+                    let call = move |_: &mut Editor, compositor: &mut Compositor| {
+                        let picker = Picker::with_stream(
+                            picker,
+                            injector,
+                            move |cx, Document { line, .. }, action| {
+                                let doc = doc_mut!(cx.editor, &doc_id);
+                                let view = view_mut!(cx.editor);
+
+                                let line = *line;
+                                let text = doc.text();
+                                if line >= text.len_lines() {
+                                    cx.editor.set_error(
+                                        "The line you jumped to does not exist anymore.",
+                                    );
+                                    return;
+                                }
+                                let start = text.line_to_char(line);
+                                let end = text.line_to_char((line + 1).min(text.len_lines()));
+
+                                doc.set_selection(view.id, Selection::single(start, end));
+                                if action.align_view(view, doc.id()) {
+                                    align_view(doc, view, Align::Center);
+                                }
+                            },
+                        )
+                        .with_preview(move |_, Document { line, .. }| {
+                            Some((doc_id.into(), Some((*line, *line))))
+                        });
+
+                        compositor.push(Box::new(overlaid(picker)))
+                    };
+                    Ok(Callback::EditorCompositor(Box::new(call)))
+                });
+            } else {
+                log::warn!("Local Search Invalid Pattern");
             }
         },
     );
