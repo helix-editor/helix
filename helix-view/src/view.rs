@@ -18,8 +18,6 @@ use helix_core::{
     VisualOffsetError::{PosAfterMaxRow, PosBeforeAnchorRow},
 };
 
-use serde::{Deserialize, Serialize};
-
 use std::{
     collections::{HashMap, VecDeque},
     fmt,
@@ -120,7 +118,7 @@ impl JumpList {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Copy, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Default)]
 pub struct ViewPosition {
     pub anchor: usize,
     pub horizontal_offset: usize,
