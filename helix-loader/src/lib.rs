@@ -15,7 +15,7 @@ static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCe
 
 static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
-static SESSION_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+static COMMAND_HISTFILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
 pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(default_config_file);
@@ -29,10 +29,10 @@ pub fn initialize_log_file(specified_file: Option<PathBuf>) {
     LOG_FILE.set(log_file).ok();
 }
 
-pub fn initialize_session_file(specified_file: Option<PathBuf>) {
-    let session_file = specified_file.unwrap_or_else(default_session_file);
-    ensure_parent_dir(&session_file);
-    SESSION_FILE.set(session_file).ok();
+pub fn initialize_command_histfile(specified_file: Option<PathBuf>) {
+    let command_histfile = specified_file.unwrap_or_else(default_command_histfile);
+    ensure_parent_dir(&command_histfile);
+    COMMAND_HISTFILE.set(command_histfile).ok();
 }
 
 /// A list of runtime directories from highest to lowest priority
@@ -156,8 +156,11 @@ pub fn log_file() -> PathBuf {
     LOG_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }
 
-pub fn session_file() -> PathBuf {
-    SESSION_FILE.get().map(|path| path.to_path_buf()).unwrap()
+pub fn command_histfile() -> PathBuf {
+    COMMAND_HISTFILE
+        .get()
+        .map(|path| path.to_path_buf())
+        .unwrap()
 }
 
 pub fn workspace_config_file() -> PathBuf {
@@ -172,8 +175,8 @@ pub fn default_log_file() -> PathBuf {
     cache_dir().join("helix.log")
 }
 
-pub fn default_session_file() -> PathBuf {
-    state_dir().join("helix.session")
+pub fn default_command_histfile() -> PathBuf {
+    state_dir().join("command_history")
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`
