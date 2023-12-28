@@ -63,7 +63,7 @@ FLAGS:
     -v                             Increases logging verbosity each use for up to 3 times
     --log <file>                   Specifies a file to use for logging
                                    (default file: {})
-    --shada <file>                 Specifies a file to use for shared data
+    --session-file <file>          Specifies a file to use for shared data
     -V, --version                  Prints version information
     --vsplit                       Splits all given files vertically into different windows
     --hsplit                       Splits all given files horizontally into different windows
@@ -81,7 +81,7 @@ FLAGS:
 
     helix_loader::initialize_config_file(args.config_file.clone());
     helix_loader::initialize_log_file(args.log_file.clone());
-    helix_loader::initialize_shada_file(args.shada_file.clone());
+    helix_loader::initialize_session_file(args.session_file.clone());
 
     // Help has a higher priority and should be handled separately.
     if args.display_help {

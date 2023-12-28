@@ -16,7 +16,7 @@ pub struct Args {
     pub verbosity: u64,
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
-    pub shada_file: Option<PathBuf>,
+    pub session_file: Option<PathBuf>,
     pub files: Vec<(PathBuf, Position)>,
     pub working_directory: Option<PathBuf>,
 }
@@ -62,9 +62,9 @@ impl Args {
                     Some(path) => args.log_file = Some(path.into()),
                     None => anyhow::bail!("--log must specify a path to write"),
                 },
-                "--shada" => match argv.next().as_deref() {
-                    Some(path) => args.shada_file = Some(path.into()),
-                    None => anyhow::bail!("--shada must specify a path to write"),
+                "--session-file" => match argv.next().as_deref() {
+                    Some(path) => args.session_file = Some(path.into()),
+                    None => anyhow::bail!("--session-file must specify a path to write"),
                 },
                 "-w" | "--working-dir" => match argv.next().as_deref() {
                     Some(path) => {
