@@ -13,7 +13,6 @@ pub mod ui;
 use std::path::Path;
 
 use ignore::DirEntry;
-pub use keymap::macros::*;
 
 #[cfg(not(windows))]
 fn true_color() -> bool {

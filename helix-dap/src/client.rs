@@ -9,7 +9,6 @@ use helix_core::syntax::DebuggerQuirks;
 use serde_json::Value;
 
 use anyhow::anyhow;
-pub use log::{error, info};
 use std::{
     collections::HashMap,
     future::Future,
