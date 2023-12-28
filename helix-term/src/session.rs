@@ -1,5 +1,5 @@
 use bincode::{encode_into_std_write, Decode, Encode};
-use helix_loader::{shada_file, VERSION_AND_GIT_HASH};
+use helix_loader::{session_file, VERSION_AND_GIT_HASH};
 // use helix_view::view::ViewPosition;
 use std::{
     fs::File,
@@ -55,14 +55,14 @@ fn generate_header() -> Entry {
     }
 }
 
-pub fn write_shada_file() {
+pub fn write_session_file() {
     // TODO: merge existing file if exists
 
     // TODO: do something about this unwrap
-    let mut shada_file = File::create(shada_file()).unwrap();
+    let mut session_file = File::create(session_file()).unwrap();
 
     let header = generate_header();
 
     // TODO: do something about this unwrap
-    encode_into_std_write(&header, &mut shada_file, bincode::config::standard()).unwrap();
+    encode_into_std_write(&header, &mut session_file, bincode::config::standard()).unwrap();
 }

@@ -68,7 +68,7 @@ toml = "0.8"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
-# shada
+# session persistence
 bincode = "2.0.0-rc.3"
 
 # ripgrep for global search

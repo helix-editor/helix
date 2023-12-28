@@ -27,7 +27,7 @@ use crate::{
     handlers,
     job::Jobs,
     keymap::Keymaps,
-    shada,
+    session,
     ui::{self, overlay::overlaid},
 };
 
@@ -1270,7 +1270,7 @@ impl Application {
         }
 
         #[cfg(not(feature = "integration"))]
-        shada::write_shada_file();
+        session::write_session_file();
 
         errs
     }

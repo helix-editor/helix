@@ -15,7 +15,7 @@ static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCe
 
 static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
-static SHADA_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+static SESSION_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
 pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(default_config_file);
@@ -29,10 +29,10 @@ pub fn initialize_log_file(specified_file: Option<PathBuf>) {
     LOG_FILE.set(log_file).ok();
 }
 
-pub fn initialize_shada_file(specified_file: Option<PathBuf>) {
-    let shada_file = specified_file.unwrap_or_else(default_shada_file);
-    ensure_parent_dir(&shada_file);
-    SHADA_FILE.set(shada_file).ok();
+pub fn initialize_session_file(specified_file: Option<PathBuf>) {
+    let session_file = specified_file.unwrap_or_else(default_session_file);
+    ensure_parent_dir(&session_file);
+    SESSION_FILE.set(session_file).ok();
 }
 
 /// A list of runtime directories from highest to lowest priority
@@ -156,8 +156,8 @@ pub fn log_file() -> PathBuf {
     LOG_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }
 
-pub fn shada_file() -> PathBuf {
-    SHADA_FILE.get().map(|path| path.to_path_buf()).unwrap()
+pub fn session_file() -> PathBuf {
+    SESSION_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }
 
 pub fn workspace_config_file() -> PathBuf {
@@ -172,8 +172,8 @@ pub fn default_log_file() -> PathBuf {
     cache_dir().join("helix.log")
 }
 
-pub fn default_shada_file() -> PathBuf {
-    state_dir().join("helix.shada")
+pub fn default_session_file() -> PathBuf {
+    state_dir().join("helix.session")
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`
