@@ -1064,6 +1064,41 @@ impl Document {
         Ok(())
     }
 
+    fn undo_file(&self) -> anyhow::Result<Option<PathBuf>> {
+        let undo_dir = helix_loader::cache_dir().join("undo");
+        std::fs::create_dir_all(&undo_dir)?;
+        let res = self.path().map(|path| {
+            let escaped_path = helix_stdx::path::escape_path(path);
+            undo_dir.join(escaped_path)
+        });
+        Ok(res)
+    }
+
+    pub fn reload_history(&mut self) -> anyhow::Result<()> {
+        if let Some(mut undo_file) = self
+            .undo_file()?
+            .and_then(|path| std::fs::File::open(path).ok())
+        {
+            if undo_file.metadata()?.len() != 0 {
+                let (last_saved_revision, history) = helix_core::history::History::deserialize(
+                    &mut undo_file,
+                    self.path().unwrap(),
+                )?;
+
+                if self.history.get_mut().is_empty()
+                    || self.get_current_revision() == last_saved_revision
+                {
+                    self.history.set(history);
+                } else {
+                    let offset = self.get_last_saved_revision() + 1;
+                    self.history.get_mut().merge(history, offset)?;
+                }
+                self.set_last_saved_revision(last_saved_revision);
+            }
+        }
+        Ok(())
+    }
+
     /// Sets the [`Document`]'s encoding with the encoding correspondent to `label`.
     pub fn set_encoding(&mut self, label: &str) -> Result<(), Error> {
         let encoding =

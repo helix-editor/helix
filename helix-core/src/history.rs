@@ -5,7 +5,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::num::NonZeroUsize;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use crate::combinators::*;
 
@@ -67,7 +67,7 @@ struct Revision {
     // We need an inversion for undos because delete transactions don't store
     // the deleted text.
     inversion: Arc<Transaction>,
-    timestamp: Instant,
+    timestamp: SystemTime,
 }
 
 impl Default for History {
@@ -79,7 +79,7 @@ impl Default for History {
                 last_child: None,
                 transaction: Arc::new(Transaction::from(ChangeSet::new("".into()))),
                 inversion: Arc::new(Transaction::from(ChangeSet::new("".into()))),
-                timestamp: Instant::now(),
+                timestamp: SystemTime::now(),
             }],
             current: 0,
         }
@@ -102,40 +102,40 @@ fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
     Ok(hash.digest().bytes())
 }
 
+// TODO: For testing only.
 fn is_tree(n: usize, nodes: &[Revision]) -> bool {
     use std::collections::{HashMap, HashSet};
 
-    let mut adj_list = HashMap::new();
+    let mut adj_list = HashMap::with_capacity(n);
     let mut total_degree = 0;
     for (node, parent, last_child) in nodes
         .iter()
         .enumerate()
         .map(|(idx, r)| (idx, r.parent, r.last_child))
     {
-        if node == 0 && parent == 0 {
-            // Skip loop
-            continue;
+        // Skip loop
+        if !(node == 0 && parent == 0) {
+            total_degree += 1;
+
+            adj_list
+                .entry(node)
+                .or_insert_with(|| HashSet::with_capacity(2))
+                .insert(parent);
+            adj_list
+                .entry(parent)
+                .or_insert_with(|| HashSet::with_capacity(2))
+                .insert(node);
         }
 
-        total_degree += 1;
-
-        adj_list
-            .entry(node)
-            .or_insert_with(HashSet::new)
-            .insert(parent);
-        adj_list
-            .entry(parent)
-            .or_insert_with(HashSet::new)
-            .insert(node);
         if let Some(n) = last_child {
             total_degree += 1;
             adj_list
                 .entry(node)
-                .or_insert_with(HashSet::new)
+                .or_insert_with(|| HashSet::with_capacity(2))
                 .insert(n.get());
             adj_list
                 .entry(n.get())
-                .or_insert_with(HashSet::new)
+                .or_insert_with(|| HashSet::with_capacity(2))
                 .insert(node);
         }
     }
@@ -193,18 +193,27 @@ impl PartialEq for Revision {
     }
 }
 impl Revision {
-    fn serialize<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
+    fn serialize<W: Write>(&self, writer: &mut W) -> anyhow::Result<()> {
         write_usize(writer, self.parent)?;
         self.transaction.serialize(writer)?;
         self.inversion.serialize(writer)?;
+        write_usize(
+            writer,
+            self.timestamp
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_secs() as usize,
+        )?;
 
         Ok(())
     }
 
-    fn deserialize<R: Read>(reader: &mut R, timestamp: Instant) -> std::io::Result<Self> {
+    fn deserialize<R: Read>(reader: &mut R) -> std::io::Result<Self> {
         let parent = read_usize(reader)?;
         let transaction = Arc::new(Transaction::deserialize(reader)?);
         let inversion = Arc::new(Transaction::deserialize(reader)?);
+        let timestamp = std::time::UNIX_EPOCH
+            .checked_add(Duration::from_secs(read_usize(reader)? as u64))
+            .unwrap_or_else(SystemTime::now);
         Ok(Revision {
             parent,
             last_child: None,
@@ -222,7 +231,7 @@ impl History {
         path: &Path,
         revision: usize,
         last_saved_revision: usize,
-    ) -> std::io::Result<()> {
+    ) -> anyhow::Result<()> {
         // Header
         let mtime = std::fs::metadata(path)?
             .modified()?
@@ -249,15 +258,11 @@ impl History {
     pub fn deserialize<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<(usize, Self)> {
         let (current, last_saved_revision) = Self::read_header(reader, path)?;
 
-        // Since `timestamp` can't be serialized, a new timestamp is created.
-        // TODO: Look for a way to keep the timestamp. It exists.
-        let timestamp = Instant::now();
-
         // Read the revisions and construct the tree.
         let len = read_usize(reader)?;
         let mut revisions: Vec<Revision> = Vec::with_capacity(len);
         for _ in 0..len {
-            let rev = Revision::deserialize(reader, timestamp)?;
+            let rev = Revision::deserialize(reader)?;
             let len = revisions.len();
             match revisions.get_mut(rev.parent) {
                 Some(r) => r.last_child = NonZeroUsize::new(len),
@@ -368,14 +373,14 @@ impl History {
 
 impl History {
     pub fn commit_revision(&mut self, transaction: &Transaction, original: &State) {
-        self.commit_revision_at_timestamp(transaction, original, Instant::now());
+        self.commit_revision_at_timestamp(transaction, original, SystemTime::now());
     }
 
     pub fn commit_revision_at_timestamp(
         &mut self,
         transaction: &Transaction,
         original: &State,
-        timestamp: Instant,
+        timestamp: SystemTime,
     ) {
         let inversion = transaction
             .invert(&original.doc)
@@ -402,6 +407,10 @@ impl History {
     #[inline]
     pub const fn at_root(&self) -> bool {
         self.current == 0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.revisions.len() <= 1
     }
 
     /// Returns the changes since the given revision composed into a transaction.
@@ -527,9 +536,14 @@ impl History {
     }
 
     /// Helper for a binary search case below.
-    fn revision_closer_to_instant(&self, i: usize, instant: Instant) -> usize {
-        let dur_im1 = instant.duration_since(self.revisions[i - 1].timestamp);
-        let dur_i = self.revisions[i].timestamp.duration_since(instant);
+    fn revision_closer_to_time(&self, i: usize, timestamp: SystemTime) -> usize {
+        let dur_im1 = timestamp
+            .duration_since(self.revisions[i - 1].timestamp)
+            .unwrap_or_default();
+        let dur_i = self.revisions[i]
+            .timestamp
+            .duration_since(timestamp)
+            .unwrap_or_default();
         use std::cmp::Ordering::*;
         match dur_im1.cmp(&dur_i) {
             Less => i - 1,
@@ -538,17 +552,17 @@ impl History {
     }
 
     /// Creates a [`Transaction`] that will match a revision created at around
-    /// `instant`.
-    fn jump_instant(&mut self, instant: Instant) -> Vec<Transaction> {
+    /// `time`.
+    fn jump_time(&mut self, time: SystemTime) -> Vec<Transaction> {
         let search_result = self
             .revisions
-            .binary_search_by(|rev| rev.timestamp.cmp(&instant));
+            .binary_search_by(|rev| rev.timestamp.cmp(&time));
         let revision = match search_result {
             Ok(revision) => revision,
             Err(insert_point) => match insert_point {
                 0 => 0,
                 n if n == self.revisions.len() => n - 1,
-                i => self.revision_closer_to_instant(i, instant),
+                i => self.revision_closer_to_time(i, time),
             },
         };
         self.jump_to(revision)
@@ -558,7 +572,7 @@ impl History {
     /// from the timestamp of current revision.
     fn jump_duration_backward(&mut self, duration: Duration) -> Vec<Transaction> {
         match self.revisions[self.current].timestamp.checked_sub(duration) {
-            Some(instant) => self.jump_instant(instant),
+            Some(timestamp) => self.jump_time(timestamp),
             None => self.jump_to(0),
         }
     }
@@ -567,7 +581,7 @@ impl History {
     /// the future from the timestamp of the current revision.
     fn jump_duration_forward(&mut self, duration: Duration) -> Vec<Transaction> {
         match self.revisions[self.current].timestamp.checked_add(duration) {
-            Some(instant) => self.jump_instant(instant),
+            Some(timestamp) => self.jump_time(timestamp),
             None => self.jump_to(self.revisions.len() - 1),
         }
     }
@@ -763,14 +777,14 @@ mod test {
             history: &mut History,
             state: &mut State,
             change: crate::transaction::Change,
-            instant: Instant,
+            time: SystemTime,
         ) {
             let txn = Transaction::change(&state.doc, vec![change].into_iter());
-            history.commit_revision_at_timestamp(&txn, state, instant);
+            history.commit_revision_at_timestamp(&txn, state, time);
             txn.apply(&mut state.doc);
         }
 
-        let t0 = Instant::now();
+        let t0 = SystemTime::now();
         let t = |n| t0.checked_add(Duration::from_secs(n)).unwrap();
 
         commit_change(&mut history, &mut state, (1, 1, Some(" b".into())), t(0));
@@ -918,13 +932,5 @@ mod test {
             "1 minute 18446744073709551615 seconds".parse::<UndoKind>(),
             Err("duration too large".to_string())
         );
-    }
-
-    fn validate_history(history: &History) {
-        let v = history.revisions.len();
-        let mut d = 0;
-        for rev in history.revisions.iter() {}
-        // Delete initial
-        d -= 1;
     }
 }
