@@ -102,24 +102,85 @@ fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
     Ok(hash.digest().bytes())
 }
 
+fn is_tree(n: usize, nodes: &[Revision]) -> bool {
+    use std::collections::{HashMap, HashSet};
+
+    let mut adj_list = HashMap::new();
+    let mut total_degree = 0;
+    for (node, parent, last_child) in nodes
+        .iter()
+        .enumerate()
+        .map(|(idx, r)| (idx, r.parent, r.last_child))
+    {
+        if node == 0 && parent == 0 {
+            // Skip loop
+            continue;
+        }
+
+        total_degree += 1;
+
+        adj_list
+            .entry(node)
+            .or_insert_with(HashSet::new)
+            .insert(parent);
+        adj_list
+            .entry(parent)
+            .or_insert_with(HashSet::new)
+            .insert(node);
+        if let Some(n) = last_child {
+            total_degree += 1;
+            adj_list
+                .entry(node)
+                .or_insert_with(HashSet::new)
+                .insert(n.get());
+            adj_list
+                .entry(n.get())
+                .or_insert_with(HashSet::new)
+                .insert(node);
+        }
+    }
+
+    if total_degree != 2 * (n - 1) {
+        return false;
+    }
+
+    let mut visited = HashSet::new();
+    let mut stack = vec![0];
+    while let Some(node) = stack.pop() {
+        visited.insert(node);
+        if let Some(adj_nodes) = adj_list.get(&node) {
+            for v in adj_nodes {
+                if !visited.contains(v) {
+                    stack.push(*v);
+                }
+            }
+        }
+    }
+    visited.len() == n
+}
+
 #[derive(Debug)]
-pub enum Error {
+pub enum StateError {
     Outdated,
     InvalidHeader,
     InvalidOffset,
     InvalidData(String),
+    InvalidTree,
 }
 
-impl std::fmt::Display for Error {
+impl std::fmt::Display for StateError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Outdated => f.write_str("Outdated file"),
             Self::InvalidHeader => f.write_str("Invalid undofile header"),
             Self::InvalidOffset => f.write_str("Invalid merge offset"),
             Self::InvalidData(msg) => f.write_str(msg),
+            Self::InvalidTree => f.write_str("not a tree"),
         }
     }
 }
+
+impl std::error::Error for StateError {}
 
 const HEADER_TAG: &str = "Helix Undofile 1\n";
 
@@ -189,6 +250,7 @@ impl History {
         let (current, last_saved_revision) = Self::read_header(reader, path)?;
 
         // Since `timestamp` can't be serialized, a new timestamp is created.
+        // TODO: Look for a way to keep the timestamp. It exists.
         let timestamp = Instant::now();
 
         // Read the revisions and construct the tree.
@@ -200,7 +262,7 @@ impl History {
             match revisions.get_mut(rev.parent) {
                 Some(r) => r.last_child = NonZeroUsize::new(len),
                 None if len != 0 => {
-                    anyhow::bail!(Error::InvalidData(format!(
+                    anyhow::bail!(StateError::InvalidData(format!(
                         "non-contiguous history: {} >= {}",
                         rev.parent, len
                     )));
@@ -209,13 +271,18 @@ impl History {
                     // Starting revision check
                     let default_rev = History::default().revisions.pop().unwrap();
                     if rev != default_rev {
-                        anyhow::bail!(Error::InvalidData(String::from("Missing 0th revision")));
+                        anyhow::bail!(StateError::InvalidData(String::from(
+                            "Missing 0th revision"
+                        )));
                     }
                 }
             }
             revisions.push(rev);
         }
 
+        if !is_tree(len, &revisions) {
+            anyhow::bail!(StateError::InvalidTree);
+        }
         let history = History { current, revisions };
         Ok((last_saved_revision, history))
     }
@@ -227,51 +294,58 @@ impl History {
     ///       \  
     ///        E -> F
     /// ```
+    /// `after_len` is not 0-indexed. It is the number of elements that are the same.
     // TODO: return transaction to update view
-    pub fn merge(&mut self, mut other: History, mut at: usize) -> anyhow::Result<()> {
+    pub fn merge(&mut self, mut other: History, mut after_n: usize) -> anyhow::Result<()> {
         if self.revisions.len() > 1 {
             // All histories have the same starting revision.
-            at = std::cmp::max(1, at);
+            after_n = std::cmp::max(1, after_n);
 
             // Check
             if !self
                 .revisions
                 .iter()
                 .zip(other.revisions.iter())
-                .take(at)
+                .take(after_n)
                 .all(|(a, b)| {
                     a.parent == b.parent
                         && a.transaction == b.transaction
                         && a.inversion == b.inversion
                 })
             {
-                anyhow::bail!(Error::InvalidOffset);
+                anyhow::bail!(StateError::InvalidOffset);
             }
 
-            let revisions = self.revisions.split_off(at);
+            let revisions = self.revisions.split_off(after_n);
             other.revisions.reserve_exact(revisions.len());
 
-            let offset = (other.revisions.len() - 1) - at;
+            // Converts the number of new elements to an index offset
+            let offset = (other.revisions.len() - after_n) - 1;
             for mut r in revisions {
                 // Update parents of new revisions
-                if r.parent >= at {
+                if r.parent >= after_n {
                     r.parent += offset;
                 }
                 debug_assert!(r.parent < other.revisions.len());
 
+                // Update the corresponding parent.
                 other.revisions.get_mut(r.parent).unwrap().last_child =
                     NonZeroUsize::new(other.revisions.len());
                 other.revisions.push(r);
             }
         }
         *self = other;
+
+        if !is_tree(self.revisions.len(), &self.revisions) {
+            anyhow::bail!(StateError::InvalidTree);
+        }
         Ok(())
     }
 
     pub fn read_header<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<(usize, usize)> {
         let header = read_string(reader)?;
         if HEADER_TAG != header {
-            Err(anyhow::anyhow!(Error::InvalidHeader))
+            Err(anyhow::anyhow!(StateError::InvalidHeader))
         } else {
             let current = read_usize(reader)?;
             let last_saved_revision = read_usize(reader)?;
@@ -285,7 +359,7 @@ impl History {
             reader.read_exact(&mut hash)?;
 
             if mtime != last_mtime && hash != get_hash(&mut std::fs::File::open(path)?)? {
-                anyhow::bail!(Error::Outdated);
+                anyhow::bail!(StateError::Outdated);
             }
             Ok((current, last_saved_revision))
         }
@@ -844,5 +918,13 @@ mod test {
             "1 minute 18446744073709551615 seconds".parse::<UndoKind>(),
             Err("duration too large".to_string())
         );
+    }
+
+    fn validate_history(history: &History) {
+        let v = history.revisions.len();
+        let mut d = 0;
+        for rev in history.revisions.iter() {}
+        // Delete initial
+        d -= 1;
     }
 }

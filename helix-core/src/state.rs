@@ -1,6 +1,13 @@
-use std::io::Read;
+use std::io::{Read, Write};
 
 use crate::{history::History, Transaction};
+
+pub trait HistoryObject {
+    fn serialize<W: Write>(&self, writer: &mut W) -> std::io::Result<()>;
+    fn deserialize<R: Read>(reader: &mut R) -> std::io::Result<Self>
+    where
+        Self: Sized;
+}
 
 fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
     const BUF_SIZE: usize = 8192;
@@ -18,7 +25,7 @@ fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
     Ok(hash.digest().bytes())
 }
 
-pub enum Error {}
+// pub enum Error {}
 
 // impl History {
 //     pub fn serialize<W: Write + Seek>(&self)
