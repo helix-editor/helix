@@ -102,6 +102,29 @@ impl Registers {
         }
     }
 
+    pub fn write_unreversed(&mut self, name: char, values: Vec<String>) -> Result<()> {
+        match name {
+            '_' => Ok(()),
+            '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support writing")),
+            '*' | '+' => {
+                self.clipboard_provider.set_contents(
+                    values.join(NATIVE_LINE_ENDING.as_str()),
+                    match name {
+                        '+' => ClipboardType::Clipboard,
+                        '*' => ClipboardType::Selection,
+                        _ => unreachable!(),
+                    },
+                )?;
+                self.inner.insert(name, values);
+                Ok(())
+            }
+            _ => {
+                self.inner.insert(name, values);
+                Ok(())
+            }
+        }
+    }
+
     pub fn push(&mut self, name: char, mut value: String) -> Result<()> {
         match name {
             '_' => Ok(()),

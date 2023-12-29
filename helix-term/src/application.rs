@@ -27,6 +27,7 @@ use crate::{
     handlers,
     job::Jobs,
     keymap::Keymaps,
+    session,
     ui::{self, overlay::overlaid},
 };
 
@@ -147,6 +148,14 @@ impl Application {
             })),
             handlers,
         );
+
+        // TODO: do most of this in the background?
+        #[cfg(not(feature = "integration"))]
+        editor
+            .registers
+            .write_unreversed(':', session::read_command_history())
+            // TODO: do something about this unwrap
+            .unwrap();
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
