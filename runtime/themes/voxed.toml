@@ -1,6 +1,6 @@
 attribute = "buff"
 keyword = "sglow"
-"keyword.directive" = "bgrey" # -- preprocessor comments (#if in C)
+"keyword.directive" = "defineish" 
 namespace = "blue"
 punctuation = "white"
 "punctuation.delimiter" = "functionish"
@@ -8,12 +8,10 @@ operator = "greenish"
 special = "maize"
 "variable.other.member" = "bsienna"
 variable = "tan"
-# variable = "almond" # TODO: metavariables only
-# "variable.parameter" = { fg = "lavender", modifiers = ["underlined"] }
-"variable.parameter" = { fg = "white" }
+"variable.parameter" = { fg = "parameters" }
 "variable.builtin" = "white"
 type = "light-blue"
-"type.builtin" = "functionish" # TODO: distinguish?
+"type.builtin" = "functionish" 
 constructor = "typeish"
 function = "functionish"
 "function.macro" = "blue"
@@ -22,11 +20,9 @@ tag = "functionish"
 comment = "bgrey"
 constant = "tan"
 "constant.builtin" = "#D38588"
-#string = "#B8BB26" or gruvgreen -- Green if you prefer it for strings
 string = "redish"
 "constant.numeric" = "functionish"
 "constant.character.escape" = "cyan"
-# used for lifetimes
 label = "yellow"
 
 "markup.heading" = "functionish"
@@ -43,19 +39,13 @@ label = "yellow"
 "diff.minus" = "#F22B29"
 "diff.delta" = "#6f44f0"
 
-# TODO: diferentiate doc comment
-# concat (ERROR) @error.syntax and "MISSING ;" selectors for errors
-
-# NOTE: bg is empty so it is transparent on the terminal
-# if you want the bg to not be transparent rename give bg
-# the same value as fg and remove fg :)
 "ui.background" = { bg = "#25262B" }
 "ui.background.separator" = { fg = "sglow" }
 "ui.linenr" = { fg = "light-grey", modifiers = ["italic"] }
 "ui.linenr.selected" = { fg = "bpink", modifiers = ["bold"] }
 "ui.statusline" = { fg = "status-two", bg = "light-grey", modifiers = ["bold", "dim"] }
 "ui.statusline.inactive" = { fg = "black", bg = "bgrey-two" }
-"ui.popup" = { fg = "bgrey", bg = "" }
+"ui.popup" = { fg = "bgrey" }
 "ui.window" = { fg = "white" }
 "ui.help" = { bg = "#3f4047", fg = "light-grey" }
 
@@ -68,7 +58,6 @@ label = "yellow"
 
 "ui.selection" = { bg = "maize" }
 "ui.selection.primary" = { fg = "white", bg = "bgrey" }
-# TODO: namespace ui.cursor as ui.selection.cursor?
 "ui.cursor.select" = { bg = "white" }
 "ui.cursor.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
@@ -93,6 +82,9 @@ info = "maize"
 hint = "tan"
 
 [palette]
+parameters = "#d89182"
+defineish = "#71c45c"
+buff = "#f0dc82"
 tan = "#DAB785"
 typeish = "#AAAAA5"
 greenish = "#458588"
