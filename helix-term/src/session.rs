@@ -1,7 +1,7 @@
 use helix_loader::command_histfile;
 use std::{
     fs::{File, OpenOptions},
-    io::{self, BufRead, BufReader, Lines, Write},
+    io::{self, BufRead, BufReader, Write},
     path::PathBuf,
 };
 
@@ -22,14 +22,23 @@ pub fn push_history(register: char, line: &str) {
     writeln!(file, "{}", line).unwrap();
 }
 
-fn read_histfile(filepath: PathBuf) -> Lines<BufReader<File>> {
-    // TODO: do something about this unwrap
-    BufReader::new(File::open(filepath).unwrap()).lines()
+fn read_histfile(filepath: PathBuf) -> Vec<String> {
+    match File::open(filepath) {
+        Ok(file) => {
+            BufReader::new(file)
+                .lines()
+                .collect::<io::Result<Vec<String>>>()
+                // TODO: do something about this unwrap
+                .unwrap()
+        }
+        Err(e) => match e.kind() {
+            io::ErrorKind::NotFound => Vec::new(),
+            // TODO: do something about this panic
+            _ => panic!(),
+        },
+    }
 }
 
 pub fn read_command_history() -> Vec<String> {
     read_histfile(command_histfile())
-        .collect::<io::Result<Vec<String>>>()
-        // TODO: do something about this unwrap
-        .unwrap()
 }
