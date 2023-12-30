@@ -3006,3 +3006,15 @@ file-types = ["janet"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 grammar = "clojure"
+
+[[language]]
+name = "hoon"
+scope = "source.hoon"
+injection-regex = "hoon"
+file-types = ["hoon"]
+comment-token = "::"
+indent = {tab-width = 2, unit = "  "}
+
+[[grammar]]
+name = "hoon"
+source = { git = "https://github.com/urbit-pilled/tree-sitter-hoon", rev = "1d5df35af3e0afe592832a67b9fb3feeeba1f7b6" }
