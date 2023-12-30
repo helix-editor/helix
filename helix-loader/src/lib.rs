@@ -1,5 +1,6 @@
 pub mod config;
 pub mod grammar;
+pub mod session;
 
 use helix_stdx::{env::current_working_dir, path};
 

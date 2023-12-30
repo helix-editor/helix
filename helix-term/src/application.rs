@@ -1,6 +1,7 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
+use helix_loader::session;
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -27,7 +28,6 @@ use crate::{
     handlers,
     job::Jobs,
     keymap::Keymaps,
-    session,
     ui::{self, overlay::overlaid},
 };
 

@@ -68,9 +68,6 @@ toml = "0.8"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
-# session persistence
-bincode = "2.0.0-rc.3"
-
 # ripgrep for global search
 grep-regex = "0.1.13"
 grep-searcher = "0.1.14"
