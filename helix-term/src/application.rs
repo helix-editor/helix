@@ -156,6 +156,12 @@ impl Application {
             .write_unreversed(':', session::read_command_history())
             // TODO: do something about this unwrap
             .unwrap();
+        #[cfg(not(feature = "integration"))]
+        editor
+            .registers
+            .write_unreversed('/', session::read_search_history())
+            // TODO: do something about this unwrap
+            .unwrap();
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys

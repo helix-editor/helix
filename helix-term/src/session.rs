@@ -1,4 +1,4 @@
-use helix_loader::command_histfile;
+use helix_loader::{command_histfile, search_histfile};
 use std::{
     fs::{File, OpenOptions},
     io::{self, BufRead, BufReader, Write},
@@ -8,6 +8,7 @@ use std::{
 pub fn push_history(register: char, line: &str) {
     let filepath = match register {
         ':' => command_histfile(),
+        '/' => search_histfile(),
         _ => return,
     };
 
@@ -41,4 +42,8 @@ fn read_histfile(filepath: PathBuf) -> Vec<String> {
 
 pub fn read_command_history() -> Vec<String> {
     read_histfile(command_histfile())
+}
+
+pub fn read_search_history() -> Vec<String> {
+    read_histfile(search_histfile())
 }
