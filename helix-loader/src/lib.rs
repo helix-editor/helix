@@ -17,6 +17,8 @@ static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell:
 
 static COMMAND_HISTFILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
+static SEARCH_HISTFILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+
 pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(default_config_file);
     ensure_parent_dir(&config_file);
@@ -33,6 +35,12 @@ pub fn initialize_command_histfile(specified_file: Option<PathBuf>) {
     let command_histfile = specified_file.unwrap_or_else(default_command_histfile);
     ensure_parent_dir(&command_histfile);
     COMMAND_HISTFILE.set(command_histfile).ok();
+}
+
+pub fn initialize_search_histfile(specified_file: Option<PathBuf>) {
+    let search_histfile = specified_file.unwrap_or_else(default_search_histfile);
+    ensure_parent_dir(&search_histfile);
+    SEARCH_HISTFILE.set(search_histfile).ok();
 }
 
 /// A list of runtime directories from highest to lowest priority
@@ -163,6 +171,13 @@ pub fn command_histfile() -> PathBuf {
         .unwrap()
 }
 
+pub fn search_histfile() -> PathBuf {
+    SEARCH_HISTFILE
+        .get()
+        .map(|path| path.to_path_buf())
+        .unwrap()
+}
+
 pub fn workspace_config_file() -> PathBuf {
     find_workspace().0.join(".helix").join("config.toml")
 }
@@ -177,6 +192,10 @@ pub fn default_log_file() -> PathBuf {
 
 pub fn default_command_histfile() -> PathBuf {
     state_dir().join("command_history")
+}
+
+pub fn default_search_histfile() -> PathBuf {
+    state_dir().join("search_history")
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`
