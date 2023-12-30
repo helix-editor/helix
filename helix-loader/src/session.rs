@@ -1,4 +1,4 @@
-use helix_loader::{command_histfile, search_histfile};
+use crate::{command_histfile, search_histfile};
 use std::{
     fs::{File, OpenOptions},
     io::{self, BufRead, BufReader, Write},
