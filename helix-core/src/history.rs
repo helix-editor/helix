@@ -228,7 +228,68 @@ impl Revision {
     }
 }
 
+struct HashWriter<'a, W: Write + Seek> {
+    writer: &'a mut W,
+    hash: sha1_smol::Sha1,
+}
+
+impl<'a, W: Write + Seek> HashWriter<'a, W> {
+    fn new(writer: &'a mut W) -> Self {
+        Self {
+            writer,
+            hash: sha1_smol::Sha1::new(),
+        }
+    }
+
+    fn get_hash(&self) -> [u8; 20] {
+        self.hash.digest().bytes()
+    }
+}
+
+impl<'a, W: Write + Seek> Write for HashWriter<'a, W> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.hash.update(buf);
+        self.writer.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.writer.flush()
+    }
+}
+
+impl<'a, W: Write + Seek> Seek for HashWriter<'a, W> {
+    fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+        self.writer.seek(pos)
+    }
+}
+
+struct HashReader<'a, R: Read> {
+    r: &'a mut R,
+    hash: sha1_smol::Sha1,
+}
+
+impl<'a, R: Read> HashReader<'a, R> {
+    fn new(r: &'a mut R) -> Self {
+        Self {
+            r,
+            hash: sha1_smol::Sha1::new(),
+        }
+    }
+
+    fn get_hash(&self) -> [u8; 20] {
+        self.hash.digest().bytes()
+    }
+}
+
+impl<'a, R: Read> Read for HashReader<'a, R> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.hash.update(buf);
+        self.r.read(buf)
+    }
+}
+
 impl History {
+    // TODO: Include hash for undofile itself
     pub fn serialize<W: Write + Seek>(
         &self,
         writer: &mut W,
@@ -248,25 +309,36 @@ impl History {
         write_u64(writer, mtime)?;
         writer.write_all(&get_hash(&mut std::fs::File::open(path)?)?)?;
 
+        let pos = writer.seek(SeekFrom::Current(0))?;
+        // Undofile hash placeholder
+        writer.write_all(&[0u8; 20])?;
+
+        let mut hasher = HashWriter::new(writer);
+
         // Append new revisions to the end of the file.
-        write_usize(writer, self.revisions.len())?;
-        writer.seek(SeekFrom::End(0))?;
+        write_usize(&mut hasher, self.revisions.len())?;
+        hasher.seek(SeekFrom::End(0))?;
         for rev in &self.revisions[last_saved_revision..] {
-            rev.serialize(writer)?;
+            rev.serialize(&mut hasher)?;
         }
+
+        let hash = hasher.get_hash();
+        writer.seek(SeekFrom::Start(pos))?;
+        writer.write_all(&hash)?;
 
         Ok(())
     }
 
     /// Returns the deserialized [`History`] and the last_saved_revision.
     pub fn deserialize<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<(usize, Self)> {
-        let (current, last_saved_revision) = Self::read_header(reader, path)?;
+        let (current, last_saved_revision, hash) = Self::read_header(reader, path)?;
+        let mut reader = HashReader::new(reader);
 
         // Read the revisions and construct the tree.
-        let len = read_usize(reader)?;
+        let len = read_usize(&mut reader)?;
         let mut revisions: Vec<Revision> = Vec::with_capacity(len);
         for _ in 0..len {
-            let rev = Revision::deserialize(reader)?;
+            let rev = Revision::deserialize(&mut reader)?;
             let len = revisions.len();
             match revisions.get_mut(rev.parent) {
                 Some(r) => r.last_child = NonZeroUsize::new(len),
@@ -289,7 +361,7 @@ impl History {
             revisions.push(rev);
         }
 
-        if !is_tree(len, &revisions) {
+        if !is_tree(len, &revisions) || hash != reader.get_hash() {
             anyhow::bail!(StateError::InvalidTree);
         }
         let history = History { current, revisions };
@@ -344,7 +416,10 @@ impl History {
         Ok(())
     }
 
-    pub fn read_header<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<(usize, usize)> {
+    pub fn read_header<R: Read>(
+        reader: &mut R,
+        path: &Path,
+    ) -> anyhow::Result<(usize, usize, [u8; 20])> {
         let header = read_string(reader)?;
         if HEADER_TAG != header {
             Err(anyhow::anyhow!(StateError::InvalidHeader))
@@ -363,7 +438,10 @@ impl History {
             if mtime != last_mtime && hash != get_hash(&mut std::fs::File::open(path)?)? {
                 anyhow::bail!(StateError::Outdated);
             }
-            Ok((current, last_saved_revision))
+
+            // Tree hash
+            reader.read_exact(&mut hash);
+            Ok((current, last_saved_revision, hash))
         }
     }
 }
