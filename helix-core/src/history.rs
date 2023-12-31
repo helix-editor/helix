@@ -52,7 +52,7 @@ pub struct State {
 ///    delete, we also store an inversion of the transaction.
 ///
 /// Using time to navigate the history: <https://github.com/helix-editor/helix/pull/194>
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct History {
     revisions: Vec<Revision>,
     current: usize,
@@ -413,12 +413,18 @@ impl History {
         Ok(())
     }
 
+    pub fn is_valid<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<bool> {
+        let (.., hash) = Self::read_header(reader, path)?;
+        let computed_hash = get_hash(reader)?;
+        Ok(computed_hash == hash)
+    }
+
     pub fn read_header<R: Read>(
         reader: &mut R,
         path: &Path,
     ) -> anyhow::Result<(usize, usize, [u8; 20])> {
         let header = read_string(reader)?;
-        if HEADER_TAG != header {
+        if header != HEADER_TAG {
             Err(anyhow::anyhow!(StateError::InvalidHeader))
         } else {
             let current = read_usize(reader)?;
