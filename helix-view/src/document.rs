@@ -840,6 +840,8 @@ impl Document {
         impl Future<Output = Result<DocumentSavedEvent, anyhow::Error>> + 'static + Send,
         anyhow::Error,
     > {
+        use tokio::task::spawn_blocking;
+
         log::debug!(
             "submitting save of doc '{:?}'",
             self.path().map(|path| path.to_string_lossy())
@@ -858,6 +860,10 @@ impl Document {
                 self.path.as_ref().unwrap().clone()
             }
         };
+
+        let history = self.history.get_mut().clone();
+        let undofile_path = self.undo_file()?.unwrap();
+        let last_saved_revision = self.get_last_saved_revision();
 
         let identifier = self.path().map(|_| self.identifier());
         let language_servers = self.language_servers.clone();
@@ -951,7 +957,43 @@ impl Document {
             }
 
             write_result?;
+            // TODO: Decide on how to do error handling
+            let has_valid_undofile = {
+                let path = path.clone();
+                let undofile_path = undofile_path.clone();
+                spawn_blocking(move || -> anyhow::Result<bool> {
+                    helix_core::history::History::is_valid(
+                        &mut std::fs::File::open(undofile_path)?,
+                        &path,
+                    )
+                })
+                .await?
+            };
+            let mut file = fs::File::create(&path).await?;
+            to_writer(&mut file, encoding_with_bom_info, &text).await?;
 
+            {
+                // helix-core does not have tokio
+                let mut undofile = tokio::fs::OpenOptions::new()
+                    .append(true)
+                    .read(true)
+                    .create(true)
+                    .open(undofile_path)
+                    .await?
+                    .into_std()
+                    .await;
+                let path = path.clone();
+
+                spawn_blocking(move || -> anyhow::Result<()> {
+                    let offset = if has_valid_undofile? {
+                        last_saved_revision
+                    } else {
+                        0
+                    };
+                    history.serialize(&mut undofile, &path, current_rev, offset)?;
+                    Ok(())
+                });
+            }
             let event = DocumentSavedEvent {
                 revision: current_rev,
                 doc_id,
