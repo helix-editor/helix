@@ -3094,7 +3094,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: CommandSignature::positional(&[completers::filename]),
     },
     TypableCommand {
-        name: "reload-history",
+        name: "history-reload",
         aliases: &[],
         doc: "Reload the history for the buffer from its corresponding undofile",
         fun: reload_history,
