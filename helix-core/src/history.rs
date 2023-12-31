@@ -147,7 +147,11 @@ fn is_tree(n: usize, nodes: &[Revision]) -> bool {
     let mut visited = HashSet::new();
     let mut stack = vec![0];
     while let Some(node) = stack.pop() {
-        visited.insert(node);
+        if !visited.insert(node) {
+            // Cycle
+            return false;
+        }
+
         if let Some(adj_nodes) = adj_list.get(&node) {
             for v in adj_nodes {
                 if !visited.contains(v) {
@@ -301,25 +305,18 @@ impl History {
     /// ```
     /// `after_len` is not 0-indexed. It is the number of elements that are the same.
     // TODO: return transaction to update view
-    pub fn merge(&mut self, mut other: History, mut after_n: usize) -> anyhow::Result<()> {
+    pub fn merge(&mut self, mut other: History) -> anyhow::Result<()> {
         if self.revisions.len() > 1 {
-            // All histories have the same starting revision.
-            after_n = std::cmp::max(1, after_n);
-
-            // Check
-            if !self
+            let after_n = self
                 .revisions
                 .iter()
                 .zip(other.revisions.iter())
-                .take(after_n)
-                .all(|(a, b)| {
+                .take_while(|(a, b)| {
                     a.parent == b.parent
                         && a.transaction == b.transaction
                         && a.inversion == b.inversion
                 })
-            {
-                anyhow::bail!(StateError::InvalidOffset);
-            }
+                .count();
 
             let revisions = self.revisions.split_off(after_n);
             other.revisions.reserve_exact(revisions.len());

@@ -1085,14 +1085,7 @@ impl Document {
                     self.path().unwrap(),
                 )?;
 
-                if self.history.get_mut().is_empty()
-                    || self.get_current_revision() == last_saved_revision
-                {
-                    self.history.set(history);
-                } else {
-                    let offset = self.get_last_saved_revision() + 1;
-                    self.history.get_mut().merge(history, offset)?;
-                }
+                self.history.get_mut().merge(history)?;
                 self.set_last_saved_revision(last_saved_revision);
             }
         }
