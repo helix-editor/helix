@@ -1079,15 +1079,11 @@ impl Document {
             .undo_file()?
             .and_then(|path| std::fs::File::open(path).ok())
         {
-            if undo_file.metadata()?.len() != 0 {
-                let (last_saved_revision, history) = helix_core::history::History::deserialize(
-                    &mut undo_file,
-                    self.path().unwrap(),
-                )?;
+            let (last_saved_revision, history) =
+                helix_core::history::History::deserialize(&mut undo_file, self.path().unwrap())?;
 
-                self.history.get_mut().merge(history)?;
-                self.set_last_saved_revision(last_saved_revision);
-            }
+            self.history.get_mut().merge(history)?;
+            self.set_last_saved_revision(last_saved_revision);
         }
         Ok(())
     }

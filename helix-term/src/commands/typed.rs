@@ -2454,6 +2454,21 @@ fn yank_diagnostic(
     Ok(())
 }
 
+fn reload_history(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc_mut!(cx.editor);
+    doc.reload_history()?;
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -3067,6 +3082,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
         fun: yank_diagnostic,
         signature: CommandSignature::all(completers::register),
+    },
+    TypableCommand {
+        name: "reload-history",
+        aliases: &[],
+        doc: "Reload the history for the buffer from its corresponding undofile",
+        fun: reload_history,
+        signature: CommandSignature::none(),
     },
 ];
 
