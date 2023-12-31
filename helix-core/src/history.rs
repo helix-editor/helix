@@ -375,40 +375,37 @@ impl History {
     ///       \  
     ///        E -> F
     /// ```
-    /// `after_len` is not 0-indexed. It is the number of elements that are the same.
     // TODO: return transaction to update view
+    // TODO: Which history should take precedence?
     pub fn merge(&mut self, mut other: History) -> anyhow::Result<()> {
-        if self.revisions.len() > 1 {
-            let after_n = self
-                .revisions
-                .iter()
-                .zip(other.revisions.iter())
-                .take_while(|(a, b)| {
-                    a.parent == b.parent
-                        && a.transaction == b.transaction
-                        && a.inversion == b.inversion
-                })
-                .count();
+        let after_n = self
+            .revisions
+            .iter()
+            .zip(other.revisions.iter())
+            .take_while(|(a, b)| {
+                a.parent == b.parent && a.transaction == b.transaction && a.inversion == b.inversion
+            })
+            .count();
 
-            let revisions = self.revisions.split_off(after_n);
-            other.revisions.reserve_exact(revisions.len());
+        let revisions = self.revisions.split_off(after_n);
+        other.revisions.reserve_exact(revisions.len());
 
-            // Converts the number of new elements to an index offset
-            let offset = (other.revisions.len() - after_n) - 1;
-            for mut r in revisions {
-                // Update parents of new revisions
-                if r.parent >= after_n {
-                    r.parent += offset;
-                }
-                debug_assert!(r.parent < other.revisions.len());
-
-                // Update the corresponding parent.
-                other.revisions.get_mut(r.parent).unwrap().last_child =
-                    NonZeroUsize::new(other.revisions.len());
-                other.revisions.push(r);
+        // Converts the number of new elements to an index offset
+        let offset = (other.revisions.len() - after_n) - 1;
+        for mut r in revisions {
+            // Update parents of new revisions
+            if r.parent >= after_n {
+                r.parent += offset;
             }
+            debug_assert!(r.parent < other.revisions.len());
+
+            // Update the corresponding parent.
+            other.revisions.get_mut(r.parent).unwrap().last_child =
+                NonZeroUsize::new(other.revisions.len());
+            other.revisions.push(r);
         }
-        *self = other;
+        self.current += offset;
+        self.revisions = other.revisions;
 
         if !is_tree(self.revisions.len(), &self.revisions) {
             anyhow::bail!(StateError::InvalidTree);

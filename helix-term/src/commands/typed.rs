@@ -2471,6 +2471,21 @@ fn move_buffer(
     Ok(())
 }
 
+fn reload_history(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc_mut!(cx.editor);
+    doc.reload_history()?;
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -3078,6 +3093,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
     },
+    TypableCommand {
+        name: "reload-history",
+        aliases: &[],
+        doc: "Reload the history for the buffer from its corresponding undofile",
+        fun: reload_history,
+        signature: CommandSignature::none(),
+    }
 ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
