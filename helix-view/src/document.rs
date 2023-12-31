@@ -958,16 +958,22 @@ impl Document {
 
             write_result?;
             // TODO: Decide on how to do error handling
+            // TODO: Remove unwraps
             let has_valid_undofile = {
                 let path = path.clone();
                 let undofile_path = undofile_path.clone();
                 spawn_blocking(move || -> anyhow::Result<bool> {
-                    helix_core::history::History::is_valid(
+                    match helix_core::history::History::is_valid(
                         &mut std::fs::File::open(undofile_path)?,
                         &path,
-                    )
+                    ) {
+                        Ok(res) => Ok(res),
+                        Err(e) if e.downcast_ref::<std::io::Error>().is_none() => Err(e),
+                        _ => Ok(false),
+                    }
                 })
-                .await?
+                .await
+                .unwrap()
             };
             let mut file = fs::File::create(&path).await?;
             to_writer(&mut file, encoding_with_bom_info, &text).await?;
@@ -990,9 +996,12 @@ impl Document {
                     } else {
                         0
                     };
-                    history.serialize(&mut undofile, &path, current_rev, offset)?;
+                    history
+                        .serialize(&mut undofile, &path, current_rev, offset)
+                        .unwrap();
                     Ok(())
-                });
+                })
+                .await??;
             }
             let event = DocumentSavedEvent {
                 revision: current_rev,
@@ -1113,19 +1122,24 @@ impl Document {
             let escaped_path = helix_stdx::path::escape_path(path);
             undo_dir.join(escaped_path)
         });
+        // panic!("{:?}", res);
         Ok(res)
     }
 
+    // TODO: Remove unwraps
     pub fn reload_history(&mut self) -> anyhow::Result<()> {
         if let Some(mut undo_file) = self
             .undo_file()?
             .and_then(|path| std::fs::File::open(path).ok())
         {
-            let (last_saved_revision, history) =
-                helix_core::history::History::deserialize(&mut undo_file, self.path().unwrap())?;
+            if undo_file.metadata()?.len() != 0 {
+                let (last_saved_revision, history) =
+                    helix_core::history::History::deserialize(&mut undo_file, self.path().unwrap())
+                        .unwrap();
 
-            self.history.get_mut().merge(history)?;
-            self.set_last_saved_revision(last_saved_revision);
+                self.history.get_mut().merge(history).unwrap();
+                self.set_last_saved_revision(last_saved_revision);
+            }
         }
         Ok(())
     }
