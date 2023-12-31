@@ -5,7 +5,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::num::NonZeroUsize;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, SystemTime};
 
 use crate::combinators::*;
 
@@ -229,14 +229,14 @@ impl Revision {
 }
 
 struct HashWriter<'a, W: Write + Seek> {
-    writer: &'a mut W,
+    w: &'a mut W,
     hash: sha1_smol::Sha1,
 }
 
 impl<'a, W: Write + Seek> HashWriter<'a, W> {
     fn new(writer: &'a mut W) -> Self {
         Self {
-            writer,
+            w: writer,
             hash: sha1_smol::Sha1::new(),
         }
     }
@@ -249,17 +249,17 @@ impl<'a, W: Write + Seek> HashWriter<'a, W> {
 impl<'a, W: Write + Seek> Write for HashWriter<'a, W> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.hash.update(buf);
-        self.writer.write(buf)
+        self.w.write(buf)
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        self.writer.flush()
+        self.w.flush()
     }
 }
 
 impl<'a, W: Write + Seek> Seek for HashWriter<'a, W> {
     fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
-        self.writer.seek(pos)
+        self.w.seek(pos)
     }
 }
 
@@ -440,7 +440,7 @@ impl History {
             }
 
             // Tree hash
-            reader.read_exact(&mut hash);
+            reader.read_exact(&mut hash)?;
             Ok((current, last_saved_revision, hash))
         }
     }
