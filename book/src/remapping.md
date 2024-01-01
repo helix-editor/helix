@@ -16,6 +16,7 @@ C-o = ":open ~/.config/helix/config.toml" # Maps Ctrl-o to opening of the helix 
 a = "move_char_left" # Maps the 'a' key to the move_char_left command
 w = "move_line_up" # Maps the 'w' key move_line_up
 "C-S-esc" = "extend_line" # Maps Ctrl-Shift-Escape to extend_line
+C-R = "redo" # Maps Ctrl-Shift-r to redo
 g = { a = "code_action" } # Maps `ga` to show possible code actions
 "ret" = ["open_below", "normal_mode"] # Maps the enter key to open_below then re-enter normal mode
 
@@ -51,7 +52,9 @@ t = ":run-shell-command cargo test"
 ## Special keys and modifiers
 
 Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
-`C-`, `S-` and `A-`. Special keys are encoded as follows:
+`C-`, `S-` and `A-`, with the `S-` prefix being exclusively for special keys. When binding character keys, the character key should be capitalized instead.
+
+Special keys are encoded as follows:
 
 | Key name     | Representation |
 | ---          | ---            |
