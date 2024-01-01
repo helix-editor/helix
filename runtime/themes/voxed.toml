@@ -39,13 +39,13 @@ label = "yellow"
 "diff.minus" = "#F22B29"
 "diff.delta" = "#6f44f0"
 
-"ui.background" = { bg = "#25262B" }
+"ui.background" = { fg = "#25262B", bg="#1f1f21" }
 "ui.background.separator" = { fg = "sglow" }
 "ui.linenr" = { fg = "light-grey", modifiers = ["italic"] }
 "ui.linenr.selected" = { fg = "bpink", modifiers = ["bold"] }
 "ui.statusline" = { fg = "status-two", bg = "light-grey", modifiers = ["bold", "dim"] }
 "ui.statusline.inactive" = { fg = "black", bg = "bgrey-two" }
-"ui.popup" = { fg = "bgrey" }
+"ui.popup" = { fg = "bgrey", bg = "#25262B" }
 "ui.window" = { fg = "white" }
 "ui.help" = { bg = "#3f4047", fg = "light-grey" }
 
