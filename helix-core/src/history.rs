@@ -95,13 +95,13 @@ fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; blake3::OUT_LEN]> {
 
 // TODO: For testing only.
 fn is_tree(n: usize, nodes: &[Revision]) -> bool {
-    use std::collections::{HashMap, HashSet};
+    use ahash::{AHashMap, AHashSet};
 
     if n == 0 {
         return false;
     }
 
-    let mut adj_list = HashMap::with_capacity(n);
+    let mut adj_list = AHashMap::with_capacity(n);
     let mut total_degree = 0;
     for (node, parent, last_child) in nodes
         .iter()
@@ -114,11 +114,11 @@ fn is_tree(n: usize, nodes: &[Revision]) -> bool {
 
             adj_list
                 .entry(node)
-                .or_insert_with(|| HashSet::with_capacity(2))
+                .or_insert_with(AHashSet::new)
                 .insert(parent);
             adj_list
                 .entry(parent)
-                .or_insert_with(|| HashSet::with_capacity(2))
+                .or_insert_with(AHashSet::new)
                 .insert(node);
         }
 
@@ -126,25 +126,24 @@ fn is_tree(n: usize, nodes: &[Revision]) -> bool {
             total_degree += 1;
             adj_list
                 .entry(node)
-                .or_insert_with(|| HashSet::with_capacity(2))
+                .or_insert_with(AHashSet::new)
                 .insert(n.get());
             adj_list
                 .entry(n.get())
-                .or_insert_with(|| HashSet::with_capacity(2))
+                .or_insert_with(AHashSet::new)
                 .insert(node);
         }
     }
 
-    if total_degree / 2 != n - 1 || total_degree % 2 != 0 {
+    if total_degree != 2 * (n - 1) {
         return false;
     }
 
-    let mut visited = HashSet::new();
+    let mut visited = AHashSet::new();
     let mut stack = vec![0];
     while let Some(node) = stack.pop() {
         if !visited.insert(node) {
-            // Cycle
-            return false;
+            continue;
         }
 
         if let Some(adj_nodes) = adj_list.get(&node) {
@@ -166,6 +165,7 @@ pub enum StateError {
     InvalidData(String),
     InvalidTree,
     InvalidHash,
+    Other(anyhow::Error),
 }
 
 impl std::fmt::Display for StateError {
@@ -177,7 +177,14 @@ impl std::fmt::Display for StateError {
             Self::InvalidData(msg) => f.write_str(msg),
             Self::InvalidTree => f.write_str("not a tree"),
             Self::InvalidHash => f.write_str("invalid hash for undofile itself"),
+            Self::Other(e) => e.fmt(f),
         }
+    }
+}
+
+impl From<anyhow::Error> for StateError {
+    fn from(value: anyhow::Error) -> Self {
+        Self::Other(value)
     }
 }
 
@@ -192,21 +199,22 @@ impl PartialEq for Revision {
     }
 }
 impl Revision {
-    fn serialize<W: Write>(&self, writer: &mut W) -> anyhow::Result<()> {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), StateError> {
         write_usize(writer, self.parent)?;
         self.transaction.serialize(writer)?;
         self.inversion.serialize(writer)?;
         write_u64(
             writer,
             self.timestamp
-                .duration_since(std::time::UNIX_EPOCH)?
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(anyhow::Error::from)?
                 .as_secs(),
         )?;
 
         Ok(())
     }
 
-    fn deserialize<R: Read>(reader: &mut R) -> std::io::Result<Self> {
+    fn deserialize<R: Read>(reader: &mut R) -> anyhow::Result<Self> {
         let parent = read_usize(reader)?;
         let transaction = Arc::new(Transaction::deserialize(reader)?);
         let inversion = Arc::new(Transaction::deserialize(reader)?);
