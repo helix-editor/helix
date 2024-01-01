@@ -143,7 +143,6 @@ fn is_tree(n: usize, nodes: &[Revision]) -> bool {
     let mut stack = vec![0];
     while let Some(node) = stack.pop() {
         if !visited.insert(node) {
-            panic!("{:?} and {:?}", node, visited);
             // Cycle
             return false;
         }
