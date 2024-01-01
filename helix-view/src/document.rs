@@ -966,10 +966,10 @@ impl Document {
                 let path = path.clone();
                 let undofile_path = undofile_path.clone();
                 spawn_blocking(move || -> anyhow::Result<bool> {
-                    helix_core::history::History::is_valid(
+                    Ok(helix_core::history::History::is_valid(
                         &mut std::fs::File::open(undofile_path)?,
                         &path,
-                    )
+                    ))
                 })
                 .await?
                 .unwrap_or(false)
@@ -977,13 +977,22 @@ impl Document {
             let mut file = fs::File::create(&path).await?;
             to_writer(&mut file, encoding_with_bom_info, &text).await?;
 
+            // Set undofile writable
+            if undofile_path.exists() {
+                let mut perms = tokio::fs::metadata(undofile_path.as_path())
+                    .await?
+                    .permissions();
+                perms.set_readonly(false);
+                tokio::fs::set_permissions(undofile_path.as_path(), perms).await?;
+            }
+
             let undofile_res = {
                 // helix-core does not have tokio
                 let mut undofile = tokio::fs::OpenOptions::new()
                     .write(true)
                     .read(true)
                     .create(true)
-                    .open(undofile_path)
+                    .open(undofile_path.as_path())
                     .await?
                     .into_std()
                     .await;
@@ -1001,6 +1010,24 @@ impl Document {
                 })
                 .await?
             };
+
+            // Set undofile perms
+            if undofile_path.exists() {
+                let meta = tokio::fs::metadata(path.as_path()).await?;
+                let mut perms = meta.permissions();
+                perms.set_readonly(true);
+                tokio::fs::set_permissions(undofile_path.as_path(), perms).await?;
+
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::MetadataExt;
+                    let user = meta.uid();
+                    let group = meta.gid();
+                    std::os::unix::fs::chown(undofile_path.as_path(), Some(user), Some(group))?;
+                    // TODO: Vim does (perm & 0707) | ((perm & 07) << 3)
+                }
+            }
+
             let event = DocumentSavedEvent {
                 revision: current_rev,
                 doc_id,
