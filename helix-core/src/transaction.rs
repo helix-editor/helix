@@ -508,7 +508,7 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn serialize<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
+    pub fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         write_option(writer, self.selection.as_ref(), |writer, selection| {
             selection.serialize(writer)
         })?;
@@ -538,7 +538,7 @@ impl Transaction {
         Ok(())
     }
 
-    pub fn deserialize<R: std::io::Read>(reader: &mut R) -> anyhow::Result<Self> {
+    pub fn deserialize<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
         let selection = read_option(reader, Selection::deserialize)?;
 
         let len = read_usize(reader)?;
@@ -549,7 +549,7 @@ impl Transaction {
                 1 => Operation::Delete(read_usize(reader)?),
                 2 => Operation::Insert(read_string(reader)?.into()),
                 _ => {
-                    anyhow::bail!(std::io::Error::new(
+                    return Err(std::io::Error::new(
                         std::io::ErrorKind::Other,
                         "invalid variant",
                     ))
