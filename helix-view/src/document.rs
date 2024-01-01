@@ -105,6 +105,8 @@ pub struct DocumentSavedEvent {
     pub doc_id: DocumentId,
     pub path: PathBuf,
     pub text: Rope,
+    // HAXX: errors can't be cloend
+    pub undofile_error: Option<String>,
 }
 
 pub type DocumentSavedEventResult = Result<DocumentSavedEvent, anyhow::Error>;
@@ -706,6 +708,7 @@ impl Document {
         }
 
         doc.detect_indent_and_line_ending();
+        doc.reload_history()?;
 
         Ok(doc)
     }
@@ -963,22 +966,18 @@ impl Document {
                 let path = path.clone();
                 let undofile_path = undofile_path.clone();
                 spawn_blocking(move || -> anyhow::Result<bool> {
-                    match helix_core::history::History::is_valid(
+                    helix_core::history::History::is_valid(
                         &mut std::fs::File::open(undofile_path)?,
                         &path,
-                    ) {
-                        Ok(res) => Ok(res),
-                        // Err(e) if e.downcast_ref::<std::io::Error>().is_none() => Err(e),
-                        _ => Ok(false),
-                    }
+                    )
                 })
-                .await
-                .unwrap()
+                .await?
+                .unwrap_or(false)
             };
             let mut file = fs::File::create(&path).await?;
             to_writer(&mut file, encoding_with_bom_info, &text).await?;
 
-            {
+            let undofile_res = {
                 // helix-core does not have tokio
                 let mut undofile = tokio::fs::OpenOptions::new()
                     .write(true)
@@ -991,24 +990,23 @@ impl Document {
                 let path = path.clone();
 
                 spawn_blocking(move || -> anyhow::Result<()> {
-                    let offset = if has_valid_undofile? {
+                    let offset = if has_valid_undofile {
                         last_saved_revision
                     } else {
                         undofile.set_len(0)?;
                         0
                     };
-                    history
-                        .serialize(&mut undofile, &path, current_rev, offset)
-                        .unwrap();
+                    history.serialize(&mut undofile, &path, current_rev, offset)?;
                     Ok(())
                 })
-                .await??;
-            }
+                .await?
+            };
             let event = DocumentSavedEvent {
                 revision: current_rev,
                 doc_id,
                 path,
                 text: text.clone(),
+                undofile_error: undofile_res.map_err(|e| e.to_string()).err(),
             };
 
             for (_, language_server) in language_servers {

@@ -182,6 +182,18 @@ impl std::fmt::Display for StateError {
     }
 }
 
+impl From<std::io::Error> for StateError {
+    fn from(value: std::io::Error) -> Self {
+        Self::Other(value.into())
+    }
+}
+
+impl From<std::time::SystemTimeError> for StateError {
+    fn from(value: std::time::SystemTimeError) -> Self {
+        Self::Other(value.into())
+    }
+}
+
 impl From<anyhow::Error> for StateError {
     fn from(value: anyhow::Error) -> Self {
         Self::Other(value)
@@ -199,15 +211,14 @@ impl PartialEq for Revision {
     }
 }
 impl Revision {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), StateError> {
+    fn serialize<W: Write>(&self, writer: &mut W) -> anyhow::Result<()> {
         write_usize(writer, self.parent)?;
         self.transaction.serialize(writer)?;
         self.inversion.serialize(writer)?;
         write_u64(
             writer,
             self.timestamp
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_err(anyhow::Error::from)?
+                .duration_since(std::time::UNIX_EPOCH)?
                 .as_secs(),
         )?;
 
@@ -306,7 +317,7 @@ impl History {
         path: &Path,
         revision: usize,
         last_saved_revision: usize,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), StateError> {
         // Header
         let mtime = std::fs::metadata(path)?
             .modified()?
