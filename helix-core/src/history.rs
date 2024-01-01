@@ -87,10 +87,20 @@ impl Default for History {
 }
 
 // TODO: Compare/benchmark Blake3 and sha2
-fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; blake3::OUT_LEN]> {
-    let mut hasher = blake3::Hasher::new();
-    hasher.update_reader(reader)?;
-    Ok(hasher.finalize().as_bytes().to_owned())
+fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; sha1_smol::DIGEST_LENGTH]> {
+    const BUF_SIZE: usize = 8192;
+
+    let mut buf = [0u8; BUF_SIZE];
+    let mut hash = sha1_smol::Sha1::new();
+    loop {
+        let total_read = reader.read(&mut buf)?;
+        if total_read == 0 {
+            break;
+        }
+
+        hash.update(&buf[0..total_read]);
+    }
+    Ok(hash.digest().bytes())
 }
 
 // TODO: For testing only.
@@ -242,69 +252,6 @@ impl Revision {
     }
 }
 
-struct HashWriter<'a, W: Write + Seek> {
-    w: &'a mut W,
-    hasher: blake3::Hasher,
-}
-
-impl<'a, W: Write + Seek> HashWriter<'a, W> {
-    fn new(writer: &'a mut W) -> Self {
-        Self {
-            w: writer,
-            hasher: blake3::Hasher::new(),
-        }
-    }
-
-    fn get_hash(&self) -> [u8; blake3::OUT_LEN] {
-        self.hasher.finalize().as_bytes().to_owned()
-    }
-}
-
-impl<'a, W: Write + Seek> Write for HashWriter<'a, W> {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.hasher.update(buf);
-        self.w.write(buf)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.w.flush()
-    }
-}
-
-impl<'a, W: Write + Seek> Seek for HashWriter<'a, W> {
-    fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
-        self.w.seek(pos)
-    }
-}
-
-struct HashReader<'a, R: Read> {
-    r: &'a mut R,
-    hasher: blake3::Hasher,
-}
-
-impl<'a, R: Read> HashReader<'a, R> {
-    fn new(r: &'a mut R) -> Self {
-        Self {
-            r,
-            hasher: blake3::Hasher::new(),
-        }
-    }
-
-    fn get_hash(&self) -> [u8; blake3::OUT_LEN] {
-        self.hasher.finalize().as_bytes().to_owned()
-    }
-}
-
-impl<'a, R: Read> Read for HashReader<'a, R> {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let res = self.r.read(buf);
-        if let Ok(n) = res {
-            self.hasher.update(&buf[..n]);
-        }
-        res
-    }
-}
-
 const UNDO_FILE_HEADER_TAG: &[u8] = b"Helix Undofile";
 const UNDO_FILE_HEADER_LEN: usize = UNDO_FILE_HEADER_TAG.len();
 const UNDO_FILE_VERSION: u8 = 1;
@@ -331,37 +278,26 @@ impl History {
         write_u64(writer, mtime)?;
         writer.write_all(&get_hash(&mut std::fs::File::open(path)?)?)?;
 
-        let pos = writer.stream_position()?;
-        // Undofile hash placeholder
-        writer.write_all(&[0u8; blake3::OUT_LEN])?;
-
-        let mut hasher = HashWriter::new(writer);
-
         // Append new revisions to the end of the file.
         // TODO: Recompute hash on append
-        write_usize(&mut hasher, self.revisions.len())?;
-        hasher.seek(SeekFrom::End(0))?;
+        write_usize(writer, self.revisions.len())?;
+        writer.seek(SeekFrom::End(0))?;
         for rev in &self.revisions[last_saved_revision..] {
-            rev.serialize(&mut hasher)?;
+            rev.serialize(writer)?;
         }
-
-        let hash = hasher.get_hash();
-        writer.seek(SeekFrom::Start(pos))?;
-        writer.write_all(&hash)?;
 
         Ok(())
     }
 
     /// Returns the deserialized [`History`] and the last_saved_revision.
     pub fn deserialize<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<(usize, Self)> {
-        let (current, last_saved_revision, hash) = Self::read_header(reader, path)?;
-        let mut hasher = HashReader::new(reader);
+        let (current, last_saved_revision) = Self::read_header(reader, path)?;
 
         // Read the revisions and construct the tree.
-        let len = read_usize(&mut hasher)?;
+        let len = read_usize(reader)?;
         let mut revisions: Vec<Revision> = Vec::with_capacity(len);
         for _ in 0..len {
-            let rev = Revision::deserialize(&mut hasher)?;
+            let rev = Revision::deserialize(reader)?;
             let len = revisions.len();
             match revisions.get_mut(rev.parent) {
                 Some(r) => r.last_child = NonZeroUsize::new(len),
@@ -386,9 +322,8 @@ impl History {
 
         if !is_tree(len, &revisions) {
             anyhow::bail!(StateError::InvalidTree);
-        } else if hash != hasher.get_hash() {
-            anyhow::bail!(StateError::InvalidHash);
         }
+
         let history = History { current, revisions };
         Ok((last_saved_revision, history))
     }
@@ -438,16 +373,11 @@ impl History {
         Ok(())
     }
 
-    pub fn is_valid<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<bool> {
-        let (.., hash) = Self::read_header(reader, path)?;
-        let computed_hash = get_hash(reader)?;
-        Ok(computed_hash == hash)
+    pub fn is_valid<R: Read>(reader: &mut R, path: &Path) -> bool {
+        Self::read_header(reader, path).is_ok()
     }
 
-    pub fn read_header<R: Read>(
-        reader: &mut R,
-        path: &Path,
-    ) -> anyhow::Result<(usize, usize, [u8; blake3::OUT_LEN])> {
+    pub fn read_header<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<(usize, usize)> {
         let header: [u8; UNDO_FILE_HEADER_LEN] = read_many_bytes(reader)?;
         let version = read_byte(reader)?;
         if header != UNDO_FILE_HEADER_TAG || version != UNDO_FILE_VERSION {
@@ -461,7 +391,7 @@ impl History {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_secs();
-            let mut hash = [0u8; blake3::OUT_LEN];
+            let mut hash = [0u8; sha1_smol::DIGEST_LENGTH];
             reader.read_exact(&mut hash)?;
 
             if mtime != last_mtime && hash != get_hash(&mut std::fs::File::open(path)?)? {
@@ -469,8 +399,7 @@ impl History {
             }
 
             // Tree hash
-            reader.read_exact(&mut hash)?;
-            Ok((current, last_saved_revision, hash))
+            Ok((current, last_saved_revision))
         }
     }
 }
