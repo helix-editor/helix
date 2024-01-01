@@ -126,3 +126,9 @@ pub fn read_option<R: Read, T>(
     };
     Ok(res)
 }
+
+pub fn read_many_bytes<R: Read, const N: usize>(reader: &mut R) -> Result<[u8; N]> {
+    let mut buf = [0u8; N];
+    reader.read_exact(&mut buf)?;
+    Ok(buf)
+}

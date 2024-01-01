@@ -86,25 +86,20 @@ impl Default for History {
     }
 }
 
-fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; 20]> {
-    const BUF_SIZE: usize = 8192;
-
-    let mut buf = [0u8; BUF_SIZE];
-    let mut hash = sha1_smol::Sha1::new();
-    loop {
-        let total_read = reader.read(&mut buf)?;
-        if total_read == 0 {
-            break;
-        }
-
-        hash.update(&buf[0..total_read]);
-    }
-    Ok(hash.digest().bytes())
+// TODO: Compare/benchmark Blake3 and sha2
+fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; blake3::OUT_LEN]> {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update_reader(reader)?;
+    Ok(hasher.finalize().as_bytes().to_owned())
 }
 
 // TODO: For testing only.
 fn is_tree(n: usize, nodes: &[Revision]) -> bool {
     use std::collections::{HashMap, HashSet};
+
+    if n == 0 {
+        return false;
+    }
 
     let mut adj_list = HashMap::with_capacity(n);
     let mut total_degree = 0;
@@ -140,7 +135,7 @@ fn is_tree(n: usize, nodes: &[Revision]) -> bool {
         }
     }
 
-    if total_degree != 2 * (n - 1) {
+    if total_degree / 2 != n - 1 || total_degree % 2 != 0 {
         return false;
     }
 
@@ -148,6 +143,7 @@ fn is_tree(n: usize, nodes: &[Revision]) -> bool {
     let mut stack = vec![0];
     while let Some(node) = stack.pop() {
         if !visited.insert(node) {
+            panic!("{:?} and {:?}", node, visited);
             // Cycle
             return false;
         }
@@ -170,6 +166,7 @@ pub enum StateError {
     InvalidOffset,
     InvalidData(String),
     InvalidTree,
+    InvalidHash,
 }
 
 impl std::fmt::Display for StateError {
@@ -180,13 +177,12 @@ impl std::fmt::Display for StateError {
             Self::InvalidOffset => f.write_str("Invalid merge offset"),
             Self::InvalidData(msg) => f.write_str(msg),
             Self::InvalidTree => f.write_str("not a tree"),
+            Self::InvalidHash => f.write_str("invalid hash for undofile itself"),
         }
     }
 }
 
 impl std::error::Error for StateError {}
-
-const HEADER_TAG: &str = "Helix Undofile 1\n";
 
 impl PartialEq for Revision {
     fn eq(&self, other: &Self) -> bool {
@@ -201,11 +197,11 @@ impl Revision {
         write_usize(writer, self.parent)?;
         self.transaction.serialize(writer)?;
         self.inversion.serialize(writer)?;
-        write_usize(
+        write_u64(
             writer,
             self.timestamp
                 .duration_since(std::time::UNIX_EPOCH)?
-                .as_secs() as usize,
+                .as_secs(),
         )?;
 
         Ok(())
@@ -216,7 +212,7 @@ impl Revision {
         let transaction = Arc::new(Transaction::deserialize(reader)?);
         let inversion = Arc::new(Transaction::deserialize(reader)?);
         let timestamp = std::time::UNIX_EPOCH
-            .checked_add(Duration::from_secs(read_usize(reader)? as u64))
+            .checked_add(Duration::from_secs(read_u64(reader)?))
             .unwrap_or_else(SystemTime::now);
         Ok(Revision {
             parent,
@@ -230,25 +226,25 @@ impl Revision {
 
 struct HashWriter<'a, W: Write + Seek> {
     w: &'a mut W,
-    hash: sha1_smol::Sha1,
+    hasher: blake3::Hasher,
 }
 
 impl<'a, W: Write + Seek> HashWriter<'a, W> {
     fn new(writer: &'a mut W) -> Self {
         Self {
             w: writer,
-            hash: sha1_smol::Sha1::new(),
+            hasher: blake3::Hasher::new(),
         }
     }
 
-    fn get_hash(&self) -> [u8; 20] {
-        self.hash.digest().bytes()
+    fn get_hash(&self) -> [u8; blake3::OUT_LEN] {
+        self.hasher.finalize().as_bytes().to_owned()
     }
 }
 
 impl<'a, W: Write + Seek> Write for HashWriter<'a, W> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.hash.update(buf);
+        self.hasher.update(buf);
         self.w.write(buf)
     }
 
@@ -265,31 +261,38 @@ impl<'a, W: Write + Seek> Seek for HashWriter<'a, W> {
 
 struct HashReader<'a, R: Read> {
     r: &'a mut R,
-    hash: sha1_smol::Sha1,
+    hasher: blake3::Hasher,
 }
 
 impl<'a, R: Read> HashReader<'a, R> {
     fn new(r: &'a mut R) -> Self {
         Self {
             r,
-            hash: sha1_smol::Sha1::new(),
+            hasher: blake3::Hasher::new(),
         }
     }
 
-    fn get_hash(&self) -> [u8; 20] {
-        self.hash.digest().bytes()
+    fn get_hash(&self) -> [u8; blake3::OUT_LEN] {
+        self.hasher.finalize().as_bytes().to_owned()
     }
 }
 
 impl<'a, R: Read> Read for HashReader<'a, R> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        self.hash.update(buf);
-        self.r.read(buf)
+        let res = self.r.read(buf);
+        if let Ok(n) = res {
+            self.hasher.update(&buf[..n]);
+        }
+        res
     }
 }
 
+const UNDO_FILE_HEADER_TAG: &[u8] = b"Helix Undofile";
+const UNDO_FILE_HEADER_LEN: usize = UNDO_FILE_HEADER_TAG.len();
+const UNDO_FILE_VERSION: u8 = 1;
+
 impl History {
-    // TODO: Include hash for undofile itself
+    // TODO: Vim uses magic numbers for each revision. Why?
     pub fn serialize<W: Write + Seek>(
         &self,
         writer: &mut W,
@@ -303,19 +306,21 @@ impl History {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        write_string(writer, HEADER_TAG)?;
+        writer.write(UNDO_FILE_HEADER_TAG)?;
+        write_byte(writer, UNDO_FILE_VERSION)?;
         write_usize(writer, self.current)?;
         write_usize(writer, revision)?;
         write_u64(writer, mtime)?;
         writer.write_all(&get_hash(&mut std::fs::File::open(path)?)?)?;
 
-        let pos = writer.seek(SeekFrom::Current(0))?;
+        let pos = writer.stream_position()?;
         // Undofile hash placeholder
-        writer.write_all(&[0u8; 20])?;
+        writer.write_all(&[0u8; blake3::OUT_LEN])?;
 
         let mut hasher = HashWriter::new(writer);
 
         // Append new revisions to the end of the file.
+        // TODO: Recompute hash on append
         write_usize(&mut hasher, self.revisions.len())?;
         hasher.seek(SeekFrom::End(0))?;
         for rev in &self.revisions[last_saved_revision..] {
@@ -332,13 +337,13 @@ impl History {
     /// Returns the deserialized [`History`] and the last_saved_revision.
     pub fn deserialize<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<(usize, Self)> {
         let (current, last_saved_revision, hash) = Self::read_header(reader, path)?;
-        let mut reader = HashReader::new(reader);
+        let mut hasher = HashReader::new(reader);
 
         // Read the revisions and construct the tree.
-        let len = read_usize(&mut reader)?;
+        let len = read_usize(&mut hasher)?;
         let mut revisions: Vec<Revision> = Vec::with_capacity(len);
         for _ in 0..len {
-            let rev = Revision::deserialize(&mut reader)?;
+            let rev = Revision::deserialize(&mut hasher)?;
             let len = revisions.len();
             match revisions.get_mut(rev.parent) {
                 Some(r) => r.last_child = NonZeroUsize::new(len),
@@ -361,8 +366,10 @@ impl History {
             revisions.push(rev);
         }
 
-        if !is_tree(len, &revisions) || hash != reader.get_hash() {
+        if !is_tree(len, &revisions) {
             anyhow::bail!(StateError::InvalidTree);
+        } else if hash != hasher.get_hash() {
+            anyhow::bail!(StateError::InvalidHash);
         }
         let history = History { current, revisions };
         Ok((last_saved_revision, history))
@@ -422,9 +429,10 @@ impl History {
     pub fn read_header<R: Read>(
         reader: &mut R,
         path: &Path,
-    ) -> anyhow::Result<(usize, usize, [u8; 20])> {
-        let header = read_string(reader)?;
-        if header != HEADER_TAG {
+    ) -> anyhow::Result<(usize, usize, [u8; blake3::OUT_LEN])> {
+        let header: [u8; UNDO_FILE_HEADER_LEN] = read_many_bytes(reader)?;
+        let version = read_byte(reader)?;
+        if header != UNDO_FILE_HEADER_TAG || version != UNDO_FILE_VERSION {
             Err(anyhow::anyhow!(StateError::InvalidHeader))
         } else {
             let current = read_usize(reader)?;
@@ -435,7 +443,7 @@ impl History {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_secs();
-            let mut hash = [0u8; 20];
+            let mut hash = [0u8; blake3::OUT_LEN];
             reader.read_exact(&mut hash)?;
 
             if mtime != last_mtime && hash != get_hash(&mut std::fs::File::open(path)?)? {

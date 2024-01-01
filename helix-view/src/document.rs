@@ -957,7 +957,7 @@ impl Document {
             }
 
             write_result?;
-            // TODO: Decide on how to do error handling
+            // TODO: Decide on how to do error handling. IO errors are ok. Invalid undofile is not
             // TODO: Remove unwraps
             let has_valid_undofile = {
                 let path = path.clone();
@@ -968,7 +968,7 @@ impl Document {
                         &path,
                     ) {
                         Ok(res) => Ok(res),
-                        Err(e) if e.downcast_ref::<std::io::Error>().is_none() => Err(e),
+                        // Err(e) if e.downcast_ref::<std::io::Error>().is_none() => Err(e),
                         _ => Ok(false),
                     }
                 })
@@ -981,7 +981,7 @@ impl Document {
             {
                 // helix-core does not have tokio
                 let mut undofile = tokio::fs::OpenOptions::new()
-                    .append(true)
+                    .write(true)
                     .read(true)
                     .create(true)
                     .open(undofile_path)
@@ -994,6 +994,7 @@ impl Document {
                     let offset = if has_valid_undofile? {
                         last_saved_revision
                     } else {
+                        undofile.set_len(0)?;
                         0
                     };
                     history
@@ -1137,8 +1138,12 @@ impl Document {
                     helix_core::history::History::deserialize(&mut undo_file, self.path().unwrap())
                         .unwrap();
 
-                self.history.get_mut().merge(history).unwrap();
-                self.set_last_saved_revision(last_saved_revision);
+                if self.history.get_mut().is_empty() {
+                    self.history.set(history);
+                } else {
+                    self.history.get_mut().merge(history).unwrap();
+                    self.set_last_saved_revision(last_saved_revision);
+                }
             }
         }
         Ok(())
