@@ -92,17 +92,23 @@ pub fn read_u64<R: Read>(reader: &mut R) -> Result<u64> {
 }
 
 pub fn read_usize<R: Read>(reader: &mut R) -> Result<usize> {
-    let mut buf = [0u8; 8];
+    let mut buf = [0u8; std::mem::size_of::<usize>()];
     reader.read_exact(&mut buf)?;
     Ok(usize::from_ne_bytes(buf))
 }
 
+/// SAFETY: Only use if it is guaranteed to be a string
 pub fn read_string<R: Read>(reader: &mut R) -> Result<String> {
     let len = read_usize(reader)?;
     let mut buf = vec![0; len];
     reader.read_exact(&mut buf)?;
 
-    let res = String::from_utf8(buf).map_err(|e| Error::new(ErrorKind::InvalidData, e))?;
+    let res = if cfg!(test) || cfg!(debug_assertions) {
+        String::from_utf8(buf).map_err(|e| Error::new(ErrorKind::InvalidData, e))?
+    } else {
+        // File integrity check would ensure that strings are valid
+        unsafe { String::from_utf8_unchecked(buf) }
+    };
     Ok(res)
 }
 
