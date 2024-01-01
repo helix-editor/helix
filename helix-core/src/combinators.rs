@@ -1,7 +1,7 @@
+use anyhow::Result;
 use std::io::Error;
 use std::io::ErrorKind;
 use std::io::Read;
-use std::io::Result;
 use std::io::Write;
 
 pub fn write_byte<W: Write>(writer: &mut W, byte: u8) -> Result<()> {
@@ -60,8 +60,8 @@ pub fn write_option<W: Write, T>(
 
 pub fn read_byte<R: Read>(reader: &mut R) -> Result<u8> {
     match reader.bytes().next() {
-        Some(s) => s,
-        None => Err(Error::from(ErrorKind::UnexpectedEof)),
+        Some(s) => Ok(s?),
+        None => anyhow::bail!(Error::from(ErrorKind::UnexpectedEof)),
     }
 }
 
@@ -70,7 +70,7 @@ pub fn read_bool<R: Read>(reader: &mut R) -> Result<bool> {
         0 => false,
         1 => true,
         _ => {
-            return Err(Error::new(
+            anyhow::bail!(Error::new(
                 ErrorKind::Other,
                 "invalid byte to bool conversion",
             ))

@@ -398,7 +398,7 @@ pub struct Selection {
 }
 
 impl Selection {
-    pub fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+    pub fn serialize<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
         write_usize(writer, self.primary_index)?;
         write_vec(writer, self.ranges(), |writer, range| {
             write_usize(writer, range.anchor)?;
@@ -414,7 +414,7 @@ impl Selection {
         Ok(())
     }
 
-    pub fn deserialize<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+    pub fn deserialize<R: std::io::Read>(reader: &mut R) -> anyhow::Result<Self> {
         let primary_index = read_usize(reader)?;
         let ranges = read_vec(reader, |reader| {
             let anchor = read_usize(reader)?;
