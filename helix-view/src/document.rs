@@ -986,7 +986,7 @@ impl Document {
                 tokio::fs::set_permissions(undofile_path.as_path(), perms).await?;
             }
 
-            let undofile_res = {
+            let mut undofile_res = {
                 // helix-core does not have tokio
                 let mut undofile = tokio::fs::OpenOptions::new()
                     .write(true)
@@ -1012,7 +1012,8 @@ impl Document {
             };
 
             // Set undofile perms
-            if undofile_path.exists() {
+            // TODO: Vim does (perm & 0707) | ((perm & 07) << 3)
+            if undofile_res.is_ok() && undofile_path.exists() {
                 let meta = tokio::fs::metadata(path.as_path()).await?;
                 let mut perms = meta.permissions();
                 perms.set_readonly(true);
@@ -1020,11 +1021,19 @@ impl Document {
 
                 #[cfg(unix)]
                 {
+                    // From https://github.com/uutils/coreutils/blob/2c73e978ba882c9cd56f0f16fae6f8dcce1c9850/src/uucore/src/lib/features/perms.rs#L46-L61
+                    use std::os::unix::ffi::OsStrExt;
                     use std::os::unix::fs::MetadataExt;
-                    let user = meta.uid();
-                    let group = meta.gid();
-                    std::os::unix::fs::chown(undofile_path.as_path(), Some(user), Some(group))?;
-                    // TODO: Vim does (perm & 0707) | ((perm & 07) << 3)
+                    let uid = meta.uid();
+                    let gid = meta.gid();
+                    let s = std::ffi::CString::new(path.as_os_str().as_bytes())?;
+                    let ret = unsafe { libc::chown(s.as_ptr(), uid, gid) };
+                    if ret != 0 {
+                        undofile_res = Err(anyhow::anyhow!(tokio::io::Error::last_os_error()));
+                    }
+
+                    // NOTE: Wait for 1.73 MSRV
+                    // std::os::unix::fs::chown(undofile_path.as_path(), Some(user), Some(group))?;
                 }
             }
 
