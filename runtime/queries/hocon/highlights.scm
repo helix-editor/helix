@@ -20,7 +20,7 @@
   "required"
 ] @function.builtin
 
-(include @keyword.control.import)
+(include) @keyword.directive
 
 [ "(" ")" "[" "]" "{" "}" ]  @punctuation.bracket
 
@@ -28,3 +28,4 @@
 (path (_) @keyword)
 (unquoted_path "." @punctuation.delimiter)
 [ "," ] @punctuation.delimiter
+
