@@ -12,6 +12,7 @@ use crate::{
     Align, Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
+use helix_loader::session::{push_file_history, FileHistoryEntry};
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -1596,6 +1597,18 @@ impl Editor {
     }
 
     pub fn close(&mut self, id: ViewId) {
+        let view = self.tree.get(id);
+        // TODO: do something about this unwrap
+        let doc = self.document(view.doc).unwrap();
+        if let Some(path) = doc.path() {
+            push_file_history(FileHistoryEntry::new(
+                path.to_owned(),
+                view.offset.anchor,
+                view.offset.vertical_offset,
+                view.offset.horizontal_offset,
+            ));
+        };
+
         // Remove selections for the closed view on all documents.
         for doc in self.documents_mut() {
             doc.remove_view(id);
