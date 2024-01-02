@@ -190,8 +190,6 @@ macro_rules! static_commands {
 
 impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
-        log::info!("Running command");
-
         match &self {
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();

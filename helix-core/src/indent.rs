@@ -1,6 +1,5 @@
 use std::{borrow::Cow, collections::HashMap};
 
-use once_cell::sync::Lazy;
 use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
 
 use crate::{

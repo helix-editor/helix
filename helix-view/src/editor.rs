@@ -883,7 +883,6 @@ pub struct Breakpoint {
 
 use futures_util::stream::{Flatten, Once};
 
-#[repr(C)]
 pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,

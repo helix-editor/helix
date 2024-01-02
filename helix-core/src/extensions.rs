@@ -1,16 +1,12 @@
 #[cfg(feature = "steel")]
 pub mod steel_implementations {
 
-    use std::{borrow::Cow, cell::Cell, rc::Rc};
+    use std::borrow::Cow;
 
-    use ropey::iter::Chars;
     use smallvec::SmallVec;
     use steel::{
-        gc::unsafe_erased_pointers::CustomReference,
         rvals::{Custom, SteelString},
-        steel_vm::{
-            builtin::BuiltInModule, register_fn::RegisterFn, register_fn::RegisterFnBorrowed,
-        },
+        steel_vm::{builtin::BuiltInModule, register_fn::RegisterFn},
     };
 
     impl steel::rvals::Custom for crate::Position {}
@@ -100,10 +96,6 @@ pub mod steel_implementations {
 
             maybe_owned.trim_start().starts_with(pat.as_str())
         }
-
-        // pub fn as_cow(&'a self) -> SRopeSliceCowStr<'a> {
-        //     SRopeSliceCowStr(std::borrow::Cow::from(self.slice))
-        // }
     }
 
     pub fn rope_module() -> BuiltInModule {
