@@ -28,6 +28,3 @@
 (path (_) @keyword)
 (unquoted_path "." @punctuation.delimiter)
 [ "," ] @punctuation.delimiter
-
-(ERROR) @error
-
