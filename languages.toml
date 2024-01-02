@@ -348,7 +348,8 @@ file-types = [
   ".vuerc",
   "composer.lock",
   ".watchmanconfig",
-  "avsc"
+  "avsc",
+  ".prettierrc"
 ]
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
