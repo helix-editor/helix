@@ -20,7 +20,7 @@
   "required"
 ] @function.builtin
 
-(include "include" @include)
+(include @keyword.control.import)
 
 [ "(" ")" "[" "]" "{" "}" ]  @punctuation.bracket
 
