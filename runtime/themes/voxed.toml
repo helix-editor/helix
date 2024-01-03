@@ -61,7 +61,7 @@ label = "yellow"
 "ui.cursor.select" = { bg = "white" }
 "ui.cursor.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
-"ui.cursor" = { bg = "white" }
+"ui.cursor" = { bg = "white", modifiers = ["reversed"] }
 "ui.cursorline.primary" = { bg = "white" }
 "ui.highlight" = { bg = "white" }
 "ui.highlight.frameline" = { bg = "#634450" }
