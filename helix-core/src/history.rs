@@ -266,7 +266,7 @@ impl History {
     ///        E -> F
     /// ```
     pub fn merge(&mut self, mut other: History) -> anyhow::Result<()> {
-        let after_n = self
+        let n = self
             .revisions
             .iter()
             .zip(other.revisions.iter())
@@ -275,14 +275,15 @@ impl History {
             })
             .count();
 
-        let revisions = self.revisions.split_off(after_n);
-        other.revisions.reserve_exact(revisions.len());
+        let new_revs = self.revisions.split_off(n);
+        if new_revs.is_empty() {
+            return Ok(());
+        }
 
-        // Converts the number of new elements to an index offset
-        let offset = (other.revisions.len() - after_n) - 1;
-        for mut r in revisions {
-            // Update parents of new revisions
-            if r.parent >= after_n {
+        // Only unique revisions in `self` matter, so saturating_sub(1) is sound as it going to 0 means there are no new revisions in the other history that aren't in `self`
+        let offset = (other.revisions.len() - n).saturating_sub(1);
+        for mut r in new_revs {
+            if r.parent >= n {
                 r.parent += offset;
             }
             debug_assert!(r.parent < other.revisions.len());

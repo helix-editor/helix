@@ -379,9 +379,7 @@ impl ChangeSet {
             macro_rules! map {
                 ($map: expr, $i: expr) => {
                     loop {
-                        let Some((pos, assoc)) = positions.peek_mut() else {
-                            return;
-                        };
+                        let Some((pos, assoc)) = positions.peek_mut() else { return; };
                         if **pos < old_pos {
                             // Positions are not sorted, revert to the last Operation that
                             // contains this position and continue iterating from there.
