@@ -252,7 +252,7 @@ impl Revision {
     }
 }
 
-const UNDO_FILE_HEADER_TAG: &[u8] = b"Helix Undofile";
+const UNDO_FILE_HEADER_TAG: &[u8] = b"Helix";
 const UNDO_FILE_HEADER_LEN: usize = UNDO_FILE_HEADER_TAG.len();
 const UNDO_FILE_VERSION: u8 = 1;
 
@@ -1007,23 +1007,25 @@ mod test {
                 }
                 // Delete
                 3 => {
-                    let state = State {
-                        doc: doc.clone(),
-                        selection: sel.clone(),
-                    };
-                    let del_dist = Uniform::new(0, doc.len_chars());
-                    let del = {
-                        let a = del_dist.sample(&mut rng);
-                        let b = del_dist.sample(&mut rng);
-                        if a > b {
-                            (b, a)
-                        } else {
-                            (a, b)
-                        }
-                    };
-                    let tx = Transaction::delete(&doc, [del].into_iter());
-                    tx.apply(&mut doc);
-                    hist.commit_revision(&tx, &state);
+                    if doc.len_chars() >= 1 {
+                        let state = State {
+                            doc: doc.clone(),
+                            selection: sel.clone(),
+                        };
+                        let del_dist = Uniform::new(0, doc.len_chars());
+                        let del = {
+                            let a = del_dist.sample(&mut rng);
+                            let b = del_dist.sample(&mut rng);
+                            if a > b {
+                                (b, a)
+                            } else {
+                                (a, b)
+                            }
+                        };
+                        let tx = Transaction::delete(&doc, [del].into_iter());
+                        tx.apply(&mut doc);
+                        hist.commit_revision(&tx, &state);
+                    }
                 }
                 _ => unreachable!(),
             }
