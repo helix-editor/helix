@@ -2471,7 +2471,7 @@ fn move_buffer(
     Ok(())
 }
 
-fn reload_history(
+fn reload_undofile(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
     event: PromptEvent,
@@ -2482,6 +2482,23 @@ fn reload_history(
 
     let doc = doc_mut!(cx.editor);
     doc.load_undofile()?;
+
+    Ok(())
+}
+
+fn delete_undofile(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc!(cx.editor);
+    if let Some(path) = doc.undo_file()? {
+        std::fs::remove_file(path)?;
+    }
 
     Ok(())
 }
@@ -3094,12 +3111,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: CommandSignature::positional(&[completers::filename]),
     },
     TypableCommand {
+        // Not named reload-history so people don't accidentally call delete-undofile
         name: "history-reload",
         aliases: &[],
         doc: "Reload the history for the buffer from its corresponding undofile",
-        fun: reload_history,
+        fun: reload_undofile,
         signature: CommandSignature::none(),
-    }
+    },
+    TypableCommand {
+        name: "delete-undofile",
+        aliases: &[],
+        doc: "Delete undofile associated with the currently focused document",
+        fun: delete_undofile,
+        signature: CommandSignature::none(),
+    },
 ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =

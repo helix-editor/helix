@@ -59,3 +59,4 @@ parking_lot = "0.12"
 quickcheck = { version = "1", default-features = false }
 indoc = "2.0.4"
 tempfile = "3.9"
+rand = "0.8"
