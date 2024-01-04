@@ -86,3 +86,5 @@
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
 | `:redraw` | Clear and re-render the whole UI |
 | `:move` | Move the current buffer and its corresponding file to a different path |
+| `:history-reload` | Prepends undofile history to current history. |
+| `:delete-undofile` | Delete undofile associated with the currently focused document |

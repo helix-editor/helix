@@ -408,9 +408,7 @@ impl ChangeSet {
                             debug_assert!(old_pos <= **pos, "Reverse Iter across changeset works");
                             continue 'outer;
                         }
-                        let Some(new_pos) = $map(**pos, *assoc) else {
-                            break;
-                        };
+                        let Some(new_pos) = $map(**pos, *assoc) else { break; };
                         **pos = new_pos;
                         positions.next();
                     }
