@@ -86,7 +86,6 @@ impl Default for History {
     }
 }
 
-// TODO: Compare/benchmark Blake3 and sha2
 fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; sha1_smol::DIGEST_LENGTH]> {
     const BUF_SIZE: usize = 8192;
 
@@ -103,54 +102,12 @@ fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; sha1_smol::DIGEST_L
     Ok(hash.digest().bytes())
 }
 
-// TODO: For testing only.
-fn is_tree(n: usize, nodes: &[Revision]) -> bool {
-    use ahash::{AHashMap, AHashSet};
-
-    if n == 0 {
-        return false;
-    }
-
-    let mut adj_list = AHashMap::with_capacity(n);
-    for (node, parent) in nodes.iter().enumerate().map(|(idx, r)| (idx, r.parent)) {
-        // Skip loop
-        if !(node == 0 && parent == 0) {
-            adj_list
-                .entry(node)
-                .or_insert_with(AHashSet::new)
-                .insert(parent);
-            adj_list
-                .entry(parent)
-                .or_insert_with(AHashSet::new)
-                .insert(node);
-        }
-    }
-
-    let mut visited = AHashSet::new();
-    let mut stack = vec![0];
-    while let Some(node) = stack.pop() {
-        if !visited.insert(node) {
-            continue;
-        }
-
-        if let Some(adj_nodes) = adj_list.get(&node) {
-            for v in adj_nodes {
-                if !visited.contains(v) {
-                    stack.push(*v);
-                }
-            }
-        }
-    }
-    visited.len() == n
-}
-
 #[derive(Debug)]
 pub enum StateError {
     Outdated,
     InvalidHeader,
     InvalidOffset,
     InvalidData(String),
-    InvalidTree,
     InvalidHash,
     Other(anyhow::Error),
 }
@@ -162,7 +119,6 @@ impl std::fmt::Display for StateError {
             Self::InvalidHeader => f.write_str("Invalid undofile header"),
             Self::InvalidOffset => f.write_str("Invalid merge offset"),
             Self::InvalidData(msg) => f.write_str(msg),
-            Self::InvalidTree => f.write_str("not a tree"),
             Self::InvalidHash => f.write_str("invalid hash for undofile itself"),
             Self::Other(e) => e.fmt(f),
         }
@@ -298,10 +254,6 @@ impl History {
             revisions.push(rev);
         }
 
-        if !is_tree(len, &revisions) {
-            anyhow::bail!(StateError::InvalidTree);
-        }
-
         let history = History { current, revisions };
         Ok((last_saved_revision, history))
     }
@@ -313,8 +265,6 @@ impl History {
     ///       \  
     ///        E -> F
     /// ```
-    // TODO: return transaction to update view
-    // TODO: Which history should take precedence?
     pub fn merge(&mut self, mut other: History) -> anyhow::Result<()> {
         let after_n = self
             .revisions
@@ -345,9 +295,6 @@ impl History {
         self.current += offset;
         self.revisions = other.revisions;
 
-        if !is_tree(self.revisions.len(), &self.revisions) {
-            anyhow::bail!(StateError::InvalidTree);
-        }
         Ok(())
     }
 
@@ -376,7 +323,6 @@ impl History {
                 anyhow::bail!(StateError::Outdated);
             }
 
-            // Tree hash
             Ok((current, last_saved_revision))
         }
     }
@@ -945,68 +891,112 @@ mod test {
         );
     }
 
+    fn is_tree(h: &History) -> bool {
+        use ahash::{AHashMap, AHashSet};
+
+        let n = h.revisions.len();
+        let nodes = &h.revisions;
+
+        if n == 0 {
+            return false;
+        }
+
+        let mut adj_list = AHashMap::with_capacity(n);
+        for (node, parent) in nodes.iter().enumerate().map(|(idx, r)| (idx, r.parent)) {
+            // Skip loop
+            if !(node == 0 && parent == 0) {
+                adj_list
+                    .entry(node)
+                    .or_insert_with(AHashSet::new)
+                    .insert(parent);
+                adj_list
+                    .entry(parent)
+                    .or_insert_with(AHashSet::new)
+                    .insert(node);
+            }
+        }
+
+        let mut visited = AHashSet::new();
+        let mut stack = vec![0];
+        while let Some(node) = stack.pop() {
+            if !visited.insert(node) {
+                continue;
+            }
+
+            if let Some(adj_nodes) = adj_list.get(&node) {
+                for v in adj_nodes {
+                    if !visited.contains(v) {
+                        stack.push(*v);
+                    }
+                }
+            }
+        }
+        visited.len() == n
+    }
+
     fn generate_history(mut inserts: Vec<String>) -> (History, Rope) {
         use rand::distributions::{Distribution, Uniform};
 
-        let dist = Uniform::new_inclusive(0, 3);
+        let dist = Uniform::new_inclusive(0, 2);
         let mut rng = rand::thread_rng();
 
         let mut hist = History::default();
         let mut doc = Rope::default();
         let sel = Selection::point(0);
 
-        // `n` to prevent big histories
-        let mut n = 0;
-        while !inserts.is_empty() && n < 256 {
-            n += 1;
-            match dist.sample(&mut rng) {
-                // Undo
-                0 => {
-                    if let Some(tx) = hist.undo() {
-                        tx.apply(&mut doc);
-                    }
+        while !inserts.is_empty() {
+            let n = dist.sample(&mut rng);
+            let mut range = || {
+                if doc.len_chars() == 0 {
+                    return (0, 0);
                 }
-                // Redo
-                1 => {
-                    if let Some(tx) = hist.redo() {
-                        tx.apply(&mut doc);
-                    }
+                let range_dist = Uniform::new(0, doc.len_chars());
+                let a = range_dist.sample(&mut rng);
+                let b = range_dist.sample(&mut rng);
+                if a > b {
+                    (b, a)
+                } else {
+                    (a, b)
                 }
-                // Insert
-                2 => {
-                    let state = State {
-                        doc: doc.clone(),
-                        selection: sel.clone(),
-                    };
-                    let s = inserts.pop().unwrap();
-                    let tx = Transaction::insert(&doc, &sel, s.into());
+            };
+
+            if n == 0 {
+                if let Some(tx) = hist.undo() {
                     tx.apply(&mut doc);
-                    hist.commit_revision(&tx, &state);
+                    continue;
                 }
-                // Delete
-                3 => {
-                    if doc.len_chars() >= 1 {
-                        let state = State {
-                            doc: doc.clone(),
-                            selection: sel.clone(),
-                        };
-                        let del_dist = Uniform::new(0, doc.len_chars());
-                        let del = {
-                            let a = del_dist.sample(&mut rng);
-                            let b = del_dist.sample(&mut rng);
-                            if a > b {
-                                (b, a)
-                            } else {
-                                (a, b)
-                            }
-                        };
-                        let tx = Transaction::delete(&doc, [del].into_iter());
-                        tx.apply(&mut doc);
-                        hist.commit_revision(&tx, &state);
-                    }
-                }
-                _ => unreachable!(),
             }
+
+            if n == 1 {
+                if let Some(tx) = hist.redo() {
+                    tx.apply(&mut doc);
+                    continue;
+                }
+            }
+
+            let sel_range = range();
+            let selection = Selection::single(sel_range.0, sel_range.1);
+
+            if n == 2 && doc.len_chars() >= 1 {
+                let state = State {
+                    doc: doc.clone(),
+                    selection,
+                };
+                let del = range();
+                let tx = Transaction::delete(&doc, [del].into_iter());
+                tx.apply(&mut doc);
+                hist.commit_revision(&tx, &state);
+                continue;
+            }
+
+            let state = State {
+                doc: doc.clone(),
+                selection,
+            };
+            let s = inserts.pop().unwrap();
+            let tx = Transaction::insert(&doc, &sel, s.into());
+            tx.apply(&mut doc);
+            hist.commit_revision(&tx, &state);
         }
 
         (hist, doc)
@@ -1014,7 +1004,6 @@ mod test {
 
     quickcheck::quickcheck! {
         fn random_undofile(inserts: Vec<String>) -> bool {
-            use std::io::Write;
             let (orig_hist, doc) = generate_history(inserts);
             let mut file = tempfile::NamedTempFile::new().unwrap();
             file.write_all(&doc.bytes().collect::<Vec<_>>()).unwrap();
@@ -1023,8 +1012,9 @@ mod test {
             orig_hist
                 .serialize(&mut undofile, file.path(), orig_hist.revisions.len(), 0)
                 .unwrap();
-            undofile.seek(SeekFrom::Start(0)).unwrap();
+            undofile.rewind().unwrap();
             let (_, de_hist) = History::deserialize(&mut undofile, file.path()).unwrap();
+            assert!(is_tree(&de_hist));
             orig_hist.revisions.len() == de_hist.revisions.len()
                 && orig_hist
                     .revisions
@@ -1035,6 +1025,15 @@ mod test {
                             && a.transaction == b.transaction
                             && a.inversion == b.inversion
                     })
+        }
+    }
+
+    quickcheck::quickcheck! {
+        fn merge_rand_histories(inserts_a: Vec<String>, inserts_b: Vec<String>) -> bool {
+            let mut hist_a = generate_history(inserts_a).0;
+            let hist_b = generate_history(inserts_b).0;
+            hist_a.merge(hist_b).unwrap();
+            is_tree(&hist_a)
         }
     }
 }
