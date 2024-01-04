@@ -966,4 +966,94 @@ mod test {
             Err("duration too large".to_string())
         );
     }
+
+    fn generate_history(mut inserts: Vec<String>) -> (History, Rope) {
+        use rand::distributions::{Distribution, Uniform};
+
+        let dist = Uniform::new_inclusive(0, 3);
+        let mut rng = rand::thread_rng();
+
+        let mut hist = History::default();
+        let mut doc = Rope::default();
+        let sel = Selection::point(0);
+
+        // `n` to prevent big histories
+        let mut n = 0;
+        while !inserts.is_empty() && n < 256 {
+            n += 1;
+            match dist.sample(&mut rng) {
+                // Undo
+                0 => {
+                    if let Some(tx) = hist.undo() {
+                        tx.apply(&mut doc);
+                    }
+                }
+                // Redo
+                1 => {
+                    if let Some(tx) = hist.redo() {
+                        tx.apply(&mut doc);
+                    }
+                }
+                // Insert
+                2 => {
+                    let state = State {
+                        doc: doc.clone(),
+                        selection: sel.clone(),
+                    };
+                    let s = inserts.pop().unwrap();
+                    let tx = Transaction::insert(&doc, &sel, s.into());
+                    tx.apply(&mut doc);
+                    hist.commit_revision(&tx, &state);
+                }
+                // Delete
+                3 => {
+                    let state = State {
+                        doc: doc.clone(),
+                        selection: sel.clone(),
+                    };
+                    let del_dist = Uniform::new(0, doc.len_chars());
+                    let del = {
+                        let a = del_dist.sample(&mut rng);
+                        let b = del_dist.sample(&mut rng);
+                        if a > b {
+                            (b, a)
+                        } else {
+                            (a, b)
+                        }
+                    };
+                    let tx = Transaction::delete(&doc, [del].into_iter());
+                    tx.apply(&mut doc);
+                    hist.commit_revision(&tx, &state);
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        (hist, doc)
+    }
+
+    quickcheck::quickcheck! {
+        fn random_undofile(inserts: Vec<String>) -> bool {
+            use std::io::Write;
+            let (orig_hist, doc) = generate_history(inserts);
+            let mut file = tempfile::NamedTempFile::new().unwrap();
+            file.write_all(&doc.bytes().collect::<Vec<_>>()).unwrap();
+            let mut undofile = tempfile::NamedTempFile::new().unwrap();
+
+            orig_hist
+                .serialize(&mut undofile, file.path(), orig_hist.revisions.len(), 0)
+                .unwrap();
+            let (_, de_hist) = History::deserialize(&mut undofile, file.path()).unwrap();
+            orig_hist.revisions.len() == de_hist.revisions.len()
+                && orig_hist
+                    .revisions
+                    .iter()
+                    .zip(de_hist.revisions.iter())
+                    .all(|(a, b)| {
+                        a.parent == b.parent
+                            && a.transaction == b.transaction
+                            && a.inversion == b.inversion
+                    })
+        }
+    }
 }

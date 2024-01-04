@@ -1158,7 +1158,7 @@ impl Document {
         Ok(())
     }
 
-    fn undo_file(&self) -> anyhow::Result<Option<PathBuf>> {
+    pub fn undo_file(&self) -> anyhow::Result<Option<PathBuf>> {
         let undo_dir = helix_loader::cache_dir().join("undo");
         std::fs::create_dir_all(&undo_dir)?;
         let res = self.path().map(|path| {
