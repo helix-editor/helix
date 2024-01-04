@@ -1914,6 +1914,12 @@ shebangs = ["scheme", "guile", "chicken"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+
 [[grammar]]
 name = "scheme"
 source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "af3af6c9356b936f8a515a1e449c32e804c2b1a8" }
