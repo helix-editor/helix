@@ -34,6 +34,12 @@
 (arguments
   ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
+(field_declaration_list
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+
+(field_initializer_list  
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+
 [
   (line_comment)
   (block_comment)
