@@ -298,8 +298,8 @@ impl MappableCommand {
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
-        select_line_up, "Select current line, if already selected, extend or shrink line above based on the anchor",
-        select_line_down, "Select current line, if already selected, extend or shrink line below based on the anchor",
+        select_line_above, "Select current line, if already selected, extend or shrink line above based on the anchor",
+        select_line_below, "Select current line, if already selected, extend or shrink line below based on the anchor",
         extend_to_line_bounds, "Extend selection to line bounds",
         shrink_to_line_bounds, "Shrink selection to line bounds",
         delete_selection, "Delete selection",
@@ -2416,10 +2416,10 @@ fn extend_line_below(cx: &mut Context) {
 fn extend_line_above(cx: &mut Context) {
     extend_line_impl(cx, Extend::Above);
 }
-fn select_line_down(cx: &mut Context) {
+fn select_line_below(cx: &mut Context) {
     select_line_impl(cx, Extend::Below);
 }
-fn select_line_up(cx: &mut Context) {
+fn select_line_above(cx: &mut Context) {
     select_line_impl(cx, Extend::Above);
 }
 fn select_line_impl(cx: &mut Context, extend: Extend) {
