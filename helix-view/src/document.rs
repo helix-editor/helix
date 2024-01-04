@@ -699,7 +699,7 @@ impl Document {
             (Rope::from(line_ending.as_str()), encoding, false)
         };
 
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
+        let mut doc = Self::from(rope, Some((encoding, has_bom)), config.clone());
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
@@ -708,7 +708,16 @@ impl Document {
         }
 
         doc.detect_indent_and_line_ending();
-        doc.reload_history()?;
+
+        if config.load().undofile {
+            // TODO: Propogate error to display in the statusline without causing the function to error.
+            if let Err(e) = doc.load_undofile() {
+                log::error!(
+                    "Failed to load undofile for {}: {e}",
+                    path.to_string_lossy()
+                );
+            }
+        }
 
         Ok(doc)
     }
@@ -864,8 +873,15 @@ impl Document {
             }
         };
 
-        let history = self.history.get_mut().clone();
-        let undofile_path = self.undo_file()?.unwrap();
+        // TODO: Super messy tuple...
+        let undofile_enabled = self.config.load().undofile;
+        let (history, undofile_path) = if undofile_enabled {
+            let history = self.history.get_mut().clone();
+            let undofile_path = self.undo_file()?.unwrap();
+            (Some(history), Some(undofile_path))
+        } else {
+            (None, None)
+        };
         let last_saved_revision = self.get_last_saved_revision();
 
         let identifier = self.path().map(|_| self.identifier());
@@ -961,38 +977,30 @@ impl Document {
 
             write_result?;
             // TODO: Decide on how to do error handling. IO errors are ok. Invalid undofile is not
-            // TODO: Remove unwraps
-            let has_valid_undofile = {
+            let has_valid_undofile = if undofile_enabled {
                 let path = path.clone();
                 let undofile_path = undofile_path.clone();
                 spawn_blocking(move || -> anyhow::Result<bool> {
                     Ok(helix_core::history::History::is_valid(
-                        &mut std::fs::File::open(undofile_path)?,
+                        &mut std::fs::File::open(undofile_path.unwrap())?,
                         &path,
                     ))
                 })
                 .await?
                 .unwrap_or(false)
+            } else {
+                false
             };
             let mut file = fs::File::create(&path).await?;
             to_writer(&mut file, encoding_with_bom_info, &text).await?;
 
-            // Set undofile writable
-            if undofile_path.exists() {
-                let mut perms = tokio::fs::metadata(undofile_path.as_path())
-                    .await?
-                    .permissions();
-                perms.set_readonly(false);
-                tokio::fs::set_permissions(undofile_path.as_path(), perms).await?;
-            }
-
-            let mut undofile_res = {
+            let mut undofile_res = if undofile_enabled {
                 // helix-core does not have tokio
                 let mut undofile = tokio::fs::OpenOptions::new()
                     .write(true)
                     .read(true)
                     .create(true)
-                    .open(undofile_path.as_path())
+                    .open(undofile_path.as_ref().unwrap().as_path())
                     .await?
                     .into_std()
                     .await;
@@ -1005,36 +1013,36 @@ impl Document {
                         undofile.set_len(0)?;
                         0
                     };
-                    history.serialize(&mut undofile, &path, current_rev, offset)?;
+                    history
+                        .unwrap()
+                        .serialize(&mut undofile, &path, current_rev, offset)?;
                     Ok(())
                 })
                 .await?
+            } else {
+                Ok(())
             };
 
             // Set undofile perms
             // TODO: Vim does (perm & 0707) | ((perm & 07) << 3)
-            if undofile_res.is_ok() && undofile_path.exists() {
+            #[cfg(unix)]
+            if undofile_enabled && undofile_res.is_ok() && undofile_path.as_ref().unwrap().exists()
+            {
                 let meta = tokio::fs::metadata(path.as_path()).await?;
-                let mut perms = meta.permissions();
-                perms.set_readonly(true);
-                tokio::fs::set_permissions(undofile_path.as_path(), perms).await?;
 
-                #[cfg(unix)]
-                {
-                    // From https://github.com/uutils/coreutils/blob/2c73e978ba882c9cd56f0f16fae6f8dcce1c9850/src/uucore/src/lib/features/perms.rs#L46-L61
-                    use std::os::unix::ffi::OsStrExt;
-                    use std::os::unix::fs::MetadataExt;
-                    let uid = meta.uid();
-                    let gid = meta.gid();
-                    let s = std::ffi::CString::new(path.as_os_str().as_bytes())?;
-                    let ret = unsafe { libc::chown(s.as_ptr(), uid, gid) };
-                    if ret != 0 {
-                        undofile_res = Err(anyhow::anyhow!(tokio::io::Error::last_os_error()));
-                    }
-
-                    // NOTE: Wait for 1.73 MSRV
-                    // std::os::unix::fs::chown(undofile_path.as_path(), Some(user), Some(group))?;
+                // From https://github.com/uutils/coreutils/blob/2c73e978ba882c9cd56f0f16fae6f8dcce1c9850/src/uucore/src/lib/features/perms.rs#L46-L61
+                use std::os::unix::ffi::OsStrExt;
+                use std::os::unix::fs::MetadataExt;
+                let uid = meta.uid();
+                let gid = meta.gid();
+                let s = std::ffi::CString::new(path.as_os_str().as_bytes())?;
+                let ret = unsafe { libc::chown(s.as_ptr(), uid, gid) };
+                if ret != 0 {
+                    undofile_res = Err(anyhow::anyhow!(tokio::io::Error::last_os_error()));
                 }
+
+                // NOTE: Wait for 1.73 MSRV
+                // std::os::unix::fs::chown(undofile_path.as_path(), Some(user), Some(group))?;
             }
 
             let event = DocumentSavedEvent {
@@ -1157,20 +1165,19 @@ impl Document {
             let escaped_path = helix_stdx::path::escape_path(path);
             undo_dir.join(escaped_path)
         });
-        // panic!("{:?}", res);
         Ok(res)
     }
 
-    // TODO: Remove unwraps
-    pub fn reload_history(&mut self) -> anyhow::Result<()> {
+    pub fn load_undofile(&mut self) -> anyhow::Result<()> {
         if let Some(mut undo_file) = self
             .undo_file()?
             .and_then(|path| std::fs::File::open(path).ok())
         {
             if undo_file.metadata()?.len() != 0 {
-                let (last_saved_revision, history) =
-                    helix_core::history::History::deserialize(&mut undo_file, self.path().unwrap())
-                        .unwrap();
+                let (last_saved_revision, history) = helix_core::history::History::deserialize(
+                    &mut undo_file,
+                    self.path().unwrap(),
+                )?;
 
                 if self.history.get_mut().is_empty() {
                     self.history.set(history);

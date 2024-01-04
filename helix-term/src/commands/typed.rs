@@ -2464,7 +2464,7 @@ fn reload_history(
     }
 
     let doc = doc_mut!(cx.editor);
-    doc.reload_history()?;
+    doc.load_undofile()?;
 
     Ok(())
 }
