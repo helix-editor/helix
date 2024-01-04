@@ -112,16 +112,9 @@ fn is_tree(n: usize, nodes: &[Revision]) -> bool {
     }
 
     let mut adj_list = AHashMap::with_capacity(n);
-    let mut total_degree = 0;
-    for (node, parent, last_child) in nodes
-        .iter()
-        .enumerate()
-        .map(|(idx, r)| (idx, r.parent, r.last_child))
-    {
+    for (node, parent) in nodes.iter().enumerate().map(|(idx, r)| (idx, r.parent)) {
         // Skip loop
         if !(node == 0 && parent == 0) {
-            total_degree += 1;
-
             adj_list
                 .entry(node)
                 .or_insert_with(AHashSet::new)
@@ -131,22 +124,6 @@ fn is_tree(n: usize, nodes: &[Revision]) -> bool {
                 .or_insert_with(AHashSet::new)
                 .insert(node);
         }
-
-        if let Some(n) = last_child {
-            total_degree += 1;
-            adj_list
-                .entry(node)
-                .or_insert_with(AHashSet::new)
-                .insert(n.get());
-            adj_list
-                .entry(n.get())
-                .or_insert_with(AHashSet::new)
-                .insert(node);
-        }
-    }
-
-    if total_degree != 2 * (n - 1) {
-        return false;
     }
 
     let mut visited = AHashSet::new();
@@ -271,7 +248,7 @@ impl History {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        writer.write(UNDO_FILE_HEADER_TAG)?;
+        writer.write_all(UNDO_FILE_HEADER_TAG)?;
         write_byte(writer, UNDO_FILE_VERSION)?;
         write_usize(writer, self.current)?;
         write_usize(writer, revision)?;
@@ -286,6 +263,7 @@ impl History {
             rev.serialize(writer)?;
         }
 
+        writer.flush()?;
         Ok(())
     }
 
@@ -1045,6 +1023,7 @@ mod test {
             orig_hist
                 .serialize(&mut undofile, file.path(), orig_hist.revisions.len(), 0)
                 .unwrap();
+            undofile.seek(SeekFrom::Start(0)).unwrap();
             let (_, de_hist) = History::deserialize(&mut undofile, file.path()).unwrap();
             orig_hist.revisions.len() == de_hist.revisions.len()
                 && orig_hist
