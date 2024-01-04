@@ -899,8 +899,17 @@ impl Document {
                 }
             }
 
-            let mut file = File::create(&path).await?;
-            to_writer(&mut file, encoding_with_bom_info, &text).await?;
+            // TODO: Fail if path is read-only.
+            let (mut tmp_file, tmp_path) = tokio::task::spawn_blocking(
+                move || -> anyhow::Result<(File, tempfile::TempPath)> {
+                    let (f, p) = tempfile::NamedTempFile::new()?.into_parts();
+                    Ok((tokio::fs::File::from_std(f), p))
+                },
+            )
+            .await??;
+
+            to_writer(&mut tmp_file, encoding_with_bom_info, &text).await?;
+            tokio::fs::rename(tmp_path, &path).await?;
 
             let event = DocumentSavedEvent {
                 revision: current_rev,

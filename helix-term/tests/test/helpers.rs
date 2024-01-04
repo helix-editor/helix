@@ -11,7 +11,7 @@ use crossterm::event::{Event, KeyEvent};
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
 use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
-use tempfile::NamedTempFile;
+use tempfile::{NamedTempFile, TempPath};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[derive(Clone, Debug)]
@@ -367,4 +367,10 @@ pub fn assert_status_not_error(editor: &Editor) {
     if let Some((_, sev)) = editor.get_status() {
         assert_ne!(&Severity::Error, sev);
     }
+}
+
+pub fn reload_file(t: NamedTempFile) -> (File, TempPath) {
+    let p = t.into_temp_path();
+    let f = std::fs::File::open(&p).unwrap();
+    (f, p)
 }
