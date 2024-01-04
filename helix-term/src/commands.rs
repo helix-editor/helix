@@ -2394,6 +2394,7 @@ fn global_search(cx: &mut Context) {
     );
 }
 
+#[derive(Clone, Copy)]
 enum Extend {
     Above,
     Below,
@@ -2422,52 +2423,55 @@ fn select_line_up(cx: &mut Context) {
     select_line_impl(cx, Extend::Above);
 }
 fn select_line_impl(cx: &mut Context, extend: Extend) {
-    let count = cx.count();
+    let mut count = cx.count();
     let (view, doc) = current!(cx.editor);
 
     let text = doc.text();
     let selection = doc.selection(view.id).clone().transform(|range| {
         let (start_line, end_line) = range.line_range(text.slice(..));
-
         let start = text.line_to_char(start_line);
         let end = text.line_to_char(
             (end_line + 1) // newline of end_line
                 .min(text.len_lines()),
         );
         let direction = range.direction();
-        // extend or shrink to previous/next line if current line is selected
-        // extending or shrinking depends on the current direction of the selection
-        let (anchor, head) = if range.from() == start && range.to() == end {
-            match extend {
-                Extend::Above => match direction {
-                    Direction::Forward => {
-                        (start, text.line_to_char(end_line.saturating_sub(count - 1)))
-                    }
-                    Direction::Backward => {
-                        (end, text.line_to_char(start_line.saturating_sub(count)))
-                    }
-                },
-                Extend::Below => match direction {
-                    Direction::Forward => (
-                        start,
-                        text.line_to_char((end_line + count + 1).min(text.len_lines())),
-                    ),
-                    Direction::Backward => (
-                        end,
-                        text.line_to_char((start_line + count).min(text.len_lines())),
-                    ),
-                },
+
+        // Extending to line bounds is counted as one step
+        if range.from() != start || range.to() != end {
+            count = count.saturating_sub(1)
+        }
+        let (anchor_line, head_line) = match (extend, direction) {
+            (Extend::Above, Direction::Forward) => (start_line, end_line.saturating_sub(count)),
+            (Extend::Above, Direction::Backward) => (end_line, start_line.saturating_sub(count)),
+            (Extend::Below, Direction::Forward) => {
+                (start_line, (end_line + count).min(text.len_lines()))
             }
+            (Extend::Below, Direction::Backward) => {
+                (end_line, (start_line + count).min(text.len_lines()))
+            }
+        };
+        let (anchor, head) = if anchor_line < head_line {
+            (
+                text.line_to_char(anchor_line),
+                text.line_to_char((head_line + 1).min(text.len_lines())),
+            )
+        } else if anchor_line > head_line {
+            (
+                text.line_to_char((anchor_line + 1).min(text.len_lines())),
+                text.line_to_char(head_line),
+            )
         } else {
             match extend {
-                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count - 1))),
+                Extend::Above => (
+                    text.line_to_char((anchor_line + 1).min(text.len_lines())),
+                    text.line_to_char(head_line),
+                ),
                 Extend::Below => (
-                    start,
-                    text.line_to_char((end_line + count).min(text.len_lines())),
+                    text.line_to_char(head_line),
+                    text.line_to_char((anchor_line + 1).min(text.len_lines())),
                 ),
             }
         };
-
         Range::new(anchor, head)
     });
 
