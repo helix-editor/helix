@@ -3104,7 +3104,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         // Not named reload-history so people don't accidentally call delete-undofile
         name: "history-reload",
         aliases: &[],
-        doc: "Reload the history for the buffer from its corresponding undofile",
+        doc: "Prepends undofile history to current history.",
         fun: reload_undofile,
         signature: CommandSignature::none(),
     },
