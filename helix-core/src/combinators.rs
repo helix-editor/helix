@@ -5,8 +5,7 @@ use std::io::Result;
 use std::io::Write;
 
 pub fn write_byte<W: Write>(writer: &mut W, byte: u8) -> Result<()> {
-    writer.write_all(&[byte])?;
-    Ok(())
+    writer.write_all(&[byte])
 }
 
 pub fn write_bool<W: Write>(writer: &mut W, state: bool) -> Result<()> {
@@ -14,24 +13,20 @@ pub fn write_bool<W: Write>(writer: &mut W, state: bool) -> Result<()> {
 }
 
 pub fn write_u32<W: Write>(writer: &mut W, n: u32) -> Result<()> {
-    writer.write_all(&n.to_ne_bytes())?;
-    Ok(())
+    writer.write_all(&n.to_ne_bytes())
 }
 
 pub fn write_u64<W: Write>(writer: &mut W, n: u64) -> Result<()> {
-    writer.write_all(&n.to_ne_bytes())?;
-    Ok(())
+    writer.write_all(&n.to_ne_bytes())
 }
 
 pub fn write_usize<W: Write>(writer: &mut W, n: usize) -> Result<()> {
-    writer.write_all(&n.to_ne_bytes())?;
-    Ok(())
+    writer.write_all(&n.to_ne_bytes())
 }
 
 pub fn write_string<W: Write>(writer: &mut W, s: &str) -> Result<()> {
     write_usize(writer, s.len())?;
-    writer.write_all(s.as_bytes())?;
-    Ok(())
+    writer.write_all(s.as_bytes())
 }
 
 pub fn write_vec<W: Write, T>(
@@ -103,12 +98,7 @@ pub fn read_string<R: Read>(reader: &mut R) -> Result<String> {
     let mut buf = vec![0; len];
     reader.read_exact(&mut buf)?;
 
-    let res = if cfg!(test) || cfg!(debug_assertions) {
-        String::from_utf8(buf).map_err(|e| Error::new(ErrorKind::InvalidData, e))?
-    } else {
-        // File integrity check would ensure that strings are valid
-        unsafe { String::from_utf8_unchecked(buf) }
-    };
+    let res = String::from_utf8(buf).map_err(|e| Error::new(ErrorKind::InvalidData, e))?;
     Ok(res)
 }
 
