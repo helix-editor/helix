@@ -1452,6 +1452,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slotmap",
+ "tempfile",
  "tokio",
  "tokio-stream",
  "toml",

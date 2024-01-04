@@ -838,6 +838,23 @@ impl Document {
         impl Future<Output = Result<DocumentSavedEvent, anyhow::Error>> + 'static + Send,
         anyhow::Error,
     > {
+        #[cfg(unix)]
+        async fn chown(path: &Path, other: &Path) -> anyhow::Result<()> {
+            use std::os::unix::ffi::OsStrExt;
+            use std::os::unix::fs::MetadataExt;
+            let meta = tokio::fs::metadata(path).await?;
+
+            // From https://github.com/uutils/coreutils/blob/2c73e978ba882c9cd56f0f16fae6f8dcce1c9850/src/uucore/src/lib/features/perms.rs#L46-L61
+            let uid = meta.uid();
+            let gid = meta.gid();
+            let s = std::ffi::CString::new(other.as_os_str().as_bytes())?;
+            let ret = unsafe { libc::chown(s.as_ptr(), uid, gid) };
+            if ret != 0 {
+                return Err(anyhow::anyhow!(tokio::io::Error::last_os_error()));
+            }
+            Ok(())
+        }
+
         log::debug!(
             "submitting save of doc '{:?}'",
             self.path().map(|path| path.to_string_lossy())
@@ -892,8 +909,25 @@ impl Document {
                 }
             }
 
-            let mut file = File::create(&path).await?;
-            to_writer(&mut file, encoding_with_bom_info, &text).await?;
+            match rustix::fs::access(&path, rustix::fs::Access::WRITE_OK) {
+                Ok(_) => {}
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+                Err(_) => bail!("file is readonly"),
+            };
+
+            let (mut tmp_file, tmp_path) = tokio::task::spawn_blocking(
+                move || -> anyhow::Result<(File, tempfile::TempPath)> {
+                    let (f, p) = tempfile::NamedTempFile::new()?.into_parts();
+                    Ok((tokio::fs::File::from_std(f), p))
+                },
+            )
+            .await??;
+            to_writer(&mut tmp_file, encoding_with_bom_info, &text).await?;
+
+            let perms = tokio::fs::metadata(&path).await?.permissions();
+            tmp_file.set_permissions(perms).await?;
+            chown(&path, &tmp_path).await?;
+            tokio::fs::rename(tmp_path, &path).await?;
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
