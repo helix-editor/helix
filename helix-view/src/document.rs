@@ -899,7 +899,12 @@ impl Document {
                 }
             }
 
-            // TODO: Fail if path is read-only.
+            match rustix::fs::access(&path, rustix::fs::Access::WRITE_OK) {
+                Ok(_) => {}
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+                Err(_) => bail!("file is readonly"),
+            };
+
             let (mut tmp_file, tmp_path) = tokio::task::spawn_blocking(
                 move || -> anyhow::Result<(File, tempfile::TempPath)> {
                     let (f, p) = tempfile::NamedTempFile::new()?.into_parts();
