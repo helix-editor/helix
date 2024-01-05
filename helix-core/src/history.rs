@@ -190,7 +190,6 @@ const UNDO_FILE_HEADER_LEN: usize = UNDO_FILE_HEADER_TAG.len();
 const UNDO_FILE_VERSION: u8 = 1;
 
 impl History {
-    // TODO: Vim uses magic numbers for each revision. Why?
     pub fn serialize<W: Write + Seek>(
         &self,
         writer: &mut W,
@@ -212,7 +211,6 @@ impl History {
         writer.write_all(&get_hash(&mut std::fs::File::open(path)?)?)?;
 
         // Append new revisions to the end of the file.
-        // TODO: Recompute hash on append
         write_usize(writer, self.revisions.len())?;
         writer.seek(SeekFrom::End(0))?;
         for rev in &self.revisions[last_saved_revision..] {
@@ -279,10 +277,12 @@ impl History {
         if new_revs.is_empty() {
             return Ok(());
         }
+        other.revisions.reserve_exact(n);
 
         // Only unique revisions in `self` matter, so saturating_sub(1) is sound as it going to 0 means there are no new revisions in the other history that aren't in `self`
         let offset = (other.revisions.len() - n).saturating_sub(1);
         for mut r in new_revs {
+            // Update parents of new revisions
             if r.parent >= n {
                 r.parent += offset;
             }

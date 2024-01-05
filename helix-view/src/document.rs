@@ -1024,20 +1024,26 @@ impl Document {
             };
 
             // Set undofile perms
-            // TODO: Vim does (perm & 0707) | ((perm & 07) << 3)
             #[cfg(unix)]
             if undofile_enabled && undofile_res.is_ok() && undofile_path.as_ref().unwrap().exists()
             {
+                use std::os::unix::ffi::OsStrExt;
+                use std::os::unix::fs::{MetadataExt, PermissionsExt};
                 let meta = tokio::fs::metadata(path.as_path()).await?;
 
                 // From https://github.com/uutils/coreutils/blob/2c73e978ba882c9cd56f0f16fae6f8dcce1c9850/src/uucore/src/lib/features/perms.rs#L46-L61
-                use std::os::unix::ffi::OsStrExt;
-                use std::os::unix::fs::MetadataExt;
                 let uid = meta.uid();
                 let gid = meta.gid();
                 let s = std::ffi::CString::new(path.as_os_str().as_bytes())?;
                 let ret = unsafe { libc::chown(s.as_ptr(), uid, gid) };
                 if ret != 0 {
+                    let mut perms = meta.permissions();
+                    let new_perms = (perms.mode() & 0x0707) | (perms.mode() & 0x07) << 3;
+                    perms.set_mode(new_perms);
+
+                    // Ignore errors
+                    let _ = tokio::fs::set_permissions(&undofile_path.unwrap(), perms).await;
+
                     undofile_res = Err(anyhow::anyhow!(tokio::io::Error::last_os_error()));
                 }
 
