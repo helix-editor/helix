@@ -51,7 +51,10 @@ t = ":run-shell-command cargo test"
 ## Special keys and modifiers
 
 Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
-`C-`, `S-` and `A-`. Special keys are encoded as follows:
+`C-`, `S-` and `A-`. The Super modifier (the Windows/Linux key or the Command
+key on Mac keyboards) is also supported for terminals which support the enhanced
+keyboard protocol (Kitty, WezTerm). The Super key uses the `Super-` prefix.
+Special keys are encoded as follows:
 
 | Key name     | Representation |
 | ---          | ---            |
