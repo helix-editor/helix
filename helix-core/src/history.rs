@@ -937,9 +937,10 @@ mod test {
 
     fn generate_history(mut inserts: Vec<String>) -> (History, Rope) {
         use rand::distributions::{Distribution, Uniform};
+        use rand::SeedableRng;
 
         let dist = Uniform::new_inclusive(0, 2);
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rngs::SmallRng::from_entropy();
 
         let mut hist = History::default();
         let mut doc = Rope::default();

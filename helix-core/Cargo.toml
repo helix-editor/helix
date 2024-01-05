@@ -60,3 +60,5 @@ globset = "0.4.14"
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
 indoc = "2.0.5"
+tempfile = "3.9"
+rand = { version = "0.8", default-features = false, features = ["getrandom", "small_rng"] }
