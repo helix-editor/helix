@@ -15,7 +15,6 @@ use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
-use helix_core::syntax::RulerConfig;
 use helix_lsp::Call;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -273,8 +272,12 @@ pub struct Config {
     pub lsp: LspConfig,
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
-    // pub rulers: Vec<u16>,
-    pub rulers: Vec<RulerConfig>,
+    pub rulers: Vec<u16>,
+
+    /// If set, use this character to draw the editor's rulers.
+    #[serde(rename = "ruler-char")]
+    pub ruler_char: Option<char>,
+
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
     /// Persistently display open buffers along the top
@@ -842,6 +845,7 @@ impl Default for Config {
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
+            ruler_char: None,
             whitespace: WhitespaceConfig::default(),
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),

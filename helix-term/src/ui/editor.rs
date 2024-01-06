@@ -16,7 +16,7 @@ use helix_core::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
     movement::Direction,
-    syntax::{self, HighlightEvent, RulerConfig},
+    syntax::{self, HighlightEvent},
     text_annotations::TextAnnotations,
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
@@ -242,6 +242,8 @@ impl EditorView {
         theme: &Theme,
     ) {
         let editor_rulers = &editor.config().rulers;
+        let editor_ruler_char = &editor.config().ruler_char;
+
         let ruler_theme = theme
             .try_get("ui.virtual.ruler")
             .unwrap_or_else(|| Style::default().bg(Color::Red));
@@ -255,27 +257,20 @@ impl EditorView {
             .iter()
             // View might be horizontally scrolled, convert from absolute distance
             // from the 1st column to relative distance from left of viewport
-            .filter_map(|ruler| match ruler {
-                RulerConfig::Normal(p) => {
-                    if let Some(p) = p.checked_sub(1 + view.offset.horizontal_offset as u16) {
-                        Some(RulerConfig::Normal(p))
-                    } else {
-                        None
-                    }
-                }
-
-                RulerConfig::WithCharacter { with_char, pos } => {
-                    let checked_pos = pos.checked_sub(1 + view.offset.horizontal_offset as u16);
-                    if let Some(p) = checked_pos {
-                        Some(RulerConfig::WithCharacter { with_char, pos: p })
-                    } else {
-                        None
-                    }
-                }
-            })
+            .filter_map(|ruler| ruler.checked_sub(1 + view.offset.horizontal_offset as u16))
             .filter(|ruler| ruler < &viewport.width)
             .map(|ruler| viewport.clip_left(ruler).with_width(1))
-            .for_each(|area| surface.set_style(area, ruler_theme))
+            .for_each(|area| {
+                // Draw ruler with a character if a character is specified in config,
+                // otherwise use original behaviour of colouring the editor at a specified position.
+                if let Some(ruler_char) = editor_ruler_char {
+                    for y in area.y..area.height {
+                        surface.set_string(area.x, y, ruler_char.to_string(), ruler_theme)
+                    }
+                } else {
+                    surface.set_style(area, ruler_theme)
+                }
+            })
     }
 
     fn viewport_byte_range(
