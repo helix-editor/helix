@@ -797,18 +797,21 @@ impl Application {
                         });
 
                         if let Some(doc) = doc {
+                            let diagnostic_of_language_server_and_not_in_unchanged_sources =
+                                |diagnostic: &lsp::Diagnostic, ls_id| {
+                                    ls_id == server_id
+                                        && diagnostic.source.as_ref().map_or(true, |source| {
+                                            !unchanged_diag_sources.contains(source)
+                                        })
+                                };
+                            let diagnostics = Editor::doc_diagnostics_with_filter(
+                                &self.editor.language_servers,
+                                &self.editor.diagnostics,
+                                doc,
+                                diagnostic_of_language_server_and_not_in_unchanged_sources,
+                            );
                             doc.replace_diagnostics(
-                                Editor::doc_diagnostics_with_filter(
-                                    &self.editor.language_servers,
-                                    &self.editor.diagnostics,
-                                    doc,
-                                    |diagnostic, ls_id| {
-                                        ls_id == server_id
-                                            && diagnostic.source.as_ref().map_or(true, |source| {
-                                                !unchanged_diag_sources.contains(source)
-                                            })
-                                    },
-                                ),
+                                diagnostics,
                                 &unchanged_diag_sources,
                                 Some(server_id),
                             );
