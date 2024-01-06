@@ -1077,14 +1077,6 @@ impl Document {
         };
     }
 
-    /// Set the programming language for the file if you know the name (scope) but don't have the
-    /// [`syntax::LanguageConfiguration`] for it.
-    pub fn set_language2(&mut self, scope: &str, config_loader: Arc<syntax::Loader>) {
-        let language_config = config_loader.language_config_for_scope(scope);
-
-        self.set_language(language_config, Some(config_loader));
-    }
-
     /// Set the programming language for the file if you know the language but don't have the
     /// [`syntax::LanguageConfiguration`] for it.
     pub fn set_language_by_language_id(

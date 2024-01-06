@@ -386,6 +386,12 @@ impl Application {
         self.editor.syn_loader = self.syn_loader.clone();
         for document in self.editor.documents.values_mut() {
             document.detect_language(self.syn_loader.clone());
+            let diagnostics = Editor::doc_diagnostics(
+                &self.editor.language_servers,
+                &self.editor.diagnostics,
+                document,
+            );
+            document.replace_diagnostics(diagnostics, &[], None);
         }
 
         Ok(())
@@ -561,6 +567,14 @@ impl Application {
             let id = doc.id();
             doc.detect_language(loader);
             self.editor.refresh_language_servers(id);
+            // and again a borrow checker workaround...
+            let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
+            let diagnostics = Editor::doc_diagnostics(
+                &self.editor.language_servers,
+                &self.editor.diagnostics,
+                doc,
+            );
+            doc.replace_diagnostics(diagnostics, &[], None);
         }
 
         // TODO: fix being overwritten by lsp

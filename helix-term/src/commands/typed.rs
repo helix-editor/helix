@@ -2008,6 +2008,10 @@ fn language(
 
     let id = doc.id();
     cx.editor.refresh_language_servers(id);
+    let doc = doc_mut!(cx.editor);
+    let diagnostics =
+        Editor::doc_diagnostics(&cx.editor.language_servers, &cx.editor.diagnostics, doc);
+    doc.replace_diagnostics(diagnostics, &[], None);
     Ok(())
 }
 
