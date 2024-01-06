@@ -2517,22 +2517,6 @@ fn pretty_print_tree_impl<W: fmt::Write>(
     Ok(())
 }
 
-// #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-// #[serde(untagged)]
-// pub enum RulerConfig {
-//     Normal(u16),
-//     WithCharacter { with_char: char, pos: u16 },
-// }
-
-// impl RulerConfig {
-//     pub fn get_pos(&self) -> u16 {
-//         match self {
-//             Self::Normal(p) => *p,
-//             Self::WithCharacter { pos, .. } => *pos,
-//         }
-//     }
-// }
-
 #[cfg(test)]
 mod test {
     use super::*;
