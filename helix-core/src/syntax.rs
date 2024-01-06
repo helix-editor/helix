@@ -150,7 +150,8 @@ pub struct LanguageConfiguration {
     #[serde(default, skip_serializing, deserialize_with = "deserialize_auto_pairs")]
     pub auto_pairs: Option<AutoPairs>,
 
-    pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
+    // pub rulers: Option<Vec<u16>>, // if set, override editor's rulers
+    pub rulers: Option<Vec<RulerConfig>>, // if set, override editor's rulers
 
     /// Hardcoded LSP root directories relative to the workspace root, like `examples` or `tools/fuzz`.
     /// Falling back to the current working directory if none are configured.
@@ -2516,6 +2517,12 @@ fn pretty_print_tree_impl<W: fmt::Write>(
     }
 
     Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RulerConfig {
+    Normal(u16),
+    WithCharacter { with_char: char, pos: u16 },
 }
 
 #[cfg(test)]

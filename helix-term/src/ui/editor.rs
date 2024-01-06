@@ -16,7 +16,7 @@ use helix_core::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
     movement::Direction,
-    syntax::{self, HighlightEvent},
+    syntax::{self, HighlightEvent, RulerConfig},
     text_annotations::TextAnnotations,
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
@@ -255,7 +255,24 @@ impl EditorView {
             .iter()
             // View might be horizontally scrolled, convert from absolute distance
             // from the 1st column to relative distance from left of viewport
-            .filter_map(|ruler| ruler.checked_sub(1 + view.offset.horizontal_offset as u16))
+            .filter_map(|ruler| match ruler {
+                RulerConfig::Normal(p) => {
+                    if let Some(p) = p.checked_sub(1 + view.offset.horizontal_offset as u16) {
+                        Some(RulerConfig::Normal(p))
+                    } else {
+                        None
+                    }
+                }
+
+                RulerConfig::WithCharacter { with_char, pos } => {
+                    let checked_pos = pos.checked_sub(1 + view.offset.horizontal_offset as u16);
+                    if let Some(p) = checked_pos {
+                        Some(RulerConfig::WithCharacter { with_char, pos: p })
+                    } else {
+                        None
+                    }
+                }
+            })
             .filter(|ruler| ruler < &viewport.width)
             .map(|ruler| viewport.clip_left(ruler).with_width(1))
             .for_each(|area| surface.set_style(area, ruler_theme))
