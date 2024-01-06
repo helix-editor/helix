@@ -293,7 +293,10 @@ impl History {
                 NonZeroUsize::new(other.revisions.len());
             other.revisions.push(r);
         }
-        self.current += offset;
+
+        if self.current >= n {
+            self.current += offset;
+        }
         self.revisions = other.revisions;
 
         Ok(())
