@@ -1,6 +1,8 @@
 #[macro_use]
 pub mod macros;
 
+mod faccess;
+
 pub mod clipboard;
 pub mod document;
 pub mod editor;
