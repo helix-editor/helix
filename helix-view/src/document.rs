@@ -37,6 +37,7 @@ use helix_core::{
 
 use crate::editor::Config;
 use crate::events::{DocumentDidChange, SelectionDidChange};
+use crate::faccess::readonly;
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -909,11 +910,9 @@ impl Document {
                 }
             }
 
-            match rustix::fs::access(&path, rustix::fs::Access::WRITE_OK) {
-                Ok(_) => {}
-                Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-                Err(_) => bail!("file is readonly"),
-            };
+            if readonly(&path) {
+                bail!("File is readonly");
+            }
 
             let (mut tmp_file, tmp_path) = tokio::task::spawn_blocking(
                 move || -> anyhow::Result<(File, tempfile::TempPath)> {
@@ -924,10 +923,14 @@ impl Document {
             .await??;
             to_writer(&mut tmp_file, encoding_with_bom_info, &text).await?;
 
-            let perms = tokio::fs::metadata(&path).await?.permissions();
-            tmp_file.set_permissions(perms).await?;
-            chown(&path, &tmp_path).await?;
-            tokio::fs::rename(tmp_path, &path).await?;
+            {
+                let path = path.clone();
+                tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+                    tmp_path.persist(path)?;
+                    Ok(())
+                })
+            }
+            .await??;
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
