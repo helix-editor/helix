@@ -37,7 +37,7 @@ use helix_core::{
 
 use crate::editor::Config;
 use crate::events::{DocumentDidChange, SelectionDidChange};
-use crate::faccess::readonly;
+use crate::faccess::{copy_metadata, readonly};
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -839,23 +839,6 @@ impl Document {
         impl Future<Output = Result<DocumentSavedEvent, anyhow::Error>> + 'static + Send,
         anyhow::Error,
     > {
-        #[cfg(unix)]
-        async fn chown(path: &Path, other: &Path) -> anyhow::Result<()> {
-            use std::os::unix::ffi::OsStrExt;
-            use std::os::unix::fs::MetadataExt;
-            let meta = tokio::fs::metadata(path).await?;
-
-            // From https://github.com/uutils/coreutils/blob/2c73e978ba882c9cd56f0f16fae6f8dcce1c9850/src/uucore/src/lib/features/perms.rs#L46-L61
-            let uid = meta.uid();
-            let gid = meta.gid();
-            let s = std::ffi::CString::new(other.as_os_str().as_bytes())?;
-            let ret = unsafe { libc::chown(s.as_ptr(), uid, gid) };
-            if ret != 0 {
-                return Err(anyhow::anyhow!(tokio::io::Error::last_os_error()));
-            }
-            Ok(())
-        }
-
         log::debug!(
             "submitting save of doc '{:?}'",
             self.path().map(|path| path.to_string_lossy())
@@ -911,26 +894,36 @@ impl Document {
             }
 
             if readonly(&path) {
-                bail!("File is readonly");
+                bail!(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "Path is read only"
+                ));
             }
 
-            let (mut tmp_file, tmp_path) = tokio::task::spawn_blocking(
-                move || -> anyhow::Result<(File, tempfile::TempPath)> {
-                    let (f, p) = tempfile::NamedTempFile::new()?.into_parts();
-                    Ok((tokio::fs::File::from_std(f), p))
-                },
-            )
-            .await??;
-            to_writer(&mut tmp_file, encoding_with_bom_info, &text).await?;
+            if cfg!(any(windows, unix)) {
+                let (mut tmp_file, tmp_path) = tokio::task::spawn_blocking(
+                    move || -> anyhow::Result<(File, tempfile::TempPath)> {
+                        let (f, p) = tempfile::NamedTempFile::new()?.into_parts();
+                        Ok((tokio::fs::File::from_std(f), p))
+                    },
+                )
+                .await??;
+                to_writer(&mut tmp_file, encoding_with_bom_info, &text).await?;
 
-            {
-                let path = path.clone();
-                tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
-                    tmp_path.persist(path)?;
-                    Ok(())
-                })
+                {
+                    let path = path.clone();
+                    tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+                        // Vim ignores errors
+                        let _ = copy_metadata(&path, &tmp_path);
+                        tmp_path.persist(path)?;
+                        Ok(())
+                    })
+                }
+                .await??;
+            } else {
+                let mut file = File::create(&path).await?;
+                to_writer(&mut file, encoding_with_bom_info, &text).await?;
             }
-            .await??;
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
@@ -991,35 +984,12 @@ impl Document {
         }
     }
 
-    #[cfg(unix)]
     // Detect if the file is readonly and change the readonly field if necessary (unix only)
     pub fn detect_readonly(&mut self) {
-        use rustix::fs::{access, Access};
         // Allows setting the flag for files the user cannot modify, like root files
         self.readonly = match &self.path {
             None => false,
-            Some(p) => match access(p, Access::WRITE_OK) {
-                Ok(_) => false,
-                Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
-                Err(_) => true,
-            },
-        };
-    }
-
-    #[cfg(not(unix))]
-    // Detect if the file is readonly and change the readonly field if necessary (non-unix os)
-    pub fn detect_readonly(&mut self) {
-        // TODO Use the Windows' function `CreateFileW` to check if a file is readonly
-        // Discussion: https://github.com/helix-editor/helix/pull/7740#issuecomment-1656806459
-        // Vim implementation: https://github.com/vim/vim/blob/4c0089d696b8d1d5dc40568f25ea5738fa5bbffb/src/os_win32.c#L7665
-        // Windows binding: https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/Storage/FileSystem/fn.CreateFileW.html
-        self.readonly = match &self.path {
-            None => false,
-            Some(p) => match std::fs::metadata(p) {
-                Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
-                Err(_) => false,
-                Ok(metadata) => metadata.permissions().readonly(),
-            },
+            Some(p) => readonly(p),
         };
     }
 

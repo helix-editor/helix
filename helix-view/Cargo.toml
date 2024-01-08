@@ -58,7 +58,7 @@ windows = "0.52"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-rustix = { version = "0.38", features = ["fs"] }
+rustix = { version = "0.38", features = ["fs", "process"] }
 
 [dev-dependencies]
 helix-tui = { path = "../helix-tui" }

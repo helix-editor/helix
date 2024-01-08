@@ -1,5 +1,4 @@
-//! Forked from https://github.com/Freaky/faccess
-//! Licensed under MIT
+//! From <https://github.com/Freaky/faccess>
 
 use std::io;
 use std::path::Path;
@@ -8,6 +7,7 @@ use filetime::FileTime;
 
 use bitflags::bitflags;
 
+// Licensed under MIT from faccess
 bitflags! {
     /// Access mode flags for `access` function to test for.
     pub struct AccessMode: u8 {
@@ -52,21 +52,21 @@ mod imp {
         Ok(())
     }
 
-    fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> std::io::Result<()> {
+    fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> anyhow::Result<()> {
         let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
         let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
         rustix::fs::chown(p, uid, gid)?;
         Ok(())
     }
 
-    pub fn copy_metadata(from: &Path, to: &Path) -> std::io::Result<()> {
+    pub fn copy_metadata(from: &Path, to: &Path) -> anyhow::Result<()> {
         let meta = std::fs::File::open(from)?.metadata()?;
         let uid = meta.gid();
         let gid = meta.uid();
         chown(to, Some(uid), Some(gid))?;
 
         let mut perms = meta.permissions();
-        let new_perms = (perms.mode() & 0x0707) | (perms.mode() & 0x07) << 3;
+        let new_perms = (perms.mode() & 0o0707) | (perms.mode() & 0o07) << 3;
         perms.set_mode(new_perms);
 
         std::fs::set_permissions(to, perms)?;
@@ -80,6 +80,7 @@ mod imp {
     }
 }
 
+// Licensed under MIT from faccess except for `chown` and `copy_metadata`
 #[cfg(windows)]
 mod imp {
     use windows::core::PCWSTR;
@@ -410,6 +411,7 @@ mod imp {
     }
 }
 
+// Licensed under MIT from faccess
 #[cfg(not(any(unix, windows)))]
 mod imp {
     use super::*;
@@ -434,15 +436,23 @@ mod imp {
     }
 
     pub fn copy_metadata(_from: &path, _to: &Path) -> std::io::Result<()> {
-        // Not possible
+        let meta = std::fs::File::open(from)?.metadata()?;
+        let perms = meta.permissions();
+        std::fs::set_permissions(to, perms)?;
+
         Ok(())
     }
 }
 
 pub fn readonly(p: &Path) -> bool {
-    imp::access(p, AccessMode::READ).is_ok() && imp::access(p, AccessMode::WRITE).is_err()
+    match imp::access(p, AccessMode::WRITE) {
+        Ok(_) => false,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
+        Err(_) => true,
+    }
 }
 
-pub fn copy_metadata(from: &Path, to: &Path) -> std::io::Result<()> {
-    imp::copy_metadata(from, to)
+pub fn copy_metadata(from: &Path, to: &Path) -> anyhow::Result<()> {
+    imp::copy_metadata(from, to)?;
+    Ok(())
 }
