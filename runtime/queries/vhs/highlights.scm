@@ -1,4 +1,4 @@
-[ 
+[
   "Output"
   "Backspace"
   "Down"
@@ -15,22 +15,31 @@
   "Hide"
   "Show" ] @keyword
 
-[ "FontFamily"
+[ "Shell"
+  "FontFamily"
   "FontSize"
   "Framerate"
+  "PlaybackSpeed"
   "Height"
   "LetterSpacing"
   "TypingSpeed"
   "LineHeight"
   "Padding"
   "Theme"
-  "Width" ] @type
+  "LoopOffset"
+  "Width"
+  "BorderRadius"
+  "Margin"
+  "MarginFill"
+  "WindowBar"
+  "WindowBarSize"
+  "CursorBlink" ] @type
 
 [ "@" ] @operator
 (control) @function.macro
-(float) @constant.numeric.float
-(integer) @constant.numeric.integer
-(comment) @comment
-(path) @string.special.path
-[(string) (json)] @string
-(time) @string.special.symbol
+(float) @float
+(integer) @number
+(comment) @comment @spell
+[(path) (string) (json)] @string
+(time) @symbol
+(boolean) @boolean

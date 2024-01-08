@@ -1,61 +1,72 @@
-[(pod_directive)
- (head_directive)
- (over_directive)
- (item_directive)
- (back_directive)
- (encoding_directive)
- (cut_directive)] @tag
+; A highlight file for nvim-treesitter to use
 
-(head_paragraph
-  (head_directive) @directive
-  (#eq? @directive "=head1")
-  (content) @markup.heading.1)
-(head_paragraph
-  (head_directive) @directive
-  (#eq? @directive "=head2")
-  (content) @markup.heading.2)
-(head_paragraph
-  (head_directive) @directive
-  (#eq? @directive "=head3")
-  (content) @markup.heading.3)
-(head_paragraph
-  (head_directive) @directive
-  (#eq? @directive "=head4")
-  (content) @markup.heading.4)
-(head_paragraph
-  (head_directive) @directive
-  (#eq? @directive "=head5")
-  (content) @markup.heading.5)
-(head_paragraph
-  (head_directive) @directive
-  (#eq? @directive "=head6")
-  (content) @markup.heading.6)
+[(pod_command)
+ (command)
+ (cut_command)] @keyword
 
-(over_paragraph (content) @constant.numeric.integer)
-(item_paragraph (content) @markup.list)
-(encoding_paragraph (content) @string)
+(command_paragraph
+  (command) @keyword
+  (#match? @keyword "^=head")
+  (content) @text.title)
 
-(verbatim_paragraph (content) @markup.raw)
+(command_paragraph
+  (command) @keyword
+  (#match? @keyword "^=over")
+  (content) @number)
 
-(interior_sequence) @tag
+(command_paragraph
+  (command) @keyword
+  (#match? @keyword "^=item")
+  (content) @text)
+
+(command_paragraph
+  (command) @keyword
+  (#match? @keyword "^=encoding")
+  (content) @string.special)
+
+(command_paragraph
+  (command) @keyword
+  (#not-match? @keyword "^=(head|over|item|encoding)")
+  (content) @string)
+
+(verbatim_paragraph (content) @text.literal)
 
 (interior_sequence
-  (sequence_letter) @letter
-  (#eq? @letter "B")
-  (content) @markup.bold)
+  (sequence_letter) @character
+  ["<" ">"] @punctuation.delimiter
+)
+
 (interior_sequence
-  (sequence_letter) @letter
-  (#eq? @letter "C")
-  (content) @markup.raw)
+  (sequence_letter) @character
+  (#eq? @character "B")
+  (content) @text.strong)
+
 (interior_sequence
-  (sequence_letter) @letter
-  (#eq? @letter "F")
-  (content) @markup.italic)
+  (sequence_letter) @character
+  (#eq? @character "C")
+  (content) @text.literal)
+
 (interior_sequence
-  (sequence_letter) @letter
-  (#eq? @letter "I")
-  (content) @markup.italic)
+  (sequence_letter) @character
+  (#eq? @character "F")
+  (content) @text.underline @string.special)
+
 (interior_sequence
-  (sequence_letter) @letter
-  (#eq? @letter "L")
-  (content) @markup.link.url)
+  (sequence_letter) @character
+  (#eq? @character "I")
+  (content) @text.emphasis)
+
+(interior_sequence
+  (sequence_letter) @character
+  (#eq? @character "L")
+  (content) @text.uri)
+
+(interior_sequence
+  (sequence_letter) @character
+  (#eq? @character "X")
+  (content) @text.reference)
+
+(interior_sequence
+  (sequence_letter) @character
+  (#eq? @character "E")
+  (content) @string.escape)
