@@ -2886,7 +2886,7 @@ source = { git = "https://github.com/varpeti/tree-sitter-jinja2", rev = "a533cd3
 
 [[grammar]]
 name = "wren"
-source = { git = "https://git.sr.ht/~jummit/tree-sitter-wren", rev = "793d58266924e6efcc40e411663393e9d72bec87"}
+source = { git = "https://git.sr.ht/~jummit/tree-sitter-wren", rev = "6748694be32f11e7ec6b5faeb1b48ca6156d4e06" }
 
 [[language]]
 name = "wren"
