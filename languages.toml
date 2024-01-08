@@ -137,6 +137,15 @@ inlayHints.discriminantHints.enable = "fieldless"
 inlayHints.lifetimeElisionHints.enable = "skip_trivial"
 inlayHints.typeHints.hideClosureInitialization = false
 
+[language-server.matlab-ls]
+command = "matlab-language-server"
+args = ["--stdio"]
+
+[language-server.matlab-ls.config.MATLAB]
+indexWorkspace = false
+installPath = ""
+matlabConnectionTiming = "onStart"
+telemetry = true
 
 [language-server.typescript-language-server]
 command = "typescript-language-server"
@@ -2469,6 +2478,7 @@ source = { git = "https://github.com/monaqa/tree-sitter-mermaid", rev = "d787c66
 name = "matlab"
 scope = "source.m"
 file-types = ["m"]
+language-servers = ["matlab-ls"]
 comment-token = "%"
 shebangs = ["octave-cli", "matlab"]
 indent = { tab-width = 2, unit = "  " }
