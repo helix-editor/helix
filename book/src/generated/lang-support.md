@@ -145,7 +145,7 @@
 | ruby | ✓ | ✓ | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | sage | ✓ | ✓ |  |  |
-| scala | ✓ |  | ✓ | `metals` |
+| scala | ✓ | ✓ | ✓ | `metals` |
 | scheme | ✓ |  | ✓ |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
 | slint | ✓ |  | ✓ | `slint-lsp` |
