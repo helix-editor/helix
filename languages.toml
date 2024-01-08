@@ -3013,3 +3013,15 @@ file-types = ["janet"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 grammar = "clojure"
+
+[[language]]
+name = "hocon"
+scope = "source.conf"
+file-types = ["conf"]
+comment-token = "#"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "hocon"
+source = { git = "https://github.com/antosha417/tree-sitter-hocon", rev = "c390f10519ae69fdb03b3e5764f5592fb6924bcc" }
