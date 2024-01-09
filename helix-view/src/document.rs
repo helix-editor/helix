@@ -870,7 +870,7 @@ impl Document {
 
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
-            use tokio::{fs, fs::File};
+            use tokio::fs;
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -899,34 +899,53 @@ impl Document {
                     "Path is read only"
                 ));
             }
-
-            if cfg!(any(windows, unix)) {
-                let path: Arc<Path> = path.as_path().into();
+            let backup = if path.exists() {
                 let path_ = path.clone();
-                let (mut tmp_file, tmp_path) = tokio::task::spawn_blocking(
-                    move || -> anyhow::Result<(File, tempfile::TempPath)> {
-                        let (f, p) = tempfile::Builder::new()
-                            .prefix(path_.file_name().unwrap())
-                            .suffix(".bck")
-                            .tempfile_in(path_.parent().unwrap())?
-                            .into_parts();
-                        Ok((tokio::fs::File::from_std(f), p))
-                    },
-                )
-                .await??;
-                to_writer(&mut tmp_file, encoding_with_bom_info, &text).await?;
-
-                tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
-                    // Vim ignores errors
-                    let _ = copy_metadata(&path, &tmp_path);
-                    tmp_path.persist(path)?;
-                    Ok(())
+                // hacks: we use tempfile to handle the complex task of creating
+                // non clobbered temporary path for us we don't want
+                // the whole automatically delete path on drop thing
+                // since the path doesn't exist yet, we just want
+                // the path
+                tokio::task::spawn_blocking(move || -> Option<PathBuf> {
+                    tempfile::Builder::new()
+                        .prefix(path_.file_name()?)
+                        .suffix(".bck")
+                        .make_in(path_.parent()?, |backup| std::fs::rename(&path_, backup))
+                        .ok()?
+                        .into_temp_path()
+                        .keep()
+                        .ok()
                 })
-                .await??;
+                .await
+                .ok()
+                .flatten()
             } else {
-                let mut file = File::create(&path).await?;
-                to_writer(&mut file, encoding_with_bom_info, &text).await?;
+                None
+            };
+
+            let write_result: anyhow::Result<_> = async {
+                let mut dst = tokio::fs::File::create(&path).await?;
+                to_writer(&mut dst, encoding_with_bom_info, &text).await?;
+                Ok(())
             }
+            .await;
+
+            if let Some(backup) = backup {
+                if write_result.is_err() {
+                    // restore backup
+                    let _ = tokio::fs::rename(&backup, &path).await;
+                } else {
+                    // copy metadata and delete backup
+                    let path_ = path.clone();
+                    let _ = tokio::task::spawn_blocking(move || {
+                        let _ = copy_metadata(&backup, &path_).unwrap();
+                        let _ = std::fs::remove_file(backup);
+                    })
+                    .await;
+                }
+            }
+
+            write_result?;
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
