@@ -1,5 +1,4 @@
 use std::{
-    fs::File,
     io::{Read, Write},
     mem::replace,
     path::PathBuf,
@@ -11,7 +10,7 @@ use crossterm::event::{Event, KeyEvent};
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
 use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
-use tempfile::{NamedTempFile, TempPath};
+use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[derive(Clone, Debug)]
@@ -352,9 +351,8 @@ pub async fn run_event_loop_until_idle(app: &mut Application) {
     app.event_loop_until_idle(&mut rx_stream).await;
 }
 
-pub fn assert_file_has_content(file: &mut File, content: &str) -> anyhow::Result<()> {
-    file.flush()?;
-    file.sync_all()?;
+pub fn assert_file_has_content(file: &mut NamedTempFile, content: &str) -> anyhow::Result<()> {
+    reload_file(file)?;
 
     let mut file_content = String::new();
     file.read_to_string(&mut file_content)?;
@@ -369,8 +367,11 @@ pub fn assert_status_not_error(editor: &Editor) {
     }
 }
 
-pub fn reload_file(t: NamedTempFile) -> (File, TempPath) {
-    let p = t.into_temp_path();
-    let f = std::fs::File::open(&p).unwrap();
-    (f, p)
+pub fn reload_file(file: &mut NamedTempFile) -> anyhow::Result<()> {
+    let path = file.path();
+    let f = std::fs::File::open(&path).unwrap();
+    let file = file.as_file_mut();
+    *file = f;
+    file.sync_all()?;
+    Ok(())
 }
