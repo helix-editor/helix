@@ -1910,6 +1910,30 @@ impl Editor {
             .as_ref()
             .and_then(|debugger| debugger.current_stack_frame())
     }
+
+    /// Returns the id of a view that this doc contains a selection for,
+    /// making sure it is synced with the current changes
+    /// if possible or there are no selections returns current_view
+    /// otherwise uses an arbitrary view
+    pub fn get_synced_view_id(&mut self, id: DocumentId) -> ViewId {
+        let current_view = view_mut!(self);
+        let doc = self.documents.get_mut(&id).unwrap();
+        if doc.selections().contains_key(&current_view.id) {
+            // only need to sync current view if this is not the current doc
+            if current_view.doc != id {
+                current_view.sync_changes(doc);
+            }
+            current_view.id
+        } else if let Some(view_id) = doc.selections().keys().next() {
+            let view_id = *view_id;
+            let view = self.tree.get_mut(view_id);
+            view.sync_changes(doc);
+            view_id
+        } else {
+            doc.ensure_view_init(current_view.id);
+            current_view.id
+        }
+    }
 }
 
 fn try_restore_indent(doc: &mut Document, view: &mut View) {

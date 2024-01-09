@@ -896,7 +896,6 @@ pub fn apply_workspace_edit(
             }
         };
 
-        let current_view_id = view!(editor).id;
         let doc_id = match editor.open(&path, Action::Load) {
             Ok(doc_id) => doc_id,
             Err(err) => {
@@ -907,7 +906,7 @@ pub fn apply_workspace_edit(
             }
         };
 
-        let doc = doc_mut!(editor, &doc_id);
+        let doc = doc!(editor, &doc_id);
         if let Some(version) = version {
             if version != doc.version() {
                 let err = format!("outdated workspace edit for {path:?}");
@@ -918,18 +917,8 @@ pub fn apply_workspace_edit(
         }
 
         // Need to determine a view for apply/append_changes_to_history
-        let selections = doc.selections();
-        let view_id = if selections.contains_key(&current_view_id) {
-            // use current if possible
-            current_view_id
-        } else {
-            // Hack: we take the first available view_id
-            selections
-                .keys()
-                .next()
-                .copied()
-                .expect("No view_id available")
-        };
+        let view_id = editor.get_synced_view_id(doc_id);
+        let doc = doc_mut!(editor, &doc_id);
 
         let transaction = helix_lsp::util::generate_transaction_from_edits(
             doc.text(),

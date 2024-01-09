@@ -674,13 +674,15 @@ pub fn write_all_impl(
     let mut errors: Vec<&'static str> = Vec::new();
     let config = cx.editor.config();
     let jobs = &mut cx.jobs;
-    let current_view = view!(cx.editor);
-
     let saves: Vec<_> = cx
         .editor
         .documents
-        .values_mut()
-        .filter_map(|doc| {
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .filter_map(|id| {
+            let doc = doc!(cx.editor, &id);
             if !doc.is_modified() {
                 return None;
             }
@@ -691,22 +693,9 @@ pub fn write_all_impl(
                 return None;
             }
 
-            // Look for a view to apply the formatting change to. If the document
-            // is in the current view, just use that. Otherwise, since we don't
-            // have any other metric available for better selection, just pick
-            // the first view arbitrarily so that we still commit the document
-            // state for undos. If somehow we have a document that has not been
-            // initialized with any view, initialize it with the current view.
-            let target_view = if doc.selections().contains_key(&current_view.id) {
-                current_view.id
-            } else if let Some(view) = doc.selections().keys().next() {
-                *view
-            } else {
-                doc.ensure_view_init(current_view.id);
-                current_view.id
-            };
-
-            Some((doc.id(), target_view))
+            // Look for a view to apply the formatting change to.
+            let target_view = cx.editor.get_synced_view_id(doc.id());
+            Some((id, target_view))
         })
         .collect();
 
