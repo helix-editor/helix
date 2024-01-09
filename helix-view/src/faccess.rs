@@ -80,7 +80,7 @@ mod imp {
     }
 }
 
-// Licensed under MIT from faccess except for `chown` and `copy_metadata`
+// Licensed under MIT from faccess except for `chown`, `copy_metadata` and `is_acl_inherited`
 #[cfg(windows)]
 mod imp {
 
@@ -172,7 +172,6 @@ mod imp {
             let acl_info_ptr: *mut c_void = &mut acl_info as *mut _ as *mut c_void;
             let mut ace: ACCESS_ALLOWED_CALLBACK_ACE = unsafe { ::core::mem::zeroed() };
 
-            // Causes access violation when dacl is null. Is that UB?
             unsafe {
                 GetAclInformation(
                     self.dacl,
