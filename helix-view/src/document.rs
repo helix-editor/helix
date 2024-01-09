@@ -1222,18 +1222,23 @@ impl Document {
                 };
                 (&mut diagnostic.range.start, assoc)
             }));
-            changes.update_positions(self.diagnostics.iter_mut().map(|diagnostic| {
+            changes.update_positions(self.diagnostics.iter_mut().filter_map(|diagnostic| {
+                if diagnostic.zero_width {
+                    // for zero width diagnostics treat the diagnostic as a point
+                    // rather than a range
+                    return None;
+                }
                 let assoc = if diagnostic.ends_at_word {
                     Assoc::AfterWord
                 } else {
                     Assoc::Before
                 };
-                (&mut diagnostic.range.end, assoc)
+                Some((&mut diagnostic.range.end, assoc))
             }));
             self.diagnostics.retain_mut(|diagnostic| {
-                if diagnostic.range.start > diagnostic.range.end
-                    || (!diagnostic.zero_width && diagnostic.range.start == diagnostic.range.end)
-                {
+                if diagnostic.zero_width {
+                    diagnostic.range.end = diagnostic.range.start
+                } else if diagnostic.range.start >= diagnostic.range.end {
                     return false;
                 }
                 diagnostic.line = self.text.char_to_line(diagnostic.range.start);
