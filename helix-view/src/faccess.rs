@@ -423,7 +423,7 @@ mod imp {
     }
 }
 
-// Licensed under MIT from faccess
+// Licensed under MIT from faccess except for `copy_metadata`
 #[cfg(not(any(unix, windows)))]
 mod imp {
     use super::*;
@@ -451,6 +451,11 @@ mod imp {
         let meta = std::fs::File::open(from)?.metadata()?;
         let perms = meta.permissions();
         std::fs::set_permissions(to, perms)?;
+
+        // TODO: Can be replaced by std::fs::FileTimes on 1.75
+        let atime = FileTime::from_last_access_time(&meta);
+        let mtime = FileTime::from_last_modification_time(&meta);
+        filetime::set_file_times(to, atime, mtime)?;
 
         Ok(())
     }
