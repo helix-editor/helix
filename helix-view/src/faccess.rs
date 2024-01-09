@@ -446,7 +446,7 @@ mod imp {
         }
     }
 
-    pub fn copy_metadata(_from: &path, _to: &Path) -> std::io::Result<()> {
+    pub fn copy_metadata(from: &path, to: &Path) -> std::io::Result<()> {
         let meta = std::fs::File::open(from)?.metadata()?;
         let perms = meta.permissions();
         std::fs::set_permissions(to, perms)?;
