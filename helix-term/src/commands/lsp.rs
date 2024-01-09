@@ -1421,6 +1421,16 @@ pub fn rename_symbol(cx: &mut Context) {
 
     let (view, doc) = current_ref!(cx.editor);
 
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
+        .next()
+        .is_none()
+    {
+        cx.editor
+            .set_error("No configured language server supports symbol renaming");
+        return;
+    }
+
     let language_server_with_prepare_rename_support = doc
         .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
         .find(|ls| {
