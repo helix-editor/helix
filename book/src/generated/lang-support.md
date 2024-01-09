@@ -68,6 +68,7 @@
 | haskell-persistent | ✓ |  |  |  |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  | `elixir-ls` |
+| hocon | ✓ |  | ✓ |  |
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | hurl | ✓ |  | ✓ |  |
@@ -127,7 +128,7 @@
 | ponylang | ✓ | ✓ | ✓ |  |
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
-| protobuf | ✓ |  | ✓ | `bufls`, `pb` |
+| protobuf | ✓ | ✓ | ✓ | `bufls`, `pb` |
 | prql | ✓ |  |  |  |
 | purescript | ✓ | ✓ |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `pylsp` |
@@ -144,7 +145,7 @@
 | ruby | ✓ | ✓ | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | sage | ✓ | ✓ |  |  |
-| scala | ✓ |  | ✓ | `metals` |
+| scala | ✓ | ✓ | ✓ | `metals` |
 | scheme | ✓ |  | ✓ |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
 | slint | ✓ |  | ✓ | `slint-lsp` |
