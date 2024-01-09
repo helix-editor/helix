@@ -80,28 +80,28 @@ mod imp {
     }
 }
 
-// Licensed under MIT from faccess except for `chown` and `copy_metadata`
+// Licensed under MIT from faccess except for `chown`, `copy_metadata` and `is_acl_inherited`
 #[cfg(windows)]
 mod imp {
-    use windows::core::PCWSTR;
-    use windows::Win32::Foundation::{CloseHandle, LocalFree, BOOL, HANDLE, HLOCAL, PSID};
-    use windows::Win32::Security::Authorization::{
+
+    use windows_sys::Win32::Foundation::{CloseHandle, LocalFree, ERROR_SUCCESS, HANDLE, PSID};
+    use windows_sys::Win32::Security::Authorization::{
         GetNamedSecurityInfoW, SetNamedSecurityInfoW, SE_FILE_OBJECT,
     };
-    use windows::Win32::Security::{
+    use windows_sys::Win32::Security::{
         AccessCheck, AclSizeInformation, GetAce, GetAclInformation, GetSidIdentifierAuthority,
         ImpersonateSelf, IsValidAcl, IsValidSid, MapGenericMask, RevertToSelf,
-        SecurityImpersonation, ACCESS_ALLOWED_ACE, ACL, ACL_SIZE_INFORMATION,
+        SecurityImpersonation, ACCESS_ALLOWED_CALLBACK_ACE, ACL, ACL_SIZE_INFORMATION,
         DACL_SECURITY_INFORMATION, GENERIC_MAPPING, GROUP_SECURITY_INFORMATION, INHERITED_ACE,
         LABEL_SECURITY_INFORMATION, OBJECT_SECURITY_INFORMATION, OWNER_SECURITY_INFORMATION,
         PRIVILEGE_SET, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR,
         SID_IDENTIFIER_AUTHORITY, TOKEN_DUPLICATE, TOKEN_QUERY,
     };
-    use windows::Win32::Storage::FileSystem::{
+    use windows_sys::Win32::Storage::FileSystem::{
         FILE_ACCESS_RIGHTS, FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ,
         FILE_GENERIC_WRITE,
     };
-    use windows::Win32::System::Threading::{GetCurrentThread, OpenThreadToken};
+    use windows_sys::Win32::System::Threading::{GetCurrentThread, OpenThreadToken};
 
     use super::*;
 
@@ -118,9 +118,9 @@ mod imp {
 
     impl Drop for SecurityDescriptor {
         fn drop(&mut self) {
-            if !self.sd.0.is_null() {
+            if !self.sd.is_null() {
                 unsafe {
-                    let _ = LocalFree(HLOCAL(self.sd.0));
+                    LocalFree(self.sd);
                 }
             }
         }
@@ -134,41 +134,44 @@ mod imp {
             pathw.extend(pathos.encode_wide());
             pathw.push(0);
 
-            let mut sd = PSECURITY_DESCRIPTOR::default();
-            let mut owner = PSID::default();
-            let mut group = PSID::default();
+            let mut sd = std::ptr::null_mut();
+            let mut owner = std::ptr::null_mut();
+            let mut group = std::ptr::null_mut();
             let mut dacl = std::ptr::null_mut();
 
-            unsafe {
+            let err = unsafe {
                 GetNamedSecurityInfoW(
-                    PCWSTR::from_raw(pathw.as_ptr()),
+                    pathw.as_ptr(),
                     SE_FILE_OBJECT,
                     OWNER_SECURITY_INFORMATION
                         | GROUP_SECURITY_INFORMATION
                         | DACL_SECURITY_INFORMATION
                         | LABEL_SECURITY_INFORMATION,
-                    Some(&mut owner),
-                    Some(&mut group),
-                    Some(&mut dacl),
-                    None,
+                    &mut owner,
+                    &mut group,
+                    &mut dacl,
+                    std::ptr::null_mut(),
                     &mut sd,
-                )?
+                )
             };
 
-            Ok(SecurityDescriptor {
-                sd,
-                owner,
-                group,
-                dacl,
-            })
+            if err == ERROR_SUCCESS {
+                Ok(SecurityDescriptor {
+                    sd,
+                    owner,
+                    group,
+                    dacl,
+                })
+            } else {
+                Err(io::Error::last_os_error())
+            }
         }
 
-        fn is_acl_inherited(&self) -> std::io::Result<bool> {
-            let mut acl_info = ACL_SIZE_INFORMATION::default();
+        fn is_acl_inherited(&self) -> bool {
+            let mut acl_info: ACL_SIZE_INFORMATION = unsafe { ::core::mem::zeroed() };
             let acl_info_ptr: *mut c_void = &mut acl_info as *mut _ as *mut c_void;
-            let mut ace = ACCESS_ALLOWED_ACE::default();
+            let mut ace: ACCESS_ALLOWED_CALLBACK_ACE = unsafe { ::core::mem::zeroed() };
 
-            // Causes access violation when dacl is null. Is that UB?
             unsafe {
                 GetAclInformation(
                     self.dacl,
@@ -176,18 +179,17 @@ mod imp {
                     std::mem::size_of_val(&acl_info) as u32,
                     AclSizeInformation,
                 )
-            }?;
+            };
 
             for i in 0..acl_info.AceCount {
-                // TODO: check casting and returning result
                 let mut ptr = &mut ace as *mut _ as *mut c_void;
-                unsafe { GetAce(self.dacl, i, &mut ptr) }?;
-                if (ace.Header.AceFlags as u32 & INHERITED_ACE.0) != 0 {
-                    return Ok(true);
+                unsafe { GetAce(self.dacl, i, &mut ptr) };
+                if (ace.Header.AceFlags as u32 & INHERITED_ACE) != 0 {
+                    return true;
                 }
             }
 
-            Ok(false)
+            false
         }
 
         fn descriptor(&self) -> &PSECURITY_DESCRIPTOR {
@@ -203,7 +205,7 @@ mod imp {
     impl Drop for ThreadToken {
         fn drop(&mut self) {
             unsafe {
-                let _ = CloseHandle(self.0);
+                CloseHandle(self.0);
             }
         }
     }
@@ -211,20 +213,21 @@ mod imp {
     impl ThreadToken {
         fn new() -> io::Result<Self> {
             unsafe {
-                ImpersonateSelf(SecurityImpersonation)?;
-                let mut token = HANDLE::default();
-                let err = OpenThreadToken(
-                    GetCurrentThread(),
-                    TOKEN_DUPLICATE | TOKEN_QUERY,
-                    false,
-                    &mut token,
-                );
+                if ImpersonateSelf(SecurityImpersonation) == 0 {
+                    return Err(io::Error::last_os_error());
+                }
 
-                RevertToSelf()?;
+                let token: *mut HANDLE = std::ptr::null_mut();
+                let err =
+                    OpenThreadToken(GetCurrentThread(), TOKEN_DUPLICATE | TOKEN_QUERY, 0, token);
 
-                err?;
+                RevertToSelf();
 
-                Ok(Self(token))
+                if err == 0 {
+                    return Err(io::Error::last_os_error());
+                }
+
+                Ok(Self(*token))
             }
         }
 
@@ -263,7 +266,7 @@ mod imp {
             }
 
             return std::fs::OpenOptions::new()
-                .access_mode(mode.0)
+                .access_mode(mode)
                 .open(p)
                 .map(|_| ());
         }
@@ -277,7 +280,7 @@ mod imp {
         };
         unsafe {
             let owner = sd.owner();
-            if IsValidSid(*owner).as_bool()
+            if IsValidSid(*owner) != 0
                 && (*GetSidIdentifierAuthority(*owner)).Value == SAMBA_UNMAPPED.Value
             {
                 return Ok(());
@@ -286,44 +289,48 @@ mod imp {
 
         let token = ThreadToken::new()?;
 
-        let mut privileges: PRIVILEGE_SET = PRIVILEGE_SET::default();
+        let mut privileges: PRIVILEGE_SET = unsafe { std::mem::zeroed() };
         let mut granted_access: u32 = 0;
         let mut privileges_length = std::mem::size_of::<PRIVILEGE_SET>() as u32;
-        let mut result = BOOL(0);
+        let mut result = 0;
 
         let mut mapping = GENERIC_MAPPING {
-            GenericRead: FILE_GENERIC_READ.0,
-            GenericWrite: FILE_GENERIC_WRITE.0,
-            GenericExecute: FILE_GENERIC_EXECUTE.0,
-            GenericAll: FILE_ALL_ACCESS.0,
+            GenericRead: FILE_GENERIC_READ,
+            GenericWrite: FILE_GENERIC_WRITE,
+            GenericExecute: FILE_GENERIC_EXECUTE,
+            GenericAll: FILE_ALL_ACCESS,
         };
 
-        unsafe { MapGenericMask(&mut mode.0, &mut mapping) };
+        unsafe { MapGenericMask(&mut mode, &mut mapping) };
 
-        unsafe {
+        if unsafe {
             AccessCheck(
                 *sd.descriptor(),
                 *token.as_handle(),
-                mode.0,
+                mode,
                 &mut mapping,
-                Some(&mut privileges),
-                &mut privileges_length as *mut _,
-                &mut granted_access as *mut _,
+                &mut privileges,
+                &mut privileges_length,
+                &mut granted_access,
                 &mut result,
-            )?
-        };
-        if !result.as_bool() {
-            Err(io::Error::new(
-                io::ErrorKind::PermissionDenied,
-                "Permission Denied",
-            ))
+            )
+        } != 0
+        {
+            if result == 0 {
+                Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "Permission Denied",
+                ))
+            } else {
+                Ok(())
+            }
         } else {
-            Ok(())
+            Err(io::Error::last_os_error())
         }
     }
 
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
-        let mut imode = FILE_ACCESS_RIGHTS(0);
+        let mut imode = 0;
 
         if mode.contains(AccessMode::READ) {
             imode |= FILE_GENERIC_READ;
@@ -337,7 +344,7 @@ mod imp {
             imode |= FILE_GENERIC_EXECUTE;
         }
 
-        if imode.0 == 0 {
+        if imode == 0 {
             if p.exists() {
                 Ok(())
             } else {
@@ -355,42 +362,46 @@ mod imp {
         pathw.extend(pathos.encode_wide());
         pathw.push(0);
 
-        let mut owner = PSID::default();
-        let mut group = PSID::default();
-        let mut dacl = None;
+        let mut owner = std::ptr::null_mut();
+        let mut group = std::ptr::null_mut();
+        let mut dacl = std::ptr::null();
 
         let mut si = OBJECT_SECURITY_INFORMATION::default();
-        if unsafe { IsValidSid(sd.owner) }.as_bool() {
+        if unsafe { IsValidSid(sd.owner) } != 0 {
             si |= OWNER_SECURITY_INFORMATION;
             owner = sd.owner;
         }
 
-        if unsafe { IsValidSid(sd.group) }.as_bool() {
+        if unsafe { IsValidSid(sd.group) } != 0 {
             si |= GROUP_SECURITY_INFORMATION;
             group = sd.group;
         }
 
-        if unsafe { IsValidAcl(sd.dacl) }.as_bool() {
+        if unsafe { IsValidAcl(sd.dacl) } != 0 {
             si |= DACL_SECURITY_INFORMATION;
-            if !sd.is_acl_inherited()? {
+            if !sd.is_acl_inherited() {
                 si |= PROTECTED_DACL_SECURITY_INFORMATION;
             }
-            dacl = Some(sd.dacl as *const _);
+            dacl = sd.dacl as *const _;
         }
 
-        unsafe {
+        let err = unsafe {
             SetNamedSecurityInfoW(
-                PCWSTR::from_raw(pathw.as_ptr()),
+                pathw.as_ptr(),
                 SE_FILE_OBJECT,
                 si,
                 owner,
                 group,
                 dacl,
-                None,
-            )?;
-        }
+                std::ptr::null(),
+            )
+        };
 
-        Ok(())
+        if err == ERROR_SUCCESS {
+            Ok(())
+        } else {
+            Err(io::Error::last_os_error())
+        }
     }
 
     pub fn copy_metadata(from: &Path, to: &Path) -> std::io::Result<()> {
@@ -411,7 +422,7 @@ mod imp {
     }
 }
 
-// Licensed under MIT from faccess
+// Licensed under MIT from faccess except for `copy_metadata`
 #[cfg(not(any(unix, windows)))]
 mod imp {
     use super::*;
@@ -439,6 +450,11 @@ mod imp {
         let meta = std::fs::File::open(from)?.metadata()?;
         let perms = meta.permissions();
         std::fs::set_permissions(to, perms)?;
+
+        // TODO: Can be replaced by std::fs::FileTimes on 1.75
+        let atime = FileTime::from_last_access_time(&meta);
+        let mtime = FileTime::from_last_modification_time(&meta);
+        filetime::set_file_times(to, atime, mtime)?;
 
         Ok(())
     }
