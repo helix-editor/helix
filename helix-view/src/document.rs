@@ -938,7 +938,7 @@ impl Document {
                     // copy metadata and delete backup
                     let path_ = path.clone();
                     let _ = tokio::task::spawn_blocking(move || {
-                        let _ = copy_metadata(&backup, &path_).unwrap();
+                        let _ = copy_metadata(&backup, &path_);
                         let _ = std::fs::remove_file(backup);
                     })
                     .await;

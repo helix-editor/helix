@@ -372,10 +372,7 @@ pub fn reload_file(file: &mut NamedTempFile) -> anyhow::Result<()> {
     let f = std::fs::OpenOptions::new()
         .write(true)
         .read(true)
-        .open(&path)
-        .unwrap();
-    let file = file.as_file_mut();
-    *file = f;
-    file.sync_all()?;
+        .open(&path)?;
+    *file.as_file_mut() = f;
     Ok(())
 }
