@@ -901,24 +901,27 @@ impl Document {
             }
 
             if cfg!(any(windows, unix)) {
+                let path: Arc<Path> = path.as_path().into();
+                let path_ = path.clone();
                 let (mut tmp_file, tmp_path) = tokio::task::spawn_blocking(
                     move || -> anyhow::Result<(File, tempfile::TempPath)> {
-                        let (f, p) = tempfile::NamedTempFile::new()?.into_parts();
+                        let (f, p) = tempfile::Builder::new()
+                            .prefix(path_.file_name().unwrap())
+                            .suffix(".bck")
+                            .tempfile_in(path_.parent().unwrap())?
+                            .into_parts();
                         Ok((tokio::fs::File::from_std(f), p))
                     },
                 )
                 .await??;
                 to_writer(&mut tmp_file, encoding_with_bom_info, &text).await?;
 
-                {
-                    let path = path.clone();
-                    tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
-                        // Vim ignores errors
-                        let _ = copy_metadata(&path, &tmp_path);
-                        tmp_path.persist(path)?;
-                        Ok(())
-                    })
-                }
+                tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+                    // Vim ignores errors
+                    let _ = copy_metadata(&path, &tmp_path);
+                    tmp_path.persist(path).unwrap();
+                    Ok(())
+                })
                 .await??;
             } else {
                 let mut file = File::create(&path).await?;
