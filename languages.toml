@@ -325,7 +325,7 @@ language-servers = [ "mint" ]
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
-name = "janet-simple"
+name = "janet"
 scope = "source.janet"
 injection-regex = "janet"
 file-types = ["cgen", "janet", "jdn"]
@@ -334,6 +334,7 @@ roots = ["project.janet"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 formatter = { command = "janet-format" }
+grammar = "janet-simple"
 
 [language.auto-pairs]
 '"' = '"'
