@@ -369,7 +369,11 @@ pub fn assert_status_not_error(editor: &Editor) {
 
 pub fn reload_file(file: &mut NamedTempFile) -> anyhow::Result<()> {
     let path = file.path();
-    let f = std::fs::File::open(&path).unwrap();
+    let f = std::fs::OpenOptions::new()
+        .write(true)
+        .read(true)
+        .open(&path)
+        .unwrap();
     let file = file.as_file_mut();
     *file = f;
     file.sync_all()?;
