@@ -62,9 +62,9 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file1.as_file_mut(), &platform_line("hello1"))?;
-    helpers::assert_file_has_content(file2.as_file_mut(), &platform_line("hello2"))?;
-    helpers::assert_file_has_content(file3.as_file_mut(), &platform_line("hello3"))?;
+    helpers::assert_file_has_content(&mut file1, &platform_line("hello1"))?;
+    helpers::assert_file_has_content(&mut file2, &platform_line("hello2"))?;
+    helpers::assert_file_has_content(&mut file3, &platform_line("hello3"))?;
 
     Ok(())
 }
@@ -122,10 +122,7 @@ async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(
-        file.as_file_mut(),
-        &helpers::platform_line("hello\ngoodbye"),
-    )?;
+    helpers::assert_file_has_content(&mut file, &helpers::platform_line("hello\ngoodbye"))?;
 
     Ok(())
 }

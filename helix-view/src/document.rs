@@ -919,7 +919,7 @@ impl Document {
                 tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
                     // Vim ignores errors
                     let _ = copy_metadata(&path, &tmp_path);
-                    tmp_path.persist(path).unwrap();
+                    tmp_path.persist(path)?;
                     Ok(())
                 })
                 .await??;

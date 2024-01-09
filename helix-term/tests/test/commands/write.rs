@@ -66,7 +66,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     .await?;
 
     // verify if writes are queued up, it finishes them before closing the buffer
-    let file = tempfile::NamedTempFile::new()?;
+    let mut file = tempfile::NamedTempFile::new()?;
     let mut command = String::new();
     const RANGE: RangeInclusive<i32> = 1..=1000;
 
@@ -93,7 +93,6 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
         false,
     )
     .await?;
-    let (mut file, _) = reload_file(file);
 
     helpers::assert_file_has_content(&mut file, &platform_line(&RANGE.end().to_string()))?;
 
@@ -102,7 +101,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write() -> anyhow::Result<()> {
-    let file = tempfile::NamedTempFile::new()?;
+    let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
         .build()?;
@@ -115,9 +114,9 @@ async fn test_write() -> anyhow::Result<()> {
     )
     .await?;
 
-    let (mut file, _) = reload_file(file);
+    reload_file(&mut file).unwrap();
     let mut file_content = String::new();
-    file.read_to_string(&mut file_content)?;
+    file.as_file_mut().read_to_string(&mut file_content)?;
 
     assert_eq!(
         helpers::platform_line("the gostak distims the doshes"),
@@ -144,7 +143,7 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
 
     test_key_sequence(&mut app, Some(":x<ret>"), None, false).await?;
 
-    let (mut file, _) = reload_file(file);
+    reload_file(&mut file).unwrap();
     let mut file_content = String::new();
     file.read_to_string(&mut file_content)?;
 
@@ -158,7 +157,7 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit() -> anyhow::Result<()> {
-    let file = tempfile::NamedTempFile::new()?;
+    let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
         .build()?;
@@ -171,7 +170,7 @@ async fn test_write_quit() -> anyhow::Result<()> {
     )
     .await?;
 
-    let (mut file, _) = reload_file(file);
+    reload_file(&mut file).unwrap();
 
     let mut file_content = String::new();
     file.read_to_string(&mut file_content)?;
@@ -186,7 +185,7 @@ async fn test_write_quit() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_concurrent() -> anyhow::Result<()> {
-    let file = tempfile::NamedTempFile::new()?;
+    let mut file = tempfile::NamedTempFile::new()?;
     let mut command = String::new();
     const RANGE: RangeInclusive<i32> = 1..=1000;
     let mut app = helpers::AppBuilder::new()
@@ -200,7 +199,7 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
 
     test_key_sequence(&mut app, Some(&command), None, false).await?;
 
-    let (mut file, _) = reload_file(file);
+    reload_file(&mut file).unwrap();
     let mut file_content = String::new();
     file.read_to_string(&mut file_content)?;
     assert_eq!(platform_line(&RANGE.end().to_string()), file_content);
@@ -251,7 +250,7 @@ async fn test_write_fail_mod_flag() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
-    let file = tempfile::NamedTempFile::new()?;
+    let mut file = tempfile::NamedTempFile::new()?;
 
     test_key_sequence(
         &mut AppBuilder::new().build()?,
@@ -269,7 +268,6 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
     )
     .await?;
 
-    let (mut file, _) = reload_file(file);
     helpers::assert_file_has_content(&mut file, &helpers::platform_line("hello"))?;
 
     Ok(())
@@ -298,7 +296,7 @@ async fn test_write_scratch_no_path_fails() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
-    let file = tempfile::Builder::new().suffix(".rs").tempfile()?;
+    let mut file = tempfile::Builder::new().suffix(".rs").tempfile()?;
 
     let lang_conf = indoc! {r#"
             [[language]]
@@ -314,7 +312,6 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
 
     test_key_sequences(&mut app, vec![(Some(":w<ret>"), None)], false).await?;
 
-    let (mut file, _) = reload_file(file);
     // file still saves
     helpers::assert_file_has_content(&mut file, "let foo = 0;\n")?;
 
@@ -323,8 +320,8 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_new_path() -> anyhow::Result<()> {
-    let file1 = tempfile::NamedTempFile::new().unwrap();
-    let file2 = tempfile::NamedTempFile::new().unwrap();
+    let mut file1 = tempfile::NamedTempFile::new().unwrap();
+    let mut file2 = tempfile::NamedTempFile::new().unwrap();
     let mut app = helpers::AppBuilder::new()
         .with_file(file1.path(), None)
         .build()?;
@@ -354,8 +351,6 @@ async fn test_write_new_path() -> anyhow::Result<()> {
     )
     .await?;
 
-    let (mut file1, _) = reload_file(file1);
-    let (mut file2, _) = reload_file(file2);
     helpers::assert_file_has_content(
         &mut file1,
         &helpers::platform_line("i can eat glass, it will not hurt me\n"),
@@ -424,7 +419,7 @@ async fn test_write_utf_bom_file() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_insert_final_newline_added_if_missing() -> anyhow::Result<()> {
-    let file = tempfile::NamedTempFile::new()?;
+    let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
         .with_input_text("#[h|]#ave you tried chamomile tea?")
@@ -432,7 +427,6 @@ async fn test_write_insert_final_newline_added_if_missing() -> anyhow::Result<()
 
     test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
 
-    let (mut file, _) = reload_file(file);
     helpers::assert_file_has_content(
         &mut file,
         &helpers::platform_line("have you tried chamomile tea?\n"),
@@ -443,7 +437,7 @@ async fn test_write_insert_final_newline_added_if_missing() -> anyhow::Result<()
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_insert_final_newline_unchanged_if_not_missing() -> anyhow::Result<()> {
-    let file = tempfile::NamedTempFile::new()?;
+    let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
         .with_input_text(&helpers::platform_line("#[t|]#en minutes, please\n"))
@@ -451,7 +445,6 @@ async fn test_write_insert_final_newline_unchanged_if_not_missing() -> anyhow::R
 
     test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
 
-    let (mut file, _) = reload_file(file);
     helpers::assert_file_has_content(&mut file, &helpers::platform_line("ten minutes, please\n"))?;
 
     Ok(())
@@ -459,7 +452,7 @@ async fn test_write_insert_final_newline_unchanged_if_not_missing() -> anyhow::R
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_insert_final_newline_unchanged_if_missing_and_false() -> anyhow::Result<()> {
-    let file = tempfile::NamedTempFile::new()?;
+    let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
         .with_config(Config {
             editor: helix_view::editor::Config {
@@ -474,7 +467,7 @@ async fn test_write_insert_final_newline_unchanged_if_missing_and_false() -> any
 
     test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
 
-    let (mut file, _) = reload_file(file);
+    reload_file(&mut file).unwrap();
     helpers::assert_file_has_content(&mut file, "the quiet rain continued through the night")?;
 
     Ok(())
@@ -482,8 +475,8 @@ async fn test_write_insert_final_newline_unchanged_if_missing_and_false() -> any
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_all_insert_final_newline_add_if_missing_and_modified() -> anyhow::Result<()> {
-    let file1 = tempfile::NamedTempFile::new()?;
-    let file2 = tempfile::NamedTempFile::new()?;
+    let mut file1 = tempfile::NamedTempFile::new()?;
+    let mut file2 = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
         .with_file(file1.path(), None)
         .with_input_text("#[w|]#e don't serve time travelers here")
@@ -500,8 +493,6 @@ async fn test_write_all_insert_final_newline_add_if_missing_and_modified() -> an
     )
     .await?;
 
-    let (mut file1, _) = reload_file(file1);
-    let (mut file2, _) = reload_file(file2);
     helpers::assert_file_has_content(
         &mut file1,
         &helpers::platform_line("we don't serve time travelers here\n"),
@@ -527,7 +518,7 @@ async fn test_write_all_insert_final_newline_do_not_add_if_unmodified() -> anyho
 
     test_key_sequence(&mut app, Some(":wa<ret>"), None, false).await?;
 
-    helpers::assert_file_has_content(file.as_file_mut(), "i lost on Jeopardy!")?;
+    helpers::assert_file_has_content(&mut file, "i lost on Jeopardy!")?;
 
     Ok(())
 }
@@ -553,7 +544,7 @@ async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     )
     .await?;
 
-    let (mut file, _) = reload_file(file);
+    reload_file(&mut file).unwrap();
     let mut new_file_content: Vec<u8> = Vec::new();
     file.read_to_end(&mut new_file_content)?;
 
