@@ -1090,6 +1090,7 @@ impl Syntax {
                 start_point: Point::new(0, 0),
                 end_point: Point::new(usize::MAX, usize::MAX),
             }],
+            parent: None,
         };
 
         // track scope_descriptor: a Vec of scopes for item in tree
@@ -1360,6 +1361,7 @@ impl Syntax {
                         depth,
                         ranges,
                         flags: LayerUpdateFlags::empty(),
+                        parent: Some(layer_id),
                     };
 
                     // Find an identical existing layer
@@ -1525,6 +1527,7 @@ pub struct LanguageLayer {
     pub ranges: Vec<Range>,
     pub depth: u32,
     flags: LayerUpdateFlags,
+    parent: Option<LayerId>,
 }
 
 /// This PartialEq implementation only checks if that
