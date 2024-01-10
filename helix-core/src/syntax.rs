@@ -1338,6 +1338,23 @@ impl Syntax {
         result
     }
 
+    pub fn descendant_for_byte_range(&self, start: usize, end: usize) -> Option<Node<'_>> {
+        let mut container_id = self.root;
+
+        for (layer_id, layer) in self.layers.iter() {
+            if layer.depth > self.layers[container_id].depth
+                && layer.contains_byte_range(start, end)
+            {
+                container_id = layer_id;
+            }
+        }
+
+        self.layers[container_id]
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(start, end)
+    }
+
     // Commenting
     // comment_strings_for_pos
     // is_commented
@@ -1433,6 +1450,32 @@ impl LanguageLayer {
         // unsafe { ts_parser.parser.set_cancellation_flag(None) };
         self.tree = Some(tree);
         Ok(())
+    }
+
+    /// Whether the layer contains the given byte range.
+    ///
+    /// If the layer has multiple ranges (i.e. combined injections), the
+    /// given range is considered contained if it is within the start and
+    /// end bytes of the first and last ranges **and** if the given range
+    /// starts or ends within any of the layer's ranges.
+    fn contains_byte_range(&self, start: usize, end: usize) -> bool {
+        let layer_start = self
+            .ranges
+            .first()
+            .expect("ranges should not be empty")
+            .start_byte;
+        let layer_end = self
+            .ranges
+            .last()
+            .expect("ranges should not be empty")
+            .end_byte;
+
+        layer_start <= start
+            && layer_end >= end
+            && self.ranges.iter().any(|range| {
+                let byte_range = range.start_byte..range.end_byte;
+                byte_range.contains(&start) || byte_range.contains(&end)
+            })
     }
 }
 
