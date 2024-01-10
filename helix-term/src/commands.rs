@@ -4065,13 +4065,13 @@ fn yank_main_selection_to_primary_clipboard(cx: &mut Context) {
 }
 
 #[derive(Copy, Clone)]
-enum Paste {
+pub enum Paste {
     Before,
     After,
     Cursor,
 }
 
-fn paste_impl(
+pub fn paste_impl(
     values: &[String],
     doc: &mut Document,
     view: &mut View,

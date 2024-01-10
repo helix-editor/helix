@@ -10,9 +10,14 @@ use tui::{
 
 use helix_core::Position;
 use helix_view::{
+    editor::Action,
     graphics::{Margin, Rect},
     Editor,
 };
+
+use crate::commands::{paste_impl, Paste};
+
+use std::path::Path;
 
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)
@@ -206,6 +211,28 @@ impl<T: Component> Component for Popup<T> {
             ctrl!('u') => {
                 self.scroll(self.size.1 as usize / 2, false);
                 EventResult::Consumed(None)
+            }
+            ctrl!('o') => {
+                // open a new buffer to show the popup content
+                cx.editor.new_file(Action::Replace);
+                // what content to display in the new buffer
+                // TODO: how can we meaningfully stringify the content of a Popup? for now dummy
+                let stringified = "what to display".to_string();
+                // put the content in the new buffer
+                let (view, doc) = current!(cx.editor);
+                paste_impl(&[stringified], doc, view, Paste::Before, 1, cx.editor.mode);
+                // put a meaningful title
+                // TODO: get a meaningful buffer title
+                let buffername = "dummy_for_now";
+                let buffername = Some(Path::new(buffername));
+                doc.set_path(buffername);
+                // TODO: put a meaningful coloring scheme...
+                // pretend that this buffer is up to date and has no changes: allow to just :bc when finished exporing, no need to :bc!, and no saving to disk happening after browsing around
+                doc.set_last_saved_revision(1);
+                // close the popup since we just opened it in a new buffer
+                let _ = self.contents.handle_event(event, cx);
+                // ready to move on :)
+                EventResult::Consumed(Some(close_fn))
             }
             _ => {
                 let contents_event_result = self.contents.handle_event(event, cx);
