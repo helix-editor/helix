@@ -8,10 +8,7 @@ fn main() {
     }
 
     #[cfg(windows)]
-    if cfg!(target_os = "windows") {
-        let icon_path = "../contrib/helix-256p.ico";
-        windows_rc::link_icon_in_windows_exe(&icon_path);
-    }
+    windows_rc::link_icon_in_windows_exe("../contrib/helix-256p.ico");
 }
 
 #[cfg(windows)]
@@ -19,7 +16,6 @@ mod windows_rc {
     use std::io::prelude::Write;
     use std::{env, io, path::Path, path::PathBuf, process};
 
-    #[cfg(windows)]
     pub(crate) fn link_icon_in_windows_exe(icon_path: &str) {
         let rc_exe = find_rc_exe().expect("Windows SDK is to be installed along with MSVC");
 
