@@ -3029,15 +3029,6 @@ name = "log"
 source = { git = "https://github.com/Tudyx/tree-sitter-log", rev = "62cfe307e942af3417171243b599cc7deac5eab9" }
 
 [[language]]
-name = "janet"
-scope = "source.janet"
-injection-regex = "janet"
-file-types = ["janet"]
-comment-token = "#"
-indent = { tab-width = 2, unit = "  " }
-grammar = "clojure"
-
-[[language]]
 name = "hocon"
 scope = "source.conf"
 file-types = ["conf"]
