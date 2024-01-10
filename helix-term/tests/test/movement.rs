@@ -635,3 +635,60 @@ async fn test_surround_delete() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn tree_sitter_motions_work_across_injections() -> anyhow::Result<()> {
+    test_with_config(
+        AppBuilder::new().with_file("foo.html", None),
+        (
+            "<script>let #[|x]# = 1;</script>",
+            "<A-o>",
+            "<script>let #[|x = 1]#;</script>",
+        ),
+    )
+    .await?;
+
+    // When the full injected layer is selected, expand_selection jumps to
+    // a more shallow layer.
+    test_with_config(
+        AppBuilder::new().with_file("foo.html", None),
+        (
+            "<script>#[|let x = 1;]#</script>",
+            "<A-o>",
+            "#[|<script>let x = 1;</script>]#",
+        ),
+    )
+    .await?;
+
+    test_with_config(
+        AppBuilder::new().with_file("foo.html", None),
+        (
+            "<script>let #[|x = 1]#;</script>",
+            "<A-i>",
+            "<script>let #[|x]# = 1;</script>",
+        ),
+    )
+    .await?;
+
+    test_with_config(
+        AppBuilder::new().with_file("foo.html", None),
+        (
+            "<script>let #[|x]# = 1;</script>",
+            "<A-n>",
+            "<script>let x #[|=]# 1;</script>",
+        ),
+    )
+    .await?;
+
+    test_with_config(
+        AppBuilder::new().with_file("foo.html", None),
+        (
+            "<script>let #[|x]# = 1;</script>",
+            "<A-p>",
+            "<script>#[|let]# x = 1;</script>",
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
