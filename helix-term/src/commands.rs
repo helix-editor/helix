@@ -26,7 +26,6 @@ use helix_core::{
     syntax::{BlockCommentToken, LanguageServerFeature},
     text_annotations::TextAnnotations,
     textobject,
-    tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
     RopeReader, RopeSlice, Selection, SmallVec, Tendril, Transaction,
@@ -4775,18 +4774,17 @@ fn shrink_selection(cx: &mut Context) {
     cx.editor.apply_motion(motion);
 }
 
-fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: &'static F)
+fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: F)
 where
-    F: Fn(Node) -> Option<Node>,
+    F: Fn(&helix_core::Syntax, RopeSlice, Selection) -> Selection + 'static,
 {
-    let motion = |editor: &mut Editor| {
+    let motion = move |editor: &mut Editor| {
         let (view, doc) = current!(editor);
 
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
             let current_selection = doc.selection(view.id);
-            let selection =
-                object::select_sibling(syntax, text, current_selection.clone(), sibling_fn);
+            let selection = sibling_fn(syntax, text, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
@@ -4794,11 +4792,11 @@ where
 }
 
 fn select_next_sibling(cx: &mut Context) {
-    select_sibling_impl(cx, &|node| Node::next_sibling(&node))
+    select_sibling_impl(cx, object::select_next_sibling)
 }
 
 fn select_prev_sibling(cx: &mut Context) {
-    select_sibling_impl(cx, &|node| Node::prev_sibling(&node))
+    select_sibling_impl(cx, object::select_prev_sibling)
 }
 
 fn move_node_bound_impl(cx: &mut Context, dir: Direction, movement: Movement) {
