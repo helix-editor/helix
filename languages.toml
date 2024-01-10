@@ -504,6 +504,18 @@ name = "cel"
 source = { git = "https://github.com/bufbuild/tree-sitter-cel", rev = "9f2b65da14c216df53933748e489db0f11121464" }
 
 [[language]]
+name = "spicedb"
+scope = "source.zed"
+injection-regex = "spicedb"
+file-types = ["zed"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "spicedb"
+source = { git = "https://github.com/jzelinskie/tree-sitter-spicedb", rev = "04ea9c294b3e20f9e3433114fa138cc20dc92770" }
+
+[[language]]
 name = "go"
 scope = "source.go"
 injection-regex = "go"
