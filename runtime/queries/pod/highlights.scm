@@ -7,7 +7,7 @@
 (command_paragraph
   (command) @keyword
   (#match? @keyword "^=head")
-  (content) @text.title)
+  (content) @markup.title)
 
 (command_paragraph
   (command) @keyword
@@ -17,7 +17,7 @@
 (command_paragraph
   (command) @keyword
   (#match? @keyword "^=item")
-  (content) @text)
+  (content) @markup)
 
 (command_paragraph
   (command) @keyword
@@ -29,7 +29,7 @@
   (#not-match? @keyword "^=(head|over|item|encoding)")
   (content) @string)
 
-(verbatim_paragraph (content) @text.literal)
+(verbatim_paragraph (content) @markup.raw)
 
 (interior_sequence
   (sequence_letter) @character
@@ -39,32 +39,32 @@
 (interior_sequence
   (sequence_letter) @character
   (#eq? @character "B")
-  (content) @text.strong)
+  (content) @markup.strong)
 
 (interior_sequence
   (sequence_letter) @character
   (#eq? @character "C")
-  (content) @text.literal)
+  (content) @markup.literal)
 
 (interior_sequence
   (sequence_letter) @character
   (#eq? @character "F")
-  (content) @text.underline @string.special)
+  (content) @markup.underline @string.special)
 
 (interior_sequence
   (sequence_letter) @character
   (#eq? @character "I")
-  (content) @text.emphasis)
+  (content) @markup.emphasis)
 
 (interior_sequence
   (sequence_letter) @character
   (#eq? @character "L")
-  (content) @text.uri)
+  (content) @markup.uri)
 
 (interior_sequence
   (sequence_letter) @character
   (#eq? @character "X")
-  (content) @text.reference)
+  (content) @markup.reference)
 
 (interior_sequence
   (sequence_letter) @character
