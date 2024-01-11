@@ -14,12 +14,6 @@
 
 (comment) @comment
 
-(quote_lit
- (sym_lit) @symbol)
-
-(qq_lit
- (sym_lit) @symbol)
-
 ((sym_lit) @variable
  (#match? @variable "^\\*.+\\*$"))
 
