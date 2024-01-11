@@ -5431,20 +5431,12 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
     let count = cx.count();
     let motion = move |editor: &mut Editor| {
         let (view, doc) = current!(editor);
-        if let Some((lang_config, syntax)) = doc.language_config().zip(doc.syntax()) {
+        if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-            let root = syntax.tree().root_node();
 
             let selection = doc.selection(view.id).clone().transform(|range| {
-                let new_range = movement::goto_treesitter_object(
-                    text,
-                    range,
-                    object,
-                    direction,
-                    root,
-                    lang_config,
-                    count,
-                );
+                let new_range =
+                    movement::goto_treesitter_object(syntax, text, range, object, direction, count);
 
                 if editor.mode == Mode::Select {
                     let head = if new_range.head < range.anchor {
@@ -5534,19 +5526,10 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 let text = doc.text().slice(..);
 
                 let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
-                    let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
-                        Some(t) => t,
-                        None => return range,
+                    let Some(syntax) = doc.syntax() else {
+                        return range;
                     };
-                    textobject::textobject_treesitter(
-                        text,
-                        range,
-                        objtype,
-                        obj_name,
-                        syntax.tree().root_node(),
-                        lang_config,
-                        count,
-                    )
+                    textobject::textobject_treesitter(syntax, text, range, objtype, obj_name, count)
                 };
 
                 if ch == 'g' && doc.diff_handle().is_none() {
