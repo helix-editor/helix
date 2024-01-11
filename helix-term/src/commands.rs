@@ -1191,9 +1191,9 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         };
 
         let path = {
-            let start = {
-                let cursor_pos = primary.cursor(text.slice(..));
+            let cursor_pos = primary.cursor(text.slice(..));
 
+            let start = {
                 let pre_cursor_pos = cursor_pos.saturating_sub(1);
                 let post_cursor_pos = cursor_pos.saturating_add(1);
 
@@ -1206,18 +1206,15 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
                 }
             };
 
-            let head = start
+            let prefix_len = start
                 .clone()
                 .reversed()
                 .take_while(is_valid_path_char)
-                .collect::<String>()
-                .chars()
-                .rev()
-                .collect::<String>();
+                .count();
 
-            let tail = start.take_while(is_valid_path_char).collect::<String>();
-
-            format!("{}{}", head, tail)
+            let postfix_len = start.take_while(is_valid_path_char).count();
+            let path = text.slice((cursor_pos - prefix_len)..(cursor_pos + postfix_len));
+            Cow::Borrowed(path.as_str().unwrap())
         };
         log::debug!("Goto file path: {}", path);
 
