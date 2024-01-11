@@ -17,6 +17,7 @@ integration = []
 
 [dependencies]
 helix-loader = { path = "../helix-loader" }
+helix-config = { path = "../helix-config" }
 
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 smallvec = "1.11"
@@ -51,6 +52,8 @@ textwrap = "0.16.0"
 
 nucleo.workspace = true
 parking_lot = "0.12"
+anyhow = "1.0.79"
+indexmap = { version = "2.1.0", features = ["serde"] }
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }

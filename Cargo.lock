@@ -1048,6 +1048,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "helix-config"
+version = "23.10.0"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "hashbrown 0.14.3",
+ "indexmap",
+ "parking_lot",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "helix-core"
 version = "23.10.0"
 dependencies = [
@@ -1059,6 +1072,7 @@ dependencies = [
  "encoding_rs",
  "etcetera",
  "hashbrown 0.14.3",
+ "helix-config",
  "helix-loader",
  "imara-diff",
  "indoc",
@@ -1132,6 +1146,7 @@ dependencies = [
  "futures-executor",
  "futures-util",
  "globset",
+ "helix-config",
  "helix-core",
  "helix-loader",
  "helix-parsec",
