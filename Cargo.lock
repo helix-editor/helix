@@ -62,9 +62,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.78"
+version = "1.0.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca87830a3e3fb156dc96cfbd31cb620265dd053be734723f22b760d6cc3c3051"
+checksum = "080e9890a082662b09c1ad45f567faeeb47f22b5fb23895fbe1e651e718e25ca"
 
 [[package]]
 name = "arc-swap"
@@ -1069,6 +1069,7 @@ name = "helix-core"
 version = "23.10.0"
 dependencies = [
  "ahash",
+ "anyhow",
  "arc-swap",
  "bitflags 2.4.1",
  "chrono",
@@ -1079,6 +1080,7 @@ dependencies = [
  "helix-config",
  "helix-loader",
  "imara-diff",
+ "indexmap",
  "indoc",
  "log",
  "nucleo",
@@ -1147,6 +1149,7 @@ dependencies = [
 name = "helix-lsp"
 version = "23.10.0"
 dependencies = [
+ "ahash",
  "anyhow",
  "futures-executor",
  "futures-util",
@@ -1155,6 +1158,7 @@ dependencies = [
  "helix-core",
  "helix-loader",
  "helix-parsec",
+ "indexmap",
  "log",
  "lsp-types",
  "parking_lot",
@@ -1358,12 +1362,13 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5477fe2230a79769d8dc68e0eabf5437907c0457a5614a9e8dddb67f65eb65d"
+checksum = "d530e1a18b1cb4c484e6e34556a0d948706958449fca0cab753d649f2bce3d1f"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.3",
+ "serde",
 ]
 
 [[package]]

@@ -699,7 +699,7 @@ impl Application {
                         // Trigger a workspace/didChangeConfiguration notification after initialization.
                         // This might not be required by the spec but Neovim does this as well, so it's
                         // probably a good idea for compatibility.
-                        if let Some(config) = language_server.config() {
+                        if let Some(config) = language_server.config().as_deref() {
                             tokio::spawn(language_server.did_change_configuration(config.clone()));
                         }
 
@@ -1023,7 +1023,8 @@ impl Application {
                             .items
                             .iter()
                             .map(|item| {
-                                let mut config = language_server.config()?;
+                                let config = language_server.config();
+                                let mut config = config.as_deref()?;
                                 if let Some(section) = item.section.as_ref() {
                                     // for some reason some lsps send an empty string (observed in 'vscode-eslint-language-server')
                                     if !section.is_empty() {
@@ -1032,7 +1033,7 @@ impl Application {
                                         }
                                     }
                                 }
-                                Some(config)
+                                Some(config.to_owned())
                             })
                             .collect();
                         Ok(json!(result))

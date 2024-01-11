@@ -1,4 +1,5 @@
 mod client;
+mod config;
 pub mod file_event;
 pub mod jsonrpc;
 pub mod snippet;
@@ -11,6 +12,7 @@ pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
+use helix_config::OptionRegistry;
 use helix_core::{
     path,
     syntax::{LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures},
@@ -25,6 +27,8 @@ use std::{
 
 use thiserror::Error;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+
+use crate::config::init_config;
 
 pub type Result<T> = core::result::Result<T, Error>;
 pub type LanguageServerName = String;
@@ -636,17 +640,25 @@ pub struct Registry {
     counter: usize,
     pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
     pub file_event_handler: file_event::Handler,
+    pub config: OptionRegistry,
 }
 
 impl Registry {
     pub fn new(syn_loader: Arc<helix_core::syntax::Loader>) -> Self {
-        Self {
+        let mut res = Self {
             inner: HashMap::new(),
             syn_loader,
             counter: 0,
             incoming: SelectAll::new(),
             file_event_handler: file_event::Handler::new(),
-        }
+            config: OptionRegistry::new(),
+        };
+        res.reset_config();
+        res
+    }
+
+    pub fn reset_config(&mut self) {
+        init_config(&mut self.config);
     }
 
     pub fn get_by_id(&self, id: usize) -> Option<&Client> {
@@ -882,15 +894,11 @@ fn start_client(
     enable_snippets: bool,
 ) -> Result<NewClient> {
     let (client, incoming, initialize_notify) = Client::start(
-        &ls_config.command,
-        &ls_config.args,
-        ls_config.config.clone(),
-        ls_config.environment.clone(),
+        todo!(),
         &config.roots,
         config.workspace_lsp_roots.as_deref().unwrap_or(root_dirs),
         id,
         name,
-        ls_config.timeout,
         doc_path,
     )?;
 

@@ -1,9 +1,12 @@
 use crate::{
+    config::LanguageServerConfig,
     find_lsp_workspace, jsonrpc,
     transport::{Payload, Transport},
     Call, Error, OffsetEncoding, Result,
 };
 
+use anyhow::Context;
+use helix_config::{self as config, OptionManager};
 use helix_core::{find_workspace, path, syntax::LanguageServerFeature, ChangeSet, Rope};
 use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp::{
@@ -13,15 +16,14 @@ use lsp::{
 };
 use lsp_types as lsp;
 use parking_lot::Mutex;
-use serde::Deserialize;
 use serde_json::Value;
 use std::future::Future;
+use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
 };
-use std::{collections::HashMap, path::PathBuf};
 use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},
@@ -50,13 +52,11 @@ pub struct Client {
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
-    config: Option<Value>,
     root_path: std::path::PathBuf,
     root_uri: Option<lsp::Url>,
     workspace_folders: Mutex<Vec<lsp::WorkspaceFolder>>,
     initialize_notify: Arc<Notify>,
-    /// workspace folders added while the server is still initializing
-    req_timeout: u64,
+    config: Arc<OptionManager>,
 }
 
 impl Client {
@@ -170,23 +170,20 @@ impl Client {
 
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
     pub fn start(
-        cmd: &str,
-        args: &[String],
-        config: Option<Value>,
-        server_environment: HashMap<String, String>,
+        config: Arc<OptionManager>,
         root_markers: &[String],
         manual_roots: &[PathBuf],
         id: usize,
         name: String,
-        req_timeout: u64,
         doc_path: Option<&std::path::PathBuf>,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         // Resolve path to the binary
-        let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
+        let cmd = which::which(config.command().as_deref().context("no command defined")?)
+            .map_err(|err| anyhow::anyhow!(err))?;
 
         let process = Command::new(cmd)
-            .envs(server_environment)
-            .args(args)
+            .envs(config.enviorment().iter().map(|(k, v)| (&**k, &**v)))
+            .args(config.args().iter().map(|v| &**v))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -233,7 +230,6 @@ impl Client {
             request_counter: AtomicU64::new(0),
             capabilities: OnceCell::new(),
             config,
-            req_timeout,
             root_path,
             root_uri,
             workspace_folders: Mutex::new(workspace_folders),
@@ -374,8 +370,8 @@ impl Client {
             .unwrap_or_default()
     }
 
-    pub fn config(&self) -> Option<&Value> {
-        self.config.as_ref()
+    pub fn config(&self) -> config::Guard<Option<Box<Value>>> {
+        self.config.server_config()
     }
 
     pub async fn workspace_folders(
@@ -404,7 +400,7 @@ impl Client {
     where
         R::Params: serde::Serialize,
     {
-        self.call_with_timeout::<R>(params, self.req_timeout)
+        self.call_with_timeout::<R>(params, self.config.timeout())
     }
 
     fn call_with_timeout<R: lsp::request::Request>(
@@ -512,7 +508,7 @@ impl Client {
     // -------------------------------------------------------------------------------------------
 
     pub(crate) async fn initialize(&self, enable_snippets: bool) -> Result<lsp::InitializeResult> {
-        if let Some(config) = &self.config {
+        if let Some(config) = &*self.config() {
             log::info!("Using custom LSP config: {}", config);
         }
 
@@ -524,7 +520,7 @@ impl Client {
             // clients will prefer _uri if possible
             root_path: self.root_path.to_str().map(|path| path.to_owned()),
             root_uri: self.root_uri.clone(),
-            initialization_options: self.config.clone(),
+            initialization_options: self.config().as_deref().cloned(),
             capabilities: lsp::ClientCapabilities {
                 workspace: Some(lsp::WorkspaceClientCapabilities {
                     configuration: Some(true),
@@ -1152,17 +1148,12 @@ impl Client {
         };
 
         // merge FormattingOptions with 'config.format'
-        let config_format = self
-            .config
-            .as_ref()
-            .and_then(|cfg| cfg.get("format"))
-            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
-
-        let options = if let Some(mut properties) = config_format {
+        let mut config_format = self.config.format();
+        let options = if !config_format.is_empty() {
             // passed in options take precedence over 'config.format'
-            properties.extend(options.properties);
+            config_format.extend(options.properties);
             lsp::FormattingOptions {
-                properties,
+                properties: config_format,
                 ..options
             }
         } else {
