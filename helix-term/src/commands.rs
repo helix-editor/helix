@@ -1190,35 +1190,37 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             valid_chars.contains(c) || c.is_alphabetic()
         };
 
-        let cursor_pos = primary.cursor(text.slice(..));
-
-        let start = {
+        let start_pos = {
+            let cursor_pos = primary.cursor(text.slice(..));
             let pre_cursor_pos = cursor_pos.saturating_sub(1);
             let post_cursor_pos = cursor_pos.saturating_add(1);
 
             if is_valid_path_char(&text.char(cursor_pos)) {
-                text.chars_at(cursor_pos)
+                cursor_pos
             } else if is_valid_path_char(&text.char(pre_cursor_pos)) {
-                text.chars_at(pre_cursor_pos)
+                pre_cursor_pos
             } else {
-                text.chars_at(post_cursor_pos)
+                post_cursor_pos
             }
         };
 
-        let prefix_len = start
+        let prefix_len = text
+            .chars_at(start_pos)
             .clone()
             .reversed()
             .take_while(is_valid_path_char)
             .count();
 
-        let postfix_len = start.take_while(is_valid_path_char).count();
+        let postfix_len = text
+            .chars_at(start_pos)
+            .take_while(is_valid_path_char)
+            .count();
 
         let path = Cow::Borrowed(
-            text.slice((cursor_pos - prefix_len)..(cursor_pos + postfix_len))
+            text.slice((start_pos - prefix_len)..(start_pos + postfix_len))
                 .as_str()
                 .unwrap(),
         );
-
         log::debug!("Goto file path: {}", path);
 
         match shellexpand::full(&path) {
