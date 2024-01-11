@@ -12,7 +12,7 @@
 (command_paragraph
   (command) @keyword
   (#match? @keyword "^=over")
-  (content) @number)
+  (content) @constant.numeric)
 
 (command_paragraph
   (command) @keyword
@@ -32,14 +32,14 @@
 (verbatim_paragraph (content) @markup.raw)
 
 (interior_sequence
-  (sequence_letter) @character
+  (sequence_letter) @constant.character
   ["<" ">"] @punctuation.delimiter
 )
 
 (interior_sequence
   (sequence_letter) @character
   (#eq? @character "B")
-  (content) @markup.strong)
+  (content) @markup.bold)
 
 (interior_sequence
   (sequence_letter) @character
@@ -54,12 +54,12 @@
 (interior_sequence
   (sequence_letter) @character
   (#eq? @character "I")
-  (content) @markup.emphasis)
+  (content) @markup.bold)
 
 (interior_sequence
   (sequence_letter) @character
   (#eq? @character "L")
-  (content) @markup.uri)
+  (content) @markup.link.url)
 
 (interior_sequence
   (sequence_letter) @character
