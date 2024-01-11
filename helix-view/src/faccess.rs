@@ -58,14 +58,16 @@ mod imp {
     }
 
     pub fn copy_metadata(from: &Path, to: &Path) -> anyhow::Result<()> {
-        let meta = std::fs::File::open(from)?.metadata()?;
-        let uid = meta.gid();
-        let gid = meta.uid();
-        chown(to, Some(uid), Some(gid))?;
+        let from_meta = std::fs::metadata(from)?;
+        let to_meta = std::fs::metadata(to)?;
+        let from_gid = from_meta.gid();
+        let to_gid = to_meta.gid();
 
-        let mut perms = meta.permissions();
-        let new_perms = (perms.mode() & 0o0707) | (perms.mode() & 0o07) << 3;
-        perms.set_mode(new_perms);
+        let mut perms = from_meta.permissions();
+        if from_gid != to_gid && chown(to, None, Some(from_gid)).is_err() {
+            let new_perms = (perms.mode() & 0o0707) | ((perms.mode() & 0o07) << 3);
+            perms.set_mode(new_perms);
+        }
 
         std::fs::set_permissions(to, perms)?;
 
@@ -401,7 +403,7 @@ mod imp {
         let sd = SecurityDescriptor::for_path(from)?;
         chown(to, sd)?;
 
-        let meta = std::fs::File::open(from)?.metadata()?;
+        let meta = std::fs::metadata(from)?;
         let perms = meta.permissions();
 
         std::fs::set_permissions(to, perms)?;
@@ -435,7 +437,7 @@ mod imp {
     }
 
     pub fn copy_metadata(from: &path, to: &Path) -> std::io::Result<()> {
-        let meta = std::fs::File::open(from)?.metadata()?;
+        let meta = std::fs::metadata(from)?;
         let perms = meta.permissions();
         std::fs::set_permissions(to, perms)?;
 
