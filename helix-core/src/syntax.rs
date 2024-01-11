@@ -93,7 +93,7 @@ impl Default for Configuration {
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
     #[serde(rename = "name")]
-    pub language_id: String, // c-sharp, rust, tsx
+    pub language_name: String, // c-sharp, rust, tsx
     #[serde(rename = "language-id")]
     // see the table under https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentItem
     pub language_server_language_id: Option<String>, // csharp, rust, typescriptreact, for the language-server
@@ -636,21 +636,21 @@ pub fn read_query(language: &str, filename: &str) -> String {
 
 impl LanguageConfiguration {
     fn initialize_highlight(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
-        let highlights_query = read_query(&self.language_id, "highlights.scm");
+        let highlights_query = read_query(&self.language_name, "highlights.scm");
         // always highlight syntax errors
         // highlights_query += "\n(ERROR) @error";
 
-        let injections_query = read_query(&self.language_id, "injections.scm");
-        let locals_query = read_query(&self.language_id, "locals.scm");
+        let injections_query = read_query(&self.language_name, "injections.scm");
+        let locals_query = read_query(&self.language_name, "locals.scm");
 
         if highlights_query.is_empty() {
             None
         } else {
-            let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
+            let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_name))
                 .map_err(|err| {
                     log::error!(
                         "Failed to load tree-sitter parser for language {:?}: {}",
-                        self.language_id,
+                        self.language_name,
                         err
                     )
                 })
@@ -661,7 +661,7 @@ impl LanguageConfiguration {
                 &injections_query,
                 &locals_query,
             )
-            .map_err(|err| log::error!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, err))
+            .map_err(|err| log::error!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_name, err))
             .ok()?;
 
             config.configure(scopes);
@@ -705,7 +705,7 @@ impl LanguageConfiguration {
     }
 
     fn load_query(&self, kind: &str) -> Option<Query> {
-        let query_text = read_query(&self.language_id, kind);
+        let query_text = read_query(&self.language_name, kind);
         if query_text.is_empty() {
             return None;
         }
@@ -715,7 +715,7 @@ impl LanguageConfiguration {
                 log::error!(
                     "Failed to parse {} queries for {}: {}",
                     kind,
-                    self.language_id,
+                    self.language_name,
                     e
                 )
             })
@@ -855,10 +855,13 @@ impl Loader {
             .cloned()
     }
 
-    pub fn language_config_for_language_id(&self, id: &str) -> Option<Arc<LanguageConfiguration>> {
+    pub fn language_config_for_language_name(
+        &self,
+        name: &str,
+    ) -> Option<Arc<LanguageConfiguration>> {
         self.language_configs
             .iter()
-            .find(|config| config.language_id == id)
+            .find(|config| config.language_name == name)
             .cloned()
     }
 
@@ -890,7 +893,7 @@ impl Loader {
             InjectionLanguageMarker::Name(string) => self.language_config_for_name(string),
             InjectionLanguageMarker::Filename(file) => self.language_config_for_file_name(file),
             InjectionLanguageMarker::Shebang(shebang) => {
-                self.language_config_for_language_id(shebang)
+                self.language_config_for_language_name(shebang)
             }
         }
     }

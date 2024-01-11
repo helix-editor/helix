@@ -14,7 +14,7 @@ pub fn query_check() -> Result<(), DynError> {
     ];
 
     for language in lang_config().language {
-        let language_name = &language.language_id;
+        let language_name = &language.language_name;
         let grammar_name = language.grammar.as_ref().unwrap_or(language_name);
         for query_file in query_files {
             let language = get_language(grammar_name);

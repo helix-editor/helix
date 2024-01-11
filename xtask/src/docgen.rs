@@ -67,7 +67,7 @@ pub fn lang_features() -> Result<String, DynError> {
     let mut langs = config
         .language
         .iter()
-        .map(|l| l.language_id.clone())
+        .map(|l| l.language_name.clone())
         .collect::<Vec<_>>();
     langs.sort_unstable();
 
@@ -81,9 +81,9 @@ pub fn lang_features() -> Result<String, DynError> {
         let lc = config
             .language
             .iter()
-            .find(|l| l.language_id == lang)
+            .find(|l| l.language_name == lang)
             .unwrap(); // lang comes from config
-        row.push(lc.language_id.clone());
+        row.push(lc.language_name.clone());
 
         for (_feat, support_list) in &ts_features_to_langs {
             row.push(
