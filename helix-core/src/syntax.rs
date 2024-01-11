@@ -11,7 +11,7 @@ use ahash::RandomState;
 use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
 use hashbrown::raw::RawTable;
-use slotmap::{DefaultKey as LayerId, HopSlotMap};
+use slotmap::{DefaultKey as LayerId, DefaultKey as LanguageId, HopSlotMap};
 
 use std::{
     borrow::Cow,
@@ -92,6 +92,8 @@ impl Default for Configuration {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
+    #[serde(skip)]
+    language_id: LanguageId,
     #[serde(rename = "name")]
     pub language_name: String, // c-sharp, rust, tsx
     #[serde(rename = "language-id")]
@@ -757,10 +759,10 @@ pub struct SoftWrap {
 #[derive(Debug)]
 pub struct Loader {
     // highlight_names ?
-    language_configs: Vec<Arc<LanguageConfiguration>>,
-    language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
-    language_config_ids_by_suffix: HashMap<String, usize>,
-    language_config_ids_by_shebang: HashMap<String, usize>,
+    language_configs: HopSlotMap<LanguageId, Arc<LanguageConfiguration>>,
+    language_config_ids_by_extension: HashMap<String, LanguageId>, // Vec<LanguageId>
+    language_config_ids_by_suffix: HashMap<String, LanguageId>,
+    language_config_ids_by_shebang: HashMap<String, LanguageId>,
 
     language_server_configs: HashMap<String, LanguageServerConfiguration>,
 
@@ -770,7 +772,7 @@ pub struct Loader {
 impl Loader {
     pub fn new(config: Configuration) -> Self {
         let mut loader = Self {
-            language_configs: Vec::new(),
+            language_configs: HopSlotMap::new(),
             language_server_configs: config.language_server,
             language_config_ids_by_extension: HashMap::new(),
             language_config_ids_by_suffix: HashMap::new(),
@@ -778,9 +780,12 @@ impl Loader {
             scopes: ArcSwap::from_pointee(Vec::new()),
         };
 
-        for config in config.language {
-            // get the next id
-            let language_id = loader.language_configs.len();
+        for mut config in config.language {
+            let language_id = loader.language_configs.insert_with_key(|key| {
+                config.language_id = key;
+                Arc::new(config)
+            });
+            let config = &loader.language_configs[language_id];
 
             for file_type in &config.file_types {
                 // entry().or_insert(Vec::new).push(language_id);
@@ -798,8 +803,6 @@ impl Loader {
                     .language_config_ids_by_shebang
                     .insert(shebang.clone(), language_id);
             }
-
-            loader.language_configs.push(Arc::new(config));
         }
 
         loader
@@ -850,7 +853,7 @@ impl Loader {
 
     pub fn language_config_for_scope(&self, scope: &str) -> Option<Arc<LanguageConfiguration>> {
         self.language_configs
-            .iter()
+            .values()
             .find(|config| config.scope == scope)
             .cloned()
     }
@@ -860,7 +863,7 @@ impl Loader {
         name: &str,
     ) -> Option<Arc<LanguageConfiguration>> {
         self.language_configs
-            .iter()
+            .values()
             .find(|config| config.language_name == name)
             .cloned()
     }
@@ -870,19 +873,19 @@ impl Loader {
     pub fn language_config_for_name(&self, name: &str) -> Option<Arc<LanguageConfiguration>> {
         let mut best_match_length = 0;
         let mut best_match_position = None;
-        for (i, configuration) in self.language_configs.iter().enumerate() {
+        for (id, configuration) in self.language_configs.iter() {
             if let Some(injection_regex) = &configuration.injection_regex {
                 if let Some(mat) = injection_regex.find(name) {
                     let length = mat.end() - mat.start();
                     if length > best_match_length {
-                        best_match_position = Some(i);
+                        best_match_position = Some(id);
                         best_match_length = length;
                     }
                 }
             }
         }
 
-        best_match_position.map(|i| self.language_configs[i].clone())
+        best_match_position.map(|id| self.language_configs[id].clone())
     }
 
     pub fn language_configuration_for_injection_string(
@@ -899,7 +902,7 @@ impl Loader {
     }
 
     pub fn language_configs(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
-        self.language_configs.iter()
+        self.language_configs.values()
     }
 
     pub fn language_server_configs(&self) -> &HashMap<String, LanguageServerConfiguration> {
@@ -912,7 +915,7 @@ impl Loader {
         // Reconfigure existing grammars
         for config in self
             .language_configs
-            .iter()
+            .values()
             .filter(|cfg| cfg.is_highlight_initialized())
         {
             config.reconfigure(&self.scopes());
