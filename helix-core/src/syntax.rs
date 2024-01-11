@@ -658,6 +658,7 @@ impl LanguageConfiguration {
                 })
                 .ok()?;
             let config = HighlightConfiguration::new(
+                self.language_id,
                 language,
                 &highlights_query,
                 &injections_query,
@@ -1582,6 +1583,7 @@ pub enum HighlightEvent {
 /// This struct is immutable and can be shared between threads.
 #[derive(Debug)]
 pub struct HighlightConfiguration {
+    language_id: LanguageId,
     pub language: Grammar,
     pub query: Query,
     injections_query: Query,
@@ -1679,6 +1681,7 @@ impl HighlightConfiguration {
     ///
     /// Returns a `HighlightConfiguration` that can then be used with the `highlight` method.
     pub fn new(
+        language_id: LanguageId,
         language: Grammar,
         highlights_query: &str,
         injection_query: &str,
@@ -1755,6 +1758,7 @@ impl HighlightConfiguration {
 
         let highlight_indices = ArcSwap::from_pointee(vec![None; query.capture_names().len()]);
         Ok(Self {
+            language_id,
             language,
             query,
             injections_query,
@@ -2552,7 +2556,8 @@ mod test {
         let textobject = TextObjectQuery { query };
         let mut cursor = QueryCursor::new();
 
-        let config = HighlightConfiguration::new(language, "", "", "").unwrap();
+        let config =
+            HighlightConfiguration::new(LanguageId::default(), language, "", "", "").unwrap();
         let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
 
         let root = syntax.tree().root_node();
@@ -2611,6 +2616,7 @@ mod test {
 
         let language = get_language("rust").unwrap();
         let config = HighlightConfiguration::new(
+            LanguageId::default(),
             language,
             &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.scm")
                 .unwrap(),
@@ -2716,7 +2722,8 @@ mod test {
         });
         let language = get_language(language_name).unwrap();
 
-        let config = HighlightConfiguration::new(language, "", "", "").unwrap();
+        let config =
+            HighlightConfiguration::new(LanguageId::default(), language, "", "", "").unwrap();
         let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
 
         let root = syntax
