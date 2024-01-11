@@ -3025,3 +3025,15 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "hocon"
 source = { git = "https://github.com/antosha417/tree-sitter-hocon", rev = "c390f10519ae69fdb03b3e5764f5592fb6924bcc" }
+
+[[language]]
+name = "sourcepawn"
+language-id = "sourcepawn"
+scope = "source.sourcepawn"
+file-types = ["sp", "inc"]
+comment-token = "//"
+indent = {tab-width = 2, unit = "  "}
+
+[[grammar]]
+name = "sourcepawn"
+source = { git = "https://github.com/Sarrus1/tree-sitter-sourcepawn", rev = "372eba9ea977640c7f874ec9081821571de658e3" }
