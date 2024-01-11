@@ -1,14 +1,12 @@
 use std::fmt::Display;
 
 use ropey::RopeSlice;
-use tree_sitter::{Node, QueryCursor};
 
 use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
 use crate::movement::Direction;
 use crate::surround;
-use crate::syntax::LanguageConfiguration;
 use crate::Range;
 
 fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
@@ -254,22 +252,20 @@ fn textobject_pair_surround_impl(
 /// `object_name` is a query capture base name like "function", "class", etc.
 /// `slice_tree` is the tree-sitter node corresponding to given text slice.
 pub fn textobject_treesitter(
+    syntax: &crate::Syntax,
     slice: RopeSlice,
     range: Range,
     textobject: TextObject,
     object_name: &str,
-    slice_tree: Node,
-    lang_config: &LanguageConfiguration,
     _count: usize,
 ) -> Range {
     let get_range = move || -> Option<Range> {
         let byte_pos = slice.char_to_byte(range.cursor(slice));
 
         let capture_name = format!("{}.{}", object_name, textobject); // eg. function.inner
-        let mut cursor = QueryCursor::new();
-        let node = lang_config
-            .textobject_query()?
-            .capture_nodes(&capture_name, slice_tree, slice, &mut cursor)?
+        let capture_names = &[capture_name.as_str()];
+        let node = syntax
+            .textobject_nodes(capture_names, slice, None)
             .filter(|node| node.byte_range().contains(&byte_pos))
             .min_by_key(|node| node.byte_range().len())?;
 

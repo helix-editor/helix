@@ -1,7 +1,7 @@
 use std::{cmp::Reverse, iter};
 
 use ropey::iter::Chars;
-use tree_sitter::{Node, QueryCursor};
+use tree_sitter::Node;
 
 use crate::{
     char_idx_at_visual_offset,
@@ -13,7 +13,6 @@ use crate::{
     },
     line_ending::rope_is_line_ending,
     position::char_idx_at_visual_block_offset,
-    syntax::LanguageConfiguration,
     text_annotations::TextAnnotations,
     textobject::TextObject,
     visual_offset_from_block, Range, RopeSlice, Selection, Syntax,
@@ -500,29 +499,22 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
 /// Finds the range of the next or previous textobject in the syntax sub-tree of `node`.
 /// Returns the range in the forwards direction.
 pub fn goto_treesitter_object(
+    syntax: &Syntax,
     slice: RopeSlice,
     range: Range,
     object_name: &str,
     dir: Direction,
-    slice_tree: Node,
-    lang_config: &LanguageConfiguration,
     count: usize,
 ) -> Range {
     let get_range = move |range: Range| -> Option<Range> {
         let byte_pos = slice.char_to_byte(range.cursor(slice));
 
         let cap_name = |t: TextObject| format!("{}.{}", object_name, t);
-        let mut cursor = QueryCursor::new();
-        let nodes = lang_config.textobject_query()?.capture_nodes_any(
-            &[
-                &cap_name(TextObject::Movement),
-                &cap_name(TextObject::Around),
-                &cap_name(TextObject::Inside),
-            ],
-            slice_tree,
-            slice,
-            &mut cursor,
-        )?;
+        let movement = cap_name(TextObject::Movement);
+        let around = cap_name(TextObject::Around);
+        let inside = cap_name(TextObject::Inside);
+        let capture_names = &[movement.as_str(), around.as_str(), inside.as_str()];
+        let nodes = syntax.textobject_nodes(capture_names, slice, None);
 
         let node = match dir {
             Direction::Forward => nodes
