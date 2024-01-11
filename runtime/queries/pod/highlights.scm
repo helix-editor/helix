@@ -6,8 +6,33 @@
 
 (command_paragraph
   (command) @keyword
-  (#match? @keyword "^=head")
-  (content) @markup.title)
+  (#eq? @keyword "=head1")
+  (content) @markup.heading.1)
+
+(command_paragraph
+  (command) @keyword
+  (#eq? @keyword "=head2")
+  (content) @markup.heading.2)
+
+(command_paragraph
+  (command) @keyword
+  (#eq? @keyword "=head3")
+  (content) @markup.heading.3)
+
+(command_paragraph
+  (command) @keyword
+  (#eq? @keyword "=head4")
+  (content) @markup.heading.4)
+
+(command_paragraph
+  (command) @keyword
+  (#eq? @keyword "=head5")
+  (content) @markup.heading.5)
+
+(command_paragraph
+  (command) @keyword
+  (#eq? @keyword "=head6")
+  (content) @markup.heading.6)
 
 (command_paragraph
   (command) @keyword
@@ -69,4 +94,4 @@
 (interior_sequence
   (sequence_letter) @character
   (#eq? @character "E")
-  (content) @string.escape)
+  (content) @string.special.escape)
