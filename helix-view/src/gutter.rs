@@ -380,24 +380,12 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
 
-        #[cfg(any(feature = "dap", feature = "lsp"))]
-        {
-            assert_eq!(view.gutters.layout.len(), 5);
-            assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
-            assert_eq!(view.gutters.layout[1].width(&view, &doc), 1);
-            assert_eq!(view.gutters.layout[2].width(&view, &doc), 3);
-            assert_eq!(view.gutters.layout[3].width(&view, &doc), 1);
-            assert_eq!(view.gutters.layout[4].width(&view, &doc), 1);
-        }
-        #[cfg(any(feature = "dap", feature = "lsp"))]
-        {
-            assert_eq!(view.gutters.layout.len(), 4);
-
-            assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
-            assert_eq!(view.gutters.layout[1].width(&view, &doc), 3);
-            assert_eq!(view.gutters.layout[2].width(&view, &doc), 1);
-            assert_eq!(view.gutters.layout[3].width(&view, &doc), 1);
-        }
+        assert_eq!(view.gutters.layout.len(), 5);
+        assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
+        assert_eq!(view.gutters.layout[1].width(&view, &doc), 1);
+        assert_eq!(view.gutters.layout[2].width(&view, &doc), 3);
+        assert_eq!(view.gutters.layout[3].width(&view, &doc), 1);
+        assert_eq!(view.gutters.layout[4].width(&view, &doc), 1);
     }
 
     #[test]
