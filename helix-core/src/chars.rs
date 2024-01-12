@@ -9,11 +9,20 @@ pub enum CharCategory {
     Word,
     Punctuation,
     Unknown,
+    Hiragana,
+    Katakana,
+    Kanji,
 }
 
 #[inline]
 pub fn categorize_char(ch: char) -> CharCategory {
-    if char_is_line_ending(ch) {
+    if char_is_hiragana(ch) {
+        CharCategory::Hiragana
+    } else if char_is_katakana(ch) {
+        CharCategory::Katakana
+    } else if char_is_kanji(ch) {
+        CharCategory::Kanji
+    } else if char_is_line_ending(ch) {
         CharCategory::Eol
     } else if ch.is_whitespace() {
         CharCategory::Whitespace
@@ -24,6 +33,27 @@ pub fn categorize_char(ch: char) -> CharCategory {
     } else {
         CharCategory::Unknown
     }
+}
+
+// Determine whether a character is a hiragana character.
+// Reference: https://www.unicode.org/charts/PDF/U3040.pdf
+#[inline]
+pub fn char_is_hiragana(ch: char) -> bool {
+    ('\u{3040}'..='\u{309f}').contains(&ch)
+}
+
+// Determine whether a character is a katakana character.
+// Reference: https://www.unicode.org/charts/PDF/U30A0.pdf
+#[inline]
+pub fn char_is_katakana(ch: char) -> bool {
+    ('\u{30a0}'..='\u{30ff}').contains(&ch)
+}
+
+// Determine whether a character is a kanji, or CJK Unified Ideographs, character.
+// Reference: https://www.unicode.org/charts/PDF/U4E00.pdf
+#[inline]
+pub fn char_is_kanji(ch: char) -> bool {
+    ('\u{4e00}'..='\u{9fbf}').contains(&ch)
 }
 
 /// Determine whether a character is a line ending.
