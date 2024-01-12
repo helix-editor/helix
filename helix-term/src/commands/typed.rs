@@ -1278,15 +1278,13 @@ fn reload(
         return Ok(());
     }
 
-    let (view, doc) = current!(cx.editor);
-
     #[cfg(feature = "vcs")]
-    {
-        let scrolloff = cx.editor.config().scrolloff;
-        doc.reload(view, &cx.editor.diff_providers).map(|_| {
-            view.ensure_cursor_in_view(doc, scrolloff);
-        })?;
-    }
+    let scrolloff = cx.editor.config().scrolloff;
+    let (view, doc) = current!(cx.editor);
+    #[cfg(feature = "vcs")]
+    doc.reload(view, &cx.editor.diff_providers).map(|_| {
+        view.ensure_cursor_in_view(doc, scrolloff);
+    })?;
     #[cfg(feature = "lsp")]
     if let Some(path) = doc.path() {
         cx.editor
