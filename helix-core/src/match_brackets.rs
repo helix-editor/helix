@@ -60,7 +60,7 @@ fn find_pair(
     let tree = syntax.tree();
     let pos = doc.char_to_byte(pos_);
 
-    let mut node = tree.root_node().descendant_for_byte_range(pos, pos)?;
+    let mut node = tree.root_node().descendant_for_byte_range(pos, pos + 1)?;
 
     loop {
         if node.is_named() {
@@ -118,7 +118,9 @@ fn find_pair(
         };
         node = parent;
     }
-    let node = tree.root_node().named_descendant_for_byte_range(pos, pos)?;
+    let node = tree
+        .root_node()
+        .named_descendant_for_byte_range(pos, pos + 1)?;
     if node.child_count() != 0 {
         return None;
     }
