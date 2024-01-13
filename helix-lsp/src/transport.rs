@@ -302,7 +302,7 @@ impl Transport {
                 }
                 Err(err) => {
                     error!("{} err: <- {err:?}", transport.name);
-                    break;
+                    continue;
                 }
             }
         }
