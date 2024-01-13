@@ -1236,8 +1236,7 @@ impl Editor {
                     Ok(client) => Some((lang, client)),
                     Err(err) => {
                         log::error!(
-                            "Failed to initialize the language servers for `{}` - `{}` {{ {} }}",
-                            language.scope(),
+                            "Failed to initialize the language servers for  `{}` {{ {} }}",
                             lang,
                             err
                         );

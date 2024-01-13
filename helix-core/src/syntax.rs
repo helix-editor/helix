@@ -97,7 +97,6 @@ pub struct LanguageConfiguration {
     #[serde(rename = "language-id")]
     // see the table under https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentItem
     pub language_server_language_id: Option<String>, // csharp, rust, typescriptreact, for the language-server
-    pub scope: String,             // source.rust
     pub file_types: Vec<FileType>, // filename extension or ends_with? <Gemfile, rb, etc>
     #[serde(default)]
     pub shebangs: Vec<String>, // interpreter(s) associated with language
@@ -700,10 +699,6 @@ impl LanguageConfiguration {
             .as_ref()
     }
 
-    pub fn scope(&self) -> &str {
-        &self.scope
-    }
-
     fn load_query(&self, kind: &str) -> Option<Query> {
         let query_text = read_query(&self.language_id, kind);
         if query_text.is_empty() {
@@ -846,13 +841,6 @@ impl Loader {
             .and_then(|cap| self.language_config_ids_by_shebang.get(&cap[1]));
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
-    }
-
-    pub fn language_config_for_scope(&self, scope: &str) -> Option<Arc<LanguageConfiguration>> {
-        self.language_configs
-            .iter()
-            .find(|config| config.scope == scope)
-            .cloned()
     }
 
     pub fn language_config_for_language_id(&self, id: &str) -> Option<Arc<LanguageConfiguration>> {
