@@ -141,7 +141,7 @@ fn find_pair(
 #[must_use]
 pub fn find_matching_bracket_plaintext(doc: RopeSlice, cursor_pos: usize) -> Option<usize> {
     // Don't do anything when the cursor is not on top of a bracket.
-    let bracket = doc.char(cursor_pos);
+    let bracket = doc.get_char(cursor_pos)?;
     if !is_valid_bracket(bracket) {
         return None;
     }
@@ -264,6 +264,12 @@ fn as_char(doc: RopeSlice, node: &Node) -> Option<(usize, char)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn find_matching_bracket_empty_file() {
+        let actual = find_matching_bracket_plaintext("".into(), 0);
+        assert_eq!(actual, None);
+    }
 
     #[test]
     fn test_find_matching_bracket_current_line_plaintext() {
