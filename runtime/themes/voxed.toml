@@ -43,7 +43,7 @@ label = "yellow"
 "ui.background.separator" = { fg = "sglow" }
 "ui.linenr" = { fg = "light-grey", modifiers = ["italic"] }
 "ui.linenr.selected" = { fg = "bpink", modifiers = ["bold"] }
-"ui.statusline" = { fg = "black", bg = "light-grey", modifiers = ["bold"] }
+"ui.statusline" = { fg = "black", bg = "light-grey", modifiers = ["bold", "dim"] }
 "ui.statusline.inactive" = { fg = "black", bg = "bgrey-two" }
 "ui.popup" = { fg = "bgrey", bg = "#25262B" }
 "ui.window" = { fg = "white" }
