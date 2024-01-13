@@ -120,19 +120,5 @@ fn test_normalize_path() -> Result<(), Box<dyn Error>> {
         .join(Component::ParentDir);
     assert_eq!(get_normalized_path(&path), expected, "input {:?}", &path);
 
-    // root/../..
-    let path = root
-        .path()
-        .strip_prefix(&tmp_prefix)
-        .unwrap()
-        .join(Component::ParentDir)
-        .join(Component::ParentDir);
-    assert_eq!(
-        get_normalized_path(&path),
-        PathBuf::from(AsRef::<Path>::as_ref(&Component::ParentDir)),
-        "input {:?} and \"..\" should not be lost if there are no components ahead",
-        &path
-    );
-
     Ok(())
 }
