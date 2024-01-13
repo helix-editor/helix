@@ -3328,3 +3328,15 @@ grammar = "hyprlang"
 [[grammar]]
 name = "hyprlang"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-hyprlang", rev = "27af9b74acf89fa6bed4fb8cb8631994fcb2e6f3"}
+
+[[language]]
+name = "supercollider"
+scope = "source.supercollider"
+injection-regex = "supercollider"
+file-types = ["scd", "sc", "quark"]
+comment-token = "//"
+indent = { tab-width = 4, unit = "\t" }
+
+[[grammar]]
+name = "supercollider"
+source = { git = "https://github.com/madskjeldgaard/tree-sitter-supercollider", rev = "3b35bd0fded4423c8fb30e9585c7bacbcd0e8095" }
