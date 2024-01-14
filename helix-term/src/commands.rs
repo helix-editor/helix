@@ -59,7 +59,7 @@ use crate::{
 };
 
 use crate::job::{self, Jobs};
-use futures_util::{stream::FuturesUnordered, TryStreamExt};
+use futures_util::{stream::FuturesOrdered, TryStreamExt};
 use std::{
     collections::{HashMap, HashSet},
     fmt,
@@ -4537,7 +4537,7 @@ pub fn completion(cx: &mut Context) {
 
     let mut seen_language_servers = HashSet::new();
 
-    let mut futures: FuturesUnordered<_> = doc
+    let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::Completion)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         .map(|language_server| {
