@@ -1326,7 +1326,8 @@ pub fn hover(cx: &mut Context) {
                 // skip if contents empty
 
                 let strings_content = StringsContent {
-                    title: "hover hello".into(),
+                    // TODO: how to get the symbol name?
+                    title: "hover".into(),
                     body: contents.clone(),
                     language: "markdown".into(),
                 };

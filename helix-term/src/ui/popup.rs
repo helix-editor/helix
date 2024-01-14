@@ -264,7 +264,7 @@ impl<T: Component> Component for Popup<T> {
                 // put the content in the new buffer
                 let (view, doc) = current!(cx.editor);
                 paste_impl(
-                    &[stringified_body.into()],
+                    &[stringified_body],
                     doc,
                     view,
                     Paste::Before,
@@ -281,7 +281,7 @@ impl<T: Component> Component for Popup<T> {
                 // put a meaningful title
                 // TODO: get a meaningful buffer title
                 let stringified_buffername = Some(Path::new(&stringified_buffername));
-                doc.set_path(stringified_buffername.into());
+                doc.set_path(stringified_buffername);
 
                 // TODO: put a meaningful coloring scheme...
 
