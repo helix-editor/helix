@@ -30,31 +30,10 @@ pub fn expand_tilde(path: &Path) -> PathBuf {
     path.to_path_buf()
 }
 
-/// Normalize a path, removing things like `.` and `..`.
-///
-/// CAUTION: This does not resolve symlinks (unlike
-/// [`std::fs::canonicalize`]). This may cause incorrect or surprising
-/// behavior at times. This should be used carefully. Unfortunately,
-/// [`std::fs::canonicalize`] can be hard to use correctly, since it can often
-/// fail, or on Windows returns annoying device paths. This is a problem Cargo
-/// needs to improve on.
-/// Copied from cargo: <https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81>
+/// Normalize a path without resolving symlinks.
+// Strategy: start from the first component and move up. Cannonicalize previous path,
+// join component, cannonicalize new path, strip prefix and join to the final result.
 pub fn get_normalized_path(path: &Path) -> PathBuf {
-    // normalization strategy is to canonicalize first ancestor path that exists (i.e., canonicalize as much as possible),
-    // then run handrolled normalization on the non-existent remainder
-    let (base, path) = path
-        .ancestors()
-        .find_map(|base| {
-            let canonicalized_base = dunce::canonicalize(base).ok()?;
-            let remainder = path.strip_prefix(base).ok()?.into();
-            Some((canonicalized_base, remainder))
-        })
-        .unwrap_or_else(|| (PathBuf::new(), PathBuf::from(path)));
-
-    if path.as_os_str().is_empty() {
-        return base;
-    }
-
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();
@@ -70,20 +49,60 @@ pub fn get_normalized_path(path: &Path) -> PathBuf {
                 ret.push(component.as_os_str());
             }
             Component::CurDir => {}
+            #[cfg(not(windows))]
             Component::ParentDir => {
                 ret.pop();
             }
+            #[cfg(windows)]
+            Component::ParentDir => {
+                if let Some(head) = ret.components().next_back() {
+                    match head {
+                        Component::Prefix(_) | Component::RootDir => {}
+                        Component::CurDir => unreachable!(),
+                        // If we left previous component as ".." it means we met a symlink before and we can't pop path.
+                        Component::ParentDir => {
+                            ret.push("..");
+                        }
+                        Component::Normal(_) => {
+                            if ret.is_symlink() {
+                                ret.push("..");
+                            } else {
+                                ret.pop();
+                            }
+                        }
+                    }
+                }
+            }
+            #[cfg(not(windows))]
             Component::Normal(c) => {
                 ret.push(c);
             }
+            #[cfg(windows)]
+            Component::Normal(c) => 'normal: {
+                use std::fs::canonicalize;
+
+                let new_path = ret.join(c);
+                if new_path.is_symlink() {
+                    ret = new_path;
+                    break 'normal;
+                }
+                let (can_new, can_old) = (canonicalize(&new_path), canonicalize(&ret));
+                match (can_new, can_old) {
+                    (Ok(can_new), Ok(can_old)) => {
+                        let striped = can_new.strip_prefix(can_old);
+                        ret.push(striped.unwrap_or_else(|_| c.as_ref()));
+                    }
+                    _ => ret.push(c),
+                }
+            }
         }
     }
-    base.join(ret)
+    dunce::simplified(&ret).to_path_buf()
 }
 
 /// Returns the canonical, absolute form of a path with all intermediate components normalized.
 ///
-/// This function is used instead of `std::fs::canonicalize` because we don't want to verify
+/// This function is used instead of [`std::fs::canonicalize`] because we don't want to verify
 /// here if the path exists, just normalize it's components.
 pub fn get_canonicalized_path(path: &Path) -> PathBuf {
     let path = expand_tilde(path);
