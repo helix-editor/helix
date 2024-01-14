@@ -1,4 +1,5 @@
 use crate::{
+    commands::push_jump,
     commands::Open,
     compositor::{Callback, Component, Context, Event, EventResult},
     ctrl, key,
@@ -10,6 +11,7 @@ use tui::{
 
 use helix_core::Position;
 use helix_view::{
+    document::Mode,
     editor::Action,
     graphics::{Margin, Rect},
     Editor,
@@ -278,17 +280,23 @@ impl<T: Component> Component for Popup<T> {
                 )
                 .unwrap();
 
+                let text = doc.text().slice(..);
+                let selection = doc
+                    .selection(view.id)
+                    .clone()
+                    .transform(|range| range.put_cursor(text, 0, cx.editor.mode == Mode::Select));
+                push_jump(view, doc);
+                doc.set_selection(view.id, selection);
+
                 // put a meaningful title
                 // TODO: get a meaningful buffer title
                 let stringified_buffername = Some(Path::new(&stringified_buffername));
                 doc.set_path(stringified_buffername);
 
-                // TODO: put a meaningful coloring scheme...
-
                 // pretend that this buffer is up to date and has no changes: allow to just :bc when finished exporing, no need to :bc!, and no saving to disk happening after browsing around
                 doc.set_last_saved_revision(1);
                 // make readonly
-                // TODO: this does not work, why?
+                // TODO: this does not make really readonly from helix viewpoint, why?
                 doc.readonly = true;
 
                 // close the popup since we just opened it in a new buffer

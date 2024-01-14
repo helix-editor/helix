@@ -1121,7 +1121,7 @@ fn goto_next_paragraph(cx: &mut Context) {
     goto_para_impl(cx, movement::move_next_paragraph)
 }
 
-fn goto_file_start(cx: &mut Context) {
+pub fn goto_file_start(cx: &mut Context) {
     if cx.count.is_some() {
         goto_line(cx);
     } else {
@@ -3231,7 +3231,7 @@ fn normal_mode(cx: &mut Context) {
 }
 
 // Store a jump on the jumplist.
-fn push_jump(view: &mut View, doc: &Document) {
+pub fn push_jump(view: &mut View, doc: &Document) {
     let jump = (doc.id(), doc.selection(view.id).clone());
     view.jumps.push(jump);
 }
