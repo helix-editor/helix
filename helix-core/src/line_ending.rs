@@ -1,9 +1,67 @@
+use anyhow::bail;
+use helix_config::{options, Ty};
+
 use crate::{Rope, RopeSlice};
 
 #[cfg(target_os = "windows")]
 pub const NATIVE_LINE_ENDING: LineEnding = LineEnding::Crlf;
 #[cfg(not(target_os = "windows"))]
 pub const NATIVE_LINE_ENDING: LineEnding = LineEnding::LF;
+
+options! {
+    struct LineEndingConfig {
+        /// The line ending to use for new documents. Can be `lf` or `crlf`. If
+        /// helix was compiled with the `unicode-lines` feature then `vt`, `ff`,
+        /// `cr`, `nel`, `ls` or `ps` are also allowed.
+        #[read = copy]
+        default_line_ending: LineEnding = NATIVE_LINE_ENDING,
+    }
+}
+
+impl Ty for LineEnding {
+    fn from_value(val: helix_config::Value) -> anyhow::Result<Self> {
+        let val: String = val.typed()?;
+        match &*val {
+            "crlf" => Ok(LineEnding::Crlf),
+            "lf" => Ok(LineEnding::LF),
+            #[cfg(feature = "unicode-lines")]
+            "vt" => Ok(LineEnding::VT),
+            #[cfg(feature = "unicode-lines")]
+            "ff" => Ok(LineEnding::FF),
+            #[cfg(feature = "unicode-lines")]
+            "cr" => Ok(LineEnding::CR),
+            #[cfg(feature = "unicode-lines")]
+            "nel" => Ok(LineEnding::Nel),
+            #[cfg(feature = "unicode-lines")]
+            "ls" => Ok(LineEnding::LS),
+            #[cfg(feature = "unicode-lines")]
+            "ps" => Ok(LineEnding::PS),
+            #[cfg(feature = "unicode-lines")]
+            _ => bail!("expecte one of 'lf', 'crlf', 'vt', 'ff', 'cr', 'nel', 'ls' or 'ps'"),
+            #[cfg(not(feature = "unicode-lines"))]
+            _ => bail!("expecte one of 'lf' or 'crlf'"),
+        }
+    }
+
+    fn to_value(&self) -> helix_config::Value {
+        match self {
+            LineEnding::Crlf => "crlf".into(),
+            LineEnding::LF => "lf".into(),
+            #[cfg(feature = "unicode-lines")]
+            VT => "vt".into(),
+            #[cfg(feature = "unicode-lines")]
+            FF => "ff".into(),
+            #[cfg(feature = "unicode-lines")]
+            CR => "cr".into(),
+            #[cfg(feature = "unicode-lines")]
+            Nel => "nel".into(),
+            #[cfg(feature = "unicode-lines")]
+            LS => "ls".into(),
+            #[cfg(feature = "unicode-lines")]
+            PS => "ps".into(),
+        }
+    }
+}
 
 /// Represents one of the valid Unicode line endings.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]

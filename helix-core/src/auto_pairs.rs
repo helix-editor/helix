@@ -2,8 +2,10 @@
 //! this module provides the functionality to insert the paired closing character.
 
 use crate::{graphemes, movement::Direction, Range, Rope, Selection, Tendril, Transaction};
-use std::collections::HashMap;
 
+use anyhow::{bail, ensure};
+use helix_config::options;
+use indexmap::IndexMap;
 use smallvec::SmallVec;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
@@ -19,7 +21,7 @@ pub const DEFAULT_PAIRS: &[(char, char)] = &[
 /// The type that represents the collection of auto pairs,
 /// keyed by both opener and closer.
 #[derive(Debug, Clone)]
-pub struct AutoPairs(HashMap<char, Pair>);
+pub struct AutoPairs(IndexMap<char, Pair, ahash::RandomState>);
 
 /// Represents the config for a particular pairing.
 #[derive(Debug, Clone, Copy)]
@@ -75,15 +77,15 @@ impl From<(&char, &char)> for Pair {
 
 impl AutoPairs {
     /// Make a new AutoPairs set with the given pairs and default conditions.
-    pub fn new<'a, V: 'a, A>(pairs: V) -> Self
+    pub fn new<'a, V: 'a, A>(pairs: V) -> anyhow::Result<Self>
     where
-        V: IntoIterator<Item = A>,
+        V: IntoIterator<Item = anyhow::Result<A>>,
         A: Into<Pair>,
     {
-        let mut auto_pairs = HashMap::new();
+        let mut auto_pairs = IndexMap::default();
 
         for pair in pairs.into_iter() {
-            let auto_pair = pair.into();
+            let auto_pair = pair?.into();
 
             auto_pairs.insert(auto_pair.open, auto_pair);
 
@@ -92,7 +94,7 @@ impl AutoPairs {
             }
         }
 
-        Self(auto_pairs)
+        Ok(Self(auto_pairs))
     }
 
     pub fn get(&self, ch: char) -> Option<&Pair> {
@@ -102,7 +104,7 @@ impl AutoPairs {
 
 impl Default for AutoPairs {
     fn default() -> Self {
-        AutoPairs::new(DEFAULT_PAIRS.iter())
+        AutoPairs::new(DEFAULT_PAIRS.iter().map(Ok)).unwrap()
     }
 }
 
@@ -370,4 +372,44 @@ fn handle_same(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     let t = transaction.with_selection(Selection::new(end_ranges, selection.primary_index()));
     log::debug!("auto pair transaction: {:#?}", t);
     t
+}
+
+options! {
+    struct AutopairConfig {
+        /// Mapping of character pairs like `{ '(' = ')', '`' = '`' }` that are
+        /// automatically closed by the editor when typed.
+        auto_pairs: AutoPairs = AutoPairs::default(),
+    }
+}
+
+impl helix_config::Ty for AutoPairs {
+    fn from_value(val: helix_config::Value) -> anyhow::Result<Self> {
+        let map = match val {
+            helix_config::Value::Map(map) => map,
+            helix_config::Value::Bool(false) => return Ok(Self(IndexMap::default())),
+            _ => bail!("expect 'false' or a map of pairs"),
+        };
+        let pairs = map.into_iter().map(|(open, close)| {
+            let open = helix_config::Value::String(open.into_string());
+            Ok(Pair {
+                open: open.typed()?,
+                close: close.typed()?,
+            })
+        });
+        AutoPairs::new(pairs)
+    }
+
+    fn to_value(&self) -> helix_config::Value {
+        let map = self
+            .0
+            .values()
+            .map(|pair| {
+                (
+                    pair.open.to_string().into(),
+                    helix_config::Value::String(pair.close.into()),
+                )
+            })
+            .collect();
+        helix_config::Value::Map(Box::new(map))
+    }
 }

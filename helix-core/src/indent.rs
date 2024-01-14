@@ -1,15 +1,35 @@
 use std::{borrow::Cow, collections::HashMap};
 
+use anyhow::{anyhow, bail};
+use helix_config::{config_serde_adapter, options, IntegerRangeValidator};
+use serde::{Deserialize, Serialize};
 use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
 
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
     find_first_non_whitespace_char,
     graphemes::{grapheme_width, tab_width_at},
-    syntax::{IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
+    syntax::{LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
     Position, Rope, RopeGraphemes, RopeSlice,
 };
+
+/// How the indentation for a newly inserted line should be determined.
+/// If the selected heuristic is not available (e.g. because the current
+/// language has no tree-sitter indent queries), a simpler one will be used.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum IndentationHeuristic {
+    /// Just copy the indentation of the line that the cursor is currently on.
+    Simple,
+    /// Use tree-sitter indent queries to compute the expected absolute indentation level of the new line.
+    TreeSitter,
+    /// Use tree-sitter indent queries to compute the expected difference in indentation between the new line
+    /// and the line before. Add this to the actual indentation level of the line before.
+    #[default]
+    Hybrid,
+}
+config_serde_adapter!(IndentationHeuristic);
 
 /// Enum representing indentation style.
 ///
@@ -18,6 +38,50 @@ use crate::{
 pub enum IndentStyle {
     Tabs,
     Spaces(u8),
+}
+
+options! {
+    struct IndentationConfig {
+        /// The number columns that a tabs are aligned to.
+        #[name = "ident.tab_width"]
+        #[read = copy]
+        tab_width: usize = 4,
+        /// Indentation inserted/removed into the document when indenting/dedenting.
+        /// This can be set to an integer representing N spaces or "tab" for tabs.
+        #[name = "ident.unit"]
+        #[read = copy]
+        indent_style: IndentStyle = IndentStyle::Tabs,
+        /// How the indentation for a newly  inserted line is computed:
+        /// `simple` just copies the indentation level from the previous line,
+        /// `tree-sitter` computes the indentation based on the syntax tree and
+        /// `hybrid` combines both approaches.
+        /// If the chosen heuristic is not available, a different one will
+        /// be used as a fallback (the fallback order being `hybrid` ->
+        /// `tree-sitter` -> `simple`).
+        #[read = copy]
+        indent_heuristic: IndentationHeuristic = IndentationHeuristic::Hybrid
+    }
+}
+
+impl helix_config::Ty for IndentStyle {
+    fn from_value(val: helix_config::Value) -> anyhow::Result<Self> {
+        match val {
+            helix_config::Value::String(s) if s == "t" || s == "tab" => Ok(IndentStyle::Tabs),
+            helix_config::Value::Int(_) => {
+                let spaces = IntegerRangeValidator::new(0, MAX_INDENT)
+                    .validate(val)
+                    .map_err(|err| anyhow!("invalid number of spaces! {err}"))?;
+                Ok(IndentStyle::Spaces(spaces))
+            }
+            _ => bail!("expected an integer (spaces) or 'tab'"),
+        }
+    }
+    fn to_value(&self) -> helix_config::Value {
+        match *self {
+            IndentStyle::Tabs => helix_config::Value::String("tab".into()),
+            IndentStyle::Spaces(spaces) => helix_config::Value::Int(spaces as _),
+        }
+    }
 }
 
 // 16 spaces

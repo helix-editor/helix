@@ -1053,11 +1053,15 @@ version = "23.10.0"
 dependencies = [
  "ahash",
  "anyhow",
+ "globset",
  "hashbrown 0.14.3",
  "indexmap",
  "parking_lot",
+ "regex",
+ "regex-syntax",
  "serde",
  "serde_json",
+ "which",
 ]
 
 [[package]]
@@ -1102,6 +1106,7 @@ version = "23.10.0"
 dependencies = [
  "anyhow",
  "fern",
+ "helix-config",
  "helix-core",
  "log",
  "serde",
@@ -1250,6 +1255,7 @@ dependencies = [
  "clipboard-win",
  "crossterm",
  "futures-util",
+ "helix-config",
  "helix-core",
  "helix-dap",
  "helix-event",

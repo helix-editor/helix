@@ -13,13 +13,15 @@ use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use any::ConfigData;
 use convert::ty_into_value;
 pub use convert::IntoTy;
-pub use definition::init_config;
+pub use definition::{init_config, init_language_server_config};
 use validator::StaticValidator;
 pub use validator::{regex_str_validator, ty_validator, IntegerRangeValidator, Ty, Validator};
 pub use value::{from_value, to_value, Value};
 
 mod any;
 mod convert;
+mod definition;
+pub mod env;
 mod macros;
 mod validator;
 mod value;
