@@ -216,12 +216,12 @@ RUSTFLAGS="-C target-feature=-crt-static"
 
 #### Linux and macOS
 
-The **runtime** directory is one below the Helix source, so either set a
+The **runtime** directory is one below the Helix source, so either export a
 `HELIX_RUNTIME` environment variable to point to that directory and add it to
 your `~/.bashrc` or equivalent:
 
 ```sh
-HELIX_RUNTIME=~/src/helix/runtime
+export HELIX_RUNTIME=~/src/helix/runtime
 ```
 
 Or, create a symbolic link:
