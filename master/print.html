@@ -2666,6 +2666,11 @@ The first argument (a capture) must/must not be equal to the second argument
 The first argument (a capture) must/must not match the regex given in the
 second argument (a string).</p>
 </li>
+<li>
+<p><code>#any-of?</code>/<code>#not-any-of?</code>:
+The first argument (a capture) must/must not be one of the other arguments
+(strings).</p>
+</li>
 </ul>
 <p>Additionally, we support some custom predicates for indent queries:</p>
 <ul>
@@ -2781,6 +2786,10 @@ The first argument (a capture) must be equal to the second argument
 <p><code>#match?</code> (standard):
 The first argument (a capture) must match the regex given in the
 second argument (a string).</p>
+</li>
+<li>
+<p><code>#any-of?</code> (standard):
+The first argument (a capture) must be one of the other arguments (strings).</p>
 </li>
 </ul>
 
