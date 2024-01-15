@@ -4,7 +4,7 @@ use helix_view::editor::expand_variables;
 #[tokio::test(flavor = "multi_thread")]
 async fn test_variable_expansion() -> anyhow::Result<()> {
     {
-        let mut app = AppBuilder::new().build()?;
+        let app = AppBuilder::new().build()?;
 
         assert_eq!(
             expand_variables(&app.editor, "%{filename}").unwrap(),
@@ -24,12 +24,11 @@ async fn test_variable_expansion() -> anyhow::Result<()> {
 
     {
         let file = tempfile::NamedTempFile::new()?;
-        let mut app = AppBuilder::new().with_file(file.path(), None).build()?;
+        let app = AppBuilder::new().with_file(file.path(), None).build()?;
 
         assert_eq!(
             expand_variables(&app.editor, "%{filename}").unwrap(),
-            std::fs::canonicalize(file.path().to_str().unwrap())
-                .unwrap()
+            helix_core::path::get_canonicalized_path(file.path())
                 .to_str()
                 .unwrap()
         );
@@ -41,8 +40,7 @@ async fn test_variable_expansion() -> anyhow::Result<()> {
 
         assert_eq!(
             expand_variables(&app.editor, "%{dirname}").unwrap(),
-            std::fs::canonicalize(file.path().parent().unwrap().to_str().unwrap())
-                .unwrap()
+            helix_core::path::get_canonicalized_path(file.path().parent().unwrap())
                 .to_str()
                 .unwrap()
         );
