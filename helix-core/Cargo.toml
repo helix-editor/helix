@@ -31,7 +31,7 @@ once_cell = "1.19"
 arc-swap = "1"
 regex = "1"
 bitflags = "2.4"
-ahash = "0.8.6"
+ahash = "0.8.7"
 hashbrown = { version = "0.14.3", features = ["raw"] }
 dunce = "1.0"
 
