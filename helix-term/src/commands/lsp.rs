@@ -18,7 +18,7 @@ use tui::{
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
 use helix_core::{
-    path, syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection,
+    path, regex, syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection,
 };
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
@@ -1234,9 +1234,12 @@ pub fn signature_help_impl_with_future(
                     .unwrap_or(0) as usize;
                 let param = signature.parameters.as_ref()?.get(param_idx)?;
                 match &param.label {
-                    lsp::ParameterLabel::Simple(string) => {
-                        let start = signature.label.find(string.as_str())?;
-                        Some((start, start + string.len()))
+                    lsp::ParameterLabel::Simple(param_label) => {
+                        // A simple find is not sufficient. Consider 'def modify_foo(foo)'.
+                        // A find would hightlight the function name instead of the parameter.
+                        // If something fails with the regex, we fall back to rfind.
+                        try_find_param_in_signature_regex(&param_label, &signature.label)
+                            .or_else(|| try_find_param_simple(&param_label, &signature.label))
                     }
                     lsp::ParameterLabel::LabelOffsets([start, end]) => {
                         // LS sends offsets based on utf-16 based string representation
@@ -1661,4 +1664,62 @@ fn compute_inlay_hints_for_view(
     );
 
     Some(callback)
+}
+
+fn try_find_param_in_signature_regex(param: &str, signature: &str) -> Option<(usize, usize)> {
+    let escaped_param = regex::escape(param);
+    let pattern = format!(r"\b{}\b", escaped_param);
+    let regex = regex::Regex::new(&pattern).ok()?;
+    let param_match = regex.find(signature)?;
+    let start_without_boundary = param_match.start();
+    let end_without_boundary = param_match.end();
+    Some((start_without_boundary, end_without_boundary))
+}
+
+fn try_find_param_simple(param: &str, signature: &str) -> Option<(usize, usize)> {
+    let start = signature.rfind(param)?;
+    let end = start + param.len();
+    Some((start, end))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_param_finder() {
+        let rust_fn = "fn my_function<T>(param: T) -> T where T: Display";
+        assert_eq!(
+            try_find_param_in_signature_regex("param", rust_fn),
+            Some((18, 23))
+        );
+        assert_eq!(try_find_param_simple("param", rust_fn), Some((18, 23)));
+
+        let scheme_fn = "(define (my-function a?b b!))";
+        assert_eq!(
+            try_find_param_in_signature_regex("a?b", scheme_fn),
+            Some((21, 24))
+        );
+        // The ! to the ) does not bmake a word boundary so this does not work
+        assert_eq!(try_find_param_in_signature_regex("b!", scheme_fn), None);
+        assert_eq!(try_find_param_simple("a?b", scheme_fn), Some((21, 24)));
+
+        let python_fn_substring_param = "def substring_test(string, substring): pass";
+        assert_eq!(
+            try_find_param_in_signature_regex("string", python_fn_substring_param),
+            Some((19, 25))
+        );
+        assert_eq!(
+            try_find_param_in_signature_regex("substring", python_fn_substring_param),
+            Some((27, 36))
+        );
+        assert_eq!(
+            try_find_param_simple("string", python_fn_substring_param),
+            Some((30, 36))
+        );
+        assert_eq!(
+            try_find_param_simple("substring", python_fn_substring_param),
+            Some((27, 36))
+        );
+    }
 }
