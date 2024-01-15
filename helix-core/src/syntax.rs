@@ -1727,7 +1727,7 @@ impl HighlightConfiguration {
         let mut local_scope_capture_index = None;
         for (i, name) in query.capture_names().iter().enumerate() {
             let i = Some(i as u32);
-            match name.as_str() {
+            match *name {
                 "local.definition" => local_def_capture_index = i,
                 "local.definition-value" => local_def_value_capture_index = i,
                 "local.reference" => local_ref_capture_index = i,
@@ -1738,7 +1738,7 @@ impl HighlightConfiguration {
 
         for (i, name) in injections_query.capture_names().iter().enumerate() {
             let i = Some(i as u32);
-            match name.as_str() {
+            match *name {
                 "injection.content" => injection_content_capture_index = i,
                 "injection.language" => injection_language_capture_index = i,
                 "injection.filename" => injection_filename_capture_index = i,
@@ -1768,7 +1768,7 @@ impl HighlightConfiguration {
     }
 
     /// Get a slice containing all of the highlight names used in the configuration.
-    pub fn names(&self) -> &[String] {
+    pub fn names(&self) -> &[&str] {
         self.query.capture_names()
     }
 

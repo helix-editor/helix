@@ -2178,7 +2178,7 @@ dependencies = [
 [[package]]
 name = "tree-sitter"
 version = "0.20.10"
-source = "git+https://github.com/tree-sitter/tree-sitter?rev=ab09ae20d640711174b8da8a654f6b3dec93da1a#ab09ae20d640711174b8da8a654f6b3dec93da1a"
+source = "git+https://github.com/helix-editor/tree-sitter?rev=660481dbf71413eba5a928b0b0ab8da50c1109e0#660481dbf71413eba5a928b0b0ab8da50c1109e0"
 dependencies = [
  "cc",
  "regex",
