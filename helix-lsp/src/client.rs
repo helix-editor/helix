@@ -8,8 +8,8 @@ use helix_core::{find_workspace, path, syntax::LanguageServerFeature, ChangeSet,
 use helix_loader::{self, VERSION_AND_GIT_HASH};
 use lsp::{
     notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
-    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, WorkspaceFolder,
-    WorkspaceFoldersChangeEvent,
+    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SemanticTokens, SignatureHelp,
+    WorkspaceFolder, WorkspaceFoldersChangeEvent,
 };
 use lsp_types as lsp;
 use parking_lot::Mutex;
@@ -355,6 +355,9 @@ impl Client {
                 capabilities.inlay_hint_provider,
                 Some(OneOf::Left(true) | OneOf::Right(InlayHintServerCapabilities::Options(_)))
             ),
+            LanguageServerFeature::SemanticTokens => {
+                capabilities.semantic_tokens_provider.is_some()
+            }
         }
     }
 
@@ -644,6 +647,54 @@ impl Client {
                     inlay_hint: Some(lsp::InlayHintClientCapabilities {
                         dynamic_registration: Some(false),
                         resolve_support: None,
+                    }),
+                    semantic_tokens: Some(lsp::SemanticTokensClientCapabilities {
+                        dynamic_registration: Some(false),
+                        requests: lsp::SemanticTokensClientCapabilitiesRequests {
+                            range: Some(true),
+                            full: Some(lsp::SemanticTokensFullOptions::Bool(false)),
+                        },
+                        token_types: vec![
+                            lsp::SemanticTokenType::NAMESPACE,
+                            lsp::SemanticTokenType::TYPE,
+                            lsp::SemanticTokenType::CLASS,
+                            lsp::SemanticTokenType::ENUM,
+                            lsp::SemanticTokenType::INTERFACE,
+                            lsp::SemanticTokenType::STRUCT,
+                            lsp::SemanticTokenType::TYPE_PARAMETER,
+                            lsp::SemanticTokenType::PARAMETER,
+                            lsp::SemanticTokenType::VARIABLE,
+                            lsp::SemanticTokenType::PROPERTY,
+                            lsp::SemanticTokenType::ENUM_MEMBER,
+                            lsp::SemanticTokenType::EVENT,
+                            lsp::SemanticTokenType::FUNCTION,
+                            lsp::SemanticTokenType::METHOD,
+                            lsp::SemanticTokenType::MACRO,
+                            lsp::SemanticTokenType::KEYWORD,
+                            lsp::SemanticTokenType::MODIFIER,
+                            lsp::SemanticTokenType::COMMENT,
+                            lsp::SemanticTokenType::STRING,
+                            lsp::SemanticTokenType::NUMBER,
+                            lsp::SemanticTokenType::REGEXP,
+                            lsp::SemanticTokenType::OPERATOR,
+                        ],
+                        token_modifiers: vec![
+                            lsp::SemanticTokenModifier::DECLARATION,
+                            lsp::SemanticTokenModifier::DEFINITION,
+                            lsp::SemanticTokenModifier::READONLY,
+                            lsp::SemanticTokenModifier::STATIC,
+                            lsp::SemanticTokenModifier::DEPRECATED,
+                            lsp::SemanticTokenModifier::ABSTRACT,
+                            lsp::SemanticTokenModifier::ASYNC,
+                            lsp::SemanticTokenModifier::MODIFICATION,
+                            lsp::SemanticTokenModifier::DOCUMENTATION,
+                            lsp::SemanticTokenModifier::DEFAULT_LIBRARY,
+                        ],
+                        overlapping_token_support: Some(true),
+                        multiline_token_support: Some(true),
+                        server_cancel_support: Some(true),
+                        augments_syntax_tokens: Some(true),
+                        ..Default::default()
                     }),
                     ..Default::default()
                 }),
@@ -1242,6 +1293,36 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::DocumentHighlightRequest>(params))
+    }
+
+    pub fn text_document_semantic_tokens(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        range: lsp::Range,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Option<impl Future<Output = Result<Option<SemanticTokens>>>> {
+        let capabilites = self.capabilities.get().unwrap();
+
+        // Return early if the server doesn't support range semantic tokens.
+        if match capabilites.semantic_tokens_provider.as_ref()? {
+            lsp::SemanticTokensServerCapabilities::SemanticTokensOptions(opt) => opt.range?,
+            lsp::SemanticTokensServerCapabilities::SemanticTokensRegistrationOptions(opt) => {
+                opt.semantic_tokens_options.range?
+            }
+        } {
+            return None;
+        }
+
+        let res =
+            self.call::<lsp::request::SemanticTokensRangeRequest>(lsp::SemanticTokensRangeParams {
+                work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+                partial_result_params: lsp::PartialResultParams {
+                    partial_result_token: None,
+                },
+                text_document,
+                range,
+            });
+        Some(async move { Ok(serde_json::from_value(res.await?)?) })
     }
 
     fn goto_request<

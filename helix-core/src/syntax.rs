@@ -253,6 +253,7 @@ pub enum LanguageServerFeature {
     Diagnostics,
     RenameSymbol,
     InlayHints,
+    SemanticTokens,
 }
 
 impl Display for LanguageServerFeature {
@@ -276,6 +277,7 @@ impl Display for LanguageServerFeature {
             Diagnostics => "diagnostics",
             RenameSymbol => "rename-symbol",
             InlayHints => "inlay-hints",
+            SemanticTokens => "semantic-tokens",
         };
         write!(f, "{feature}",)
     }

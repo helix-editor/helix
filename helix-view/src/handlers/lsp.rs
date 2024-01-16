@@ -39,3 +39,8 @@ pub enum SignatureHelpEvent {
     Cancel,
     RequestComplete { open: bool },
 }
+
+pub enum SemanticTokensEvent {
+    Trigger,
+    Cancel,
+}

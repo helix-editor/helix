@@ -7,6 +7,7 @@ use helix_event::AsyncHook;
 use crate::config::Config;
 use crate::events;
 use crate::handlers::completion::CompletionHandler;
+use crate::handlers::semantic_tokens::SemanticTokensHandler;
 use crate::handlers::signature_help::SignatureHelpHandler;
 
 pub use completion::trigger_auto_completion;
@@ -23,6 +24,7 @@ fn rope_ends_with(text: &str, rope: RopeSlice<'_>) -> bool {
 }
 
 mod completion;
+mod semantic_tokens;
 mod signature_help;
 
 pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
