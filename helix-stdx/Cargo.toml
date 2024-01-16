@@ -1,0 +1,19 @@
+[package]
+name = "helix-stdx"
+description = "Standard library extensions"
+include = ["src/**/*", "README.md"]
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+dunce = "1.0"
+etcetera = "0.8"
+
+[dev-dependencies]
+tempfile = "3.9"

@@ -17,9 +17,8 @@ use tui::{
 
 use super::{align_view, push_jump, Align, Context, Editor, Open};
 
-use helix_core::{
-    path, syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection,
-};
+use helix_core::{syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection};
+use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
     editor::Action,
@@ -1018,7 +1017,7 @@ fn goto_impl(
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    let cwdir = helix_loader::current_working_dir();
+    let cwdir = helix_stdx::env::current_working_dir();
 
     match locations.as_slice() {
         [location] => {

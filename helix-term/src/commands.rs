@@ -2169,7 +2169,7 @@ fn global_search(cx: &mut Context) {
         type Data = Option<PathBuf>;
 
         fn format(&self, current_path: &Self::Data) -> Row {
-            let relative_path = helix_core::path::get_relative_path(&self.path)
+            let relative_path = helix_stdx::path::get_relative_path(&self.path)
                 .to_string_lossy()
                 .into_owned();
             if current_path
@@ -2218,7 +2218,7 @@ fn global_search(cx: &mut Context) {
                 .case_smart(smart_case)
                 .build(regex.as_str())
             {
-                let search_root = helix_loader::current_working_dir();
+                let search_root = helix_stdx::env::current_working_dir();
                 if !search_root.exists() {
                     cx.editor
                         .set_error("Current working directory does not exist");
@@ -2731,7 +2731,7 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
 }
 
 fn file_picker_in_current_directory(cx: &mut Context) {
-    let cwd = helix_loader::current_working_dir();
+    let cwd = helix_stdx::env::current_working_dir();
     if !cwd.exists() {
         cx.editor
             .set_error("Current working directory does not exist");
@@ -2759,7 +2759,7 @@ fn buffer_picker(cx: &mut Context) {
             let path = self
                 .path
                 .as_deref()
-                .map(helix_core::path::get_relative_path);
+                .map(helix_stdx::path::get_relative_path);
             let path = match path.as_deref().and_then(Path::to_str) {
                 Some(path) => path,
                 None => SCRATCH_BUFFER_NAME,
@@ -2826,7 +2826,7 @@ fn jumplist_picker(cx: &mut Context) {
             let path = self
                 .path
                 .as_deref()
-                .map(helix_core::path::get_relative_path);
+                .map(helix_stdx::path::get_relative_path);
             let path = match path.as_deref().and_then(Path::to_str) {
                 Some(path) => path,
                 None => SCRATCH_BUFFER_NAME,

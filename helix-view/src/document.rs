@@ -855,7 +855,7 @@ impl Document {
         let text = self.text().clone();
 
         let path = match path {
-            Some(path) => helix_core::path::get_canonicalized_path(&path),
+            Some(path) => helix_stdx::path::canonicalize(path),
             None => {
                 if self.path.is_none() {
                     bail!("Can't save with no path set!");
@@ -1049,7 +1049,7 @@ impl Document {
     }
 
     pub fn set_path(&mut self, path: Option<&Path>) {
-        let path = path.map(helix_core::path::get_canonicalized_path);
+        let path = path.map(helix_stdx::path::canonicalize);
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
@@ -1672,7 +1672,7 @@ impl Document {
     pub fn relative_path(&self) -> Option<PathBuf> {
         self.path
             .as_deref()
-            .map(helix_core::path::get_relative_path)
+            .map(helix_stdx::path::get_relative_path)
     }
 
     pub fn display_name(&self) -> Cow<'static, str> {

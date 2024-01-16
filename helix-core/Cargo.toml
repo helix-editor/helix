@@ -16,6 +16,7 @@ unicode-lines = ["ropey/unicode_lines"]
 integration = []
 
 [dependencies]
+helix-stdx = { path = "../helix-stdx" }
 helix-loader = { path = "../helix-loader" }
 
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
@@ -55,4 +56,3 @@ parking_lot = "0.12"
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
 indoc = "2.0.4"
-tempfile = "3.9"

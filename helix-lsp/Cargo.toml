@@ -13,6 +13,7 @@ homepage.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+helix-stdx = { path = "../helix-stdx" }
 helix-core = { path = "../helix-core" }
 helix-loader = { path = "../helix-loader" }
 helix-parsec = { path = "../helix-parsec" }

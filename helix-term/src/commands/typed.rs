@@ -7,7 +7,7 @@ use super::*;
 
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
-use helix_core::{encoding, line_ending, path::get_canonicalized_path, shellwords::Shellwords};
+use helix_core::{encoding, line_ending, shellwords::Shellwords};
 use helix_lsp::{OffsetEncoding, Url};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
@@ -111,7 +111,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
         let (path, pos) = args::parse_file(arg);
-        let path = helix_core::path::expand_tilde(&path);
+        let path = helix_stdx::path::expand_tilde(&path);
         // If the path is a directory, open a file picker on that directory and update the status
         // message
         if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
@@ -1079,18 +1079,17 @@ fn change_current_directory(
         return Ok(());
     }
 
-    let dir = helix_core::path::expand_tilde(
+    let dir = helix_stdx::path::expand_tilde(
         args.first()
             .context("target directory not provided")?
-            .as_ref()
             .as_ref(),
     );
 
-    helix_loader::set_current_working_dir(dir)?;
+    helix_stdx::env::set_current_working_dir(dir)?;
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",
-        helix_loader::current_working_dir().display()
+        helix_stdx::env::current_working_dir().display()
     ));
     Ok(())
 }
@@ -1104,7 +1103,7 @@ fn show_current_directory(
         return Ok(());
     }
 
-    let cwd = helix_loader::current_working_dir();
+    let cwd = helix_stdx::env::current_working_dir();
     let message = format!("Current working directory is {}", cwd.display());
 
     if cwd.exists() {
@@ -2409,7 +2408,8 @@ fn move_buffer(
     ensure!(args.len() == 1, format!(":move takes one argument"));
     let doc = doc!(cx.editor);
 
-    let new_path = get_canonicalized_path(&PathBuf::from(args.first().unwrap().to_string()));
+    let new_path =
+        helix_stdx::path::canonicalize(&PathBuf::from(args.first().unwrap().to_string()));
     let old_path = doc
         .path()
         .ok_or_else(|| anyhow!("Scratch buffer cannot be moved. Use :write instead"))?

@@ -1,5 +1,8 @@
-use etcetera::home_dir;
+pub use etcetera::home_dir;
+
 use std::path::{Component, Path, PathBuf};
+
+use crate::env::current_working_dir;
 
 /// Replaces users home directory from `path` with tilde `~` if the directory
 /// is available, otherwise returns the path unchanged.
@@ -16,7 +19,8 @@ pub fn fold_home_dir(path: &Path) -> PathBuf {
 /// Expands tilde `~` into users home directory if available, otherwise returns the path
 /// unchanged. The tilde will only be expanded when present as the first component of the path
 /// and only slash follows it.
-pub fn expand_tilde(path: &Path) -> PathBuf {
+pub fn expand_tilde(path: impl AsRef<Path>) -> PathBuf {
+    let path = path.as_ref();
     let mut components = path.components().peekable();
     if let Some(Component::Normal(c)) = components.peek() {
         if c == &"~" {
@@ -33,8 +37,8 @@ pub fn expand_tilde(path: &Path) -> PathBuf {
 /// Normalize a path without resolving symlinks.
 // Strategy: start from the first component and move up. Cannonicalize previous path,
 // join component, cannonicalize new path, strip prefix and join to the final result.
-pub fn get_normalized_path(path: &Path) -> PathBuf {
-    let mut components = path.components().peekable();
+pub fn normalize(path: impl AsRef<Path>) -> PathBuf {
+    let mut components = path.as_ref().components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();
         PathBuf::from(c.as_os_str())
@@ -104,22 +108,22 @@ pub fn get_normalized_path(path: &Path) -> PathBuf {
 ///
 /// This function is used instead of [`std::fs::canonicalize`] because we don't want to verify
 /// here if the path exists, just normalize it's components.
-pub fn get_canonicalized_path(path: &Path) -> PathBuf {
+pub fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
     let path = expand_tilde(path);
     let path = if path.is_relative() {
-        helix_loader::current_working_dir().join(path)
+        current_working_dir().join(path)
     } else {
         path
     };
 
-    get_normalized_path(path.as_path())
+    normalize(path)
 }
 
-pub fn get_relative_path(path: &Path) -> PathBuf {
-    let path = PathBuf::from(path);
+pub fn get_relative_path(path: impl AsRef<Path>) -> PathBuf {
+    let path = PathBuf::from(path.as_ref());
     let path = if path.is_absolute() {
-        let cwdir = get_normalized_path(&helix_loader::current_working_dir());
-        get_normalized_path(&path)
+        let cwdir = normalize(current_working_dir());
+        normalize(&path)
             .strip_prefix(cwdir)
             .map(PathBuf::from)
             .unwrap_or(path)
@@ -135,8 +139,8 @@ pub fn get_relative_path(path: &Path) -> PathBuf {
 /// Also strip the current working directory from the beginning of the path.
 /// Note that this function does not check if the truncated path is unambiguous.
 ///
-/// ```   
-///    use helix_core::path::get_truncated_path;
+/// ```
+///    use helix_stdx::path::get_truncated_path;
 ///    use std::path::Path;
 ///
 ///    assert_eq!(
@@ -158,8 +162,8 @@ pub fn get_relative_path(path: &Path) -> PathBuf {
 ///     assert_eq!(get_truncated_path("").as_path(), Path::new(""));
 /// ```
 ///
-pub fn get_truncated_path<P: AsRef<Path>>(path: P) -> PathBuf {
-    let cwd = helix_loader::current_working_dir();
+pub fn get_truncated_path(path: impl AsRef<Path>) -> PathBuf {
+    let cwd = current_working_dir();
     let path = path
         .as_ref()
         .strip_prefix(cwd)
