@@ -1,3 +1,9 @@
+# Voxed theme for the Helix Editor
+# Author: rojebd<roniellberrios@gmail.com>
+# Repo: https://github.com/rojebd/voxed
+# Version: 1.0
+# Info: This is a theme I made one afternoon because I was bored
+
 attribute = "buff"
 keyword = "sglow"
 "keyword.directive" = "defineish" 
