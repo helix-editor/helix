@@ -253,7 +253,7 @@ impl Transport {
         mut server_stdout: BufReader<ChildStdout>,
         client_tx: UnboundedSender<(usize, jsonrpc::Call)>,
     ) {
-        async fn close_language_server(
+        async fn exit_language_server(
             transport: &Arc<Transport>,
             client_tx: &UnboundedSender<(usize, crate::Call)>,
         ) {
@@ -305,15 +305,15 @@ impl Transport {
                     };
                 }
                 Err(Error::StreamClosed) => {
-                    close_language_server(&transport, &client_tx).await;
+                    exit_language_server(&transport, &client_tx).await;
                     break;
                 }
                 Err(err) => {
                     error!(
-                        "Closing {} after unexpected error: {err:?}",
+                        "Exiting {} after unexpected error: {err:?}",
                         &transport.name
                     );
-                    close_language_server(&transport, &client_tx).await;
+                    exit_language_server(&transport, &client_tx).await;
                     break;
                 }
             }
