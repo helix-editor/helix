@@ -190,6 +190,8 @@ const UNDO_FILE_HEADER_LEN: usize = UNDO_FILE_HEADER_TAG.len();
 const UNDO_FILE_VERSION: u8 = 1;
 
 impl History {
+    /// It is the responsibility of the caller to ensure the undofile is valid before serializing.
+    /// This function performs no checks.
     pub fn serialize<W: Write + Seek>(
         &self,
         writer: &mut W,
