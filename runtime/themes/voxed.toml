@@ -54,7 +54,7 @@ label = "yellow"
 "ui.text.inactive" = "bgrey"
 "ui.virtual" = { fg = "blue" }
 "ui.virtual.ruler" = { bg = "bgrey-two" }
-"ui.virtual.indent-guide" = { fg = "bpink" }
+"ui.virtual.indent-guide" = { fg = "gray" }
 
 "ui.selection" = { bg = "maize" }
 "ui.selection.primary" = { fg = "white", bg = "bgrey" }
