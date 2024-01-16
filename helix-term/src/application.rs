@@ -676,7 +676,7 @@ impl Application {
                 let notification = match Notification::parse(&method, params) {
                     Ok(notification) => notification,
                     Err(err) => {
-                        log::error!(
+                        log::info!(
                             "received malformed notification from Language Server: {}",
                             err
                         );
