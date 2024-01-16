@@ -131,12 +131,22 @@ where
 {
     fn claim(&mut self, config: Config) -> io::Result<()> {
         terminal::enable_raw_mode()?;
-        execute!(
+        match execute!(
             self.buffer,
             terminal::EnterAlternateScreen,
             EnableBracketedPaste,
             EnableFocusChange
-        )?;
+        ) {
+            Ok(_) => {}
+            Err(e) => match e.kind() {
+                io::ErrorKind::Unsupported => {
+                    log::error!("Bracketed paste is not supported on this terminal.")
+                }
+                _ => {
+                    return Err(e);
+                }
+            },
+        };
         execute!(self.buffer, terminal::Clear(terminal::ClearType::All))?;
         if config.enable_mouse_capture {
             execute!(self.buffer, EnableMouseCapture)?;
