@@ -309,7 +309,10 @@ impl Transport {
                     break;
                 }
                 Err(err) => {
-                    error!("Unexpected error when processing message from {}. Closing language server. err: <- {err:?}", &transport.name);
+                    error!(
+                        "Closing {} after unexpected error: {err:?}",
+                        &transport.name
+                    );
                     close_language_server(&transport, &client_tx).await;
                     break;
                 }
