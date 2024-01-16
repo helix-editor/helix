@@ -186,9 +186,11 @@ where
         if self.supports_keyboard_enhancement_protocol() {
             execute!(self.buffer, PopKeyboardEnhancementFlags)?;
         }
+        if self.supports_bracketed_paste {
+            execute!(self.buffer, DisableBracketedPaste,)?;
+        }
         execute!(
             self.buffer,
-            DisableBracketedPaste,
             DisableFocusChange,
             terminal::LeaveAlternateScreen
         )?;
