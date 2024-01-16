@@ -206,12 +206,8 @@ where
         // disable without calling enable previously
         let _ = execute!(stdout, DisableMouseCapture);
         let _ = execute!(stdout, PopKeyboardEnhancementFlags);
-        execute!(
-            stdout,
-            DisableBracketedPaste,
-            DisableFocusChange,
-            terminal::LeaveAlternateScreen
-        )?;
+        let _ = execute!(stdout, DisableBracketedPaste);
+        execute!(stdout, DisableFocusChange, terminal::LeaveAlternateScreen)?;
         terminal::disable_raw_mode()
     }
 
