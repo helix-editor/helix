@@ -53,7 +53,8 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     rt_dirs.push(conf_rt_dir);
 
     if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
-        rt_dirs.push(dir.into());
+        let dir = path::expand_tilde(dir);
+        rt_dirs.push(path::normalize(dir));
     }
 
     // If this variable is set during build time, it will always be included
