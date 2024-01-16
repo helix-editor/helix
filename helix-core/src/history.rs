@@ -86,22 +86,11 @@ impl Default for History {
     }
 }
 
-const HASH_DIGEST_LENGTH: usize = std::mem::size_of::<u128>();
+const HASH_DIGEST_LENGTH: usize = blake3::OUT_LEN;
 fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; HASH_DIGEST_LENGTH]> {
-    const BUF_SIZE: usize = 8192;
-
-    let mut buf = [0u8; BUF_SIZE];
-    let mut hash = Box::new(xxhash_rust::xxh3::Xxh3::new());
-    loop {
-        let total_read = reader.read(&mut buf)?;
-        if total_read == 0 {
-            break;
-        }
-
-        hash.update(&buf[0..total_read]);
-    }
-    let bytes = hash.digest128().to_ne_bytes();
-    Ok(bytes)
+    let mut hasher = blake3::Hasher::new();
+    hasher.update_reader(reader)?;
+    Ok(hasher.finalize().as_bytes().to_owned())
 }
 
 #[derive(Debug)]
