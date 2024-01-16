@@ -80,7 +80,7 @@
 [
   (line_comment)
   (block_comment)
-] @comment @spell
+] @comment
 
 ((block_comment) @comment.block.documentation
   (#match? @comment.block.documentation "^/[*][*][^*](?s:.)*[*]/$"))
