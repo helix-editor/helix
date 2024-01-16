@@ -287,7 +287,6 @@ impl Transport {
         }
 
         let mut recv_buffer = String::new();
-
         loop {
             match Self::recv_server_message(&mut server_stdout, &mut recv_buffer, &transport.name)
                 .await
