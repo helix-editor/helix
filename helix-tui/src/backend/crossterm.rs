@@ -79,6 +79,7 @@ pub struct CrosstermBackend<W: Write> {
     capabilities: Capabilities,
     supports_keyboard_enhancement_protocol: OnceCell<bool>,
     mouse_capture_enabled: bool,
+    supports_bracketed_paste: bool,
 }
 
 impl<W> CrosstermBackend<W>
@@ -91,6 +92,7 @@ where
             capabilities: Capabilities::from_env_or_default(config),
             supports_keyboard_enhancement_protocol: OnceCell::new(),
             mouse_capture_enabled: false,
+            supports_bracketed_paste: true,
         }
     }
 
@@ -131,21 +133,18 @@ where
 {
     fn claim(&mut self, config: Config) -> io::Result<()> {
         terminal::enable_raw_mode()?;
-        match execute!(
+        execute!(
             self.buffer,
             terminal::EnterAlternateScreen,
-            EnableBracketedPaste,
             EnableFocusChange
-        ) {
-            Ok(_) => {}
-            Err(e) => match e.kind() {
-                io::ErrorKind::Unsupported => {
-                    log::error!("Bracketed paste is not supported on this terminal.")
-                }
-                _ => {
-                    return Err(e);
-                }
-            },
+        )?;
+        match execute!(self.buffer, EnableBracketedPaste,) {
+            Err(err) if err.kind() == io::ErrorKind::Unsupported => {
+                log::warn!("Bracketed paste is not supported on this terminal.");
+                self.supports_bracketed_paste = false;
+            }
+            Err(err) => return Err(err),
+            Ok(_) => (),
         };
         execute!(self.buffer, terminal::Clear(terminal::ClearType::All))?;
         if config.enable_mouse_capture {
