@@ -677,7 +677,7 @@ impl Application {
                     Ok(notification) => notification,
                     Err(err) => {
                         log::info!(
-                            "received malformed notification from Language Server: {}",
+                            "Ignoring unknown notification from Language Server: {}",
                             err
                         );
                         return;
