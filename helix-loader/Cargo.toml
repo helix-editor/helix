@@ -15,6 +15,8 @@ name = "hx-loader"
 path = "src/main.rs"
 
 [dependencies]
+helix-stdx = { path = "../helix-stdx" }
+
 anyhow = "1"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.7"
