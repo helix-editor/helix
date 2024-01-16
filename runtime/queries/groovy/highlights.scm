@@ -1,9 +1,10 @@
 (unit
   (identifier) @variable)
+
 (string
   (identifier) @variable)
 
-(escape_sequence) @string.escape
+(escape_sequence) @constant.character.escape
 
 (block
   (unit
@@ -12,13 +13,13 @@
 (func
   (identifier) @function)
 
-(number) @number
+(number) @constant.numeric
 
-((identifier) @boolean
-  (#any-of? @boolean "true" "false" "True" "False"))
+((identifier) @constant.builtin.boolean
+  (#any-of? @constant.builtin.boolean "true" "false"))
 
 ((identifier) @constant
-  (#lua-match? @constant "^[A-Z][A-Z%d_]*$"))
+  (#match? @constant "^[A-Z][A-Z\d_]*$"))
 
 ((identifier) @constant.builtin
   (#eq? @constant.builtin "null"))
@@ -43,29 +44,32 @@
     "androidTestImplementation"
     "debugImplementation"))
 
+((identifier) @keyword.storage.modifier
+  (#eq? @keyword.storage.modifier "static"))
+
+((identifier) @keyword.storage.type
+  (#any-of? @keyword.storage.type "class" "def" "interface"))
+
 ((identifier) @keyword
   (#any-of? @keyword
-    "static"
-    "class"
-    "def"
-    "import"
-    "package"
     "assert"
+    "new"
     "extends"
     "implements"
-    "instanceof"
-    "interface"
-    "new"))
+    "instanceof"))
 
-((identifier) @type.qualifier
-  (#any-of? @type.qualifier
+((identifier) @keyword.control.import
+  (#any-of? @keyword.control.import "import" "package"))
+
+((identifier) @keyword.storage.modifier
+  (#any-of? @keyword.storage.modifier
     "abstract"
     "protected"
     "private"
     "public"))
 
-((identifier) @exception
-  (#any-of? @exception
+((identifier) @keyword.control.exception
+  (#any-of? @keyword.control.exception
     "throw"
     "finally"
     "try"
@@ -78,14 +82,11 @@
   (block_comment)
 ] @comment @spell
 
-((block_comment) @comment.documentation
-  (#lua-match? @comment.documentation "^/[*][*][^*].*[*]/$"))
+((block_comment) @comment.block.documentation
+  (#match? @comment.block.documentation "^/[*][*][^*](?s:.)*[*]/$"))
 
-((line_comment) @comment.documentation
-  (#lua-match? @comment.documentation "^///[^/]"))
-
-((line_comment) @comment.documentation
-  (#lua-match? @comment.documentation "^///$"))
+((line_comment) @comment.block.documentation
+  (#match? @comment.block.documentation "^///[^/]*.*$"))
 
 [
   (operators)
