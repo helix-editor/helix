@@ -36,7 +36,7 @@ ahash = "0.8.11"
 hashbrown = { version = "0.14.3", features = ["raw"] }
 dunce = "1.0"
 
-sha1_smol = "1.0"
+xxhash-rust = { version = "0.8.8", features = ["xxh3"] }
 anyhow = "1"
 
 log = "0.4"

@@ -1316,7 +1316,6 @@ dependencies = [
  "ropey",
  "serde",
  "serde_json",
- "sha1_smol",
  "slotmap",
  "smallvec",
  "smartstring",
@@ -1326,6 +1325,7 @@ dependencies = [
  "unicode-general-category",
  "unicode-segmentation",
  "unicode-width",
+ "xxhash-rust",
 ]
 
 [[package]]
@@ -2904,6 +2904,12 @@ dependencies = [
  "helix-view",
  "toml",
 ]
+
+[[package]]
+name = "xxhash-rust"
+version = "0.8.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53be06678ed9e83edb1745eb72efc0bbcd7b5c3c35711a860906aed827a13d61"
 
 [[package]]
 name = "zerocopy"

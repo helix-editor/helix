@@ -86,11 +86,12 @@ impl Default for History {
     }
 }
 
-fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; sha1_smol::DIGEST_LENGTH]> {
+const HASH_DIGEST_LENGTH: usize = std::mem::size_of::<u128>();
+fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; HASH_DIGEST_LENGTH]> {
     const BUF_SIZE: usize = 8192;
 
     let mut buf = [0u8; BUF_SIZE];
-    let mut hash = sha1_smol::Sha1::new();
+    let mut hash = Box::new(xxhash_rust::xxh3::Xxh3::new());
     loop {
         let total_read = reader.read(&mut buf)?;
         if total_read == 0 {
@@ -99,7 +100,8 @@ fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; sha1_smol::DIGEST_L
 
         hash.update(&buf[0..total_read]);
     }
-    Ok(hash.digest().bytes())
+    let bytes = hash.digest128().to_ne_bytes();
+    Ok(bytes)
 }
 
 #[derive(Debug)]
@@ -200,16 +202,10 @@ impl History {
         last_saved_revision: usize,
     ) -> Result<(), StateError> {
         // Header
-        let mtime = std::fs::metadata(path)?
-            .modified()?
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
         writer.write_all(UNDO_FILE_HEADER_TAG)?;
         write_byte(writer, UNDO_FILE_VERSION)?;
         write_usize(writer, self.current)?;
         write_usize(writer, revision)?;
-        write_u64(writer, mtime)?;
         writer.write_all(&get_hash(&mut std::fs::File::open(path)?)?)?;
 
         // Append new revisions to the end of the file.
@@ -316,16 +312,10 @@ impl History {
         } else {
             let current = read_usize(reader)?;
             let last_saved_revision = read_usize(reader)?;
-            let mtime = read_u64(reader)?;
-            let last_mtime = std::fs::metadata(path)?
-                .modified()?
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
-            let mut hash = [0u8; sha1_smol::DIGEST_LENGTH];
+            let mut hash = [0u8; HASH_DIGEST_LENGTH];
             reader.read_exact(&mut hash)?;
 
-            if mtime != last_mtime && hash != get_hash(&mut std::fs::File::open(path)?)? {
+            if hash != get_hash(&mut std::fs::File::open(path)?)? {
                 anyhow::bail!(StateError::Outdated);
             }
 
