@@ -82,6 +82,6 @@ crossterm = { version = "0.27", features = ["event-stream", "use-dev-tty"] }
 helix-loader = { path = "../helix-loader" }
 
 [dev-dependencies]
-smallvec = "1.11"
+smallvec = "1.12"
 indoc = "2.0.4"
 tempfile = "3.9.0"
