@@ -1060,6 +1060,7 @@ dependencies = [
  "etcetera",
  "hashbrown 0.14.3",
  "helix-loader",
+ "helix-stdx",
  "imara-diff",
  "indoc",
  "log",
@@ -1074,7 +1075,6 @@ dependencies = [
  "slotmap",
  "smallvec",
  "smartstring",
- "tempfile",
  "textwrap",
  "toml",
  "tree-sitter",
@@ -1136,6 +1136,7 @@ dependencies = [
  "helix-core",
  "helix-loader",
  "helix-parsec",
+ "helix-stdx",
  "log",
  "lsp-types",
  "parking_lot",
@@ -1150,6 +1151,15 @@ dependencies = [
 [[package]]
 name = "helix-parsec"
 version = "23.10.0"
+
+[[package]]
+name = "helix-stdx"
+version = "23.10.0"
+dependencies = [
+ "dunce",
+ "etcetera",
+ "tempfile",
+]
 
 [[package]]
 name = "helix-term"
@@ -1169,6 +1179,7 @@ dependencies = [
  "helix-event",
  "helix-loader",
  "helix-lsp",
+ "helix-stdx",
  "helix-tui",
  "helix-vcs",
  "helix-view",
@@ -1241,6 +1252,7 @@ dependencies = [
  "helix-event",
  "helix-loader",
  "helix-lsp",
+ "helix-stdx",
  "helix-tui",
  "helix-vcs",
  "libc",

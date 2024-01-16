@@ -6,7 +6,7 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-use helix_core::path::get_normalized_path;
+use helix_stdx::path;
 use tempfile::Builder;
 
 // Paths on Windows are almost always case-insensitive.
@@ -34,7 +34,7 @@ fn test_case_folding_windows() -> Result<(), Box<dyn Error>> {
     );
     let test_path = root_without_prefix.join(lowercase_case);
     assert_eq!(
-        get_normalized_path(&test_path),
+        path::normalize(&test_path),
         case.path().strip_prefix(&tmp_prefix)?
     );
 
@@ -80,7 +80,7 @@ fn test_normalize_path() -> Result<(), Box<dyn Error>> {
     // root/link
     let path = link.strip_prefix(&tmp_prefix)?;
     assert_eq!(
-        get_normalized_path(path),
+        path::normalize(path),
         path,
         "input {:?} and symlink last component shouldn't be resolved",
         path
@@ -98,7 +98,7 @@ fn test_normalize_path() -> Result<(), Box<dyn Error>> {
         .unwrap()
         .join(Component::ParentDir);
     assert_eq!(
-        get_normalized_path(&path),
+        path::normalize(&path),
         expected,
         "input {:?} and \"..\" should not erase the simlink that goes ahead",
         &path
@@ -118,7 +118,7 @@ fn test_normalize_path() -> Result<(), Box<dyn Error>> {
         .unwrap()
         .join(Component::ParentDir)
         .join(Component::ParentDir);
-    assert_eq!(get_normalized_path(&path), expected, "input {:?}", &path);
+    assert_eq!(path::normalize(&path), expected, "input {:?}", &path);
 
     Ok(())
 }

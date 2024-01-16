@@ -23,6 +23,7 @@ name = "hx"
 path = "src/main.rs"
 
 [dependencies]
+helix-stdx = { path = "../helix-stdx" }
 helix-core = { path = "../helix-core" }
 helix-event = { path = "../helix-event" }
 helix-view = { path = "../helix-view" }

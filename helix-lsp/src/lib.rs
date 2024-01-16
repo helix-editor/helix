@@ -11,10 +11,10 @@ pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::{
-    path,
-    syntax::{LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures},
+use helix_core::syntax::{
+    LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
 };
+use helix_stdx::path;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
@@ -958,10 +958,10 @@ pub fn find_lsp_workspace(
     let mut file = if file.is_absolute() {
         file.to_path_buf()
     } else {
-        let current_dir = helix_loader::current_working_dir();
+        let current_dir = helix_stdx::env::current_working_dir();
         current_dir.join(file)
     };
-    file = path::get_normalized_path(&file);
+    file = path::normalize(&file);
 
     if !file.starts_with(workspace) {
         return None;
@@ -978,7 +978,7 @@ pub fn find_lsp_workspace(
 
         if root_dirs
             .iter()
-            .any(|root_dir| path::get_normalized_path(&workspace.join(root_dir)) == ancestor)
+            .any(|root_dir| path::normalize(workspace.join(root_dir)) == ancestor)
         {
             // if the worskapce is the cwd do not search any higher for workspaces
             // but specify

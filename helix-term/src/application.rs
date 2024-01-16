@@ -1,11 +1,12 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{path::get_relative_path, pos_at_coords, syntax, Selection};
+use helix_core::{pos_at_coords, syntax, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
     LspProgressMap,
 };
+use helix_stdx::path::get_relative_path;
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
