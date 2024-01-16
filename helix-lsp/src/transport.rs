@@ -253,8 +253,6 @@ impl Transport {
         mut server_stdout: BufReader<ChildStdout>,
         client_tx: UnboundedSender<(usize, jsonrpc::Call)>,
     ) {
-        let mut recv_buffer = String::new();
-
         async fn close_language_server(
             transport: &Arc<Transport>,
             client_tx: &UnboundedSender<(usize, crate::Call)>,
@@ -287,6 +285,8 @@ impl Transport {
                 }
             }
         }
+
+        let mut recv_buffer = String::new();
 
         loop {
             match Self::recv_server_message(&mut server_stdout, &mut recv_buffer, &transport.name)
