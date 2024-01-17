@@ -795,7 +795,7 @@ fn goto_buffer(editor: &mut Editor, direction: Direction) {
             let iter = editor.documents.keys();
             let mut iter = iter.rev().skip_while(|id| *id != &current);
             iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().rev().next())
+            iter.next().or_else(|| editor.documents.keys().next_back())
         }
     }
     .unwrap();
@@ -2789,7 +2789,7 @@ fn buffer_picker(cx: &mut Context) {
         .editor
         .documents
         .values()
-        .map(|doc| new_meta(doc))
+        .map(new_meta)
         .collect::<Vec<BufferMeta>>();
 
     // mru

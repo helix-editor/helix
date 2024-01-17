@@ -78,7 +78,7 @@ fn thread_picker(
             })
             .with_preview(move |editor, thread| {
                 let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
-                let frame = frames.get(0)?;
+                let frame = frames.first()?;
                 let path = frame.source.as_ref()?.path.clone()?;
                 let pos = Some((
                     frame.line.saturating_sub(1),
@@ -166,7 +166,7 @@ pub fn dap_start_impl(
     // TODO: avoid refetching all of this... pass a config in
     let template = match name {
         Some(name) => config.templates.iter().find(|t| t.name == name),
-        None => config.templates.get(0),
+        None => config.templates.first(),
     }
     .ok_or_else(|| anyhow!("No debug config with given name"))?;
 
