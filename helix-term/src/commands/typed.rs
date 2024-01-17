@@ -483,7 +483,7 @@ fn set_indent_style(
     }
 
     // Attempt to parse argument as an indent style.
-    let style = match args.get(0) {
+    let style = match args.first() {
         Some(arg) if "tabs".starts_with(&arg.to_lowercase()) => Some(Tabs),
         Some(Cow::Borrowed("0")) => Some(Tabs),
         Some(arg) => arg
@@ -535,7 +535,7 @@ fn set_line_ending(
     }
 
     let arg = args
-        .get(0)
+        .first()
         .context("argument missing")?
         .to_ascii_lowercase();
 
@@ -2078,7 +2078,7 @@ fn reflow(
     //   - The configured text-width for this language in languages.toml
     //   - The configured text-width in the config.toml
     let text_width: usize = args
-        .get(0)
+        .first()
         .map(|num| num.parse::<usize>())
         .transpose()?
         .or_else(|| doc.language_config().and_then(|config| config.text_width))

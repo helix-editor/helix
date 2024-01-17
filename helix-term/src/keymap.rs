@@ -319,7 +319,7 @@ impl Keymaps {
             self.sticky = None;
         }
 
-        let first = self.state.get(0).unwrap_or(&key);
+        let first = self.state.first().unwrap_or(&key);
         let trie_node = match self.sticky {
             Some(ref trie) => Cow::Owned(KeyTrie::Node(trie.clone())),
             None => Cow::Borrowed(keymap),
