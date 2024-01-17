@@ -81,6 +81,8 @@ label = "honey"
 "diagnostic.warning" = { underline = { color = "lightning", style = "curl" } }
 "diagnostic.error" = { underline = { color = "apricot", style = "curl" } }
 
+"code_lens" = { underline = { color = "delta", style = "curl" } }
+
 warning = "lightning"
 error = "apricot"
 info = "delta"

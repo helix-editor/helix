@@ -1100,6 +1100,10 @@ impl Application {
                         }
                         Ok(serde_json::Value::Null)
                     }
+                    Ok(MethodCall::CodeLensRefresh) => {
+                        log::warn!("unhandled workspace/codeLens/refresh");
+                        Ok(serde_json::Value::Null)
+                    }
                 };
 
                 tokio::spawn(language_server!().reply(id, reply));
