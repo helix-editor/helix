@@ -1,12 +1,95 @@
 use std::fmt::Write;
 
+use helix_config::{config_serde_adapter, options, List};
 use helix_core::syntax::LanguageServerFeature;
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    editor::GutterType,
     graphics::{Style, UnderlineStyle},
     Document, Editor, Theme, View,
 };
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LineNumber {
+    /// Show absolute line number
+    #[serde(alias = "abs")]
+    Absolute,
+    /// If focused and in normal/select mode, show relative line number to the primary cursor.
+    /// If unfocused or in insert mode, show absolute line number.
+    #[serde(alias = "rel")]
+    Relative,
+}
+
+config_serde_adapter!(LineNumber);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GutterType {
+    /// Show diagnostics and other features like breakpoints
+    Diagnostics,
+    /// Show line numbers
+    LineNumbers,
+    /// Show one blank space
+    Spacer,
+    /// Highlight local changes
+    Diff,
+}
+
+impl std::str::FromStr for GutterType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "diagnostics" => Ok(Self::Diagnostics),
+            "spacer" => Ok(Self::Spacer),
+            "line-numbers" => Ok(Self::LineNumbers),
+            "diff" => Ok(Self::Diff),
+            _ => anyhow::bail!(
+                "expected one of `diagnostics`, `spacer`, `line-numbers` or `diff` (found {s:?})"
+            ),
+        }
+    }
+}
+
+impl helix_config::Ty for GutterType {
+    fn from_value(val: helix_config::Value) -> anyhow::Result<Self> {
+        let val: String = val.typed()?;
+        val.parse()
+    }
+
+    fn to_value(&self) -> helix_config::Value {
+        match self {
+            GutterType::Diagnostics => "diagnostics".into(),
+            GutterType::LineNumbers => "lineNumbers".into(),
+            GutterType::Spacer => "spacer".into(),
+            GutterType::Diff => "diff".into(),
+        }
+    }
+}
+
+options! {
+    struct GutterConfig {
+        /// A list of gutters to display
+        #[name = "gutters.layout"]
+        layout: List<GutterType> = &[
+            GutterType::Diagnostics,
+            GutterType::Spacer,
+            GutterType::LineNumbers,
+            GutterType::Spacer,
+            GutterType::Diff,
+        ],
+        /// The minimum number of characters the line number gutter should take up.
+        #[name = "gutters.line-numbers.min-width"]
+        line_number_min_width: usize = 3,
+        /// Line number display: `absolute` simply shows each line's number,
+        /// while `relative` shows the distance from the current line. When
+        /// unfocused or in insert mode, `relative` will still show absolute
+        /// line numbers
+        #[name = "line-number"]
+        line_number_mode: LineNumber = LineNumber::Absolute,
+    }
+}
 
 fn count_digits(n: usize) -> usize {
     (usize::checked_ilog10(n).unwrap_or(0) + 1) as usize

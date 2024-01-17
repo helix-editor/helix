@@ -1518,13 +1518,6 @@ impl Document {
         current_revision
     }
 
-    /// Corresponding language scope name. Usually `source.<lang>`.
-    pub fn language_scope(&self) -> Option<&str> {
-        self.language
-            .as_ref()
-            .map(|language| language.scope.as_str())
-    }
-
     /// Language name for the document. Corresponds to the `name` key in
     /// `languages.toml` configuration.
     pub fn language_name(&self) -> Option<&str> {

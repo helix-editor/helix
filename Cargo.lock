@@ -1048,10 +1048,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "helix-config"
+version = "23.10.0"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "globset",
+ "hashbrown 0.14.3",
+ "indexmap",
+ "parking_lot",
+ "regex",
+ "regex-syntax",
+ "serde",
+ "serde_json",
+ "which",
+]
+
+[[package]]
 name = "helix-core"
 version = "23.10.0"
 dependencies = [
  "ahash",
+ "anyhow",
  "arc-swap",
  "bitflags 2.4.1",
  "chrono",
@@ -1059,8 +1077,10 @@ dependencies = [
  "encoding_rs",
  "etcetera",
  "hashbrown 0.14.3",
+ "helix-config",
  "helix-loader",
  "imara-diff",
+ "indexmap",
  "indoc",
  "log",
  "nucleo",
@@ -1089,6 +1109,7 @@ version = "23.10.0"
 dependencies = [
  "anyhow",
  "fern",
+ "helix-config",
  "helix-core",
  "log",
  "serde",
@@ -1129,13 +1150,16 @@ dependencies = [
 name = "helix-lsp"
 version = "23.10.0"
 dependencies = [
+ "ahash",
  "anyhow",
  "futures-executor",
  "futures-util",
  "globset",
+ "helix-config",
  "helix-core",
  "helix-loader",
  "helix-parsec",
+ "indexmap",
  "log",
  "lsp-types",
  "parking_lot",
@@ -1236,6 +1260,7 @@ dependencies = [
  "clipboard-win",
  "crossterm",
  "futures-util",
+ "helix-config",
  "helix-core",
  "helix-dap",
  "helix-event",
@@ -1338,12 +1363,13 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5477fe2230a79769d8dc68e0eabf5437907c0457a5614a9e8dddb67f65eb65d"
+checksum = "d530e1a18b1cb4c484e6e34556a0d948706958449fca0cab753d649f2bce3d1f"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.3",
+ "serde",
 ]
 
 [[package]]

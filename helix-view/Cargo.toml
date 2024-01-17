@@ -16,6 +16,7 @@ term = ["crossterm"]
 
 [dependencies]
 helix-core = { path = "../helix-core" }
+helix-config = { path = "../helix-config" }
 helix-event = { path = "../helix-event" }
 helix-loader = { path = "../helix-loader" }
 helix-lsp = { path = "../helix-lsp" }

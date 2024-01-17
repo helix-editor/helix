@@ -14,6 +14,7 @@ homepage.workspace = true
 
 [dependencies]
 helix-core = { path = "../helix-core" }
+helix-config = { path = "../helix-config" }
 helix-loader = { path = "../helix-loader" }
 helix-parsec = { path = "../helix-parsec" }
 
@@ -30,3 +31,5 @@ tokio = { version = "1.35", features = ["rt", "rt-multi-thread", "io-util", "io-
 tokio-stream = "0.1.14"
 which = "5.0.0"
 parking_lot = "0.12.1"
+ahash = "0.8.6"
+indexmap = { version = "2.1.0", features = ["serde"] }

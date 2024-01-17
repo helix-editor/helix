@@ -3,7 +3,6 @@ pub use encoding_rs as encoding;
 pub mod auto_pairs;
 pub mod chars;
 pub mod comment;
-pub mod config;
 pub mod diagnostic;
 pub mod diff;
 pub mod doc_formatter;
@@ -36,6 +35,7 @@ pub mod unicode {
     pub use unicode_width as width;
 }
 
+use helix_config::OptionRegistry;
 pub use helix_loader::find_workspace;
 
 pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
@@ -70,3 +70,9 @@ pub use diagnostic::Diagnostic;
 
 pub use line_ending::{LineEnding, NATIVE_LINE_ENDING};
 pub use transaction::{Assoc, Change, ChangeSet, Deletion, Operation, Transaction};
+
+pub fn init_config(registry: &mut OptionRegistry) {
+    line_ending::init_config(registry);
+    auto_pairs::init_config(registry);
+    indent::init_config(registry);
+}
