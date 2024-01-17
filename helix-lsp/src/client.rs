@@ -1300,7 +1300,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         range: lsp::Range,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<SemanticTokens>>>> {
+    ) -> Option<impl Future<Output = Result<SemanticTokens>>> {
         let capabilites = self.capabilities.get().unwrap();
 
         // Return early if the server doesn't support range semantic tokens.

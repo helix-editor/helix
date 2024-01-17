@@ -44,12 +44,10 @@ fn request_semantic_tokens(editor: &mut Editor, _compositor: &mut crate::composi
             view_id: view.id,
         };
 
-        tokio::spawn(async move {
-            job::dispatch(move |editor, _compositor| {
-                request_semantic_tokens_for_view(editor, state);
-            })
-            .await;
+        job::dispatch_blocking(move |editor, _compositor| {
+            request_semantic_tokens_for_view(editor, state);
         });
+
         // if let Some(callback) = request_semantic_tokens_for_view(view, doc) {
         //     job::dispatch_blocking(move |editor, compositor| {
         //         tokio::spawn(async move {
@@ -86,8 +84,33 @@ fn request_semantic_tokens_for_view(editor: &mut Editor, state: State) -> Option
             );
             let id = doc.identifier();
             ls.text_document_semantic_tokens(id, range, None)
-        });
+        })?;
 
+    tokio::spawn(async move {
+        let Ok(tokens) = future.await else {
+            return;
+        };
+
+        job::dispatch(|editor, _c| {
+            compute_semantic_tokens(editor, state, tokens);
+        })
+        .await;
+    });
+
+    todo!()
+}
+
+fn compute_semantic_tokens(
+    editor: &mut Editor,
+    state: State,
+    tokens: lsp::SemanticTokens,
+) -> Option<()> {
+    let doc = editor.document(state.doc_id)?;
+    let view = editor.tree.try_get(state.view_id)?;
+    let text = doc.text();
+
+    // TODO: Handle files w/o tree-sitter
+    let syntax = doc.syntax().unwrap();
     todo!()
 }
 
