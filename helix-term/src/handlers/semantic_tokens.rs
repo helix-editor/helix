@@ -26,7 +26,7 @@ impl helix_event::AsyncHook for SemanticTokensHandler {
     }
 
     fn finish_debounce(&mut self) {
-        job::dispatch(|editor, compositor| {
+        job::dispatch_blocking(|editor, compositor| {
             request_semantic_tokens(editor, compositor);
         });
     }
@@ -45,7 +45,7 @@ fn request_semantic_tokens(editor: &mut Editor, _compositor: &mut crate::composi
         };
 
         tokio::spawn(async move {
-            job::dispatch(move |editor, compositor| {
+            job::dispatch(move |editor, _compositor| {
                 request_semantic_tokens_for_view(editor, state);
             })
             .await;
@@ -61,7 +61,7 @@ fn request_semantic_tokens(editor: &mut Editor, _compositor: &mut crate::composi
 }
 
 // TODO: Change from Option maybe
-async fn request_semantic_tokens_for_view(editor: &mut Editor, state: State) -> Option<()> {
+fn request_semantic_tokens_for_view(editor: &mut Editor, state: State) -> Option<()> {
     let doc = editor.document(state.doc_id)?;
     let view = editor.tree.try_get(state.view_id)?;
     let text = doc.text();
