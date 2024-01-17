@@ -1,9 +1,14 @@
+#[cfg(feature = "dap")]
 pub(crate) mod dap;
+#[cfg(feature = "lsp")]
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
+#[cfg(feature = "dap")]
 pub use dap::*;
+#[cfg(feature = "vcs")]
 use helix_vcs::Hunk;
+#[cfg(feature = "lsp")]
 pub use lsp::*;
 use tokio::sync::oneshot;
 use tui::widgets::Row;
@@ -46,6 +51,8 @@ use anyhow::{anyhow, bail, ensure, Context as _};
 use insert::*;
 use movement::Movement;
 
+#[cfg(feature = "lsp")]
+use crate::ui::CompletionItem;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
@@ -53,8 +60,8 @@ use crate::{
     job::Callback,
     keymap::ReverseKeymap,
     ui::{
-        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, CompletionItem, Picker,
-        Popup, Prompt, PromptEvent,
+        self, editor::InsertEvent, lsp::SignatureHelp, overlay::overlaid, Picker, Popup, Prompt,
+        PromptEvent,
     },
 };
 
@@ -116,6 +123,7 @@ impl<'a> Context<'a> {
         self.on_next_key_callback = Some(Box::new(on_next_key_callback));
     }
 
+    #[cfg(feature = "lsp")]
     #[inline]
     pub fn callback<T, F>(
         &mut self,
@@ -135,6 +143,7 @@ impl<'a> Context<'a> {
     }
 }
 
+#[cfg(feature = "lsp")]
 #[inline]
 fn make_job_callback<T, F>(
     call: impl Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
@@ -176,8 +185,9 @@ pub enum MappableCommand {
 }
 
 macro_rules! static_commands {
-    ( $($name:ident, $doc:literal,)* ) => {
+    ( $($(#[cfg($attr:meta)])? $name:ident, $doc:literal,)* ) => {
         $(
+            $(#[cfg($attr)])?
             #[allow(non_upper_case_globals)]
             pub const $name: Self = Self::Static {
                 name: stringify!($name),
@@ -187,7 +197,7 @@ macro_rules! static_commands {
         )*
 
         pub const STATIC_COMMAND_LIST: &'static [Self] = &[
-            $( Self::$name, )*
+             $( $(#[cfg($attr)])? Self::$name, )*
         ];
     }
 }
@@ -313,13 +323,19 @@ impl MappableCommand {
         file_picker, "Open file picker",
         file_picker_in_current_buffer_directory, "Open file picker at current buffers's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
+        #[cfg(feature = "lsp")]
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
+        #[cfg(feature = "lsp")]
         symbol_picker, "Open symbol picker",
+        #[cfg(feature = "lsp")]
         select_references_to_symbol_under_cursor, "Select symbol references",
+        #[cfg(feature = "lsp")]
         workspace_symbol_picker, "Open workspace symbol picker",
+        #[cfg(feature = "lsp")]
         diagnostics_picker, "Open diagnostic picker",
+        #[cfg(feature = "lsp")]
         workspace_diagnostics_picker, "Open workspace diagnostic picker",
         last_picker, "Open last picker",
         insert_at_line_start, "Insert at start of line",
@@ -329,17 +345,22 @@ impl MappableCommand {
         normal_mode, "Enter normal mode",
         select_mode, "Enter selection extend mode",
         exit_select_mode, "Exit selection mode",
+        #[cfg(feature = "lsp")]
         goto_definition, "Goto definition",
+        #[cfg(feature = "lsp")]
         goto_declaration, "Goto declaration",
         add_newline_above, "Add newline above",
         add_newline_below, "Add newline below",
+        #[cfg(feature = "lsp")]
         goto_type_definition, "Goto type definition",
+        #[cfg(feature = "lsp")]
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto line number <n> else file start",
         goto_file_end, "Goto file end",
         goto_file, "Goto files/URLs in selections",
-        goto_file_hsplit, "Goto files in selections (hsplit)",
-        goto_file_vsplit, "Goto files in selections (vsplit)",
+        goto_file_hsplit, "Goto files in selection (hsplit)",
+        goto_file_vsplit, "Goto files in selection (vsplit)",
+        #[cfg(feature = "lsp")]
         goto_reference, "Goto references",
         goto_window_top, "Goto window top",
         goto_window_center, "Goto window center",
@@ -349,13 +370,21 @@ impl MappableCommand {
         goto_last_modification, "Goto last modification",
         goto_line, "Goto line",
         goto_last_line, "Goto last line",
+        #[cfg(feature = "lsp")]
         goto_first_diag, "Goto first diagnostic",
+        #[cfg(feature = "lsp")]
         goto_last_diag, "Goto last diagnostic",
+        #[cfg(feature = "lsp")]
         goto_next_diag, "Goto next diagnostic",
+        #[cfg(feature = "lsp")]
         goto_prev_diag, "Goto previous diagnostic",
+        #[cfg(feature = "vcs")]
         goto_next_change, "Goto next change",
+        #[cfg(feature = "vcs")]
         goto_prev_change, "Goto previous change",
+        #[cfg(feature = "vcs")]
         goto_first_change, "Goto first change",
+        #[cfg(feature = "vcs")]
         goto_last_change, "Goto last change",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
@@ -368,6 +397,7 @@ impl MappableCommand {
         extend_to_first_nonwhitespace, "Extend to first non-blank in line",
         extend_to_line_end, "Extend to line end",
         extend_to_line_end_newline, "Extend to line end",
+        #[cfg(feature = "lsp")]
         signature_help, "Show signature help",
         smart_tab, "Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.",
         insert_tab, "Insert tab char",
@@ -402,6 +432,7 @@ impl MappableCommand {
         paste_primary_clipboard_before, "Paste primary clipboard before selections",
         indent, "Indent selection",
         unindent, "Unindent selection",
+        #[cfg(feature = "lsp")]
         format_selections, "Format selection",
         join_selections, "Join lines inside selection",
         join_selections_space, "Join lines inside selection and select spaces",
@@ -410,7 +441,9 @@ impl MappableCommand {
         align_selections, "Align selections in column",
         keep_primary_selection, "Keep primary selection",
         remove_primary_selection, "Remove primary selection",
+        #[cfg(feature = "lsp")]
         completion, "Invoke completion popup",
+        #[cfg(feature = "lsp")]
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
         rotate_selections_forward, "Rotate selections forward",
@@ -468,28 +501,51 @@ impl MappableCommand {
         goto_prev_test, "Goto previous test",
         goto_next_paragraph, "Goto next paragraph",
         goto_prev_paragraph, "Goto previous paragraph",
+        #[cfg(feature = "dap")]
         dap_launch, "Launch debug target",
+        #[cfg(feature = "dap")]
         dap_restart, "Restart debugging session",
+        #[cfg(feature = "dap")]
         dap_toggle_breakpoint, "Toggle breakpoint",
+        #[cfg(feature = "dap")]
         dap_continue, "Continue program execution",
+        #[cfg(feature = "dap")]
         dap_pause, "Pause program execution",
+        #[cfg(feature = "dap")]
         dap_step_in, "Step in",
+        #[cfg(feature = "dap")]
         dap_step_out, "Step out",
+        #[cfg(feature = "dap")]
         dap_next, "Step to next",
+        #[cfg(feature = "dap")]
         dap_variables, "List variables",
+        #[cfg(feature = "dap")]
         dap_terminate, "End debug session",
+        #[cfg(feature = "dap")]
         dap_edit_condition, "Edit breakpoint condition on current line",
+        #[cfg(feature = "dap")]
         dap_edit_log, "Edit breakpoint log message on current line",
+        #[cfg(feature = "dap")]
         dap_switch_thread, "Switch current thread",
+        #[cfg(feature = "dap")]
         dap_switch_stack_frame, "Switch stack frame",
+        #[cfg(feature = "dap")]
         dap_enable_exceptions, "Enable exception breakpoints",
+        #[cfg(feature = "dap")]
         dap_disable_exceptions, "Disable exception breakpoints",
+        #[cfg(feature = "shell")]
         shell_pipe, "Pipe selections through shell command",
+        #[cfg(feature = "shell")]
         shell_pipe_to, "Pipe selections into shell command ignoring output",
+        #[cfg(feature = "shell")]
         shell_insert_output, "Insert shell command output before selections",
+        #[cfg(feature = "shell")]
         shell_append_output, "Append shell command output after selections",
+        #[cfg(feature = "shell")]
         shell_keep_pipe, "Filter selections with shell predicate",
+        #[cfg(feature = "shell")]
         suspend, "Suspend and return to shell",
+        #[cfg(feature = "lsp")]
         rename_symbol, "Rename symbol",
         increment, "Increment item under cursor",
         decrement, "Decrement item under cursor",
@@ -2591,6 +2647,7 @@ fn delete_by_selection_insert_mode(
         );
     }
     doc.apply(&transaction, view.id);
+    #[cfg(feature = "lsp")]
     lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
 }
 
@@ -3075,6 +3132,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
     doc.apply(&transaction, view.id);
 }
 
+#[cfg(feature = "lsp")]
 // Creates an LspCallback that waits for formatting changes to be computed. When they're done,
 // it applies them, but only if the doc hasn't changed.
 //
@@ -3333,6 +3391,7 @@ fn exit_select_mode(cx: &mut Context) {
     }
 }
 
+#[cfg(feature = "lsp")]
 fn goto_first_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let selection = match doc.diagnostics().first() {
@@ -3342,6 +3401,7 @@ fn goto_first_diag(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(feature = "lsp")]
 fn goto_last_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let selection = match doc.diagnostics().last() {
@@ -3351,6 +3411,7 @@ fn goto_last_diag(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(feature = "lsp")]
 fn goto_next_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -3372,6 +3433,7 @@ fn goto_next_diag(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(feature = "lsp")]
 fn goto_prev_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -3396,14 +3458,17 @@ fn goto_prev_diag(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(feature = "vcs")]
 fn goto_first_change(cx: &mut Context) {
     goto_first_change_impl(cx, false);
 }
 
+#[cfg(feature = "vcs")]
 fn goto_last_change(cx: &mut Context) {
     goto_first_change_impl(cx, true);
 }
 
+#[cfg(feature = "vcs")]
 fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
     let editor = &mut cx.editor;
     let (view, doc) = current!(editor);
@@ -3424,14 +3489,17 @@ fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
     }
 }
 
+#[cfg(feature = "vcs")]
 fn goto_next_change(cx: &mut Context) {
     goto_next_change_impl(cx, Direction::Forward)
 }
 
+#[cfg(feature = "vcs")]
 fn goto_prev_change(cx: &mut Context) {
     goto_next_change_impl(cx, Direction::Backward)
 }
 
+#[cfg(feature = "vcs")]
 fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
     let count = cx.count() as u32 - 1;
     let motion = move |editor: &mut Editor| {
@@ -3479,6 +3547,7 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
     cx.editor.apply_motion(motion);
 }
 
+#[cfg(feature = "vcs")]
 /// Returns the [Range] for a [Hunk] in the given text.
 /// Additions and modifications cover the added and modified ranges.
 /// Deletions are represented as the point at the start of the deletion hunk.
@@ -3510,8 +3579,9 @@ pub mod insert {
         }
     }
 
-    // It trigger completion when idle timer reaches deadline
-    // Only trigger completion if the word under cursor is longer than n characters
+    #[cfg(feature = "lsp")]
+    /// It trigger completion when idle timer reaches deadline
+    /// Only trigger completion if the word under cursor is longer than n characters
     pub fn idle_completion(cx: &mut Context) {
         let config = cx.editor.config();
         let (view, doc) = current!(cx.editor);
@@ -3530,6 +3600,7 @@ pub mod insert {
         super::completion(cx);
     }
 
+    #[cfg(feature = "lsp")]
     fn language_server_completion(cx: &mut Context, ch: char) {
         let config = cx.editor.config();
         if !config.auto_completion {
@@ -3555,6 +3626,7 @@ pub mod insert {
         }
     }
 
+    #[cfg(feature = "lsp")]
     fn signature_help(cx: &mut Context, ch: char) {
         use helix_lsp::lsp;
         // if ch matches signature_help char, trigger
@@ -3621,6 +3693,7 @@ pub mod insert {
             doc.apply(&t, view.id);
         }
 
+        #[cfg(feature = "lsp")]
         // TODO: need a post insert hook too for certain triggers (autocomplete, signature help, etc)
         // this could also generically look at Transaction, but it's a bit annoying to look at
         // Operation instead of Change.
@@ -3852,6 +3925,7 @@ pub mod insert {
         let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
 
+        #[cfg(feature = "lsp")]
         lsp::signature_help_impl(cx, SignatureHelpInvoked::Automatic);
     }
 
@@ -4323,6 +4397,7 @@ fn unindent(cx: &mut Context) {
     exit_select_mode(cx);
 }
 
+#[cfg(feature = "lsp")]
 fn format_selections(cx: &mut Context) {
     use helix_lsp::{lsp, util::range_to_lsp_range};
 
@@ -4375,7 +4450,8 @@ fn format_selections(cx: &mut Context) {
         )
         .unwrap();
 
-    let edits = tokio::task::block_in_place(|| helix_lsp::block_on(future)).unwrap_or_default();
+    let edits =
+        tokio::task::block_in_place(|| futures_executor::block_on(future)).unwrap_or_default();
 
     let transaction =
         helix_lsp::util::generate_transaction_from_edits(doc.text(), edits, offset_encoding);
@@ -4505,6 +4581,7 @@ fn remove_primary_selection(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+#[cfg(feature = "lsp")]
 pub fn completion(cx: &mut Context) {
     use helix_lsp::{lsp, util::pos_to_lsp_pos};
 
@@ -5216,6 +5293,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                     return;
                 }
 
+                #[cfg(feature = "vcs")]
                 let textobject_change = |range: Range| -> Range {
                     let diff_handle = doc.diff_handle().unwrap();
                     let diff = diff_handle.load();
@@ -5245,6 +5323,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'm' => textobject::textobject_pair_surround_closest(
                             text, range, objtype, count,
                         ),
+                        #[cfg(feature = "vcs")]
                         'g' => textobject_change(range),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
                         ch if !ch.is_ascii_alphanumeric() => {
@@ -5401,6 +5480,7 @@ fn surround_delete(cx: &mut Context) {
     })
 }
 
+#[cfg(feature = "shell")]
 #[derive(Eq, PartialEq)]
 enum ShellBehavior {
     Replace,
@@ -5409,22 +5489,27 @@ enum ShellBehavior {
     Append,
 }
 
+#[cfg(feature = "shell")]
 fn shell_pipe(cx: &mut Context) {
     shell_prompt(cx, "pipe:".into(), ShellBehavior::Replace);
 }
 
+#[cfg(feature = "shell")]
 fn shell_pipe_to(cx: &mut Context) {
     shell_prompt(cx, "pipe-to:".into(), ShellBehavior::Ignore);
 }
 
+#[cfg(feature = "shell")]
 fn shell_insert_output(cx: &mut Context) {
     shell_prompt(cx, "insert-output:".into(), ShellBehavior::Insert);
 }
 
+#[cfg(feature = "shell")]
 fn shell_append_output(cx: &mut Context) {
     shell_prompt(cx, "append-output:".into(), ShellBehavior::Append);
 }
 
+#[cfg(feature = "shell")]
 fn shell_keep_pipe(cx: &mut Context) {
     ui::prompt(
         cx,
@@ -5477,10 +5562,12 @@ fn shell_keep_pipe(cx: &mut Context) {
     );
 }
 
+#[cfg(feature = "shell")]
 fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<(Tendril, bool)> {
-    tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
+    tokio::task::block_in_place(|| futures_executor::block_on(shell_impl_async(shell, cmd, input)))
 }
 
+#[cfg(feature = "shell")]
 async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
@@ -5551,6 +5638,7 @@ async fn shell_impl_async(
     Ok((tendril, output.status.success()))
 }
 
+#[cfg(feature = "shell")]
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let pipe = match behavior {
         ShellBehavior::Replace | ShellBehavior::Ignore => true,
@@ -5630,6 +5718,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     view.ensure_cursor_in_view(doc, config.scrolloff);
 }
 
+#[cfg(feature = "shell")]
 fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
     ui::prompt(
         cx,

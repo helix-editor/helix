@@ -11,20 +11,25 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-default = []
+default = ["dap", "lsp", "term", "vcs"]
+lsp = ["dep:helix-lsp"]
+dap = ["dep:helix-dap"]
 term = ["crossterm"]
+vcs = ["helix-vcs"]
 
 [dependencies]
 helix-core = { path = "../helix-core" }
 helix-event = { path = "../helix-event" }
 helix-loader = { path = "../helix-loader" }
-helix-lsp = { path = "../helix-lsp" }
-helix-dap = { path = "../helix-dap" }
-helix-vcs = { path = "../helix-vcs" }
+helix-lsp = { path = "../helix-lsp", optional = true }
+helix-dap = { path = "../helix-dap", optional = true }
+helix-vcs = { path = "../helix-vcs", optional = true }
 
 bitflags = "2.4"
 anyhow = "1"
 crossterm = { version = "0.27", optional = true }
+
+futures-executor = "0.3"
 
 # Conversion traits
 once_cell = "1.19"

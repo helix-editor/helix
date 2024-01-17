@@ -1,5 +1,6 @@
 use std::fmt::Write;
 
+#[cfg(feature = "lsp")]
 use helix_core::syntax::LanguageServerFeature;
 
 use crate::{
@@ -26,25 +27,30 @@ impl GutterType {
         is_focused: bool,
     ) -> GutterFn<'doc> {
         match self {
+            #[cfg(any(feature = "dap", feature = "lsp"))]
             GutterType::Diagnostics => {
                 diagnostics_or_breakpoints(editor, doc, view, theme, is_focused)
             }
             GutterType::LineNumbers => line_numbers(editor, doc, view, theme, is_focused),
             GutterType::Spacer => padding(editor, doc, view, theme, is_focused),
+            #[cfg(feature = "vcs")]
             GutterType::Diff => diff(editor, doc, view, theme, is_focused),
         }
     }
 
     pub fn width(self, view: &View, doc: &Document) -> usize {
         match self {
+            #[cfg(any(feature = "dap", feature = "lsp"))]
             GutterType::Diagnostics => 1,
             GutterType::LineNumbers => line_numbers_width(view, doc),
             GutterType::Spacer => 1,
+            #[cfg(feature = "vcs")]
             GutterType::Diff => 1,
         }
     }
 }
 
+#[cfg(feature = "lsp")]
 pub fn diagnostic<'doc>(
     _editor: &'doc Editor,
     doc: &'doc Document,
@@ -86,7 +92,8 @@ pub fn diagnostic<'doc>(
     )
 }
 
-pub fn diff<'doc>(
+#[cfg(feature = "vcs")]
+fn diff<'doc>(
     _editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,
@@ -235,6 +242,7 @@ const fn abs_diff(a: usize, b: usize) -> usize {
     }
 }
 
+#[cfg(feature = "dap")]
 pub fn breakpoints<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
@@ -279,6 +287,7 @@ pub fn breakpoints<'doc>(
     )
 }
 
+#[cfg(feature = "dap")]
 fn execution_pause_indicator<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
@@ -314,6 +323,7 @@ fn execution_pause_indicator<'doc>(
     )
 }
 
+#[cfg(any(feature = "dap", feature = "lsp"))]
 pub fn diagnostics_or_breakpoints<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
@@ -321,14 +331,28 @@ pub fn diagnostics_or_breakpoints<'doc>(
     theme: &Theme,
     is_focused: bool,
 ) -> GutterFn<'doc> {
+    #[cfg(feature = "lsp")]
     let mut diagnostics = diagnostic(editor, doc, view, theme, is_focused);
+    #[cfg(feature = "dap")]
     let mut breakpoints = breakpoints(editor, doc, view, theme, is_focused);
+    #[cfg(feature = "dap")]
     let mut execution_pause_indicator = execution_pause_indicator(editor, doc, theme, is_focused);
 
     Box::new(move |line, selected, first_visual_line: bool, out| {
-        execution_pause_indicator(line, selected, first_visual_line, out)
-            .or_else(|| breakpoints(line, selected, first_visual_line, out))
-            .or_else(|| diagnostics(line, selected, first_visual_line, out))
+        let mut result = None;
+
+        #[cfg(feature = "dap")]
+        {
+            result = result
+                .or_else(|| execution_pause_indicator(line, selected, first_visual_line, out))
+                .or_else(|| breakpoints(line, selected, first_visual_line, out));
+        }
+        #[cfg(feature = "lsp")]
+        {
+            result = result.or_else(|| diagnostics(line, selected, first_visual_line, out));
+        }
+
+        result
     })
 }
 
@@ -367,7 +391,7 @@ mod tests {
     #[test]
     fn test_configured_gutter_widths() {
         let gutters = GutterConfig {
-            layout: vec![GutterType::Diagnostics],
+            layout: vec![GutterType::Spacer],
             ..Default::default()
         };
 
@@ -385,7 +409,7 @@ mod tests {
         assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
 
         let gutters = GutterConfig {
-            layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            layout: vec![GutterType::Spacer, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 10 },
         };
 
@@ -407,7 +431,7 @@ mod tests {
     #[test]
     fn test_line_numbers_gutter_width_resizes() {
         let gutters = GutterConfig {
-            layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
+            layout: vec![GutterType::Spacer, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 1 },
         };
 

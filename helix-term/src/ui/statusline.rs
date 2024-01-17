@@ -1,4 +1,5 @@
 use helix_core::{coords_at_pos, encoding, Position};
+#[cfg(feature = "lsp")]
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
@@ -139,6 +140,7 @@ where
 {
     match element_id {
         helix_view::editor::StatusLineElement::Mode => render_mode,
+        #[cfg(feature = "lsp")]
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
         helix_view::editor::StatusLineElement::FileBaseName => render_file_base_name,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
@@ -149,7 +151,9 @@ where
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
+        #[cfg(feature = "lsp")]
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
+        #[cfg(feature = "lsp")]
         helix_view::editor::StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
         helix_view::editor::StatusLineElement::PrimarySelectionLength => {
@@ -199,6 +203,7 @@ where
     );
 }
 
+#[cfg(feature = "lsp")]
 // TODO think about handling multiple language servers
 fn render_lsp_spinner<F>(context: &mut RenderContext, write: F)
 where
@@ -221,6 +226,7 @@ where
     );
 }
 
+#[cfg(feature = "lsp")]
 fn render_diagnostics<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
@@ -258,6 +264,7 @@ where
     }
 }
 
+#[cfg(feature = "lsp")]
 fn render_workspace_diagnostics<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,

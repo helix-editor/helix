@@ -1,6 +1,13 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{path::get_relative_path, pos_at_coords, syntax, Selection};
+use helix_core::{
+    // diagnostic::{DiagnosticTag, NumberOrString},
+    path::get_relative_path,
+    pos_at_coords,
+    syntax,
+    Selection,
+};
+#[cfg(feature = "lsp")]
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -18,9 +25,10 @@ use helix_view::{
 use serde_json::json;
 use tui::backend::Backend;
 
+#[cfg(feature = "lsp")]
+use crate::commands::apply_workspace_edit;
 use crate::{
     args::Args,
-    commands::apply_workspace_edit,
     compositor::{Compositor, Event},
     config::Config,
     job::Jobs,
@@ -69,6 +77,7 @@ pub struct Application {
 
     signals: Signals,
     jobs: Jobs,
+    #[cfg(feature = "lsp")]
     lsp_progress: LspProgressMap,
 }
 
@@ -246,6 +255,7 @@ impl Application {
 
             signals,
             jobs: Jobs::new(),
+            #[cfg(feature = "lsp")]
             lsp_progress: LspProgressMap::new(),
         };
 
@@ -378,6 +388,7 @@ impl Application {
         }
     }
 
+    #[cfg(feature = "lsp")]
     /// refresh language config after config change
     fn refresh_language_config(&mut self) -> Result<(), Error> {
         let syntax_config = helix_core::config::user_syntax_loader()
@@ -424,6 +435,7 @@ impl Application {
         let mut refresh_config = || -> Result<(), Error> {
             let default_config = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
+            #[cfg(feature = "lsp")]
             self.refresh_language_config()?;
             self.refresh_theme(&default_config)?;
             self.terminal
@@ -567,15 +579,18 @@ impl Application {
             let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
             let id = doc.id();
             doc.detect_language(loader);
-            self.editor.refresh_language_servers(id);
-            // and again a borrow checker workaround...
-            let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
-            let diagnostics = Editor::doc_diagnostics(
-                &self.editor.language_servers,
-                &self.editor.diagnostics,
-                doc,
-            );
-            doc.replace_diagnostics(diagnostics, &[], None);
+            #[cfg(feature = "lsp")]
+            {
+                self.editor.refresh_language_servers(id);
+                // and again a borrow checker workaround...
+                let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
+                let diagnostics = Editor::doc_diagnostics(
+                    &self.editor.language_servers,
+                    &self.editor.diagnostics,
+                    doc,
+                );
+                doc.replace_diagnostics(diagnostics, &[], None);
+            }
         }
 
         // TODO: fix being overwritten by lsp
@@ -600,11 +615,13 @@ impl Application {
                 self.handle_config_events(event);
                 self.render().await;
             }
+            #[cfg(feature = "lsp")]
             EditorEvent::LanguageServerMessage((id, call)) => {
                 self.handle_language_server_message(call, id).await;
                 // limit render calls for fast language server messages
                 helix_event::request_redraw();
             }
+            #[cfg(feature = "dap")]
             EditorEvent::DebuggerEvent(payload) => {
                 let needs_render = self.editor.handle_debugger_message(payload).await;
                 if needs_render {
@@ -661,6 +678,7 @@ impl Application {
         }
     }
 
+    #[cfg(feature = "lsp")]
     pub async fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,
@@ -1243,6 +1261,7 @@ impl Application {
             errs.push(err);
         }
 
+        #[cfg(feature = "lsp")]
         if self.editor.close_language_servers(None).await.is_err() {
             log::error!("Timed out waiting for language servers to shutdown");
             errs.push(anyhow::format_err!(

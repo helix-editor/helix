@@ -1,6 +1,5 @@
 use futures_util::{future::BoxFuture, stream::FuturesUnordered, FutureExt};
 use helix_lsp::{
-    block_on,
     lsp::{
         self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
         NumberOrString,
@@ -718,7 +717,7 @@ pub fn code_action(cx: &mut Context) {
                             if let Some(future) =
                                 language_server.resolve_code_action(code_action.clone())
                             {
-                                if let Ok(response) = helix_lsp::block_on(future) {
+                                if let Ok(response) = futures_executor::block_on(future) {
                                     if let Ok(code_action) =
                                         serde_json::from_value::<CodeAction>(response)
                                     {
@@ -1395,7 +1394,7 @@ pub fn rename_symbol(cx: &mut Context) {
                     .rename_symbol(doc.identifier(), pos, input.to_string())
                     .unwrap();
 
-                match block_on(future) {
+                match futures_executor::block_on(future) {
                     Ok(edits) => {
                         let _ = apply_workspace_edit(cx.editor, offset_encoding, &edits);
                     }

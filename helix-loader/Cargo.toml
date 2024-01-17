@@ -14,6 +14,10 @@ homepage.workspace = true
 name = "hx-loader"
 path = "src/main.rs"
 
+[features]
+default = ["build_grammar"]
+build_grammar = []
+
 [dependencies]
 anyhow = "1"
 serde = { version = "1.0", features = ["derive"] }

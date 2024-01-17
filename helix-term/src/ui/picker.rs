@@ -489,11 +489,13 @@ impl<T: Item + 'static> Picker<T> {
                             PathOrId::Id(doc_id) => doc_mut!(editor, &doc_id),
                             PathOrId::Path(path) => match picker.preview_cache.get_mut(&path) {
                                 Some(CachedPreview::Document(ref mut doc)) => {
+                                    #[cfg(feature = "lsp")]
                                     let diagnostics = Editor::doc_diagnostics(
                                         &editor.language_servers,
                                         &editor.diagnostics,
                                         doc,
                                     );
+                                    #[cfg(feature = "lsp")]
                                     doc.replace_diagnostics(diagnostics, &[], None);
                                     doc
                                 }

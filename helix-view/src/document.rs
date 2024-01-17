@@ -9,8 +9,14 @@ use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
+#[cfg(feature = "lsp")]
 use helix_lsp::util::lsp_pos_to_pos;
+#[cfg(feature = "vcs")]
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
+#[cfg(not(feature = "vcs"))]
+pub type DiffProviderRegistry = ();
+#[cfg(not(feature = "vcs"))]
+pub type DiffHandle = ();
 
 use ::parking_lot::Mutex;
 use serde::de::{self, Deserialize, Deserializer};
@@ -180,8 +186,10 @@ pub struct Document {
     pub(crate) modified_since_accessed: bool,
 
     pub(crate) diagnostics: Vec<Diagnostic>,
+    #[cfg(feature = "lsp")]
     pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
 
+    #[cfg(feature = "vcs")]
     diff_handle: Option<DiffHandle>,
     version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
 
@@ -635,6 +643,7 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
+#[cfg(feature = "lsp")]
 use helix_lsp::{lsp, Client, LanguageServerName};
 use url::Url;
 
@@ -672,7 +681,9 @@ impl Document {
             last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
             modified_since_accessed: false,
+            #[cfg(feature = "lsp")]
             language_servers: HashMap::new(),
+            #[cfg(feature = "vcs")]
             diff_handle: None,
             config,
             version_control_head: None,
@@ -720,6 +731,7 @@ impl Document {
         Ok(doc)
     }
 
+    #[cfg(feature = "lsp")]
     /// The same as [`format`], but only returns formatting changes if auto-formatting
     /// is configured.
     pub fn auto_format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
@@ -730,6 +742,7 @@ impl Document {
         }
     }
 
+    #[cfg(feature = "lsp")]
     /// If supported, returns the changes that should be applied to this document in order
     /// to format it nicely.
     // We can't use anyhow::Result here since the output of the future has to be
@@ -864,7 +877,9 @@ impl Document {
             }
         };
 
+        #[cfg(feature = "lsp")]
         let identifier = self.path().map(|_| self.identifier());
+        #[cfg(feature = "lsp")]
         let language_servers = self.language_servers.clone();
 
         // mark changes up to now as saved
@@ -909,11 +924,12 @@ impl Document {
                 text: text.clone(),
             };
 
-            for (_, language_server) in language_servers {
-                if !language_server.is_initialized() {
-                    return Ok(event);
-                }
-                if let Some(identifier) = &identifier {
+            #[cfg(feature = "lsp")]
+            if let Some(identifier) = identifier {
+                for (_, language_server) in language_servers {
+                    if !language_server.is_initialized() {
+                        return Ok(event);
+                    }
                     if let Some(notification) =
                         language_server.text_document_did_save(identifier.clone(), &text)
                     {
@@ -1023,12 +1039,15 @@ impl Document {
 
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path) {
-            Some(diff_base) => self.set_diff_base(diff_base),
-            None => self.diff_handle = None,
-        }
+        #[cfg(feature = "vcs")]
+        {
+            match provider_registry.get_diff_base(&path) {
+                Some(diff_base) => self.set_diff_base(diff_base),
+                None => self.diff_handle = None,
+            }
 
-        self.version_control_head = provider_registry.get_current_head_name(&path);
+            self.version_control_head = provider_registry.get_current_head_name(&path);
+        }
 
         Ok(())
     }
@@ -1171,6 +1190,7 @@ impl Document {
 
         if !transaction.changes().is_empty() {
             self.version += 1;
+            #[cfg(feature = "vcs")]
             // start computing the diff in parallel
             if let Some(diff_handle) = &self.diff_handle {
                 diff_handle.update_document(self.text.clone(), false);
@@ -1276,6 +1296,7 @@ impl Document {
             }
 
             if emit_lsp_notification {
+                #[cfg(feature = "lsp")]
                 // emit lsp notification
                 for language_server in self.language_servers() {
                     let notify = language_server.text_document_did_change(
@@ -1552,6 +1573,7 @@ impl Document {
         self.version
     }
 
+    #[cfg(feature = "lsp")]
     /// maintains the order as configured in the language_servers TOML array
     pub fn language_servers(&self) -> impl Iterator<Item = &helix_lsp::Client> {
         self.language_config().into_iter().flat_map(move |config| {
@@ -1566,10 +1588,12 @@ impl Document {
         })
     }
 
+    #[cfg(feature = "lsp")]
     pub fn remove_language_server_by_name(&mut self, name: &str) -> Option<Arc<Client>> {
         self.language_servers.remove(name)
     }
 
+    #[cfg(feature = "lsp")]
     pub fn language_servers_with_feature(
         &self,
         feature: LanguageServerFeature,
@@ -1589,14 +1613,20 @@ impl Document {
         })
     }
 
+    #[cfg(feature = "lsp")]
     pub fn supports_language_server(&self, id: usize) -> bool {
         self.language_servers().any(|l| l.id() == id)
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
-        self.diff_handle.as_ref()
+        #[cfg(feature = "vcs")]
+        return self.diff_handle.as_ref();
+
+        #[cfg(not(feature = "vcs"))]
+        return None;
     }
 
+    #[cfg(feature = "vcs")]
     /// Intialize/updates the differ for this document with a new base.
     pub fn set_diff_base(&mut self, diff_base: Vec<u8>) {
         if let Ok((diff_base, ..)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
@@ -1685,15 +1715,18 @@ impl Document {
 
     // -- LSP methods
 
+    #[cfg(feature = "lsp")]
     #[inline]
     pub fn identifier(&self) -> lsp::TextDocumentIdentifier {
         lsp::TextDocumentIdentifier::new(self.url().unwrap())
     }
 
+    #[cfg(feature = "lsp")]
     pub fn versioned_identifier(&self) -> lsp::VersionedTextDocumentIdentifier {
         lsp::VersionedTextDocumentIdentifier::new(self.url().unwrap(), self.version)
     }
 
+    #[cfg(feature = "lsp")]
     pub fn position(
         &self,
         view_id: ViewId,
@@ -1708,6 +1741,7 @@ impl Document {
         )
     }
 
+    #[cfg(feature = "lsp")]
     pub fn lsp_diagnostic_to_diagnostic(
         text: &Rope,
         language_config: Option<&LanguageConfiguration>,
@@ -1793,11 +1827,13 @@ impl Document {
         })
     }
 
+    #[cfg(feature = "lsp")]
     #[inline]
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
     }
 
+    #[cfg(feature = "lsp")]
     pub fn replace_diagnostics(
         &mut self,
         diagnostics: impl IntoIterator<Item = Diagnostic>,
@@ -1829,6 +1865,7 @@ impl Document {
         });
     }
 
+    #[cfg(feature = "lsp")]
     /// clears diagnostics for a given language server id if set, otherwise all diagnostics are cleared
     pub fn clear_diagnostics(&mut self, language_server_id: Option<usize>) {
         if let Some(id) = language_server_id {
@@ -1984,6 +2021,7 @@ mod test {
 
     use super::*;
 
+    #[cfg(feature = "lsp")]
     #[test]
     fn changeset_to_changes_ignore_line_endings() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
@@ -2022,6 +2060,7 @@ mod test {
         );
     }
 
+    #[cfg(feature = "lsp")]
     #[test]
     fn changeset_to_changes() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
@@ -2188,7 +2227,7 @@ mod test {
 
                 let text = Rope::from_str(&std::fs::read_to_string(path).unwrap());
                 let mut buf: Vec<u8> = Vec::new();
-                helix_lsp::block_on(to_writer(&mut buf, (encoding, false), &text)).unwrap();
+                futures_executor::block_on(to_writer(&mut buf, (encoding, false), &text)).unwrap();
 
                 let expectation = std::fs::read(ref_path).unwrap();
                 assert_eq!(buf, expectation);

@@ -8,7 +8,9 @@ pub mod env;
 pub mod graphics;
 pub mod gutter;
 pub mod handlers {
+    #[cfg(feature = "dap")]
     pub mod dap;
+    #[cfg(feature = "lsp")]
     pub mod lsp;
 }
 pub mod base64;

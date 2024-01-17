@@ -13,10 +13,15 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-default = ["git"]
+default = ["vcs", "git", "dap", "lsp", "build_grammar", "helix-view/term", "shell"]
+dap = ["dep:helix-dap", "helix-view/dap"]
+lsp = ["dep:helix-lsp", "helix-view/lsp"]
+vcs = ["helix-vcs", "helix-view/vcs"]
 unicode-lines = ["helix-core/unicode-lines"]
 integration = []
 git = ["helix-vcs/git"]
+build_grammar = ["helix-loader/build_grammar"]
+shell = []
 
 [[bin]]
 name = "hx"
@@ -25,14 +30,15 @@ path = "src/main.rs"
 [dependencies]
 helix-core = { path = "../helix-core" }
 helix-event = { path = "../helix-event" }
-helix-view = { path = "../helix-view" }
-helix-lsp = { path = "../helix-lsp" }
-helix-dap = { path = "../helix-dap" }
-helix-vcs = { path = "../helix-vcs" }
+helix-view = { path = "../helix-view", default-features = false }
+helix-lsp = { path = "../helix-lsp", optional = true }
+helix-dap = { path = "../helix-dap", optional = true }
+helix-vcs = { path = "../helix-vcs", optional = true, default-features = true }
 helix-loader = { path = "../helix-loader" }
 
 anyhow = "1"
 once_cell = "1.19"
+futures-executor = "0.3"
 
 which = "5.0.0"
 
