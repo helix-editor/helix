@@ -27,7 +27,7 @@ use crate::{
     ui::{self, overlay::overlaid},
 };
 
-use log::{debug, error, warn};
+use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
 use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
@@ -683,9 +683,13 @@ impl Application {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
                 let notification = match Notification::parse(&method, params) {
                     Ok(notification) => notification,
+                    Err(helix_lsp::Error::Unhandled) => {
+                        info!("Ignoring Unhandled notification from Language Server");
+                        return;
+                    }
                     Err(err) => {
-                        log::error!(
-                            "received malformed notification from Language Server: {}",
+                        error!(
+                            "Ignoring unknown notification from Language Server: {}",
                             err
                         );
                         return;
