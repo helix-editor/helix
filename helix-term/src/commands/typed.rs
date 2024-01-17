@@ -674,13 +674,15 @@ pub fn write_all_impl(
     let mut errors: Vec<&'static str> = Vec::new();
     let config = cx.editor.config();
     let jobs = &mut cx.jobs;
-    let current_view = view!(cx.editor);
-
     let saves: Vec<_> = cx
         .editor
         .documents
-        .values_mut()
-        .filter_map(|doc| {
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .filter_map(|id| {
+            let doc = doc!(cx.editor, &id);
             if !doc.is_modified() {
                 return None;
             }
@@ -691,22 +693,9 @@ pub fn write_all_impl(
                 return None;
             }
 
-            // Look for a view to apply the formatting change to. If the document
-            // is in the current view, just use that. Otherwise, since we don't
-            // have any other metric available for better selection, just pick
-            // the first view arbitrarily so that we still commit the document
-            // state for undos. If somehow we have a document that has not been
-            // initialized with any view, initialize it with the current view.
-            let target_view = if doc.selections().contains_key(&current_view.id) {
-                current_view.id
-            } else if let Some(view) = doc.selections().keys().next() {
-                *view
-            } else {
-                doc.ensure_view_init(current_view.id);
-                current_view.id
-            };
-
-            Some((doc.id(), target_view))
+            // Look for a view to apply the formatting change to.
+            let target_view = cx.editor.get_synced_view_id(doc.id());
+            Some((id, target_view))
         })
         .collect();
 
@@ -1502,7 +1491,7 @@ fn lsp_stop(
 
         for doc in cx.editor.documents_mut() {
             if let Some(client) = doc.remove_language_server_by_name(ls_name) {
-                doc.clear_diagnostics(client.id());
+                doc.clear_diagnostics(Some(client.id()));
             }
         }
     }
@@ -2008,6 +1997,10 @@ fn language(
 
     let id = doc.id();
     cx.editor.refresh_language_servers(id);
+    let doc = doc_mut!(cx.editor);
+    let diagnostics =
+        Editor::doc_diagnostics(&cx.editor.language_servers, &cx.editor.diagnostics, doc);
+    doc.replace_diagnostics(diagnostics, &[], None);
     Ok(())
 }
 
@@ -2124,11 +2117,7 @@ fn tree_sitter_subtree(
         let text = doc.text();
         let from = text.char_to_byte(primary_selection.from());
         let to = text.char_to_byte(primary_selection.to());
-        if let Some(selected_node) = syntax
-            .tree()
-            .root_node()
-            .descendant_for_byte_range(from, to)
-        {
+        if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
             let mut contents = String::from("```tsq\n");
             helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
             contents.push_str("\n```");

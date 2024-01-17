@@ -386,7 +386,7 @@ impl EditorView {
         let mut warning_vec = Vec::new();
         let mut error_vec = Vec::new();
 
-        for diagnostic in doc.shown_diagnostics() {
+        for diagnostic in doc.diagnostics() {
             // Separate diagnostics into different Vecs by severity.
             let (vec, scope) = match diagnostic.severity {
                 Some(Severity::Info) => (&mut info_vec, info),
@@ -684,7 +684,7 @@ impl EditorView {
             .primary()
             .cursor(doc.text().slice(..));
 
-        let diagnostics = doc.shown_diagnostics().filter(|diagnostic| {
+        let diagnostics = doc.diagnostics().iter().filter(|diagnostic| {
             diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
         });
 
@@ -1302,8 +1302,6 @@ impl Component for EditorView {
                 cx.editor.status_msg = None;
 
                 let mode = cx.editor.mode();
-                let (view, _) = current!(cx.editor);
-                let focus = view.id;
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
@@ -1385,20 +1383,16 @@ impl Component for EditorView {
                     return EventResult::Ignored(None);
                 }
 
-                // if the focused view still exists and wasn't closed
-                if cx.editor.tree.contains(focus) {
-                    let config = cx.editor.config();
-                    let mode = cx.editor.mode();
-                    let view = view_mut!(cx.editor, focus);
-                    let doc = doc_mut!(cx.editor, &view.doc);
+                let config = cx.editor.config();
+                let mode = cx.editor.mode();
+                let (view, doc) = current!(cx.editor);
 
-                    view.ensure_cursor_in_view(doc, config.scrolloff);
+                view.ensure_cursor_in_view(doc, config.scrolloff);
 
-                    // Store a history state if not in insert mode. This also takes care of
-                    // committing changes when leaving insert mode.
-                    if mode != Mode::Insert {
-                        doc.append_changes_to_history(view);
-                    }
+                // Store a history state if not in insert mode. This also takes care of
+                // committing changes when leaving insert mode.
+                if mode != Mode::Insert {
+                    doc.append_changes_to_history(view);
                 }
 
                 EventResult::Consumed(callback)

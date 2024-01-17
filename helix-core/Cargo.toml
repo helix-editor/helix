@@ -19,7 +19,7 @@ integration = []
 helix-loader = { path = "../helix-loader" }
 
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
-smallvec = "1.11"
+smallvec = "1.12"
 smartstring = "1.0.1"
 unicode-segmentation = "1.10"
 unicode-width = "0.1"
@@ -55,3 +55,4 @@ parking_lot = "0.12"
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
 indoc = "2.0.4"
+tempfile = "3.9"

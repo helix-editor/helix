@@ -480,8 +480,7 @@ impl<T: Item + 'static> Picker<T> {
                                 .find::<Overlay<DynamicPicker<T>>>()
                                 .map(|overlay| &mut overlay.content.file_picker),
                         };
-                        let Some(picker) = picker
-                        else {
+                        let Some(picker) = picker else {
                             log::info!("picker closed before syntax highlighting finished");
                             return;
                         };
@@ -489,7 +488,15 @@ impl<T: Item + 'static> Picker<T> {
                         let doc = match current_file {
                             PathOrId::Id(doc_id) => doc_mut!(editor, &doc_id),
                             PathOrId::Path(path) => match picker.preview_cache.get_mut(&path) {
-                                Some(CachedPreview::Document(ref mut doc)) => doc,
+                                Some(CachedPreview::Document(ref mut doc)) => {
+                                    let diagnostics = Editor::doc_diagnostics(
+                                        &editor.language_servers,
+                                        &editor.diagnostics,
+                                        doc,
+                                    );
+                                    doc.replace_diagnostics(diagnostics, &[], None);
+                                    doc
+                                }
                                 _ => return,
                             },
                         };

@@ -44,3 +44,5 @@
 ; User mention (@user)
 ("text" @tag
  (#match? @tag "^[@][a-zA-Z0-9_-]+$"))
+
+(uri) @markup.link.url
