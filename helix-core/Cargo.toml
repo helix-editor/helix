@@ -55,4 +55,4 @@ parking_lot = "0.12"
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
 indoc = "2.0.4"
-tempfile = "3.7.0"
+tempfile = "3.9"
