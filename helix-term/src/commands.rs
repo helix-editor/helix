@@ -1227,7 +1227,7 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
         .unwrap_or_default();
 
     if url.scheme() != "file" {
-        return open_external_url(cx, url);
+        return cx.jobs.callback(crate::open_external_url_callback(url));
     }
 
     let content_type = std::fs::File::open(url.path()).and_then(|file| {
@@ -1240,7 +1240,9 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
     // we attempt to open binary files - files that can't be open in helix - using external
     // program as well, e.g. pdf files or images
     match content_type {
-        Ok(content_inspector::ContentType::BINARY) => open_external_url(cx, url),
+        Ok(content_inspector::ContentType::BINARY) => {
+            cx.jobs.callback(crate::open_external_url_callback(url))
+        }
         Ok(_) | Err(_) => {
             let path = &rel_path.join(url.path());
             if path.is_dir() {
@@ -1251,23 +1253,6 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
             }
         }
     }
-}
-
-/// Opens URL in external program.
-fn open_external_url(cx: &mut Context, url: Url) {
-    let commands = open::commands(url.as_str());
-    cx.jobs.callback(async {
-        for cmd in commands {
-            let mut command = tokio::process::Command::new(cmd.get_program());
-            command.args(cmd.get_args());
-            if command.output().await.is_ok() {
-                return Ok(job::Callback::Editor(Box::new(|_| {})));
-            }
-        }
-        Ok(job::Callback::Editor(Box::new(move |editor| {
-            editor.set_error("Opening URL in external program failed")
-        })))
-    });
 }
 
 fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
