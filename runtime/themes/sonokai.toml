@@ -72,6 +72,7 @@
 "ui.menu.selected" = { fg = "bg0", bg = "green" }
 "ui.virtual.whitespace" = { fg = "grey_dim" }
 "ui.virtual.ruler" = { bg = "grey_dim" }
+"ui.virtual.inlay-hint" = { fg = "grey_dim" }
 
 info = { fg = 'green', bg = 'bg2' }
 hint = { fg = 'blue', bg = 'bg2', modifiers = ['bold'] }
