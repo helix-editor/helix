@@ -61,6 +61,7 @@ use crate::{
 use crate::job::{self, Jobs};
 use futures_util::{stream::FuturesUnordered, TryStreamExt};
 use std::{
+    cmp::Ordering,
     collections::{HashMap, HashSet},
     fmt,
     future::Future,
@@ -2450,18 +2451,12 @@ fn select_line_impl(cx: &mut Context, extend: Extend) {
                 (end_line, (start_line + count).min(text.len_lines()))
             }
         };
-        let (anchor, head) = if anchor_line < head_line {
-            (
+        let (anchor, head) = match anchor_line.cmp(&head_line) {
+            Ordering::Less => (
                 text.line_to_char(anchor_line),
                 text.line_to_char((head_line + 1).min(text.len_lines())),
-            )
-        } else if anchor_line > head_line {
-            (
-                text.line_to_char((anchor_line + 1).min(text.len_lines())),
-                text.line_to_char(head_line),
-            )
-        } else {
-            match extend {
+            ),
+            Ordering::Equal => match extend {
                 Extend::Above => (
                     text.line_to_char((anchor_line + 1).min(text.len_lines())),
                     text.line_to_char(head_line),
@@ -2470,7 +2465,12 @@ fn select_line_impl(cx: &mut Context, extend: Extend) {
                     text.line_to_char(head_line),
                     text.line_to_char((anchor_line + 1).min(text.len_lines())),
                 ),
-            }
+            },
+
+            Ordering::Greater => (
+                text.line_to_char((anchor_line + 1).min(text.len_lines())),
+                text.line_to_char(head_line),
+            ),
         };
         Range::new(anchor, head)
     });
