@@ -1,8 +1,13 @@
 use crate::{Assoc, ChangeSet, Range, Rope, Selection, Transaction};
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::num::NonZeroUsize;
-use std::time::{Duration, Instant};
+use std::path::Path;
+use std::sync::Arc;
+use std::time::{Duration, SystemTime};
+
+use crate::combinators::*;
 
 #[derive(Debug, Clone)]
 pub struct State {
@@ -47,7 +52,7 @@ pub struct State {
 ///    delete, we also store an inversion of the transaction.
 ///
 /// Using time to navigate the history: <https://github.com/helix-editor/helix/pull/194>
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct History {
     revisions: Vec<Revision>,
     current: usize,
@@ -58,11 +63,11 @@ pub struct History {
 struct Revision {
     parent: usize,
     last_child: Option<NonZeroUsize>,
-    transaction: Transaction,
+    transaction: Arc<Transaction>,
     // We need an inversion for undos because delete transactions don't store
     // the deleted text.
-    inversion: Transaction,
-    timestamp: Instant,
+    inversion: Arc<Transaction>,
+    timestamp: SystemTime,
 }
 
 impl Default for History {
@@ -72,25 +77,252 @@ impl Default for History {
             revisions: vec![Revision {
                 parent: 0,
                 last_child: None,
-                transaction: Transaction::from(ChangeSet::new("".into())),
-                inversion: Transaction::from(ChangeSet::new("".into())),
-                timestamp: Instant::now(),
+                transaction: Arc::new(Transaction::from(ChangeSet::new("".into()))),
+                inversion: Arc::new(Transaction::from(ChangeSet::new("".into()))),
+                timestamp: SystemTime::now(),
             }],
             current: 0,
         }
     }
 }
 
+const HASH_DIGEST_LENGTH: usize = blake3::OUT_LEN;
+fn get_hash<R: Read>(reader: &mut R) -> std::io::Result<[u8; HASH_DIGEST_LENGTH]> {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update_reader(reader)?;
+    Ok(hasher.finalize().as_bytes().to_owned())
+}
+
+#[derive(Debug)]
+pub enum StateError {
+    Outdated,
+    InvalidHeader,
+    InvalidOffset,
+    InvalidData(String),
+    InvalidHash,
+    Other(anyhow::Error),
+}
+
+impl std::fmt::Display for StateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Outdated => f.write_str("Outdated file"),
+            Self::InvalidHeader => f.write_str("Invalid undofile header"),
+            Self::InvalidOffset => f.write_str("Invalid merge offset"),
+            Self::InvalidData(msg) => f.write_str(msg),
+            Self::InvalidHash => f.write_str("invalid hash for undofile itself"),
+            Self::Other(e) => e.fmt(f),
+        }
+    }
+}
+
+impl From<std::io::Error> for StateError {
+    fn from(value: std::io::Error) -> Self {
+        Self::Other(value.into())
+    }
+}
+
+impl From<std::time::SystemTimeError> for StateError {
+    fn from(value: std::time::SystemTimeError) -> Self {
+        Self::Other(value.into())
+    }
+}
+
+impl From<anyhow::Error> for StateError {
+    fn from(value: anyhow::Error) -> Self {
+        Self::Other(value)
+    }
+}
+
+impl std::error::Error for StateError {}
+
+impl PartialEq for Revision {
+    fn eq(&self, other: &Self) -> bool {
+        self.parent == other.parent
+            && self.last_child == other.last_child
+            && self.transaction == other.transaction
+            && self.inversion == other.inversion
+    }
+}
+impl Revision {
+    fn serialize<W: Write>(&self, writer: &mut W) -> anyhow::Result<()> {
+        write_usize(writer, self.parent)?;
+        self.transaction.serialize(writer)?;
+        self.inversion.serialize(writer)?;
+        write_u64(
+            writer,
+            self.timestamp
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_secs(),
+        )?;
+
+        Ok(())
+    }
+
+    fn deserialize<R: Read>(reader: &mut R) -> anyhow::Result<Self> {
+        let parent = read_usize(reader)?;
+        let transaction = Arc::new(Transaction::deserialize(reader)?);
+        let inversion = Arc::new(Transaction::deserialize(reader)?);
+        let timestamp = std::time::UNIX_EPOCH
+            .checked_add(Duration::from_secs(read_u64(reader)?))
+            .unwrap_or_else(SystemTime::now);
+        Ok(Revision {
+            parent,
+            last_child: None,
+            transaction,
+            inversion,
+            timestamp,
+        })
+    }
+}
+
+const UNDO_FILE_HEADER_TAG: &[u8] = b"Helix";
+const UNDO_FILE_HEADER_LEN: usize = UNDO_FILE_HEADER_TAG.len();
+const UNDO_FILE_VERSION: u8 = 1;
+
+impl History {
+    /// It is the responsibility of the caller to ensure the undofile is valid before serializing.
+    /// This function performs no checks.
+    pub fn serialize<W: Write + Seek>(
+        &self,
+        writer: &mut W,
+        path: &Path,
+        revision: usize,
+        last_saved_revision: usize,
+    ) -> Result<(), StateError> {
+        // Header
+        writer.write_all(UNDO_FILE_HEADER_TAG)?;
+        write_byte(writer, UNDO_FILE_VERSION)?;
+        write_usize(writer, self.current)?;
+        write_usize(writer, revision)?;
+        writer.write_all(&get_hash(&mut std::fs::File::open(path)?)?)?;
+
+        // Append new revisions to the end of the file.
+        write_usize(writer, self.revisions.len())?;
+        writer.seek(SeekFrom::End(0))?;
+        for rev in &self.revisions[last_saved_revision..] {
+            rev.serialize(writer)?;
+        }
+
+        writer.flush()?;
+        Ok(())
+    }
+
+    /// Returns the deserialized [`History`] and the last_saved_revision.
+    pub fn deserialize<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<(usize, Self)> {
+        let (current, last_saved_revision) = Self::read_header(reader, path)?;
+
+        // Read the revisions and construct the tree.
+        let len = read_usize(reader)?;
+        let mut revisions: Vec<Revision> = Vec::with_capacity(len);
+        for _ in 0..len {
+            let rev = Revision::deserialize(reader)?;
+            let len = revisions.len();
+            match revisions.get_mut(rev.parent) {
+                Some(r) => r.last_child = NonZeroUsize::new(len),
+                None if len != 0 => {
+                    anyhow::bail!(StateError::InvalidData(format!(
+                        "non-contiguous history: {} >= {}",
+                        rev.parent, len
+                    )));
+                }
+                None => {
+                    // Starting revision check
+                    let default_rev = History::default().revisions.pop().unwrap();
+                    if rev != default_rev {
+                        anyhow::bail!(StateError::InvalidData(String::from(
+                            "Missing 0th revision"
+                        )));
+                    }
+                }
+            }
+            revisions.push(rev);
+        }
+
+        let history = History { current, revisions };
+        Ok((last_saved_revision, history))
+    }
+
+    /// If `self.revisions = [A, B, C, D]` and `other.revisions = `[A, B, E, F]`, then
+    /// they are merged into `[A, B, E, F, C, D]` where the tree can be represented as:
+    /// ```md
+    /// A -> B -> C -> D
+    ///       \  
+    ///        E -> F
+    /// ```
+    pub fn merge(&mut self, mut other: History) -> anyhow::Result<()> {
+        let n = self
+            .revisions
+            .iter()
+            .zip(other.revisions.iter())
+            .take_while(|(a, b)| {
+                a.parent == b.parent && a.transaction == b.transaction && a.inversion == b.inversion
+            })
+            .count();
+
+        let new_revs = self.revisions.split_off(n);
+        if new_revs.is_empty() {
+            return Ok(());
+        }
+        other.revisions.reserve_exact(n);
+
+        // Only unique revisions in `self` matter, so saturating_sub(1) is sound as it going to 0 means there are no new revisions in the other history that aren't in `self`
+        let offset = (other.revisions.len() - n).saturating_sub(1);
+        for mut r in new_revs {
+            // Update parents of new revisions
+            if r.parent >= n {
+                r.parent += offset;
+            }
+            debug_assert!(r.parent < other.revisions.len());
+
+            // Update the corresponding parent.
+            other.revisions.get_mut(r.parent).unwrap().last_child =
+                NonZeroUsize::new(other.revisions.len());
+            other.revisions.push(r);
+        }
+
+        if self.current >= n {
+            self.current += offset;
+        }
+        self.revisions = other.revisions;
+
+        Ok(())
+    }
+
+    pub fn is_valid<R: Read>(reader: &mut R, path: &Path) -> bool {
+        Self::read_header(reader, path).is_ok()
+    }
+
+    pub fn read_header<R: Read>(reader: &mut R, path: &Path) -> anyhow::Result<(usize, usize)> {
+        let header: [u8; UNDO_FILE_HEADER_LEN] = read_many_bytes(reader)?;
+        let version = read_byte(reader)?;
+        if header != UNDO_FILE_HEADER_TAG || version != UNDO_FILE_VERSION {
+            Err(anyhow::anyhow!(StateError::InvalidHeader))
+        } else {
+            let current = read_usize(reader)?;
+            let last_saved_revision = read_usize(reader)?;
+            let mut hash = [0u8; HASH_DIGEST_LENGTH];
+            reader.read_exact(&mut hash)?;
+
+            if hash != get_hash(&mut std::fs::File::open(path)?)? {
+                anyhow::bail!(StateError::Outdated);
+            }
+
+            Ok((current, last_saved_revision))
+        }
+    }
+}
+
 impl History {
     pub fn commit_revision(&mut self, transaction: &Transaction, original: &State) {
-        self.commit_revision_at_timestamp(transaction, original, Instant::now());
+        self.commit_revision_at_timestamp(transaction, original, SystemTime::now());
     }
 
     pub fn commit_revision_at_timestamp(
         &mut self,
         transaction: &Transaction,
         original: &State,
-        timestamp: Instant,
+        timestamp: SystemTime,
     ) {
         let inversion = transaction
             .invert(&original.doc)
@@ -102,8 +334,8 @@ impl History {
         self.revisions.push(Revision {
             parent: self.current,
             last_child: None,
-            transaction: transaction.clone(),
-            inversion,
+            transaction: Arc::new(transaction.clone()),
+            inversion: Arc::new(inversion),
             timestamp,
         });
         self.current = new_current;
@@ -119,6 +351,10 @@ impl History {
         self.current == 0
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.revisions.len() <= 1
+    }
+
     /// Returns the changes since the given revision composed into a transaction.
     /// Returns None if there are no changes between the current and given revisions.
     pub fn changes_since(&self, revision: usize) -> Option<Transaction> {
@@ -128,8 +364,10 @@ impl History {
         let up_txns = up
             .iter()
             .rev()
-            .map(|&n| self.revisions[n].inversion.clone());
-        let down_txns = down.iter().map(|&n| self.revisions[n].transaction.clone());
+            .map(|&n| self.revisions[n].inversion.as_ref().clone());
+        let down_txns = down
+            .iter()
+            .map(|&n| self.revisions[n].transaction.as_ref().clone());
 
         down_txns.chain(up_txns).reduce(|acc, tx| tx.compose(acc))
     }
@@ -215,11 +453,13 @@ impl History {
         let up = self.path_up(self.current, lca);
         let down = self.path_up(to, lca);
         self.current = to;
-        let up_txns = up.iter().map(|&n| self.revisions[n].inversion.clone());
+        let up_txns = up
+            .iter()
+            .map(|&n| self.revisions[n].inversion.as_ref().clone());
         let down_txns = down
             .iter()
             .rev()
-            .map(|&n| self.revisions[n].transaction.clone());
+            .map(|&n| self.revisions[n].transaction.as_ref().clone());
         up_txns.chain(down_txns).collect()
     }
 
@@ -238,9 +478,14 @@ impl History {
     }
 
     /// Helper for a binary search case below.
-    fn revision_closer_to_instant(&self, i: usize, instant: Instant) -> usize {
-        let dur_im1 = instant.duration_since(self.revisions[i - 1].timestamp);
-        let dur_i = self.revisions[i].timestamp.duration_since(instant);
+    fn revision_closer_to_time(&self, i: usize, timestamp: SystemTime) -> usize {
+        let dur_im1 = timestamp
+            .duration_since(self.revisions[i - 1].timestamp)
+            .unwrap_or_default();
+        let dur_i = self.revisions[i]
+            .timestamp
+            .duration_since(timestamp)
+            .unwrap_or_default();
         use std::cmp::Ordering::*;
         match dur_im1.cmp(&dur_i) {
             Less => i - 1,
@@ -249,17 +494,17 @@ impl History {
     }
 
     /// Creates a [`Transaction`] that will match a revision created at around
-    /// `instant`.
-    fn jump_instant(&mut self, instant: Instant) -> Vec<Transaction> {
+    /// `time`.
+    fn jump_time(&mut self, time: SystemTime) -> Vec<Transaction> {
         let search_result = self
             .revisions
-            .binary_search_by(|rev| rev.timestamp.cmp(&instant));
+            .binary_search_by(|rev| rev.timestamp.cmp(&time));
         let revision = match search_result {
             Ok(revision) => revision,
             Err(insert_point) => match insert_point {
                 0 => 0,
                 n if n == self.revisions.len() => n - 1,
-                i => self.revision_closer_to_instant(i, instant),
+                i => self.revision_closer_to_time(i, time),
             },
         };
         self.jump_to(revision)
@@ -269,7 +514,7 @@ impl History {
     /// from the timestamp of current revision.
     fn jump_duration_backward(&mut self, duration: Duration) -> Vec<Transaction> {
         match self.revisions[self.current].timestamp.checked_sub(duration) {
-            Some(instant) => self.jump_instant(instant),
+            Some(timestamp) => self.jump_time(timestamp),
             None => self.jump_to(0),
         }
     }
@@ -278,7 +523,7 @@ impl History {
     /// the future from the timestamp of the current revision.
     fn jump_duration_forward(&mut self, duration: Duration) -> Vec<Transaction> {
         match self.revisions[self.current].timestamp.checked_add(duration) {
-            Some(instant) => self.jump_instant(instant),
+            Some(timestamp) => self.jump_time(timestamp),
             None => self.jump_to(self.revisions.len() - 1),
         }
     }
@@ -474,14 +719,14 @@ mod test {
             history: &mut History,
             state: &mut State,
             change: crate::transaction::Change,
-            instant: Instant,
+            time: SystemTime,
         ) {
             let txn = Transaction::change(&state.doc, vec![change].into_iter());
-            history.commit_revision_at_timestamp(&txn, state, instant);
+            history.commit_revision_at_timestamp(&txn, state, time);
             txn.apply(&mut state.doc);
         }
 
-        let t0 = Instant::now();
+        let t0 = SystemTime::now();
         let t = |n| t0.checked_add(Duration::from_secs(n)).unwrap();
 
         commit_change(&mut history, &mut state, (1, 1, Some(" b".into())), t(0));
@@ -629,5 +874,152 @@ mod test {
             "1 minute 18446744073709551615 seconds".parse::<UndoKind>(),
             Err("duration too large".to_string())
         );
+    }
+
+    fn is_tree(h: &History) -> bool {
+        use ahash::{AHashMap, AHashSet};
+
+        let n = h.revisions.len();
+        let nodes = &h.revisions;
+
+        if n == 0 {
+            return false;
+        }
+
+        let mut adj_list = AHashMap::with_capacity(n);
+        for (node, parent) in nodes.iter().enumerate().map(|(idx, r)| (idx, r.parent)) {
+            // Skip loop
+            if !(node == 0 && parent == 0) {
+                adj_list
+                    .entry(node)
+                    .or_insert_with(AHashSet::new)
+                    .insert(parent);
+                adj_list
+                    .entry(parent)
+                    .or_insert_with(AHashSet::new)
+                    .insert(node);
+            }
+        }
+
+        let mut visited = AHashSet::new();
+        let mut stack = vec![0];
+        while let Some(node) = stack.pop() {
+            if !visited.insert(node) {
+                continue;
+            }
+
+            if let Some(adj_nodes) = adj_list.get(&node) {
+                for v in adj_nodes {
+                    if !visited.contains(v) {
+                        stack.push(*v);
+                    }
+                }
+            }
+        }
+        visited.len() == n
+    }
+
+    fn generate_history(mut inserts: Vec<String>) -> (History, Rope) {
+        use rand::distributions::{Distribution, Uniform};
+        use rand::SeedableRng;
+
+        let dist = Uniform::new_inclusive(0, 2);
+        let mut rng = rand::rngs::SmallRng::from_entropy();
+
+        let mut hist = History::default();
+        let mut doc = Rope::default();
+        let sel = Selection::point(0);
+
+        while !inserts.is_empty() {
+            let n = dist.sample(&mut rng);
+            let mut range = || {
+                if doc.len_chars() == 0 {
+                    return (0, 0);
+                }
+                let range_dist = Uniform::new(0, doc.len_chars());
+                let a = range_dist.sample(&mut rng);
+                let b = range_dist.sample(&mut rng);
+                if a > b {
+                    (b, a)
+                } else {
+                    (a, b)
+                }
+            };
+
+            if n == 0 {
+                if let Some(tx) = hist.undo() {
+                    tx.apply(&mut doc);
+                    continue;
+                }
+            }
+
+            if n == 1 {
+                if let Some(tx) = hist.redo() {
+                    tx.apply(&mut doc);
+                    continue;
+                }
+            }
+
+            let sel_range = range();
+            let selection = Selection::single(sel_range.0, sel_range.1);
+
+            if n == 2 && doc.len_chars() >= 1 {
+                let state = State {
+                    doc: doc.clone(),
+                    selection,
+                };
+                let del = range();
+                let tx = Transaction::delete(&doc, [del].into_iter());
+                tx.apply(&mut doc);
+                hist.commit_revision(&tx, &state);
+                continue;
+            }
+
+            let state = State {
+                doc: doc.clone(),
+                selection,
+            };
+            let s = inserts.pop().unwrap();
+            let tx = Transaction::insert(&doc, &sel, s.into());
+            tx.apply(&mut doc);
+            hist.commit_revision(&tx, &state);
+        }
+
+        (hist, doc)
+    }
+
+    quickcheck::quickcheck! {
+        fn random_undofile(inserts: Vec<String>) -> bool {
+            let (orig_hist, doc) = generate_history(inserts);
+            let mut file = tempfile::NamedTempFile::new().unwrap();
+            file.write_all(&doc.bytes().collect::<Vec<_>>()).unwrap();
+            let mut undofile = tempfile::NamedTempFile::new().unwrap();
+
+            orig_hist
+                .serialize(&mut undofile, file.path(), orig_hist.revisions.len(), 0)
+                .unwrap();
+            undofile.rewind().unwrap();
+            let (_, de_hist) = History::deserialize(&mut undofile, file.path()).unwrap();
+            assert!(is_tree(&de_hist));
+            orig_hist.revisions.len() == de_hist.revisions.len()
+                && orig_hist
+                    .revisions
+                    .iter()
+                    .zip(de_hist.revisions.iter())
+                    .all(|(a, b)| {
+                        a.parent == b.parent
+                            && a.transaction == b.transaction
+                            && a.inversion == b.inversion
+                    })
+        }
+    }
+
+    quickcheck::quickcheck! {
+        fn merge_rand_histories(inserts_a: Vec<String>, inserts_b: Vec<String>) -> bool {
+            let mut hist_a = generate_history(inserts_a).0;
+            let hist_b = generate_history(inserts_b).0;
+            hist_a.merge(hist_b).unwrap();
+            is_tree(&hist_a)
+        }
     }
 }

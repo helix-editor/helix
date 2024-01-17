@@ -35,6 +35,9 @@ ahash = "0.8.6"
 hashbrown = { version = "0.14.3", features = ["raw"] }
 dunce = "1.0"
 
+blake3 = "1.5"
+anyhow = "1"
+
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -56,3 +59,4 @@ parking_lot = "0.12"
 quickcheck = { version = "1", default-features = false }
 indoc = "2.0.4"
 tempfile = "3.9"
+rand = { version = "0.8", default-features = false, features = ["getrandom", "small_rng"] }

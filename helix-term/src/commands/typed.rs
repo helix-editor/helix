@@ -2471,6 +2471,38 @@ fn move_buffer(
     Ok(())
 }
 
+fn reload_undofile(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc_mut!(cx.editor);
+    doc.load_undofile()?;
+
+    Ok(())
+}
+
+fn delete_undofile(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc!(cx.editor);
+    if let Some(path) = doc.undo_file()? {
+        std::fs::remove_file(path)?;
+    }
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -3077,6 +3109,21 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        // Not named reload-history so people don't accidentally call delete-undofile
+        name: "history-reload",
+        aliases: &[],
+        doc: "Prepends undofile history to current history.",
+        fun: reload_undofile,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "delete-undofile",
+        aliases: &[],
+        doc: "Delete undofile associated with the currently focused document",
+        fun: delete_undofile,
+        signature: CommandSignature::none(),
     },
 ];
 

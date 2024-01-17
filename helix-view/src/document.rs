@@ -36,6 +36,7 @@ use helix_core::{
 };
 
 use crate::editor::Config;
+use crate::faccess::{copy_metadata, readonly};
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -104,6 +105,8 @@ pub struct DocumentSavedEvent {
     pub doc_id: DocumentId,
     pub path: PathBuf,
     pub text: Rope,
+    // HAXX: errors can't be cloend
+    pub undofile_error: Option<String>,
 }
 
 pub type DocumentSavedEventResult = Result<DocumentSavedEvent, anyhow::Error>;
@@ -707,7 +710,7 @@ impl Document {
             (Rope::from(line_ending.as_str()), encoding, false)
         };
 
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
+        let mut doc = Self::from(rope, Some((encoding, has_bom)), config.clone());
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
@@ -716,6 +719,16 @@ impl Document {
         }
 
         doc.detect_indent_and_line_ending();
+
+        if config.load().undofile {
+            // TODO: Propogate error to display in the statusline without causing the function to error.
+            if let Err(e) = doc.load_undofile() {
+                log::error!(
+                    "Failed to load undofile for {}: {e}",
+                    path.to_string_lossy()
+                );
+            }
+        }
 
         Ok(doc)
     }
@@ -845,6 +858,8 @@ impl Document {
         impl Future<Output = Result<DocumentSavedEvent, anyhow::Error>> + 'static + Send,
         anyhow::Error,
     > {
+        use tokio::task::spawn_blocking;
+
         log::debug!(
             "submitting save of doc '{:?}'",
             self.path().map(|path| path.to_string_lossy())
@@ -864,6 +879,17 @@ impl Document {
             }
         };
 
+        // TODO: Super messy tuple...
+        let undofile_enabled = self.config.load().undofile;
+        let (history, uf_path) = if undofile_enabled {
+            let history = self.history.get_mut().clone();
+            let undofile_path = self.undo_file()?.unwrap();
+            (Some(history), Some(undofile_path))
+        } else {
+            (None, None)
+        };
+        let last_saved_revision = self.get_last_saved_revision();
+
         let identifier = self.path().map(|_| self.identifier());
         let language_servers = self.language_servers.clone();
 
@@ -876,7 +902,7 @@ impl Document {
 
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
-            use tokio::{fs, fs::File};
+            use tokio::fs;
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -899,14 +925,115 @@ impl Document {
                 }
             }
 
-            let mut file = File::create(&path).await?;
-            to_writer(&mut file, encoding_with_bom_info, &text).await?;
+            if readonly(&path) {
+                bail!(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "Path is read only"
+                ));
+            }
+
+            // TODO: Decide on how to do error handling. IO errors are ok. Invalid undofile is not
+            let has_valid_undofile = if undofile_enabled {
+                let path_ = path.clone();
+                let uf_path_ = uf_path.clone();
+                spawn_blocking(move || -> anyhow::Result<bool> {
+                    Ok(helix_core::history::History::is_valid(
+                        &mut std::fs::File::open(uf_path_.unwrap())?,
+                        &path_,
+                    ))
+                })
+                .await?
+                .unwrap_or(false)
+            } else {
+                false
+            };
+
+            let backup = if path.exists() {
+                let path_ = path.clone();
+                // hacks: we use tempfile to handle the complex task of creating
+                // non clobbered temporary path for us we don't want
+                // the whole automatically delete path on drop thing
+                // since the path doesn't exist yet, we just want
+                // the path
+                tokio::task::spawn_blocking(move || -> Option<PathBuf> {
+                    tempfile::Builder::new()
+                        .prefix(path_.file_name()?)
+                        .suffix(".bck")
+                        .make_in(path_.parent()?, |backup| std::fs::rename(&path_, backup))
+                        .ok()?
+                        .into_temp_path()
+                        .keep()
+                        .ok()
+                })
+                .await
+                .ok()
+                .flatten()
+            } else {
+                None
+            };
+
+            let write_result: anyhow::Result<_> = async {
+                let mut dst = tokio::fs::File::create(&path).await?;
+                to_writer(&mut dst, encoding_with_bom_info, &text).await?;
+                Ok(())
+            }
+            .await;
+
+            if let Some(backup) = backup {
+                if write_result.is_err() {
+                    // restore backup
+                    let _ = tokio::fs::rename(&backup, &path)
+                        .await
+                        .map_err(|e| log::error!("Failed to restore backup on write failure: {e}"));
+                } else {
+                    // copy metadata and delete backup
+                    let path_ = path.clone();
+                    let _ = tokio::task::spawn_blocking(move || {
+                        let _ = copy_metadata(&backup, &path_)
+                            .map_err(|e| log::error!("Failed to copy metadata on write: {e}"));
+                        let _ = std::fs::remove_file(backup)
+                            .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
+                    })
+                    .await;
+                }
+            }
+
+            write_result?;
+
+            let uf_result = if undofile_enabled {
+                let path_ = path.clone();
+                let uf_path_ = uf_path.clone().unwrap();
+
+                spawn_blocking(move || -> anyhow::Result<()> {
+                    let mut uf = std::fs::OpenOptions::new()
+                        .write(true)
+                        .read(true)
+                        .create(true)
+                        .open(&uf_path_)?;
+
+                    let offset = if has_valid_undofile {
+                        last_saved_revision
+                    } else {
+                        uf.set_len(0)?;
+                        0
+                    };
+                    history
+                        .unwrap()
+                        .serialize(&mut uf, &path_, current_rev, offset)?;
+                    copy_metadata(&path_, &uf_path_)?;
+                    Ok(())
+                })
+                .await?
+            } else {
+                Ok(())
+            };
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
                 doc_id,
                 path,
                 text: text.clone(),
+                undofile_error: uf_result.map_err(|e| e.to_string()).err(),
             };
 
             for (_, language_server) in language_servers {
@@ -960,35 +1087,12 @@ impl Document {
         }
     }
 
-    #[cfg(unix)]
     // Detect if the file is readonly and change the readonly field if necessary (unix only)
     pub fn detect_readonly(&mut self) {
-        use rustix::fs::{access, Access};
         // Allows setting the flag for files the user cannot modify, like root files
         self.readonly = match &self.path {
             None => false,
-            Some(p) => match access(p, Access::WRITE_OK) {
-                Ok(_) => false,
-                Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
-                Err(_) => true,
-            },
-        };
-    }
-
-    #[cfg(not(unix))]
-    // Detect if the file is readonly and change the readonly field if necessary (non-unix os)
-    pub fn detect_readonly(&mut self) {
-        // TODO Use the Windows' function `CreateFileW` to check if a file is readonly
-        // Discussion: https://github.com/helix-editor/helix/pull/7740#issuecomment-1656806459
-        // Vim implementation: https://github.com/vim/vim/blob/4c0089d696b8d1d5dc40568f25ea5738fa5bbffb/src/os_win32.c#L7665
-        // Windows binding: https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/Storage/FileSystem/fn.CreateFileW.html
-        self.readonly = match &self.path {
-            None => false,
-            Some(p) => match std::fs::metadata(p) {
-                Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
-                Err(_) => false,
-                Ok(metadata) => metadata.permissions().readonly(),
-            },
+            Some(p) => readonly(p),
         };
     }
 
@@ -1030,6 +1134,38 @@ impl Document {
 
         self.version_control_head = provider_registry.get_current_head_name(&path);
 
+        Ok(())
+    }
+
+    pub fn undo_file(&self) -> anyhow::Result<Option<PathBuf>> {
+        let undo_dir = helix_loader::cache_dir().join("undo");
+        std::fs::create_dir_all(&undo_dir)?;
+        let res = self.path().map(|path| {
+            let escaped_path = helix_core::path::escape_path(path);
+            undo_dir.join(escaped_path)
+        });
+        Ok(res)
+    }
+
+    pub fn load_undofile(&mut self) -> anyhow::Result<()> {
+        if let Some(mut undo_file) = self
+            .undo_file()?
+            .and_then(|path| std::fs::File::open(path).ok())
+        {
+            if undo_file.metadata()?.len() != 0 {
+                let (last_saved_revision, history) = helix_core::history::History::deserialize(
+                    &mut undo_file,
+                    self.path().unwrap(),
+                )?;
+
+                if self.history.get_mut().is_empty() {
+                    self.history.set(history);
+                } else {
+                    self.history.get_mut().merge(history).unwrap();
+                    self.set_last_saved_revision(last_saved_revision);
+                }
+            }
+        }
         Ok(())
     }
 

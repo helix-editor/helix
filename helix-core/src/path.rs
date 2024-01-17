@@ -1,5 +1,8 @@
 use etcetera::home_dir;
-use std::path::{Component, Path, PathBuf};
+use std::{
+    path::{Component, Path, PathBuf},
+    str::Utf8Error,
+};
 
 /// Replaces users home directory from `path` with tilde `~` if the directory
 /// is available, otherwise returns the path unchanged.
@@ -178,4 +181,43 @@ pub fn get_truncated_path<P: AsRef<Path>>(path: P) -> PathBuf {
     }
     ret.push(file);
     ret
+}
+
+fn os_str_as_bytes<P: AsRef<std::ffi::OsStr>>(path: P) -> Vec<u8> {
+    let path = path.as_ref();
+
+    #[cfg(windows)]
+    return path.to_str().unwrap().into();
+
+    #[cfg(unix)]
+    return std::os::unix::ffi::OsStrExt::as_bytes(path).to_vec();
+}
+
+fn path_from_bytes(slice: &[u8]) -> Result<PathBuf, Utf8Error> {
+    #[cfg(windows)]
+    return Ok(PathBuf::from(std::str::from_utf8(slice)?));
+
+    #[cfg(unix)]
+    return Ok(PathBuf::from(
+        <std::ffi::OsStr as std::os::unix::ffi::OsStrExt>::from_bytes(slice),
+    ));
+}
+
+fn is_sep_byte(b: u8) -> bool {
+    if cfg!(windows) {
+        b == b'/' || b == b'\\'
+    } else {
+        b == b'/'
+    }
+}
+
+pub fn escape_path(path: &Path) -> PathBuf {
+    let s = path.as_os_str().to_os_string();
+    let mut bytes = os_str_as_bytes(&s);
+    for b in bytes.iter_mut() {
+        if is_sep_byte(*b) {
+            *b = b'%';
+        }
+    }
+    path_from_bytes(&bytes).unwrap()
 }
