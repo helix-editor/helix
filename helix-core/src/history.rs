@@ -209,6 +209,36 @@ impl History {
         path
     }
 
+    /// Create a [`Transaction`] from revisions `a` to `b`.
+    fn between(&self, a: usize, b: usize) -> Option<Transaction> {
+        let inversion = a > b;
+        let lca = self.lowest_common_ancestor(a, b);
+        let left = self.path_up(a, lca);
+        let right = self.path_up(b, lca);
+
+        if inversion {
+            // When A, the starting node, is later than B, the target node, we are looking for a path backwards from A to the LCA and then to B.
+            let left_txns = left
+                .iter()
+                .rev()
+                .map(|&n| self.revisions[n].inversion.clone());
+            let right_txns = right.iter().map(|&n| self.revisions[n].transaction.clone());
+            left_txns
+                .chain(right_txns)
+                .reduce(|acc, tx| tx.compose(acc))
+        } else {
+            // When A, the starting node, is earlier than B, the target node, we are looking for a path backwards from B to the LCA and then to A.
+            let left_txns = left.iter().map(|&n| self.revisions[n].transaction.clone());
+            let right_txns = right
+                .iter()
+                .rev()
+                .map(|&n| self.revisions[n].transaction.clone());
+            right_txns
+                .chain(left_txns)
+                .reduce(|acc, tx| tx.compose(acc))
+        }
+    }
+
     /// Create a [`Transaction`] that will jump to a specific revision in the history.
     fn jump_to(&mut self, to: usize) -> Vec<Transaction> {
         let lca = self.lowest_common_ancestor(self.current, to);
@@ -380,6 +410,80 @@ impl std::str::FromStr for UndoKind {
             Ok(UndoKind::Steps(n))
         } else {
             Ok(Self::TimePeriod(parse_human_duration(s)?))
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct SelectionHistory {
+    revisions: Vec<SelectionRevision>,
+    current: usize,
+}
+
+#[derive(Debug, Clone)]
+struct SelectionRevision {
+    // Regular history
+    revision: usize,
+    parent: usize,
+    last_child: Option<NonZeroUsize>,
+    selection: Selection,
+}
+
+impl SelectionHistory {
+    pub fn new(selection: Selection, revision: usize) -> Self {
+        Self {
+            revisions: vec![SelectionRevision {
+                revision,
+                parent: 0,
+                last_child: None,
+                selection,
+            }],
+            current: 0,
+        }
+    }
+
+    pub fn commit_revision(&mut self, selection: Selection, revision: usize) {
+        let new_current = self.revisions.len();
+        self.revisions[self.current].last_child = NonZeroUsize::new(new_current);
+        self.revisions.push(SelectionRevision {
+            revision,
+            parent: self.current,
+            last_child: None,
+            selection,
+        });
+        self.current = new_current;
+    }
+
+    pub const fn at_root(&self) -> bool {
+        self.current == 0
+    }
+
+    pub fn undo(&mut self, history: &History) -> Option<Transaction> {
+        if self.at_root() {
+            return None;
+        }
+        let revision = &self.revisions[self.current];
+        let selection = revision.selection.clone();
+        self.current = revision.parent;
+
+        if let Some(tx) = history.between(revision.revision, history.current_revision()) {
+            Some(Transaction::default().with_selection(selection.map(tx.changes())))
+        } else {
+            Some(Transaction::default().with_selection(selection))
+        }
+    }
+
+    pub fn redo(&mut self, history: &History) -> Option<Transaction> {
+        let current_revision = &self.revisions[self.current];
+        let last_child = current_revision.last_child?;
+        let revision = &self.revisions[last_child.get()];
+        let selection = revision.selection.clone();
+        self.current = last_child.get();
+
+        if let Some(tx) = history.between(revision.revision, history.current_revision()) {
+            Some(Transaction::default().with_selection(selection.map(tx.changes())))
+        } else {
+            Some(Transaction::default().with_selection(selection))
         }
     }
 }
