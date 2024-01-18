@@ -2,9 +2,6 @@
 pub mod macros;
 
 pub mod base64;
-
-mod faccess;
-
 pub mod clipboard;
 pub mod document;
 pub mod editor;

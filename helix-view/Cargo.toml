@@ -53,7 +53,6 @@ parking_lot = "0.12.1"
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.2", features = ["std"] }
-windows-sys = { version = "0.52", features = ["Win32_Security", "Win32_Security_Authorization"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

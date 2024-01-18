@@ -10,6 +10,7 @@ use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
 use helix_lsp::util::lsp_pos_to_pos;
+use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
 use ::parking_lot::Mutex;
@@ -37,7 +38,6 @@ use helix_core::{
 
 use crate::editor::Config;
 use crate::events::{DocumentDidChange, SelectionDidChange};
-use crate::faccess::{copy_metadata, readonly};
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.

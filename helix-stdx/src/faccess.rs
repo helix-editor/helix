@@ -50,20 +50,21 @@ mod imp {
         Ok(())
     }
 
-    fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> anyhow::Result<()> {
+    fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
         let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
         let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
         rustix::fs::chown(p, uid, gid)?;
         Ok(())
     }
 
-    pub fn copy_metadata(from: &Path, to: &Path) -> anyhow::Result<()> {
+    pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
         let from_meta = std::fs::metadata(from)?;
         let to_meta = std::fs::metadata(to)?;
         let from_gid = from_meta.gid();
         let to_gid = to_meta.gid();
 
         let mut perms = from_meta.permissions();
+        perms.set_mode(perms.mode() & 0o0777);
         if from_gid != to_gid && chown(to, None, Some(from_gid)).is_err() {
             let new_perms = (perms.mode() & 0o0707) | ((perms.mode() & 0o07) << 3);
             perms.set_mode(new_perms);
@@ -122,7 +123,7 @@ mod imp {
     }
 
     impl SecurityDescriptor {
-        fn for_path(p: &Path) -> std::io::Result<SecurityDescriptor> {
+        fn for_path(p: &Path) -> io::Result<SecurityDescriptor> {
             let path = std::fs::canonicalize(p)?;
             let pathos = path.into_os_string();
             let mut pathw: Vec<u16> = Vec::with_capacity(pathos.len() + 1);
@@ -350,7 +351,7 @@ mod imp {
         }
     }
 
-    fn chown(p: &Path, sd: SecurityDescriptor) -> std::io::Result<()> {
+    fn chown(p: &Path, sd: SecurityDescriptor) -> io::Result<()> {
         let path = std::fs::canonicalize(p)?;
         let pathos = path.as_os_str();
         let mut pathw = Vec::with_capacity(pathos.len() + 1);
@@ -399,7 +400,7 @@ mod imp {
         }
     }
 
-    pub fn copy_metadata(from: &Path, to: &Path) -> std::io::Result<()> {
+    pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
         let sd = SecurityDescriptor::for_path(from)?;
         chown(to, sd)?;
 
@@ -436,7 +437,7 @@ mod imp {
         }
     }
 
-    pub fn copy_metadata(from: &path, to: &Path) -> std::io::Result<()> {
+    pub fn copy_metadata(from: &path, to: &Path) -> io::Result<()> {
         let meta = std::fs::metadata(from)?;
         let perms = meta.permissions();
         std::fs::set_permissions(to, perms)?;
@@ -453,7 +454,6 @@ pub fn readonly(p: &Path) -> bool {
     }
 }
 
-pub fn copy_metadata(from: &Path, to: &Path) -> anyhow::Result<()> {
-    imp::copy_metadata(from, to)?;
-    Ok(())
+pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
+    imp::copy_metadata(from, to)
 }
