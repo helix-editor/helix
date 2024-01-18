@@ -39,7 +39,7 @@ use helix_core::{
     Syntax,
 };
 use helix_view::{
-    editor::Action,
+    editor::{Action, PickerTitle},
     graphics::{CursorKind, Margin, Modifier, Rect},
     theme::Style,
     view::ViewPosition,
@@ -201,6 +201,9 @@ pub struct Picker<T: Item> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Option<FileCallback<T>>,
+
+    /// Title for the picker box
+    title: String,
 }
 
 impl<T: Item + 'static> Picker<T> {
@@ -220,6 +223,7 @@ impl<T: Item + 'static> Picker<T> {
     }
 
     pub fn new(
+        title: String,
         options: Vec<T>,
         editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
@@ -237,6 +241,7 @@ impl<T: Item + 'static> Picker<T> {
             }
         }
         Self::with(
+            title,
             matcher,
             Arc::new(editor_data),
             Arc::new(AtomicBool::new(false)),
@@ -245,14 +250,22 @@ impl<T: Item + 'static> Picker<T> {
     }
 
     pub fn with_stream(
+        title: String,
         matcher: Nucleo<T>,
         injector: Injector<T>,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
-        Self::with(matcher, injector.editor_data, injector.shutown, callback_fn)
+        Self::with(
+            title,
+            matcher,
+            injector.editor_data,
+            injector.shutown,
+            callback_fn,
+        )
     }
 
     fn with(
+        title: String,
         matcher: Nucleo<T>,
         editor_data: Arc<T::Data>,
         shutdown: Arc<AtomicBool>,
@@ -280,6 +293,7 @@ impl<T: Item + 'static> Picker<T> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
+            title,
         }
     }
 
@@ -795,13 +809,96 @@ impl<T: Item + 'static> Picker<T> {
             );
         }
     }
+
+    fn render_title(
+        &mut self,
+        mode: PickerTitle,
+        area: Rect,
+        surface: &mut Surface,
+        cx: &mut Context,
+    ) {
+        let borders = BorderType::line_symbols(BorderType::Plain);
+        let background = cx.editor.theme.get("ui.background");
+        let text_style = cx.editor.theme.get("ui.text").add_modifier(Modifier::BOLD);
+        // Add four for margin and bounding box edges
+        let title_width = self.title.len() as u16 + 4;
+        match mode {
+            PickerTitle::Center => {
+                const TITLE_BOX_HEIGHT: u16 = 2;
+
+                if area.y < TITLE_BOX_HEIGHT || area.width <= title_width + 1 {
+                    return;
+                }
+
+                // Compute area for title rendering
+                let area_to_clip = area.width - title_width;
+                let mut area = area
+                    .clip_left(area_to_clip / 2)
+                    .clip_right(area_to_clip / 2)
+                    .with_height(TITLE_BOX_HEIGHT);
+                area.y -= TITLE_BOX_HEIGHT;
+
+                // -- Render the frame:
+                // clear area
+                surface.clear_with(area, background);
+
+                // render the border
+                let block = Block::default().borders(Borders::TOP | Borders::LEFT | Borders::RIGHT);
+                block.render(area, surface);
+
+                // render the title text
+                surface.set_string(
+                    // Add two for spacing for border box and margin
+                    area.x + 2,
+                    area.y + 1,
+                    &self.title,
+                    text_style,
+                );
+
+                // add connecting characters to picker's top border
+                surface.set_string(area.x, area.y + 2, borders.horizontal_up, Style::default());
+                surface.set_string(
+                    area.x + area.width - 1,
+                    area.y + 2,
+                    borders.horizontal_up,
+                    Style::default(),
+                );
+            }
+            PickerTitle::Inline => surface.set_string(area.x + 1, area.y, &self.title, text_style),
+            PickerTitle::InlineBorder => {
+                if area.width <= title_width {
+                    return;
+                }
+                let mut area = area.with_width(title_width).with_height(2);
+                area.y -= 1;
+
+                surface.clear_with(area, background);
+
+                let block = Block::default().borders(Borders::TOP | Borders::LEFT | Borders::RIGHT);
+                block.render(area, surface);
+
+                surface.set_string(area.x + 2, area.y + 1, &self.title, text_style);
+
+                surface.set_string(
+                    area.x + title_width - 1,
+                    area.y + 1,
+                    borders.bottom_left,
+                    Style::default(),
+                );
+            }
+            PickerTitle::Prompt => cx.editor.set_status(self.title.clone()),
+            PickerTitle::Never => (),
+        }
+    }
 }
 
 impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // +---------+ +---------+
+        //        +-------+
+        //        | title |
+        // +------+--+ +--+------+
         // |prompt   | |preview  |
-        // +---------+ |         |
+        // |---------| |         |
         // |picker   | |         |
         // |         | |         |
         // +---------+ +---------+
@@ -822,6 +919,9 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             let preview_area = area.clip_left(picker_width);
             self.render_preview(preview_area, surface, cx);
         }
+
+        let title_render_mode = cx.editor.config.load().picker_title;
+        self.render_title(title_render_mode, area, surface, cx);
     }
 
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {

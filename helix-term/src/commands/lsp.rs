@@ -242,14 +242,20 @@ type SymbolPicker = Picker<SymbolInformationItem>;
 
 fn sym_picker(symbols: Vec<SymbolInformationItem>, current_path: Option<lsp::Url>) -> SymbolPicker {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
-    Picker::new(symbols, current_path, move |cx, item, action| {
-        jump_to_location(
-            cx.editor,
-            &item.symbol.location,
-            item.offset_encoding,
-            action,
-        );
-    })
+    let picker_title = String::from("Symbol Picker");
+    Picker::new(
+        picker_title,
+        symbols,
+        current_path,
+        move |cx, item, action| {
+            jump_to_location(
+                cx.editor,
+                &item.symbol.location,
+                item.offset_encoding,
+                action,
+            );
+        },
+    )
     .with_preview(move |_editor, item| Some(location_to_file_location(&item.symbol.location)))
     .truncate_start(false)
 }
@@ -290,8 +296,28 @@ fn diag_picker(
         warning: cx.editor.theme.get("warning"),
         error: cx.editor.theme.get("error"),
     };
+    let mut informations = 0;
+    let mut warnings = 0;
+    let mut errors = 0;
+    let mut hints = 0;
 
+    flat_diag
+        .iter()
+        .filter_map(|i| i.diag.severity)
+        .for_each(|severity| match severity {
+            DiagnosticSeverity::INFORMATION => informations += 1,
+            DiagnosticSeverity::WARNING => warnings += 1,
+            DiagnosticSeverity::ERROR => errors += 1,
+            DiagnosticSeverity::HINT => hints += 1,
+            _ => (),
+        });
+
+    let picker_title = format!(
+        "Diagnostics: [{} E] [{} W] [{} I] [{} H]",
+        errors, warnings, informations, hints,
+    );
     Picker::new(
+        picker_title,
         flat_diag,
         (styles, format),
         move |cx,
@@ -1027,9 +1053,15 @@ fn goto_impl(
             editor.set_error("No definition found.");
         }
         _locations => {
-            let picker = Picker::new(locations, cwdir, move |cx, location, action| {
-                jump_to_location(cx.editor, location, offset_encoding, action)
-            })
+            let picker_title = String::from("Goto Picker");
+            let picker = Picker::new(
+                picker_title,
+                locations,
+                cwdir,
+                move |cx, location, action| {
+                    jump_to_location(cx.editor, location, offset_encoding, action)
+                },
+            )
             .with_preview(move |_editor, location| Some(location_to_file_location(location)));
             compositor.push(Box::new(overlaid(picker)));
         }

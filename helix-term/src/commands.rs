@@ -2324,9 +2324,27 @@ fn global_search(cx: &mut Context) {
                     });
                 });
 
+                let user_entered_regex = regex.to_string();
+                let case_sensitive = if smart_case {
+                    user_entered_regex
+                        .chars()
+                        .any(|char| char.is_ascii_uppercase())
+                } else {
+                    true
+                };
                 cx.jobs.callback(async move {
                     let call = move |_: &mut Editor, compositor: &mut Compositor| {
+                        let picker_title = format!(
+                            "Global Search: '{}' {}",
+                            regex,
+                            if case_sensitive {
+                                "[Case Sensitive]"
+                            } else {
+                                "[Case Insensitive]"
+                            }
+                        );
                         let picker = Picker::with_stream(
+                            picker_title,
                             picker,
                             injector,
                             move |cx, FileResult { path, line_num }, action| {
@@ -2795,7 +2813,8 @@ fn buffer_picker(cx: &mut Context) {
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
 
-    let picker = Picker::new(items, (), |cx, meta, action| {
+    let picker_title = String::from("Buffer List");
+    let picker = Picker::new(picker_title, items, (), |cx, meta, action| {
         cx.editor.switch(meta.id, action);
     })
     .with_preview(|editor, meta| {
@@ -2872,7 +2891,9 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
+    let picker_title = String::from("Jumplist Picker");
     let picker = Picker::new(
+        picker_title,
         cx.editor
             .tree
             .views()
@@ -2949,32 +2970,38 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
-                let mut ctx = Context {
-                    register,
-                    count,
-                    editor: cx.editor,
-                    callback: None,
-                    on_next_key_callback: None,
-                    jobs: cx.jobs,
-                };
-                let focus = view!(ctx.editor).id;
+            let picker_title = String::from("Command Palette");
+            let picker = Picker::new(
+                picker_title,
+                commands,
+                keymap,
+                move |cx, command, _action| {
+                    let mut ctx = Context {
+                        register,
+                        count,
+                        editor: cx.editor,
+                        callback: None,
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+                    let focus = view!(ctx.editor).id;
 
-                command.execute(&mut ctx);
+                    command.execute(&mut ctx);
 
-                if ctx.editor.tree.contains(focus) {
-                    let config = ctx.editor.config();
-                    let mode = ctx.editor.mode();
-                    let view = view_mut!(ctx.editor, focus);
-                    let doc = doc_mut!(ctx.editor, &view.doc);
+                    if ctx.editor.tree.contains(focus) {
+                        let config = ctx.editor.config();
+                        let mode = ctx.editor.mode();
+                        let view = view_mut!(ctx.editor, focus);
+                        let doc = doc_mut!(ctx.editor, &view.doc);
 
-                    view.ensure_cursor_in_view(doc, config.scrolloff);
+                        view.ensure_cursor_in_view(doc, config.scrolloff);
 
-                    if mode != Mode::Insert {
-                        doc.append_changes_to_history(view);
+                        if mode != Mode::Insert {
+                            doc.append_changes_to_history(view);
+                        }
                     }
-                }
-            });
+                },
+            );
             compositor.push(Box::new(overlaid(picker)));
         },
     ));
