@@ -1341,5 +1341,78 @@ actions available in a popup. This will allow you to:
 
 
 =================================================================
+=                  CHAPTER 13.1 CREATE NEW SPLIT                =
+=================================================================
+
+In normal mode, press ctrl-w (i.e. start pressing ctrl, and
+while it is pressed, press w) to open the Window menu. This will
+display a pop up that reminds of most window splitting and window
+control commands available.
+
+To open a new empty buffer in a vertical split on the right half
+of your current window, you can use ctrl-w nv (i.e., press ctrl
+and w at the same time, then press n, then press v). Your current
+window will now split in 2 vertically, a new empty buffer split
+will appear on the right half, and your cursor will jump to the
+new vertical split.
+
+To create a new empty buffer in an horizontal split, press
+ctrl-w ns . This will split your current window in 2 horizontally
+and create a new buffer, and your cursor will jump to the new
+horizontal split.
+
+
+=================================================================
+=                    CHAPTER 13.2 MOVE BETWEEN SPLITS           =
+=================================================================
+
+Use ctrl-w k or ctrl-w arrow-up to move to the split above your
+current split. Use ctrl-w j or ctrl-w arrow-down to move back
+to the split below.
+
+cursor back to the left split (hjkl or the arrows allow all the
+usual movements in window mode).
+
+You can now do whatever you want in your new buffer (edit,
+save, ...). Once you are done with using your new buffer split,
+you can close it with ctrl-w q to revert to having a single split
+as you had initially.
+
+
+
+
+
+
+=================================================================
+=                       CHAPTER 13.2 SPLIT CURRENT BUFFER       =
+=================================================================
+
+You can also, starting in normal mode, split the view of
+the current buffer: try using ctrl-w s (to split half way
+horizontally) and ctrl-w v (to split half way vertically). Feel
+free to feel moving between the splits you created (ctrl-w hjkl),
+closing individual splits, etc.
+
+
+
+
+
+
+=================================================================
+=                       CHAPTER 13.3 USE COMMANDS TO SPLIT      =
+=================================================================
+
+Note that you can also use commands to split, by typing in normal
+mode :vsplit (to split the current buffer), or :vsplit FILE_PATH
+(to open FILE_PATH into the new split). :vsplit-new is equivalent
+to ctrl-w nv , and you can use :hsplit instead of :vsplit to
+split horizontally instead.
+
+
+
+
+
+
+=================================================================
  This tutorial is still a work-in-progress.
  More sections are planned.
