@@ -213,8 +213,8 @@ Helix provides several variables that can be used when typing commands or creati
 | `%{filename}`   | The absolute path of the currently focused file. |
 | `%{dirname}`    | The absolute path of the parent directory of the currently focused file. |
 | `%{cwd}`        | The absolute path of the current working directory of Helix. |
-| `%{linenumber}` | The line number where the main cursor is positioned. |
-| `%{selection}`  | The text selected by the main cursor. |
+| `%{linenumber}` | The line number where the primary cursor is positioned. |
+| `%{selection}`  | The text selected by the primary cursor. |
 | `%sh{cmd}`      | Executes `cmd` with the default shell and returns the command output, if any. |
 
 ### Example
