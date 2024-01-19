@@ -1023,8 +1023,9 @@ fn goto_impl(
         [location] => {
             jump_to_location(editor, location, offset_encoding, Action::Replace);
         }
+        // XXX: All call sites pass non empty containers. This pattern is redundant.
         [] => {
-            editor.set_error("No definition found.");
+            editor.set_error("No results found.");
         }
         _locations => {
             let picker = Picker::new(locations, cwdir, move |cx, location, action| {
@@ -1065,9 +1066,11 @@ where
 
     cx.callback(
         future,
-        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
-            let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
+        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| match to_locations(
+            response,
+        ) {
+            items if items.is_empty() => editor.set_error("No definition found."),
+            items => goto_impl(editor, compositor, items, offset_encoding),
         },
     );
 }
@@ -1125,9 +1128,11 @@ pub fn goto_reference(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor, compositor, response: Option<Vec<lsp::Location>>| {
-            let items = response.unwrap_or_default();
-            goto_impl(editor, compositor, items, offset_encoding);
+        move |editor, compositor, response: Option<Vec<lsp::Location>>| match response
+            .unwrap_or_default()
+        {
+            items if items.is_empty() => editor.set_error("No references found."),
+            items => goto_impl(editor, compositor, items, offset_encoding),
         },
     );
 }
