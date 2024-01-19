@@ -205,7 +205,7 @@ impl MappableCommand {
 
                     let args = args.join(" ");
 
-                    match helix_view::editor::expand_variables(cx.editor, &args) {
+                    match cx.editor.expand_variables(&args) {
                         Ok(args) => {
                             let args = args.split_whitespace();
                             let args: Vec<Cow<str>> = args.map(Cow::Borrowed).collect();

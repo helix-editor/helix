@@ -1,61 +1,99 @@
 use super::*;
-use helix_view::editor::expand_variables;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_variable_expansion() -> anyhow::Result<()> {
     {
-        let app = AppBuilder::new().build()?;
+        let mut app = AppBuilder::new().build()?;
 
-        assert_eq!(
-            expand_variables(&app.editor, "%{filename}").unwrap(),
-            helix_view::document::SCRATCH_BUFFER_NAME,
-        );
+        test_key_sequence(
+            &mut app,
+            Some("<esc>:echo %{filename}<ret>"),
+            Some(&|app| {
+                assert_eq!(
+                    app.editor.get_status().unwrap().0,
+                    helix_view::document::SCRATCH_BUFFER_NAME
+                );
+            }),
+            false,
+        )
+        .await?;
 
-        assert_eq!(
-            expand_variables(&app.editor, "%{basename}").unwrap(),
-            helix_view::document::SCRATCH_BUFFER_NAME,
-        );
+        let mut app = AppBuilder::new().build()?;
 
-        assert_eq!(
-            expand_variables(&app.editor, "%{dirname}").unwrap(),
-            helix_view::document::SCRATCH_BUFFER_NAME,
-        );
-    }
+        test_key_sequence(
+            &mut app,
+            Some("<esc>:echo %{basename}<ret>"),
+            Some(&|app| {
+                assert_eq!(
+                    app.editor.get_status().unwrap().0,
+                    helix_view::document::SCRATCH_BUFFER_NAME
+                );
+            }),
+            false,
+        )
+        .await?;
 
-    {
-        let file = tempfile::NamedTempFile::new()?;
-        let app = AppBuilder::new().with_file(file.path(), None).build()?;
+        let mut app = AppBuilder::new().build()?;
 
-        assert_eq!(
-            expand_variables(&app.editor, "%{filename}").unwrap(),
-            helix_core::path::get_canonicalized_path(file.path())
-                .to_str()
-                .unwrap()
-        );
-
-        assert_eq!(
-            expand_variables(&app.editor, "%{basename}").unwrap(),
-            file.path().file_name().unwrap().to_str().unwrap()
-        );
-
-        assert_eq!(
-            expand_variables(&app.editor, "%{dirname}").unwrap(),
-            helix_core::path::get_canonicalized_path(file.path().parent().unwrap())
-                .to_str()
-                .unwrap()
-        );
+        test_key_sequence(
+            &mut app,
+            Some("<esc>:echo %{dirname}<ret>"),
+            Some(&|app| {
+                assert_eq!(
+                    app.editor.get_status().unwrap().0,
+                    helix_view::document::SCRATCH_BUFFER_NAME
+                );
+            }),
+            false,
+        )
+        .await?;
     }
 
     {
         let file = tempfile::NamedTempFile::new()?;
         let mut app = AppBuilder::new().with_file(file.path(), None).build()?;
+
         test_key_sequence(
             &mut app,
-            Some("ihelix<esc>%"),
+            Some("<esc>:echo %{filename}<ret>"),
             Some(&|app| {
                 assert_eq!(
-                    expand_variables(&app.editor, "%{selection}").unwrap(),
-                    "helix"
+                    app.editor.get_status().unwrap().0,
+                    helix_stdx::path::canonicalize(file.path())
+                        .to_str()
+                        .unwrap()
+                );
+            }),
+            false,
+        )
+        .await?;
+
+        let mut app = AppBuilder::new().with_file(file.path(), None).build()?;
+
+        test_key_sequence(
+            &mut app,
+            Some("<esc>:echo %{basename}<ret>"),
+            Some(&|app| {
+                assert_eq!(
+                    app.editor.get_status().unwrap().0,
+                    file.path().file_name().unwrap().to_str().unwrap()
+                );
+            }),
+            false,
+        )
+        .await?;
+
+        let mut app = AppBuilder::new().with_file(file.path(), None).build()?;
+
+        test_key_sequence(
+            &mut app,
+            Some("<esc>:echo %{dirname}<ret>"),
+            Some(&|app| {
+                assert_eq!(
+                    app.editor.get_status().unwrap().0,
+                    helix_stdx::path::canonicalize(file.path().parent().unwrap())
+                        .to_str()
+                        .unwrap()
                 );
             }),
             false,
@@ -68,9 +106,23 @@ async fn test_variable_expansion() -> anyhow::Result<()> {
         let mut app = AppBuilder::new().with_file(file.path(), None).build()?;
         test_key_sequence(
             &mut app,
-            Some("ihelix<ret>helix<ret>helix<ret><esc>"),
+            Some("ihelix<esc>%:echo %{selection}<ret>"),
             Some(&|app| {
-                assert_eq!(expand_variables(&app.editor, "%{linenumber}").unwrap(), "4");
+                assert_eq!(app.editor.get_status().unwrap().0, "helix");
+            }),
+            false,
+        )
+        .await?;
+    }
+
+    {
+        let file = tempfile::NamedTempFile::new()?;
+        let mut app = AppBuilder::new().with_file(file.path(), None).build()?;
+        test_key_sequence(
+            &mut app,
+            Some("ihelix<ret>helix<ret>helix<ret><esc>:echo %{linenumber}<ret>"),
+            Some(&|app| {
+                assert_eq!(app.editor.get_status().unwrap().0, "4");
             }),
             false,
         )
