@@ -1066,11 +1066,13 @@ where
 
     cx.callback(
         future,
-        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| match to_locations(
-            response,
-        ) {
-            items if items.is_empty() => editor.set_error("No definition found."),
-            items => goto_impl(editor, compositor, items, offset_encoding),
+        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
+            let items = to_locations(response);
+            if items.is_empty() {
+                editor.set_error("No definition found.");
+            } else {
+                goto_impl(editor, compositor, items, offset_encoding);
+            }
         },
     );
 }
@@ -1128,11 +1130,13 @@ pub fn goto_reference(cx: &mut Context) {
 
     cx.callback(
         future,
-        move |editor, compositor, response: Option<Vec<lsp::Location>>| match response
-            .unwrap_or_default()
-        {
-            items if items.is_empty() => editor.set_error("No references found."),
-            items => goto_impl(editor, compositor, items, offset_encoding),
+        move |editor, compositor, response: Option<Vec<lsp::Location>>| {
+            let items = response.unwrap_or_default();
+            if items.is_empty() {
+                editor.set_error("No references found.");
+            } else {
+                goto_impl(editor, compositor, items, offset_encoding);
+            }
         },
     );
 }
