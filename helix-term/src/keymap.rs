@@ -310,8 +310,8 @@ impl Keymaps {
         // TODO: remove the sticky part and look up manually
         let keymaps = &*self.map();
         let keymap = match keymaps.get(&mode) {
-          Some(keymap) => keymap,
-          None => return KeymapResult::NotFound,
+            Some(keymap) => keymap,
+            None => return KeymapResult::NotFound,
         };
 
         if key!(Esc) == key {
