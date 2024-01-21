@@ -77,6 +77,10 @@
 "ui.statusline.insert" = { fg = "light-black", bg = "green" }
 "ui.statusline.select" = { fg = "light-black", bg = "purple" }
 
+"ui.bufferline" = { fg = "light-gray", bg = "light-black" }
+"ui.bufferline.active" = { fg = "light-black", bg = "blue", underline = { color = "light-black", style = "line" } }
+"ui.bufferline.background" = { bg = "light-black" }
+
 "ui.text" = { fg = "white" }
 "ui.text.focus" = { fg = "white", bg = "light-black", modifiers = ["bold"] }
 
