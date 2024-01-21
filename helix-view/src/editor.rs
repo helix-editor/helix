@@ -971,6 +971,7 @@ pub enum ConfigEvent {
     Refresh,
     Update(Box<Config>),
     UpdateLanguageConfiguration,
+    Change,
 }
 
 enum ThemeAction {

@@ -1686,9 +1686,12 @@ dependencies = [
 
 [[package]]
 name = "im-lists"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8ce6c776654abe411e4ccd52524f87e8ca16e2c487dbe127521eb048a46f7e6"
+checksum = "0c07eff2c41645923382085ea8627509e5184f7a668f75d0c1e16091f7af4798"
+dependencies = [
+ "smallvec",
+]
 
 [[package]]
 name = "im-rc"
@@ -2524,8 +2527,8 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "steel-core"
-version = "0.5.0"
-source = "git+https://github.com/mattwparas/steel.git#03fe335199334f44396949fda2508de3545bc895"
+version = "0.6.0"
+source = "git+https://github.com/mattwparas/steel.git#9cc058dcd868edf81985909e09cafd94dbb9a1e3"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -2549,6 +2552,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
+ "smallvec",
  "steel-derive",
  "steel-gen",
  "steel-parser",
@@ -2558,8 +2562,8 @@ dependencies = [
 
 [[package]]
 name = "steel-derive"
-version = "0.4.0"
-source = "git+https://github.com/mattwparas/steel.git#03fe335199334f44396949fda2508de3545bc895"
+version = "0.5.0"
+source = "git+https://github.com/mattwparas/steel.git#9cc058dcd868edf81985909e09cafd94dbb9a1e3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2569,7 +2573,7 @@ dependencies = [
 [[package]]
 name = "steel-gen"
 version = "0.2.0"
-source = "git+https://github.com/mattwparas/steel.git#03fe335199334f44396949fda2508de3545bc895"
+source = "git+https://github.com/mattwparas/steel.git#9cc058dcd868edf81985909e09cafd94dbb9a1e3"
 dependencies = [
  "codegen",
  "serde",
@@ -2578,9 +2582,10 @@ dependencies = [
 
 [[package]]
 name = "steel-parser"
-version = "0.4.0"
-source = "git+https://github.com/mattwparas/steel.git#03fe335199334f44396949fda2508de3545bc895"
+version = "0.6.0"
+source = "git+https://github.com/mattwparas/steel.git#9cc058dcd868edf81985909e09cafd94dbb9a1e3"
 dependencies = [
+ "fxhash",
  "lasso",
  "num-bigint",
  "once_cell",

@@ -260,7 +260,10 @@ impl Application {
                 jobs: &mut app.jobs,
             };
 
-            crate::commands::ScriptingEngine::run_initialization_script(&mut cx);
+            crate::commands::ScriptingEngine::run_initialization_script(
+                &mut cx,
+                app.config.clone(),
+            );
         }
 
         Ok(app)
@@ -405,6 +408,7 @@ impl Application {
                 };
                 self.config.store(Arc::new(app_config));
             }
+            ConfigEvent::Change => {}
         }
 
         // Update all the relevant members in the editor after updating

@@ -1,18 +1,23 @@
+use arc_swap::ArcSwapAny;
 use helix_core::{
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     graphemes,
     path::expand_tilde,
     regex::Regex,
     shellwords::Shellwords,
-    syntax::Configuration,
+    syntax::{AutoPairConfig, Configuration, SoftWrap},
     Range, Selection, Tendril,
 };
 use helix_event::register_hook;
-use helix_loader::merge_toml_values;
+use helix_loader::{config_dir, merge_toml_values};
 use helix_lsp::lsp::CompletionItem;
 use helix_view::{
     document::Mode,
-    editor::{Action, ConfigEvent},
+    editor::{
+        Action, BufferLine, ConfigEvent, CursorShapeConfig, FilePickerConfig, GutterConfig,
+        IndentGuidesConfig, LineEndingConfig, LineNumber, LspConfig, SearchConfig, SmartTabConfig,
+        StatusLineConfig, TerminalConfig, WhitespaceConfig,
+    },
     extension::document_id_to_usize,
     input::KeyEvent,
     Document, DocumentId, Editor, Theme, ViewId,
@@ -22,14 +27,14 @@ use serde_json::Value;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
     rerrs::ErrorKind,
-    rvals::{as_underlying_type, AsRefMutSteelValFromRef, FromSteelVal, IntoSteelVal, SteelString},
+    rvals::{as_underlying_type, FromSteelVal, IntoSteelVal, SteelString},
     steel_vm::{engine::Engine, register_fn::RegisterFn},
     steelerr, List, SteelErr, SteelVal,
 };
 
 use std::{
     borrow::Cow, cell::RefCell, collections::HashMap, ops::Deref, path::PathBuf, rc::Rc,
-    sync::atomic::AtomicUsize,
+    sync::atomic::AtomicUsize, time::Duration,
 };
 use std::{
     collections::HashSet,
@@ -384,9 +389,10 @@ fn load_static_commands(engine: &mut Engine) {
     template_function_no_context("get-helix-scm-path");
     template_function_no_context("get-init-scm-path");
 
-    let mut target_directory = PathBuf::from(std::env::var("STEEL_HOME").unwrap());
-    target_directory.push("cogs");
-    target_directory.push("helix");
+    // let mut target_directory = PathBuf::from(std::env::var("HELIX_RUNTIME").unwrap());
+    // target_directory.push("cogs");
+    // target_directory.push("helix");
+    let mut target_directory = helix_runtime_search_path();
 
     if !target_directory.exists() {
         std::fs::create_dir(&target_directory).unwrap();
@@ -470,10 +476,11 @@ fn load_typed_commands(engine: &mut Engine) {
         ));
     }
 
-    let mut target_directory = PathBuf::from(std::env::var("STEEL_HOME").unwrap());
-    target_directory.push("cogs");
-    target_directory.push("helix");
+    // let mut target_directory = PathBuf::from(std::env::var("HELIX_RUNTIME").unwrap());
+    // target_directory.push("cogs");
+    // target_directory.push("helix");
 
+    let mut target_directory = helix_runtime_search_path();
     if !target_directory.exists() {
         std::fs::create_dir(&target_directory).unwrap();
     }
@@ -481,6 +488,243 @@ fn load_typed_commands(engine: &mut Engine) {
     target_directory.push("commands.scm");
 
     std::fs::write(target_directory, builtin_typable_command_module).unwrap();
+
+    engine.register_module(module);
+}
+
+fn fp_hidden(config: &mut FilePickerConfig, option: bool) {
+    config.hidden = option;
+}
+
+fn fp_follow_symlinks(config: &mut FilePickerConfig, option: bool) {
+    config.follow_symlinks = option;
+}
+
+fn fp_deduplicate_links(config: &mut FilePickerConfig, option: bool) {
+    config.deduplicate_links = option;
+}
+
+fn fp_parents(config: &mut FilePickerConfig, option: bool) {
+    config.parents = option;
+}
+
+fn fp_ignore(config: &mut FilePickerConfig, option: bool) {
+    config.ignore = option;
+}
+
+fn fp_git_ignore(config: &mut FilePickerConfig, option: bool) {
+    config.git_ignore = option;
+}
+
+fn fp_git_global(config: &mut FilePickerConfig, option: bool) {
+    config.git_global = option;
+}
+
+fn fp_git_exclude(config: &mut FilePickerConfig, option: bool) {
+    config.git_exclude = option;
+}
+
+fn fp_max_depth(config: &mut FilePickerConfig, option: Option<usize>) {
+    config.max_depth = option;
+}
+
+fn load_configuration_api(engine: &mut Engine) {
+    let mut module = BuiltInModule::new("helix/core/configuration");
+
+    module.register_fn("update-configuration!", |ctx: &mut Context| {
+        ctx.editor
+            .config_events
+            .0
+            .send(ConfigEvent::Change)
+            .unwrap();
+    });
+
+    let mut builtin_configuration_module =
+        "(require-builtin helix/core/configuration as helix.)".to_string();
+
+    builtin_configuration_module.push_str(&format!(
+        r#"
+(provide update-configuration!)
+(define (update-configuration!)
+    (helix.update-configuration! *helix.cx*))
+"#,
+    ));
+
+    let mut template_file_picker_function = |name: &str| {
+        builtin_configuration_module.push_str(&format!(
+            r#"
+(provide {})
+(define ({} arg)
+    (lambda (picker) 
+            (helix.{} picker arg)
+            picker))
+"#,
+            name, name, name
+        ));
+    };
+
+    let file_picker_functions = &[
+        "fp-hidden",
+        "fp-follow-symlinks",
+        "fp-deduplicate-links",
+        "fp-parents",
+        "fp-ignore",
+        "fp-git-ignore",
+        "fp-git-global",
+        "fp-git-exclude",
+        "fp-max-depth",
+    ];
+
+    for name in file_picker_functions {
+        template_file_picker_function(name);
+    }
+
+    builtin_configuration_module.push_str(&format!(
+        r#"
+(provide file-picker)
+(define (file-picker . args)
+    (helix.register-file-picker
+        *helix.config*
+        (foldl (lambda (func config) (func config)) (helix.raw-file-picker) args)))
+"#,
+    ));
+
+    module
+        .register_fn("raw-file-picker", || FilePickerConfig::default())
+        .register_fn("register-file-picker", HelixConfiguration::file_picker)
+        .register_fn("fp-hidden", fp_hidden)
+        .register_fn("fp-follow-symlinks", fp_follow_symlinks)
+        .register_fn("fp-deduplicate-links", fp_deduplicate_links)
+        .register_fn("fp-parents", fp_parents)
+        .register_fn("fp-ignore", fp_ignore)
+        .register_fn("fp-git-ignore", fp_git_ignore)
+        .register_fn("fp-git-global", fp_git_global)
+        .register_fn("fp-git-exclude", fp_git_exclude)
+        .register_fn("fp-max-depth", fp_max_depth);
+
+    let mut template_function_arity_1 = |name: &str| {
+        builtin_configuration_module.push_str(&format!(
+            r#"
+(provide {})
+(define ({} arg)
+    (helix.{} *helix.config* arg))
+"#,
+            name, name, name
+        ));
+    };
+
+    let functions = &[
+        "scrolloff",
+        "scroll_lines",
+        "mouse",
+        "shell",
+        "line-number",
+        "cursorline",
+        "cursorcolumn",
+        "middle-click-paste",
+        // "auto-pairs",
+        "auto-completion",
+        "auto-format",
+        "auto-save",
+        "text-width",
+        "idle-timeout",
+        "completion-timeout",
+        "preview-completion-insert",
+        "completion-trigger-len",
+        "completion-replace",
+        "auto-info",
+        "cursor-shape",
+        "true-color",
+        "insert-final-newline",
+        "color-modes",
+        "gutters",
+        // "file-picker",
+        "statusline",
+        "undercurl",
+        "search",
+        "lsp",
+        "terminal",
+        "rulers",
+        "whitespace",
+        "bufferline",
+        "indent-guides",
+        // "soft-wrap",
+        "workspace-lsp-roots",
+        "default-line-ending",
+        "smart-tab",
+    ];
+
+    for func in functions {
+        template_function_arity_1(func);
+    }
+
+    module
+        .register_fn("scrolloff", HelixConfiguration::scrolloff)
+        .register_fn("scroll_lines", HelixConfiguration::scroll_lines)
+        .register_fn("mouse", HelixConfiguration::mouse)
+        .register_fn("shell", HelixConfiguration::shell)
+        .register_fn("line-number", HelixConfiguration::line_number)
+        .register_fn("cursorline", HelixConfiguration::cursorline)
+        .register_fn("cursorcolumn", HelixConfiguration::cursorcolumn)
+        .register_fn("middle-click-paste", HelixConfiguration::middle_click_paste)
+        // .register_fn("auto-pairs", HelixConfiguration::auto_pairs)
+        .register_fn("auto-completion", HelixConfiguration::auto_completion)
+        .register_fn("auto-format", HelixConfiguration::auto_format)
+        .register_fn("auto-save", HelixConfiguration::auto_save)
+        .register_fn("text-width", HelixConfiguration::text_width)
+        .register_fn("idle-timeout", HelixConfiguration::idle_timeout)
+        .register_fn("completion-timeout", HelixConfiguration::completion_timeout)
+        .register_fn(
+            "preview-completion-insert",
+            HelixConfiguration::preview_completion_insert,
+        )
+        .register_fn(
+            "completion-trigger-len",
+            HelixConfiguration::completion_trigger_len,
+        )
+        .register_fn("completion-replace", HelixConfiguration::completion_replace)
+        .register_fn("auto-info", HelixConfiguration::auto_info)
+        .register_fn("cursor-shape", HelixConfiguration::cursor_shape)
+        .register_fn("true-color", HelixConfiguration::true_color)
+        .register_fn(
+            "insert-final-newline",
+            HelixConfiguration::insert_final_newline,
+        )
+        .register_fn("color-modes", HelixConfiguration::color_modes)
+        .register_fn("gutters", HelixConfiguration::gutters)
+        // .register_fn("file-picker", HelixConfiguration::file_picker)
+        .register_fn("statusline", HelixConfiguration::statusline)
+        .register_fn("undercurl", HelixConfiguration::undercurl)
+        .register_fn("search", HelixConfiguration::search)
+        .register_fn("lsp", HelixConfiguration::lsp)
+        .register_fn("terminal", HelixConfiguration::terminal)
+        .register_fn("rulers", HelixConfiguration::rulers)
+        .register_fn("whitespace", HelixConfiguration::whitespace)
+        .register_fn("bufferline", HelixConfiguration::bufferline)
+        .register_fn("indent-guides", HelixConfiguration::indent_guides)
+        // .register_fn("soft-wrap", HelixConfiguration::soft_wrap)
+        .register_fn(
+            "workspace-lsp-roots",
+            HelixConfiguration::workspace_lsp_roots,
+        )
+        .register_fn(
+            "default-line-ending",
+            HelixConfiguration::default_line_ending,
+        )
+        .register_fn("smart-tab", HelixConfiguration::smart_tab);
+
+    // let mut target_directory = PathBuf::from(std::env::var("HELIX_RUNTIME").unwrap());
+    // target_directory.push("cogs");
+    // target_directory.push("helix");
+    let mut target_directory = helix_runtime_search_path();
+
+    if !target_directory.exists() {
+        std::fs::create_dir(&target_directory).unwrap();
+    }
+
+    target_directory.push("configuration.scm");
+
+    std::fs::write(target_directory, builtin_configuration_module).unwrap();
 
     engine.register_module(module);
 }
@@ -578,9 +822,10 @@ fn load_editor_api(engine: &mut Engine) {
     // module.register_fn("cx->themes", get_themes);
 
     // Not the best usage here, duplicating it in a bunch of spots for now
-    let mut target_directory = PathBuf::from(std::env::var("STEEL_HOME").unwrap());
-    target_directory.push("cogs");
-    target_directory.push("helix");
+    // let mut target_directory = PathBuf::from(std::env::var("HELIX_RUNTIME").unwrap());
+    // target_directory.push("cogs");
+    // target_directory.push("helix");
+    let mut target_directory = helix_runtime_search_path();
 
     if !target_directory.exists() {
         std::fs::create_dir(&target_directory).unwrap();
@@ -604,8 +849,12 @@ impl super::PluginSystem for SteelScriptingEngine {
         super::PluginSystemKind::Steel
     }
 
-    fn run_initialization_script(&self, cx: &mut Context) {
-        run_initialization_script(cx);
+    fn run_initialization_script(
+        &self,
+        cx: &mut Context,
+        configuration: Arc<ArcSwapAny<Arc<Config>>>,
+    ) {
+        run_initialization_script(cx, configuration);
     }
 
     fn handle_keymap_event(
@@ -635,7 +884,7 @@ impl super::PluginSystem for SteelScriptingEngine {
         args: &[Cow<str>],
     ) -> bool {
         if ENGINE.with(|x| x.borrow().global_exists(name)) {
-            let mut args = args
+            let args = args
                 .iter()
                 .map(|x| x.clone().into_steelval().unwrap())
                 .collect::<Vec<_>>();
@@ -648,8 +897,6 @@ impl super::PluginSystem for SteelScriptingEngine {
                         move |engine, arguments| {
                             let context = arguments[0].clone();
                             engine.update_value("*helix.cx*", context);
-
-                            // arguments.append(&mut args);
 
                             // TODO: Get rid of this clone
                             engine.call_function_by_name_with_args(name, args.clone())
@@ -978,9 +1225,257 @@ pub fn steel_init_file() -> PathBuf {
     helix_loader::config_dir().join("init.scm")
 }
 
+#[derive(Clone)]
+struct HelixConfiguration {
+    configuration: Arc<ArcSwapAny<Arc<Config>>>,
+}
+
+impl Custom for HelixConfiguration {}
+// impl Custom for LineNumber {}
+
+impl HelixConfiguration {
+    fn load_config(&self) -> Config {
+        (*self.configuration.load().clone()).clone()
+    }
+
+    fn store_config(&self, config: Config) {
+        self.configuration.store(Arc::new(config));
+    }
+
+    fn scrolloff(&self, lines: usize) {
+        let mut app_config = self.load_config();
+        app_config.editor.scrolloff = lines;
+        self.store_config(app_config);
+    }
+
+    fn scroll_lines(&self, lines: isize) {
+        let mut app_config = self.load_config();
+        app_config.editor.scroll_lines = lines;
+        self.store_config(app_config);
+    }
+
+    fn mouse(&self, m: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.mouse = m;
+        self.store_config(app_config);
+    }
+
+    fn shell(&self, shell: Vec<String>) {
+        let mut app_config = self.load_config();
+        app_config.editor.shell = shell;
+        self.store_config(app_config);
+    }
+
+    // TODO: Make this a symbol, probably!
+    fn line_number(&self, mode: LineNumber) {
+        let mut app_config = self.load_config();
+        app_config.editor.line_number = mode;
+        self.store_config(app_config);
+    }
+
+    fn cursorline(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.cursorline = option;
+        self.store_config(app_config);
+    }
+
+    fn cursorcolumn(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.cursorcolumn = option;
+        self.store_config(app_config);
+    }
+
+    fn middle_click_paste(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.middle_click_paste = option;
+        self.store_config(app_config);
+    }
+
+    fn auto_pairs(&self, config: AutoPairConfig) {
+        let mut app_config = self.load_config();
+        app_config.editor.auto_pairs = config;
+        self.store_config(app_config);
+    }
+
+    fn auto_completion(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.auto_completion = option;
+        self.store_config(app_config);
+    }
+
+    fn auto_format(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.auto_format = option;
+        self.store_config(app_config);
+    }
+
+    fn auto_save(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.auto_save = option;
+        self.store_config(app_config);
+    }
+
+    fn text_width(&self, width: usize) {
+        let mut app_config = self.load_config();
+        app_config.editor.text_width = width;
+        self.store_config(app_config);
+    }
+
+    fn idle_timeout(&self, ms: usize) {
+        let mut app_config = self.load_config();
+        app_config.editor.idle_timeout = Duration::from_millis(ms as u64);
+        self.store_config(app_config);
+    }
+
+    fn completion_timeout(&self, ms: usize) {
+        let mut app_config = self.load_config();
+        app_config.editor.completion_timeout = Duration::from_millis(ms as u64);
+        self.store_config(app_config);
+    }
+
+    fn preview_completion_insert(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.preview_completion_insert = option;
+        self.store_config(app_config);
+    }
+
+    // TODO: Make sure this conversion works automatically
+    fn completion_trigger_len(&self, length: u8) {
+        let mut app_config = self.load_config();
+        app_config.editor.completion_trigger_len = length;
+        self.store_config(app_config);
+    }
+
+    fn completion_replace(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.completion_replace = option;
+        self.store_config(app_config);
+    }
+
+    fn auto_info(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.auto_info = option;
+        self.store_config(app_config);
+    }
+
+    fn cursor_shape(&self, config: CursorShapeConfig) {
+        let mut app_config = self.load_config();
+        app_config.editor.cursor_shape = config;
+        self.store_config(app_config);
+    }
+
+    fn true_color(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.true_color = option;
+        self.store_config(app_config);
+    }
+
+    fn insert_final_newline(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.insert_final_newline = option;
+        self.store_config(app_config);
+    }
+
+    fn color_modes(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.color_modes = option;
+        self.store_config(app_config);
+    }
+
+    fn gutters(&self, config: GutterConfig) {
+        let mut app_config = self.load_config();
+        app_config.editor.gutters = config;
+        self.store_config(app_config);
+    }
+
+    fn file_picker(&self, picker: FilePickerConfig) {
+        let mut app_config = self.load_config();
+        app_config.editor.file_picker = picker;
+        self.store_config(app_config);
+    }
+
+    fn statusline(&self, config: StatusLineConfig) {
+        let mut app_config = self.load_config();
+        app_config.editor.statusline = config;
+        self.store_config(app_config);
+    }
+
+    fn undercurl(&self, undercurl: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.undercurl = undercurl;
+        self.store_config(app_config);
+    }
+
+    fn search(&self, config: SearchConfig) {
+        let mut app_config = self.load_config();
+        app_config.editor.search = config;
+        self.store_config(app_config);
+    }
+
+    fn lsp(&self, config: LspConfig) {
+        let mut app_config = self.load_config();
+        app_config.editor.lsp = config;
+        self.store_config(app_config);
+    }
+
+    fn terminal(&self, config: Option<TerminalConfig>) {
+        let mut app_config = self.load_config();
+        app_config.editor.terminal = config;
+        self.store_config(app_config);
+    }
+
+    fn rulers(&self, cols: Vec<u16>) {
+        let mut app_config = self.load_config();
+        app_config.editor.rulers = cols;
+        self.store_config(app_config);
+    }
+
+    fn whitespace(&self, config: WhitespaceConfig) {
+        let mut app_config = self.load_config();
+        app_config.editor.whitespace = config;
+        self.store_config(app_config);
+    }
+
+    fn bufferline(&self, config: BufferLine) {
+        let mut app_config = self.load_config();
+        app_config.editor.bufferline = config;
+        self.store_config(app_config);
+    }
+
+    fn indent_guides(&self, config: IndentGuidesConfig) {
+        let mut app_config = self.load_config();
+        app_config.editor.indent_guides = config;
+        self.store_config(app_config);
+    }
+
+    fn soft_wrap(&self, config: SoftWrap) {
+        let mut app_config = self.load_config();
+        app_config.editor.soft_wrap = config;
+        self.store_config(app_config);
+    }
+
+    fn workspace_lsp_roots(&self, roots: Vec<PathBuf>) {
+        let mut app_config = self.load_config();
+        app_config.editor.workspace_lsp_roots = roots;
+        self.store_config(app_config);
+    }
+
+    fn default_line_ending(&self, config: LineEndingConfig) {
+        let mut app_config = self.load_config();
+        app_config.editor.default_line_ending = config;
+        self.store_config(app_config);
+    }
+
+    fn smart_tab(&self, config: Option<SmartTabConfig>) {
+        let mut app_config = self.load_config();
+        app_config.editor.smart_tab = config;
+        self.store_config(app_config);
+    }
+}
+
 /// Run the initialization script located at `$helix_config/init.scm`
 /// This runs the script in the global environment, and does _not_ load it as a module directly
-fn run_initialization_script(cx: &mut Context) {
+fn run_initialization_script(cx: &mut Context, configuration: Arc<ArcSwapAny<Arc<Config>>>) {
     log::info!("Loading init.scm...");
 
     let helix_module_path = helix_module_file();
@@ -988,6 +1483,16 @@ fn run_initialization_script(cx: &mut Context) {
     // TODO: Report the error from requiring the file!
     ENGINE.with(|engine| {
         let mut guard = engine.borrow_mut();
+
+        // Embed the configuration so we don't have to communicate over the refresh
+        // channel. The state is still stored within the `Application` struct, but
+        // now we can just access it and signal a refresh of the config when we need to.
+        guard.update_value(
+            "*helix.config*",
+            HelixConfiguration { configuration }
+                .into_steelval()
+                .unwrap(),
+        );
 
         let res = guard.run_with_reference(
             cx,
@@ -1018,7 +1523,7 @@ fn run_initialization_script(cx: &mut Context) {
                 let docs = exported
                     .iter()
                     .filter_map(|x| {
-                        if let Ok(value) = guard.run(&format!(
+                        if let Ok(value) = guard.compile_and_run_raw_program(format!(
                             "(#%function-ptr-table-get #%function-ptr-table {})",
                             x
                         )) {
@@ -1314,7 +1819,7 @@ impl SteelEngine {
     }
 
     pub fn require_module(&mut self, module: SteelString) -> steel::rvals::Result<()> {
-        self.0.run(&format!("(require \"{}\")", module)).map(|_| ())
+        self.0.run(format!("(require \"{}\")", module)).map(|_| ())
     }
 }
 
@@ -1428,9 +1933,7 @@ fn load_misc_api(engine: &mut Engine) {
     template_function_arity_2("enqueue-thread-local-callback-with-delay");
     template_function_arity_2("helix-await-callback");
 
-    let mut target_directory = PathBuf::from(std::env::var("STEEL_HOME").unwrap());
-    target_directory.push("cogs");
-    target_directory.push("helix");
+    let mut target_directory = helix_runtime_search_path();
 
     if !target_directory.exists() {
         std::fs::create_dir(&target_directory).unwrap();
@@ -1443,20 +1946,26 @@ fn load_misc_api(engine: &mut Engine) {
     engine.register_module(module);
 }
 
+fn helix_runtime_search_path() -> PathBuf {
+    helix_loader::config_dir().join("helix")
+}
+
 fn configure_engine_impl(mut engine: Engine) -> Engine {
     log::info!("Loading engine!");
 
-    engine.register_value("*helix.cx*", SteelVal::Void);
+    engine.add_search_directory(helix_loader::config_dir());
 
-    // TODO: Load (require-builtin helix/core/editor) in more or less every file that needs it
+    engine.register_value("*helix.cx*", SteelVal::Void);
+    engine.register_value("*helix.config*", SteelVal::Void);
+
     load_editor_api(&mut engine);
+    load_configuration_api(&mut engine);
     load_typed_commands(&mut engine);
     load_static_commands(&mut engine);
     load_keymap_api(&mut engine, KeyMapApi::new());
     load_theme_api(&mut engine);
     load_rope_api(&mut engine);
     load_language_configuration_api(&mut engine);
-
     load_misc_api(&mut engine);
 
     // load_engine_api(&mut engine);
@@ -1749,7 +2258,7 @@ fn get_selection(cx: &mut Context) -> String {
 fn run_in_engine(cx: &mut Context, arg: String) -> anyhow::Result<()> {
     let callback = async move {
         let output = ENGINE
-            .with(|x| x.borrow_mut().run(&arg))
+            .with(|x| x.borrow_mut().run(arg))
             .map(|x| format!("{:?}", x));
 
         let (output, success) = match output {
@@ -1814,32 +2323,12 @@ fn set_scratch_buffer_name(cx: &mut Context, name: String) {
     }
 }
 
-// TODO: Use this over handing around the editor reference, probably
-// fn cx_current_focus(cx: &mut Context) -> helix_view::ViewId {
-//     cx.editor.tree.focus
-// }
-
-// TODO: Expose the below in a separate module, make things a bit more clear!
-fn current_focus(editor: &mut Editor) -> helix_view::ViewId {
-    editor.tree.focus
-}
-
 fn cx_current_focus(cx: &mut Context) -> helix_view::ViewId {
     cx.editor.tree.focus
 }
 
-// Get the document id
-fn get_document_id(editor: &mut Editor, view_id: helix_view::ViewId) -> DocumentId {
-    editor.tree.get(view_id).doc
-}
-
 fn cx_get_document_id(cx: &mut Context, view_id: helix_view::ViewId) -> DocumentId {
     cx.editor.tree.get(view_id).doc
-}
-
-// Get the document from the document id - TODO: Add result type here
-fn get_document(editor: &mut Editor, doc_id: DocumentId) -> &Document {
-    editor.documents.get(&doc_id).unwrap()
 }
 
 fn cx_get_document<'a>(cx: &'a mut Context, doc_id: DocumentId) -> &'a Document {
@@ -1850,24 +2339,12 @@ fn document_to_text(doc: &Document) -> SteelRopeSlice {
     SteelRopeSlice::new(doc.text().clone())
 }
 
-fn is_document_in_view(editor: &mut Editor, doc_id: DocumentId) -> Option<helix_view::ViewId> {
-    editor
-        .tree
-        .traverse()
-        .find(|(_, v)| v.doc == doc_id)
-        .map(|(id, _)| id)
-}
-
 fn cx_is_document_in_view(cx: &mut Context, doc_id: DocumentId) -> Option<helix_view::ViewId> {
     cx.editor
         .tree
         .traverse()
         .find(|(_, v)| v.doc == doc_id)
         .map(|(id, _)| id)
-}
-
-fn document_exists(editor: &mut Editor, doc_id: DocumentId) -> bool {
-    editor.documents.get(&doc_id).is_some()
 }
 
 fn cx_document_exists(cx: &mut Context, doc_id: DocumentId) -> bool {
@@ -1878,46 +2355,20 @@ fn document_path(doc: &Document) -> Option<String> {
     doc.path().and_then(|x| x.to_str()).map(|x| x.to_string())
 }
 
-// Get the time the document was focused
-fn document_focused_at(doc: &Document) -> std::time::Instant {
-    doc.focused_at
-}
-
-// Get all the editor documents
-fn editor_all_documents(editor: &mut Editor) -> Vec<DocumentId> {
-    editor.documents.keys().copied().collect()
-}
-
 fn cx_editor_all_documents(cx: &mut Context) -> Vec<DocumentId> {
     cx.editor.documents.keys().copied().collect()
-}
-
-fn switch(editor: &mut Editor, doc_id: DocumentId) {
-    editor.switch(doc_id, Action::VerticalSplit)
 }
 
 fn cx_switch(cx: &mut Context, doc_id: DocumentId) {
     cx.editor.switch(doc_id, Action::VerticalSplit)
 }
 
-fn editor_get_mode(editor: &mut Editor) -> Mode {
-    editor.mode
-}
-
 fn cx_get_mode(cx: &mut Context) -> Mode {
     cx.editor.mode
 }
 
-fn editor_set_mode(editor: &mut Editor, mode: Mode) {
-    editor.mode = mode
-}
-
 fn cx_set_mode(cx: &mut Context, mode: Mode) {
     cx.editor.mode = mode
-}
-
-fn is_context(value: SteelVal) -> bool {
-    Context::as_mut_ref_from_ref(&value).is_ok()
 }
 
 // Overlay the dynamic component, see what happens?

@@ -1,10 +1,12 @@
+use arc_swap::ArcSwapAny;
 use helix_core::syntax::Configuration;
 use helix_view::{document::Mode, input::KeyEvent, Theme};
 
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
 use crate::{
     compositor,
+    config::Config,
     keymap::KeymapResult,
     ui::{self, PromptEvent},
 };
@@ -60,9 +62,12 @@ impl ScriptingEngine {
         }
     }
 
-    pub fn run_initialization_script(cx: &mut Context) {
+    pub fn run_initialization_script(
+        cx: &mut Context,
+        configuration: Arc<ArcSwapAny<Arc<Config>>>,
+    ) {
         for kind in PLUGIN_PRECEDENCE {
-            manual_dispatch!(kind, run_initialization_script(cx))
+            manual_dispatch!(kind, run_initialization_script(cx, configuration.clone()))
         }
     }
 
@@ -188,7 +193,12 @@ pub trait PluginSystem {
 
     /// Post initialization, once the context is available. This means you should be able to
     /// run anything here that could modify the context before the main editor is available.
-    fn run_initialization_script(&self, _cx: &mut Context) {}
+    fn run_initialization_script(
+        &self,
+        _cx: &mut Context,
+        _configuration: Arc<ArcSwapAny<Arc<Config>>>,
+    ) {
+    }
 
     /// Allow the engine to directly handle a keymap event. This is some of the tightest integration
     /// with the engine, directly intercepting any keymap events. By default, this just delegates to the
