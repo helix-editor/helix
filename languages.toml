@@ -796,6 +796,7 @@ file-types = [
   "sh",
   "bash",
   "zsh",
+  ".bash_history",
   ".bash_login",
   ".bash_logout",
   ".bash_profile",
