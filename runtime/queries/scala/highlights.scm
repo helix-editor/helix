@@ -263,7 +263,7 @@
 
 "return" @keyword.control.return
 
-(comment) @comment
+[(comment) (block_comment)] @comment
 
 ;; `case` is a conditional keyword in case_block
 

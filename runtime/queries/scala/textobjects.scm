@@ -51,8 +51,8 @@
 
 ; Comment queries
 
-(comment) @comment.inside
-(comment) @comment.around ; Does not match consecutive block comments
+[(comment) (block_comment)] @comment.inside
+[(comment) (block_comment)] @comment.around ; Does not match consecutive block comments
 
 
 ; Test queries
