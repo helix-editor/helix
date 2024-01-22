@@ -242,6 +242,8 @@ impl EditorView {
         theme: &Theme,
     ) {
         let editor_rulers = &editor.config().rulers;
+        let editor_ruler_char = &editor.config().ruler_char;
+
         let ruler_theme = theme
             .try_get("ui.virtual.ruler")
             .unwrap_or_else(|| Style::default().bg(Color::Red));
@@ -258,7 +260,17 @@ impl EditorView {
             .filter_map(|ruler| ruler.checked_sub(1 + view.offset.horizontal_offset as u16))
             .filter(|ruler| ruler < &viewport.width)
             .map(|ruler| viewport.clip_left(ruler).with_width(1))
-            .for_each(|area| surface.set_style(area, ruler_theme))
+            .for_each(|area| {
+                // Draw ruler with a character if a character is specified in config,
+                // otherwise use original behaviour of colouring the editor at a specified position.
+                if let Some(ruler_char) = editor_ruler_char {
+                    for y in area.y..area.height {
+                        surface.set_string(area.x, y, ruler_char.to_string(), ruler_theme)
+                    }
+                } else {
+                    surface.set_style(area, ruler_theme)
+                }
+            })
     }
 
     fn viewport_byte_range(
