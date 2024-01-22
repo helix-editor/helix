@@ -1,4 +1,5 @@
 use crate::{
+    commands::push_jump,
     commands::Open,
     compositor::{Callback, Component, Context, Event, EventResult},
     ctrl, key,
@@ -10,12 +11,24 @@ use tui::{
 
 use helix_core::Position;
 use helix_view::{
+    document::Mode,
+    editor::Action,
     graphics::{Margin, Rect},
     Editor,
 };
 
+use crate::commands::{paste_impl, Paste};
+
+use std::path::Path;
+
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)
+
+pub struct StringsContent {
+    pub title: String,
+    pub body: String,
+    pub language: String,
+}
 
 pub struct Popup<T: Component> {
     contents: T,
@@ -29,6 +42,7 @@ pub struct Popup<T: Component> {
     ignore_escape_key: bool,
     id: &'static str,
     has_scrollbar: bool,
+    contents_as_strings: Option<StringsContent>,
 }
 
 impl<T: Component> Popup<T> {
@@ -45,6 +59,28 @@ impl<T: Component> Popup<T> {
             ignore_escape_key: false,
             id,
             has_scrollbar: true,
+            contents_as_strings: None,
+        }
+    }
+
+    pub fn new_with_contents_as_strings(
+        id: &'static str,
+        contents: T,
+        contents_as_strings: StringsContent,
+    ) -> Self {
+        Self {
+            contents,
+            position: None,
+            margin: Margin::none(),
+            size: (0, 0),
+            position_bias: Open::Below,
+            child_size: (0, 0),
+            scroll: 0,
+            auto_close: false,
+            ignore_escape_key: false,
+            id,
+            has_scrollbar: true,
+            contents_as_strings: Some(contents_as_strings),
         }
     }
 
@@ -206,6 +242,67 @@ impl<T: Component> Component for Popup<T> {
             ctrl!('u') => {
                 self.scroll(self.size.1 as usize / 2, false);
                 EventResult::Consumed(None)
+            }
+            ctrl!('o') => {
+                let (stringified_body, stringified_buffername, stringified_language) =
+                    if let Some(contents_as_strings) = &self.contents_as_strings {
+                        let stringified_body = contents_as_strings.body.clone();
+                        let stringified_buffername = contents_as_strings.title.clone();
+                        let stringified_language = contents_as_strings.language.clone();
+                        (
+                            stringified_body,
+                            stringified_buffername,
+                            stringified_language,
+                        )
+                    } else {
+                        ("dummy".into(), self.id.into(), "none".into())
+                    };
+
+                // open a new buffer to show the popup content
+                cx.editor.new_file(Action::Replace);
+
+                // TODO: how can we meaningfully stringify the content of a Popup? for now dummy
+                // TODO: is this an un-necessary copy? ...
+                // put the content in the new buffer
+                let (view, doc) = current!(cx.editor);
+                paste_impl(
+                    &[stringified_body],
+                    doc,
+                    view,
+                    Paste::Before,
+                    1,
+                    cx.editor.mode,
+                );
+
+                doc.set_language_by_language_id(
+                    &stringified_language,
+                    cx.editor.syn_loader.clone(),
+                )
+                .unwrap();
+
+                let text = doc.text().slice(..);
+                let selection = doc
+                    .selection(view.id)
+                    .clone()
+                    .transform(|range| range.put_cursor(text, 0, cx.editor.mode == Mode::Select));
+                push_jump(view, doc);
+                doc.set_selection(view.id, selection);
+
+                // put a meaningful title
+                // TODO: get a meaningful buffer title
+                let stringified_buffername = Some(Path::new(&stringified_buffername));
+                doc.set_path(stringified_buffername);
+
+                // pretend that this buffer is up to date and has no changes: allow to just :bc when finished exporing, no need to :bc!, and no saving to disk happening after browsing around
+                doc.set_last_saved_revision(1);
+                // make readonly
+                // TODO: this does not make really readonly from helix viewpoint, why?
+                doc.readonly = true;
+
+                // close the popup since we just opened it in a new buffer
+                let _ = self.contents.handle_event(event, cx);
+
+                EventResult::Consumed(Some(close_fn))
             }
             _ => {
                 let contents_event_result = self.contents.handle_event(event, cx);

@@ -31,8 +31,8 @@ use crate::{
     compositor::{self, Compositor},
     job::Callback,
     ui::{
-        self, lsp::SignatureHelp, overlay::overlaid, DynamicPicker, FileLocation, Picker, Popup,
-        PromptEvent,
+        self, lsp::SignatureHelp, overlay::overlaid, popup::StringsContent, DynamicPicker,
+        FileLocation, Picker, Popup, PromptEvent,
     },
 };
 
@@ -1250,10 +1250,17 @@ pub fn signature_help_impl_with_future(
             contents.set_active_param_range(active_param_range());
 
             let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
-            let mut popup = Popup::new(SignatureHelp::ID, contents)
-                .position(old_popup.and_then(|p| p.get_position()))
-                .position_bias(Open::Above)
-                .ignore_escape_key(true);
+            // TODO: add the extra content here to allow opening
+            let strings_content = StringsContent {
+                title: "helloo".into(),
+                body: "helloo".into(),
+                language: "helloo".into(),
+            };
+            let mut popup =
+                Popup::new_with_contents_as_strings(SignatureHelp::ID, contents, strings_content)
+                    .position(old_popup.and_then(|p| p.get_position()))
+                    .position_bias(Open::Above)
+                    .ignore_escape_key(true);
 
             // Don't create a popup if it intersects the auto-complete menu.
             let size = compositor.size();
@@ -1317,8 +1324,16 @@ pub fn hover(cx: &mut Context) {
 
                 // skip if contents empty
 
+                let strings_content = StringsContent {
+                    // TODO: how to get the symbol name?
+                    title: "hover".into(),
+                    body: contents.clone(),
+                    language: "markdown".into(),
+                };
+
                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-                let popup = Popup::new("hover", contents).auto_close(true);
+                let popup = Popup::new_with_contents_as_strings("hover", contents, strings_content)
+                    .auto_close(true);
                 compositor.replace_or_push("hover", popup);
             }
         },
