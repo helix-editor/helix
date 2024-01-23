@@ -75,7 +75,7 @@ Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 
 Keys can be disabled by binding them to the `no_op` command.
 
-To remove all default bindings, `unbind-default-keys = true` can be added to the top level configuration.
+To remove all default bindings, `unbind_default_keys = true` can be added to the top level configuration.
 
 ```toml
 unbind_default_keys = true
