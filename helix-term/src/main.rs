@@ -1,9 +1,12 @@
 use anyhow::{Context, Error, Result};
+use cobs::{DecodeResult, DecoderState};
 use crossterm::event::EventStream;
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
+use std::io::{stdin, stdout, BufRead, BufReader, BufWriter, Write};
+use std::sync::Mutex;
 
 fn setup_logging(verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
@@ -14,6 +17,11 @@ fn setup_logging(verbosity: u64) -> Result<()> {
         2 => base_config.level(log::LevelFilter::Debug),
         _3_or_more => base_config.level(log::LevelFilter::Trace),
     };
+
+    let log_compressor = Mutex::new((
+        fern::log_file(helix_loader::log_file())?,
+        zstd::bulk::Compressor::with_dictionary(3, include_bytes!("zstd_dict"))?,
+    ));
 
     // Separate file config so we can include year, month and day in file logs
     let file_config = fern::Dispatch::new()
@@ -26,7 +34,19 @@ fn setup_logging(verbosity: u64) -> Result<()> {
                 message
             ))
         })
-        .chain(fern::log_file(helix_loader::log_file())?);
+        .chain(fern::Output::call(move |record| {
+            let mut compressor = log_compressor.lock().unwrap();
+
+            let record = compressor
+                .1
+                .compress(format!("{}", record.args()).as_bytes())
+                .unwrap();
+
+            let mut record = cobs::encode_vec(&record);
+            record.push(0);
+
+            compressor.0.write_all(&record).unwrap();
+        }));
 
     base_config.chain(file_config).apply()?;
 
@@ -61,6 +81,7 @@ FLAGS:
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
     -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
+    --decode-log                   Decodes the compressed log file from stdin and writes it to stdout
     --log <file>                   Specifies a file to use for logging
                                    (default file: {})
     -V, --version                  Prints version information
@@ -111,6 +132,47 @@ FLAGS:
 
     if args.build_grammars {
         helix_loader::grammar::build_grammars(None)?;
+        return Ok(0);
+    }
+
+    if args.decode_log {
+        let mut decompressor =
+            zstd::bulk::Decompressor::with_dictionary(include_bytes!("zstd_dict"))?;
+
+        let mut cobs_decoder = DecoderState::Idle;
+
+        let mut reader = BufReader::new(stdin().lock());
+        let mut writer = BufWriter::new(stdout().lock());
+
+        let mut out_buf = Vec::new();
+        let mut log_buf = [0u8; 10_000];
+        loop {
+            let mut consumed = 0;
+            let buf = reader.fill_buf()?;
+
+            if buf.is_empty() {
+                break;
+            }
+
+            for &byte in buf {
+                consumed += 1;
+                match cobs_decoder.feed(byte) {
+                    Ok(DecodeResult::DataComplete) => {
+                        let decompressed =
+                            decompressor.decompress_to_buffer(&out_buf, &mut log_buf)?;
+
+                        writer.write_all(&log_buf[..decompressed])?;
+                        writer.write_all(b"\n")?;
+                        out_buf.clear();
+                    }
+                    Ok(DecodeResult::DataContinue(b)) => out_buf.push(b),
+                    Ok(DecodeResult::NoData) => {}
+                    Err(()) => out_buf.clear(),
+                }
+            }
+            writer.flush()?;
+            reader.consume(consumed);
+        }
         return Ok(0);
     }
 
