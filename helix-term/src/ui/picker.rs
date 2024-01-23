@@ -1126,10 +1126,14 @@ fn parse_query(
             '%' => in_field = true,
             ' ' => (),
             ':' if in_field => {
+                // Go over all columns and their indices, find all that starts with field key,
+                // select a column that fits key the most.
                 field = column_names
                     .iter()
-                    .position(|name| name == &text)
-                    .map(|idx| column_names[idx]);
+                    .filter(|col| col.starts_with(&text))
+                    // select "fittest" column
+                    .min_by_key(|col| col.len())
+                    .copied();
                 text.clear();
                 in_field = false;
             }
@@ -1224,7 +1228,7 @@ mod test {
 
     #[test]
     fn parse_query_test() {
-        let columns = &["primary", "field1", "field2"];
+        let columns = &["primary", "field1", "field2", "another", "anode"];
         let primary_column = 0;
 
         // Basic field splitting
@@ -1289,6 +1293,36 @@ mod test {
             hashmap!(
                 "primary" => "hello".to_string(),
                 "field1" => "a\"b".to_string(),
+            )
+        );
+
+        // Prefix
+        assert_eq!(
+            parse_query(columns, primary_column, "hello %anot:abc"),
+            hashmap!(
+                "primary" => "hello".to_string(),
+                "another" => "abc".to_string(),
+            )
+        );
+        assert_eq!(
+            parse_query(columns, primary_column, "hello %ano:abc"),
+            hashmap!(
+                "primary" => "hello".to_string(),
+                "anode" => "abc".to_string()
+            )
+        );
+        assert_eq!(
+            parse_query(columns, primary_column, "hello %field1:xyz %fie:abc"),
+            hashmap!(
+                "primary" => "hello".to_string(),
+                "field1" => "xyz abc".to_string()
+            )
+        );
+        assert_eq!(
+            parse_query(columns, primary_column, "hello %fie:abc"),
+            hashmap!(
+                "primary" => "hello".to_string(),
+                "field1" => "abc".to_string()
             )
         );
     }
