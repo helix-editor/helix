@@ -55,7 +55,12 @@
 ; MARKUP
 (item "-" @markup.list)
 (term ["/" ":"] @markup.list)
-(heading ["=" "==" "===" "====" "====="] @markup.heading.marker) @markup.heading
+(heading "=" @markup.heading.marker) @markup.heading.1
+(heading "==" @markup.heading.marker) @markup.heading.2
+(heading "===" @markup.heading.marker) @markup.heading.3
+(heading "====" @markup.heading.marker) @markup.heading.4
+(heading "=====" @markup.heading.marker) @markup.heading.5
+(heading "======" @markup.heading.marker) @markup.heading.6
 (url) @tag
 (emph) @markup.italic
 (strong) @markup.bold
