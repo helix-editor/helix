@@ -86,10 +86,8 @@ pub fn get_language(name: &str) -> Result<Language> {
 }
 
 fn ensure_git_is_available() -> Result<()> {
-    match helix_stdx::env::which("git") {
-        Ok(_cmd) => Ok(()),
-        Err(err) => Err(anyhow::anyhow!("'git' could not be found ({err})")),
-    }
+    helix_stdx::env::which("git")?;
+    Ok(())
 }
 
 pub fn fetch_grammars() -> Result<()> {
