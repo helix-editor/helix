@@ -358,9 +358,9 @@ checksum = "56ce8c6da7551ec6c462cbaf3bfbc75131ebbfa1c944aeaa9dab51ca1c5f0c3b"
 
 [[package]]
 name = "either"
-version = "1.8.1"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
+checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
 
 [[package]]
 name = "encoding_rs"
@@ -1095,12 +1095,12 @@ dependencies = [
  "anyhow",
  "fern",
  "helix-core",
+ "helix-stdx",
  "log",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
- "which",
 ]
 
 [[package]]
@@ -1134,7 +1134,6 @@ dependencies = [
  "threadpool",
  "toml",
  "tree-sitter",
- "which",
 ]
 
 [[package]]
@@ -1157,7 +1156,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
- "which",
 ]
 
 [[package]]
@@ -1172,6 +1170,7 @@ dependencies = [
  "etcetera",
  "ropey",
  "tempfile",
+ "which",
 ]
 
 [[package]]
@@ -1214,7 +1213,6 @@ dependencies = [
  "tokio-stream",
  "toml",
  "url",
- "which",
 ]
 
 [[package]]
@@ -1280,7 +1278,6 @@ dependencies = [
  "tokio-stream",
  "toml",
  "url",
- "which",
 ]
 
 [[package]]
@@ -1294,11 +1291,11 @@ dependencies = [
 
 [[package]]
 name = "home"
-version = "0.5.5"
+version = "0.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5444c27eef6923071f7ebcc33e3444508466a76f7a2b93da00ed6e19f30c1ddb"
+checksum = "e3d1354bf6b7235cb4a0576c2619fd4ed18183f689b12b006a0ee7329eeff9a5"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2359,15 +2356,15 @@ checksum = "0046fef7e28c3804e5e38bfa31ea2a0f73905319b677e57ebe37e49358989b5d"
 
 [[package]]
 name = "which"
-version = "5.0.0"
+version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bf3ea8596f3a0dd5980b46430f2058dfe2c36a27ccfbb1845d6fbfcd9ba6e14"
+checksum = "7fa5e0c10bf77f44aac573e498d1a82d5fbd5e91f6fc0a99e7be4b38e85e101c"
 dependencies = [
  "either",
  "home",
  "once_cell",
  "rustix",
- "windows-sys 0.48.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

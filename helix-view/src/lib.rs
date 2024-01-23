@@ -5,7 +5,6 @@ pub mod base64;
 pub mod clipboard;
 pub mod document;
 pub mod editor;
-pub mod env;
 pub mod events;
 pub mod graphics;
 pub mod gutter;
