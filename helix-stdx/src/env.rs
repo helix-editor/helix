@@ -1,6 +1,5 @@
-pub use which::which;
-
 use std::{
+    ffi::OsStr,
     path::{Path, PathBuf},
     sync::RwLock,
 };
@@ -36,9 +35,32 @@ pub fn env_var_is_set(env_var_name: &str) -> bool {
     std::env::var_os(env_var_name).is_some()
 }
 
-pub fn binary_exists(binary_name: &str) -> bool {
+pub fn binary_exists<T: AsRef<OsStr>>(binary_name: T) -> bool {
     which::which(binary_name).is_ok()
 }
+
+pub fn which<T: AsRef<OsStr>>(
+    binary_name: T,
+) -> Result<std::path::PathBuf, ExecutableNotFoundError> {
+    which::which(binary_name.as_ref()).map_err(|err| ExecutableNotFoundError {
+        command: binary_name.as_ref().to_string_lossy().into_owned(),
+        inner: err,
+    })
+}
+
+#[derive(Debug)]
+pub struct ExecutableNotFoundError {
+    command: String,
+    inner: which::Error,
+}
+
+impl std::fmt::Display for ExecutableNotFoundError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "command '{}' not found: {}", self.command, self.inner)
+    }
+}
+
+impl std::error::Error for ExecutableNotFoundError {}
 
 #[cfg(test)]
 mod tests {

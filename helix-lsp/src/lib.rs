@@ -44,6 +44,8 @@ pub enum Error {
     #[error("Unhandled")]
     Unhandled,
     #[error(transparent)]
+    ExecutableNotFound(#[from] helix_stdx::env::ExecutableNotFoundError),
+    #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
 
