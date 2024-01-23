@@ -61,7 +61,7 @@
 (formal_parameter_list) @parameter.around
 
 (expression_statement
-  ((identifier) @_name1 (#any-of? @_name1 "test" "testWidgets"))
+  ((identifier) @_name (#any-of? @_name "test" "testWidgets"))
   .
   (selector (argument_part (arguments . (_) . (argument) @test.inside)))
 ) @test.around
