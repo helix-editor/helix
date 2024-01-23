@@ -20,7 +20,7 @@ helix-stdx = { path = "../helix-stdx" }
 helix-loader = { path = "../helix-loader" }
 
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
-smallvec = "1.12"
+smallvec = "1.13"
 smartstring = "1.0.1"
 unicode-segmentation = "1.10"
 unicode-width = "0.1"
