@@ -1,3 +1,5 @@
+pub use which::which;
+
 use std::{
     path::{Path, PathBuf},
     sync::RwLock,
@@ -28,6 +30,14 @@ pub fn set_current_working_dir(path: impl AsRef<Path>) -> std::io::Result<()> {
     let mut cwd = CWD.write().unwrap();
     *cwd = Some(path);
     Ok(())
+}
+
+pub fn env_var_is_set(env_var_name: &str) -> bool {
+    std::env::var_os(env_var_name).is_some()
+}
+
+pub fn binary_exists(binary_name: &str) -> bool {
+    which::which(binary_name).is_ok()
 }
 
 #[cfg(test)]

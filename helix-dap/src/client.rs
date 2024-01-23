@@ -113,7 +113,7 @@ impl Client {
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<Payload>)> {
         // Resolve path to the binary
-        let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
+        let cmd = helix_stdx::env::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
 
         let process = Command::new(cmd)
             .args(args)

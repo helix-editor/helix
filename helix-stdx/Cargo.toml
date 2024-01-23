@@ -15,6 +15,7 @@ homepage.workspace = true
 dunce = "1.0"
 etcetera = "0.8"
 ropey = { version = "1.6.1", default-features = false }
+which = "6.0"
 
 [dev-dependencies]
 tempfile = "3.9"

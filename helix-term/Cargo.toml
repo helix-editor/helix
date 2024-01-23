@@ -35,8 +35,6 @@ helix-loader = { path = "../helix-loader" }
 anyhow = "1"
 once_cell = "1.19"
 
-which = "5.0.0"
-
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
 crossterm = { version = "0.27", features = ["event-stream"] }
