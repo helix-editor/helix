@@ -1147,7 +1147,7 @@ impl Editor {
     #[inline]
     pub fn set_error<T: Into<Cow<'static, str>>>(&mut self, error: T) {
         let error = error.into();
-        log::error!("editor error: {}", error);
+        log::debug!("editor error: {}", error);
         self.status_msg = Some((error, Severity::Error));
     }
 
