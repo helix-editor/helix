@@ -1,14 +1,16 @@
-use anyhow::{Context, Error, Result};
+use anyhow::{ensure, Context, Error, Result};
 use cobs::{DecodeResult, DecoderState};
 use crossterm::event::EventStream;
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
+use std::fmt::Display;
+use std::fs::File;
 use std::io::{stdin, stdout, BufRead, BufReader, BufWriter, Write};
 use std::sync::Mutex;
 
-fn setup_logging(verbosity: u64) -> Result<()> {
+fn setup_logging(verbosity: u64, compress_log_o: bool) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
 
     base_config = match verbosity {
@@ -18,38 +20,47 @@ fn setup_logging(verbosity: u64) -> Result<()> {
         _3_or_more => base_config.level(log::LevelFilter::Trace),
     };
 
-    let log_compressor = Mutex::new((
-        fern::log_file(helix_loader::log_file())?,
-        zstd::bulk::Compressor::with_dictionary(3, include_bytes!("zstd_dict"))?,
-    ));
-
     // Separate file config so we can include year, month and day in file logs
-    let file_config = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .chain(fern::Output::call(move |record| {
+    let mut file_config = fern::Dispatch::new().format(|out, message, record| {
+        out.finish(format_args!(
+            "{} {} [{}] {}",
+            chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
+            record.target(),
+            record.level(),
+            message
+        ))
+    });
+
+    if compress_log_o {
+        let log_compressor = Mutex::new((
+            BufWriter::new(fern::log_file(helix_loader::log_file())?),
+            zstd::bulk::Compressor::with_dictionary(3, include_bytes!("zstd_dict"))?,
+        ));
+
+        file_config = file_config.chain(fern::Output::call(move |record| {
             let mut compressor = log_compressor.lock().unwrap();
-
-            let record = compressor
-                .1
-                .compress(format!("{}", record.args()).as_bytes())
-                .unwrap();
-
-            let mut record = cobs::encode_vec(&record);
-            record.push(0);
-
-            compressor.0.write_all(&record).unwrap();
+            compress_log(&mut compressor, record.args()).unwrap();
         }));
+    } else {
+        file_config = file_config.chain(fern::log_file(helix_loader::log_file())?);
+    }
 
     base_config.chain(file_config).apply()?;
 
+    Ok(())
+}
+
+pub fn compress_log(
+    compressor: &mut (BufWriter<File>, zstd::bulk::Compressor),
+    log: impl Display,
+) -> Result<()> {
+    let record = compressor.1.compress(format!("{}", log).as_bytes())?;
+
+    let mut record = cobs::encode_vec(&record);
+    record.push(0);
+
+    compressor.0.write_all(&record)?;
+    compressor.0.flush()?;
     Ok(())
 }
 
@@ -81,7 +92,9 @@ FLAGS:
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
     -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
-    --decode-log                   Decodes the compressed log file from stdin and writes it to stdout
+    --decompress-log                   Decodes the compressed log file from stdin and writes it to stdout
+    --compress-log                 Compresses a decompressed log file, run after enabling log compression
+                                   in config.toml
     --log <file>                   Specifies a file to use for logging
                                    (default file: {})
     -V, --version                  Prints version information
@@ -135,7 +148,7 @@ FLAGS:
         return Ok(0);
     }
 
-    if args.decode_log {
+    if args.decompress_log {
         let mut decompressor =
             zstd::bulk::Decompressor::with_dictionary(include_bytes!("zstd_dict"))?;
 
@@ -176,8 +189,6 @@ FLAGS:
         return Ok(0);
     }
 
-    setup_logging(args.verbosity).context("failed to initialize logging")?;
-
     // Before setting the working directory, resolve all the paths in args.files
     for (path, _) in args.files.iter_mut() {
         *path = helix_stdx::path::canonicalize(&path);
@@ -206,6 +217,37 @@ FLAGS:
             Config::default()
         }
     };
+
+    setup_logging(args.verbosity, config.editor.compress_log)
+        .context("failed to initialize logging")?;
+
+    if args.compress_log {
+        ensure!(
+            config.editor.compress_log,
+            "Please enable `editor.compress-log` in `config.toml` before running this"
+        );
+
+        let log_tmp = {
+            let mut log_file = helix_loader::log_file();
+            log_file.set_extension("log.tmp");
+            log_file
+        };
+        {
+            let mut log_file = (
+                BufWriter::new(std::fs::File::create(&log_tmp)?),
+                zstd::bulk::Compressor::with_dictionary(3, include_bytes!("zstd_dict"))?,
+            );
+            BufReader::new(std::fs::File::open(helix_loader::log_file())?)
+                .lines()
+                .try_for_each(|l| {
+                    let l = l?;
+                    compress_log(&mut log_file, l)?;
+                    Ok::<(), anyhow::Error>(())
+                })?;
+        }
+        std::fs::rename(log_tmp, helix_loader::log_file())?;
+        return Ok(0);
+    }
 
     let syn_loader_conf = helix_core::config::user_syntax_loader().unwrap_or_else(|err| {
         eprintln!("Bad language config: {}", err);

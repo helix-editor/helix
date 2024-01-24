@@ -300,6 +300,8 @@ pub struct Config {
     /// Which indent heuristic to use when a new line is inserted
     #[serde(default)]
     pub indent_heuristic: IndentationHeuristic,
+    /// Compresses logs using a custom zstd-based format. Logs should be compressed after enabling this by running helix with the `--compress-log` option. Pipe any program into helix and run with `--decode-log` to decode any part of the log file. Defaults to `false`
+    pub compress_log: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -862,6 +864,7 @@ impl Default for Config {
             smart_tab: Some(SmartTabConfig::default()),
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
+            compress_log: false,
         }
     }
 }
