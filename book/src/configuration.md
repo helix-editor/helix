@@ -68,7 +68,7 @@ Its settings will be merged with the configuration directory `config.toml` and t
 | `insert-final-newline` | Whether to automatically insert a trailing line-ending on write if missing | `true` |
 | `popup-border` | Draw border around `popup`, `menu`, `all`, or `none` | `none` |
 | `indent-heuristic` | How the indentation for a newly inserted line is computed: `simple` just copies the indentation level from the previous line, `tree-sitter` computes the indentation based on the syntax tree and `hybrid` combines both approaches. If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being `hybrid` -> `tree-sitter` -> `simple`). | `hybrid`
-| `compress-log` | Changes the log file extension to `.log.cmp`, and compresses the log file from then on with a custom zstd based format. You can decompress the log file or parts of it by piping a program into helix and running it with the `--decompress-log` option, for example `tail -f ~/.cache/helix/helix.log | hx --decompress-log`. If you care about retaining your uncompressed log file and converting it to compressed form, run helix with the `--compress-log` option
+| `compress-log` | Changes the log file extension to `.log.cmp`, and compresses the log file from then on with a custom zstd based format. You can decompress the log file or parts of it by piping a program into helix and running it with the `--decompress-log` option, for example `tail -f ~/.cache/helix/helix.log.cmp | hx --decompress-log`. If you care about retaining your uncompressed log file and converting it to compressed form, run helix with the `--compress-log` option
 
 ### `[editor.statusline]` Section
 
