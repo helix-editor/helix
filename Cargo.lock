@@ -1319,6 +1319,7 @@ name = "helix-lsp"
 version = "23.10.0"
 dependencies = [
  "anyhow",
+ "arc-swap",
  "futures-executor",
  "futures-util",
  "globset",

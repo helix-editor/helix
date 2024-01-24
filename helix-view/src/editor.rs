@@ -50,7 +50,10 @@ use helix_stdx::path::canonicalize;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 
-use arc_swap::access::{DynAccess, DynGuard};
+use arc_swap::{
+    access::{DynAccess, DynGuard},
+    ArcSwap,
+};
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -918,7 +921,7 @@ pub struct Editor {
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
-    pub syn_loader: Arc<syntax::Loader>,
+    pub syn_loader: Arc<ArcSwap<syntax::Loader>>,
     pub theme_loader: Arc<theme::Loader>,
     /// last_theme is used for theme previews. We store the current theme here,
     /// and if previewing is cancelled, we can return to it.
@@ -1029,7 +1032,7 @@ impl Editor {
     pub fn new(
         mut area: Rect,
         theme_loader: Arc<theme::Loader>,
-        syn_loader: Arc<syntax::Loader>,
+        syn_loader: Arc<ArcSwap<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
         handlers: Handlers,
     ) -> Self {
@@ -1190,7 +1193,7 @@ impl Editor {
         }
 
         let scopes = theme.scopes();
-        self.syn_loader.set_scopes(scopes.to_vec());
+        (*self.syn_loader).load().set_scopes(scopes.to_vec());
 
         match preview {
             ThemeAction::Preview => {

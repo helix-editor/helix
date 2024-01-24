@@ -5,6 +5,7 @@ pub mod jsonrpc;
 pub mod snippet;
 mod transport;
 
+use arc_swap::ArcSwap;
 pub use client::Client;
 pub use futures_executor::block_on;
 pub use jsonrpc::Call;
@@ -640,14 +641,14 @@ impl Notification {
 #[derive(Debug)]
 pub struct Registry {
     inner: HashMap<LanguageServerName, Vec<Arc<Client>>>,
-    syn_loader: Arc<helix_core::syntax::Loader>,
+    syn_loader: Arc<ArcSwap<helix_core::syntax::Loader>>,
     counter: usize,
     pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
     pub file_event_handler: file_event::Handler,
 }
 
 impl Registry {
-    pub fn new(syn_loader: Arc<helix_core::syntax::Loader>) -> Self {
+    pub fn new(syn_loader: Arc<ArcSwap<helix_core::syntax::Loader>>) -> Self {
         Self {
             inner: HashMap::new(),
             syn_loader,
@@ -681,8 +682,8 @@ impl Registry {
         root_dirs: &[PathBuf],
         enable_snippets: bool,
     ) -> Result<Option<Arc<Client>>> {
-        let config = self
-            .syn_loader
+        let syn_loader = self.syn_loader.load();
+        let config = syn_loader
             .language_server_configs()
             .get(&name)
             .ok_or_else(|| anyhow::anyhow!("Language server '{name}' not defined"))?;

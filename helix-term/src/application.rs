@@ -66,7 +66,7 @@ pub struct Application {
     #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
     #[allow(dead_code)]
-    syn_loader: Arc<syntax::Loader>,
+    syn_loader: Arc<ArcSwap<syntax::Loader>>,
 
     signals: Signals,
     jobs: Jobs,
@@ -122,7 +122,7 @@ impl Application {
             })
             .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
-        let syn_loader = std::sync::Arc::new(lang_loader);
+        let syn_loader = Arc::new(ArcSwap::from_pointee(lang_loader));
 
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout(), &config.editor);
@@ -391,7 +391,8 @@ impl Application {
     /// refresh language config after config change
     fn refresh_language_config(&mut self) -> Result<(), Error> {
         let lang_loader = helix_core::config::user_lang_loader()?;
-        self.syn_loader = std::sync::Arc::new(lang_loader);
+
+        self.syn_loader.store(Arc::new(lang_loader));
         self.editor.syn_loader = self.syn_loader.clone();
         for document in self.editor.documents.values_mut() {
             document.detect_language(self.syn_loader.clone());

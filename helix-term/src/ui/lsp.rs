@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use arc_swap::ArcSwap;
 use helix_core::syntax;
 use helix_view::graphics::{Margin, Rect, Style};
 use tui::buffer::Buffer;
@@ -18,13 +19,17 @@ pub struct SignatureHelp {
     active_param_range: Option<(usize, usize)>,
 
     language: String,
-    config_loader: Arc<syntax::Loader>,
+    config_loader: Arc<ArcSwap<syntax::Loader>>,
 }
 
 impl SignatureHelp {
     pub const ID: &'static str = "signature-help";
 
-    pub fn new(signature: String, language: String, config_loader: Arc<syntax::Loader>) -> Self {
+    pub fn new(
+        signature: String,
+        language: String,
+        config_loader: Arc<ArcSwap<syntax::Loader>>,
+    ) -> Self {
         Self {
             signature,
             signature_doc: None,

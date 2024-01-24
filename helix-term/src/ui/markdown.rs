@@ -1,4 +1,5 @@
 use crate::compositor::{Component, Context};
+use arc_swap::ArcSwap;
 use tui::{
     buffer::Buffer as Surface,
     text::{Span, Spans, Text},
@@ -31,7 +32,7 @@ pub fn highlighted_code_block<'a>(
     text: &str,
     language: &str,
     theme: Option<&Theme>,
-    config_loader: Arc<syntax::Loader>,
+    config_loader: Arc<ArcSwap<syntax::Loader>>,
     additional_highlight_spans: Option<Vec<(usize, std::ops::Range<usize>)>>,
 ) -> Text<'a> {
     let mut spans = Vec::new();
@@ -48,6 +49,7 @@ pub fn highlighted_code_block<'a>(
 
     let ropeslice = RopeSlice::from(text);
     let syntax = config_loader
+        .load()
         .language_configuration_for_injection_string(&InjectionLanguageMarker::Name(
             language.into(),
         ))
@@ -121,7 +123,7 @@ pub fn highlighted_code_block<'a>(
 pub struct Markdown {
     contents: String,
 
-    config_loader: Arc<syntax::Loader>,
+    config_loader: Arc<ArcSwap<syntax::Loader>>,
 }
 
 // TODO: pre-render and self reference via Pin
@@ -140,7 +142,7 @@ impl Markdown {
     ];
     const INDENT: &'static str = "  ";
 
-    pub fn new(contents: String, config_loader: Arc<syntax::Loader>) -> Self {
+    pub fn new(contents: String, config_loader: Arc<ArcSwap<syntax::Loader>>) -> Self {
         Self {
             contents,
             config_loader,
