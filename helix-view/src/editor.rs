@@ -1238,12 +1238,19 @@ impl Editor {
                 .filter_map(|(lang, client)| match client {
                     Ok(client) => Some((lang, client)),
                     Err(err) => {
-                        log::error!(
-                            "Failed to initialize the language servers for `{}` - `{}` {{ {} }}",
-                            language.scope(),
-                            lang,
-                            err
-                        );
+                        if let helix_lsp::Error::ExecutableNotFound(err) = err {
+                            // Silence by default since some language servers might just not be installed
+                            log::debug!(
+                                "Language server not found for `{}` {} {}", language.scope(), lang, err,
+                            );
+                        } else {
+                            log::error!(
+                                "Failed to initialize the language servers for `{}` - `{}` {{ {} }}",
+                                language.scope(),
+                                lang,
+                                err
+                            );
+                        }
                         None
                     }
                 })
