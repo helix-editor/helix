@@ -1368,30 +1368,38 @@ horizontal split.
 
 Use ctrl-w k or ctrl-w arrow-up to move to the split above your
 current split. Use ctrl-w j or ctrl-w arrow-down to move back
-to the split below.
+to the split below. Use ctrl-w h or ctrl-w arrow-left to move
+to the split left, and ctrl-w l or ctrl-w arrow-right to move
+back to the split right.
 
-cursor back to the left split (hjkl or the arrows allow all the
-usual movements in window mode).
+You can now do whatever you want in your new buffers and splits.
 
-You can now do whatever you want in your new buffer (edit,
-save, ...). Once you are done with using your new buffer split,
-you can close it with ctrl-w q to revert to having a single split
-as you had initially.
+Once you are done with using your new buffer split,
+you can close it with ctrl-w q . Move to the bottom right split
+with ctrl-w l then ctrl-w j, then press ctrl-w q to close this
+specific split.
 
-
-
-
-
+You can also close all splits except the current one with ctrl-w o .
+Open a third vertical split with ctrl-w , then move to the
+leftest split with ctrl-w h twice, then from inside the split on
+the left press ctrl-w o to close all except this split.
 
 =================================================================
 =                       CHAPTER 13.2 SPLIT CURRENT BUFFER       =
 =================================================================
 
-You can also, starting in normal mode, split the view of
-the current buffer: try using ctrl-w s (to split half way
-horizontally) and ctrl-w v (to split half way vertically). Feel
-free to feel moving between the splits you created (ctrl-w hjkl),
-closing individual splits, etc.
+You can also, starting in normal mode, split the view of the
+current buffer: use ctrl-w s (to split half way the current
+buffer horizontally and open a copy of it on the right too) and
+use again ctrl-w v (to split half way vertically with the buffer
+opened on both splits).
+
+
+
+
+
+
+
 
 
 
@@ -1402,15 +1410,22 @@ closing individual splits, etc.
 =                       CHAPTER 13.3 USE COMMANDS TO SPLIT      =
 =================================================================
 
-Note that you can also use commands to split, by typing in normal
-mode :vsplit (to split the current buffer), or :vsplit FILE_PATH
-(to open FILE_PATH into the new split). :vsplit-new is equivalent
-to ctrl-w nv , and you can use :hsplit instead of :vsplit to
-split horizontally instead.
+You can also use the :vsplit (aliased to :vs for convenience) or
+the :hsplit (aliased to :hs ) to split vertically or horizontally
+a specific buffer. For example, type in the command:
 
+:vs something
 
+to open a new vertical split called something to the right. Here
+something is not an existing file, so this will open a new buffer
+under this name, but you could replace something with any file name
+to open it in a new buffer. Similarly, you can type the command:
 
+:hs some_more
 
+to open a new buffer called some_more in the lower half. Similarly,
+some_more could be any file or path to open this specific file or path
+instead of a new empty buffer.
 
 
 =================================================================
