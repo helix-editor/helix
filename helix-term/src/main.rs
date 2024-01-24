@@ -98,7 +98,8 @@ FLAGS:
     -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
     --decompress-log               Decompresses the compressed log file from stdin and writes it to stdout
-    --compress-log                 Compresses a decompressed log file
+    --compress-log                 Compresses an uncompressed log file and writes it next to the
+                                   uncompressed one
     --log <file>                   Specifies a file to use for logging
                                    (default file: {})
     -V, --version                  Prints version information
