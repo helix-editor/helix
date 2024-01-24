@@ -1,4 +1,4 @@
-use anyhow::{ensure, Context, Error, Result};
+use anyhow::{Context, Error, Result};
 use cobs::{DecodeResult, DecoderState};
 use crossterm::event::EventStream;
 use helix_loader::VERSION_AND_GIT_HASH;
@@ -32,8 +32,13 @@ fn setup_logging(verbosity: u64, compress_log_o: bool) -> Result<()> {
     });
 
     if compress_log_o {
+        let log_path = {
+            let mut log_file = helix_loader::log_file();
+            log_file.set_extension("log.cmp");
+            log_file
+        };
         let log_compressor = Mutex::new((
-            BufWriter::new(fern::log_file(helix_loader::log_file())?),
+            BufWriter::new(fern::log_file(log_path)?),
             zstd::bulk::Compressor::with_dictionary(3, include_bytes!("zstd_dict"))?,
         ));
 
@@ -92,9 +97,8 @@ FLAGS:
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
     -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
-    --decompress-log                   Decodes the compressed log file from stdin and writes it to stdout
-    --compress-log                 Compresses a decompressed log file, run after enabling log compression
-                                   in config.toml
+    --decompress-log               Decompresses the compressed log file from stdin and writes it to stdout
+    --compress-log                 Compresses a decompressed log file
     --log <file>                   Specifies a file to use for logging
                                    (default file: {})
     -V, --version                  Prints version information
@@ -189,6 +193,28 @@ FLAGS:
         return Ok(0);
     }
 
+    if args.compress_log {
+        let log_path = {
+            let mut log_file = helix_loader::log_file();
+            log_file.set_extension("log.cmp");
+            log_file
+        };
+        {
+            let mut log_file = (
+                BufWriter::new(std::fs::File::create(log_path)?),
+                zstd::bulk::Compressor::with_dictionary(3, include_bytes!("zstd_dict"))?,
+            );
+            BufReader::new(std::fs::File::open(helix_loader::log_file())?)
+                .lines()
+                .try_for_each(|l| {
+                    let l = l?;
+                    compress_log(&mut log_file, l)?;
+                    Ok::<(), anyhow::Error>(())
+                })?;
+        }
+        return Ok(0);
+    }
+
     // Before setting the working directory, resolve all the paths in args.files
     for (path, _) in args.files.iter_mut() {
         *path = helix_stdx::path::canonicalize(&path);
@@ -220,34 +246,6 @@ FLAGS:
 
     setup_logging(args.verbosity, config.editor.compress_log)
         .context("failed to initialize logging")?;
-
-    if args.compress_log {
-        ensure!(
-            config.editor.compress_log,
-            "Please enable `editor.compress-log` in `config.toml` before running this"
-        );
-
-        let log_tmp = {
-            let mut log_file = helix_loader::log_file();
-            log_file.set_extension("log.tmp");
-            log_file
-        };
-        {
-            let mut log_file = (
-                BufWriter::new(std::fs::File::create(&log_tmp)?),
-                zstd::bulk::Compressor::with_dictionary(3, include_bytes!("zstd_dict"))?,
-            );
-            BufReader::new(std::fs::File::open(helix_loader::log_file())?)
-                .lines()
-                .try_for_each(|l| {
-                    let l = l?;
-                    compress_log(&mut log_file, l)?;
-                    Ok::<(), anyhow::Error>(())
-                })?;
-        }
-        std::fs::rename(log_tmp, helix_loader::log_file())?;
-        return Ok(0);
-    }
 
     let syn_loader_conf = helix_core::config::user_syntax_loader().unwrap_or_else(|err| {
         eprintln!("Bad language config: {}", err);
