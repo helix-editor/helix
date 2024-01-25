@@ -1007,6 +1007,7 @@ pub fn apply_workspace_edit(
     Ok(())
 }
 
+/// Precondition: `locations` should be non-empty.
 fn goto_impl(
     editor: &mut Editor,
     compositor: &mut Compositor,
@@ -1019,9 +1020,7 @@ fn goto_impl(
         [location] => {
             jump_to_location(editor, location, offset_encoding, Action::Replace);
         }
-        [] => {
-            editor.set_error("No definition found.");
-        }
+        [] => unreachable!("`locations` should be non-empty for `goto_impl`"),
         _locations => {
             let picker = Picker::new(locations, cwdir, move |cx, location, action| {
                 jump_to_location(cx.editor, location, offset_encoding, action)
@@ -1063,7 +1062,11 @@ where
         future,
         move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
             let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
+            if items.is_empty() {
+                editor.set_error("No definition found.");
+            } else {
+                goto_impl(editor, compositor, items, offset_encoding);
+            }
         },
     );
 }
@@ -1123,7 +1126,11 @@ pub fn goto_reference(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<Vec<lsp::Location>>| {
             let items = response.unwrap_or_default();
-            goto_impl(editor, compositor, items, offset_encoding);
+            if items.is_empty() {
+                editor.set_error("No references found.");
+            } else {
+                goto_impl(editor, compositor, items, offset_encoding);
+            }
         },
     );
 }
