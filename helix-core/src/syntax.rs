@@ -2306,6 +2306,7 @@ impl<'a> Iterator for HighlightIter<'a> {
             // highlighting patterns that are disabled for local variables.
             if definition_highlight.is_some() || reference_highlight.is_some() {
                 while layer.config.non_local_variable_patterns[match_.pattern_index] {
+                    match_.remove();
                     if let Some((next_match, next_capture_index)) = captures.peek() {
                         let next_capture = next_match.captures[*next_capture_index];
                         if next_capture.node == capture.node {
