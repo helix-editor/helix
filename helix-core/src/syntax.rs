@@ -1352,6 +1352,12 @@ impl Syntax {
         self.layers[container_id].tree()
     }
 
+    pub fn named_descendant_for_byte_range(&self, start: usize, end: usize) -> Option<Node<'_>> {
+        self.tree_for_byte_range(start, end)
+            .root_node()
+            .named_descendant_for_byte_range(start, end)
+    }
+
     pub fn descendant_for_byte_range(&self, start: usize, end: usize) -> Option<Node<'_>> {
         self.tree_for_byte_range(start, end)
             .root_node()
