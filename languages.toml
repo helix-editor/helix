@@ -1249,7 +1249,7 @@ file-types = ["pod"]
 
 [[grammar]]
 name = "pod"
-source = { git = "https://github.com/tree-sitter-perl/tree-sitter-pod", rev = "d466b84009a63986834498073ec05d58d727d55f" }
+source = { git = "https://github.com/tree-sitter-perl/tree-sitter-pod", rev = "39da859947b94abdee43e431368e1ae975c0a424" }
 
 [[language]]
 name = "racket"
@@ -2259,7 +2259,7 @@ grammar = "vhs"
 
 [[grammar]]
 name = "vhs"
-source = { git = "https://github.com/charmbracelet/tree-sitter-vhs", rev = "c6d81f34c011c29ee86dd73b45a8ecc9f2e2bdaf" }
+source = { git = "https://github.com/charmbracelet/tree-sitter-vhs", rev = "9534865e614c95eb9418e5e73f061c32fa4d9540" }
 
 [[language]]
 name = "kdl"
@@ -2666,7 +2666,7 @@ language-servers = [ "cs" ]
 
 [[grammar]]
 name = "smithy"
-source = { git = "https://github.com/indoorvivants/tree-sitter-smithy", rev = "cf8c7eb9faf7c7049839585eac19c94af231e6a0" }
+source = { git = "https://github.com/indoorvivants/tree-sitter-smithy", rev = "8327eb84d55639ffbe08c9dc82da7fff72a1ad07" }
 
 [[language]]
 name = "vhdl"
@@ -2917,7 +2917,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "unison"
-source = { git = "https://github.com/kylegoetz/tree-sitter-unison", rev = "98c4e8bc5c9f5989814a720457cf36963cf4043d" }
+source = { git = "https://github.com/kylegoetz/tree-sitter-unison", rev = "aaec316774c8b50d367ec7cf26523aac5ef0cfc5" }
 
 [[language]]
 name = "todotxt"
