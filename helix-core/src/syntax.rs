@@ -11,6 +11,7 @@ use ahash::RandomState;
 use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
 use hashbrown::raw::RawTable;
+use helix_stdx::rope::{self, RopeSliceExt};
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
@@ -1889,11 +1890,16 @@ impl HighlightConfiguration {
                     node_slice
                 };
 
-                static SHEBANG_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(SHEBANG).unwrap());
+                static SHEBANG_REGEX: Lazy<rope::Regex> =
+                    Lazy::new(|| rope::Regex::new(SHEBANG).unwrap());
 
                 injection_capture = SHEBANG_REGEX
-                    .captures(&Cow::from(lines))
-                    .map(|cap| InjectionLanguageMarker::Shebang(cap[1].to_owned()))
+                    .captures_iter(lines.regex_input())
+                    .map(|cap| {
+                        let cap = lines.byte_slice(cap.get_group(1).unwrap().range());
+                        InjectionLanguageMarker::Shebang(cap.into())
+                    })
+                    .next()
             } else if index == self.injection_content_capture_index {
                 content_node = Some(capture.node);
             }
