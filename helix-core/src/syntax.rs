@@ -1338,7 +1338,7 @@ impl Syntax {
         result
     }
 
-    pub fn descendant_for_byte_range(&self, start: usize, end: usize) -> Option<Node<'_>> {
+    pub fn tree_for_byte_range(&self, start: usize, end: usize) -> &Tree {
         let mut container_id = self.root;
 
         for (layer_id, layer) in self.layers.iter() {
@@ -1349,8 +1349,11 @@ impl Syntax {
             }
         }
 
-        self.layers[container_id]
-            .tree()
+        self.layers[container_id].tree()
+    }
+
+    pub fn descendant_for_byte_range(&self, start: usize, end: usize) -> Option<Node<'_>> {
+        self.tree_for_byte_range(start, end)
             .root_node()
             .descendant_for_byte_range(start, end)
     }
