@@ -1546,10 +1546,7 @@ fn tree_sitter_highlight_name(
         let text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
         let byte = text.char_to_byte(cursor);
-        let node = syntax
-            .tree()
-            .root_node()
-            .descendant_for_byte_range(byte, byte)?;
+        let node = syntax.descendant_for_byte_range(byte, byte)?;
         // Query the same range as the one used in syntax highlighting.
         let range = {
             // Calculate viewport byte ranges:
