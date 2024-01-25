@@ -60,6 +60,8 @@ FLAGS:
                                    or 'all'. 'all' is the default if not specified.
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
     -c, --config <file>            Specifies a file to use for configuration
+    --command <command>            Run a command when the editor starts. Can be specified multiple
+                                   times, or multiple commands can be separated by commas.
     -v                             Increases logging verbosity each use for up to 3 times
     --log <file>                   Specifies a file to use for logging
                                    (default file: {})
@@ -158,7 +160,16 @@ FLAGS:
     let mut app = Application::new(args, config, syn_loader_conf)
         .context("unable to create new application")?;
 
-    let exit_code = app.run(&mut EventStream::new()).await?;
+    let errors = if app.editor.should_close() {
+        app.close().await
+    } else {
+        app.run(&mut EventStream::new()).await?
+    };
 
-    Ok(exit_code)
+    for err in errors {
+        app.editor.exit_code = 1;
+        eprintln!("Error: {}", err);
+    }
+
+    Ok(app.editor.exit_code)
 }

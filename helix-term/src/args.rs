@@ -3,6 +3,8 @@ use helix_core::Position;
 use helix_view::tree::Layout;
 use std::path::{Path, PathBuf};
 
+use crate::keymap::MappableCommand;
+
 #[derive(Default)]
 pub struct Args {
     pub display_help: bool,
@@ -16,6 +18,7 @@ pub struct Args {
     pub verbosity: u64,
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
+    pub commands: Vec<MappableCommand>,
     pub files: Vec<(PathBuf, Position)>,
     pub working_directory: Option<PathBuf>,
 }
@@ -56,6 +59,16 @@ impl Args {
                 "-c" | "--config" => match argv.next().as_deref() {
                     Some(path) => args.config_file = Some(path.into()),
                     None => anyhow::bail!("--config must specify a path to read"),
+                },
+                "--command" => match argv.next().as_deref() {
+                    Some(command) => {
+                        let commands = command
+                            .split(',')
+                            .map(|s| s.parse())
+                            .collect::<Result<Vec<_>, _>>()?;
+                        args.commands.extend_from_slice(&commands)
+                    }
+                    None => anyhow::bail!("--command must specify a command to run"),
                 },
                 "--log" => match argv.next().as_deref() {
                     Some(path) => args.log_file = Some(path.into()),
