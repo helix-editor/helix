@@ -1484,7 +1484,7 @@ source = { git = "https://github.com/mtoohey31/tree-sitter-gitattributes", rev =
 [[language]]
 name = "git-ignore"
 scope = "source.gitignore"
-file-types = [".gitignore", ".gitignore_global", ".ignore", ".prettierignore", ".eslintignore", ".npmignore", "CODEOWNERS"]
+file-types = [".gitignore", ".gitignore_global", ".ignore", ".prettierignore", ".eslintignore", ".npmignore", "CODEOWNERS", { suffix = ".config/helix/ignore" }, { suffix = ".helix/ignore" }]
 injection-regex = "git-ignore"
 comment-token = "#"
 grammar = "gitignore"
