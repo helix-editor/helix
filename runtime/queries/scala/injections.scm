@@ -10,7 +10,7 @@
 (interpolated_string_expression 
   interpolator: 
     ((identifier) @interpolator 
-     (#match? @interpolator "^(fr|infix|sql|sqlu)$"))
+     (#any-of? @interpolator "fr" "infix" "sql" "sqlu"))
   (interpolated_string) @injection.content
   (#set! injection.language "sql"))
 
