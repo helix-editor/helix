@@ -3650,8 +3650,7 @@ pub mod insert {
 
                 (pos, pos, local_offs)
             };
-
-            let new_range = if doc.restore_cursor {
+            let new_range = if range.head > range.anchor {
                 // when appending, extend the range by local_offs
                 Range::new(
                     range.anchor + global_offs,
