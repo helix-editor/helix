@@ -58,12 +58,13 @@ label = "#abcc8a"
 "ui.text.inactive" = "#93a56f" 
 "ui.virtual" = { fg = "yellow" } 
 "ui.virtual.indent-guide" = { fg = "#5b5b5a" } 
+"ui.virtual.ruler" = { bg = "#363638" }
 
 "ui.selection" = { fg = "white", bg = "gray" } 
 "ui.selection.primary" = { fg = "white", bg = "gray" } 
 "ui.cursor.match" = { fg = "white", bg = "gray" } 
 "ui.cursor" = { modifiers = ["reversed"] } 
-"ui.cursorline.primary" = { bg = "#363738" } 
+"ui.cursorline.primary" = { bg = "#3b3b3f" } 
 
 "ui.debug" = { fg = "#634450" } 
 "ui.debug.breakpoint" = { fg = "redish" } 
