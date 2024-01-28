@@ -39,14 +39,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.65
+        uses: dtolnay/rust-toolchain@1.70
 
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "build"
 
       - name: Cache test tree-sitter grammar
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: runtime/grammars
           key: ${{ runner.os }}-stable-v${{ env.CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
@@ -70,7 +70,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.65
+        uses: dtolnay/rust-toolchain@1.70
         with:
           components: rustfmt, clippy
 
@@ -97,7 +97,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.65
+        uses: dtolnay/rust-toolchain@1.70
 
       - uses: Swatinem/rust-cache@v2
         with:

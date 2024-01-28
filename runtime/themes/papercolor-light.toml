@@ -26,6 +26,9 @@
 "ui.virtual.whitespace" = { fg = "regular5" }
 "ui.virtual.indent-guide" = { fg = "bright0" }
 "ui.virtual.ruler" = { bg = "cursorline_secondary_bg", fg = "regular4" }
+"ui.virtual.inlay-hint" = { fg = "regular5", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.parameter" = { fg = "regular5", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.type" = { fg = "regular5", modifiers = ["bold", "italic"] }
 "ui.cursor.match" = { bg = "matchparen_bg", fg = "matchparen_fg" }
 "ui.cursor" = { bg = "regular5", fg = "background" }
 "ui.cursor.primary" = { bg = "foreground", fg = "background" }

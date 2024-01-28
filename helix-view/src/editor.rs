@@ -2,6 +2,7 @@ use crate::{
     align_view,
     document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint},
     graphics::{CursorKind, Rect},
+    handlers::Handlers,
     info::Info,
     input::KeyEvent,
     register::Registers,
@@ -30,10 +31,7 @@ use std::{
 };
 
 use tokio::{
-    sync::{
-        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-        oneshot,
-    },
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
     time::{sleep, Duration, Instant, Sleep},
 };
 
@@ -42,10 +40,9 @@ use anyhow::{anyhow, bail, Error};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
-    syntax::{self, AutoPairConfig, SoftWrap},
-    Change, LineEnding, NATIVE_LINE_ENDING,
+    syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
+    Change, LineEnding, Position, Selection, NATIVE_LINE_ENDING,
 };
-use helix_core::{Position, Selection};
 use helix_dap as dap;
 use helix_lsp::lsp;
 
@@ -244,12 +241,19 @@ pub struct Config {
     /// Set a global text_width
     pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
-    /// Used for autocompletion, set to 0 for instant. Defaults to 250ms.
+    /// Used for various UI timeouts. Defaults to 250ms.
     #[serde(
         serialize_with = "serialize_duration_millis",
         deserialize_with = "deserialize_duration_millis"
     )]
     pub idle_timeout: Duration,
+    /// Time in milliseconds after typing a word character before auto completions
+    /// are shown, set to 5 for instant. Defaults to 250ms.
+    #[serde(
+        serialize_with = "serialize_duration_millis",
+        deserialize_with = "deserialize_duration_millis"
+    )]
+    pub completion_timeout: Duration,
     /// Whether to insert the completion suggestion on hover. Defaults to true.
     pub preview_completion_insert: bool,
     pub completion_trigger_len: u8,
@@ -291,6 +295,11 @@ pub struct Config {
     pub insert_final_newline: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
+    /// Draw border around popups.
+    pub popup_border: PopupBorderConfig,
+    /// Which indent heuristic to use when a new line is inserted
+    #[serde(default)]
+    pub indent_heuristic: IndentationHeuristic,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -320,7 +329,7 @@ pub struct TerminalConfig {
 
 #[cfg(windows)]
 pub fn get_terminal_provider() -> Option<TerminalConfig> {
-    use crate::env::binary_exists;
+    use helix_stdx::env::binary_exists;
 
     if binary_exists("wt") {
         return Some(TerminalConfig {
@@ -343,7 +352,7 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
 
 #[cfg(not(any(windows, target_os = "wasm32")))]
 pub fn get_terminal_provider() -> Option<TerminalConfig> {
-    use crate::env::{binary_exists, env_var_is_set};
+    use helix_stdx::env::{binary_exists, env_var_is_set};
 
     if env_var_is_set("TMUX") && binary_exists("tmux") {
         return Some(TerminalConfig {
@@ -727,7 +736,7 @@ pub struct WhitespaceCharacters {
 impl Default for WhitespaceCharacters {
     fn default() -> Self {
         Self {
-            space: '·',    // U+00B7
+            space: '·',   // U+00B7
             nbsp: '⍽',    // U+237D
             tab: '→',     // U+2192
             newline: '⏎', // U+23CE
@@ -755,12 +764,13 @@ impl Default for IndentGuidesConfig {
 }
 
 /// Line ending configuration.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LineEndingConfig {
     /// The platform's native line ending.
     ///
     /// `crlf` on Windows, otherwise `lf`.
+    #[default]
     Native,
     /// Line feed.
     LF,
@@ -777,12 +787,6 @@ pub enum LineEndingConfig {
     Nel,
 }
 
-impl Default for LineEndingConfig {
-    fn default() -> Self {
-        LineEndingConfig::Native
-    }
-}
-
 impl From<LineEndingConfig> for LineEnding {
     fn from(line_ending: LineEndingConfig) -> Self {
         match line_ending {
@@ -797,6 +801,15 @@ impl From<LineEndingConfig> for LineEnding {
             LineEndingConfig::Nel => LineEnding::Nel,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PopupBorderConfig {
+    None,
+    All,
+    Popup,
+    Menu,
 }
 
 impl Default for Config {
@@ -820,6 +833,7 @@ impl Default for Config {
             auto_format: true,
             auto_save: false,
             idle_timeout: Duration::from_millis(250),
+            completion_timeout: Duration::from_millis(250),
             preview_completion_insert: true,
             completion_trigger_len: 2,
             auto_info: true,
@@ -846,6 +860,8 @@ impl Default for Config {
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
+            popup_border: PopupBorderConfig::None,
+            indent_heuristic: IndentationHeuristic::default(),
         }
     }
 }
@@ -942,14 +958,7 @@ pub struct Editor {
     /// avoid calculating the cursor position multiple
     /// times during rendering and should not be set by other functions.
     pub cursor_cache: Cell<Option<Option<Position>>>,
-    /// When a new completion request is sent to the server old
-    /// unfinished request must be dropped. Each completion
-    /// request is associated with a channel that cancels
-    /// when the channel is dropped. That channel is stored
-    /// here. When a new completion request is sent this
-    /// field is set and any old requests are automatically
-    /// canceled as a result
-    pub completion_request_handle: Option<oneshot::Sender<()>>,
+    pub handlers: Handlers,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -977,13 +986,16 @@ enum ThemeAction {
 
 #[derive(Debug, Clone)]
 pub enum CompleteAction {
+    Triggered,
+    /// A savepoint of the currently selected completion. The savepoint
+    /// MUST be restored before sending any event to the LSP
+    Selected {
+        savepoint: Arc<SavePoint>,
+    },
     Applied {
         trigger_offset: usize,
         changes: Vec<Change>,
     },
-    /// A savepoint of the currently selected completion. The savepoint
-    /// MUST be restored before sending any event to the LSP
-    Selected { savepoint: Arc<SavePoint> },
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -1017,6 +1029,7 @@ impl Editor {
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<syntax::Loader>,
         config: Arc<dyn DynAccess<Config>>,
+        handlers: Handlers,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
@@ -1061,8 +1074,18 @@ impl Editor {
             config_events: unbounded_channel(),
             needs_redraw: false,
             cursor_cache: Cell::new(None),
-            completion_request_handle: None,
+            handlers,
         }
+    }
+
+    pub fn popup_border(&self) -> bool {
+        self.config().popup_border == PopupBorderConfig::All
+            || self.config().popup_border == PopupBorderConfig::Popup
+    }
+
+    pub fn menu_border(&self) -> bool {
+        self.config().popup_border == PopupBorderConfig::All
+            || self.config().popup_border == PopupBorderConfig::Menu
     }
 
     pub fn apply_motion<F: Fn(&mut Self) + 'static>(&mut self, motion: F) {
@@ -1124,7 +1147,7 @@ impl Editor {
     #[inline]
     pub fn set_error<T: Into<Cow<'static, str>>>(&mut self, error: T) {
         let error = error.into();
-        log::error!("editor error: {}", error);
+        log::debug!("editor error: {}", error);
         self.status_msg = Some((error, Severity::Error));
     }
 
@@ -1215,12 +1238,19 @@ impl Editor {
                 .filter_map(|(lang, client)| match client {
                     Ok(client) => Some((lang, client)),
                     Err(err) => {
-                        log::error!(
-                            "Failed to initialize the language servers for `{}` - `{}` {{ {} }}",
-                            language.scope(),
-                            lang,
-                            err
-                        );
+                        if let helix_lsp::Error::ExecutableNotFound(err) = err {
+                            // Silence by default since some language servers might just not be installed
+                            log::debug!(
+                                "Language server not found for `{}` {} {}", language.scope(), lang, err,
+                            );
+                        } else {
+                            log::error!(
+                                "Failed to initialize the language servers for `{}` - `{}` {{ {} }}",
+                                language.scope(),
+                                lang,
+                                err
+                            );
+                        }
                         None
                     }
                 })
@@ -1444,7 +1474,7 @@ impl Editor {
 
     // ??? possible use for integration tests
     pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, Error> {
-        let path = helix_core::path::get_canonicalized_path(path);
+        let path = helix_stdx::path::canonicalize(path);
         let id = self.document_by_path(&path).map(|doc| doc.id);
 
         let id = if let Some(id) = id {
@@ -1456,6 +1486,10 @@ impl Editor {
                 Some(self.syn_loader.clone()),
                 self.config.clone(),
             )?;
+
+            let diagnostics =
+                Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, &doc);
+            doc.replace_diagnostics(diagnostics, &[], None);
 
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
                 doc.set_diff_base(diff_base);
@@ -1686,6 +1720,60 @@ impl Editor {
             .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
     }
 
+    /// Returns all supported diagnostics for the document
+    pub fn doc_diagnostics<'a>(
+        language_servers: &'a helix_lsp::Registry,
+        diagnostics: &'a BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
+        document: &Document,
+    ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
+        Editor::doc_diagnostics_with_filter(language_servers, diagnostics, document, |_, _| true)
+    }
+
+    /// Returns all supported diagnostics for the document
+    /// filtered by `filter` which is invocated with the raw `lsp::Diagnostic` and the language server id it came from
+    pub fn doc_diagnostics_with_filter<'a>(
+        language_servers: &'a helix_lsp::Registry,
+        diagnostics: &'a BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
+
+        document: &Document,
+        filter: impl Fn(&lsp::Diagnostic, usize) -> bool + 'a,
+    ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
+        let text = document.text().clone();
+        let language_config = document.language.clone();
+        document
+            .path()
+            .and_then(|path| url::Url::from_file_path(path).ok()) // TODO log error?
+            .and_then(|uri| diagnostics.get(&uri))
+            .map(|diags| {
+                diags.iter().filter_map(move |(diagnostic, lsp_id)| {
+                    let ls = language_servers.get_by_id(*lsp_id)?;
+                    language_config
+                        .as_ref()
+                        .and_then(|c| {
+                            c.language_servers.iter().find(|features| {
+                                features.name == ls.name()
+                                    && features.has_feature(LanguageServerFeature::Diagnostics)
+                            })
+                        })
+                        .and_then(|_| {
+                            if filter(diagnostic, *lsp_id) {
+                                Document::lsp_diagnostic_to_diagnostic(
+                                    &text,
+                                    language_config.as_deref(),
+                                    diagnostic,
+                                    *lsp_id,
+                                    ls.offset_encoding(),
+                                )
+                            } else {
+                                None
+                            }
+                        })
+                })
+            })
+            .into_iter()
+            .flatten()
+    }
+
     /// Gets the primary cursor position in screen coordinates,
     /// or `None` if the primary cursor is not visible on screen.
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
@@ -1831,6 +1919,30 @@ impl Editor {
         self.debugger
             .as_ref()
             .and_then(|debugger| debugger.current_stack_frame())
+    }
+
+    /// Returns the id of a view that this doc contains a selection for,
+    /// making sure it is synced with the current changes
+    /// if possible or there are no selections returns current_view
+    /// otherwise uses an arbitrary view
+    pub fn get_synced_view_id(&mut self, id: DocumentId) -> ViewId {
+        let current_view = view_mut!(self);
+        let doc = self.documents.get_mut(&id).unwrap();
+        if doc.selections().contains_key(&current_view.id) {
+            // only need to sync current view if this is not the current doc
+            if current_view.doc != id {
+                current_view.sync_changes(doc);
+            }
+            current_view.id
+        } else if let Some(view_id) = doc.selections().keys().next() {
+            let view_id = *view_id;
+            let view = self.tree.get_mut(view_id);
+            view.sync_changes(doc);
+            view_id
+        } else {
+            doc.ensure_view_init(current_view.id);
+            current_view.id
+        }
     }
 }
 

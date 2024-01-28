@@ -1,0 +1,102 @@
+attribute = "buff"
+keyword = "sglow"
+"keyword.directive" = "defineish" 
+namespace = "blue"
+punctuation = "white"
+"punctuation.delimiter" = "functionish"
+operator = "greenish"
+special = "maize"
+"variable.other.member" = "bsienna"
+variable = "tan"
+"variable.parameter" = { fg = "parameters" }
+"variable.builtin" = "white"
+type = "light-blue"
+"type.builtin" = "functionish" 
+constructor = "typeish"
+function = "functionish"
+"function.macro" = "blue"
+"function.builtin" = "typeish" 
+tag = "functionish"
+comment = "bgrey"
+constant = "tan"
+"constant.builtin" = "#D38588"
+string = "redish"
+"constant.numeric" = "functionish"
+"constant.character.escape" = "cyan"
+label = "yellow"
+
+"markup.heading" = "functionish"
+"markup.list" = "status-two"
+"markup.quote" = "tan"
+"markup.bold" = { fg = "sglow", modifiers = ["bold"] }
+"markup.italic" = { fg = "sglow", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "sglow", modifiers = ["underlined"] }
+"markup.link.text" = "greenish"
+"markup.raw" = "light-grey"
+
+"diff.plus" = "#7DDF64"
+"diff.minus" = "#F22B29"
+"diff.delta" = "#6f44f0"
+
+"ui.background" = { fg = "#25262B", bg="#1f1f21" }
+"ui.background.separator" = { fg = "sglow" }
+"ui.linenr" = { fg = "light-grey", modifiers = ["italic"] }
+"ui.linenr.selected" = { fg = "bpink", modifiers = ["bold"] }
+"ui.statusline" = { fg = "black", bg = "light-grey", modifiers = ["bold"] }
+"ui.statusline.inactive" = { fg = "black", bg = "bgrey-two" }
+"ui.popup" = { fg = "bgrey", bg = "#25262B" }
+"ui.window" = { fg = "white" }
+"ui.help" = { bg = "#3f4047", fg = "light-grey" }
+
+"ui.text" = { fg = "white" }
+"ui.text.focus" = { fg = "maize", bg = "bgrey" }
+"ui.text.inactive" = "bgrey"
+"ui.virtual" = { fg = "blue" }
+"ui.virtual.ruler" = { bg = "bgrey-two" }
+"ui.virtual.indent-guide" = { fg = "bpink" }
+
+"ui.selection" = { bg = "maize" }
+"ui.selection.primary" = { fg = "white", bg = "bgrey" }
+"ui.cursor.select" = { bg = "white" }
+"ui.cursor.insert" = { bg = "white" }
+"ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
+"ui.cursor" = { bg = "bgrey-two", modifiers = ["reversed"] }
+"ui.cursorline.primary" = { bg = "white" }
+"ui.highlight" = { bg = "white" }
+"ui.highlight.frameline" = { bg = "#634450" }
+"ui.debug" = { fg = "#634450" }
+"ui.debug.breakpoint" = { fg = "bpink" }
+"ui.menu" = { fg = "white", bg = "#23232d" }
+"ui.menu.selected" = { fg = "white", bg = "bgrey" }
+"ui.menu.scroll" = { fg = "white", bg = "white" }
+
+"diagnostic.hint" = { underline = { color = "maize", style = "curl" } }
+"diagnostic.info" = { underline = { color = "sglow", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "redish", style = "curl" } }
+"diagnostic.error" = { underline = { color = "bpink", style = "curl" } }
+
+warning = "bpink"
+error = "bsienna"
+info = "maize"
+hint = "tan"
+
+[palette]
+parameters = "#d89182"
+defineish = "#71c45c"
+buff = "#f0dc82"
+tan = "#DAB785"
+typeish = "#AAAAA5"
+greenish = "#458588"
+functionish = "#b784a3"
+bsienna = "#D5896F"
+bpink = "#FF5964"
+maize = "#FFE74C"
+bgrey = "#8c8681"
+sglow = "#FFCF56"
+status = "#15616D"
+status-two = "#3879A1"
+redish = "#E76B74"
+light-grey = "#b7afa8"
+bgrey-two = "#706b68"
+gruvgreen = "#B8BB26"

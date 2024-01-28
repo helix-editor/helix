@@ -54,4 +54,7 @@ The first argument (a capture) must be equal to the second argument
 The first argument (a capture) must match the regex given in the
 second argument (a string).
 
+- `#any-of?` (standard):
+The first argument (a capture) must be one of the other arguments (strings).
+
 [upstream-docs]: http://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection

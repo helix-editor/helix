@@ -10,7 +10,7 @@
 "ui.cursor" = { fg = "text", bg = "highlight_high" }
 # "ui.cursor.select" = {}
 "ui.cursor.match" = { fg = "text", bg = "highlight_med" }
-"ui.cursor.primary" = { fg = "text", bg = "muted"}
+"ui.cursor.primary" = { fg = "text", bg = "muted" }
 
 # "ui.gutter" = {}
 # "ui.gutter.selected" = {}
@@ -18,6 +18,8 @@
 "ui.linenr" = { fg = "muted" }
 "ui.linenr.selected" = { fg = "text" }
 
+"ui.bufferline" = { fg = "muted", bg = "base" }
+"ui.bufferline.active" = { fg = "text", bg = "overlay" }
 "ui.statusline" = { fg = "subtle", bg = "surface" }
 "ui.statusline.inactive" = { fg = "muted", bg = "surface" }
 "ui.statusline.normal" = { fg = "rose", bg = "rose_10" }
@@ -71,8 +73,8 @@
 "constructor" = "foam"
 
 "constant" = "foam"
-"constant.builtin" = "rose"
-# "constant.builtin.boolean" = ""
+"constant.builtin" = "love"
+"constant.builtin.boolean" = "rose"
 "constant.character" = "gold"
 "constant.character.escape" = "pine"
 "constant.numeric" = "gold"
@@ -86,7 +88,7 @@
 # "string.special.url" = ""
 # "string.special.symbol" = ""
 
-"comment" = { fg = "muted", modifiers = ["italic"]}
+"comment" = { fg = "muted", modifiers = ["italic"] }
 # "comment.line" = ""
 # "comment.block" = ""
 # "comment.block.documentation" = ""
@@ -95,7 +97,7 @@
 "variable.builtin" = "love"
 "variable.parameter" = "iris"
 # "variable.other" = ""
-# "variable.other.member" = ""
+"variable.other.member" = "foam"
 
 "label" = "foam"
 
@@ -120,7 +122,7 @@
 
 "operator" = "subtle"
 
-"function" = "rose" # maybe pine
+"function" = "rose"         # maybe pine
 "function.builtin" = "love"
 # "function.method" = ""
 # "function.macro" = ""
@@ -128,7 +130,7 @@
 
 "tag" = "foam"
 
-"namespace" = "iris"
+"namespace" = "text"
 
 "markup.heading.marker" = "muted"
 "markup.heading" = { fg = "iris", modifiers = ["bold"] }
@@ -147,7 +149,7 @@
 "markup.italic" = { modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link" = "iris"
-"markup.link.url" = { fg = "iris",  underline = { color = "iris", style = "line" } } 
+"markup.link.url" = { fg = "iris", underline = { color = "iris", style = "line" } }
 "markup.link.label" = "subtle"
 "markup.link.text" = "text"
 "markup.quote" = "subtle"
@@ -167,24 +169,24 @@
 # "diff.delta.moved" = ""
 
 [palette]
-base           = "#191724" 
-surface        = "#1f1d2e" 
-overlay        = "#26233a"
-muted          = "#6e6a86"
-subtle         = "#908caa"
-text           = "#e0def4"
-love           = "#eb6f92"
-love_10        = "#311f30"
-gold           = "#f6c177"
-gold_10        = "#30282c"
-rose           = "#ebbcba"
-rose_10        = "#2f2834"
-pine           = "#31748f"
-pine_10        = "#1a2030"
-foam           = "#9ccfd8"
-foam_10        = "#252937"
-iris           = "#c4a7e7"
-iris_10        = "#2b2539"
-highlight_low  = "#21202e"
-highlight_med  = "#403d52"
+base = "#191724"
+surface = "#1f1d2e"
+overlay = "#26233a"
+muted = "#6e6a86"
+subtle = "#908caa"
+text = "#e0def4"
+love = "#eb6f92"
+love_10 = "#311f30"
+gold = "#f6c177"
+gold_10 = "#30282c"
+rose = "#ebbcba"
+rose_10 = "#2f2834"
+pine = "#31748f"
+pine_10 = "#1a2030"
+foam = "#9ccfd8"
+foam_10 = "#252937"
+iris = "#c4a7e7"
+iris_10 = "#2b2539"
+highlight_low = "#21202e"
+highlight_med = "#403d52"
 highlight_high = "#524f67"
