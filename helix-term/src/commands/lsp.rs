@@ -746,7 +746,16 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup = Popup::new("code-action", picker).with_scrollbar(false);
+            let margin = if editor.menu_border() {
+                Margin::vertical(1)
+            } else {
+                Margin::none()
+            };
+
+            let popup = Popup::new("code-action", picker)
+                .with_scrollbar(false)
+                .margin(margin);
+
             compositor.replace_or_push("code-action", popup);
         };
 
@@ -899,7 +908,7 @@ pub fn apply_workspace_edit(
             }
         };
 
-        let doc = doc_mut!(editor, &doc_id);
+        let doc = doc!(editor, &doc_id);
         if let Some(version) = version {
             if version != doc.version() {
                 let err = format!("outdated workspace edit for {path:?}");
@@ -910,18 +919,8 @@ pub fn apply_workspace_edit(
         }
 
         // Need to determine a view for apply/append_changes_to_history
-        let selections = doc.selections();
-        let view_id = if selections.contains_key(&current_view_id) {
-            // use current if possible
-            current_view_id
-        } else {
-            // Hack: we take the first available view_id
-            selections
-                .keys()
-                .next()
-                .copied()
-                .expect("No view_id available")
-        };
+        let view_id = editor.get_synced_view_id(doc_id);
+        let doc = doc_mut!(editor, &doc_id);
 
         let transaction = helix_lsp::util::generate_transaction_from_edits(
             doc.text(),
@@ -1015,21 +1014,20 @@ pub fn apply_workspace_edit(
     Ok(())
 }
 
+/// Precondition: `locations` should be non-empty.
 fn goto_impl(
     editor: &mut Editor,
     compositor: &mut Compositor,
     locations: Vec<lsp::Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    let cwdir = helix_loader::current_working_dir();
+    let cwdir = helix_stdx::env::current_working_dir();
 
     match locations.as_slice() {
         [location] => {
             jump_to_location(editor, location, offset_encoding, Action::Replace);
         }
-        [] => {
-            editor.set_error("No definition found.");
-        }
+        [] => unreachable!("`locations` should be non-empty for `goto_impl`"),
         _locations => {
             let picker = Picker::new(locations, cwdir, move |cx, location, action| {
                 jump_to_location(cx.editor, location, offset_encoding, action)
@@ -1071,7 +1069,11 @@ where
         future,
         move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
             let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
+            if items.is_empty() {
+                editor.set_error("No definition found.");
+            } else {
+                goto_impl(editor, compositor, items, offset_encoding);
+            }
         },
     );
 }
@@ -1131,7 +1133,11 @@ pub fn goto_reference(cx: &mut Context) {
         future,
         move |editor, compositor, response: Option<Vec<lsp::Location>>| {
             let items = response.unwrap_or_default();
-            goto_impl(editor, compositor, items, offset_encoding);
+            if items.is_empty() {
+                editor.set_error("No references found.");
+            } else {
+                goto_impl(editor, compositor, items, offset_encoding);
+            }
         },
     );
 }
@@ -1200,139 +1206,9 @@ pub enum SignatureHelpInvoked {
 }
 
 pub fn signature_help(cx: &mut Context) {
-    signature_help_impl(cx, SignatureHelpInvoked::Manual)
-}
-
-pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
-    let (view, doc) = current!(cx.editor);
-
-    // TODO merge multiple language server signature help into one instead of just taking the first language server that supports it
-    let future = doc
-        .language_servers_with_feature(LanguageServerFeature::SignatureHelp)
-        .find_map(|language_server| {
-            let pos = doc.position(view.id, language_server.offset_encoding());
-            language_server.text_document_signature_help(doc.identifier(), pos, None)
-        });
-
-    let Some(future) = future else {
-        // Do not show the message if signature help was invoked
-        // automatically on backspace, trigger characters, etc.
-        if invoked == SignatureHelpInvoked::Manual {
-            cx.editor
-                .set_error("No configured language server supports signature-help");
-        }
-        return;
-    };
-    signature_help_impl_with_future(cx, future.boxed(), invoked);
-}
-
-pub fn signature_help_impl_with_future(
-    cx: &mut Context,
-    future: BoxFuture<'static, helix_lsp::Result<Value>>,
-    invoked: SignatureHelpInvoked,
-) {
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::SignatureHelp>| {
-            let config = &editor.config();
-
-            if !(config.lsp.auto_signature_help
-                || SignatureHelp::visible_popup(compositor).is_some()
-                || invoked == SignatureHelpInvoked::Manual)
-            {
-                return;
-            }
-
-            // If the signature help invocation is automatic, don't show it outside of Insert Mode:
-            // it very probably means the server was a little slow to respond and the user has
-            // already moved on to something else, making a signature help popup will just be an
-            // annoyance, see https://github.com/helix-editor/helix/issues/3112
-            if invoked == SignatureHelpInvoked::Automatic && editor.mode != Mode::Insert {
-                return;
-            }
-
-            let response = match response {
-                // According to the spec the response should be None if there
-                // are no signatures, but some servers don't follow this.
-                Some(s) if !s.signatures.is_empty() => s,
-                _ => {
-                    compositor.remove(SignatureHelp::ID);
-                    return;
-                }
-            };
-            let doc = doc!(editor);
-            let language = doc.language_name().unwrap_or("");
-
-            let signature = match response
-                .signatures
-                .get(response.active_signature.unwrap_or(0) as usize)
-            {
-                Some(s) => s,
-                None => return,
-            };
-            let mut contents = SignatureHelp::new(
-                signature.label.clone(),
-                language.to_string(),
-                Arc::clone(&editor.syn_loader),
-            );
-
-            let signature_doc = if config.lsp.display_signature_help_docs {
-                signature.documentation.as_ref().map(|doc| match doc {
-                    lsp::Documentation::String(s) => s.clone(),
-                    lsp::Documentation::MarkupContent(markup) => markup.value.clone(),
-                })
-            } else {
-                None
-            };
-
-            contents.set_signature_doc(signature_doc);
-
-            let active_param_range = || -> Option<(usize, usize)> {
-                let param_idx = signature
-                    .active_parameter
-                    .or(response.active_parameter)
-                    .unwrap_or(0) as usize;
-                let param = signature.parameters.as_ref()?.get(param_idx)?;
-                match &param.label {
-                    lsp::ParameterLabel::Simple(string) => {
-                        let start = signature.label.find(string.as_str())?;
-                        Some((start, start + string.len()))
-                    }
-                    lsp::ParameterLabel::LabelOffsets([start, end]) => {
-                        // LS sends offsets based on utf-16 based string representation
-                        // but highlighting in helix is done using byte offset.
-                        use helix_core::str_utils::char_to_byte_idx;
-                        let from = char_to_byte_idx(&signature.label, *start as usize);
-                        let to = char_to_byte_idx(&signature.label, *end as usize);
-                        Some((from, to))
-                    }
-                }
-            };
-            contents.set_active_param_range(active_param_range());
-
-            let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
-            let mut popup = Popup::new(SignatureHelp::ID, contents)
-                .position(old_popup.and_then(|p| p.get_position()))
-                .position_bias(Open::Above)
-                .ignore_escape_key(true);
-
-            // Don't create a popup if it intersects the auto-complete menu.
-            let size = compositor.size();
-            if compositor
-                .find::<ui::EditorView>()
-                .unwrap()
-                .completion
-                .as_mut()
-                .map(|completion| completion.area(size, editor))
-                .filter(|area| area.intersects(popup.area(size, editor)))
-                .is_some()
-            {
-                return;
-            }
-
-            compositor.replace_or_push(SignatureHelp::ID, popup);
-        },
-    );
+    cx.editor
+        .handlers
+        .trigger_signature_help(SignatureHelpInvoked::Manual, cx.editor)
 }
 
 pub fn hover(cx: &mut Context) {
@@ -1469,6 +1345,16 @@ pub fn rename_symbol(cx: &mut Context) {
     }
 
     let (view, doc) = current_ref!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
+        .next()
+        .is_none()
+    {
+        cx.editor
+            .set_error("No configured language server supports symbol renaming");
+        return;
+    }
 
     let language_server_with_prepare_rename_support = doc
         .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
