@@ -327,6 +327,29 @@ language-servers = [ "mint" ]
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
+name = "janet"
+scope = "source.janet"
+injection-regex = "janet"
+file-types = ["cgen", "janet", "jdn"]
+shebangs = ["janet"]
+roots = ["project.janet"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "janet-format" }
+grammar = "janet-simple"
+
+[language.auto-pairs]
+'"' = '"'
+'(' = ')'
+'[' = ']'
+'{' = '}'
+"`" = "`"
+
+[[grammar]]
+name = "janet-simple"
+source = { git = "https://github.com/sogaiu/tree-sitter-janet-simple", rev = "51271e260346878e1a1aa6c506ce6a797b7c25e2" }
+
+[[language]]
 name = "json"
 scope = "source.json"
 injection-regex = "json"
@@ -3007,15 +3030,6 @@ file-types = ["log"]
 [[grammar]]
 name = "log"
 source = { git = "https://github.com/Tudyx/tree-sitter-log", rev = "62cfe307e942af3417171243b599cc7deac5eab9" }
-
-[[language]]
-name = "janet"
-scope = "source.janet"
-injection-regex = "janet"
-file-types = ["janet"]
-comment-token = "#"
-indent = { tab-width = 2, unit = "  " }
-grammar = "clojure"
 
 [[language]]
 name = "hocon"
