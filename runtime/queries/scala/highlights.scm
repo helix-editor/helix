@@ -57,13 +57,21 @@
 
 (class_definition
   body: (template_body
-    (function_definition
-      name: (identifier) @function.method)))
-(object_definition
-  body: (template_body
-    (function_definition
-      name: (identifier) @function.method)))
+    [
+      (function_definition
+        name: (identifier) @function.method)
+      (function_declaration
+        name: (identifier) @function.method)
+    ]))
 (trait_definition
+  body: (template_body
+    [
+      (function_definition
+        name: (identifier) @function.method)
+      (function_declaration
+        name: (identifier) @function.method)
+    ]))
+(object_definition
   body: (template_body
     (function_definition
       name: (identifier) @function.method)))
