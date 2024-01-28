@@ -1344,8 +1344,7 @@ actions available in a popup. This will allow you to:
 =                  CHAPTER 13.1 CREATE NEW SPLIT                =
 =================================================================
 
-In normal mode, press ctrl-w (i.e. start pressing ctrl, and
-while it is pressed, press w) to open the Window menu. This will
+In normal mode, press ctrl-w to open the Window menu. This will
 display a pop up that reminds of most window splitting and window
 control commands available.
 
