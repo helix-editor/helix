@@ -8,7 +8,6 @@ use super::*;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{encoding, line_ending, shellwords::Shellwords};
-use helix_lsp::{OffsetEncoding, Url};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
@@ -2404,67 +2403,14 @@ fn move_buffer(
 
     ensure!(args.len() == 1, format!(":move takes one argument"));
     let doc = doc!(cx.editor);
-
-    let new_path =
-        helix_stdx::path::canonicalize(&PathBuf::from(args.first().unwrap().to_string()));
     let old_path = doc
         .path()
-        .ok_or_else(|| anyhow!("Scratch buffer cannot be moved. Use :write instead"))?
+        .context("Scratch buffer cannot be moved. Use :write instead")?
         .clone();
-    let old_path_as_url = doc.url().unwrap();
-    let new_path_as_url = Url::from_file_path(&new_path).unwrap();
-
-    let edits: Vec<(
-        helix_lsp::Result<helix_lsp::lsp::WorkspaceEdit>,
-        OffsetEncoding,
-        String,
-    )> = doc
-        .language_servers()
-        .map(|lsp| {
-            (
-                lsp.prepare_file_rename(&old_path_as_url, &new_path_as_url),
-                lsp.offset_encoding(),
-                lsp.name().to_owned(),
-            )
-        })
-        .filter(|(f, _, _)| f.is_some())
-        .map(|(f, encoding, name)| (helix_lsp::block_on(f.unwrap()), encoding, name))
-        .collect();
-
-    for (lsp_reply, encoding, name) in edits {
-        match lsp_reply {
-            Ok(edit) => {
-                if let Err(e) = apply_workspace_edit(cx.editor, encoding, &edit) {
-                    log::error!(
-                        ":move command failed to apply edits from lsp {}: {:?}",
-                        name,
-                        e
-                    );
-                };
-            }
-            Err(e) => {
-                log::error!("LSP {} failed to treat willRename request: {:?}", name, e);
-            }
-        };
+    let new_path = args.first().unwrap().to_string();
+    if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
+        bail!("Could not move file: {err}");
     }
-
-    let doc = doc_mut!(cx.editor);
-
-    doc.set_path(Some(new_path.as_path()));
-    if let Err(e) = std::fs::rename(&old_path, &new_path) {
-        doc.set_path(Some(old_path.as_path()));
-        bail!("Could not move file: {}", e);
-    };
-
-    doc.language_servers().for_each(|lsp| {
-        lsp.did_file_rename(&old_path_as_url, &new_path_as_url);
-    });
-
-    cx.editor
-        .language_servers
-        .file_event_handler
-        .file_changed(new_path);
-
     Ok(())
 }
 

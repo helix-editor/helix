@@ -726,8 +726,7 @@ pub fn code_action(cx: &mut Context) {
                             resolved_code_action.as_ref().unwrap_or(code_action);
 
                         if let Some(ref workspace_edit) = resolved_code_action.edit {
-                            log::debug!("edit: {:?}", workspace_edit);
-                            let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                            let _ = editor.apply_workspace_edit(offset_encoding, workspace_edit);
                         }
 
                         // if code action provides both edit and command first the edit
@@ -787,63 +786,6 @@ pub fn execute_lsp_command(editor: &mut Editor, language_server_id: usize, cmd: 
     });
 }
 
-pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
-    use lsp::ResourceOp;
-    use std::fs;
-    match op {
-        ResourceOp::Create(op) => {
-            let path = op.uri.to_file_path().unwrap();
-            let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
-                !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
-            });
-            if ignore_if_exists && path.exists() {
-                Ok(())
-            } else {
-                // Create directory if it does not exist
-                if let Some(dir) = path.parent() {
-                    if !dir.is_dir() {
-                        fs::create_dir_all(dir)?;
-                    }
-                }
-
-                fs::write(&path, [])
-            }
-        }
-        ResourceOp::Delete(op) => {
-            let path = op.uri.to_file_path().unwrap();
-            if path.is_dir() {
-                let recursive = op
-                    .options
-                    .as_ref()
-                    .and_then(|options| options.recursive)
-                    .unwrap_or(false);
-
-                if recursive {
-                    fs::remove_dir_all(&path)
-                } else {
-                    fs::remove_dir(&path)
-                }
-            } else if path.is_file() {
-                fs::remove_file(&path)
-            } else {
-                Ok(())
-            }
-        }
-        ResourceOp::Rename(op) => {
-            let from = op.old_uri.to_file_path().unwrap();
-            let to = op.new_uri.to_file_path().unwrap();
-            let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
-                !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
-            });
-            if ignore_if_exists && to.exists() {
-                Ok(())
-            } else {
-                fs::rename(from, &to)
-            }
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct ApplyEditError {
     pub kind: ApplyEditErrorKind,
@@ -869,142 +811,6 @@ impl ToString for ApplyEditErrorKind {
             ApplyEditErrorKind::IoError(err) => err.to_string(),
         }
     }
-}
-
-///TODO make this transactional (and set failureMode to transactional)
-pub fn apply_workspace_edit(
-    editor: &mut Editor,
-    offset_encoding: OffsetEncoding,
-    workspace_edit: &lsp::WorkspaceEdit,
-) -> Result<(), ApplyEditError> {
-    let mut apply_edits = |uri: &helix_lsp::Url,
-                           version: Option<i32>,
-                           text_edits: Vec<lsp::TextEdit>|
-     -> Result<(), ApplyEditErrorKind> {
-        let path = match uri.to_file_path() {
-            Ok(path) => path,
-            Err(_) => {
-                let err = format!("unable to convert URI to filepath: {}", uri);
-                log::error!("{}", err);
-                editor.set_error(err);
-                return Err(ApplyEditErrorKind::UnknownURISchema);
-            }
-        };
-
-        let doc_id = match editor.open(&path, Action::Load) {
-            Ok(doc_id) => doc_id,
-            Err(err) => {
-                let err = format!("failed to open document: {}: {}", uri, err);
-                log::error!("{}", err);
-                editor.set_error(err);
-                return Err(ApplyEditErrorKind::FileNotFound);
-            }
-        };
-
-        let doc = doc!(editor, &doc_id);
-        if let Some(version) = version {
-            if version != doc.version() {
-                let err = format!("outdated workspace edit for {path:?}");
-                log::error!("{err}, expected {} but got {version}", doc.version());
-                editor.set_error(err);
-                return Err(ApplyEditErrorKind::DocumentChanged);
-            }
-        }
-
-        // Need to determine a view for apply/append_changes_to_history
-        let view_id = editor.get_synced_view_id(doc_id);
-        let doc = doc_mut!(editor, &doc_id);
-
-        let transaction = helix_lsp::util::generate_transaction_from_edits(
-            doc.text(),
-            text_edits,
-            offset_encoding,
-        );
-        let view = view_mut!(editor, view_id);
-        doc.apply(&transaction, view.id);
-        doc.append_changes_to_history(view);
-        Ok(())
-    };
-
-    if let Some(ref document_changes) = workspace_edit.document_changes {
-        match document_changes {
-            lsp::DocumentChanges::Edits(document_edits) => {
-                for (i, document_edit) in document_edits.iter().enumerate() {
-                    let edits = document_edit
-                        .edits
-                        .iter()
-                        .map(|edit| match edit {
-                            lsp::OneOf::Left(text_edit) => text_edit,
-                            lsp::OneOf::Right(annotated_text_edit) => {
-                                &annotated_text_edit.text_edit
-                            }
-                        })
-                        .cloned()
-                        .collect();
-                    apply_edits(
-                        &document_edit.text_document.uri,
-                        document_edit.text_document.version,
-                        edits,
-                    )
-                    .map_err(|kind| ApplyEditError {
-                        kind,
-                        failed_change_idx: i,
-                    })?;
-                }
-            }
-            lsp::DocumentChanges::Operations(operations) => {
-                log::debug!("document changes - operations: {:?}", operations);
-                for (i, operation) in operations.iter().enumerate() {
-                    match operation {
-                        lsp::DocumentChangeOperation::Op(op) => {
-                            apply_document_resource_op(op).map_err(|io| ApplyEditError {
-                                kind: ApplyEditErrorKind::IoError(io),
-                                failed_change_idx: i,
-                            })?;
-                        }
-
-                        lsp::DocumentChangeOperation::Edit(document_edit) => {
-                            let edits = document_edit
-                                .edits
-                                .iter()
-                                .map(|edit| match edit {
-                                    lsp::OneOf::Left(text_edit) => text_edit,
-                                    lsp::OneOf::Right(annotated_text_edit) => {
-                                        &annotated_text_edit.text_edit
-                                    }
-                                })
-                                .cloned()
-                                .collect();
-                            apply_edits(
-                                &document_edit.text_document.uri,
-                                document_edit.text_document.version,
-                                edits,
-                            )
-                            .map_err(|kind| ApplyEditError {
-                                kind,
-                                failed_change_idx: i,
-                            })?;
-                        }
-                    }
-                }
-            }
-        }
-
-        return Ok(());
-    }
-
-    if let Some(ref changes) = workspace_edit.changes {
-        log::debug!("workspace changes: {:?}", changes);
-        for (i, (uri, text_edits)) in changes.iter().enumerate() {
-            let text_edits = text_edits.to_vec();
-            apply_edits(uri, None, text_edits).map_err(|kind| ApplyEditError {
-                kind,
-                failed_change_idx: i,
-            })?;
-        }
-    }
-
-    Ok(())
 }
 
 /// Precondition: `locations` should be non-empty.
@@ -1263,7 +1069,7 @@ pub fn rename_symbol(cx: &mut Context) {
 
                 match block_on(future) {
                     Ok(edits) => {
-                        let _ = apply_workspace_edit(cx.editor, offset_encoding, &edits);
+                        let _ = cx.editor.apply_workspace_edit(offset_encoding, &edits);
                     }
                     Err(err) => cx.editor.set_error(err.to_string()),
                 }

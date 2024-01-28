@@ -21,7 +21,6 @@ use tui::backend::Backend;
 
 use crate::{
     args::Args,
-    commands::apply_workspace_edit,
     compositor::{Compositor, Event},
     config::Config,
     handlers,
@@ -573,26 +572,8 @@ impl Application {
         let lines = doc_save_event.text.len_lines();
         let bytes = doc_save_event.text.len_bytes();
 
-        if doc.path() != Some(&doc_save_event.path) {
-            doc.set_path(Some(&doc_save_event.path));
-
-            let loader = self.editor.syn_loader.clone();
-
-            // borrowing the same doc again to get around the borrow checker
-            let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
-            let id = doc.id();
-            doc.detect_language(loader);
-            self.editor.refresh_language_servers(id);
-            // and again a borrow checker workaround...
-            let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
-            let diagnostics = Editor::doc_diagnostics(
-                &self.editor.language_servers,
-                &self.editor.diagnostics,
-                doc,
-            );
-            doc.replace_diagnostics(diagnostics, &[], None);
-        }
-
+        self.editor
+            .set_doc_path(doc_save_event.doc_id, &doc_save_event.path);
         // TODO: fix being overwritten by lsp
         self.editor.set_status(format!(
             "'{}' written, {}L {}B",
@@ -1011,11 +992,9 @@ impl Application {
                         let language_server = language_server!();
                         if language_server.is_initialized() {
                             let offset_encoding = language_server.offset_encoding();
-                            let res = apply_workspace_edit(
-                                &mut self.editor,
-                                offset_encoding,
-                                &params.edit,
-                            );
+                            let res = self
+                                .editor
+                                .apply_workspace_edit(offset_encoding, &params.edit);
 
                             Ok(json!(lsp::ApplyWorkspaceEditResponse {
                                 applied: res.is_ok(),
