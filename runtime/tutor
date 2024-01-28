@@ -1361,6 +1361,7 @@ and create a new buffer, and your cursor will jump to the new
 horizontal split.
 
 
+
 =================================================================
 =                    CHAPTER 13.2 MOVE BETWEEN SPLITS           =
 =================================================================
@@ -1369,17 +1370,17 @@ Use ctrl-w k or ctrl-w arrow-up to move to the split above your
 current split. Use ctrl-w j or ctrl-w arrow-down to move back
 to the split below. Use ctrl-w h or ctrl-w arrow-left to move
 to the split left, and ctrl-w l or ctrl-w arrow-right to move
-back to the split right.
+back to the split right. To move to the next split (in opening
+order), press ctrl-w w .
 
 You can now do whatever you want in your new buffers and splits.
-
 Once you are done with using your new buffer split,
 you can close it with ctrl-w q . Move to the bottom right split
 with ctrl-w l then ctrl-w j, then press ctrl-w q to close this
 specific split.
 
 You can also close all splits except the current one with ctrl-w o .
-Open a third vertical split with ctrl-w , then move to the
+Open a third vertical split with ctrl-w nv , then move to the
 leftest split with ctrl-w h twice, then from inside the split on
 the left press ctrl-w o to close all except this split.
 
@@ -1393,7 +1394,7 @@ buffer horizontally and open a copy of it on the right too) and
 use again ctrl-w v (to split half way vertically with the buffer
 opened on both splits).
 
-
+Close extra splits with ctrl-w o to come back to a single window.
 
 
 
@@ -1428,20 +1429,46 @@ instead of a new empty buffer.
 
 
 =================================================================
-=                       CHAPTER 13.3       =
+=                       CHAPTER 13.3 SWAPPING SPLITS            =
 =================================================================
 
+Open a split on the left with :vs hello1 , and then a split below
+with :hs hello2 .
+
+From hello2, press ctrl-w K to swap with the split above: now, the
+split hello2 is on the top, while hello1 is on the bottom.
+
+Still from hello2, press ctrl-w H to swap with teh split on the
+left: now, hello2 is on the left, and the tutor is on the top
+right. After ctrl-w, you can use HJKL to split with the buffer
+on the left / below / above / on the right.
+
+Move back to the tutor split, and press ctrl-w o to only keep
+this split.
 
 
 
 
 
+=================================================================
+=                       CHAPTER 13.3 TRANSPOSE SPLITS           =
+=================================================================
 
+Open a split on the left with :vs hello1 , and then a split below
+with :vs hello2.
 
+Move to the tutor split, then press ctrl-w t to transpose the
+vertical split that was opened from this window: now hello1 and
+hello2 and below, rather than on the right, of the tutor. Press
+ctrl-w t to transpose back.
 
+Move to the hello1 split, then press ctrl-2 t to transpose the
+horizontal split that was opened from this window: now hello2
+is is on the right, rather than below, hello1. Press ctrl-w t to
+transpose back.
 
-
-
+Move back to the tutor split and press ctrl-w o to close all but
+the tutor window.
 
 
 
