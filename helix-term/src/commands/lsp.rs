@@ -21,6 +21,7 @@ use helix_core::{
     movement::Direction, path, syntax::LanguageServerFeature, text_annotations::InlineAnnotation,
     Selection,
 };
+use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
     editor::Action,
