@@ -1,4 +1,4 @@
-use futures_util::{future::BoxFuture, stream::FuturesUnordered, FutureExt};
+use futures_util::{stream::FuturesUnordered, FutureExt};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -8,23 +8,24 @@ use helix_lsp::{
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
     Client, OffsetEncoding,
 };
-use serde_json::Value;
 use tokio_stream::StreamExt;
 use tui::{
     text::{Span, Spans},
     widgets::Row,
 };
 
-use super::{align_view, push_jump, Align, Context, Editor, Open};
+use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
-    movement::Direction, path, syntax::LanguageServerFeature, text_annotations::InlineAnnotation,
+    movement::Direction, syntax::LanguageServerFeature, text_annotations::InlineAnnotation,
     Selection,
 };
 use helix_stdx::path;
 use helix_view::{
-    document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
+    document::{DocumentInlayHints, DocumentInlayHintsId},
     editor::Action,
+    graphics::Margin,
+    handlers::lsp::SignatureHelpInvoked,
     theme::Style,
     Document, View,
 };
@@ -32,10 +33,7 @@ use helix_view::{
 use crate::{
     compositor::{self, Compositor},
     job::Callback,
-    ui::{
-        self, lsp::SignatureHelp, overlay::overlaid, DynamicPicker, FileLocation, Picker, Popup,
-        PromptEvent,
-    },
+    ui::{self, overlay::overlaid, DynamicPicker, FileLocation, Picker, Popup, PromptEvent},
 };
 
 use std::{
@@ -44,14 +42,13 @@ use std::{
     fmt::Write,
     future::Future,
     path::PathBuf,
-    sync::Arc,
 };
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
 /// If there is no configured language server that supports the feature, this displays a status message.
 /// Using this macro in a context where the editor automatically queries the LSP
 /// (instead of when the user explicitly does so via a keybind like `gd`)
-/// will spam the "No configured language server supports <feature>" status message confusingly.
+/// will spam the "No configured language server supports \<feature>" status message confusingly.
 #[macro_export]
 macro_rules! language_server_with_feature {
     ($editor:expr, $doc:expr, $feature:expr) => {{
@@ -897,7 +894,6 @@ pub fn apply_workspace_edit(
             }
         };
 
-        let current_view_id = view!(editor).id;
         let doc_id = match editor.open(&path, Action::Load) {
             Ok(doc_id) => doc_id,
             Err(err) => {
@@ -1197,12 +1193,6 @@ pub fn goto_reference_direction(cx: &mut Context, direction: Direction) {
             }
         },
     );
-}
-
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum SignatureHelpInvoked {
-    Manual,
-    Automatic,
 }
 
 pub fn signature_help(cx: &mut Context) {
