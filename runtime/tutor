@@ -1495,5 +1495,27 @@ splits except this one.
 
 
 =================================================================
+=                 CHAPTER 13 RECAP                              =
+=================================================================
+
+Splits can be used to display either the same buffer several times,
+or several buffers. To access the main windows and splits commands,
+press ctrl-w . You can move between splits with ctrl-w hjkl ,
+you can close a split with ctrl-w q , and you can close all but
+the present split with ctrl-w o .
+
+Splits can also be opened by using the :vs FILENAME and
+:hs FILENAME commands.
+
+Splits can also be used directly from the file pickers, by using
+ctrl-v to open the file selected in a new vertical split, and
+ctrl-s in a horizontal split.
+
+
+
+
+
+
+=================================================================
  This tutorial is still a work-in-progress.
  More sections are planned.
