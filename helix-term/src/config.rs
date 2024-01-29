@@ -1,7 +1,9 @@
-use crate::keymap;
 use crate::keymap::{merge_keys, KeyTrie};
+use crate::mousemap::{merge_mouse_keys, MouseTrie, MouseTrieMapper};
+use crate::{keymap, mousemap};
 use helix_loader::merge_toml_values;
 use helix_view::document::Mode;
+use helix_view::input::MouseEvent;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -13,6 +15,7 @@ use toml::de::Error as TomlError;
 pub struct Config {
     pub theme: Option<String>,
     pub keys: HashMap<Mode, KeyTrie>,
+    pub mouse: HashMap<Mode, HashMap<MouseEvent, MouseTrie>>,
     pub editor: helix_view::editor::Config,
 }
 
@@ -21,6 +24,7 @@ pub struct Config {
 pub struct ConfigRaw {
     pub theme: Option<String>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
+    pub mouse: Option<HashMap<Mode, MouseTrieMapper>>,
     pub editor: Option<toml::Value>,
 }
 
@@ -29,6 +33,7 @@ impl Default for Config {
         Config {
             theme: None,
             keys: keymap::default(),
+            mouse: mousemap::default::default(),
             editor: helix_view::editor::Config::default(),
         }
     }
@@ -67,11 +72,18 @@ impl Config {
         let res = match (global_config, local_config) {
             (Ok(global), Ok(local)) => {
                 let mut keys = keymap::default();
+                let mut mouse = mousemap::default::default();
                 if let Some(global_keys) = global.keys {
                     merge_keys(&mut keys, global_keys)
                 }
                 if let Some(local_keys) = local.keys {
                     merge_keys(&mut keys, local_keys)
+                }
+                if let Some(global_mouse) = global.mouse {
+                    merge_mouse_keys(&mut mouse, &global_mouse);
+                }
+                if let Some(local_mouse) = local.mouse {
+                    merge_mouse_keys(&mut mouse, &local_mouse);
                 }
 
                 let editor = match (global.editor, local.editor) {
@@ -87,6 +99,7 @@ impl Config {
                 Config {
                     theme: local.theme.or(global.theme),
                     keys,
+                    mouse,
                     editor,
                 }
             }
@@ -97,12 +110,17 @@ impl Config {
             }
             (Ok(config), Err(_)) | (Err(_), Ok(config)) => {
                 let mut keys = keymap::default();
+                let mut mouse = mousemap::default::default();
                 if let Some(keymap) = config.keys {
                     merge_keys(&mut keys, keymap);
+                }
+                if let Some(mousemap) = config.mouse {
+                    merge_mouse_keys(&mut mouse, &mousemap)
                 }
                 Config {
                     theme: config.theme,
                     keys,
+                    mouse,
                     editor: config.editor.map_or_else(
                         || Ok(helix_view::editor::Config::default()),
                         |val| val.try_into().map_err(ConfigLoadError::BadConfig),
@@ -128,6 +146,7 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     impl Config {
@@ -149,6 +168,13 @@ mod tests {
 
             [keys.normal]
             A-F12 = "move_next_word_end"
+
+            [mouse.normal]
+            1-left = "code_action_mouse"
+            A-1-left = "add_selection_mouse"
+
+            [mouse.insert]
+            C-1-right = "go_to_definition_mouse"
         "#;
 
         let mut keys = keymap::default();
@@ -165,10 +191,25 @@ mod tests {
             },
         );
 
+        let mut mouse = crate::mousemap::default::default();
+        merge_mouse_keys(
+            &mut mouse,
+            &hashmap! {
+                Mode::Normal => mousemap!({
+                    "1-left" => code_action_mouse,
+                    "A-1-left" => add_selection_mouse,
+                }),
+                Mode::Insert => mousemap!({
+                    "C-1-right" => go_to_definition_mouse,
+                }),
+            },
+        );
+
         assert_eq!(
             Config::load_test(sample_keymaps),
             Config {
                 keys,
+                mouse,
                 ..Default::default()
             }
         );
@@ -183,5 +224,13 @@ mod tests {
         // From the Default trait
         let default_keys = Config::default().keys;
         assert_eq!(default_keys, keymap::default());
+
+        // From serde default
+        let default_keys = Config::load_test("").mouse;
+        assert_eq!(default_keys, mousemap::default::default());
+
+        // From the Default trait
+        let default_keys = Config::default().mouse;
+        assert_eq!(default_keys, mousemap::default::default());
     }
 }
