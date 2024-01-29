@@ -99,7 +99,6 @@ impl Serialize for Mode {
         serializer.collect_str(self)
     }
 }
-
 /// A snapshot of the text of a document that we want to write out to disk
 #[derive(Debug, Clone)]
 pub struct DocumentSavedEvent {
@@ -1321,8 +1320,12 @@ impl Document {
                 true
             });
 
-            self.diagnostics.sort_unstable_by_key(|diagnostic| {
-                (diagnostic.range, diagnostic.severity, diagnostic.provider)
+            self.diagnostics.sort_by_key(|diagnostic| {
+                (
+                    diagnostic.range,
+                    diagnostic.severity,
+                    diagnostic.provider,
+                )
             });
 
             // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
@@ -1897,8 +1900,12 @@ impl Document {
             });
         }
         self.diagnostics.extend(diagnostics);
-        self.diagnostics.sort_unstable_by_key(|diagnostic| {
-            (diagnostic.range, diagnostic.severity, diagnostic.provider)
+        self.diagnostics.sort_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.provider,
+            )
         });
     }
 
