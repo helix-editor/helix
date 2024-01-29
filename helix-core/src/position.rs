@@ -171,6 +171,17 @@ pub fn visual_offset_from_block(
     (last_pos, block_start)
 }
 
+/// Returns the height of the given text when softwrapping
+pub fn softwrapped_dimensions(text: RopeSlice, text_fmt: &TextFormat) -> (usize, u16) {
+    let last_pos =
+        visual_offset_from_block(text, 0, usize::MAX, text_fmt, &TextAnnotations::default()).0;
+    if last_pos.row == 0 {
+        (1, last_pos.col as u16)
+    } else {
+        (last_pos.row + 1, text_fmt.viewport_width)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum VisualOffsetError {
     PosBeforeAnchorRow,

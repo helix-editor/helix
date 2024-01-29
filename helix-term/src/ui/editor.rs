@@ -22,6 +22,7 @@ use helix_core::{
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
 use helix_view::{
+    annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
@@ -185,6 +186,12 @@ impl EditorView {
                 primary_cursor,
             });
         }
+        decorations.add_decoration(InlineDiagnostics::new(
+            doc,
+            theme,
+            primary_cursor,
+            config.lsp.inline_diagnostics.clone(),
+        ));
         render_document(
             surface,
             inner,
@@ -210,7 +217,11 @@ impl EditorView {
             }
         }
 
-        Self::render_diagnostics(doc, view, inner, surface, theme);
+        if config.inline_diagnostics.disabled()
+            && config.end_of_line_diagnostics == DiagnosticFilter::Disable
+        {
+            Self::render_diagnostics(doc, view, inner, surface, theme);
+        }
 
         let statusline_area = view
             .area

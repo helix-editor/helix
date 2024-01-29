@@ -1,5 +1,6 @@
 use crate::{
     align_view,
+    annotations::diagnostics::InlineDiagnostics,
     document::DocumentInlayHints,
     editor::{GutterConfig, GutterType},
     graphics::Rect,
@@ -438,37 +439,51 @@ impl View {
             text_annotations.add_overlay(labels, style);
         }
 
-        let DocumentInlayHints {
+        if let Some(DocumentInlayHints {
             id: _,
             type_inlay_hints,
             parameter_inlay_hints,
             other_inlay_hints,
             padding_before_inlay_hints,
             padding_after_inlay_hints,
-        } = match doc.inlay_hints.get(&self.id) {
-            Some(doc_inlay_hints) => doc_inlay_hints,
-            None => return text_annotations,
+        }) = doc.inlay_hints.get(&self.id)
+        {
+            let type_style = theme
+                .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.type"))
+                .map(Highlight);
+            let parameter_style = theme
+                .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.parameter"))
+                .map(Highlight);
+            let other_style = theme
+                .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint"))
+                .map(Highlight);
+
+            // Overlapping annotations are ignored apart from the first so the order here is not random:
+            // types -> parameters -> others should hopefully be the "correct" order for most use cases,
+            // with the padding coming before and after as expected.
+            text_annotations
+                .add_inline_annotations(padding_before_inlay_hints, None)
+                .add_inline_annotations(type_inlay_hints, type_style)
+                .add_inline_annotations(parameter_inlay_hints, parameter_style)
+                .add_inline_annotations(other_inlay_hints, other_style)
+                .add_inline_annotations(padding_after_inlay_hints, None);
         };
-
-        let type_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.type"))
-            .map(Highlight);
-        let parameter_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.parameter"))
-            .map(Highlight);
-        let other_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint"))
-            .map(Highlight);
-
-        // Overlapping annotations are ignored apart from the first so the order here is not random:
-        // types -> parameters -> others should hopefully be the "correct" order for most use cases,
-        // with the padding coming before and after as expected.
-        text_annotations
-            .add_inline_annotations(padding_before_inlay_hints, None)
-            .add_inline_annotations(type_inlay_hints, type_style)
-            .add_inline_annotations(parameter_inlay_hints, parameter_style)
-            .add_inline_annotations(other_inlay_hints, other_style)
-            .add_inline_annotations(padding_after_inlay_hints, None);
+        let width = self.inner_width(doc);
+        let config = doc.config.load();
+        if config.lsp.inline_diagnostics.enable(width) {
+            let config = config.lsp.inline_diagnostics.clone();
+            let cursor = doc
+                .selection(self.id)
+                .primary()
+                .cursor(doc.text().slice(..));
+            text_annotations.add_line_annotation(InlineDiagnostics::new(
+                doc,
+                cursor,
+                width,
+                self.offset.horizontal_offset,
+                config,
+            ));
+        }
 
         text_annotations
     }
