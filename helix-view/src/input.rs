@@ -2,7 +2,7 @@
 use anyhow::{anyhow, Error};
 use helix_core::unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr};
 use serde::de::{self, Deserialize, Deserializer};
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 pub use crate::keyboard::{KeyCode, KeyModifiers, MediaKeyCode, ModifierKeyCode};
 
@@ -17,6 +17,29 @@ pub enum Event {
     IdleTimeout,
 }
 
+pub(crate) mod mouse_keys {
+    pub(crate) const LEFT: &str = "left";
+    pub(crate) const RIGHT: &str = "right";
+    pub(crate) const MIDDLE: &str = "middle";
+    pub(crate) const SCROLL_DOWN: &str = "scroll_up";
+    pub(crate) const SCROLL_UP: &str = "scroll_down";
+    pub(crate) const SCROLL_LEFT: &str = "scroll_left";
+    pub(crate) const SCROLL_RIGHT: &str = "scroll_right";
+    pub(crate) const MOVED: &str = "moved";
+}
+
+// move to mouse
+#[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash, Ord)]
+pub enum MouseModifiers {
+    MultipleClick(u16),
+}
+
+impl Default for MouseModifiers {
+    fn default() -> Self {
+        Self::MultipleClick(1)
+    }
+}
+
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct MouseEvent {
     /// The kind of mouse event that was caused.
@@ -27,6 +50,106 @@ pub struct MouseEvent {
     pub row: u16,
     /// The key modifiers active when the event occurred.
     pub modifiers: KeyModifiers,
+    /// modifiers specific to mouse
+    pub mouse_modifiers: MouseModifiers,
+}
+
+impl MouseEvent {
+    pub fn light_eq(&self, other: &Self) -> bool {
+        self.kind == other.kind && self.modifiers == other.modifiers
+    }
+
+    pub fn clone_without_coords(&self) -> Self {
+        Self {
+            kind: self.kind,
+            column: 0,
+            row: 0,
+            modifiers: self.modifiers,
+            mouse_modifiers: self.mouse_modifiers,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for MouseEvent {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(de::Error::custom)
+    }
+}
+
+impl fmt::Display for MouseEvent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.modifiers.fmt(f)?;
+        f.write_fmt(format_args!(
+            "{}-",
+            match self.mouse_modifiers {
+                MouseModifiers::MultipleClick(v) => v,
+            },
+        ))?;
+        f.write_str(&match self.kind {
+            MouseEventKind::Drag(b) | MouseEventKind::Down(b) | MouseEventKind::Up(b) => match b {
+                MouseButton::Left => mouse_keys::LEFT,
+                MouseButton::Right => mouse_keys::RIGHT,
+                MouseButton::Middle => mouse_keys::MIDDLE,
+            },
+            MouseEventKind::Moved => mouse_keys::MOVED,
+            MouseEventKind::ScrollDown => mouse_keys::SCROLL_DOWN,
+            MouseEventKind::ScrollUp => mouse_keys::SCROLL_UP,
+            MouseEventKind::ScrollLeft => mouse_keys::SCROLL_LEFT,
+            MouseEventKind::ScrollRight => mouse_keys::SCROLL_RIGHT,
+        })
+    }
+}
+
+impl FromStr for MouseEvent {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut tokens: Vec<_> = s.split('-').collect();
+        let kind = match tokens.pop().ok_or_else(|| anyhow!("Missing mouse code"))? {
+            mouse_keys::LEFT => MouseEventKind::Down(MouseButton::Left),
+            mouse_keys::MIDDLE => MouseEventKind::Down(MouseButton::Middle),
+            mouse_keys::RIGHT => MouseEventKind::Down(MouseButton::Right),
+            mouse_keys::SCROLL_DOWN => MouseEventKind::ScrollDown,
+            mouse_keys::SCROLL_UP => MouseEventKind::ScrollUp,
+            invalid => return Err(anyhow!("Invalid mouse code '{}'", invalid)),
+        };
+        let nb_click = if kind != MouseEventKind::ScrollDown && kind != MouseEventKind::ScrollUp {
+            tokens
+                .pop()
+                .ok_or_else(|| anyhow!("No number of clicks provided"))?
+                .parse::<u16>()
+                .map_err(|_| anyhow!("Invalid number of clicks"))?
+        } else {
+            if tokens.len() != 0 {
+                return Err(anyhow!("'{}' given but should not", tokens.pop().unwrap()));
+            }
+            1
+        };
+        let mut modifiers = KeyModifiers::empty();
+        for token in tokens {
+            let flag = match token {
+                "S" => KeyModifiers::SHIFT,
+                "A" => KeyModifiers::ALT,
+                "C" => KeyModifiers::CONTROL,
+                _ => return Err(anyhow!("Invalid key modifier '{}-'", token)),
+            };
+            if modifiers.contains(flag) {
+                return Err(anyhow!("Repeated key modifier '{}-'", token));
+            }
+            modifiers.insert(flag);
+        }
+        Ok(MouseEvent {
+            kind,
+            column: 0,
+            row: 0,
+            modifiers,
+            mouse_modifiers: MouseModifiers::MultipleClick(nb_click),
+        })
+    }
 }
 
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
@@ -460,6 +583,7 @@ impl From<crossterm::event::MouseEvent> for MouseEvent {
             column,
             row,
             modifiers: modifiers.into(),
+            mouse_modifiers: MouseModifiers::MultipleClick(1),
         }
     }
 }
