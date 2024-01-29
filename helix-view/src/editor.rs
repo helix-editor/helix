@@ -1,5 +1,6 @@
 use crate::{
     align_view,
+    annotations::diagnostics::InlineDiagnosticsConfig,
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
@@ -431,6 +432,10 @@ pub struct LspConfig {
     pub snippets: bool,
     /// Whether to include declaration in the goto reference query
     pub goto_reference_include_declaration: bool,
+    /// Display diagnostic on the same line they occur automatically.
+    /// Also called "error lens"-style diagnostics, in reference to the popular VSCode extension.
+    pub inline_diagnostics: InlineDiagnosticsConfig,
+    pub display_diagnostic_message: bool,
 }
 
 impl Default for LspConfig {
@@ -443,6 +448,8 @@ impl Default for LspConfig {
             display_inlay_hints: false,
             snippets: true,
             goto_reference_include_declaration: true,
+            inline_diagnostics: InlineDiagnosticsConfig::default(),
+            display_diagnostic_message: false,
         }
     }
 }

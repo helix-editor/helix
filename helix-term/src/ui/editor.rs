@@ -185,6 +185,12 @@ impl EditorView {
                 primary_cursor,
             });
         }
+        decorations.add_decoration(InlineDiagnostics::new(
+            doc,
+            theme,
+            primary_cursor,
+            config.lsp.inline_diagnostics.clone(),
+        ));
         render_document(
             surface,
             inner,
@@ -210,7 +216,9 @@ impl EditorView {
             }
         }
 
-        Self::render_diagnostics(doc, view, inner, surface, theme);
+        if config.lsp.display_diagnostic_message {
+            Self::render_diagnostics(doc, view, inner, surface, theme);
+        }
 
         let statusline_area = view
             .area
