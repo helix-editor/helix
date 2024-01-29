@@ -1990,10 +1990,12 @@ impl Editor {
         if doc.restore_cursor {
             let text = doc.text().slice(..);
             let selection = doc.selection(view.id).clone().transform(|range| {
-                Range::new(
-                    range.from(),
-                    graphemes::prev_grapheme_boundary(text, range.to()),
-                )
+                let mut head = range.to();
+                if range.head > range.anchor {
+                    head = graphemes::prev_grapheme_boundary(text, head);
+                }
+
+                Range::new(range.from(), head)
             });
 
             doc.set_selection(view.id, selection);
