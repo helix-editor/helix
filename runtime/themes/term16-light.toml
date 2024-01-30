@@ -42,11 +42,14 @@ inherits = "term16-dark"
 "constant.character.escape" = "blue"
 "constructor" = "blue"
 "function" = "blue"
+"function.builtin" = { fg = "blue", modifiers = ["bold"] }
 "tag" = { fg = "magenta", modifiers = ["dim"] }
-"type" = "yellow"
+"type" = { fg = "blue", modifiers = ["dim"] }
+"type.builtin" = { fg = "blue", modifiers = ["bold"] }
+"type.enum.variant" = { fg = "magenta", modifiers = ["dim"] }
 "string"  = "green"
 "special" = "red"
-"variable" = { fg = "black" }
+"variable" = { fg = "black", modifiers = ["dim"] }
 "variable.parameter" = { fg = "red", modifiers = ["italic", "dim"] }
 "variable.other.member" = "green"
 "keyword" = "magenta"
