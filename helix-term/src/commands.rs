@@ -1818,8 +1818,8 @@ fn select_first_and_last_chars(cx: &mut Context) {
 
     let selection = doc.selection(view.id).clone().transform_iter(|range| {
         [
-            Range::new(range.from(), graphemes::next_grapheme_boundary(text, range.from())),
-            Range::new(graphemes::prev_grapheme_boundary(text, range.to()), range.to())
+            Range::point(range.from()),
+            Range::point(graphemes::prev_grapheme_boundary(text, range.to())),
         ]
         .into_iter()
     });
