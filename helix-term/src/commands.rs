@@ -1814,11 +1814,12 @@ fn select_all(cx: &mut Context) {
 
 fn select_first_and_last_chars(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform_iter(|range| {
-        vec![
-            Range::new(range.anchor, range.anchor + 1),
-            Range::new(range.head - 1, range.head),
+        [
+            Range::new(range.from(), graphemes::next_grapheme_boundary(text, range.from())),
+            Range::new(graphemes::prev_grapheme_boundary(text, range.to()), range.to())
         ]
         .into_iter()
     });
