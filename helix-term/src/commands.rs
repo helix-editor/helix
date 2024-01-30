@@ -1818,9 +1818,9 @@ fn select_first_and_last_chars(cx: &mut Context) {
     let selection = doc.selection(view.id).clone().transform_iter(|range| {
         vec![
             Range::new(range.anchor, range.anchor + 1),
-            Range::new(range.head - 1, range.head)
+            Range::new(range.head - 1, range.head),
         ]
-            .into_iter()
+        .into_iter()
     });
 
     doc.set_selection(view.id, selection);
