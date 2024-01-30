@@ -78,6 +78,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
 
         "s" => select_regex,
+        "A-S" => select_first_and_last_chars,
         "A-s" => split_selection_on_newline,
         "A-minus" => merge_selections,
         "A-_" => merge_consecutive_selections,
