@@ -44,7 +44,7 @@ inherits = "term16-dark"
 "function" = "blue"
 "function.builtin" = { fg = "blue", modifiers = ["bold"] }
 "tag" = { fg = "magenta", modifiers = ["dim"] }
-"type" = { fg = "blue", modifiers = ["dim"] }
+"type" = "blue"
 "type.builtin" = { fg = "blue", modifiers = ["bold"] }
 "type.enum.variant" = { fg = "magenta", modifiers = ["dim"] }
 "string"  = "green"
@@ -57,7 +57,7 @@ inherits = "term16-dark"
 "keyword.directive" = { fg = "yellow", modifiers = ["bold"] }
 "keyword.operator" = { fg = "blue", modifiers = ["bold"] }
 "label" = "red"
-"namespace" = "blue"
+"namespace" = { fg = "blue", modifiers = ["dim"] }
 
 "markup.heading" = { fg = "blue", modifiers = ["bold"] }
 "markup.list" = "red"
