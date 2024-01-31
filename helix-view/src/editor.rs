@@ -529,9 +529,6 @@ pub enum StatusLineElement {
     /// Current version control information
     VersionControl,
 
-    /// Custom
-    Custom,
-
     /// Indicator for selected register
     Register,
 }

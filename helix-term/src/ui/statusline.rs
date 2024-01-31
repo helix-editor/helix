@@ -161,7 +161,6 @@ where
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
-        helix_view::editor::StatusLineElement::Custom => render_custom_text,
         helix_view::editor::StatusLineElement::Register => render_register,
     }
 }
@@ -507,15 +506,6 @@ where
         .to_string();
 
     write(context, head, None);
-}
-
-fn render_custom_text<F>(context: &mut RenderContext, write: F)
-where
-    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
-{
-    // if let Some(message) = StatusLineMessage::get() {
-    //     write(context, message, None);
-    // }
 }
 
 fn render_register<F>(context: &mut RenderContext, write: F)

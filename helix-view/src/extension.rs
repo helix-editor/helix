@@ -27,7 +27,6 @@ mod steel_implementations {
     impl steel::rvals::Custom for Mode {}
     impl steel::rvals::Custom for Event {}
 
-    // Reference types along with value types - This should allow for having users
     impl CustomReference for Event {}
     impl Custom for Rect {}
     impl Custom for crate::graphics::CursorKind {}
@@ -48,5 +47,4 @@ mod steel_implementations {
     impl Custom for IndentGuidesConfig {}
     impl Custom for LineEndingConfig {}
     impl Custom for SmartTabConfig {}
-    // impl Custom for SoftW
 }

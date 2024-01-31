@@ -62,7 +62,6 @@ impl Info {
         Self {
             title: title.to_string(),
             width: text.lines().map(|l| l.width()).max().unwrap_or(body.len()) as u16,
-            // height: (body.len() + newlines) as u16,
             height,
             text,
         }
