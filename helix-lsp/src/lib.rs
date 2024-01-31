@@ -1,5 +1,6 @@
 mod client;
 pub mod file_event;
+mod file_operations;
 pub mod jsonrpc;
 pub mod snippet;
 mod transport;
@@ -11,10 +12,10 @@ pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::{
-    path,
-    syntax::{LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures},
+use helix_core::syntax::{
+    LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
 };
+use helix_stdx::path;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
@@ -43,6 +44,8 @@ pub enum Error {
     StreamClosed,
     #[error("Unhandled")]
     Unhandled,
+    #[error(transparent)]
+    ExecutableNotFound(#[from] helix_stdx::env::ExecutableNotFoundError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -445,36 +448,36 @@ pub mod util {
             // the tabstop closest to the range simply replaces `head` while anchor remains in place
             // the remaining tabstops receive their own single-width cursor
             if range.head < range.anchor {
-                let first_tabstop = tabstop_anchor + tabstops[0].1;
+                let last_idx = tabstops.len() - 1;
+                let last_tabstop = tabstop_anchor + tabstops[last_idx].0;
 
                 // if selection is forward but was moved to the right it is
                 // contained entirely in the replacement text, just do a point
                 // selection (fallback below)
-                if range.anchor >= first_tabstop {
-                    let range = Range::new(range.anchor, first_tabstop);
+                if range.anchor > last_tabstop {
+                    let range = Range::new(range.anchor, last_tabstop);
                     mapped_selection.push(range);
-                    let rem_tabstops = tabstops[1..]
+                    let rem_tabstops = tabstops[..last_idx]
                         .iter()
-                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.1));
+                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
                     mapped_selection.extend(rem_tabstops);
                     continue;
                 }
             } else {
-                let last_idx = tabstops.len() - 1;
-                let last_tabstop = tabstop_anchor + tabstops[last_idx].1;
+                let first_tabstop = tabstop_anchor + tabstops[0].0;
 
                 // if selection is forward but was moved to the right it is
                 // contained entirely in the replacement text, just do a point
                 // selection (fallback below)
-                if range.anchor <= last_tabstop {
+                if range.anchor < first_tabstop {
                     // we can't properly compute the the next grapheme
                     // here because the transaction hasn't been applied yet
                     // that is not a problem because the range gets grapheme aligned anyway
                     // tough so just adding one will always cause head to be grapheme
                     // aligned correctly when applied to the document
-                    let range = Range::new(range.anchor, last_tabstop + 1);
+                    let range = Range::new(range.anchor, first_tabstop + 1);
                     mapped_selection.push(range);
-                    let rem_tabstops = tabstops[..last_idx]
+                    let rem_tabstops = tabstops[1..]
                         .iter()
                         .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
                     mapped_selection.extend(rem_tabstops);
@@ -549,6 +552,7 @@ pub enum MethodCall {
     WorkspaceConfiguration(lsp::ConfigurationParams),
     RegisterCapability(lsp::RegistrationParams),
     UnregisterCapability(lsp::UnregistrationParams),
+    ShowDocument(lsp::ShowDocumentParams),
 }
 
 impl MethodCall {
@@ -575,6 +579,10 @@ impl MethodCall {
             lsp::request::UnregisterCapability::METHOD => {
                 let params: lsp::UnregistrationParams = params.parse()?;
                 Self::UnregisterCapability(params)
+            }
+            lsp::request::ShowDocument::METHOD => {
+                let params: lsp::ShowDocumentParams = params.parse()?;
+                Self::ShowDocument(params)
             }
             _ => {
                 return Err(Error::Unhandled);
@@ -915,10 +923,17 @@ fn start_client(
         }
 
         // next up, notify<initialized>
-        _client
+        let notification_result = _client
             .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-            .await
-            .unwrap();
+            .await;
+
+        if let Err(e) = notification_result {
+            log::error!(
+                "failed to notify language server of its initialization: {}",
+                e
+            );
+            return;
+        }
 
         initialize_notify.notify_one();
     });
@@ -946,10 +961,10 @@ pub fn find_lsp_workspace(
     let mut file = if file.is_absolute() {
         file.to_path_buf()
     } else {
-        let current_dir = helix_loader::current_working_dir();
+        let current_dir = helix_stdx::env::current_working_dir();
         current_dir.join(file)
     };
-    file = path::get_normalized_path(&file);
+    file = path::normalize(&file);
 
     if !file.starts_with(workspace) {
         return None;
@@ -966,7 +981,7 @@ pub fn find_lsp_workspace(
 
         if root_dirs
             .iter()
-            .any(|root_dir| path::get_normalized_path(&workspace.join(root_dir)) == ancestor)
+            .any(|root_dir| path::normalize(workspace.join(root_dir)) == ancestor)
         {
             // if the worskapce is the cwd do not search any higher for workspaces
             // but specify

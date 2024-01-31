@@ -11,6 +11,7 @@ use helix_event::{
 };
 use helix_lsp::lsp;
 use helix_lsp::util::pos_to_lsp_pos;
+use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::{Mode, SavePoint};
 use helix_view::handlers::lsp::CompletionEvent;
 use helix_view::{DocumentId, Editor, ViewId};
@@ -22,7 +23,6 @@ use crate::commands;
 use crate::compositor::Compositor;
 use crate::config::Config;
 use crate::events::{OnModeSwitch, PostCommand, PostInsertChar};
-use crate::handlers::rope_ends_with;
 use crate::job::{dispatch, dispatch_blocking};
 use crate::keymap::MappableCommand;
 use crate::ui::editor::InsertEvent;
@@ -32,29 +32,18 @@ use crate::ui::{self, CompletionItem, Popup};
 use super::Handlers;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum TriggerKind {
+enum TriggerKind {
     Auto,
     TriggerChar,
     Manual,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Trigger {
+struct Trigger {
     pos: usize,
     view: ViewId,
     doc: DocumentId,
     kind: TriggerKind,
-}
-
-impl Trigger {
-    pub(crate) fn new(pos: usize, view: ViewId, doc: DocumentId, kind: TriggerKind) -> Self {
-        Self {
-            pos,
-            view,
-            doc,
-            kind,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -96,7 +85,7 @@ impl helix_event::AsyncHook for CompletionHandler {
                 view,
             } => {
                 // techically it shouldn't be possible to switch views/documents in insert mode
-                // but peoble may create weird keymaps/use the mouse so lets be extra careful
+                // but people may create weird keymaps/use the mouse so lets be extra careful
                 if self
                     .trigger
                     .as_ref()
@@ -119,9 +108,6 @@ impl helix_event::AsyncHook for CompletionHandler {
                     doc,
                     kind: TriggerKind::TriggerChar,
                 });
-                // stop debouncing immidietly and request the completion
-                self.finish_debounce();
-                return None;
             }
             CompletionEvent::ManualTrigger { cursor, doc, view } => {
                 // immediately request completions and drop all auto completion requests
@@ -132,7 +118,7 @@ impl helix_event::AsyncHook for CompletionHandler {
                     doc,
                     kind: TriggerKind::Manual,
                 });
-                // stop debouncing immidietly and request the completion
+                // stop debouncing immediately and request the completion
                 self.finish_debounce();
                 return None;
             }
@@ -151,8 +137,8 @@ impl helix_event::AsyncHook for CompletionHandler {
         self.trigger.map(|trigger| {
             // if the current request was closed forget about it
             // otherwise immediately restart the completion request
-            let canceled = self.request.take().map_or(false, |req| !req.is_closed());
-            let timeout = if trigger.kind == TriggerKind::Auto && !canceled {
+            let cancel = self.request.take().map_or(false, |req| !req.is_closed());
+            let timeout = if trigger.kind == TriggerKind::Auto && !cancel {
                 self.config.load().editor.completion_timeout
             } else {
                 // we want almost instant completions for trigger chars
@@ -233,7 +219,7 @@ fn request_completion(
                                 .trigger_characters
                                 .as_deref()?
                                 .iter()
-                                .find(|&trigger| rope_ends_with(trigger, trigger_text))
+                                .find(|&trigger| trigger_text.ends_with(trigger))
                         });
                 lsp::CompletionContext {
                     trigger_kind: lsp::CompletionTriggerKind::TRIGGER_CHARACTER,
@@ -295,7 +281,7 @@ fn request_completion(
     });
 }
 
-pub(crate) fn show_completion(
+fn show_completion(
     editor: &mut Editor,
     compositor: &mut Compositor,
     items: Vec<CompletionItem>,
@@ -334,50 +320,51 @@ pub fn trigger_auto_completion(
     trigger_char_only: bool,
 ) {
     let config = editor.config.load();
-    if config.auto_completion {
-        let (view, doc): (&helix_view::View, &helix_view::Document) = current_ref!(editor);
-        let mut text = doc.text().slice(..);
-        let cursor = doc.selection(view.id).primary().cursor(text);
-        text = doc.text().slice(..cursor);
+    if !config.auto_completion {
+        return;
+    }
+    let (view, doc): (&helix_view::View, &helix_view::Document) = current_ref!(editor);
+    let mut text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    text = doc.text().slice(..cursor);
 
-        let is_trigger_char = doc
-            .language_servers_with_feature(LanguageServerFeature::Completion)
-            .any(|ls| {
-                matches!(&ls.capabilities().completion_provider, Some(lsp::CompletionOptions {
+    let is_trigger_char = doc
+        .language_servers_with_feature(LanguageServerFeature::Completion)
+        .any(|ls| {
+            matches!(&ls.capabilities().completion_provider, Some(lsp::CompletionOptions {
                         trigger_characters: Some(triggers),
                         ..
-                    }) if triggers.iter().any(|trigger| rope_ends_with(trigger, text)))
-            });
-        if is_trigger_char {
-            send_blocking(
-                tx,
-                CompletionEvent::TriggerChar {
-                    cursor,
-                    doc: doc.id(),
-                    view: view.id,
-                },
-            );
-            return;
-        }
+                    }) if triggers.iter().any(|trigger| text.ends_with(trigger)))
+        });
+    if is_trigger_char {
+        send_blocking(
+            tx,
+            CompletionEvent::TriggerChar {
+                cursor,
+                doc: doc.id(),
+                view: view.id,
+            },
+        );
+        return;
+    }
 
-        let is_auto_trigger = !trigger_char_only
-            && doc
-                .text()
-                .chars_at(cursor)
-                .reversed()
-                .take(config.completion_trigger_len as usize)
-                .all(char_is_word);
+    let is_auto_trigger = !trigger_char_only
+        && doc
+            .text()
+            .chars_at(cursor)
+            .reversed()
+            .take(config.completion_trigger_len as usize)
+            .all(char_is_word);
 
-        if is_auto_trigger {
-            send_blocking(
-                tx,
-                CompletionEvent::AutoTrigger {
-                    cursor,
-                    doc: doc.id(),
-                    view: view.id,
-                },
-            );
-        }
+    if is_auto_trigger {
+        send_blocking(
+            tx,
+            CompletionEvent::AutoTrigger {
+                cursor,
+                doc: doc.id(),
+                view: view.id,
+            },
+        );
     }
 }
 
@@ -437,9 +424,11 @@ fn completion_post_command_hook(
                         cursor: primary_cursor,
                     }
                 }
-                // if we cancel completions here it would always cancel the manual request
+                // hacks: some commands are handeled elsewhere and we don't want to
+                // cancel in that case
                 MappableCommand::Static {
-                    name: "completion", ..
+                    name: "completion" | "insert_mode" | "append_mode",
+                    ..
                 } => return Ok(()),
                 _ => CompletionEvent::Cancel,
             };

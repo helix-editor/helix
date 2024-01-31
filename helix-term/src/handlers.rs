@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
-use helix_core::RopeSlice;
 use helix_event::AsyncHook;
 
 use crate::config::Config;
@@ -13,16 +12,7 @@ pub use completion::trigger_auto_completion;
 pub use helix_view::handlers::lsp::SignatureHelpInvoked;
 pub use helix_view::handlers::Handlers;
 
-fn rope_ends_with(text: &str, rope: RopeSlice<'_>) -> bool {
-    let len = rope.len_bytes();
-    if len < text.len() {
-        return false;
-    }
-    rope.get_byte_slice(len - text.len()..)
-        .map_or(false, |end| end == text)
-}
-
-pub(crate) mod completion;
+mod completion;
 mod signature_help;
 
 pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {

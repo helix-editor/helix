@@ -5,6 +5,7 @@ use crate::{
 use helix_view::{
     document::SavePoint,
     editor::CompleteAction,
+    graphics::Margin,
     handlers::lsp::SignatureHelpInvoked,
     theme::{Modifier, Style},
     ViewId,
@@ -340,7 +341,7 @@ impl Completion {
                         }
                     }
                     // we could have just inserted a trigger char (like a `crate::` completion for rust
-                    // so we want to retrigger immedietly when accepting a completion.
+                    // so we want to retrigger immediately when accepting a completion.
                     trigger_auto_completion(&editor.handlers.completions, editor, true);
                 }
             };
@@ -352,9 +353,18 @@ impl Completion {
                     .trigger_signature_help(SignatureHelpInvoked::Automatic, editor);
             }
         });
+
+        let margin = if editor.menu_border() {
+            Margin::vertical(1)
+        } else {
+            Margin::none()
+        };
+
         let popup = Popup::new(Self::ID, menu)
             .with_scrollbar(false)
-            .ignore_escape_key(true);
+            .ignore_escape_key(true)
+            .margin(margin);
+
         let (view, doc) = current_ref!(editor);
         let text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
@@ -399,7 +409,7 @@ impl Completion {
     }
 
     /// Appends (`c: Some(c)`) or removes (`c: None`) a character to/from the filter
-    /// this should be called whenever the user types or deltes a character in insert mode.
+    /// this should be called whenever the user types or deletes a character in insert mode.
     pub fn update_filter(&mut self, c: Option<char>) {
         // recompute menu based on matches
         let menu = self.popup.contents_mut();
@@ -594,6 +604,12 @@ impl Component for Completion {
         // clear area
         let background = cx.editor.theme.get("ui.popup");
         surface.clear_with(doc_area, background);
+
+        if cx.editor.popup_border() {
+            use tui::widgets::{Block, Borders, Widget};
+            Widget::render(Block::default().borders(Borders::ALL), doc_area, surface);
+        }
+
         markdown_doc.render(doc_area, surface, cx);
     }
 }

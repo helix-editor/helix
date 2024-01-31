@@ -3,7 +3,7 @@
 //! A nice bonus of this approach is that we can optimize the vtable a bit more. Normally
 //! a dyn Trait fat pointer contains two pointers: A pointer to the data itself and a
 //! pointer to a global (static) vtable entry which itself contains multiple other pointers
-//! (the various functions of the trait, drop, size annd align). That makes dynamic
+//! (the various functions of the trait, drop, size and align). That makes dynamic
 //! dispatch pretty slow (double pointer indirections). However, we only have a single function
 //! in the hook trait and don't need a drop implementation (event system is global anyway
 //! and never dropped) so we can just store the entire vtable inline.

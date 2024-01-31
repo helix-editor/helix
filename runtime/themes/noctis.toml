@@ -7,8 +7,8 @@
 
 'property' = { fg = "red" } # Regex group names.
 "warning" = { fg ="yellow", modifiers = ["bold"] } # Editor warnings.
-"error" = { bg = "mid-green", fg = "red", modifiers = ["bold"] } # Editor errors, like mis-typing a command.
-"info" = { fg = "mid-blue", bg = "mid-green" } # Code diagnostic info in gutter (LSP).
+"error" = { fg = "red", modifiers = ["bold"] } # Editor errors, like mis-typing a command.
+"info" = { fg = "mid-blue" } # Code diagnostic info in gutter (LSP).
 # ? Difference between info and hint ?
 "hint" = { fg = "light-green", modifiers = ["bold"] } # Code diagnostics hint in gutter (LSP).
 
@@ -21,14 +21,14 @@
 # UI ==============================
 # For styling helix itself.
 
-'ui.background' = { bg = "dark-green"} # Default background color.
+'ui.background' = { fg = "autocomp-green", bg = "dark-green" } # Default background color.
 'ui.window' = { fg = "mid-green" } # Window border between splits.
 
 'ui.gutter' = { } # Left gutter for diagnostics and breakpoints.
 
 'ui.text' = { fg = "white" } # Default text color.
 'ui.text.focus' = { fg = "white", bg = "mid-green", modifiers = ["bold"] } # Selection highlight in buffer-picker or file-picker.
-'ui.text.info' = { } # Info popup contents (space mode menu).
+'ui.text.info' = { fg = "white" } # Info popup contents (space mode menu).
 
 'ui.cursor' = { fg = "dark-green", bg = "white" } # Fallback cursor colour, non-primary cursors when there are multiple (shift-c).
 'ui.cursor.primary' = { fg = "dark-green", bg = "light-blue" } # The primary cursor when there are multiple (shift-c).
@@ -40,8 +40,8 @@
 'ui.selection.primary' = { bg = "autocomp-green" } # The primary selection when there are multiple.
 'ui.cursorline.primary' = { bg = 'mid-green' }
 
-'ui.linenr' = { bg = "dark-green", fg = "gray"  } # Line numbers.
-'ui.linenr.selected' = { bg = "mid-green", fg = "light-green", modifiers = [ "bold" ] } # Current line number.
+'ui.linenr' = {  fg = "gray"  } # Line numbers.
+'ui.linenr.selected' = { fg = "light-green", modifiers = [ "bold" ] } # Current line number.
 
 'ui.virtual' = { fg = "mid-green" } # Namespace for additions to the editing area.
 'ui.virtual.ruler' = { bg = "mid-green" } # Vertical rulers (colored columns in editing area).
@@ -75,9 +75,9 @@
 #'type.builtin' = { } # Primitive types of the language (string, int, float).
 #'type.enum.variant' = { } # A variant of an enum.
 
-'constructor' = { fg = "mid-blue", modifiers = ["bold"]} # Constructor method for a class or struct. And in some cases applies to module names
+'constructor' = { fg = "light-blue", modifiers = ["bold"]} # Constructor method for a class or struct. And in some cases applies to module names
 
-'constant' = { fg = "light-blue" } # Constant value
+'constant' = { fg = "light-blue", modifiers = ["bold"] } # Constant value
 'constant.builtin' = { fg = "mid-blue", modifiers = ["bold"] } # Special constants like `true`, `false`, `none`, etc.
 'constant.builtin.boolean' = { } # True or False.
 'constant.character' = { fg = "light-green"} # Constant of character type.
@@ -88,21 +88,20 @@
 
 'string' = { fg = "light-green" } # String literal.
 'string.regexp' = { } # Regular expression literal.
-'string.special' = { fg = "light-blue" } # Strings containing a path, URL, etc.
-'string.special.path' = { } # String containing a file path.
-'string.special.url' = { } # String containing a web URL.
-'string.special.symbol' = { } # Erlang/Elixir atoms, Ruby symbols, Clojure keywords.
+'string.special' = { fg = "red" } # Strings containing a path, URL, etc.
+# 'string.special.path' = { } # String containing a file path.
+# 'string.special.url' = { } # String containing a web URL.
+# 'string.special.symbol' = { } # Erlang/Elixir atoms, Ruby symbols, Clojure keywords.
 
 'comment' = { fg = "gray", modifiers = ["italic"] } # This is a comment.
 'comment.line' = { } # Line comments, like this.
 'comment.block' = { } # Block comments, like /* this */ in some languages.
 'comment.block.documentation' = { } # Doc comments, e.g '///' in rust.
 
-'variable' = { fg = "white" }  # Variable names.
-'variable.builtin' = { } # Language reserved variables: `this`, `self`, `super`, etc.
-'variable.parameter' = { } # Function parameters.
-'variable.other.member' = { } # Fields of composite data types (e.g. structs, unions).
-'variable.function' = { } # ?
+'variable' = { fg = "light-orange" }  # Variable names.
+# 'variable.builtin' = { } # Language reserved variables: `this`, `self`, `super`, etc.
+# 'variable.parameter' = { } # Function parameters.
+'variable.other.member' = { fg = "orange" } # Fields of composite data types (e.g. structs, unions).
 
 'label' = { fg = "purple" } # Loop labels in rust.
 
@@ -113,17 +112,17 @@
 'keyword' = { fg = "pink", modifiers = ["bold"] } # Language reserved keywords.
 'keyword.control' = { fg = "pink", modifiers = ["bold"] } # Control keywords.
 'keyword.control.conditional' = { fg = "pink", modifiers = ["bold"] } # 'if', 'else', 'elif'.
-'keyword.control.repeat' = { } # 'for', 'while', 'loop'.
+# 'keyword.control.repeat' = { } # 'for', 'while', 'loop'.
 'keyword.control.import' = { fg = "pink", modifiers = ["italic"] } # 'import', 'export' ('use'?).
-'keyword.control.return' = { } # 'return' in most languages.
+# 'keyword.control.return' = { } # 'return' in most languages.
 'keyword.control.exception' = {fg = "pink", modifiers = ["bold"] } # 'raise' in python.
-'keyword.operator' = { } # 'or', 'and', 'in'.
+'keyword.operator' = { fg = "pink" } # 'or', 'and', 'in'.
 'keyword.directive' = { fg = "purple" } # Preprocessor directives (#if in C).
-'keyword.function' = { } # The keyword to define a function: 'def', 'fun', 'fn'.
+'keyword.function' = { fg= "red" } # The keyword to define a function: 'def', 'fun', 'fn'.
 
 'operator' = { fg = "pink", modifiers = ["bold"] } # Logical (&&, ||) and - I assume - Mathematical (+, %) operators
 
-'function' = { fg = "dark-blue"}
+'function' = { fg = "mid-blue"}
 'function.builtin' = { fg = "dark-blue" }
 'function.method' = { fg = "dark-blue" } # Class / Struct methods.
 'function.macro' = { fg = "purple" } # Like macros in rust.
@@ -181,8 +180,8 @@
 # Version control changes.
 
 'diff.plus' = "light-green" # { } # Additions.
-'diff.minus' = "yellow" # { } # Deletions.
-'diff.delta' = "red" # { } # Modifications.
+'diff.minus' = "red" # { } # Deletions.
+'diff.delta' = "yellow" # { } # Modifications.
 # 'diff.delta.moved' = { } # Renamed or moved files / changes.
 
 
@@ -197,8 +196,9 @@ yellow = "#ffd800"
 purple = "#918cff"
 white = "#b1cace"
 orange = "#ffa864"
+light-orange = "#fff2c5"
 gray = "#5b858b" # mainly for comments/background text
-light-gray = "#354e51" # used when whitespace rendering is enabled and for indent-guides
+light-gray = "#2a3c41" # used when whitespace rendering is enabled and for indent-guides
 red = "#e34e1b"
 
 dark-blue = "#19a2b7"

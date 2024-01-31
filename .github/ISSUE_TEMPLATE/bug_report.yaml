@@ -56,6 +56,16 @@ body:
     validations:
       required: true
   - type: input
+    id: installation-method
+    attributes:
+      label: Installation Method
+      description: >
+        How you installed Helix - from a package manager like Homebrew or the
+        AUR, built from source, downloaded a binary from the releases page, etc.
+      placeholder: "source / brew / nixpkgs / flake / releases page"
+    validations:
+      required: true
+  - type: input
     id: helix-version
     attributes:
       label: Helix Version

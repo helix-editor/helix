@@ -63,7 +63,7 @@
 ;; Terms
 (type_signature term_name: (path)? @variable term_name: (wordy_id) @variable)
 (type_signature (wordy_id) @type)
-(type_signature (delayed (wordy_id)) @type)
+(type_signature (term_type(delayed(wordy_id))) @type)
 
 (term_definition param: (wordy_id) @variable.parameter)
 

@@ -178,6 +178,9 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
         .max_depth(config.file_picker.max_depth)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
 
+    walk_builder.add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
+    walk_builder.add_custom_ignore_filename(".helix/ignore");
+
     // We want to exclude files that the editor can't handle yet
     let mut type_builder = TypesBuilder::new();
     type_builder
@@ -412,7 +415,7 @@ pub mod completers {
         use std::path::Path;
 
         let is_tilde = input == "~";
-        let path = helix_core::path::expand_tilde(Path::new(input));
+        let path = helix_stdx::path::expand_tilde(Path::new(input));
 
         let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)
@@ -433,7 +436,7 @@ pub mod completers {
                 match path.parent() {
                     Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
                     // Path::new("h")'s parent is Some("")...
-                    _ => helix_loader::current_working_dir(),
+                    _ => helix_stdx::env::current_working_dir(),
                 }
             };
 

@@ -5,7 +5,7 @@
 //!
 //! The core of the event system are hook callbacks and the [`Event`] trait. A
 //! hook is essentially just a closure `Fn(event: &mut impl Event) -> Result<()>`
-//! that gets called every time an approriate event is dispatched. The implementation
+//! that gets called every time an appropriate event is dispatched. The implementation
 //! details of the [`Event`] trait are considered private. The [`events`] macro is
 //! provided which automatically declares event types. Similarly the `register_hook`
 //! macro should be used to (safely) declare event hooks.
@@ -17,7 +17,7 @@
 //! expensive background computations or debouncing an [`AsyncHook`] is preferable.
 //! Async hooks are based around a channels that receive events specific to
 //! that `AsyncHook` (usually an enum). These events can be sent by synchronous
-//! hooks. Due to some limtations around tokio channels the [`send_blocking`]
+//! hooks. Due to some limitations around tokio channels the [`send_blocking`]
 //! function exported in this crate should be used instead of the builtin
 //! `blocking_send`.
 //!
@@ -83,7 +83,7 @@ pub fn dispatch(e: impl Event) {
     registry::with(|registry| registry.dispatch(e));
 }
 
-/// Macro to delclare events
+/// Macro to declare events
 ///
 /// # Examples
 ///
@@ -97,7 +97,6 @@ pub fn dispatch(e: impl Event) {
 /// fn init() {
 ///    register_event::<FileWrite>();
 ///    register_event::<ViewScrolled>();
-///    register_event::<InsertChar>();
 ///    register_event::<DocumentChanged>();
 /// }
 ///
@@ -110,7 +109,7 @@ pub fn dispatch(e: impl Event) {
 macro_rules! events {
     ($name: ident<$($lt: lifetime),*> { $($data:ident : $data_ty:ty),* } $($rem:tt)*) => {
         pub struct $name<$($lt),*> { $(pub $data: $data_ty),* }
-        impl<$($lt),*> $crate::Event for $name<$($lt),*> {
+        unsafe impl<$($lt),*> $crate::Event for $name<$($lt),*> {
             const ID: &'static str = stringify!($name);
             const LIFETIMES: usize = $crate::events!(@sum $(1, $lt),*);
             type Static = $crate::events!(@replace_lt $name, $('static, $lt),*);
@@ -119,7 +118,7 @@ macro_rules! events {
     };
     ($name: ident { $($data:ident : $data_ty:ty),* } $($rem:tt)*) => {
         pub struct $name { $(pub $data: $data_ty),* }
-        impl $crate::Event for $name {
+        unsafe impl $crate::Event for $name {
             const ID: &'static str = stringify!($name);
             const LIFETIMES: usize = 0;
             type Static = Self;
@@ -140,6 +139,46 @@ macro_rules! register_hook {
     (move |$event:ident: &mut $event_ty: ident<$($lt: lifetime),*>| $body: expr) => {
         let val = move |$event: &mut $event_ty<$($lt),*>| $body;
         unsafe {
+            // Lifetimes are a bit of a pain. We want to allow events being
+            // non-static. Lifetimes don't actually exist at runtime so its
+            // fine to essentially transmute the lifetimes as long as we can
+            // prove soundness. The hook must therefore accept any combination
+            // of lifetimes. In other words fn(&'_ mut Event<'_, '_>) is ok
+            // but examples like fn(&'_ mut Event<'_, 'static>) or fn<'a>(&'a
+            // mut Event<'a, 'a>) are not. To make this safe we use a macro to
+            // forbid the user from specifying lifetimes manually (all lifetimes
+            // specified are always function generics and passed to the event so
+            // lifetimes can't be used multiple times and using 'static causes a
+            // syntax error).
+            //
+            // There is one soundness hole tough: Type Aliases allow
+            // "accidentally" creating these problems. For example:
+            //
+            // type Event2  = Event<'static>.
+            // type Event2<'a>  = Event<'a, a>.
+            //
+            // These cases can be caught by counting the number of lifetimes
+            // parameters at the parameter declaration site and then at the hook
+            // declaration site. By asserting the number of lifetime parameters
+            // are equal we can catch all bad type aliases under one assumption:
+            // There are no unused lifetime parameters. Introducing a static
+            // would reduce the number of arguments of the alias by one in the
+            // above example Event2 has zero lifetime arguments while the original
+            // event has one lifetime argument. Similar logic applies to using
+            // a lifetime argument multiple times. The ASSERT below performs a
+            // a compile time assertion to ensure exactly this property.
+            //
+            // With unused lifetime arguments it is still one way to cause unsound code:
+            //
+            // type Event2<'a, 'b> = Event<'a, 'a>;
+            //
+            // However, this case will always emit a compiler warning/cause CI
+            // failures so a user would have to introduce #[allow(unused)] which
+            // is easily caught in review (and a very theoretical case anyway).
+            // If we want to be pedantic we can simply compile helix with
+            // forbid(unused). All of this is just a safety net to prevent
+            // very theoretical misuse. This won't come up in real code (and is
+            // easily caught in review).
             #[allow(unused)]
             const ASSERT: () = {
                 if <$event_ty as $crate::Event>::LIFETIMES != 0 + $crate::events!(@sum $(1, $lt),*){

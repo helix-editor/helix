@@ -1,13 +1,12 @@
 pub mod config;
 pub mod grammar;
 
+use helix_stdx::{env::current_working_dir, path};
+
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 use std::path::{Path, PathBuf};
-use std::sync::RwLock;
 
 pub const VERSION_AND_GIT_HASH: &str = env!("VERSION_AND_GIT_HASH");
-
-static CWD: RwLock<Option<PathBuf>> = RwLock::new(None);
 
 static RUNTIME_DIRS: once_cell::sync::Lazy<Vec<PathBuf>> =
     once_cell::sync::Lazy::new(prioritize_runtime_dirs);
@@ -15,31 +14,6 @@ static RUNTIME_DIRS: once_cell::sync::Lazy<Vec<PathBuf>> =
 static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
 static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
-
-// Get the current working directory.
-// This information is managed internally as the call to std::env::current_dir
-// might fail if the cwd has been deleted.
-pub fn current_working_dir() -> PathBuf {
-    if let Some(path) = &*CWD.read().unwrap() {
-        return path.clone();
-    }
-
-    let path = std::env::current_dir()
-        .and_then(dunce::canonicalize)
-        .expect("Couldn't determine current working directory");
-    let mut cwd = CWD.write().unwrap();
-    *cwd = Some(path.clone());
-
-    path
-}
-
-pub fn set_current_working_dir(path: PathBuf) -> std::io::Result<()> {
-    let path = dunce::canonicalize(path)?;
-    std::env::set_current_dir(path.clone())?;
-    let mut cwd = CWD.write().unwrap();
-    *cwd = Some(path);
-    Ok(())
-}
 
 pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(default_config_file);
@@ -60,7 +34,8 @@ pub fn initialize_log_file(specified_file: Option<PathBuf>) {
 /// 1. sibling directory to `CARGO_MANIFEST_DIR` (if environment variable is set)
 /// 2. subdirectory of user config directory (always included)
 /// 3. `HELIX_RUNTIME` (if environment variable is set)
-/// 4. subdirectory of path to helix executable (always included)
+/// 4. `HELIX_DEFAULT_RUNTIME` (if environment variable is set *at build time*)
+/// 5. subdirectory of path to helix executable (always included)
 ///
 /// Postcondition: returns at least two paths (they might not exist).
 fn prioritize_runtime_dirs() -> Vec<PathBuf> {
@@ -78,6 +53,15 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     rt_dirs.push(conf_rt_dir);
 
     if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
+        let dir = path::expand_tilde(dir);
+        rt_dirs.push(path::normalize(dir));
+    }
+
+    // If this variable is set during build time, it will always be included
+    // in the lookup list. This allows downstream packagers to set a fallback
+    // directory to a location that is conventional on their distro so that they
+    // need not resort to a wrapper script or a global environment variable.
+    if let Some(dir) = std::option_env!("HELIX_DEFAULT_RUNTIME") {
         rt_dirs.push(dir.into());
     }
 
@@ -271,20 +255,8 @@ fn ensure_parent_dir(path: &Path) {
 mod merge_toml_tests {
     use std::str;
 
-    use super::{current_working_dir, merge_toml_values, set_current_working_dir};
+    use super::merge_toml_values;
     use toml::Value;
-
-    #[test]
-    fn current_dir_is_set() {
-        let new_path = dunce::canonicalize(std::env::temp_dir()).unwrap();
-        let cwd = current_working_dir();
-        assert_ne!(cwd, new_path);
-
-        set_current_working_dir(new_path.clone()).expect("Couldn't set new path");
-
-        let cwd = current_working_dir();
-        assert_eq!(cwd, new_path);
-    }
 
     #[test]
     fn language_toml_map_merges() {

@@ -2,7 +2,6 @@ use arc_swap::ArcSwapAny;
 use helix_core::{
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     graphemes,
-    path::expand_tilde,
     regex::Regex,
     shellwords::Shellwords,
     syntax::{AutoPairConfig, Configuration, SoftWrap},
@@ -11,6 +10,7 @@ use helix_core::{
 use helix_event::register_hook;
 use helix_loader::{config_dir, merge_toml_values};
 use helix_lsp::lsp::CompletionItem;
+use helix_stdx::path::expand_tilde;
 use helix_view::{
     document::Mode,
     editor::{
@@ -332,8 +332,8 @@ fn load_static_commands(engine: &mut Engine) {
     template_function_arity_1("regex-selection");
     module.register_fn("replace-selection-with", replace_selection);
     template_function_arity_1("replace-selection-with");
-    module.register_fn("show-completion-prompt-with", show_completion_prompt);
-    template_function_arity_1("show-completion-prompt-with");
+    // module.register_fn("show-completion-prompt-with", show_completion_prompt);
+    // template_function_arity_1("show-completion-prompt-with");
     module.register_fn("cx->current-file", current_path);
     template_function_arity_1("cx->current-file");
 
@@ -2517,7 +2517,7 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
 }
 // Check that we successfully created a directory?
 fn create_directory(path: String) {
-    let path = helix_core::path::get_canonicalized_path(&PathBuf::from(path));
+    let path = helix_stdx::path::canonicalize(&PathBuf::from(path));
 
     if path.exists() {
         return;
@@ -2595,7 +2595,7 @@ pub fn cx_pos_within_text(cx: &mut Context) -> usize {
 }
 
 pub fn get_helix_cwd(_cx: &mut Context) -> Option<String> {
-    helix_loader::current_working_dir()
+    helix_stdx::env::current_working_dir()
         .as_os_str()
         .to_str()
         .map(|x| x.into())
@@ -2735,42 +2735,42 @@ fn replace_selection(cx: &mut Context, value: String) {
     doc.apply(&transaction, view.id);
 }
 
-fn show_completion_prompt(cx: &mut Context, items: Vec<String>) {
-    let (view, doc) = current!(cx.editor);
+// fn show_completion_prompt(cx: &mut Context, items: Vec<String>) {
+//     let (view, doc) = current!(cx.editor);
 
-    let items = items
-        .into_iter()
-        .map(|x| crate::ui::CompletionItem {
-            item: CompletionItem::new_simple(x, "".to_string()),
-            language_server_id: usize::MAX,
-            resolved: true,
-        })
-        .collect();
+//     let items = items
+//         .into_iter()
+//         .map(|x| crate::ui::CompletionItem {
+//             item: CompletionItem::new_simple(x, "".to_string()),
+//             language_server_id: usize::MAX,
+//             resolved: true,
+//         })
+//         .collect();
 
-    let text = doc.text();
-    let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+//     let text = doc.text();
+//     let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
 
-    let trigger = crate::handlers::completion::Trigger::new(
-        cursor,
-        view.id,
-        doc.id(),
-        crate::handlers::completion::TriggerKind::Manual,
-    );
+//     let trigger = crate::handlers::completion::Trigger::new(
+//         cursor,
+//         view.id,
+//         doc.id(),
+//         crate::handlers::completion::TriggerKind::Manual,
+//     );
 
-    let savepoint = doc.savepoint(view);
+//     let savepoint = doc.savepoint(view);
 
-    let callback = async move {
-        let call: job::Callback = Callback::EditorCompositor(Box::new(
-            move |editor: &mut Editor, compositor: &mut Compositor| {
-                crate::handlers::completion::show_completion(
-                    editor, compositor, items, trigger, savepoint,
-                );
-            },
-        ));
-        Ok(call)
-    };
-    cx.jobs.callback(callback);
-}
+//     let callback = async move {
+//         let call: job::Callback = Callback::EditorCompositor(Box::new(
+//             move |editor: &mut Editor, compositor: &mut Compositor| {
+//                 crate::handlers::completion::show_completion(
+//                     editor, compositor, items, trigger, savepoint,
+//                 );
+//             },
+//         ));
+//         Ok(call)
+//     };
+//     cx.jobs.callback(callback);
+// }
 
 // TODO: Remove this!
 fn move_window_to_the_left(cx: &mut Context) {

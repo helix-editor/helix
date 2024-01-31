@@ -15,6 +15,7 @@ pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
 
 pub type ThreadLocalEditorCompositorCallback =
     Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut Jobs)>;
+
 runtime_local! {
     static JOB_QUEUE: OnceCell<Sender<Callback>> = OnceCell::new();
 }
@@ -54,7 +55,6 @@ pub type ThreadLocalJob =
 pub struct Jobs {
     /// jobs the ones that need to complete before we exit.
     pub wait_futures: FuturesUnordered<JobFuture>,
-
     pub local_futures: FuturesUnordered<ThreadLocalJob>,
     pub callbacks: Receiver<Callback>,
     pub status_messages: Receiver<StatusMessage>,

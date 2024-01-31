@@ -6,6 +6,7 @@ use helix_event::{
     cancelable_future, cancelation, register_hook, send_blocking, CancelRx, CancelTx,
 };
 use helix_lsp::lsp;
+use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::Mode;
 use helix_view::events::{DocumentDidChange, SelectionDidChange};
 use helix_view::handlers::lsp::{SignatureHelpEvent, SignatureHelpInvoked};
@@ -16,7 +17,7 @@ use tokio::time::Instant;
 use crate::commands::Open;
 use crate::compositor::Compositor;
 use crate::events::{OnModeSwitch, PostInsertChar};
-use crate::handlers::{rope_ends_with, Handlers};
+use crate::handlers::Handlers;
 use crate::ui::lsp::SignatureHelp;
 use crate::ui::Popup;
 use crate::{job, ui};
@@ -157,7 +158,7 @@ pub fn show_signature_help(
     // already moved on to something else, making a signature help popup will just be an
     // annoyance, see https://github.com/helix-editor/helix/issues/3112
     // For the most part this should not be needed as the request gets canceled automatically now
-    // but its technically possible for the mode change to just preempt this callback so better safe than sorry
+    // but it's technically possible for the mode change to just preempt this callback so better safe than sorry
     if invoked == SignatureHelpInvoked::Automatic && editor.mode != Mode::Insert {
         return;
     }
@@ -284,7 +285,7 @@ fn signature_help_post_insert_char_hook(
         let mut text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
         text = text.slice(..cursor);
-        if triggers.iter().any(|trigger| rope_ends_with(trigger, text)) {
+        if triggers.iter().any(|trigger| text.ends_with(trigger)) {
             send_blocking(tx, SignatureHelpEvent::Trigger)
         }
     }

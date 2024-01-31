@@ -118,7 +118,11 @@ pub(crate) fn with_mut<T>(f: impl FnOnce(&mut Registry) -> T) -> T {
     f(&mut REGISTRY.write())
 }
 
-pub trait Event: Sized {
+/// # Safety
+/// The number of specified lifetimes and the static type *must* be correct.
+/// This is ensured automatically by the [`events`](crate::events)
+/// macro.
+pub unsafe trait Event: Sized {
     /// Globally unique (case sensitive)  string that identifies this type.
     /// A good candidate is the events type name
     const ID: &'static str;

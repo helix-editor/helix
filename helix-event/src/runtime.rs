@@ -4,11 +4,11 @@
 //! thread-local does not work because a applications can/does have multiple
 //! runtime threads. Instead this crate implements a similar notion to a thread
 //! local but instead of being local to a single thread, the statics are local to
-//! a single tokio-runtime. The implementation requires locking so its not exactly efficient.
+//! a single tokio-runtime. The implementation requires locking so it's not exactly efficient.
 //!
 //! Therefore this function is only enabled during integration tests and behaves like
 //! a normal static otherwise. I would prefer this module to be fully private and to only
-//! export the macro but the macro still need to construct these internals so its marked
+//! export the macro but the macro still need to construct these internals so it's marked
 //! `doc(hidden)` instead
 
 use std::ops::Deref;
