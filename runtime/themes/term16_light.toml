@@ -1,7 +1,7 @@
-# Author: dgkf <doug.kelkhoff@gmail.com>
+# Author: dgkf
 # Modified from base16_terminal, Author: NNB <nnbnh@protonmail.com>
 
-inherits = "term16-dark"
+inherits = "term16_dark"
 
 "ui.background.separator" = "light-gray"
 "ui.cursor" = { fg = "gray", modifiers = ["reversed"] }
