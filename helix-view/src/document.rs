@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Context, Error};
 use arc_swap::access::DynAccess;
 use arc_swap::ArcSwap;
-use futures_util::future::BoxFuture;
+use futures_util::future::{self, BoxFuture};
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
@@ -874,6 +874,8 @@ impl Document {
 
             if let Some(identifier) = &identifier {
                 for language_server in language_servers.values() {
+                    let mut notifications = Vec::new();
+
                     if language_server.is_initialized() {
                         let Some(notification) =
                             language_server.text_document_will_save(identifier.clone())
@@ -881,12 +883,16 @@ impl Document {
                             continue
                         };
 
-                        if let Err(err) = helix_lsp::block_on(notification) {
-                            log::error!(
-                                "failed to send textDocument/willSave notification: {err:?}"
-                            );
-                        }
+                        notifications.push(async move {
+                            if let Err(err) = notification.await {
+                                log::error!(
+                                    "failed to send textDocument/willSave notification: {err:?}"
+                                );
+                            }
+                        });
                     }
+
+                    helix_lsp::block_on(future::join_all(notifications));
                 }
             };
 
@@ -923,6 +929,7 @@ impl Document {
             };
 
             if let Some(identifier) = &identifier {
+                let mut notifications = Vec::new();
                 for language_server in language_servers.values() {
                     if language_server.is_initialized() {
                         let Some(notification) =
@@ -931,13 +938,17 @@ impl Document {
                             continue
                         };
 
-                        if let Err(err) = helix_lsp::block_on(notification) {
-                            log::error!(
-                                "failed to send textDocument/didSave notification: {err:?}"
-                            );
-                        }
+                        notifications.push(async move {
+                            if let Err(err) = helix_lsp::block_on(notification) {
+                                log::error!(
+                                    "failed to send textDocument/didSave notification: {err:?}"
+                                );
+                            }
+                        });
                     }
                 }
+
+                helix_lsp::block_on(future::join_all(notifications));
             }
 
             Ok(event)
