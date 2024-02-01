@@ -264,7 +264,7 @@ impl Client {
             .expect("language server not yet initialized!")
     }
 
-    pub(crate) fn file_operations_intests(&self) -> &FileOperationsInterest {
+    pub(crate) fn file_operations_interest(&self) -> &FileOperationsInterest {
         self.file_operation_interest
             .get_or_init(|| FileOperationsInterest::new(self.capabilities()))
     }
@@ -741,7 +741,7 @@ impl Client {
         new_path: &Path,
         is_dir: bool,
     ) -> Option<impl Future<Output = Result<lsp::WorkspaceEdit>>> {
-        let capabilities = self.file_operations_intests();
+        let capabilities = self.file_operations_interest();
         if !capabilities.will_rename.has_interest(old_path, is_dir) {
             return None;
         }
@@ -775,7 +775,7 @@ impl Client {
         new_path: &Path,
         is_dir: bool,
     ) -> Option<impl Future<Output = std::result::Result<(), Error>>> {
-        let capabilities = self.file_operations_intests();
+        let capabilities = self.file_operations_interest();
         if !capabilities.did_rename.has_interest(new_path, is_dir) {
             return None;
         }
