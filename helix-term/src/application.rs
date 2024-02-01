@@ -1,15 +1,12 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{
-    diagnostic::{DiagnosticTag, NumberOrString},
-    path::get_relative_path,
-    pos_at_coords, syntax, Selection,
-};
+use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
-    util::lsp_pos_to_pos,
+    util::lsp_range_to_range,
     LspProgressMap,
 };
+use helix_stdx::path::get_relative_path;
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
@@ -24,15 +21,15 @@ use tui::backend::Backend;
 
 use crate::{
     args::Args,
-    commands::apply_workspace_edit,
     compositor::{Compositor, Event},
     config::Config,
+    handlers,
     job::Jobs,
     keymap::Keymaps,
     ui::{self, overlay::overlaid},
 };
 
-use log::{debug, error, warn};
+use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
 use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
@@ -141,6 +138,7 @@ impl Application {
         let area = terminal.size().expect("couldn't get terminal size");
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
+        let handlers = handlers::setup(config.clone());
         let mut editor = Editor::new(
             area,
             theme_loader.clone(),
@@ -148,6 +146,7 @@ impl Application {
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
+            handlers,
         );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -324,9 +323,20 @@ impl Application {
                 Some(event) = input_stream.next() => {
                     self.handle_terminal_events(event).await;
                 }
-                Some(callback) = self.jobs.futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                Some(callback) = self.jobs.callbacks.recv() => {
+                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, Ok(Some(callback)));
                     self.render().await;
+                }
+                Some(msg) = self.jobs.status_messages.recv() => {
+                    let severity = match msg.severity{
+                        helix_event::status::Severity::Hint => Severity::Hint,
+                        helix_event::status::Severity::Info => Severity::Info,
+                        helix_event::status::Severity::Warning => Severity::Warning,
+                        helix_event::status::Severity::Error => Severity::Error,
+                    };
+                    // TODO: show multiple status messages at once to avoid clobbering
+                    self.editor.status_msg = Some((msg.message, severity));
+                    helix_event::request_redraw();
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
@@ -391,6 +401,12 @@ impl Application {
         self.editor.syn_loader = self.syn_loader.clone();
         for document in self.editor.documents.values_mut() {
             document.detect_language(self.syn_loader.clone());
+            let diagnostics = Editor::doc_diagnostics(
+                &self.editor.language_servers,
+                &self.editor.diagnostics,
+                document,
+            );
+            document.replace_diagnostics(diagnostics, &[], None);
         }
 
         Ok(())
@@ -556,18 +572,8 @@ impl Application {
         let lines = doc_save_event.text.len_lines();
         let bytes = doc_save_event.text.len_bytes();
 
-        if doc.path() != Some(&doc_save_event.path) {
-            doc.set_path(Some(&doc_save_event.path));
-
-            let loader = self.editor.syn_loader.clone();
-
-            // borrowing the same doc again to get around the borrow checker
-            let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
-            let id = doc.id();
-            doc.detect_language(loader);
-            self.editor.refresh_language_servers(id);
-        }
-
+        self.editor
+            .set_doc_path(doc_save_event.doc_id, &doc_save_event.path);
         // TODO: fix being overwritten by lsp
         self.editor.set_status(format!(
             "'{}' written, {}L {}B",
@@ -674,9 +680,13 @@ impl Application {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
                 let notification = match Notification::parse(&method, params) {
                     Ok(notification) => notification,
+                    Err(helix_lsp::Error::Unhandled) => {
+                        info!("Ignoring Unhandled notification from Language Server");
+                        return;
+                    }
                     Err(err) => {
-                        log::error!(
-                            "received malformed notification from Language Server: {}",
+                        error!(
+                            "Ignoring unknown notification from Language Server: {}",
                             err
                         );
                         return;
@@ -717,7 +727,7 @@ impl Application {
                             ));
                         }
                     }
-                    Notification::PublishDiagnostics(params) => {
+                    Notification::PublishDiagnostics(mut params) => {
                         let path = match params.uri.to_file_path() {
                             Ok(path) => path,
                             Err(_) => {
@@ -730,144 +740,97 @@ impl Application {
                             log::error!("Discarding publishDiagnostic notification sent by an uninitialized server: {}", language_server.name());
                             return;
                         }
-                        let offset_encoding = language_server.offset_encoding();
-                        let doc = self.editor.document_by_path_mut(&path).filter(|doc| {
-                            if let Some(version) = params.version {
-                                if version != doc.version() {
-                                    log::info!("Version ({version}) is out of date for {path:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
-                                    return false;
+                        // have to inline the function because of borrow checking...
+                        let doc = self.editor.documents.values_mut()
+                            .find(|doc| doc.path().map(|p| p == &path).unwrap_or(false))
+                            .filter(|doc| {
+                                if let Some(version) = params.version {
+                                    if version != doc.version() {
+                                        log::info!("Version ({version}) is out of date for {path:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
+                                        return false;
+                                    }
+                                }
+                                true
+                            });
+
+                        let mut unchanged_diag_sources = Vec::new();
+                        if let Some(doc) = &doc {
+                            let lang_conf = doc.language.clone();
+
+                            if let Some(lang_conf) = &lang_conf {
+                                if let Some(old_diagnostics) =
+                                    self.editor.diagnostics.get(&params.uri)
+                                {
+                                    if !lang_conf.persistent_diagnostic_sources.is_empty() {
+                                        // Sort diagnostics first by severity and then by line numbers.
+                                        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
+                                        params
+                                            .diagnostics
+                                            .sort_unstable_by_key(|d| (d.severity, d.range.start));
+                                    }
+                                    for source in &lang_conf.persistent_diagnostic_sources {
+                                        let new_diagnostics = params
+                                            .diagnostics
+                                            .iter()
+                                            .filter(|d| d.source.as_ref() == Some(source));
+                                        let old_diagnostics = old_diagnostics
+                                            .iter()
+                                            .filter(|(d, d_server)| {
+                                                *d_server == server_id
+                                                    && d.source.as_ref() == Some(source)
+                                            })
+                                            .map(|(d, _)| d);
+                                        if new_diagnostics.eq(old_diagnostics) {
+                                            unchanged_diag_sources.push(source.clone())
+                                        }
+                                    }
                                 }
                             }
-
-                            true
-                        });
-
-                        if let Some(doc) = doc {
-                            let lang_conf = doc.language_config();
-                            let text = doc.text();
-
-                            let diagnostics = params
-                                .diagnostics
-                                .iter()
-                                .filter_map(|diagnostic| {
-                                    use helix_core::diagnostic::{Diagnostic, Range, Severity::*};
-                                    use lsp::DiagnosticSeverity;
-
-                                    // TODO: convert inside server
-                                    let start = if let Some(start) = lsp_pos_to_pos(
-                                        text,
-                                        diagnostic.range.start,
-                                        offset_encoding,
-                                    ) {
-                                        start
-                                    } else {
-                                        log::warn!("lsp position out of bounds - {:?}", diagnostic);
-                                        return None;
-                                    };
-
-                                    let end = if let Some(end) =
-                                        lsp_pos_to_pos(text, diagnostic.range.end, offset_encoding)
-                                    {
-                                        end
-                                    } else {
-                                        log::warn!("lsp position out of bounds - {:?}", diagnostic);
-                                        return None;
-                                    };
-
-                                    let severity =
-                                        diagnostic.severity.map(|severity| match severity {
-                                            DiagnosticSeverity::ERROR => Error,
-                                            DiagnosticSeverity::WARNING => Warning,
-                                            DiagnosticSeverity::INFORMATION => Info,
-                                            DiagnosticSeverity::HINT => Hint,
-                                            severity => unreachable!(
-                                                "unrecognized diagnostic severity: {:?}",
-                                                severity
-                                            ),
-                                        });
-
-                                    if let Some(lang_conf) = lang_conf {
-                                        if let Some(severity) = severity {
-                                            if severity < lang_conf.diagnostic_severity {
-                                                return None;
-                                            }
-                                        }
-                                    };
-
-                                    let code = match diagnostic.code.clone() {
-                                        Some(x) => match x {
-                                            lsp::NumberOrString::Number(x) => {
-                                                Some(NumberOrString::Number(x))
-                                            }
-                                            lsp::NumberOrString::String(x) => {
-                                                Some(NumberOrString::String(x))
-                                            }
-                                        },
-                                        None => None,
-                                    };
-
-                                    let tags = if let Some(tags) = &diagnostic.tags {
-                                        let new_tags = tags
-                                            .iter()
-                                            .filter_map(|tag| match *tag {
-                                                lsp::DiagnosticTag::DEPRECATED => {
-                                                    Some(DiagnosticTag::Deprecated)
-                                                }
-                                                lsp::DiagnosticTag::UNNECESSARY => {
-                                                    Some(DiagnosticTag::Unnecessary)
-                                                }
-                                                _ => None,
-                                            })
-                                            .collect();
-
-                                        new_tags
-                                    } else {
-                                        Vec::new()
-                                    };
-
-                                    Some(Diagnostic {
-                                        range: Range { start, end },
-                                        line: diagnostic.range.start.line as usize,
-                                        message: diagnostic.message.clone(),
-                                        severity,
-                                        code,
-                                        tags,
-                                        source: diagnostic.source.clone(),
-                                        data: diagnostic.data.clone(),
-                                        language_server_id: server_id,
-                                    })
-                                })
-                                .collect();
-
-                            doc.replace_diagnostics(diagnostics, server_id);
                         }
 
-                        let mut diagnostics = params
-                            .diagnostics
-                            .into_iter()
-                            .map(|d| (d, server_id))
-                            .collect();
+                        let diagnostics = params.diagnostics.into_iter().map(|d| (d, server_id));
 
                         // Insert the original lsp::Diagnostics here because we may have no open document
                         // for diagnosic message and so we can't calculate the exact position.
                         // When using them later in the diagnostics picker, we calculate them on-demand.
-                        match self.editor.diagnostics.entry(params.uri) {
+                        let diagnostics = match self.editor.diagnostics.entry(params.uri) {
                             Entry::Occupied(o) => {
                                 let current_diagnostics = o.into_mut();
                                 // there may entries of other language servers, which is why we can't overwrite the whole entry
                                 current_diagnostics.retain(|(_, lsp_id)| *lsp_id != server_id);
-                                current_diagnostics.append(&mut diagnostics);
-                                // Sort diagnostics first by severity and then by line numbers.
-                                // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
+                                current_diagnostics.extend(diagnostics);
                                 current_diagnostics
-                                    .sort_unstable_by_key(|(d, _)| (d.severity, d.range.start));
+                                // Sort diagnostics first by severity and then by line numbers.
                             }
-                            Entry::Vacant(v) => {
-                                diagnostics
-                                    .sort_unstable_by_key(|(d, _)| (d.severity, d.range.start));
-                                v.insert(diagnostics);
-                            }
+                            Entry::Vacant(v) => v.insert(diagnostics.collect()),
                         };
+
+                        // Sort diagnostics first by severity and then by line numbers.
+                        // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
+                        diagnostics.sort_unstable_by_key(|(d, server_id)| {
+                            (d.severity, d.range.start, *server_id)
+                        });
+
+                        if let Some(doc) = doc {
+                            let diagnostic_of_language_server_and_not_in_unchanged_sources =
+                                |diagnostic: &lsp::Diagnostic, ls_id| {
+                                    ls_id == server_id
+                                        && diagnostic.source.as_ref().map_or(true, |source| {
+                                            !unchanged_diag_sources.contains(source)
+                                        })
+                                };
+                            let diagnostics = Editor::doc_diagnostics_with_filter(
+                                &self.editor.language_servers,
+                                &self.editor.diagnostics,
+                                doc,
+                                diagnostic_of_language_server_and_not_in_unchanged_sources,
+                            );
+                            doc.replace_diagnostics(
+                                diagnostics,
+                                &unchanged_diag_sources,
+                                Some(server_id),
+                            );
+                        }
                     }
                     Notification::ShowMessage(params) => {
                         log::warn!("unhandled window/showMessage: {:?}", params);
@@ -975,7 +938,7 @@ impl Application {
 
                         // Clear any diagnostics for documents with this server open.
                         for doc in self.editor.documents_mut() {
-                            doc.clear_diagnostics(server_id);
+                            doc.clear_diagnostics(Some(server_id));
                         }
 
                         // Remove the language server from the registry.
@@ -1029,11 +992,9 @@ impl Application {
                         let language_server = language_server!();
                         if language_server.is_initialized() {
                             let offset_encoding = language_server.offset_encoding();
-                            let res = apply_workspace_edit(
-                                &mut self.editor,
-                                offset_encoding,
-                                &params.edit,
-                            );
+                            let res = self
+                                .editor
+                                .apply_workspace_edit(offset_encoding, &params.edit);
 
                             Ok(json!(lsp::ApplyWorkspaceEditResponse {
                                 applied: res.is_ok(),
@@ -1134,12 +1095,81 @@ impl Application {
                         }
                         Ok(serde_json::Value::Null)
                     }
+                    Ok(MethodCall::ShowDocument(params)) => {
+                        let language_server = language_server!();
+                        let offset_encoding = language_server.offset_encoding();
+
+                        let result = self.handle_show_document(params, offset_encoding);
+                        Ok(json!(result))
+                    }
                 };
 
                 tokio::spawn(language_server!().reply(id, reply));
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }
+    }
+
+    fn handle_show_document(
+        &mut self,
+        params: lsp::ShowDocumentParams,
+        offset_encoding: helix_lsp::OffsetEncoding,
+    ) -> lsp::ShowDocumentResult {
+        if let lsp::ShowDocumentParams {
+            external: Some(true),
+            uri,
+            ..
+        } = params
+        {
+            self.jobs.callback(crate::open_external_url_callback(uri));
+            return lsp::ShowDocumentResult { success: true };
+        };
+
+        let lsp::ShowDocumentParams {
+            uri,
+            selection,
+            take_focus,
+            ..
+        } = params;
+
+        let path = match uri.to_file_path() {
+            Ok(path) => path,
+            Err(err) => {
+                log::error!("unsupported file URI: {}: {:?}", uri, err);
+                return lsp::ShowDocumentResult { success: false };
+            }
+        };
+
+        let action = match take_focus {
+            Some(true) => helix_view::editor::Action::Replace,
+            _ => helix_view::editor::Action::VerticalSplit,
+        };
+
+        let doc_id = match self.editor.open(&path, action) {
+            Ok(id) => id,
+            Err(err) => {
+                log::error!("failed to open path: {:?}: {:?}", uri, err);
+                return lsp::ShowDocumentResult { success: false };
+            }
+        };
+
+        let doc = doc_mut!(self.editor, &doc_id);
+        if let Some(range) = selection {
+            // TODO: convert inside server
+            if let Some(new_range) = lsp_range_to_range(doc.text(), range, offset_encoding) {
+                let view = view_mut!(self.editor);
+
+                // we flip the range so that the cursor sits on the start of the symbol
+                // (for example start of the function).
+                doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
+                if action.align_view(view, doc.id()) {
+                    align_view(doc, view, Align::Center);
+                }
+            } else {
+                log::warn!("lsp position out of bounds - {:?}", range);
+            };
+        };
+        lsp::ShowDocumentResult { success: true }
     }
 
     async fn claim_term(&mut self) -> std::io::Result<()> {

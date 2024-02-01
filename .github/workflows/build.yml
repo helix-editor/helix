@@ -46,7 +46,7 @@ jobs:
           shared-key: "build"
 
       - name: Cache test tree-sitter grammar
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: runtime/grammars
           key: ${{ runner.os }}-stable-v${{ env.CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}

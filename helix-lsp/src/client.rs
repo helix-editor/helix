@@ -1,27 +1,29 @@
 use crate::{
+    file_operations::FileOperationsInterest,
     find_lsp_workspace, jsonrpc,
     transport::{Payload, Transport},
     Call, Error, OffsetEncoding, Result,
 };
 
-use helix_core::{find_workspace, path, syntax::LanguageServerFeature, ChangeSet, Rope};
+use helix_core::{find_workspace, syntax::LanguageServerFeature, ChangeSet, Rope};
 use helix_loader::{self, VERSION_AND_GIT_HASH};
+use helix_stdx::path;
 use lsp::{
     notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
-    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, WorkspaceFolder,
-    WorkspaceFoldersChangeEvent,
+    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, Url,
+    WorkspaceFolder, WorkspaceFoldersChangeEvent,
 };
 use lsp_types as lsp;
 use parking_lot::Mutex;
 use serde::Deserialize;
 use serde_json::Value;
-use std::future::Future;
-use std::process::Stdio;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
 };
 use std::{collections::HashMap, path::PathBuf};
+use std::{future::Future, sync::OnceLock};
+use std::{path::Path, process::Stdio};
 use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},
@@ -50,6 +52,7 @@ pub struct Client {
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
+    pub(crate) file_operation_interest: OnceLock<FileOperationsInterest>,
     config: Option<Value>,
     root_path: std::path::PathBuf,
     root_uri: Option<lsp::Url>,
@@ -68,7 +71,7 @@ impl Client {
         may_support_workspace: bool,
     ) -> bool {
         let (workspace, workspace_is_cwd) = find_workspace();
-        let workspace = path::get_normalized_path(&workspace);
+        let workspace = path::normalize(workspace);
         let root = find_lsp_workspace(
             doc_path
                 .and_then(|x| x.parent().and_then(|x| x.to_str()))
@@ -182,7 +185,7 @@ impl Client {
         doc_path: Option<&std::path::PathBuf>,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         // Resolve path to the binary
-        let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
+        let cmd = helix_stdx::env::which(cmd)?;
 
         let process = Command::new(cmd)
             .envs(server_environment)
@@ -204,7 +207,7 @@ impl Client {
         let (server_rx, server_tx, initialize_notify) =
             Transport::start(reader, writer, stderr, id, name.clone());
         let (workspace, workspace_is_cwd) = find_workspace();
-        let workspace = path::get_normalized_path(&workspace);
+        let workspace = path::normalize(workspace);
         let root = find_lsp_workspace(
             doc_path
                 .and_then(|x| x.parent().and_then(|x| x.to_str()))
@@ -232,6 +235,7 @@ impl Client {
             server_tx,
             request_counter: AtomicU64::new(0),
             capabilities: OnceCell::new(),
+            file_operation_interest: OnceLock::new(),
             config,
             req_timeout,
             root_path,
@@ -275,6 +279,11 @@ impl Client {
         self.capabilities
             .get()
             .expect("language server not yet initialized!")
+    }
+
+    pub(crate) fn file_operations_intests(&self) -> &FileOperationsInterest {
+        self.file_operation_interest
+            .get_or_init(|| FileOperationsInterest::new(self.capabilities()))
     }
 
     /// Client has to be initialized otherwise this function panics
@@ -667,6 +676,7 @@ impl Client {
                 version: Some(String::from(VERSION_AND_GIT_HASH)),
             }),
             locale: None, // TODO
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
         };
 
         self.request::<lsp::request::Initialize>(params).await
@@ -715,27 +725,27 @@ impl Client {
         })
     }
 
-    pub fn prepare_file_rename(
+    pub fn will_rename(
         &self,
-        old_uri: &lsp::Url,
-        new_uri: &lsp::Url,
+        old_path: &Path,
+        new_path: &Path,
+        is_dir: bool,
     ) -> Option<impl Future<Output = Result<lsp::WorkspaceEdit>>> {
-        let capabilities = self.capabilities.get().unwrap();
-
-        // Return early if the server does not support willRename feature
-        match &capabilities.workspace {
-            Some(workspace) => match &workspace.file_operations {
-                Some(op) => {
-                    op.will_rename.as_ref()?;
-                }
-                _ => return None,
-            },
-            _ => return None,
+        let capabilities = self.file_operations_intests();
+        if !capabilities.will_rename.has_interest(old_path, is_dir) {
+            return None;
         }
-
+        let url_from_path = |path| {
+            let url = if is_dir {
+                Url::from_directory_path(path)
+            } else {
+                Url::from_file_path(path)
+            };
+            Some(url.ok()?.to_string())
+        };
         let files = vec![lsp::FileRename {
-            old_uri: old_uri.to_string(),
-            new_uri: new_uri.to_string(),
+            old_uri: url_from_path(old_path)?,
+            new_uri: url_from_path(new_path)?,
         }];
         let request = self.call_with_timeout::<lsp::request::WillRenameFiles>(
             lsp::RenameFilesParams { files },
@@ -749,27 +759,28 @@ impl Client {
         })
     }
 
-    pub fn did_file_rename(
+    pub fn did_rename(
         &self,
-        old_uri: &lsp::Url,
-        new_uri: &lsp::Url,
+        old_path: &Path,
+        new_path: &Path,
+        is_dir: bool,
     ) -> Option<impl Future<Output = std::result::Result<(), Error>>> {
-        let capabilities = self.capabilities.get().unwrap();
-
-        // Return early if the server does not support DidRename feature
-        match &capabilities.workspace {
-            Some(workspace) => match &workspace.file_operations {
-                Some(op) => {
-                    op.did_rename.as_ref()?;
-                }
-                _ => return None,
-            },
-            _ => return None,
+        let capabilities = self.file_operations_intests();
+        if !capabilities.did_rename.has_interest(new_path, is_dir) {
+            return None;
         }
+        let url_from_path = |path| {
+            let url = if is_dir {
+                Url::from_directory_path(path)
+            } else {
+                Url::from_file_path(path)
+            };
+            Some(url.ok()?.to_string())
+        };
 
         let files = vec![lsp::FileRename {
-            old_uri: old_uri.to_string(),
-            new_uri: new_uri.to_string(),
+            old_uri: url_from_path(old_path)?,
+            new_uri: url_from_path(new_path)?,
         }];
         Some(self.notify::<lsp::notification::DidRenameFiles>(lsp::RenameFilesParams { files }))
     }
@@ -969,20 +980,19 @@ impl Client {
     ) -> Option<impl Future<Output = Result<()>>> {
         let capabilities = self.capabilities.get().unwrap();
 
-        let include_text = match &capabilities.text_document_sync {
-            Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
-                save: Some(options),
+        let include_text = match &capabilities.text_document_sync.as_ref()? {
+            lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
+                save: options,
                 ..
-            })) => match options {
+            }) => match options.as_ref()? {
                 lsp::TextDocumentSyncSaveOptions::Supported(true) => false,
                 lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp_types::SaveOptions {
                     include_text,
                 }) => include_text.unwrap_or(false),
-                // Supported(false)
-                _ => return None,
+                lsp::TextDocumentSyncSaveOptions::Supported(false) => return None,
             },
-            // unsupported
-            _ => return None,
+            // see: https://github.com/microsoft/language-server-protocol/issues/288
+            lsp::TextDocumentSyncCapability::Kind(..) => false,
         };
 
         Some(self.notify::<lsp::notification::DidSaveTextDocument>(
@@ -998,6 +1008,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
+        context: lsp::CompletionContext,
     ) -> Option<impl Future<Output = Result<Value>>> {
         let capabilities = self.capabilities.get().unwrap();
 
@@ -1009,13 +1020,12 @@ impl Client {
                 text_document,
                 position,
             },
+            context: Some(context),
             // TODO: support these tokens by async receiving and updating the choice list
             work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
             partial_result_params: lsp::PartialResultParams {
                 partial_result_token: None,
             },
-            context: None,
-            // lsp::CompletionContext { trigger_kind: , trigger_character: Some(), }
         };
 
         Some(self.call::<lsp::request::Completion>(params))
@@ -1062,7 +1072,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<Option<SignatureHelp>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support signature help.
@@ -1078,7 +1088,8 @@ impl Client {
             // lsp::SignatureHelpContext
         };
 
-        Some(self.call::<lsp::request::SignatureHelpRequest>(params))
+        let res = self.call::<lsp::request::SignatureHelpRequest>(params);
+        Some(async move { Ok(serde_json::from_value(res.await?)?) })
     }
 
     pub fn text_document_range_inlay_hints(

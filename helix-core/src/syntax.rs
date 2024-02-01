@@ -155,6 +155,8 @@ pub struct LanguageConfiguration {
     /// Hardcoded LSP root directories relative to the workspace root, like `examples` or `tools/fuzz`.
     /// Falling back to the current working directory if none are configured.
     pub workspace_lsp_roots: Option<Vec<PathBuf>>,
+    #[serde(default)]
+    pub persistent_diagnostic_sources: Vec<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -261,7 +263,7 @@ impl Display for LanguageServerFeature {
             GotoDeclaration => "goto-declaration",
             GotoDefinition => "goto-definition",
             GotoTypeDefinition => "goto-type-definition",
-            GotoReference => "goto-type-definition",
+            GotoReference => "goto-reference",
             GotoImplementation => "goto-implementation",
             SignatureHelp => "signature-help",
             Hover => "hover",
@@ -1336,6 +1338,32 @@ impl Syntax {
         result
     }
 
+    pub fn tree_for_byte_range(&self, start: usize, end: usize) -> &Tree {
+        let mut container_id = self.root;
+
+        for (layer_id, layer) in self.layers.iter() {
+            if layer.depth > self.layers[container_id].depth
+                && layer.contains_byte_range(start, end)
+            {
+                container_id = layer_id;
+            }
+        }
+
+        self.layers[container_id].tree()
+    }
+
+    pub fn named_descendant_for_byte_range(&self, start: usize, end: usize) -> Option<Node<'_>> {
+        self.tree_for_byte_range(start, end)
+            .root_node()
+            .named_descendant_for_byte_range(start, end)
+    }
+
+    pub fn descendant_for_byte_range(&self, start: usize, end: usize) -> Option<Node<'_>> {
+        self.tree_for_byte_range(start, end)
+            .root_node()
+            .descendant_for_byte_range(start, end)
+    }
+
     // Commenting
     // comment_strings_for_pos
     // is_commented
@@ -1431,6 +1459,32 @@ impl LanguageLayer {
         // unsafe { ts_parser.parser.set_cancellation_flag(None) };
         self.tree = Some(tree);
         Ok(())
+    }
+
+    /// Whether the layer contains the given byte range.
+    ///
+    /// If the layer has multiple ranges (i.e. combined injections), the
+    /// given range is considered contained if it is within the start and
+    /// end bytes of the first and last ranges **and** if the given range
+    /// starts or ends within any of the layer's ranges.
+    fn contains_byte_range(&self, start: usize, end: usize) -> bool {
+        let layer_start = self
+            .ranges
+            .first()
+            .expect("ranges should not be empty")
+            .start_byte;
+        let layer_end = self
+            .ranges
+            .last()
+            .expect("ranges should not be empty")
+            .end_byte;
+
+        layer_start <= start
+            && layer_end >= end
+            && self.ranges.iter().any(|range| {
+                let byte_range = range.start_byte..range.end_byte;
+                byte_range.contains(&start) || byte_range.contains(&end)
+            })
     }
 }
 
@@ -1725,7 +1779,7 @@ impl HighlightConfiguration {
         let mut local_scope_capture_index = None;
         for (i, name) in query.capture_names().iter().enumerate() {
             let i = Some(i as u32);
-            match name.as_str() {
+            match *name {
                 "local.definition" => local_def_capture_index = i,
                 "local.definition-value" => local_def_value_capture_index = i,
                 "local.reference" => local_ref_capture_index = i,
@@ -1736,7 +1790,7 @@ impl HighlightConfiguration {
 
         for (i, name) in injections_query.capture_names().iter().enumerate() {
             let i = Some(i as u32);
-            match name.as_str() {
+            match *name {
                 "injection.content" => injection_content_capture_index = i,
                 "injection.language" => injection_language_capture_index = i,
                 "injection.filename" => injection_filename_capture_index = i,
@@ -1766,7 +1820,7 @@ impl HighlightConfiguration {
     }
 
     /// Get a slice containing all of the highlight names used in the configuration.
-    pub fn names(&self) -> &[String] {
+    pub fn names(&self) -> &[&str] {
         self.query.capture_names()
     }
 
@@ -1793,7 +1847,6 @@ impl HighlightConfiguration {
                 let mut best_index = None;
                 let mut best_match_len = 0;
                 for (i, recognized_name) in recognized_names.iter().enumerate() {
-                    let recognized_name = recognized_name;
                     let mut len = 0;
                     let mut matches = true;
                     for (i, part) in recognized_name.split('.').enumerate() {
@@ -2262,6 +2315,7 @@ impl<'a> Iterator for HighlightIter<'a> {
             // highlighting patterns that are disabled for local variables.
             if definition_highlight.is_some() || reference_highlight.is_some() {
                 while layer.config.non_local_variable_patterns[match_.pattern_index] {
+                    match_.remove();
                     if let Some((next_match, next_capture_index)) = captures.peek() {
                         let next_capture = next_match.captures[*next_capture_index];
                         if next_capture.node == capture.node {

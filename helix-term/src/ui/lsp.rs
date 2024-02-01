@@ -92,7 +92,9 @@ impl Component for SignatureHelp {
             Some(doc) => Markdown::new(doc.clone(), Arc::clone(&self.config_loader)),
         };
         let sig_doc = sig_doc.parse(Some(&cx.editor.theme));
-        let sig_doc_area = area.clip_top(sig_text_area.height + 2);
+        let sig_doc_area = area
+            .clip_top(sig_text_area.height + 2)
+            .clip_bottom(u16::from(cx.editor.popup_border()));
         let sig_doc_para = Paragraph::new(sig_doc)
             .wrap(Wrap { trim: false })
             .scroll((cx.scroll.unwrap_or_default() as u16, 0));

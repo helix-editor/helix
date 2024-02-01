@@ -325,7 +325,7 @@ impl std::str::FromStr for KeyEvent {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut tokens: Vec<_> = s.split('-').collect();
-        let code = match tokens.pop().ok_or_else(|| anyhow!("Missing key code"))? {
+        let mut code = match tokens.pop().ok_or_else(|| anyhow!("Missing key code"))? {
             keys::BACKSPACE => KeyCode::Backspace,
             keys::ENTER => KeyCode::Enter,
             keys::LEFT => KeyCode::Left,
@@ -403,6 +403,18 @@ impl std::str::FromStr for KeyEvent {
                 return Err(anyhow!("Repeated key modifier '{}-'", token));
             }
             modifiers.insert(flag);
+        }
+
+        // Normalize character keys so that characters like C-S-r and C-R
+        // are represented by equal KeyEvents.
+        match code {
+            KeyCode::Char(ch)
+                if ch.is_ascii_lowercase() && modifiers.contains(KeyModifiers::SHIFT) =>
+            {
+                code = KeyCode::Char(ch.to_ascii_uppercase());
+                modifiers.remove(KeyModifiers::SHIFT);
+            }
+            _ => (),
         }
 
         Ok(KeyEvent { code, modifiers })
@@ -682,6 +694,19 @@ mod test {
             KeyEvent {
                 code: KeyCode::Char('+'),
                 modifiers: KeyModifiers::ALT | KeyModifiers::CONTROL
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("C-S-r").unwrap(),
+            str::parse::<KeyEvent>("C-R").unwrap(),
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("S-w").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('W'),
+                modifiers: KeyModifiers::NONE
             }
         );
     }
