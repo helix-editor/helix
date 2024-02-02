@@ -891,7 +891,7 @@ impl Document {
                         });
                     }
 
-                    helix_lsp::block_on(future::join_all(notifications));
+                    future::join_all(notifications).await;
                 }
             };
 
@@ -938,7 +938,7 @@ impl Document {
                         };
 
                         notifications.push(async move {
-                            if let Err(err) = helix_lsp::block_on(notification) {
+                            if let Err(err) = notification.await {
                                 log::error!(
                                     "failed to send textDocument/didSave notification: {err:?}"
                                 );
@@ -947,7 +947,7 @@ impl Document {
                     }
                 }
 
-                helix_lsp::block_on(future::join_all(notifications));
+                future::join_all(notifications).await;
             }
 
             Ok(event)
