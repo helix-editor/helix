@@ -82,10 +82,11 @@ impl DiffProvider for Git {
         // Get the actual data that git would make out of the git object.
         // This will apply the user's git config or attributes like crlf conversions.
         if let Some(work_dir) = repo.work_dir() {
-            let rela_path = file.strip_prefix(work_dir)?.to_string_lossy();
+            let rela_path = file.strip_prefix(work_dir)?;
+            let rela_path = gix::path::try_into_bstr(rela_path)?;
             let (mut pipeline, _) = repo.filter_pipeline(None)?;
             let mut worktree_outcome =
-                pipeline.convert_to_worktree(&data, rela_path.as_ref().into(), Delay::Forbid)?;
+                pipeline.convert_to_worktree(&data, rela_path.as_ref(), Delay::Forbid)?;
             let mut buf = Vec::with_capacity(data.len());
             worktree_outcome.read_to_end(&mut buf)?;
             Ok(buf)
