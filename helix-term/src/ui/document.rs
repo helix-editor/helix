@@ -6,7 +6,7 @@ use helix_core::str_utils::char_to_byte_idx;
 use helix_core::syntax::Highlight;
 use helix_core::syntax::HighlightEvent;
 use helix_core::text_annotations::TextAnnotations;
-use helix_core::{visual_offset_from_block, Position, RopeSlice};
+use helix_core::{visual_offset_from_block, Position, Range, RopeSlice};
 use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
 use helix_view::graphics::Rect;
 use helix_view::theme::Style;
@@ -64,6 +64,7 @@ impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
                         .fold(self.text_style, |acc, span| {
                             acc.patch(self.theme.highlight(span.0))
                         });
+
                     return Some((style, end));
                 }
             }
@@ -71,6 +72,7 @@ impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
         None
     }
 }
+
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct LinePos {
@@ -104,6 +106,7 @@ pub fn render_document(
     translated_positions: &mut [TranslatedPosition],
 ) {
     let mut renderer = TextRenderer::new(surface, doc, theme, offset.horizontal_offset, viewport);
+
     render_text(
         &mut renderer,
         doc.text().slice(..),
@@ -227,7 +230,7 @@ pub fn render_text<'t>(
                     renderer,
                     last_pos,
                 );
-            }
+            }          
             break;
         };
 

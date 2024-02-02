@@ -1,6 +1,7 @@
 mod completion;
 mod document;
 pub(crate) mod editor;
+mod extension;
 mod info;
 pub mod lsp;
 mod markdown;
@@ -272,6 +273,11 @@ pub mod completers {
         for rt_dir in helix_loader::runtime_dirs() {
             names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
         }
+
+        if let Some(themes) = crate::commands::engine::ScriptingEngine::themes() {
+            names.extend(themes);
+        }
+
         names.push("default".into());
         names.push("base16_default".into());
         names.sort();

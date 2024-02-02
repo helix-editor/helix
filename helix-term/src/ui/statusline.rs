@@ -423,6 +423,7 @@ where
         let path = rel_path
             .as_ref()
             .map(|p| p.to_string_lossy())
+            .or_else(|| context.doc.name.as_ref().map(|x| x.into()))
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
         format!(" {} ", path)
     };
@@ -466,6 +467,7 @@ where
         let path = rel_path
             .as_ref()
             .and_then(|p| p.as_path().file_name().map(|s| s.to_string_lossy()))
+            .or_else(|| context.doc.name.as_ref().map(|x| x.into()))
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
         format!(" {} ", path)
     };

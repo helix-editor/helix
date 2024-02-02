@@ -237,7 +237,7 @@ impl Application {
         ])
         .context("build signal handler")?;
 
-        let app = Self {
+        let mut app = Self {
             compositor,
             terminal,
             editor,
@@ -251,6 +251,22 @@ impl Application {
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
         };
+
+        {
+            let mut cx = crate::commands::Context {
+                register: None,
+                count: std::num::NonZeroUsize::new(1),
+                editor: &mut app.editor,
+                callback: Vec::new(),
+                on_next_key_callback: None,
+                jobs: &mut app.jobs,
+            };
+
+            crate::commands::ScriptingEngine::run_initialization_script(
+                &mut cx,
+                app.config.clone(),
+            );
+        }
 
         Ok(app)
     }
@@ -342,6 +358,10 @@ impl Application {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render().await;
                 }
+                Some(callback) = self.jobs.local_futures.next() => {
+                    self.jobs.handle_local_callback(&mut self.editor, &mut self.compositor, callback);
+                    self.render().await;
+                }
                 event = self.editor.wait_event() => {
                     let _idle_handled = self.handle_editor_event(event).await;
 
@@ -366,6 +386,18 @@ impl Application {
     pub fn handle_config_events(&mut self, config_event: ConfigEvent) {
         match config_event {
             ConfigEvent::Refresh => self.refresh_config(),
+            ConfigEvent::UpdateLanguageConfiguration => match self.refresh_language_config() {
+                Ok(_) => {
+                    // If we don't stash the theme here, the syntax highlighting is broken
+                    let current_theme = std::mem::take(&mut self.editor.theme);
+                    self.editor.set_theme(current_theme);
+
+                    self.editor.set_status("Language config refreshed");
+                }
+                Err(err) => {
+                    self.editor.set_error(err.to_string());
+                }
+            },
 
             // Since only the Application can make changes to Editor's config,
             // the Editor must send up a new copy of a modified config so that
@@ -378,6 +410,7 @@ impl Application {
                 };
                 self.config.store(Arc::new(app_config));
             }
+            ConfigEvent::Change => {}
         }
 
         // Update all the relevant members in the editor after updating
@@ -394,7 +427,8 @@ impl Application {
 
     /// refresh language config after config change
     fn refresh_language_config(&mut self) -> Result<(), Error> {
-        let syntax_config = helix_core::config::user_syntax_loader()
+        let syntax_config = crate::commands::engine::ScriptingEngine::load_language_configuration()
+            .unwrap_or_else(|| helix_core::config::user_syntax_loader())
             .map_err(|err| anyhow::anyhow!("Failed to load language config: {}", err))?;
 
         self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
@@ -418,15 +452,19 @@ impl Application {
         let theme = config
             .theme
             .as_ref()
-            .and_then(|theme| {
-                self.theme_loader
-                    .load(theme)
-                    .map_err(|e| {
-                        log::warn!("failed to load theme `{}` - {}", theme, e);
-                        e
-                    })
-                    .ok()
-                    .filter(|theme| (true_color || theme.is_16_color()))
+            .and_then(|theme| crate::commands::engine::ScriptingEngine::load_theme(theme))
+            .or_else(|| {
+                // Check the name again
+                config.theme.as_ref().and_then(|theme| {
+                    self.theme_loader
+                        .load(theme)
+                        .map_err(|e| {
+                            log::warn!("failed to load theme `{}` - {}", theme, e);
+                            e
+                        })
+                        .ok()
+                        .filter(|theme| (true_color || theme.is_16_color()))
+                })
             })
             .unwrap_or_else(|| self.theme_loader.default_theme(true_color));
 
