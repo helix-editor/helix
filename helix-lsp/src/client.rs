@@ -282,27 +282,6 @@ impl Client {
                 capabilities.document_formatting_provider,
                 Some(OneOf::Left(true) | OneOf::Right(_))
             ),
-            LanguageServerFeature::Save => matches!(
-                capabilities.text_document_sync,
-                Some(TextDocumentSyncCapability::Options(
-                    TextDocumentSyncOptions {
-                        save: Some(
-                            TextDocumentSyncSaveOptions::Supported(true)
-                                | TextDocumentSyncSaveOptions::SaveOptions(SaveOptions { .. })
-                        ),
-                        ..
-                    }
-                ))
-            ),
-            LanguageServerFeature::WillSave => matches!(
-                capabilities.text_document_sync,
-                Some(TextDocumentSyncCapability::Options(
-                    TextDocumentSyncOptions {
-                        will_save: Some(true),
-                        ..
-                    }
-                ))
-            ),
             LanguageServerFeature::GotoDeclaration => matches!(
                 capabilities.declaration_provider,
                 Some(
