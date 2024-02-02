@@ -33,6 +33,8 @@ use tokio::{
     },
 };
 
+static DOCUMENT_OPS_TIMEOUT: u64 = 5;
+
 fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
     lsp::WorkspaceFolder {
         name: uri
@@ -759,7 +761,7 @@ impl Client {
         }];
         let request = self.call_with_timeout::<lsp::request::WillRenameFiles>(
             lsp::RenameFilesParams { files },
-            5,
+            DOCUMENT_OPS_TIMEOUT,
         );
 
         Some(async move {
@@ -998,11 +1000,13 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
     ) -> Option<impl Future<Output = Result<Vec<lsp::TextEdit>>>> {
-        let request =
-            self.call::<lsp::request::WillSaveWaitUntil>(lsp::WillSaveTextDocumentParams {
+        let request = self.call_with_timeout::<lsp::request::WillSaveWaitUntil>(
+            lsp::WillSaveTextDocumentParams {
                 text_document,
                 reason: TextDocumentSaveReason::MANUAL,
-            });
+            },
+            DOCUMENT_OPS_TIMEOUT,
+        );
 
         Some(async move {
             let json = request.await?;
