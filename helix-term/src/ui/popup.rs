@@ -295,14 +295,19 @@ impl<T: Component> Component for Popup<T> {
                 for i in 0..win_height {
                     cell = &mut surface[(inner.right() - 1, inner.top() + (border + i) as u16)];
 
-                    let half_block = if render_borders { "▌" } else { "▐" };
+                    let (scroll_thumb, scroll_track) = if render_borders {
+                        ("▌", "│")
+                    } else {
+                        ("▐", "▐")
+                    };
 
                     if scroll_line <= i && i < scroll_line + scroll_height {
                         // Draw scroll thumb
-                        cell.set_symbol(half_block);
+                        cell.set_symbol(scroll_thumb);
                         cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
-                    } else if !render_borders {
+                    } else {
                         // Draw scroll track
+                        cell.set_symbol(scroll_track);
                         cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
                     }
                 }
