@@ -1344,9 +1344,8 @@ actions available in a popup. This will allow you to:
 =                  CHAPTER 13.1 CREATE NEW SPLIT                =
 =================================================================
 
-In normal mode, press ctrl-w to open the Window menu. This will
-display a pop up that reminds of most window splitting and window
-control commands available.
+In normal mode, press ctrl-w to open the Window menu, and display
+a list of available commands.
 
 To open a new empty buffer in a vertical split on the right half
 of your current window, you can use ctrl-w nv (i.e., press ctrl
@@ -1359,6 +1358,7 @@ To create a new empty buffer in an horizontal split, press
 ctrl-w ns . This will split your current window in 2 horizontally
 and create a new buffer, and your cursor will jump to the new
 horizontal split.
+
 
 
 
