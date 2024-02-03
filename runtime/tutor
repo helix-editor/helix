@@ -1381,7 +1381,7 @@ specific split.
 
 You can also close all splits except the current one with ctrl-w o .
 Open a third vertical split with ctrl-w nv , then move to the
-leftest split with ctrl-w h twice, then from inside the split on
+leftmost split with ctrl-w h twice, then from inside the split on
 the left press ctrl-w o to close all except this split.
 
 =================================================================
@@ -1438,7 +1438,7 @@ with :hs hello2 .
 From hello2, press ctrl-w K to swap with the split above: now, the
 split hello2 is on the top, while hello1 is on the bottom.
 
-Still from hello2, press ctrl-w H to swap with teh split on the
+Still from hello2, press ctrl-w H to swap with the split on the
 left: now, hello2 is on the left, and the tutor is on the top
 right. After ctrl-w, you can use HJKL to split with the buffer
 on the left / below / above / on the right.
@@ -1455,16 +1455,16 @@ this split.
 =================================================================
 
 Open a split on the left with :vs hello1 , and then a split below
-with :vs hello2.
+with :vs hello2 .
 
 Move to the tutor split, then press ctrl-w t to transpose the
 vertical split that was opened from this window: now hello1 and
 hello2 and below, rather than on the right, of the tutor. Press
 ctrl-w t to transpose back.
 
-Move to the hello1 split, then press ctrl-2 t to transpose the
+Move to the hello1 split, then press ctrl-w t to transpose the
 horizontal split that was opened from this window: now hello2
-is is on the right, rather than below, hello1. Press ctrl-w t to
+is on the right, rather than below, hello1. Press ctrl-w t to
 transpose back.
 
 Move back to the tutor split and press ctrl-w o to close all but
