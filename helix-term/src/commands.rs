@@ -1162,10 +1162,6 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
     let selections = doc.selection(view.id);
-    let rel_path = doc
-        .relative_path()
-        .map(|path| path.parent().unwrap().to_path_buf())
-        .unwrap_or_default();
     let mut paths: Vec<_> = selections
         .iter()
         .map(|r| text.slice(r.from()..r.to()).to_string())
@@ -1204,13 +1200,23 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             return open_url(cx, url, action);
         }
 
-        let path = &rel_path.join(p);
+        let (path, pos) = args::parse_file(p);
         if path.is_dir() {
-            let picker = ui::file_picker(path.into(), &cx.editor.config());
+            let picker = ui::file_picker(path, &cx.editor.config());
             cx.push_layer(Box::new(overlaid(picker)));
-        } else if let Err(e) = cx.editor.open(path, action) {
-            cx.editor.set_error(format!("Open file failed: {:?}", e));
+        } else {
+            match cx.editor.open(path.as_path(), action) {
+                Ok(_) => {
+                    let (view, doc) = current!(cx.editor);
+                    let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+                    doc.set_selection(view.id, pos);
+                    align_view(doc, view, Align::Center);
+                }
+                Err(e) => {
+                    cx.editor.set_error(format!("Open file failed: {:?}", e));
+                }
         }
+    }
     }
 }
 
