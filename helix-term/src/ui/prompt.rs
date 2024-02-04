@@ -401,7 +401,7 @@ impl Prompt {
 
             let offset = self
                 .selection
-                .map(|selection| selection / items * items)
+                .map(|selection| selection / std::cmp::max(1, items * items))
                 .unwrap_or_default();
 
             surface.clear_with(area, background);
