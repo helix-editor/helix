@@ -9,8 +9,12 @@ pub mod steel_implementations {
         steel_vm::{builtin::BuiltInModule, register_fn::RegisterFn},
     };
 
+    use crate::syntax::{AutoPairConfig, SoftWrap};
+
     impl steel::rvals::Custom for crate::Position {}
     impl steel::rvals::Custom for crate::Selection {}
+    impl steel::rvals::Custom for AutoPairConfig {}
+    impl steel::rvals::Custom for SoftWrap {}
 
     #[derive(Clone, Copy, Debug)]
     enum SliceKind {

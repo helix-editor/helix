@@ -979,7 +979,6 @@ pub enum EditorEvent {
 pub enum ConfigEvent {
     Refresh,
     Update(Box<Config>),
-    UpdateLanguageConfiguration,
     Change,
 }
 

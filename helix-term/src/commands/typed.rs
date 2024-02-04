@@ -880,10 +880,7 @@ fn theme(
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
             } else if let Some(theme_name) = args.first() {
-                if let Ok(theme) = crate::commands::engine::ScriptingEngine::load_theme(theme_name)
-                    .map(|x| Ok(x))
-                    .unwrap_or_else(|| cx.editor.theme_loader.load(theme_name))
-                {
+                if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
                     }
@@ -893,25 +890,15 @@ fn theme(
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
-                // let theme = cx
-                //     .editor
-                //     .theme_loader
-                //     .load(theme_name)
-                //     .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
-                // if !(true_color || theme.is_16_color()) {
-                //     bail!("Unsupported theme: theme requires true color support");
-                // }
-                // cx.editor.set_theme(theme);
-
-                if let Ok(theme) = crate::commands::engine::ScriptingEngine::load_theme(theme_name)
-                    .map(|x| Ok(x))
-                    .unwrap_or_else(|| cx.editor.theme_loader.load(theme_name))
-                {
-                    if !(true_color || theme.is_16_color()) {
-                        bail!("Unsupported theme: theme requires true color support");
-                    }
-                    cx.editor.set_theme(theme);
-                };
+                let theme = cx
+                    .editor
+                    .theme_loader
+                    .load(theme_name)
+                    .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
+                if !(true_color || theme.is_16_color()) {
+                    bail!("Unsupported theme: theme requires true color support");
+                }
+                cx.editor.set_theme(theme);
             } else {
                 let name = cx.editor.theme.name().to_string();
 

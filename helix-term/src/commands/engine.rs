@@ -138,42 +138,6 @@ impl ScriptingEngine {
             .flat_map(|kind| manual_dispatch!(kind, available_commands()))
             .collect()
     }
-
-    pub fn load_theme(name: &str) -> Option<Theme> {
-        for kind in PLUGIN_PRECEDENCE {
-            let theme = manual_dispatch!(kind, load_theme(name));
-
-            if theme.is_some() {
-                return theme;
-            }
-        }
-
-        None
-    }
-
-    pub fn themes() -> Option<Vec<String>> {
-        for kind in PLUGIN_PRECEDENCE {
-            let themes = manual_dispatch!(kind, themes());
-
-            if themes.is_some() {
-                return themes;
-            }
-        }
-
-        None
-    }
-
-    pub fn load_language_configuration() -> Option<Result<Configuration, toml::de::Error>> {
-        for kind in PLUGIN_PRECEDENCE {
-            let config = manual_dispatch!(kind, load_language_configuration());
-
-            if config.is_some() {
-                return config;
-            }
-        }
-
-        None
-    }
 }
 
 impl PluginSystem for NoEngine {
@@ -250,26 +214,5 @@ pub trait PluginSystem {
     #[inline(always)]
     fn available_commands<'a>(&self) -> Vec<Cow<'a, str>> {
         Vec::new()
-    }
-
-    /// Retrieve a theme for a given name
-    #[inline(always)]
-    fn load_theme(&self, _name: &str) -> Option<Theme> {
-        None
-    }
-
-    /// Retrieve the list of themes that exist within the runtime
-    #[inline(always)]
-    fn themes(&self) -> Option<Vec<String>> {
-        None
-    }
-
-    /// Fetch the language configuration as monitored by the plugin system.
-    ///
-    /// For now - this maintains backwards compatibility with the existing toml configuration,
-    /// and as such the toml error is exposed here.
-    #[inline(always)]
-    fn load_language_configuration(&self) -> Option<Result<Configuration, toml::de::Error>> {
-        None
     }
 }

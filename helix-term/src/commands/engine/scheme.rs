@@ -4,12 +4,10 @@ use helix_core::{
     graphemes,
     regex::Regex,
     shellwords::Shellwords,
-    syntax::{AutoPairConfig, Configuration, SoftWrap},
+    syntax::{AutoPairConfig, SoftWrap},
     Range, Selection, Tendril,
 };
 use helix_event::register_hook;
-use helix_loader::{config_dir, merge_toml_values};
-use helix_lsp::lsp::CompletionItem;
 use helix_stdx::path::expand_tilde;
 use helix_view::{
     document::Mode,
@@ -20,7 +18,7 @@ use helix_view::{
     },
     extension::document_id_to_usize,
     input::KeyEvent,
-    Document, DocumentId, Editor, Theme, ViewId,
+    Document, DocumentId, Editor, ViewId,
 };
 use once_cell::sync::Lazy;
 use serde_json::Value;
@@ -33,8 +31,8 @@ use steel::{
 };
 
 use std::{
-    borrow::Cow, cell::RefCell, collections::HashMap, ops::Deref, path::PathBuf, rc::Rc,
-    sync::atomic::AtomicUsize, time::Duration,
+    borrow::Cow, collections::HashMap, ops::Deref, path::PathBuf, sync::atomic::AtomicUsize,
+    time::Duration,
 };
 use std::{
     collections::HashSet,
@@ -58,17 +56,14 @@ use components::SteelDynamicComponent;
 use super::{components, Context, MappableCommand, TYPABLE_COMMAND_LIST};
 use insert::{insert_char, insert_string};
 
+// TODO:
+// I'm not entirely sure this is correct, however from observation it seems that
+// interactions with this really only happen on one thread. I haven't yet found
+// multiple instances of the engine getting created. I'll need to go observe how
+// and when the engine gets accessed.
 thread_local! {
     pub static ENGINE: std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> = configure_engine();
 }
-
-// APIs / Modules that need to be accepted by the plugin system
-// Without these, the core functionality cannot operate
-// pub struct DocumentApi;
-// pub struct EditorApi;
-// pub struct ComponentApi;
-// pub struct TypedCommandsApi;
-// pub struct StaticCommandsApi;
 
 pub struct KeyMapApi {
     get_keymap: fn() -> EmbeddedKeyMap,
@@ -94,6 +89,12 @@ impl KeyMapApi {
     }
 }
 
+// TODO: Refactor this into the configuration object instead.
+// that way, we don't have to have multiple layers of objects,
+// and can instead just refer to the single configuration object.
+//
+// Possibly also introduce buffer / language specific keybindings
+// there as well.
 thread_local! {
     pub static BUFFER_OR_EXTENSION_KEYBINDING_MAP: SteelVal =
         SteelVal::boxed(SteelVal::empty_hashmap());
@@ -102,129 +103,6 @@ thread_local! {
         SteelVal::boxed(SteelVal::empty_hashmap());
 
     pub static GLOBAL_KEYBINDING_MAP: SteelVal = get_keymap().into_steelval().unwrap();
-
-    static THEME_MAP: ThemeContainer = ThemeContainer::new();
-
-    static LANGUAGE_CONFIGURATIONS: LanguageConfigurationContainer = LanguageConfigurationContainer::new();
-}
-
-// Any configurations that we'd like to overlay from the toml
-struct LanguageConfigurationContainer {
-    configuration: Rc<RefCell<Option<toml::Value>>>,
-}
-
-impl LanguageConfigurationContainer {
-    fn new() -> Self {
-        Self {
-            configuration: Rc::new(RefCell::new(None)),
-        }
-    }
-}
-
-impl Custom for LanguageConfigurationContainer {}
-
-impl LanguageConfigurationContainer {
-    fn add_configuration(&self, config_as_string: String) -> Result<(), String> {
-        let left = self
-            .configuration
-            .replace(Some(toml::Value::Boolean(false)));
-
-        if let Some(left) = left {
-            let right = serde_json::from_str(&config_as_string).map_err(|err| err.to_string());
-
-            match right {
-                Ok(right) => {
-                    self.configuration
-                        .replace(Some(merge_toml_values(left, right, 3)));
-
-                    Ok(())
-                }
-                Err(e) => Err(e),
-            }
-        } else {
-            let right = serde_json::from_str(&config_as_string).map_err(|err| err.to_string())?;
-
-            self.configuration.replace(Some(right));
-
-            Ok(())
-        }
-    }
-
-    fn as_language_configuration(&self) -> Option<Result<Configuration, toml::de::Error>> {
-        if let Some(right) = self.configuration.borrow().clone() {
-            let config = helix_loader::config::user_lang_config();
-
-            let res = config
-                .map(|left| merge_toml_values(left, right, 3))
-                .and_then(|x| x.try_into());
-
-            Some(res)
-            // )
-        } else {
-            None
-        }
-    }
-
-    fn get_language_configuration() -> Option<Result<Configuration, toml::de::Error>> {
-        LANGUAGE_CONFIGURATIONS.with(|x| x.as_language_configuration())
-    }
-}
-
-struct ThemeContainer {
-    themes: Rc<RefCell<HashMap<String, Theme>>>,
-}
-
-impl Custom for ThemeContainer {}
-
-impl ThemeContainer {
-    fn new() -> Self {
-        Self {
-            themes: Rc::new(RefCell::new(HashMap::new())),
-        }
-    }
-
-    fn get(name: &str) -> Option<Theme> {
-        THEME_MAP.with(|x| x.themes.borrow().get(name).cloned())
-    }
-
-    fn names() -> Vec<String> {
-        THEME_MAP.with(|x| x.themes.borrow().keys().cloned().collect())
-    }
-
-    fn register(name: String, theme: Theme) {
-        THEME_MAP.with(|x| x.themes.borrow_mut().insert(name, theme));
-    }
-}
-
-fn load_language_configuration_api(engine: &mut Engine) {
-    let mut module = BuiltInModule::new("helix/core/languages".to_string());
-
-    module.register_fn(
-        "register-language-configuration!",
-        |language_configuration: String| -> Result<(), String> {
-            LANGUAGE_CONFIGURATIONS.with(|x| x.add_configuration(language_configuration))
-        },
-    );
-
-    module.register_fn("flush-configuration", refresh_language_configuration);
-
-    engine.register_module(module);
-}
-
-fn load_theme_api(engine: &mut Engine) {
-    let mut module = BuiltInModule::new("helix/core/themes");
-
-    module.register_fn(
-        "register-theme!",
-        |name: String, theme_as_json_string: String| -> Result<(), String> {
-            Ok(ThemeContainer::register(
-                name,
-                serde_json::from_str(&theme_as_json_string).map_err(|err| err.to_string())?,
-            ))
-        },
-    );
-
-    engine.register_module(module);
 }
 
 fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
@@ -238,11 +116,6 @@ fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
     module.register_fn("keymap?", api.is_keymap);
 
     module.register_fn("helix-deep-copy-keymap", api.deep_copy_keymap);
-
-    // Alternatively, could store these values in a steel module, like so:
-    // let keymap_core_map = helix_loader::runtime_file(&PathBuf::from("steel").join("keymap.scm"));
-    // let require_module = format!("(require {})", keymap_core_map.to_str().unwrap());
-    // engine.run(&require_module).unwrap();
 
     // This should be associated with a corresponding scheme module to wrap this up
     module.register_value(
@@ -332,8 +205,6 @@ fn load_static_commands(engine: &mut Engine) {
     template_function_arity_1("regex-selection");
     module.register_fn("replace-selection-with", replace_selection);
     template_function_arity_1("replace-selection-with");
-    // module.register_fn("show-completion-prompt-with", show_completion_prompt);
-    // template_function_arity_1("show-completion-prompt-with");
     module.register_fn("cx->current-file", current_path);
     template_function_arity_1("cx->current-file");
 
@@ -370,9 +241,6 @@ fn load_static_commands(engine: &mut Engine) {
     module.register_fn("move-window-far-right", move_window_to_the_right);
     template_function_arity_0("move-window-far-right");
 
-    // This should probably just get removed?
-    // module.register_fn("block-on-shell-command", run_shell_command_text);
-
     let mut template_function_no_context = |name: &str| {
         builtin_static_command_module.push_str(&format!(
             r#"
@@ -389,9 +257,6 @@ fn load_static_commands(engine: &mut Engine) {
     template_function_no_context("get-helix-scm-path");
     template_function_no_context("get-init-scm-path");
 
-    // let mut target_directory = PathBuf::from(std::env::var("HELIX_RUNTIME").unwrap());
-    // target_directory.push("cogs");
-    // target_directory.push("helix");
     let mut target_directory = helix_runtime_search_path();
 
     if !target_directory.exists() {
@@ -475,10 +340,6 @@ fn load_typed_commands(engine: &mut Engine) {
             command.name
         ));
     }
-
-    // let mut target_directory = PathBuf::from(std::env::var("HELIX_RUNTIME").unwrap());
-    // target_directory.push("cogs");
-    // target_directory.push("helix");
 
     let mut target_directory = helix_runtime_search_path();
     if !target_directory.exists() {
@@ -622,7 +483,7 @@ fn load_configuration_api(engine: &mut Engine) {
         "cursorline",
         "cursorcolumn",
         "middle-click-paste",
-        // "auto-pairs",
+        "auto-pairs",
         "auto-completion",
         "auto-format",
         "auto-save",
@@ -667,7 +528,14 @@ fn load_configuration_api(engine: &mut Engine) {
         .register_fn("cursorline", HelixConfiguration::cursorline)
         .register_fn("cursorcolumn", HelixConfiguration::cursorcolumn)
         .register_fn("middle-click-paste", HelixConfiguration::middle_click_paste)
-        // .register_fn("auto-pairs", HelixConfiguration::auto_pairs)
+        .register_fn("auto-pairs", HelixConfiguration::auto_pairs)
+        // Specific constructors for the auto pairs configuration
+        .register_fn("auto-pairs-default", |enabled: bool| {
+            AutoPairConfig::Enable(enabled)
+        })
+        .register_fn("auto-pairs-map", |map: HashMap<char, char>| {
+            AutoPairConfig::Pairs(map)
+        })
         .register_fn("auto-completion", HelixConfiguration::auto_completion)
         .register_fn("auto-format", HelixConfiguration::auto_format)
         .register_fn("auto-save", HelixConfiguration::auto_save)
@@ -713,9 +581,6 @@ fn load_configuration_api(engine: &mut Engine) {
         )
         .register_fn("smart-tab", HelixConfiguration::smart_tab);
 
-    // let mut target_directory = PathBuf::from(std::env::var("HELIX_RUNTIME").unwrap());
-    // target_directory.push("cogs");
-    // target_directory.push("helix");
     let mut target_directory = helix_runtime_search_path();
 
     if !target_directory.exists() {
@@ -987,24 +852,6 @@ impl super::PluginSystem for SteelScriptingEngine {
             .iter()
             .map(|x| x.clone().into())
             .collect::<Vec<_>>()
-    }
-
-    fn load_theme(&self, name: &str) -> Option<helix_view::Theme> {
-        ThemeContainer::get(name)
-    }
-
-    fn themes(&self) -> Option<Vec<String>> {
-        let names = ThemeContainer::names();
-
-        if !names.is_empty() {
-            Some(names)
-        } else {
-            None
-        }
-    }
-
-    fn load_language_configuration(&self) -> Option<Result<Configuration, toml::de::Error>> {
-        LanguageConfigurationContainer::get_language_configuration()
     }
 }
 
@@ -1963,12 +1810,8 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     load_typed_commands(&mut engine);
     load_static_commands(&mut engine);
     load_keymap_api(&mut engine, KeyMapApi::new());
-    load_theme_api(&mut engine);
     load_rope_api(&mut engine);
-    load_language_configuration_api(&mut engine);
     load_misc_api(&mut engine);
-
-    // load_engine_api(&mut engine);
 
     // Hooks
     engine.register_fn("register-hook!", register_hook);
@@ -2176,9 +2019,6 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 
 fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> {
     let engine = configure_engine_impl(steel::steel_vm::engine::Engine::new());
-
-    // engine.run(&"(require \"/home/matt/Documents/helix-fork/helix/helix-term/src/commands/engine/controller.scm\"
-    //     (for-syntax \"/home/matt/Documents/helix-fork/helix/helix-term/src/commands/engine/controller.scm\"))").unwrap();
 
     std::rc::Rc::new(std::cell::RefCell::new(engine))
 }
@@ -2573,15 +2413,6 @@ fn set_options(
     Ok(())
 }
 
-pub fn refresh_language_configuration(cx: &mut Context) -> anyhow::Result<()> {
-    cx.editor
-        .config_events
-        .0
-        .send(ConfigEvent::UpdateLanguageConfiguration)?;
-
-    Ok(())
-}
-
 pub fn cx_pos_within_text(cx: &mut Context) -> usize {
     let (view, doc) = current_ref!(cx.editor);
 
@@ -2734,43 +2565,6 @@ fn replace_selection(cx: &mut Context, value: String) {
 
     doc.apply(&transaction, view.id);
 }
-
-// fn show_completion_prompt(cx: &mut Context, items: Vec<String>) {
-//     let (view, doc) = current!(cx.editor);
-
-//     let items = items
-//         .into_iter()
-//         .map(|x| crate::ui::CompletionItem {
-//             item: CompletionItem::new_simple(x, "".to_string()),
-//             language_server_id: usize::MAX,
-//             resolved: true,
-//         })
-//         .collect();
-
-//     let text = doc.text();
-//     let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
-
-//     let trigger = crate::handlers::completion::Trigger::new(
-//         cursor,
-//         view.id,
-//         doc.id(),
-//         crate::handlers::completion::TriggerKind::Manual,
-//     );
-
-//     let savepoint = doc.savepoint(view);
-
-//     let callback = async move {
-//         let call: job::Callback = Callback::EditorCompositor(Box::new(
-//             move |editor: &mut Editor, compositor: &mut Compositor| {
-//                 crate::handlers::completion::show_completion(
-//                     editor, compositor, items, trigger, savepoint,
-//                 );
-//             },
-//         ));
-//         Ok(call)
-//     };
-//     cx.jobs.callback(callback);
-// }
 
 // TODO: Remove this!
 fn move_window_to_the_left(cx: &mut Context) {
