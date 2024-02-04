@@ -3042,3 +3042,22 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "hocon"
 source = { git = "https://github.com/antosha417/tree-sitter-hocon", rev = "c390f10519ae69fdb03b3e5764f5592fb6924bcc" }
+
+[[language]]
+name = "tact"
+scope = "source.tact"
+injection-regex = "tact"
+file-types = ["tact"]
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+
+[language.auto-pairs]
+'"' = '"'
+'{' = '}'
+'(' = ')'
+'<' = '>'
+
+[[grammar]]
+name = "tact"
+source = { git = "https://github.com/tact-lang/tree-sitter-tact", rev = "ec57ab29c86d632639726631fb2bb178d23e1c91" }
+

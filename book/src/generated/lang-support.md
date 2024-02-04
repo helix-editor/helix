@@ -162,6 +162,7 @@
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | t32 | ✓ |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |
+| tact | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |
 | templ | ✓ |  |  | `templ` |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
