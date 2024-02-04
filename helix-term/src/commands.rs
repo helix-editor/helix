@@ -1215,8 +1215,8 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
                 Err(e) => {
                     cx.editor.set_error(format!("Open file failed: {:?}", e));
                 }
+            }
         }
-    }
     }
 }
 
