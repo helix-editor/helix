@@ -1,10 +1,13 @@
 ; Function queries
 
 (function_definition
-  body: (_) @function.inside) @function.around
+  body: (_) @function.inside) @function.around ; Does not include end marker
 
-; Does not match block lambdas or Scala 3 braceless lambdas
 (lambda_expression
+  (_) @function.inside) @function.around
+
+; Scala 3 braceless lambda
+(colon_argument
   (_) @function.inside) @function.around
 
 
@@ -30,6 +33,9 @@
 ; Parameter queries
 
 (parameters
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+
+(class_parameters
   ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
 (parameter_types
