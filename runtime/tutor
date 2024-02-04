@@ -1344,18 +1344,18 @@ actions available in a popup. This will allow you to:
 =                  CHAPTER 13.1 CREATE NEW SPLIT                =
 =================================================================
 
-In normal mode, press ctrl-w to open the Window menu, and display
+In normal mode, press Ctrl-w to open the Window menu, and display
 a list of available commands.
 
 To open a new empty buffer in a vertical split on the right half
-of your current window, you can use ctrl-w nv (i.e., press ctrl
+of your current window, you can use Ctrl-w nv (i.e., press Ctrl
 and w at the same time, then press n, then press v). Your current
 window will now split in 2 vertically, a new empty buffer split
 will appear on the right half, and your cursor will jump to the
 new vertical split.
 
 To create a new empty buffer in an horizontal split, press
-ctrl-w ns . This will split your current window in 2 horizontally
+Ctrl-w ns . This will split your current window in 2 horizontally
 and create a new buffer, and your cursor will jump to the new
 horizontal split.
 
@@ -1366,35 +1366,35 @@ horizontal split.
 =                    CHAPTER 13.2 MOVE BETWEEN SPLITS           =
 =================================================================
 
-Use ctrl-w k or ctrl-w arrow-up to move to the split above your
-current split. Use ctrl-w j or ctrl-w arrow-down to move back
-to the split below. Use ctrl-w h or ctrl-w arrow-left to move
-to the split left, and ctrl-w l or ctrl-w arrow-right to move
+Use Ctrl-w k or Ctrl-w arrow-up to move to the split above your
+current split. Use Ctrl-w j or Ctrl-w arrow-down to move back
+to the split below. Use Ctrl-w h or Ctrl-w arrow-left to move
+to the split left, and Ctrl-w l or Ctrl-w arrow-right to move
 back to the split right. To move to the next split (in opening
-order), press ctrl-w w .
+order), press Ctrl-w w .
 
 You can now do whatever you want in your new buffers and splits.
 Once you are done with using your new buffer split,
-you can close it with ctrl-w q . Move to the bottom right split
-with ctrl-w l then ctrl-w j, then press ctrl-w q to close this
+you can close it with Ctrl-w q . Move to the bottom right split
+with Ctrl-w l then Ctrl-w j, then press Ctrl-w q to close this
 specific split.
 
-You can also close all splits except the current one with ctrl-w o .
-Open a third vertical split with ctrl-w nv , then move to the
-leftmost split with ctrl-w h twice, then from inside the split on
-the left press ctrl-w o to close all except this split.
+You can also close all splits except the current one with Ctrl-w o .
+Open a third vertical split with Ctrl-w nv , then move to the
+leftmost split with Ctrl-w h twice, then from inside the split on
+the left press Ctrl-w o to close all except this split.
 
 =================================================================
 =                       CHAPTER 13.3 SPLIT CURRENT BUFFER       =
 =================================================================
 
 You can also, starting in normal mode, split the view of the
-current buffer: use ctrl-w s (to split half way the current
+current buffer: use Ctrl-w s (to split half way the current
 buffer horizontally and open a copy of it on the right too) and
-use again ctrl-w v (to split half way vertically with the buffer
+use again Ctrl-w v (to split half way vertically with the buffer
 opened on both splits).
 
-Close extra splits with ctrl-w o to come back to a single window.
+Close extra splits with Ctrl-w o to come back to a single window.
 
 
 
@@ -1435,15 +1435,15 @@ instead of a new empty buffer.
 Open a split on the left with :vs hello1 , and then a split below
 with :hs hello2 .
 
-From hello2, press ctrl-w K to swap with the split above: now, the
+From hello2, press Ctrl-w K to swap with the split above: now, the
 split hello2 is on the top, while hello1 is on the bottom.
 
-Still from hello2, press ctrl-w H to swap with the split on the
+Still from hello2, press Ctrl-w H to swap with the split on the
 left: now, hello2 is on the left, and the tutor is on the top
-right. After ctrl-w, you can use HJKL to split with the buffer
+right. After Ctrl-w, you can use HJKL to split with the buffer
 on the left / below / above / on the right.
 
-Move back to the tutor split, and press ctrl-w o to only keep
+Move back to the tutor split, and press Ctrl-w o to only keep
 this split.
 
 
@@ -1457,17 +1457,17 @@ this split.
 Open a split on the left with :vs hello1 , and then a split below
 with :vs hello2 .
 
-Move to the tutor split, then press ctrl-w t to transpose the
+Move to the tutor split, then press Ctrl-w t to transpose the
 vertical split that was opened from this window: now hello1 and
 hello2 and below, rather than on the right, of the tutor. Press
-ctrl-w t to transpose back.
+Ctrl-w t to transpose back.
 
-Move to the hello1 split, then press ctrl-w t to transpose the
+Move to the hello1 split, then press Ctrl-w t to transpose the
 horizontal split that was opened from this window: now hello2
-is on the right, rather than below, hello1. Press ctrl-w t to
+is on the right, rather than below, hello1. Press Ctrl-w t to
 transpose back.
 
-Move back to the tutor split and press ctrl-w o to close all but
+Move back to the tutor split and press Ctrl-w o to close all but
 the tutor window.
 
 
@@ -1480,16 +1480,16 @@ Splits can also be opened directly from the filepicker. Press
 space f to open the filepicker. From there, you can type in text
 to perform file lookup with fuzzy matching, and use the arrows
 up and down to move the selected file (indicated by the > symbol).
-If you want to exit the file picker, press esc .
+If you want to exit the file picker, press Escape.
 
 Select any file you like in the file picker. You could open it in
 the current view by pressing enter (do not do this at present).
-But you can also open it in a new split. Press ctrl-v to open
+But you can also open it in a new split. Press Ctrl-v to open
 the selected file in a new vertical split. Press space f again,
-select any file you want, and press ctrl-s to open it in a
+select any file you want, and press Ctrl-s to open it in a
 horizontal split.
 
-Move back to the tutor split, and press ctrl-w o to close all
+Move back to the tutor split, and press Ctrl-w o to close all
 splits except this one.
 
 
@@ -1500,16 +1500,16 @@ splits except this one.
 
 Splits can be used to display either the same buffer several times,
 or several buffers. To access the main windows and splits commands,
-press ctrl-w . You can move between splits with ctrl-w hjkl ,
-you can close a split with ctrl-w q , and you can close all but
-the present split with ctrl-w o .
+press Ctrl-w . You can move between splits with Ctrl-w hjkl ,
+you can close a split with Ctrl-w q , and you can close all but
+the present split with Ctrl-w o .
 
 Splits can also be opened by using the :vs FILENAME and
 :hs FILENAME commands.
 
 Splits can also be used directly from the file pickers, by using
-ctrl-v to open the file selected in a new vertical split, and
-ctrl-s in a horizontal split.
+Ctrl-v to open the file selected in a new vertical split, and
+Ctrl-s in a horizontal split.
 
 
 
