@@ -1,7 +1,11 @@
 ; inherits: c
 
-((foreach_statement body: (_) @_body) @indent.begin
- (#not-has-type? @_body compound_statement))
+(foreach_statement
+ body: (_) @indent
+  (#not-kind-eq? @indent "compound_statement")
+  (#set! "scope" "all"))
 
-((foreach_instance_statement body: (_) @_body) @indent.begin
- (#not-has-type? @_body compound_statement))
+(foreach_instance_statement
+  body: (_) @indent
+  (#not-kind-eq? @indent "compound_statement")
+  (#set! "scope" "all"))
