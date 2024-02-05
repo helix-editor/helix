@@ -8,6 +8,7 @@ use helix_view::{
     Document, Editor, View,
 };
 
+use crate::job::job_count;
 use crate::ui::ProgressSpinners;
 
 use helix_view::editor::StatusLineElement as StatusLineElementID;
@@ -162,6 +163,7 @@ where
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
+        helix_view::editor::StatusLineElement::Jobs => render_jobs,
     }
 }
 
@@ -513,4 +515,11 @@ where
     if let Some(reg) = context.editor.selected_register {
         write(context, format!(" reg={} ", reg), None)
     }
+}
+
+fn render_jobs<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    write(context, format!("# {}", job_count()), None)
 }

@@ -531,6 +531,9 @@ pub enum StatusLineElement {
 
     /// Indicator for selected register
     Register,
+
+    /// Current amount of jobs
+    Jobs,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs

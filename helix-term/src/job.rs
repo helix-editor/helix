@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use helix_event::status::StatusMessage;
 use helix_event::{runtime_local, send_blocking};
 use helix_view::Editor;
@@ -12,24 +14,48 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
 pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
 
+static CURRENT_JOBS: AtomicUsize = AtomicUsize::new(0);
+
 runtime_local! {
     static JOB_QUEUE: OnceCell<Sender<Callback>> = OnceCell::new();
 }
 
-pub async fn dispatch_callback(job: Callback) {
+pub fn dispatch_callback(job: Callback) -> impl Future<Output = ()> {
+    CURRENT_JOBS.fetch_add(1, Ordering::Release);
+    dispatch_callback_impl(job)
+}
+
+pub fn dispatch(
+    job: impl FnOnce(&mut Editor, &mut Compositor) + Send + 'static,
+) -> impl Future<Output = ()> {
+    CURRENT_JOBS.fetch_add(1, Ordering::Release);
+    dispatch_impl(job)
+}
+
+pub fn dispatch_blocking(job: impl FnOnce(&mut Editor, &mut Compositor) + Send + 'static) {
+    CURRENT_JOBS.fetch_add(1, Ordering::Release);
+    dispatch_blocking_impl(job)
+}
+
+async fn dispatch_callback_impl(job: Callback) {
     let _ = JOB_QUEUE.wait().send(job).await;
 }
 
-pub async fn dispatch(job: impl FnOnce(&mut Editor, &mut Compositor) + Send + 'static) {
+async fn dispatch_impl(job: impl FnOnce(&mut Editor, &mut Compositor) + Send + 'static) {
     let _ = JOB_QUEUE
         .wait()
         .send(Callback::EditorCompositor(Box::new(job)))
         .await;
 }
 
-pub fn dispatch_blocking(job: impl FnOnce(&mut Editor, &mut Compositor) + Send + 'static) {
+fn dispatch_blocking_impl(job: impl FnOnce(&mut Editor, &mut Compositor) + Send + 'static) {
     let jobs = JOB_QUEUE.wait();
     send_blocking(jobs, Callback::EditorCompositor(Box::new(job)))
+}
+
+#[inline(always)]
+pub fn job_count() -> usize {
+    CURRENT_JOBS.load(Ordering::Acquire)
 }
 
 pub enum Callback {
@@ -54,6 +80,7 @@ pub struct Jobs {
 
 impl Job {
     pub fn new<F: Future<Output = anyhow::Result<()>> + Send + 'static>(f: F) -> Self {
+        CURRENT_JOBS.fetch_add(1, Ordering::Release);
         Self {
             future: f.map(|r| r.map(|()| None)).boxed(),
             wait: false,
@@ -63,6 +90,7 @@ impl Job {
     pub fn with_callback<F: Future<Output = anyhow::Result<Callback>> + Send + 'static>(
         f: F,
     ) -> Self {
+        CURRENT_JOBS.fetch_add(1, Ordering::Release);
         Self {
             future: f.map(|r| r.map(Some)).boxed(),
             wait: false,
@@ -106,11 +134,16 @@ impl Jobs {
         call: anyhow::Result<Option<Callback>>,
     ) {
         match call {
-            Ok(None) => {}
-            Ok(Some(call)) => match call {
-                Callback::EditorCompositor(call) => call(editor, compositor),
-                Callback::Editor(call) => call(editor),
-            },
+            Ok(None) => {
+                CURRENT_JOBS.fetch_sub(1, Ordering::Release);
+            }
+            Ok(Some(call)) => {
+                match call {
+                    Callback::EditorCompositor(call) => call(editor, compositor),
+                    Callback::Editor(call) => call(editor),
+                };
+                CURRENT_JOBS.fetch_sub(1, Ordering::Release);
+            }
             Err(e) => {
                 editor.set_error(format!("Async job failed: {}", e));
             }
@@ -123,7 +156,7 @@ impl Jobs {
         } else {
             tokio::spawn(async move {
                 match j.future.await {
-                    Ok(Some(cb)) => dispatch_callback(cb).await,
+                    Ok(Some(cb)) => dispatch_callback_impl(cb).await,
                     Ok(None) => (),
                     Err(err) => helix_event::status::report(err).await,
                 }
@@ -157,6 +190,7 @@ impl Jobs {
                             // skip callbacks for which we don't have the necessary references
                             _ => (),
                         }
+                        CURRENT_JOBS.fetch_sub(1, Ordering::Release);
                     }
                 }
                 Err(e) => {
