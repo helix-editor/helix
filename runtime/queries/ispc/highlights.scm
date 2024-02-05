@@ -24,16 +24,14 @@
   "foreach_tiled"
   "foreach_active"
   "foreach_unique"
-] @repeat
+] @keyword.control.repeat
 
-[
-  "cif"
-] @conditional
+"cif" @keyword.control.conditional
 
 [
   "varying"
   "uniform"
-] @type.qualifier
+] @keyword.storage.modifier
 
 "__regcall" @attribute
 
@@ -90,7 +88,7 @@
 
 ; standard library built-in
 ((type_identifier) @type.builtin
-  (#lua-match? @type.builtin "^RNGState"))
+  (#match? @type.builtin "^RNGState"))
 
 (call_expression
   function: (identifier) @function.builtin
