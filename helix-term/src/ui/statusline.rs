@@ -521,5 +521,8 @@ fn render_jobs<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    write(context, format!("# {}", job_count()), None)
+    let job_count = job_count();
+    if job_count > 0 {
+        write(context, format!("# {}", job_count), None)
+    }
 }
