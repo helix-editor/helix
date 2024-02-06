@@ -6,7 +6,7 @@ use tui::{
 
 use std::sync::Arc;
 
-use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag};
+use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 use helix_core::{
     syntax::{self, HighlightEvent, InjectionLanguageMarker, Syntax},
@@ -209,7 +209,7 @@ impl Markdown {
 
                     list_stack.push(list);
                 }
-                Event::End(Tag::List(_)) => {
+                Event::End(TagEnd::List(_)) => {
                     list_stack.pop();
 
                     // whenever top-level list closes, empty line
@@ -249,7 +249,10 @@ impl Markdown {
                 Event::End(tag) => {
                     tags.pop();
                     match tag {
-                        Tag::Heading(_, _, _) | Tag::Paragraph | Tag::CodeBlock(_) | Tag::Item => {
+                        TagEnd::Heading(_)
+                        | TagEnd::Paragraph
+                        | TagEnd::CodeBlock
+                        | TagEnd::Item => {
                             push_line(&mut spans, &mut lines);
                         }
                         _ => (),
@@ -257,7 +260,7 @@ impl Markdown {
 
                     // whenever heading, code block or paragraph closes, empty line
                     match tag {
-                        Tag::Heading(_, _, _) | Tag::Paragraph | Tag::CodeBlock(_) => {
+                        TagEnd::Heading(_) | TagEnd::Paragraph | TagEnd::CodeBlock => {
                             lines.push(Spans::default());
                         }
                         _ => (),
@@ -279,7 +282,7 @@ impl Markdown {
                         lines.extend(tui_text.lines.into_iter());
                     } else {
                         let style = match tags.last() {
-                            Some(Tag::Heading(level, ..)) => match level {
+                            Some(Tag::Heading { level, .. }) => match level {
                                 HeadingLevel::H1 => heading_styles[0],
                                 HeadingLevel::H2 => heading_styles[1],
                                 HeadingLevel::H3 => heading_styles[2],
