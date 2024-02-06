@@ -40,7 +40,7 @@
 (type_identifier) @type
 (cel_type_identifier) @type
 (cel_variable_identifier) @variable.parameter
-(field_identifier) @property
+(field_identifier) @variable.other.member
 [
   (func_identifier)
   (method_identifier)

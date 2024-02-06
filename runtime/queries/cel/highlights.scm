@@ -39,7 +39,7 @@
   operand: (select_expression
     member: (identifier) @type))
 
-(identifier) @property
+(identifier) @variable.other.member
 
 ; Literals
 
@@ -53,13 +53,14 @@
 [
   (int_literal)
   (uint_literal)
-  (float_literal)
-] @number
+] @constant.numeric.integer
+(float_literal) @constant.numeric.float
 
 [
   (true)
   (false)
-  (null)
-] @constant.builtin
+] @constant.builtin.boolean
+
+(null) @constant.builtin
 
 (comment) @comment
