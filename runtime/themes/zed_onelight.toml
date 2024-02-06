@@ -36,7 +36,6 @@ inherits = "zed_onedark"
 "ui.window" = { fg = "dark-gray" }
 
 [palette]
-
 yellow = "#dabb7e"
 red = "#d36151ff"
 orange = "#d3604fff"
