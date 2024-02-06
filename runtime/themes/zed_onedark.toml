@@ -50,7 +50,7 @@
 "ui.background" = { bg = "ui-text-reversed" }
 "ui.gutter" = { bg = "gray" }
 "ui.virtual" = { fg = "faint-gray" }
-"ui.virtual.indent-guidje" = { fg = "faint-gray" }
+"ui.virtual.indent-guide" = { fg = "faint-gray" }
 "ui.virtual.whitespace" = { fg = "light-gray" }
 "ui.virtual.ruler" = { bg = "gray" }
 "ui.virtual.inlay-hint" = { fg = "blue-gray", modifiers = ["bold"] }
@@ -62,7 +62,7 @@
 
 "ui.selection" = { bg = "faint-gray" }
 "ui.selection.primary" = { bg = "#293b5bff" }
-"ui.cursorline.primary" = { bg = "black" }
+"ui.cursorline.primary" = { bg = "gray" }
 
 "ui.highlight" = { bg = "gray" }
 "ui.highlight.frameline" = { bg = "#97202a" }
@@ -77,7 +77,7 @@
 "ui.statusline.select" = { fg = "black", bg = "purple" }
 
 "ui.text" = { fg = "ui-text" }
-"ui.text.focus" = { fg = "white", bg = "black", modifiers = ["bold"] }
+"ui.text.focus" = { fg = "white", bg = "gray", modifiers = ["bold"] }
 
 "ui.help" = { fg = "white", bg = "gray" }
 "ui.popup" = { bg = "gray" }
