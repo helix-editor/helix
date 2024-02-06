@@ -393,7 +393,7 @@ impl Prompt {
             height,
         );
 
-        if !self.completion.is_empty() {
+        if completion_area.height > 0 && !self.completion.is_empty() {
             let area = completion_area;
             let background = theme.get("ui.menu");
 
@@ -401,7 +401,7 @@ impl Prompt {
 
             let offset = self
                 .selection
-                .map(|selection| selection / std::cmp::max(1, items * items))
+                .map(|selection| selection / items * items)
                 .unwrap_or_default();
 
             surface.clear_with(area, background);
