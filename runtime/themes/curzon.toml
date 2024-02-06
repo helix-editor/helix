@@ -9,7 +9,7 @@ special = "label"
 "variable.other.member" = "white"
 variable = "variable"
 "variable.parameter" = { fg = "variable" }
-"variable.builtin" = {fg = "built_in", modifiers=["bold"]}
+"variable.builtin" = {fg = "built_in", modifiers=["bold","italic"]}
 type = "white"
 "type.builtin" = "white" 
 constructor = "light_blue"
@@ -20,7 +20,7 @@ tag = "tag"
 comment = { fg = "comment_color", modifiers = ["italic"] }
 constant = {fg ="white"}
 "constant.builtin" = "white"
-string = {fg="string"}
+string = {fg="string", modifiers=["italic"]}
 "constant.numeric" = "constant_numeric_foreground_color"
 "constant.character.escape" = "label"
 # used for lifetimes
