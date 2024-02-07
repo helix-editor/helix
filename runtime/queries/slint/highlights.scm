@@ -2,6 +2,9 @@
 
 ; Different types:
 (string_value) @string
+(bool_value) @constant.builtin.boolean
+
+; Constants
 
 (escape_sequence) @constant.character.escape
 
@@ -12,29 +15,25 @@
   (easing_kind_identifier)
 ] @constant.builtin
 
-(bool_value) @constant.builtin.boolean
-
-(int_value) @constant.numeric.integer
+[
+  (int_value)
+  (physical_length_value)
+] @constant.numeric.integer
 
 [
   (float_value)
   (percent_value)
   (length_value)
-  (physical_length_value)
   (duration_value)
   (angle_value)
   (relative_font_size_value)
 ] @constant.numeric.float
-
-(simple_identifier) @variable.other
 
 (purity) @keyword.storage.modifier
 
 (function_visibility) @keyword.storage.modifier
 
 (property_visibility) @keyword.storage.modifier
-
-(animate_option_identifier) @keyword
 
 (builtin_type_identifier) @type.builtin
 
@@ -49,6 +48,41 @@
 
 (user_type_identifier) @type
 
+; Functions and callbacks
+(argument) @variable.parameter
+
+(function_call
+  name: (_) @function.call)
+
+; definitions
+(callback
+  name: (_) @function)
+
+(callback_alias
+  name: (_) @function)
+
+(callback_event
+  name: (simple_identifier) @function.call)
+
+(enum_definition
+  name: (_) @type.enum)
+
+(function_definition
+  name: (_) @function)
+
+(struct_definition
+  name: (_) @type)
+
+(typed_identifier
+  type: (_) @type)
+
+; Operators
+(binary_expression
+  op: (_) @operator)
+
+(unary_expression
+  op: (_) @operator)
+
 [
   (comparison_operator)
   (mult_prec_operator)
@@ -57,63 +91,13 @@
   (assignment_prec_operator)
 ] @operator
 
-; Functions and callbacks
-(argument) @variable.parameter
+[
+  ":="
+  "=>"
+  "->"
+  "<=>"
+] @operator
 
-(function_call) @function
-
-; definitions
-(callback
-  name: (_) @function)
-
-(component
-  id: (_) @variable)
-
-(enum_definition
-  name: (_) @type.enum)
-
-(function_definition
-  name: (_) @function)
-
-(property
-  name: (_) @variable.other.member)
-
-(struct_definition
-  name: (_) @type)
-
-(typed_identifier
-  name: (_) @variable)
-
-(typed_identifier
-  type: (_) @type)
-
-(binary_expression
-  op: (_) @operator)
-
-":=" @operator
-
-(unary_expression
-  op: (_) @operator)
-
-(if_statement
-  "if" @keyword.conditional)
-
-(if_statement
-  ":" @punctuation.delimiter)
-
-(if_expr
-  [
-    "if"
-    "else"
-  ] @keyword.conditional)
-
-(ternary_expression
-  [
-    "?"
-    ":"
-  ] @keyword.conditional)
-
-; Keywords:
 [
   ";"
   "."
@@ -129,22 +113,84 @@
   "}"
 ] @punctuation.bracket
 
+(property
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
+
+; Properties, constants and variables
+(component
+  id: (simple_identifier) @constant)
+
+(property
+  name: (simple_identifier) @variable)
+
+(binding_alias
+  name: (simple_identifier) @variable)
+
+(binding
+  name: (simple_identifier) @variable)
+
+(struct_block
+  (simple_identifier) @variable.other.member)
+
+(anon_struct_block
+  (simple_identifier) @variable.other.member)
+
+(property_assignment
+  property: (simple_identifier) @variable)
+
+(states_definition
+  name: (simple_identifier) @variable)
+
+(callback
+  name: (simple_identifier) @variable)
+
+(typed_identifier
+  name: (_) @variable)
+
+(simple_indexed_identifier
+  (simple_identifier) @variable)
+
+(expression
+  (simple_identifier) @variable)
+
+; Attributes
 [
   (linear_gradient_identifier)
   (radial_gradient_identifier)
   (radial_gradient_kind)
 ] @attribute
 
-(export) @keyword.import
+(image_call
+  "@image-url" @attribute)
 
-(animate_option
-  ":" @punctuation.delimiter)
+(tr
+  "@tr" @attribute)
+
+; Keywords
+(animate_option_identifier) @keyword
+
+(export) @keyword.control.import
+
+(if_statement
+  "if" @keyword.control.conditional)
+
+(if_expr
+  [
+    "if"
+    "else"
+  ] @keyword.control.conditional)
+
+(ternary_expression
+  [
+    "?"
+    ":"
+  ] @keyword.control.conditional)
 
 (animate_statement
   "animate" @keyword)
-
-(assignment_expr
-  name: (_) @variable.other.member)
 
 (callback
   "callback" @keyword.function)
@@ -162,41 +208,28 @@
   [
     "for"
     "in"
-  ] @keyword.repeat)
-
-(for_loop
-  ":" @punctuation.delimiter)
+  ] @keyword.control.repeat)
 
 (function_definition
   "function" @keyword.function)
 
-(function_call
-  name: (_) @function.call)
-
 (global_definition
   "global" @keyword.storage.type)
 
-(image_call
-  "@image-url" @attribute)
-
 (imperative_block
-  "return" @keyword.return)
+  "return" @keyword.control.return)
 
 (import_statement
   [
     "import"
     "from"
-  ] @keyword.import)
+  ] @keyword.control.import)
 
 (import_type
-  "as" @keyword.import)
+  "as" @keyword.control.import)
 
 (property
-  [
-    "property"
-    "<"
-    ">"
-  ] @keyword.storage.type)
+  "property" @keyword.storage.type)
 
 (states_definition
   [
@@ -206,9 +239,6 @@
 
 (struct_definition
   "struct" @keyword.storage.type)
-
-(tr
-  "@tr" @attribute)
 
 (transitions_definition
   [

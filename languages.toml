@@ -2139,7 +2139,7 @@ language-servers = [ "slint-lsp" ]
 
 [[grammar]]
 name = "slint"
-source = { git = "https://github.com/slint-ui/tree-sitter-slint", rev = "fcdc1d5a302fa2792d941d77ce5525ff4f3b4fca" }
+source = { git = "https://github.com/slint-ui/tree-sitter-slint", rev = "15618215b79b9db08f824a5c97a12d073dcc1c00" }
 
 [[language]]
 name = "task"
