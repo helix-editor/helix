@@ -189,16 +189,16 @@
 <p>💡 You can easily open the config file by typing <code>:config-open</code> within Helix normal mode.</p>
 </blockquote>
 <p>Example config:</p>
-<pre><code class="language-toml">theme = &quot;onedark&quot;
+<pre><code class="language-toml">theme = "onedark"
 
 [editor]
-line-number = &quot;relative&quot;
+line-number = "relative"
 mouse = false
 
 [editor.cursor-shape]
-insert = &quot;bar&quot;
-normal = &quot;block&quot;
-select = &quot;underline&quot;
+insert = "bar"
+normal = "block"
+select = "underline"
 
 [editor.file-picker]
 hidden = false
@@ -216,11 +216,11 @@ Its settings will be merged with the configuration directory <code>config.toml</
 <tr><td><code>mouse</code></td><td>Enable mouse mode</td><td><code>true</code></td></tr>
 <tr><td><code>middle-click-paste</code></td><td>Middle click paste support</td><td><code>true</code></td></tr>
 <tr><td><code>scroll-lines</code></td><td>Number of lines to scroll per scroll wheel step</td><td><code>3</code></td></tr>
-<tr><td><code>shell</code></td><td>Shell to use when running external commands</td><td>Unix: <code>[&quot;sh&quot;, &quot;-c&quot;]</code><br/>Windows: <code>[&quot;cmd&quot;, &quot;/C&quot;]</code></td></tr>
+<tr><td><code>shell</code></td><td>Shell to use when running external commands</td><td>Unix: <code>["sh", "-c"]</code><br/>Windows: <code>["cmd", "/C"]</code></td></tr>
 <tr><td><code>line-number</code></td><td>Line number display: <code>absolute</code> simply shows each line's number, while <code>relative</code> shows the distance from the current line. When unfocused or in insert mode, <code>relative</code> will still show absolute line numbers</td><td><code>absolute</code></td></tr>
 <tr><td><code>cursorline</code></td><td>Highlight all lines with a cursor</td><td><code>false</code></td></tr>
 <tr><td><code>cursorcolumn</code></td><td>Highlight all columns with a cursor</td><td><code>false</code></td></tr>
-<tr><td><code>gutters</code></td><td>Gutters to display: Available are <code>diagnostics</code> and <code>diff</code> and <code>line-numbers</code> and <code>spacer</code>, note that <code>diagnostics</code> also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty</td><td><code>[&quot;diagnostics&quot;, &quot;spacer&quot;, &quot;line-numbers&quot;, &quot;spacer&quot;, &quot;diff&quot;]</code></td></tr>
+<tr><td><code>gutters</code></td><td>Gutters to display: Available are <code>diagnostics</code> and <code>diff</code> and <code>line-numbers</code> and <code>spacer</code>, note that <code>diagnostics</code> also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty</td><td><code>["diagnostics", "spacer", "line-numbers", "spacer", "diff"]</code></td></tr>
 <tr><td><code>auto-completion</code></td><td>Enable automatic pop up of auto-completion</td><td><code>true</code></td></tr>
 <tr><td><code>auto-format</code></td><td>Enable automatic formatting on save</td><td><code>true</code></td></tr>
 <tr><td><code>auto-save</code></td><td>Enable automatic saving on the focus moving away from Helix. Requires <a href="https://github.com/helix-editor/helix/wiki/Terminal-Support">focus event support</a> from your terminal</td><td><code>false</code></td></tr>
@@ -249,23 +249,23 @@ Its settings will be merged with the configuration directory <code>config.toml</
 <p><code>[ ... ... LEFT ... ... | ... ... ... ... CENTER ... ... ... ... | ... ... RIGHT ... ... ]</code></p>
 <p>Statusline elements can be defined as follows:</p>
 <pre><code class="language-toml">[editor.statusline]
-left = [&quot;mode&quot;, &quot;spinner&quot;]
-center = [&quot;file-name&quot;]
-right = [&quot;diagnostics&quot;, &quot;selections&quot;, &quot;position&quot;, &quot;file-encoding&quot;, &quot;file-line-ending&quot;, &quot;file-type&quot;]
-separator = &quot;│&quot;
-mode.normal = &quot;NORMAL&quot;
-mode.insert = &quot;INSERT&quot;
-mode.select = &quot;SELECT&quot;
+left = ["mode", "spinner"]
+center = ["file-name"]
+right = ["diagnostics", "selections", "position", "file-encoding", "file-line-ending", "file-type"]
+separator = "│"
+mode.normal = "NORMAL"
+mode.insert = "INSERT"
+mode.select = "SELECT"
 </code></pre>
 <p>The <code>[editor.statusline]</code> key takes the following sub-keys:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>left</code></td><td>A list of elements aligned to the left of the statusline</td><td><code>[&quot;mode&quot;, &quot;spinner&quot;, &quot;file-name&quot;, &quot;read-only-indicator&quot;, &quot;file-modification-indicator&quot;]</code></td></tr>
+<tr><td><code>left</code></td><td>A list of elements aligned to the left of the statusline</td><td><code>["mode", "spinner", "file-name", "read-only-indicator", "file-modification-indicator"]</code></td></tr>
 <tr><td><code>center</code></td><td>A list of elements aligned to the middle of the statusline</td><td><code>[]</code></td></tr>
-<tr><td><code>right</code></td><td>A list of elements aligned to the right of the statusline</td><td><code>[&quot;diagnostics&quot;, &quot;selections&quot;, &quot;register&quot;, &quot;position&quot;, &quot;file-encoding&quot;]</code></td></tr>
-<tr><td><code>separator</code></td><td>The character used to separate elements in the statusline</td><td><code>&quot;│&quot;</code></td></tr>
-<tr><td><code>mode.normal</code></td><td>The text shown in the <code>mode</code> element for normal mode</td><td><code>&quot;NOR&quot;</code></td></tr>
-<tr><td><code>mode.insert</code></td><td>The text shown in the <code>mode</code> element for insert mode</td><td><code>&quot;INS&quot;</code></td></tr>
-<tr><td><code>mode.select</code></td><td>The text shown in the <code>mode</code> element for select mode</td><td><code>&quot;SEL&quot;</code></td></tr>
+<tr><td><code>right</code></td><td>A list of elements aligned to the right of the statusline</td><td><code>["diagnostics", "selections", "register", "position", "file-encoding"]</code></td></tr>
+<tr><td><code>separator</code></td><td>The character used to separate elements in the statusline</td><td><code>"│"</code></td></tr>
+<tr><td><code>mode.normal</code></td><td>The text shown in the <code>mode</code> element for normal mode</td><td><code>"NOR"</code></td></tr>
+<tr><td><code>mode.insert</code></td><td>The text shown in the <code>mode</code> element for insert mode</td><td><code>"INS"</code></td></tr>
+<tr><td><code>mode.select</code></td><td>The text shown in the <code>mode</code> element for select mode</td><td><code>"SEL"</code></td></tr>
 </tbody></table>
 </div>
 <p>The following statusline elements can be configured:</p>
@@ -286,7 +286,7 @@ mode.select = &quot;SELECT&quot;
 <tr><td><code>primary-selection-length</code></td><td>The number of characters currently in primary selection</td></tr>
 <tr><td><code>position</code></td><td>The cursor position</td></tr>
 <tr><td><code>position-percentage</code></td><td>The cursor position as a percentage of the total number of lines</td></tr>
-<tr><td><code>separator</code></td><td>The string defined in <code>editor.statusline.separator</code> (defaults to <code>&quot;│&quot;</code>)</td></tr>
+<tr><td><code>separator</code></td><td>The string defined in <code>editor.statusline.separator</code> (defaults to <code>"│"</code>)</td></tr>
 <tr><td><code>spacer</code></td><td>Inserts a space between elements (multiple/contiguous spacers may be specified)</td></tr>
 <tr><td><code>version-control</code></td><td>The current branch name or detached commit hash of the opened workspace</td></tr>
 <tr><td><code>register</code></td><td>The current selected register</td></tr>
@@ -357,13 +357,13 @@ simple boolean value, or a specific mapping of pairs of single characters.</p>
 <pre><code class="language-toml">[editor]
 auto-pairs = false # defaults to `true`
 </code></pre>
-<p>The default pairs are <code>(){}[]''&quot;&quot;``</code>, but these can be customized by
+<p>The default pairs are <code>(){}[]''""``</code>, but these can be customized by
 setting <code>auto-pairs</code> to a TOML table:</p>
 <pre><code class="language-toml">[editor.auto-pairs]
 '(' = ')'
 '{' = '}'
 '[' = ']'
-'&quot;' = '&quot;'
+'"' = '"'
 '`' = '`'
 '&lt;' = '&gt;'
 </code></pre>
@@ -372,13 +372,13 @@ the editor setting is <code>false</code>, this will override the editor config i
 documents with this language.</p>
 <p>Example <code>languages.toml</code> that adds &lt;&gt; and removes ''</p>
 <pre><code class="language-toml">[[language]]
-name = &quot;rust&quot;
+name = "rust"
 
 [language.auto-pairs]
 '(' = ')'
 '{' = '}'
 '[' = ']'
-'&quot;' = '&quot;'
+'"' = '"'
 '`' = '`'
 '&lt;' = '&gt;'
 </code></pre>
@@ -392,25 +392,25 @@ name = &quot;rust&quot;
 <h3 id="editorwhitespace-section"><a class="header" href="#editorwhitespace-section"><code>[editor.whitespace]</code> Section</a></h3>
 <p>Options for rendering whitespace with visible characters. Use <code>:set whitespace.render all</code> to temporarily enable visible whitespace.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>render</code></td><td>Whether to render whitespace. May either be <code>&quot;all&quot;</code> or <code>&quot;none&quot;</code>, or a table with sub-keys <code>space</code>, <code>nbsp</code>, <code>tab</code>, and <code>newline</code></td><td><code>&quot;none&quot;</code></td></tr>
+<tr><td><code>render</code></td><td>Whether to render whitespace. May either be <code>"all"</code> or <code>"none"</code>, or a table with sub-keys <code>space</code>, <code>nbsp</code>, <code>tab</code>, and <code>newline</code></td><td><code>"none"</code></td></tr>
 <tr><td><code>characters</code></td><td>Literal characters to use when rendering whitespace. Sub-keys may be any of <code>tab</code>, <code>space</code>, <code>nbsp</code>, <code>newline</code> or <code>tabpad</code></td><td>See example below</td></tr>
 </tbody></table>
 </div>
 <p>Example</p>
 <pre><code class="language-toml">[editor.whitespace]
-render = &quot;all&quot;
+render = "all"
 # or control each character
 [editor.whitespace.render]
-space = &quot;all&quot;
-tab = &quot;all&quot;
-newline = &quot;none&quot;
+space = "all"
+tab = "all"
+newline = "none"
 
 [editor.whitespace.characters]
-space = &quot;·&quot;
-nbsp = &quot;⍽&quot;
-tab = &quot;→&quot;
-newline = &quot;⏎&quot;
-tabpad = &quot;·&quot; # Tabs will look like &quot;→···&quot; (depending on tab width)
+space = "·"
+nbsp = "⍽"
+tab = "→"
+newline = "⏎"
+tabpad = "·" # Tabs will look like "→···" (depending on tab width)
 </code></pre>
 <h3 id="editorindent-guides-section"><a class="header" href="#editorindent-guides-section"><code>[editor.indent-guides]</code> Section</a></h3>
 <p>Options for rendering vertical indent guides.</p>
@@ -423,25 +423,25 @@ tabpad = &quot;·&quot; # Tabs will look like &quot;→···&quot; (depending o
 <p>Example:</p>
 <pre><code class="language-toml">[editor.indent-guides]
 render = true
-character = &quot;╎&quot; # Some characters that work well: &quot;▏&quot;, &quot;┆&quot;, &quot;┊&quot;, &quot;⸽&quot;
+character = "╎" # Some characters that work well: "▏", "┆", "┊", "⸽"
 skip-levels = 1
 </code></pre>
 <h3 id="editorgutters-section"><a class="header" href="#editorgutters-section"><code>[editor.gutters]</code> Section</a></h3>
 <p>For simplicity, <code>editor.gutters</code> accepts an array of gutter types, which will
 use default settings for all gutter components.</p>
 <pre><code class="language-toml">[editor]
-gutters = [&quot;diff&quot;, &quot;diagnostics&quot;, &quot;line-numbers&quot;, &quot;spacer&quot;]
+gutters = ["diff", "diagnostics", "line-numbers", "spacer"]
 </code></pre>
 <p>To customize the behavior of gutters, the <code>[editor.gutters]</code> section must
 be used. This section contains top level settings, as well as settings for
 specific gutter components as subsections.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>layout</code></td><td>A vector of gutters to display</td><td><code>[&quot;diagnostics&quot;, &quot;spacer&quot;, &quot;line-numbers&quot;, &quot;spacer&quot;, &quot;diff&quot;]</code></td></tr>
+<tr><td><code>layout</code></td><td>A vector of gutters to display</td><td><code>["diagnostics", "spacer", "line-numbers", "spacer", "diff"]</code></td></tr>
 </tbody></table>
 </div>
 <p>Example:</p>
 <pre><code class="language-toml">[editor.gutters]
-layout = [&quot;diff&quot;, &quot;diagnostics&quot;, &quot;line-numbers&quot;, &quot;spacer&quot;]
+layout = ["diff", "diagnostics", "line-numbers", "spacer"]
 </code></pre>
 <h4 id="editorguttersline-numbers-section"><a class="header" href="#editorguttersline-numbers-section"><code>[editor.gutters.line-numbers]</code> Section</a></h4>
 <p>Options for the line number gutter</p>
@@ -474,7 +474,7 @@ min-width = 1
 enable = true
 max-wrap = 25 # increase value to reduce forced mid-word wrapping
 max-indent-retain = 0
-wrap-indicator = &quot;&quot;  # set wrap-indicator to &quot;&quot; to hide it
+wrap-indicator = ""  # set wrap-indicator to "" to hide it
 </code></pre>
 <h3 id="editorsmart-tab-section"><a class="header" href="#editorsmart-tab-section"><code>[editor.smart-tab]</code> Section</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>

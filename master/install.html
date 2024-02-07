@@ -324,7 +324,7 @@ Linux and macOS, or <code>%userprofile%\src\</code> on Windows.</p>
 <li>A C++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang</li>
 </ul>
 <p>If you are using the <code>musl-libc</code> standard library instead of <code>glibc</code> the following environment variable must be set during the build to ensure tree-sitter grammars can be loaded correctly:</p>
-<pre><code class="language-sh">RUSTFLAGS=&quot;-C target-feature=-crt-static&quot;
+<pre><code class="language-sh">RUSTFLAGS="-C target-feature=-crt-static"
 </code></pre>
 <ol>
 <li>
@@ -366,7 +366,7 @@ your <code>~/.bashrc</code> or equivalent:</p>
 <p>Either set the <code>HELIX_RUNTIME</code> environment variable to point to the runtime files using the Windows setting (search for
 <code>Edit environment variables for your account</code>) or use the <code>setx</code> command in
 Cmd:</p>
-<pre><code class="language-sh">setx HELIX_RUNTIME &quot;%userprofile%\source\repos\helix\runtime&quot;
+<pre><code class="language-sh">setx HELIX_RUNTIME "%userprofile%\source\repos\helix\runtime"
 </code></pre>
 <blockquote>
 <p>💡 <code>%userprofile%</code> resolves to your user directory like
@@ -374,8 +374,8 @@ Cmd:</p>
 </blockquote>
 <p>Or, create a symlink in <code>%appdata%\helix\</code> that links to the source code directory:</p>
 <div class="table-wrapper"><table><thead><tr><th>Method</th><th>Command</th></tr></thead><tbody>
-<tr><td>PowerShell</td><td><code>New-Item -ItemType Junction -Target &quot;runtime&quot; -Path &quot;$Env:AppData\helix\runtime&quot;</code></td></tr>
-<tr><td>Cmd</td><td><code>cd %appdata%\helix</code> <br/> <code>mklink /D runtime &quot;%userprofile%\src\helix\runtime&quot;</code></td></tr>
+<tr><td>PowerShell</td><td><code>New-Item -ItemType Junction -Target "runtime" -Path "$Env:AppData\helix\runtime"</code></td></tr>
+<tr><td>Cmd</td><td><code>cd %appdata%\helix</code> <br/> <code>mklink /D runtime "%userprofile%\src\helix\runtime"</code></td></tr>
 </tbody></table>
 </div>
 <blockquote>
@@ -429,8 +429,8 @@ cp contrib/helix.png ~/.icons # or ~/.local/share/icons
 </code></pre>
 <p>To use another terminal than the system default, you can modify the <code>.desktop</code>
 file. For example, to use <code>kitty</code>:</p>
-<pre><code class="language-sh">sed -i &quot;s|Exec=hx %F|Exec=kitty hx %F|g&quot; ~/.local/share/applications/Helix.desktop
-sed -i &quot;s|Terminal=true|Terminal=false|g&quot; ~/.local/share/applications/Helix.desktop
+<pre><code class="language-sh">sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
+sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 </code></pre>
 
                     </main>

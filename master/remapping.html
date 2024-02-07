@@ -188,59 +188,59 @@ directory (default <code>~/.config/helix</code> on Linux systems) with a structu
 this:</p>
 <pre><code class="language-toml"># At most one section each of 'keys.normal', 'keys.insert' and 'keys.select'
 [keys.normal]
-C-s = &quot;:w&quot; # Maps Ctrl-s to the typable command :w which is an alias for :write (save file)
-C-o = &quot;:open ~/.config/helix/config.toml&quot; # Maps Ctrl-o to opening of the helix config file
-a = &quot;move_char_left&quot; # Maps the 'a' key to the move_char_left command
-w = &quot;move_line_up&quot; # Maps the 'w' key move_line_up
-&quot;C-S-esc&quot; = &quot;extend_line&quot; # Maps Ctrl-Shift-Escape to extend_line
-g = { a = &quot;code_action&quot; } # Maps `ga` to show possible code actions
-&quot;ret&quot; = [&quot;open_below&quot;, &quot;normal_mode&quot;] # Maps the enter key to open_below then re-enter normal mode
+C-s = ":w" # Maps Ctrl-s to the typable command :w which is an alias for :write (save file)
+C-o = ":open ~/.config/helix/config.toml" # Maps Ctrl-o to opening of the helix config file
+a = "move_char_left" # Maps the 'a' key to the move_char_left command
+w = "move_line_up" # Maps the 'w' key move_line_up
+"C-S-esc" = "extend_line" # Maps Ctrl-Shift-Escape to extend_line
+g = { a = "code_action" } # Maps `ga` to show possible code actions
+"ret" = ["open_below", "normal_mode"] # Maps the enter key to open_below then re-enter normal mode
 
 [keys.insert]
-&quot;A-x&quot; = &quot;normal_mode&quot;     # Maps Alt-X to enter normal mode
-j = { k = &quot;normal_mode&quot; } # Maps `jk` to exit insert mode
+"A-x" = "normal_mode"     # Maps Alt-X to enter normal mode
+j = { k = "normal_mode" } # Maps `jk` to exit insert mode
 </code></pre>
 <h2 id="minor-modes"><a class="header" href="#minor-modes">Minor modes</a></h2>
 <p>Minor modes are accessed by pressing a key (usually from normal mode), giving access to dedicated bindings. Bindings
 can be modified or added by nesting definitions.</p>
 <pre><code class="language-toml">[keys.insert.j]
-k = &quot;normal_mode&quot; # Maps `jk` to exit insert mode
+k = "normal_mode" # Maps `jk` to exit insert mode
 
 [keys.normal.g]
-a = &quot;code_action&quot; # Maps `ga` to show possible code actions
+a = "code_action" # Maps `ga` to show possible code actions
 
 # invert `j` and `k` in view mode
 [keys.normal.z]
-j = &quot;scroll_up&quot;
-k = &quot;scroll_down&quot;
+j = "scroll_up"
+k = "scroll_down"
 
 # create a new minor mode bound to `+`
-[keys.normal.&quot;+&quot;]
-m = &quot;:run-shell-command make&quot;
-c = &quot;:run-shell-command cargo build&quot;
-t = &quot;:run-shell-command cargo test&quot;
+[keys.normal."+"]
+m = ":run-shell-command make"
+c = ":run-shell-command cargo build"
+t = ":run-shell-command cargo test"
 </code></pre>
 <h2 id="special-keys-and-modifiers"><a class="header" href="#special-keys-and-modifiers">Special keys and modifiers</a></h2>
 <p>Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 <code>C-</code>, <code>S-</code> and <code>A-</code>. Special keys are encoded as follows:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key name</th><th>Representation</th></tr></thead><tbody>
-<tr><td>Backspace</td><td><code>&quot;backspace&quot;</code></td></tr>
-<tr><td>Space</td><td><code>&quot;space&quot;</code></td></tr>
-<tr><td>Return/Enter</td><td><code>&quot;ret&quot;</code></td></tr>
-<tr><td>-</td><td><code>&quot;minus&quot;</code></td></tr>
-<tr><td>Left</td><td><code>&quot;left&quot;</code></td></tr>
-<tr><td>Right</td><td><code>&quot;right&quot;</code></td></tr>
-<tr><td>Up</td><td><code>&quot;up&quot;</code></td></tr>
-<tr><td>Down</td><td><code>&quot;down&quot;</code></td></tr>
-<tr><td>Home</td><td><code>&quot;home&quot;</code></td></tr>
-<tr><td>End</td><td><code>&quot;end&quot;</code></td></tr>
-<tr><td>Page Up</td><td><code>&quot;pageup&quot;</code></td></tr>
-<tr><td>Page Down</td><td><code>&quot;pagedown&quot;</code></td></tr>
-<tr><td>Tab</td><td><code>&quot;tab&quot;</code></td></tr>
-<tr><td>Delete</td><td><code>&quot;del&quot;</code></td></tr>
-<tr><td>Insert</td><td><code>&quot;ins&quot;</code></td></tr>
-<tr><td>Null</td><td><code>&quot;null&quot;</code></td></tr>
-<tr><td>Escape</td><td><code>&quot;esc&quot;</code></td></tr>
+<tr><td>Backspace</td><td><code>"backspace"</code></td></tr>
+<tr><td>Space</td><td><code>"space"</code></td></tr>
+<tr><td>Return/Enter</td><td><code>"ret"</code></td></tr>
+<tr><td>-</td><td><code>"minus"</code></td></tr>
+<tr><td>Left</td><td><code>"left"</code></td></tr>
+<tr><td>Right</td><td><code>"right"</code></td></tr>
+<tr><td>Up</td><td><code>"up"</code></td></tr>
+<tr><td>Down</td><td><code>"down"</code></td></tr>
+<tr><td>Home</td><td><code>"home"</code></td></tr>
+<tr><td>End</td><td><code>"end"</code></td></tr>
+<tr><td>Page Up</td><td><code>"pageup"</code></td></tr>
+<tr><td>Page Down</td><td><code>"pagedown"</code></td></tr>
+<tr><td>Tab</td><td><code>"tab"</code></td></tr>
+<tr><td>Delete</td><td><code>"del"</code></td></tr>
+<tr><td>Insert</td><td><code>"ins"</code></td></tr>
+<tr><td>Null</td><td><code>"null"</code></td></tr>
+<tr><td>Escape</td><td><code>"esc"</code></td></tr>
 </tbody></table>
 </div>
 <p>Keys can be disabled by binding them to the <code>no_op</code> command.</p>

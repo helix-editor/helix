@@ -273,7 +273,7 @@
 <tr><td><code>y</code></td><td>Yank selection</td><td><code>yank</code></td></tr>
 <tr><td><code>p</code></td><td>Paste after selection</td><td><code>paste_after</code></td></tr>
 <tr><td><code>P</code></td><td>Paste before selection</td><td><code>paste_before</code></td></tr>
-<tr><td><code>&quot;</code> <code>&lt;reg&gt;</code></td><td>Select a register to yank to or paste from</td><td><code>select_register</code></td></tr>
+<tr><td><code>"</code> <code>&lt;reg&gt;</code></td><td>Select a register to yank to or paste from</td><td><code>select_register</code></td></tr>
 <tr><td><code>&gt;</code></td><td>Indent selection</td><td><code>indent</code></td></tr>
 <tr><td><code>&lt;</code></td><td>Unindent selection</td><td><code>unindent</code></td></tr>
 <tr><td><code>=</code></td><td>Format selection (currently nonfunctional/disabled) (<strong>LSP</strong>)</td><td><code>format_selections</code></td></tr>
@@ -332,7 +332,7 @@
 </tbody></table>
 </div>
 <h3 id="search"><a class="header" href="#search">Search</a></h3>
-<p>Search commands all operate on the <code>/</code> register by default. To use a different register, use <code>&quot;&lt;char&gt;</code>.</p>
+<p>Search commands all operate on the <code>/</code> register by default. To use a different register, use <code>"&lt;char&gt;</code>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>/</code></td><td>Search for regex pattern</td><td><code>search</code></td></tr>
 <tr><td><code>?</code></td><td>Search for previous pattern</td><td><code>rsearch</code></td></tr>
@@ -359,7 +359,7 @@
 <h4 id="view-mode"><a class="header" href="#view-mode">View mode</a></h4>
 <p>Accessed by typing <code>z</code> in <a href="#normal-mode">normal mode</a>.</p>
 <p>View mode is intended for scrolling and manipulating the view without changing
-the selection. The &quot;sticky&quot; variant of this mode (accessed by typing <code>Z</code> in
+the selection. The "sticky" variant of this mode (accessed by typing <code>Z</code> in
 normal mode) is persistent and can be exited using the escape key. This is
 useful when you're simply looking over text and not actively editing it.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
@@ -541,14 +541,14 @@ with modal editors.</p>
 <p>As you become more comfortable with modal editing, you may want to disable some
 insert mode bindings. You can do this by editing your <code>config.toml</code> file.</p>
 <pre><code class="language-toml">[keys.insert]
-up = &quot;no_op&quot;
-down = &quot;no_op&quot;
-left = &quot;no_op&quot;
-right = &quot;no_op&quot;
-pageup = &quot;no_op&quot;
-pagedown = &quot;no_op&quot;
-home = &quot;no_op&quot;
-end = &quot;no_op&quot;
+up = "no_op"
+down = "no_op"
+left = "no_op"
+right = "no_op"
+pageup = "no_op"
+pagedown = "no_op"
+home = "no_op"
+end = "no_op"
 </code></pre>
 <h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
 <p>Accessed by typing <code>v</code> in <a href="#normal-mode">normal mode</a>.</p>
