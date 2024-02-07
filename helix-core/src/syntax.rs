@@ -82,12 +82,6 @@ pub struct Configuration {
     pub language_server: HashMap<String, LanguageServerConfiguration>,
 }
 
-impl Default for Configuration {
-    fn default() -> Self {
-        crate::config::default_syntax_loader()
-    }
-}
-
 // largely based on tree-sitter/cli/src/loader.rs
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
@@ -821,8 +815,10 @@ pub struct Loader {
     scopes: ArcSwap<Vec<String>>,
 }
 
+pub type LoaderError = globset::Error;
+
 impl Loader {
-    pub fn new(config: Configuration) -> Result<Self, globset::Error> {
+    pub fn new(config: Configuration) -> Result<Self, LoaderError> {
         let mut language_configs = Vec::new();
         let mut language_config_ids_by_extension = HashMap::new();
         let mut language_config_ids_by_shebang = HashMap::new();
