@@ -291,6 +291,7 @@ These scopes are used for theming the editor interface:
 | `ui.linenr`                       | Line numbers                                                                                   |
 | `ui.linenr.selected`              | Line number for the line the cursor is on                                                      |
 | `ui.statusline`                   | Statusline                                                                                     |
+| `ui.statusline.active`            | If `ui.bufferline.active` cannot be obtained, this value is used instead                       |
 | `ui.statusline.inactive`          | Statusline (unfocused document)                                                                |
 | `ui.statusline.normal`            | Statusline mode during normal mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.insert`            | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
