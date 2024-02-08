@@ -513,7 +513,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "spicedb"
-source = { git = "https://github.com/jzelinskie/tree-sitter-spicedb", rev = "04ea9c294b3e20f9e3433114fa138cc20dc92770" }
+source = { git = "https://github.com/jzelinskie/tree-sitter-spicedb", rev = "a4e4645651f86d6684c15dfa9931b7841dc52a66" }
 
 [[language]]
 name = "go"
