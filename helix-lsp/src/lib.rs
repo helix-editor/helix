@@ -894,7 +894,7 @@ fn start_client(
     enable_snippets: bool,
 ) -> Result<Option<NewClient>> {
     let (workspace, workspace_is_cwd) = helix_loader::find_workspace();
-    let workspace = path::get_normalized_path(&workspace);
+    let workspace = path::normalize(&workspace);
     let root = find_lsp_workspace(
         doc_path
             .and_then(|x| x.parent().and_then(|x| x.to_str()))
