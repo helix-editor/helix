@@ -124,7 +124,7 @@
 ;; Types
 
 (type) @type
-(type_variable) @type
+(type_variable) @type.parameter
 
 (constructor) @constructor
 

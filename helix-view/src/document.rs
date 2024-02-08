@@ -4,10 +4,12 @@ use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
+use helix_core::chars::char_is_word;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
+use helix_lsp::util::lsp_pos_to_pos;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
 use ::parking_lot::Mutex;
@@ -34,6 +36,7 @@ use helix_core::{
 };
 
 use crate::editor::Config;
+use crate::events::{DocumentDidChange, SelectionDidChange};
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -112,19 +115,6 @@ pub struct SavePoint {
     /// The view this savepoint is associated with
     pub view: ViewId,
     revert: Mutex<Transaction>,
-    pub text: Rope,
-}
-
-impl SavePoint {
-    pub fn cursor(&self) -> usize {
-        // we always create transactions with selections
-        self.revert
-            .lock()
-            .selection()
-            .unwrap()
-            .primary()
-            .cursor(self.text.slice(..))
-    }
 }
 
 pub struct Document {
@@ -736,7 +726,12 @@ impl Document {
         if let Some((fmt_cmd, fmt_args)) = self
             .language_config()
             .and_then(|c| c.formatter.as_ref())
-            .and_then(|formatter| Some((which::which(&formatter.command).ok()?, &formatter.args)))
+            .and_then(|formatter| {
+                Some((
+                    helix_stdx::env::which(&formatter.command).ok()?,
+                    &formatter.args,
+                ))
+            })
         {
             use std::process::Stdio;
             let text = self.text().clone();
@@ -853,7 +848,7 @@ impl Document {
         let text = self.text().clone();
 
         let path = match path {
-            Some(path) => helix_core::path::get_canonicalized_path(&path),
+            Some(path) => helix_stdx::path::canonicalize(path),
             None => {
                 if self.path.is_none() {
                     bail!("Can't save with no path set!");
@@ -1046,8 +1041,11 @@ impl Document {
         self.encoding
     }
 
+    /// sets the document path without sending events to various
+    /// observers (like LSP), in most cases `Editor::set_doc_path`
+    /// should be used instead
     pub fn set_path(&mut self, path: Option<&Path>) {
-        let path = path.map(helix_core::path::get_canonicalized_path);
+        let path = path.map(helix_stdx::path::canonicalize);
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
@@ -1075,14 +1073,6 @@ impl Document {
         };
     }
 
-    /// Set the programming language for the file if you know the name (scope) but don't have the
-    /// [`syntax::LanguageConfiguration`] for it.
-    pub fn set_language2(&mut self, scope: &str, config_loader: Arc<syntax::Loader>) {
-        let language_config = config_loader.language_config_for_scope(scope);
-
-        self.set_language(language_config, Some(config_loader));
-    }
-
     /// Set the programming language for the file if you know the language but don't have the
     /// [`syntax::LanguageConfiguration`] for it.
     pub fn set_language_by_language_id(
@@ -1102,6 +1092,10 @@ impl Document {
         // TODO: use a transaction?
         self.selections
             .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
+        helix_event::dispatch(SelectionDidChange {
+            doc: self,
+            view: view_id,
+        })
     }
 
     /// Find the origin selection of the text in a document, i.e. where
@@ -1155,6 +1149,14 @@ impl Document {
         let success = transaction.changes().apply(&mut self.text);
 
         if success {
+            if emit_lsp_notification {
+                helix_event::dispatch(DocumentDidChange {
+                    doc: self,
+                    view: view_id,
+                    old_text: &old_doc,
+                });
+            }
+
             for selection in self.selections.values_mut() {
                 *selection = selection
                     .clone()
@@ -1170,6 +1172,10 @@ impl Document {
                     view_id,
                     selection.clone().ensure_invariants(self.text.slice(..)),
                 );
+                helix_event::dispatch(SelectionDidChange {
+                    doc: self,
+                    view: view_id,
+                });
             }
 
             self.modified_since_accessed = true;
@@ -1213,23 +1219,45 @@ impl Document {
 
             let changes = transaction.changes();
 
-            changes.update_positions(
-                self.diagnostics
-                    .iter_mut()
-                    .map(|diagnostic| (&mut diagnostic.range.start, Assoc::After)),
-            );
-            changes.update_positions(
-                self.diagnostics
-                    .iter_mut()
-                    .map(|diagnostic| (&mut diagnostic.range.end, Assoc::After)),
-            );
-            // map state.diagnostics over changes::map_pos too
-            for diagnostic in &mut self.diagnostics {
+            // map diagnostics over changes too
+            changes.update_positions(self.diagnostics.iter_mut().map(|diagnostic| {
+                let assoc = if diagnostic.starts_at_word {
+                    Assoc::BeforeWord
+                } else {
+                    Assoc::After
+                };
+                (&mut diagnostic.range.start, assoc)
+            }));
+            changes.update_positions(self.diagnostics.iter_mut().filter_map(|diagnostic| {
+                if diagnostic.zero_width {
+                    // for zero width diagnostics treat the diagnostic as a point
+                    // rather than a range
+                    return None;
+                }
+                let assoc = if diagnostic.ends_at_word {
+                    Assoc::AfterWord
+                } else {
+                    Assoc::Before
+                };
+                Some((&mut diagnostic.range.end, assoc))
+            }));
+            self.diagnostics.retain_mut(|diagnostic| {
+                if diagnostic.zero_width {
+                    diagnostic.range.end = diagnostic.range.start
+                } else if diagnostic.range.start >= diagnostic.range.end {
+                    return false;
+                }
                 diagnostic.line = self.text.char_to_line(diagnostic.range.start);
-            }
+                true
+            });
 
-            self.diagnostics
-                .sort_unstable_by_key(|diagnostic| diagnostic.range);
+            self.diagnostics.sort_unstable_by_key(|diagnostic| {
+                (
+                    diagnostic.range,
+                    diagnostic.severity,
+                    diagnostic.language_server_id,
+                )
+            });
 
             // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
             let apply_inlay_hint_changes = |annotations: &mut Rc<[InlineAnnotation]>| {
@@ -1260,6 +1288,7 @@ impl Document {
             }
 
             if emit_lsp_notification {
+                // TODO: move to hook
                 // emit lsp notification
                 for language_server in self.language_servers() {
                     let notify = language_server.text_document_did_change(
@@ -1370,7 +1399,6 @@ impl Document {
         let savepoint = Arc::new(SavePoint {
             view: view.id,
             revert: Mutex::new(revert),
-            text: self.text.clone(),
         });
         self.savepoints.push(Arc::downgrade(&savepoint));
         savepoint
@@ -1656,7 +1684,7 @@ impl Document {
     pub fn relative_path(&self) -> Option<PathBuf> {
         self.path
             .as_deref()
-            .map(helix_core::path::get_relative_path)
+            .map(helix_stdx::path::get_relative_path)
     }
 
     pub fn display_name(&self) -> Cow<'static, str> {
@@ -1692,32 +1720,134 @@ impl Document {
         )
     }
 
+    pub fn lsp_diagnostic_to_diagnostic(
+        text: &Rope,
+        language_config: Option<&LanguageConfiguration>,
+        diagnostic: &helix_lsp::lsp::Diagnostic,
+        language_server_id: usize,
+        offset_encoding: helix_lsp::OffsetEncoding,
+    ) -> Option<Diagnostic> {
+        use helix_core::diagnostic::{Range, Severity::*};
+
+        // TODO: convert inside server
+        let start =
+            if let Some(start) = lsp_pos_to_pos(text, diagnostic.range.start, offset_encoding) {
+                start
+            } else {
+                log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                return None;
+            };
+
+        let end = if let Some(end) = lsp_pos_to_pos(text, diagnostic.range.end, offset_encoding) {
+            end
+        } else {
+            log::warn!("lsp position out of bounds - {:?}", diagnostic);
+            return None;
+        };
+
+        let severity = diagnostic.severity.map(|severity| match severity {
+            lsp::DiagnosticSeverity::ERROR => Error,
+            lsp::DiagnosticSeverity::WARNING => Warning,
+            lsp::DiagnosticSeverity::INFORMATION => Info,
+            lsp::DiagnosticSeverity::HINT => Hint,
+            severity => unreachable!("unrecognized diagnostic severity: {:?}", severity),
+        });
+
+        if let Some(lang_conf) = language_config {
+            if let Some(severity) = severity {
+                if severity < lang_conf.diagnostic_severity {
+                    return None;
+                }
+            }
+        };
+        use helix_core::diagnostic::{DiagnosticTag, NumberOrString};
+
+        let code = match diagnostic.code.clone() {
+            Some(x) => match x {
+                lsp::NumberOrString::Number(x) => Some(NumberOrString::Number(x)),
+                lsp::NumberOrString::String(x) => Some(NumberOrString::String(x)),
+            },
+            None => None,
+        };
+
+        let tags = if let Some(tags) = &diagnostic.tags {
+            let new_tags = tags
+                .iter()
+                .filter_map(|tag| match *tag {
+                    lsp::DiagnosticTag::DEPRECATED => Some(DiagnosticTag::Deprecated),
+                    lsp::DiagnosticTag::UNNECESSARY => Some(DiagnosticTag::Unnecessary),
+                    _ => None,
+                })
+                .collect();
+
+            new_tags
+        } else {
+            Vec::new()
+        };
+
+        let ends_at_word =
+            start != end && end != 0 && text.get_char(end - 1).map_or(false, char_is_word);
+        let starts_at_word = start != end && text.get_char(start).map_or(false, char_is_word);
+
+        Some(Diagnostic {
+            range: Range { start, end },
+            ends_at_word,
+            starts_at_word,
+            zero_width: start == end,
+            line: diagnostic.range.start.line as usize,
+            message: diagnostic.message.clone(),
+            severity,
+            code,
+            tags,
+            source: diagnostic.source.clone(),
+            data: diagnostic.data.clone(),
+            language_server_id,
+        })
+    }
+
     #[inline]
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
     }
 
-    pub fn shown_diagnostics(&self) -> impl Iterator<Item = &Diagnostic> + DoubleEndedIterator {
-        self.diagnostics.iter().filter(|d| {
-            self.language_servers_with_feature(LanguageServerFeature::Diagnostics)
-                .any(|ls| ls.id() == d.language_server_id)
-        })
-    }
-
     pub fn replace_diagnostics(
         &mut self,
-        mut diagnostics: Vec<Diagnostic>,
-        language_server_id: usize,
+        diagnostics: impl IntoIterator<Item = Diagnostic>,
+        unchanged_sources: &[String],
+        language_server_id: Option<usize>,
     ) {
-        self.clear_diagnostics(language_server_id);
-        self.diagnostics.append(&mut diagnostics);
-        self.diagnostics
-            .sort_unstable_by_key(|diagnostic| diagnostic.range);
+        if unchanged_sources.is_empty() {
+            self.clear_diagnostics(language_server_id);
+        } else {
+            self.diagnostics.retain(|d| {
+                if language_server_id.map_or(false, |id| id != d.language_server_id) {
+                    return true;
+                }
+
+                if let Some(source) = &d.source {
+                    unchanged_sources.contains(source)
+                } else {
+                    false
+                }
+            });
+        }
+        self.diagnostics.extend(diagnostics);
+        self.diagnostics.sort_unstable_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.language_server_id,
+            )
+        });
     }
 
-    pub fn clear_diagnostics(&mut self, language_server_id: usize) {
-        self.diagnostics
-            .retain(|d| d.language_server_id != language_server_id);
+    /// clears diagnostics for a given language server id if set, otherwise all diagnostics are cleared
+    pub fn clear_diagnostics(&mut self, language_server_id: Option<usize>) {
+        if let Some(id) = language_server_id {
+            self.diagnostics.retain(|d| d.language_server_id != id);
+        } else {
+            self.diagnostics.clear();
+        }
     }
 
     /// Get the document's auto pairs. If the document has a recognized

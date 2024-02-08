@@ -5,16 +5,20 @@ use std::future::Future;
 use parking_lot::{RwLock, RwLockReadGuard};
 use tokio::sync::Notify;
 
-/// A `Notify` instance that can be used to (asynchronously) request
-/// the editor the render a new frame.
-static REDRAW_NOTIFY: Notify = Notify::const_new();
+use crate::runtime_local;
 
-/// A `RwLock` that prevents the next frame from being
-/// drawn until an exclusive (write) lock can be acquired.
-/// This allows asynchsonous tasks to acquire `non-exclusive`
-/// locks (read) to prevent the next frame from being drawn
-/// until a certain computation has finished.
-static RENDER_LOCK: RwLock<()> = RwLock::new(());
+runtime_local! {
+    /// A `Notify` instance that can be used to (asynchronously) request
+    /// the editor to render a new frame.
+    static REDRAW_NOTIFY: Notify = Notify::const_new();
+
+    /// A `RwLock` that prevents the next frame from being
+    /// drawn until an exclusive (write) lock can be acquired.
+    /// This allows asynchronous tasks to acquire `non-exclusive`
+    /// locks (read) to prevent the next frame from being drawn
+    /// until a certain computation has finished.
+    static RENDER_LOCK: RwLock<()> = RwLock::new(());
+}
 
 pub type RenderLockGuard = RwLockReadGuard<'static, ()>;
 

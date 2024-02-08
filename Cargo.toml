@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
   "helix-core",
   "helix-view",
@@ -10,6 +11,7 @@ members = [
   "helix-loader",
   "helix-vcs",
   "helix-parsec",
+  "helix-stdx",
   "xtask",
 ]
 
@@ -35,5 +37,15 @@ package.helix-tui.opt-level = 2
 package.helix-term.opt-level = 2
 
 [workspace.dependencies]
-tree-sitter = { version = "0.20", git = "https://github.com/tree-sitter/tree-sitter", rev = "ab09ae20d640711174b8da8a654f6b3dec93da1a" }
+tree-sitter = { version = "0.20", git = "https://github.com/helix-editor/tree-sitter", rev = "660481dbf71413eba5a928b0b0ab8da50c1109e0" }
 nucleo = "0.2.0"
+
+[workspace.package]
+version = "23.10.0"
+edition = "2021"
+authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+categories = ["editor"]
+repository = "https://github.com/helix-editor/helix"
+homepage = "https://helix-editor.com"
+license = "MPL-2.0"
+rust-version = "1.70"

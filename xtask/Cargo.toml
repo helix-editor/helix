@@ -1,13 +1,19 @@
 [package]
 name = "xtask"
-version = "0.6.0"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-helix-term = { version = "0.6", path = "../helix-term" }
-helix-core = { version = "0.6", path = "../helix-core" }
-helix-view = { version = "0.6", path = "../helix-view" }
-helix-loader = { version = "0.6", path = "../helix-loader" }
+helix-term = { path = "../helix-term" }
+helix-core = { path = "../helix-core" }
+helix-view = { path = "../helix-view" }
+helix-loader = { path = "../helix-loader" }
 toml = "0.7"

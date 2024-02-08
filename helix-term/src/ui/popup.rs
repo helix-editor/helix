@@ -3,7 +3,10 @@ use crate::{
     compositor::{Callback, Component, Context, Event, EventResult},
     ctrl, key,
 };
-use tui::buffer::Buffer as Surface;
+use tui::{
+    buffer::Buffer as Surface,
+    widgets::{Block, Borders, Widget},
+};
 
 use helix_core::Position;
 use helix_view::{
@@ -252,13 +255,29 @@ impl<T: Component> Component for Popup<T> {
         let background = cx.editor.theme.get("ui.popup");
         surface.clear_with(area, background);
 
-        let inner = area.inner(&self.margin);
+        let render_borders = cx.editor.popup_border();
+
+        let inner = if self
+            .contents
+            .type_name()
+            .starts_with("helix_term::ui::menu::Menu")
+        {
+            area
+        } else {
+            area.inner(&self.margin)
+        };
+
+        let border = usize::from(render_borders);
+        if render_borders {
+            Widget::render(Block::default().borders(Borders::ALL), area, surface);
+        }
+
         self.contents.render(inner, surface, cx);
 
         // render scrollbar if contents do not fit
         if self.has_scrollbar {
-            let win_height = inner.height as usize;
-            let len = self.child_size.1 as usize;
+            let win_height = (inner.height as usize).saturating_sub(2 * border);
+            let len = (self.child_size.1 as usize).saturating_sub(2 * border);
             let fits = len <= win_height;
             let scroll = self.scroll;
             let scroll_style = cx.editor.theme.get("ui.menu.scroll");
@@ -274,14 +293,15 @@ impl<T: Component> Component for Popup<T> {
 
                 let mut cell;
                 for i in 0..win_height {
-                    cell = &mut surface[(inner.right() - 1, inner.top() + i as u16)];
+                    cell = &mut surface[(inner.right() - 1, inner.top() + (border + i) as u16)];
 
-                    cell.set_symbol("▐"); // right half block
+                    let half_block = if render_borders { "▌" } else { "▐" };
 
                     if scroll_line <= i && i < scroll_line + scroll_height {
                         // Draw scroll thumb
+                        cell.set_symbol(half_block);
                         cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
-                    } else {
+                    } else if !render_borders {
                         // Draw scroll track
                         cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
                     }

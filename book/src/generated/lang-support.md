@@ -1,5 +1,6 @@
 | Language | Syntax Highlighting | Treesitter Textobjects | Auto Indent | Default LSP |
 | --- | --- | --- | --- | --- |
+| agda | ✓ |  |  |  |
 | astro | ✓ |  |  |  |
 | awk | ✓ | ✓ |  | `awk-language-server` |
 | bash | ✓ | ✓ | ✓ | `bash-language-server` |
@@ -10,20 +11,21 @@
 | blueprint | ✓ |  |  | `blueprint-compiler` |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
-| cabal |  |  |  |  |
+| cabal |  |  |  | `haskell-language-server-wrapper` |
 | cairo | ✓ | ✓ | ✓ | `cairo-language-server` |
 | capnp | ✓ |  | ✓ |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
-| common-lisp | ✓ |  |  | `cl-lsp` |
+| common-lisp | ✓ |  | ✓ | `cl-lsp` |
 | cpon | ✓ |  | ✓ |  |
 | cpp | ✓ | ✓ | ✓ | `clangd` |
 | crystal | ✓ | ✓ |  | `crystalline` |
-| css | ✓ |  |  | `vscode-css-language-server` |
+| css | ✓ |  | ✓ | `vscode-css-language-server` |
 | cue | ✓ |  |  | `cuelsp` |
 | d | ✓ | ✓ | ✓ | `serve-d` |
-| dart | ✓ |  | ✓ | `dart` |
+| dart | ✓ | ✓ | ✓ | `dart` |
+| dbml | ✓ |  |  |  |
 | devicetree | ✓ |  |  |  |
 | dhall | ✓ | ✓ |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |
@@ -54,6 +56,7 @@
 | git-rebase | ✓ |  |  |  |
 | gleam | ✓ | ✓ |  | `gleam` |
 | glsl | ✓ | ✓ | ✓ |  |
+| gn | ✓ |  |  |  |
 | go | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
 | godot-resource | ✓ |  |  |  |
 | gomod | ✓ |  |  | `gopls` |
@@ -65,12 +68,14 @@
 | haskell-persistent | ✓ |  |  |  |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  | `elixir-ls` |
+| hocon | ✓ |  | ✓ |  |
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | hurl | ✓ |  | ✓ |  |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | ini | ✓ |  |  |  |
+| janet | ✓ |  |  |  |
 | java | ✓ | ✓ | ✓ | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | jinja | ✓ |  |  |  |
@@ -81,7 +86,7 @@
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ | `julia` |
 | just | ✓ | ✓ | ✓ |  |
-| kdl | ✓ |  |  |  |
+| kdl | ✓ | ✓ | ✓ |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |
 | lean | ✓ |  |  | `lean` |
@@ -89,9 +94,10 @@
 | llvm | ✓ | ✓ | ✓ |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |
 | llvm-mir-yaml | ✓ |  | ✓ |  |
+| log | ✓ |  |  |  |
 | lpf | ✓ |  |  |  |
 | lua | ✓ | ✓ | ✓ | `lua-language-server` |
-| make | ✓ |  |  |  |
+| make | ✓ |  | ✓ |  |
 | markdoc | ✓ |  |  | `markdoc-ls` |
 | markdown | ✓ |  |  | `marksman` |
 | markdown.inline | ✓ |  |  |  |
@@ -104,7 +110,7 @@
 | nickel | ✓ |  | ✓ | `nls` |
 | nim | ✓ | ✓ | ✓ | `nimlangserver` |
 | nix | ✓ |  |  | `nil` |
-| nu | ✓ |  |  |  |
+| nu | ✓ |  |  | `nu` |
 | nunjucks | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
@@ -122,13 +128,13 @@
 | ponylang | ✓ | ✓ | ✓ |  |
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
-| protobuf | ✓ |  | ✓ | `bufls`, `pb` |
+| protobuf | ✓ | ✓ | ✓ | `bufls`, `pb` |
 | prql | ✓ |  |  |  |
 | purescript | ✓ | ✓ |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
 | r | ✓ |  |  | `R` |
-| racket | ✓ |  |  | `racket` |
+| racket | ✓ |  | ✓ | `racket` |
 | regex | ✓ |  |  |  |
 | rego | ✓ |  |  | `regols` |
 | rescript | ✓ | ✓ |  | `rescript-language-server` |
@@ -139,10 +145,11 @@
 | ruby | ✓ | ✓ | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | sage | ✓ | ✓ |  |  |
-| scala | ✓ |  | ✓ | `metals` |
-| scheme | ✓ |  |  |  |
+| scala | ✓ | ✓ | ✓ | `metals` |
+| scheme | ✓ |  | ✓ |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
-| slint | ✓ |  | ✓ | `slint-lsp` |
+| slint | ✓ | ✓ | ✓ | `slint-lsp` |
+| smali | ✓ |  | ✓ |  |
 | smithy | ✓ |  |  | `cs` |
 | sml | ✓ |  |  |  |
 | solidity | ✓ |  |  | `solc` |
@@ -155,6 +162,7 @@
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | t32 | ✓ |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |
+| tact | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |
 | templ | ✓ |  |  | `templ` |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
@@ -166,7 +174,7 @@
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | typst | ✓ |  |  | `typst-lsp` |
 | ungrammar | ✓ |  |  |  |
-| unison | ✓ |  |  |  |
+| unison | ✓ |  | ✓ |  |
 | uxntal | ✓ |  |  |  |
 | v | ✓ | ✓ | ✓ | `v-analyzer` |
 | vala | ✓ |  |  | `vala-language-server` |

@@ -393,7 +393,7 @@ impl Prompt {
             height,
         );
 
-        if !self.completion.is_empty() {
+        if completion_area.height > 0 && !self.completion.is_empty() {
             let area = completion_area;
             let background = theme.get("ui.menu");
 

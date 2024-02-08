@@ -1187,5 +1187,159 @@ multiple cursors, they won't be uncommented but commented again.
 
 
 =================================================================
+=                   12.1 USING MATCH MODE JUMP                  =
+=================================================================
+
+To switch to match mode from normal mode, type m. This feature
+is particularly useful for handling bracket pairs and their
+contents.
+
+There are several actions that can be performed in match mode,
+as indicated by the help pop-up. To jump to a matching bracket pair,
+simply press mm. For example on the lines below (starting with
+-->), move the cursor in normal mode to (, and then press mm to jump
+to the matching ). You can do the same on the line below: for example
+move to ], and press mm to jump to [ .
+
+--> you can (jump between matching parenthesis)
+--> or between matching [ square brackets ]
+--> now { you know the drill: this works with brackets too }
+
+
+
+
+=================================================================
+=                   12.2 USING MATCH MODE SELECT INSIDE         =
+=================================================================
+
+Match mode also lets you select the "inside" content between a
+pair of brackets or other delimiters. In the lines below:
+
+- move to the --> line, put your cursor in normal mode at any
+location between the parenthesis, for example at 'x', and press
+mi( or mi) to select the whole content inside the parenthesis
+(parenthesis excluded). As usual, you can then do anything you want
+with the selection (for example, press c to change it)
+
+--> outside and (inside x parenthesis) - and outside again
+
+Test below that you can do the same with [], or {}, or with
+nested combinations of these (this will act on the immediately
+surrounding matching pair). This also works with "" and similar
+
+--> test [ with square brackets ] !
+--> try ( with nested [ pairs of ( parenthesis) and "brackets" ])
+
+=================================================================
+=                   12.3 USING MATCH MODE SELECT AROUND         =
+=================================================================
+
+You can also select the "around" content, i.e. both the inside
+content and the delimiters themselves, by using the ma select.
+For example, move to the line under, move your cursor in normal
+mode to any position between the (), and select the content of
+the (), including the surrounding (), by typing ma( or ma). As
+usual, you can do anything you want with the selection, for
+example delete it all with ma(d .
+
+--> you ( select x around ) to include delimiters in the select
+
+This naturally works with other delimiters too:
+
+--> try [ with 'square' brackets ] too!
+
+
+
+
+
+=================================================================
+=                   12.4 USING MATCH MODE SURROUND              =
+=================================================================
+
+The match mode can also be used to add surrounding around the
+current selection. For example, move to the line below, then:
+ * i) select the "select all of this" line segment (for example,
+move in normal mode the cursor to the start of select, then enter
+selection mode with v , then select the 4 next words with 4e ),
+ * ii) press ms( or ms) to surround the selection with a pair of
+parenthesis.
+
+--> so, select all of this, and surround it with ()
+
+You can do the same with other delimiters: for example, ms' on
+WORD below to surround it with a pair of ''. You can try also
+with adding a surrounding pair of "", or {}, or [].
+
+--> surround this WORD !
+
+
+
+=================================================================
+=                   12.5 USING MATCH MODE DELETE SURROUND       =
+=================================================================
+
+You can delete surrounding pair of delimiters with the md
+command. On the line below, move the cursor anywhere
+within the pair of (), for example to the 'x', then from there,
+in normal mode, press md( or md) to delete the surrounding
+pair of parenthesis.
+
+--> delete (the x pair of parenthesis) from within!
+
+You can naturally delete other kinds of surroundings:
+
+--> delete (nested [delimiters]): "this" will delete the nearest
+matching surrounding pair.
+--> delete "layers "of" quote marks" too: this will delete the
+nearest previous and following quote marks
+
+Trying to delete unexisting surrounding delimiters print an error
+at the bottom bar and does nothing.
+
+=================================================================
+=                   12.6 USING MATCH MODE REPLACE SURROUND      =
+=================================================================
+
+You can replace surrounding pairs of delimiters with the mr
+command. On the line below, move the cursor to
+anywhere within the pair of (), for example on the 'x', then in
+normal mode, press mr([ to replace the pair of () with a pair
+of [].
+
+--> replace the (pair from x within), with something else
+
+This command will act on the closest enclosing pair, so you
+can try replacing different surrounding in the following:
+
+--> some (nested surroundings [can be replaced])
+--> this "works with 'other surroundings' too"
+
+You can try to replace a non existing pair: this will show
+an error warning at the bottom bar and do nothing.
+
+
+=================================================================
+=                     CHAPTER 12 RECAP                       =
+=================================================================
+
+You can enter the match mode with the m key; this will show the
+actions available in a popup. This will allow you to:
+ * jump to matching pair of delimiters with mm (you must have a
+ delimiter belonging to a pair under your cursor)
+ * select inside a pair of delimiters surrounding your cursor
+ (i.e. select the content but not the delimiters) with mi(
+ and similar
+ * select around a pair of delimiters surrounding your cursor
+ (i.e. select the content and the delimiters) with ma( and
+ similar
+ * delete surrounding delimiters with md( and similar
+ * add surrounding delimiters around the selection with ms(
+ * replace a pair of delimiters surrounding your selection with
+ mr([ to replace for example surrounding () with []
+
+
+
+
+=================================================================
  This tutorial is still a work-in-progress.
  More sections are planned.
