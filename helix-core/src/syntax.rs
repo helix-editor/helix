@@ -231,6 +231,15 @@ impl<'de> Deserialize<'de> for FileType {
     }
 }
 
+impl Display for FileType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FileType::Extension(s) => write!(f, "{s}"),
+            FileType::Suffix(s) => write!(f, "{s}"),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "kebab-case")]
 pub enum LanguageServerFeature {
