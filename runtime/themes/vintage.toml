@@ -28,7 +28,7 @@ constant = "#A5C4D4"
 "constant.builtin" = "bright-yellow" 
 string = "#d6a560" 
 "constant.numeric" = "#b577b0" 
-"constant.character.escape" = "#A54C4D4" 
+"constant.character.escape" = "#c95c56" 
 label = "#abcc8a" 
 
 "markup.heading" = "bright-pink" 
@@ -39,9 +39,9 @@ label = "#abcc8a"
 "markup.link.text" = "orange" 
 "markup.raw" = "gray" 
 
-"diff.plus" = "bright-green" 
-"diff.minus" = "redish" 
-"diff.delta" = "blueish" 
+"diff.plus" =  { fg = "bright-green", modifiers = ["bold"] }
+"diff.minus" = { fg = "redish",       modifiers = ["bold"] }
+"diff.delta" = { fg = "blueish",      modifiers = ["bold"] }
 
 "ui.background" = { bg = "background" } 
 "ui.background.separator" = { fg = "white" } 
