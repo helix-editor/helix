@@ -2790,6 +2790,8 @@ file-types = ["justfile", "Justfile", ".justfile", ".Justfile"]
 injection-regex = "just"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
+auto-format = true
+formatter = { command = "just", args = ["--dump"] }
 
 [[grammar]]
 name = "just"
