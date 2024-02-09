@@ -311,6 +311,8 @@ file-types = ["fish"]
 shebangs = ["fish"]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
+auto-format = true
+formatter = { command = "fish_indent" }
 
 [[grammar]]
 name = "fish"
