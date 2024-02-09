@@ -1,5 +1,5 @@
 use crate::{command_histfile, file_histfile, search_histfile};
-use bincode::serialize_into;
+use bincode::{deserialize_from, serialize_into};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},
@@ -12,10 +12,10 @@ use std::{
 // since this crate is a dependency of helix-view
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileHistoryEntry {
-    path: PathBuf,
-    anchor: usize,
-    vertical_offset: usize,
-    horizontal_offset: usize,
+    pub path: PathBuf,
+    pub anchor: usize,
+    pub vertical_offset: usize,
+    pub horizontal_offset: usize,
 }
 
 impl FileHistoryEntry {
@@ -44,6 +44,25 @@ pub fn push_file_history(entry: FileHistoryEntry) {
 
     // TODO: do something about this unwrap
     serialize_into(file, &entry).unwrap();
+}
+
+pub fn read_file_history() -> Vec<FileHistoryEntry> {
+    match File::open(file_histfile()) {
+        Ok(file) => {
+            let mut read = BufReader::new(file);
+            let mut entries = Vec::new();
+            // TODO: more sophisticated error handling
+            while let Ok(entry) = deserialize_from(&mut read) {
+                entries.push(entry);
+            }
+            entries
+        }
+        Err(e) => match e.kind() {
+            io::ErrorKind::NotFound => Vec::new(),
+            // TODO: do something about this panic
+            _ => panic!(),
+        },
+    }
 }
 
 pub fn push_history(register: char, line: &str) {
