@@ -3061,3 +3061,14 @@ indent = { tab-width = 4, unit = "    " }
 name = "tact"
 source = { git = "https://github.com/tact-lang/tree-sitter-tact", rev = "ec57ab29c86d632639726631fb2bb178d23e1c91" }
 
+[[language]]
+name = "pkl"
+scope = "source.pkl"
+injection-regex = "pkl"
+file-types = ["pkl", "pcf"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "pkl"
+source = { git = "https://github.com/apple/tree-sitter-pkl", rev = "c03f04a313b712f8ab00a2d862c10b37318699ae" }
