@@ -16,6 +16,7 @@ use helix_view::{
     graphics::Rect,
     theme,
     tree::Layout,
+    view::ViewPosition,
     Align, Editor,
 };
 use serde_json::json;
@@ -34,7 +35,12 @@ use crate::{
 use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
-use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
+use std::{
+    collections::{btree_map::Entry, HashMap},
+    io::stdin,
+    path::Path,
+    sync::Arc,
+};
 
 #[cfg(not(windows))]
 use anyhow::Context;
@@ -147,6 +153,16 @@ impl Application {
                 &config.editor
             })),
             handlers,
+            HashMap::from_iter(session::read_file_history().iter().map(|entry| {
+                (
+                    entry.path.clone(),
+                    ViewPosition {
+                        anchor: entry.anchor,
+                        horizontal_offset: entry.horizontal_offset,
+                        vertical_offset: entry.vertical_offset,
+                    },
+                )
+            })),
         );
 
         // TODO: do most of this in the background?
@@ -223,10 +239,13 @@ impl Application {
                         // NOTE: this isn't necessarily true anymore. If
                         // `--vsplit` or `--hsplit` are used, the file which is
                         // opened last is focused on.
-                        let view_id = editor.tree.focus;
-                        let doc = doc_mut!(editor, &doc_id);
-                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-                        doc.set_selection(view_id, pos);
+                        if let Some(pos) = pos {
+                            let view_id = editor.tree.focus;
+                            let doc = doc_mut!(editor, &doc_id);
+                            let pos =
+                                Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+                            doc.set_selection(view_id, pos);
+                        }
                     }
                 }
 

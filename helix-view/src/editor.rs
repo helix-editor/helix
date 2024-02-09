@@ -1056,6 +1056,8 @@ pub struct Editor {
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
+    pub old_file_locs: HashMap<PathBuf, ViewPosition>,
+
     pub syn_loader: Arc<ArcSwap<syntax::Loader>>,
     pub theme_loader: Arc<theme::Loader>,
     /// last_theme is used for theme previews. We store the current theme here,
@@ -1174,6 +1176,7 @@ impl Editor {
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
         handlers: Handlers,
+        old_file_locs: HashMap<PathBuf, ViewPosition>,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
@@ -1201,6 +1204,7 @@ impl Editor {
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
+            old_file_locs,
             syn_loader,
             theme_loader,
             last_theme: None,
@@ -1676,6 +1680,18 @@ impl Editor {
                 );
                 // initialize selection for view
                 let doc = doc_mut!(self, &id);
+
+                let view = self.tree.get_mut(view_id);
+                view.offset = self
+                    .old_file_locs
+                    .get(doc.path().unwrap())
+                    .map(|x| x.to_owned())
+                    .unwrap_or_default();
+                doc.set_selection(
+                    view_id,
+                    Selection::single(view.offset.anchor, view.offset.anchor),
+                );
+
                 doc.ensure_view_init(view_id);
                 doc.mark_as_focused();
                 focus_lost
@@ -1782,11 +1798,12 @@ impl Editor {
         let doc = self.document(view.doc).unwrap();
         if let Some(path) = doc.path() {
             push_file_history(FileHistoryEntry::new(
-                path.to_owned(),
+                path.clone(),
                 view.offset.anchor,
                 view.offset.vertical_offset,
                 view.offset.horizontal_offset,
             ));
+            self.old_file_locs.insert(path.to_owned(), view.offset);
         };
 
         // Remove selections for the closed view on all documents.
