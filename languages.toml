@@ -1598,7 +1598,7 @@ source = { git = "https://github.com/jaredramirez/tree-sitter-rescript", rev = "
 name = "erlang"
 scope = "source.erlang"
 injection-regex = "erl(ang)?"
-file-types = ["erl", "hrl", "app", { glob = "rebar.config" }, { glob = "rebar.lock" }]
+file-types = ["erl", "hrl", "app", { glob = "rebar.config" }, { glob = "rebar.lock" }, { glob = "*.app.src" }]
 roots = ["rebar.config"]
 shebangs = ["escript"]
 comment-token = "%%"
@@ -1615,7 +1615,7 @@ language-servers = [ "erlang-ls" ]
 
 [[grammar]]
 name = "erlang"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "ce0ed253d72c199ab93caba7542b6f62075339c4" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "731e50555a51f0d8635992b0e60dc98cc47a58d7" }
 
 [[language]]
 name = "kotlin"
