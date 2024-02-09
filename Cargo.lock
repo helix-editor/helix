@@ -1240,6 +1240,7 @@ dependencies = [
  "dunce",
  "encoding_rs",
  "etcetera",
+ "globset",
  "hashbrown 0.14.3",
  "helix-loader",
  "helix-stdx",

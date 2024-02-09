@@ -910,40 +910,15 @@ fn start_client(
     let root_path = root.clone().unwrap_or_else(|| workspace.clone());
     let root_uri = root.and_then(|root| lsp::Url::from_file_path(root).ok());
 
-    let mut globset = globset::GlobSetBuilder::new();
-    let required_root_patterns = &ls_config.required_root_patterns;
-    if !required_root_patterns.is_empty() {
-        for required_root_pattern in required_root_patterns {
-            match globset::Glob::new(required_root_pattern) {
-                Ok(glob) => {
-                    globset.add(glob);
-                }
-                Err(err) => {
-                    log::warn!(
-                        "Failed to build glob '{}' for language server '{}'",
-                        required_root_pattern,
-                        name
-                    );
-                    log::warn!("{}", err);
-                }
-            };
+    if let Some(globset) = &ls_config.required_root_patterns {
+        if !root_path
+            .read_dir()?
+            .flatten()
+            .map(|entry| entry.file_name())
+            .any(|entry| globset.is_match(entry))
+        {
+            return Ok(None);
         }
-        match globset.build() {
-            Ok(glob) => {
-                if !root_path
-                    .read_dir()?
-                    .flatten()
-                    .map(|entry| entry.file_name())
-                    .any(|entry| glob.is_match(entry))
-                {
-                    return Ok(None);
-                }
-            }
-            Err(err) => {
-                log::warn!("Failed to build globset for language server {name}");
-                log::warn!("{}", err);
-            }
-        };
     }
 
     let (client, incoming, initialize_notify) = Client::start(
