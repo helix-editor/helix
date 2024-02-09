@@ -378,9 +378,7 @@ impl ChangeSet {
             macro_rules! map {
                 ($map: expr, $i: expr) => {
                     loop {
-                        let Some((pos, assoc)) = positions.peek_mut() else {
-                            return;
-                        };
+                        let Some((pos, assoc)) = positions.peek_mut() else { return; };
                         if **pos < old_pos {
                             // Positions are not sorted, revert to the last Operation that
                             // contains this position and continue iterating from there.
@@ -407,9 +405,7 @@ impl ChangeSet {
                             debug_assert!(old_pos <= **pos, "Reverse Iter across changeset works");
                             continue 'outer;
                         }
-                        let Some(new_pos) = $map(**pos, *assoc) else {
-                            break;
-                        };
+                        let Some(new_pos) = $map(**pos, *assoc) else { break; };
                         **pos = new_pos;
                         positions.next();
                     }
