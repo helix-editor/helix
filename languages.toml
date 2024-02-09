@@ -2814,6 +2814,8 @@ file-types = [{ glob = "justfile" }, { glob = "Justfile" }, { glob = ".justfile"
 injection-regex = "just"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
+auto-format = true
+formatter = { command = "just", args = ["--dump"] }
 
 [[grammar]]
 name = "just"
