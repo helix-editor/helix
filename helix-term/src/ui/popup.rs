@@ -3,10 +3,16 @@ use crate::{
     compositor::{Callback, Component, Context, Event, EventResult},
     ctrl, key,
 };
-use tui::buffer::Buffer as Surface;
+use tui::{
+    buffer::Buffer as Surface,
+    widgets::{Block, Borders, Widget},
+};
 
 use helix_core::Position;
-use helix_view::graphics::{Margin, Rect};
+use helix_view::{
+    graphics::{Margin, Rect},
+    Editor,
+};
 
 // TODO: share logic with Menu, it's essentially Popup(render_fn), but render fn needs to return
 // a width/height hint. maybe Popup(Box<Component>)
@@ -88,10 +94,10 @@ impl<T: Component> Popup<T> {
 
     /// Calculate the position where the popup should be rendered and return the coordinates of the
     /// top left corner.
-    pub fn get_rel_position(&mut self, viewport: Rect, cx: &Context) -> (u16, u16) {
+    pub fn get_rel_position(&mut self, viewport: Rect, editor: &Editor) -> (u16, u16) {
         let position = self
             .position
-            .get_or_insert_with(|| cx.editor.cursor().0.unwrap_or_default());
+            .get_or_insert_with(|| editor.cursor().0.unwrap_or_default());
 
         let (width, height) = self.size;
 
@@ -154,6 +160,16 @@ impl<T: Component> Popup<T> {
 
     pub fn contents_mut(&mut self) -> &mut T {
         &mut self.contents
+    }
+
+    pub fn area(&mut self, viewport: Rect, editor: &Editor) -> Rect {
+        // trigger required_size so we recalculate if the child changed
+        self.required_size((viewport.width, viewport.height));
+
+        let (rel_x, rel_y) = self.get_rel_position(viewport, editor);
+
+        // clip to viewport
+        viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1))
     }
 }
 
@@ -232,27 +248,36 @@ impl<T: Component> Component for Popup<T> {
     }
 
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
-        // trigger required_size so we recalculate if the child changed
-        self.required_size((viewport.width, viewport.height));
-
+        let area = self.area(viewport, cx.editor);
         cx.scroll = Some(self.scroll);
-
-        let (rel_x, rel_y) = self.get_rel_position(viewport, cx);
-
-        // clip to viewport
-        let area = viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1));
 
         // clear area
         let background = cx.editor.theme.get("ui.popup");
         surface.clear_with(area, background);
 
-        let inner = area.inner(&self.margin);
+        let render_borders = cx.editor.popup_border();
+
+        let inner = if self
+            .contents
+            .type_name()
+            .starts_with("helix_term::ui::menu::Menu")
+        {
+            area
+        } else {
+            area.inner(&self.margin)
+        };
+
+        let border = usize::from(render_borders);
+        if render_borders {
+            Widget::render(Block::default().borders(Borders::ALL), area, surface);
+        }
+
         self.contents.render(inner, surface, cx);
 
         // render scrollbar if contents do not fit
         if self.has_scrollbar {
-            let win_height = inner.height as usize;
-            let len = self.child_size.1 as usize;
+            let win_height = (inner.height as usize).saturating_sub(2 * border);
+            let len = (self.child_size.1 as usize).saturating_sub(2 * border);
             let fits = len <= win_height;
             let scroll = self.scroll;
             let scroll_style = cx.editor.theme.get("ui.menu.scroll");
@@ -268,15 +293,17 @@ impl<T: Component> Component for Popup<T> {
 
                 let mut cell;
                 for i in 0..win_height {
-                    cell = &mut surface[(inner.right() - 1, inner.top() + i as u16)];
+                    cell = &mut surface[(inner.right() - 1, inner.top() + (border + i) as u16)];
 
-                    cell.set_symbol("▐"); // right half block
+                    let half_block = if render_borders { "▌" } else { "▐" };
 
                     if scroll_line <= i && i < scroll_line + scroll_height {
                         // Draw scroll thumb
+                        cell.set_symbol(half_block);
                         cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
-                    } else {
+                    } else if !render_borders {
                         // Draw scroll track
+                        cell.set_symbol(half_block);
                         cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
                     }
                 }

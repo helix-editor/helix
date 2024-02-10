@@ -41,7 +41,7 @@ macro_rules! command_provider {
      primary_paste => $pr_get_prg:literal $( , $pr_get_arg:literal )* ;
      primary_copy => $pr_set_prg:literal $( , $pr_set_arg:literal )* ;
     ) => {{
-        log::info!(
+        log::debug!(
             "Using {} to interact with the system and selection (primary) clipboard",
             if $set_prg != $get_prg { format!("{}+{}", $set_prg, $get_prg)} else { $set_prg.to_string() }
         );
@@ -68,14 +68,19 @@ macro_rules! command_provider {
 
 #[cfg(windows)]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    Box::new(provider::WindowsProvider::default())
+    Box::<provider::WindowsProvider>::default()
 }
 
 #[cfg(target_os = "macos")]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    use crate::env::binary_exists;
+    use helix_stdx::env::{binary_exists, env_var_is_set};
 
-    if binary_exists("pbcopy") && binary_exists("pbpaste") {
+    if env_var_is_set("TMUX") && binary_exists("tmux") {
+        command_provider! {
+            paste => "tmux", "save-buffer", "-";
+            copy => "tmux", "load-buffer", "-w", "-";
+        }
+    } else if binary_exists("pbcopy") && binary_exists("pbpaste") {
         command_provider! {
             paste => "pbpaste";
             copy => "pbcopy";
@@ -93,7 +98,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
 
 #[cfg(not(any(windows, target_os = "wasm32", target_os = "macos")))]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    use crate::env::{binary_exists, env_var_is_set};
+    use helix_stdx::env::{binary_exists, env_var_is_set};
     use provider::command::is_exit_success;
     // TODO: support for user-defined provider, probably when we have plugin support by setting a
     // variable?
@@ -258,7 +263,7 @@ pub mod provider {
                 .args(args)
                 .output()
                 .ok()
-                .and_then(|out| out.status.success().then(|| ())) // TODO: use then_some when stabilized
+                .and_then(|out| out.status.success().then_some(()))
                 .is_some()
         }
 
@@ -381,7 +386,7 @@ mod provider {
 
     impl ClipboardProvider for WindowsProvider {
         fn name(&self) -> Cow<str> {
-            log::info!("Using clipboard-win to interact with the system clipboard");
+            log::debug!("Using clipboard-win to interact with the system clipboard");
             Cow::Borrowed("clipboard-win")
         }
 

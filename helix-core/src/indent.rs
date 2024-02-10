@@ -1,12 +1,14 @@
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap};
 
 use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
 
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
-    syntax::{LanguageConfiguration, RopeProvider, Syntax},
+    find_first_non_whitespace_char,
+    graphemes::{grapheme_width, tab_width_at},
+    syntax::{IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
-    Rope, RopeSlice,
+    Position, Rope, RopeGraphemes, RopeSlice,
 };
 
 /// Enum representing indentation style.
@@ -18,6 +20,10 @@ pub enum IndentStyle {
     Spaces(u8),
 }
 
+// 16 spaces
+const INDENTS: &str = "                ";
+pub const MAX_INDENT: u8 = 16;
+
 impl IndentStyle {
     /// Creates an `IndentStyle` from an indentation string.
     ///
@@ -26,10 +32,10 @@ impl IndentStyle {
     #[inline]
     pub fn from_str(indent: &str) -> Self {
         // XXX: do we care about validating the input more than this?  Probably not...?
-        debug_assert!(!indent.is_empty() && indent.len() <= 8);
+        debug_assert!(!indent.is_empty() && indent.len() <= MAX_INDENT as usize);
 
         if indent.starts_with(' ') {
-            IndentStyle::Spaces(indent.len() as u8)
+            IndentStyle::Spaces(indent.len().clamp(1, MAX_INDENT as usize) as u8)
         } else {
             IndentStyle::Tabs
         }
@@ -39,21 +45,22 @@ impl IndentStyle {
     pub fn as_str(&self) -> &'static str {
         match *self {
             IndentStyle::Tabs => "\t",
-            IndentStyle::Spaces(1) => " ",
-            IndentStyle::Spaces(2) => "  ",
-            IndentStyle::Spaces(3) => "   ",
-            IndentStyle::Spaces(4) => "    ",
-            IndentStyle::Spaces(5) => "     ",
-            IndentStyle::Spaces(6) => "      ",
-            IndentStyle::Spaces(7) => "       ",
-            IndentStyle::Spaces(8) => "        ",
-
-            // Unsupported indentation style.  This should never happen,
-            // but just in case fall back to two spaces.
             IndentStyle::Spaces(n) => {
-                debug_assert!(n > 0 && n <= 8); // Always triggers. `debug_panic!()` wanted.
-                "  "
+                // Unsupported indentation style.  This should never happen,
+                debug_assert!(n > 0 && n <= MAX_INDENT);
+
+                // Either way, clamp to the nearest supported value
+                let closest_n = n.clamp(1, MAX_INDENT) as usize;
+                &INDENTS[0..closest_n]
             }
+        }
+    }
+
+    #[inline]
+    pub fn indent_width(&self, tab_width: usize) -> usize {
+        match *self {
+            IndentStyle::Tabs => tab_width,
+            IndentStyle::Spaces(width) => width as usize,
         }
     }
 }
@@ -66,9 +73,9 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
     // Build a histogram of the indentation *increases* between
     // subsequent lines, ignoring lines that are all whitespace.
     //
-    // Index 0 is for tabs, the rest are 1-8 spaces.
-    let histogram: [usize; 9] = {
-        let mut histogram = [0; 9];
+    // Index 0 is for tabs, the rest are 1-MAX_INDENT spaces.
+    let histogram: [usize; MAX_INDENT as usize + 1] = {
+        let mut histogram = [0; MAX_INDENT as usize + 1];
         let mut prev_line_is_tabs = false;
         let mut prev_line_leading_count = 0usize;
 
@@ -127,7 +134,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
                     histogram[0] += 1;
                 } else {
                     let amount = leading_count - prev_line_leading_count;
-                    if amount <= 8 {
+                    if amount <= MAX_INDENT as usize {
                         histogram[amount] += 1;
                     }
                 }
@@ -177,17 +184,67 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
 
 /// To determine indentation of a newly inserted line, figure out the indentation at the last col
 /// of the previous line.
-pub fn indent_level_for_line(line: RopeSlice, tab_width: usize) -> usize {
+pub fn indent_level_for_line(line: RopeSlice, tab_width: usize, indent_width: usize) -> usize {
     let mut len = 0;
     for ch in line.chars() {
         match ch {
-            '\t' => len += tab_width,
+            '\t' => len += tab_width_at(len, tab_width as u16),
             ' ' => len += 1,
             _ => break,
         }
     }
 
-    len / tab_width
+    len / indent_width
+}
+
+/// Create a string of tabs & spaces that has the same visual width as the given RopeSlice (independent of the tab width).
+fn whitespace_with_same_width(text: RopeSlice) -> String {
+    let mut s = String::new();
+    for grapheme in RopeGraphemes::new(text) {
+        if grapheme == "\t" {
+            s.push('\t');
+        } else {
+            s.extend(std::iter::repeat(' ').take(grapheme_width(&Cow::from(grapheme))));
+        }
+    }
+    s
+}
+
+fn add_indent_level(
+    mut base_indent: String,
+    added_indent_level: isize,
+    indent_style: &IndentStyle,
+    tab_width: usize,
+) -> String {
+    if added_indent_level >= 0 {
+        // Adding a non-negative indent is easy, we can simply append the indent string
+        base_indent.push_str(&indent_style.as_str().repeat(added_indent_level as usize));
+        base_indent
+    } else {
+        // In this case, we want to return a prefix of `base_indent`.
+        // Since the width of a tab depends on its offset, we cannot simply iterate over
+        // the chars of `base_indent` in reverse until we have the desired indent reduction,
+        // instead we iterate over them twice in forward direction.
+        let base_indent_rope = RopeSlice::from(base_indent.as_str());
+        #[allow(deprecated)]
+        let base_indent_width =
+            crate::visual_coords_at_pos(base_indent_rope, base_indent_rope.len_chars(), tab_width)
+                .col;
+        let target_indent_width = base_indent_width
+            .saturating_sub((-added_indent_level) as usize * indent_style.indent_width(tab_width));
+        #[allow(deprecated)]
+        let char_end_idx = crate::pos_at_visual_coords(
+            base_indent_rope,
+            Position {
+                row: 0,
+                col: target_indent_width,
+            },
+            tab_width,
+        );
+        let byte_end_idx = base_indent_rope.char_to_byte(char_end_idx);
+        base_indent.truncate(byte_end_idx);
+        base_indent
+    }
 }
 
 /// Computes for node and all ancestors whether they are the first node on their line.
@@ -231,68 +288,140 @@ fn get_first_in_line(mut node: Node, new_line_byte_pos: Option<usize>) -> Vec<bo
 /// This is usually constructed in one of 2 ways:
 /// - Successively add indent captures to get the (added) indent from a single line
 /// - Successively add the indent results for each line
-#[derive(Default)]
-pub struct Indentation {
-    /// The total indent (the number of indent levels) is defined as max(0, indent-outdent).
-    /// The string that this results in depends on the indent style (spaces or tabs, etc.)
+/// The string that this indentation defines starts with the string contained in the align field (unless it is None), followed by:
+/// - max(0, indent - outdent) tabs, if tabs are used for indentation
+/// - max(0, indent - outdent)*indent_width spaces, if spaces are used for indentation
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
+pub struct Indentation<'a> {
     indent: usize,
+    indent_always: usize,
     outdent: usize,
+    outdent_always: usize,
+    /// The alignment, as a string containing only tabs & spaces. Storing this as a string instead of e.g.
+    /// the (visual) width ensures that the alignment is preserved even if the tab width changes.
+    align: Option<RopeSlice<'a>>,
 }
-impl Indentation {
+
+impl<'a> Indentation<'a> {
     /// Add some other [Indentation] to this.
-    /// The added indent should be the total added indent from one line
-    fn add_line(&mut self, added: &Indentation) {
-        if added.indent > 0 && added.outdent == 0 {
-            self.indent += 1;
-        } else if added.outdent > 0 && added.indent == 0 {
-            self.outdent += 1;
+    /// The added indent should be the total added indent from one line.
+    /// Indent should always be added starting from the bottom (or equivalently, the innermost tree-sitter node).
+    fn add_line(&mut self, added: Indentation<'a>) {
+        // Align overrides the indent from outer scopes.
+        if self.align.is_some() {
+            return;
         }
+        if added.align.is_some() {
+            self.align = added.align;
+            return;
+        }
+        self.indent += added.indent;
+        self.indent_always += added.indent_always;
+        self.outdent += added.outdent;
+        self.outdent_always += added.outdent_always;
     }
+
     /// Add an indent capture to this indent.
-    /// All the captures that are added in this way should be on the same line.
-    fn add_capture(&mut self, added: IndentCaptureType) {
+    /// Only captures that apply to the same line should be added together in this way (otherwise use `add_line`)
+    /// and the captures should be added starting from the innermost tree-sitter node (currently this only matters
+    /// if multiple `@align` patterns occur on the same line).
+    fn add_capture(&mut self, added: IndentCaptureType<'a>) {
         match added {
             IndentCaptureType::Indent => {
-                self.indent = 1;
+                if self.indent_always == 0 {
+                    self.indent = 1;
+                }
+            }
+            IndentCaptureType::IndentAlways => {
+                // any time we encounter an `indent.always` on the same line, we
+                // want to cancel out all regular indents
+                self.indent_always += 1;
+                self.indent = 0;
             }
             IndentCaptureType::Outdent => {
-                self.outdent = 1;
+                if self.outdent_always == 0 {
+                    self.outdent = 1;
+                }
+            }
+            IndentCaptureType::OutdentAlways => {
+                self.outdent_always += 1;
+                self.outdent = 0;
+            }
+            IndentCaptureType::Align(align) => {
+                if self.align.is_none() {
+                    self.align = Some(align);
+                }
             }
         }
     }
-    fn as_string(&self, indent_style: &IndentStyle) -> String {
-        let indent_level = if self.indent >= self.outdent {
-            self.indent - self.outdent
+    fn net_indent(&self) -> isize {
+        (self.indent + self.indent_always) as isize
+            - ((self.outdent + self.outdent_always) as isize)
+    }
+    /// Convert `self` into a string, taking into account the computed and actual indentation of some other line.
+    fn relative_indent(
+        &self,
+        other_computed_indent: &Self,
+        other_leading_whitespace: RopeSlice,
+        indent_style: &IndentStyle,
+        tab_width: usize,
+    ) -> Option<String> {
+        if self.align == other_computed_indent.align {
+            // If self and baseline are either not aligned to anything or both aligned the same way,
+            // we can simply take `other_leading_whitespace` and add some indent / outdent to it (in the second
+            // case, the alignment should already be accounted for in `other_leading_whitespace`).
+            let indent_diff = self.net_indent() - other_computed_indent.net_indent();
+            Some(add_indent_level(
+                String::from(other_leading_whitespace),
+                indent_diff,
+                indent_style,
+                tab_width,
+            ))
         } else {
-            log::warn!("Encountered more outdent than indent nodes while calculating indentation: {} outdent, {} indent", self.outdent, self.indent);
-            0
-        };
-        indent_style.as_str().repeat(indent_level)
+            // If the alignment of both lines is different, we cannot compare their indentation in any meaningful way
+            None
+        }
+    }
+    pub fn to_string(&self, indent_style: &IndentStyle, tab_width: usize) -> String {
+        add_indent_level(
+            self.align
+                .map_or_else(String::new, whitespace_with_same_width),
+            self.net_indent(),
+            indent_style,
+            tab_width,
+        )
     }
 }
 
 /// An indent definition which corresponds to a capture from the indent query
-struct IndentCapture {
-    capture_type: IndentCaptureType,
+#[derive(Debug)]
+struct IndentCapture<'a> {
+    capture_type: IndentCaptureType<'a>,
     scope: IndentScope,
 }
-#[derive(Clone, Copy)]
-enum IndentCaptureType {
+#[derive(Debug, Clone, PartialEq)]
+enum IndentCaptureType<'a> {
     Indent,
+    IndentAlways,
     Outdent,
+    OutdentAlways,
+    /// Alignment given as a string of whitespace
+    Align(RopeSlice<'a>),
 }
-impl IndentCaptureType {
+
+impl<'a> IndentCaptureType<'a> {
     fn default_scope(&self) -> IndentScope {
         match self {
-            IndentCaptureType::Indent => IndentScope::Tail,
-            IndentCaptureType::Outdent => IndentScope::All,
+            IndentCaptureType::Indent | IndentCaptureType::IndentAlways => IndentScope::Tail,
+            IndentCaptureType::Outdent | IndentCaptureType::OutdentAlways => IndentScope::All,
+            IndentCaptureType::Align(_) => IndentScope::All,
         }
     }
 }
 /// This defines which part of a node an [IndentCapture] applies to.
 /// Each [IndentCaptureType] has a default scope, but the scope can be changed
 /// with `#set!` property declarations.
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 enum IndentScope {
     /// The indent applies to the whole node
     All,
@@ -302,6 +431,7 @@ enum IndentScope {
 
 /// A capture from the indent query which does not define an indent but extends
 /// the range of a node. This is used before the indent is calculated.
+#[derive(Debug)]
 enum ExtendCapture {
     Extend,
     PreventOnce,
@@ -310,24 +440,41 @@ enum ExtendCapture {
 /// The result of running a tree-sitter indent query. This stores for
 /// each node (identified by its ID) the relevant captures (already filtered
 /// by predicates).
-struct IndentQueryResult {
-    indent_captures: HashMap<usize, Vec<IndentCapture>>,
+#[derive(Debug)]
+struct IndentQueryResult<'a> {
+    indent_captures: HashMap<usize, Vec<IndentCapture<'a>>>,
     extend_captures: HashMap<usize, Vec<ExtendCapture>>,
 }
 
-fn query_indents(
+fn get_node_start_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
+    let mut node_line = node.start_position().row;
+    // Adjust for the new line that will be inserted
+    if new_line_byte_pos.map_or(false, |pos| node.start_byte() >= pos) {
+        node_line += 1;
+    }
+    node_line
+}
+fn get_node_end_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
+    let mut node_line = node.end_position().row;
+    // Adjust for the new line that will be inserted (with a strict inequality since end_byte is exclusive)
+    if new_line_byte_pos.map_or(false, |pos| node.end_byte() > pos) {
+        node_line += 1;
+    }
+    node_line
+}
+
+fn query_indents<'a>(
     query: &Query,
     syntax: &Syntax,
     cursor: &mut QueryCursor,
-    text: RopeSlice,
+    text: RopeSlice<'a>,
     range: std::ops::Range<usize>,
-    // Position of the (optional) newly inserted line break.
-    // Given as (line, byte_pos)
-    new_line_break: Option<(usize, usize)>,
-) -> IndentQueryResult {
+    new_line_byte_pos: Option<usize>,
+) -> IndentQueryResult<'a> {
     let mut indent_captures: HashMap<usize, Vec<IndentCapture>> = HashMap::new();
     let mut extend_captures: HashMap<usize, Vec<ExtendCapture>> = HashMap::new();
     cursor.set_byte_range(range);
+
     // Iterate over all captures from the query
     for m in cursor.matches(query, syntax.tree().root_node(), RopeProvider(text)) {
         // Skip matches where not all custom predicates are fulfilled
@@ -354,21 +501,13 @@ fn query_indents(
                             Some(QueryPredicateArg::Capture(capt1)),
                             Some(QueryPredicateArg::Capture(capt2))
                         ) => {
-                            let get_line_num = |node: Node| {
-                                let mut node_line = node.start_position().row;
-                                // Adjust for the new line that will be inserted
-                                if let Some((line, byte)) = new_line_break {
-                                    if node_line==line && node.start_byte()>=byte {
-                                        node_line += 1;
-                                    }
-                                }
-                                node_line
-                            };
                             let n1 = m.nodes_for_capture_index(*capt1).next();
                             let n2 = m.nodes_for_capture_index(*capt2).next();
                             match (n1, n2) {
                                 (Some(n1), Some(n2)) => {
-                                    let same_line = get_line_num(n1)==get_line_num(n2);
+                                    let n1_line = get_node_start_line(n1, new_line_byte_pos);
+                                    let n2_line = get_node_start_line(n2, new_line_byte_pos);
+                                    let same_line = n1_line == n2_line;
                                     same_line==(pred.operator.as_ref()=="same-line?")
                                 }
                                 _ => true,
@@ -379,6 +518,23 @@ fn query_indents(
                         }
                     }
                 }
+                "one-line?" | "not-one-line?" => match pred.args.get(0) {
+                    Some(QueryPredicateArg::Capture(capture_idx)) => {
+                        let node = m.nodes_for_capture_index(*capture_idx).next();
+
+                        match node {
+                            Some(node) => {
+                                let (start_line, end_line) = (get_node_start_line(node,new_line_byte_pos), get_node_end_line(node, new_line_byte_pos));
+                                let one_line = end_line == start_line;
+                                one_line != (pred.operator.as_ref() == "not-one-line?")
+                            },
+                            _ => true,
+                        }
+                    }
+                    _ => {
+                        panic!("Invalid indent query: Arguments to \"not-kind-eq?\" must be a capture and a string");
+                    }
+                },
                 _ => {
                     panic!(
                         "Invalid indent query: Unknown predicate (\"{}\")",
@@ -389,11 +545,28 @@ fn query_indents(
         }) {
             continue;
         }
+        // A list of pairs (node_id, indent_capture) that are added by this match.
+        // They cannot be added to indent_captures immediately since they may depend on other captures (such as an @anchor).
+        let mut added_indent_captures: Vec<(usize, IndentCapture)> = Vec::new();
+        // The row/column position of the optional anchor in this query
+        let mut anchor: Option<tree_sitter::Node> = None;
         for capture in m.captures {
-            let capture_name = query.capture_names()[capture.index as usize].as_str();
+            let capture_name = query.capture_names()[capture.index as usize];
             let capture_type = match capture_name {
                 "indent" => IndentCaptureType::Indent,
+                "indent.always" => IndentCaptureType::IndentAlways,
                 "outdent" => IndentCaptureType::Outdent,
+                "outdent.always" => IndentCaptureType::OutdentAlways,
+                // The alignment will be updated to the correct value at the end, when the anchor is known.
+                "align" => IndentCaptureType::Align(RopeSlice::from("")),
+                "anchor" => {
+                    if anchor.is_some() {
+                        log::error!("Invalid indent query: Encountered more than one @anchor in the same match.")
+                    } else {
+                        anchor = Some(capture.node);
+                    }
+                    continue;
+                }
                 "extend" => {
                     extend_captures
                         .entry(capture.node.id())
@@ -443,17 +616,40 @@ fn query_indents(
                     }
                 }
             }
+            added_indent_captures.push((capture.node.id(), indent_capture))
+        }
+        for (node_id, mut capture) in added_indent_captures {
+            // Set the anchor for all align queries.
+            if let IndentCaptureType::Align(_) = capture.capture_type {
+                let anchor = match anchor {
+                    None => {
+                        log::error!(
+                            "Invalid indent query: @align requires an accompanying @anchor."
+                        );
+                        continue;
+                    }
+                    Some(anchor) => anchor,
+                };
+                capture.capture_type = IndentCaptureType::Align(
+                    text.line(anchor.start_position().row)
+                        .byte_slice(0..anchor.start_position().column),
+                );
+            }
             indent_captures
-                .entry(capture.node.id())
-                // Most entries only need to contain a single IndentCapture
+                .entry(node_id)
                 .or_insert_with(|| Vec::with_capacity(1))
-                .push(indent_capture);
+                .push(capture);
         }
     }
-    IndentQueryResult {
+
+    let result = IndentQueryResult {
         indent_captures,
         extend_captures,
-    }
+    };
+
+    log::trace!("indent result = {:?}", result);
+
+    result
 }
 
 /// Handle extend queries. deepest_preceding is the deepest descendant of node that directly precedes the cursor position.
@@ -466,6 +662,7 @@ fn extend_nodes<'a>(
     text: RopeSlice,
     line: usize,
     tab_width: usize,
+    indent_width: usize,
 ) {
     let mut stop_extend = false;
 
@@ -490,10 +687,12 @@ fn extend_nodes<'a>(
                         if deepest_preceding.end_position().row == line {
                             extend_node = true;
                         } else {
-                            let cursor_indent = indent_level_for_line(text.line(line), tab_width);
+                            let cursor_indent =
+                                indent_level_for_line(text.line(line), tab_width, indent_width);
                             let node_indent = indent_level_for_line(
                                 text.line(deepest_preceding.start_position().row),
                                 tab_width,
+                                indent_width,
                             );
                             if cursor_indent > node_indent {
                                 extend_node = true;
@@ -518,6 +717,80 @@ fn extend_nodes<'a>(
             None => return,
         }
     }
+}
+
+/// Prepare an indent query by computing:
+/// - The node from which to start the query (this is non-trivial due to `@extend` captures)
+/// - The indent captures for all relevant nodes.
+#[allow(clippy::too_many_arguments)]
+fn init_indent_query<'a, 'b>(
+    query: &Query,
+    syntax: &'a Syntax,
+    text: RopeSlice<'b>,
+    tab_width: usize,
+    indent_width: usize,
+    line: usize,
+    byte_pos: usize,
+    new_line_byte_pos: Option<usize>,
+) -> Option<(Node<'a>, HashMap<usize, Vec<IndentCapture<'b>>>)> {
+    // The innermost tree-sitter node which is considered for the indent
+    // computation. It may change if some predeceding node is extended
+    let mut node = syntax
+        .tree()
+        .root_node()
+        .descendant_for_byte_range(byte_pos, byte_pos)?;
+
+    let (query_result, deepest_preceding) = {
+        // The query range should intersect with all nodes directly preceding
+        // the position of the indent query in case one of them is extended.
+        let mut deepest_preceding = None; // The deepest node preceding the indent query position
+        let mut tree_cursor = node.walk();
+        for child in node.children(&mut tree_cursor) {
+            if child.byte_range().end <= byte_pos {
+                deepest_preceding = Some(child);
+            }
+        }
+        deepest_preceding = deepest_preceding.map(|mut prec| {
+            // Get the deepest directly preceding node
+            while prec.child_count() > 0 {
+                prec = prec.child(prec.child_count() - 1).unwrap();
+            }
+            prec
+        });
+        let query_range = deepest_preceding
+            .map(|prec| prec.byte_range().end - 1..byte_pos + 1)
+            .unwrap_or(byte_pos..byte_pos + 1);
+
+        crate::syntax::PARSER.with(|ts_parser| {
+            let mut ts_parser = ts_parser.borrow_mut();
+            let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
+            let query_result = query_indents(
+                query,
+                syntax,
+                &mut cursor,
+                text,
+                query_range,
+                new_line_byte_pos,
+            );
+            ts_parser.cursors.push(cursor);
+            (query_result, deepest_preceding)
+        })
+    };
+    let extend_captures = query_result.extend_captures;
+
+    // Check for extend captures, potentially changing the node that the indent calculation starts with
+    if let Some(deepest_preceding) = deepest_preceding {
+        extend_nodes(
+            &mut node,
+            deepest_preceding,
+            &extend_captures,
+            text,
+            line,
+            tab_width,
+            indent_width,
+        );
+    }
+    Some((node, query_result.indent_captures))
 }
 
 /// Use the syntax tree to determine the indentation for a given position.
@@ -557,86 +830,45 @@ fn extend_nodes<'a>(
 /// );
 /// ```
 #[allow(clippy::too_many_arguments)]
-pub fn treesitter_indent_for_pos(
+pub fn treesitter_indent_for_pos<'a>(
     query: &Query,
     syntax: &Syntax,
-    indent_style: &IndentStyle,
     tab_width: usize,
-    text: RopeSlice,
+    indent_width: usize,
+    text: RopeSlice<'a>,
     line: usize,
     pos: usize,
     new_line: bool,
-) -> Option<String> {
+) -> Option<Indentation<'a>> {
     let byte_pos = text.char_to_byte(pos);
-    // The innermost tree-sitter node which is considered for the indent
-    // computation. It may change if some predeceding node is extended
-    let mut node = syntax
-        .tree()
-        .root_node()
-        .descendant_for_byte_range(byte_pos, byte_pos)?;
-    let (query_result, deepest_preceding) = {
-        // The query range should intersect with all nodes directly preceding
-        // the position of the indent query in case one of them is extended.
-        let mut deepest_preceding = None; // The deepest node preceding the indent query position
-        let mut tree_cursor = node.walk();
-        for child in node.children(&mut tree_cursor) {
-            if child.byte_range().end <= byte_pos {
-                deepest_preceding = Some(child);
-            }
-        }
-        deepest_preceding = deepest_preceding.map(|mut prec| {
-            // Get the deepest directly preceding node
-            while prec.child_count() > 0 {
-                prec = prec.child(prec.child_count() - 1).unwrap();
-            }
-            prec
-        });
-        let query_range = deepest_preceding
-            .map(|prec| prec.byte_range().end - 1..byte_pos + 1)
-            .unwrap_or(byte_pos..byte_pos + 1);
-
-        crate::syntax::PARSER.with(|ts_parser| {
-            let mut ts_parser = ts_parser.borrow_mut();
-            let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
-            let query_result = query_indents(
-                query,
-                syntax,
-                &mut cursor,
-                text,
-                query_range,
-                new_line.then(|| (line, byte_pos)),
-            );
-            ts_parser.cursors.push(cursor);
-            (query_result, deepest_preceding)
-        })
-    };
-    let indent_captures = query_result.indent_captures;
-    let extend_captures = query_result.extend_captures;
-
-    // Check for extend captures, potentially changing the node that the indent calculation starts with
-    if let Some(deepest_preceding) = deepest_preceding {
-        extend_nodes(
-            &mut node,
-            deepest_preceding,
-            &extend_captures,
-            text,
-            line,
-            tab_width,
-        );
-    }
-    let mut first_in_line = get_first_in_line(node, new_line.then(|| byte_pos));
+    let new_line_byte_pos = new_line.then_some(byte_pos);
+    let (mut node, mut indent_captures) = init_indent_query(
+        query,
+        syntax,
+        text,
+        tab_width,
+        indent_width,
+        line,
+        byte_pos,
+        new_line_byte_pos,
+    )?;
+    let mut first_in_line = get_first_in_line(node, new_line.then_some(byte_pos));
 
     let mut result = Indentation::default();
     // We always keep track of all the indent changes on one line, in order to only indent once
     // even if there are multiple "indent" nodes on the same line
     let mut indent_for_line = Indentation::default();
     let mut indent_for_line_below = Indentation::default();
+
     loop {
         // This can safely be unwrapped because `first_in_line` contains
         // one entry for each ancestor of the node (which is what we iterate over)
         let is_first = *first_in_line.last().unwrap();
-        // Apply all indent definitions for this node
-        if let Some(definitions) = indent_captures.get(&node.id()) {
+
+        // Apply all indent definitions for this node.
+        // Since we only iterate over each node once, we can remove the
+        // corresponding captures from the HashMap to avoid cloning them.
+        if let Some(definitions) = indent_captures.remove(&node.id()) {
             for definition in definitions {
                 match definition.scope {
                     IndentScope::All => {
@@ -654,28 +886,22 @@ pub fn treesitter_indent_for_pos(
         }
 
         if let Some(parent) = node.parent() {
-            let mut node_line = node.start_position().row;
-            let mut parent_line = parent.start_position().row;
-            if node_line == line && new_line {
-                // Also consider the line that will be inserted
-                if node.start_byte() >= byte_pos {
-                    node_line += 1;
-                }
-                if parent.start_byte() >= byte_pos {
-                    parent_line += 1;
-                }
-            };
+            let node_line = get_node_start_line(node, new_line_byte_pos);
+            let parent_line = get_node_start_line(parent, new_line_byte_pos);
+
             if node_line != parent_line {
+                // Don't add indent for the line below the line of the query
                 if node_line < line + (new_line as usize) {
-                    // Don't add indent for the line below the line of the query
-                    result.add_line(&indent_for_line_below);
+                    result.add_line(indent_for_line_below);
                 }
+
                 if node_line == parent_line + 1 {
                     indent_for_line_below = indent_for_line;
                 } else {
-                    result.add_line(&indent_for_line);
+                    result.add_line(indent_for_line);
                     indent_for_line_below = Indentation::default();
                 }
+
                 indent_for_line = Indentation::default();
             }
 
@@ -687,13 +913,13 @@ pub fn treesitter_indent_for_pos(
             if (node.start_position().row < line)
                 || (new_line && node.start_position().row == line && node.start_byte() < byte_pos)
             {
-                result.add_line(&indent_for_line_below);
+                result.add_line(indent_for_line_below);
             }
-            result.add_line(&indent_for_line);
+            result.add_line(indent_for_line);
             break;
         }
     }
-    Some(result.as_string(indent_style))
+    Some(result)
 }
 
 /// Returns the indentation for a new line.
@@ -702,6 +928,7 @@ pub fn treesitter_indent_for_pos(
 pub fn indent_for_newline(
     language_config: Option<&LanguageConfiguration>,
     syntax: Option<&Syntax>,
+    indent_heuristic: &IndentationHeuristic,
     indent_style: &IndentStyle,
     tab_width: usize,
     text: RopeSlice,
@@ -709,24 +936,78 @@ pub fn indent_for_newline(
     line_before_end_pos: usize,
     current_line: usize,
 ) -> String {
-    if let (Some(query), Some(syntax)) = (
+    let indent_width = indent_style.indent_width(tab_width);
+    if let (
+        IndentationHeuristic::TreeSitter | IndentationHeuristic::Hybrid,
+        Some(query),
+        Some(syntax),
+    ) = (
+        indent_heuristic,
         language_config.and_then(|config| config.indent_query()),
         syntax,
     ) {
         if let Some(indent) = treesitter_indent_for_pos(
             query,
             syntax,
-            indent_style,
             tab_width,
+            indent_width,
             text,
             line_before,
             line_before_end_pos,
             true,
         ) {
-            return indent;
+            if *indent_heuristic == IndentationHeuristic::Hybrid {
+                // We want to compute the indentation not only based on the
+                // syntax tree but also on the actual indentation of a previous
+                // line. This makes indentation computation more resilient to
+                // incomplete queries, incomplete source code & differing indentation
+                // styles for the same language.
+                // However, using the indent of a previous line as a baseline may not
+                // make sense, e.g. if it has a different alignment than the new line.
+                // In order to prevent edge cases with long running times, we only try
+                // a constant number of (non-empty) lines.
+                const MAX_ATTEMPTS: usize = 4;
+                let mut num_attempts = 0;
+                for line_idx in (0..=line_before).rev() {
+                    let line = text.line(line_idx);
+                    let first_non_whitespace_char = match find_first_non_whitespace_char(line) {
+                        Some(i) => i,
+                        None => {
+                            continue;
+                        }
+                    };
+                    if let Some(indent) = (|| {
+                        let computed_indent = treesitter_indent_for_pos(
+                            query,
+                            syntax,
+                            tab_width,
+                            indent_width,
+                            text,
+                            line_idx,
+                            text.line_to_char(line_idx) + first_non_whitespace_char,
+                            false,
+                        )?;
+                        let leading_whitespace = line.slice(0..first_non_whitespace_char);
+                        indent.relative_indent(
+                            &computed_indent,
+                            leading_whitespace,
+                            indent_style,
+                            tab_width,
+                        )
+                    })() {
+                        return indent;
+                    }
+                    num_attempts += 1;
+                    if num_attempts == MAX_ATTEMPTS {
+                        break;
+                    }
+                }
+            }
+            return indent.to_string(indent_style, tab_width);
         };
     }
-    let indent_level = indent_level_for_line(text.line(current_line), tab_width);
+    // Fallback in case we either don't have indent queries or they failed for some reason
+    let indent_level = indent_level_for_line(text.line(current_line), tab_width, indent_width);
     indent_style.as_str().repeat(indent_level)
 }
 
@@ -763,12 +1044,229 @@ mod test {
     #[test]
     fn test_indent_level() {
         let tab_width = 4;
+        let indent_width = 4;
         let line = Rope::from("        fn new"); // 8 spaces
-        assert_eq!(indent_level_for_line(line.slice(..), tab_width), 2);
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            2
+        );
         let line = Rope::from("\t\t\tfn new"); // 3 tabs
-        assert_eq!(indent_level_for_line(line.slice(..), tab_width), 3);
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            3
+        );
         // mixed indentation
         let line = Rope::from("\t    \tfn new"); // 1 tab, 4 spaces, tab
-        assert_eq!(indent_level_for_line(line.slice(..), tab_width), 3);
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            3
+        );
+    }
+
+    #[test]
+    fn test_large_indent_level() {
+        let tab_width = 16;
+        let indent_width = 16;
+        let line = Rope::from("                fn new"); // 16 spaces
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            1
+        );
+        let line = Rope::from("                                fn new"); // 32 spaces
+        assert_eq!(
+            indent_level_for_line(line.slice(..), tab_width, indent_width),
+            2
+        );
+    }
+
+    #[test]
+    fn add_capture() {
+        let indent = || Indentation {
+            indent: 1,
+            ..Default::default()
+        };
+        let indent_always = || Indentation {
+            indent_always: 1,
+            ..Default::default()
+        };
+        let outdent = || Indentation {
+            outdent: 1,
+            ..Default::default()
+        };
+        let outdent_always = || Indentation {
+            outdent_always: 1,
+            ..Default::default()
+        };
+
+        fn add_capture<'a>(
+            mut indent: Indentation<'a>,
+            capture: IndentCaptureType<'a>,
+        ) -> Indentation<'a> {
+            indent.add_capture(capture);
+            indent
+        }
+
+        // adding an indent to no indent makes an indent
+        assert_eq!(
+            indent(),
+            add_capture(Indentation::default(), IndentCaptureType::Indent)
+        );
+        assert_eq!(
+            indent_always(),
+            add_capture(Indentation::default(), IndentCaptureType::IndentAlways)
+        );
+        assert_eq!(
+            outdent(),
+            add_capture(Indentation::default(), IndentCaptureType::Outdent)
+        );
+        assert_eq!(
+            outdent_always(),
+            add_capture(Indentation::default(), IndentCaptureType::OutdentAlways)
+        );
+
+        // adding an indent to an already indented has no effect
+        assert_eq!(indent(), add_capture(indent(), IndentCaptureType::Indent));
+        assert_eq!(
+            outdent(),
+            add_capture(outdent(), IndentCaptureType::Outdent)
+        );
+
+        // adding an always to a regular makes it always
+        assert_eq!(
+            indent_always(),
+            add_capture(indent(), IndentCaptureType::IndentAlways)
+        );
+        assert_eq!(
+            outdent_always(),
+            add_capture(outdent(), IndentCaptureType::OutdentAlways)
+        );
+
+        // adding an always to an always is additive
+        assert_eq!(
+            Indentation {
+                indent_always: 2,
+                ..Default::default()
+            },
+            add_capture(indent_always(), IndentCaptureType::IndentAlways)
+        );
+        assert_eq!(
+            Indentation {
+                outdent_always: 2,
+                ..Default::default()
+            },
+            add_capture(outdent_always(), IndentCaptureType::OutdentAlways)
+        );
+
+        // adding regular to always should be associative
+        assert_eq!(
+            Indentation {
+                indent_always: 1,
+                ..Default::default()
+            },
+            add_capture(
+                add_capture(indent(), IndentCaptureType::Indent),
+                IndentCaptureType::IndentAlways
+            )
+        );
+        assert_eq!(
+            Indentation {
+                indent_always: 1,
+                ..Default::default()
+            },
+            add_capture(
+                add_capture(indent(), IndentCaptureType::IndentAlways),
+                IndentCaptureType::Indent
+            )
+        );
+        assert_eq!(
+            Indentation {
+                outdent_always: 1,
+                ..Default::default()
+            },
+            add_capture(
+                add_capture(outdent(), IndentCaptureType::Outdent),
+                IndentCaptureType::OutdentAlways
+            )
+        );
+        assert_eq!(
+            Indentation {
+                outdent_always: 1,
+                ..Default::default()
+            },
+            add_capture(
+                add_capture(outdent(), IndentCaptureType::OutdentAlways),
+                IndentCaptureType::Outdent
+            )
+        );
+    }
+
+    #[test]
+    fn test_relative_indent() {
+        let indent_style = IndentStyle::Spaces(4);
+        let tab_width: usize = 4;
+        let no_align = [
+            Indentation::default(),
+            Indentation {
+                indent: 1,
+                ..Default::default()
+            },
+            Indentation {
+                indent: 5,
+                outdent: 1,
+                ..Default::default()
+            },
+        ];
+        let align = no_align.clone().map(|indent| Indentation {
+            align: Some(RopeSlice::from("12345")),
+            ..indent
+        });
+        let different_align = Indentation {
+            align: Some(RopeSlice::from("123456")),
+            ..Default::default()
+        };
+
+        // Check that relative and absolute indentation computation are the same when the line we compare to is
+        // indented as we expect.
+        let check_consistency = |indent: &Indentation, other: &Indentation| {
+            assert_eq!(
+                indent.relative_indent(
+                    other,
+                    RopeSlice::from(other.to_string(&indent_style, tab_width).as_str()),
+                    &indent_style,
+                    tab_width
+                ),
+                Some(indent.to_string(&indent_style, tab_width))
+            );
+        };
+        for a in &no_align {
+            for b in &no_align {
+                check_consistency(a, b);
+            }
+        }
+        for a in &align {
+            for b in &align {
+                check_consistency(a, b);
+            }
+        }
+
+        // Relative indent computation makes no sense if the alignment differs
+        assert_eq!(
+            align[0].relative_indent(
+                &no_align[0],
+                RopeSlice::from("      "),
+                &indent_style,
+                tab_width
+            ),
+            None
+        );
+        assert_eq!(
+            align[0].relative_indent(
+                &different_align,
+                RopeSlice::from("      "),
+                &indent_style,
+                tab_width
+            ),
+            None
+        );
     }
 }

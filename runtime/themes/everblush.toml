@@ -1,0 +1,115 @@
+# Author: Isotoxal <isotoxal@proton.me>
+
+"attribute" = { fg = "blue" }
+"comment" = { fg = "comment", modifiers = ["italic"] }
+"constant" = { fg = "cyan" }
+"constant.builtin.boolean" = { fg = "cyan" }
+"constant.character" = { fg = "blue" }
+"constant.numeric.float" = { fg = "black-light" }
+"constant.builtin" = { fg = "blue" }
+"constant.numeric" = { fg = "yellow" }
+"constructor" = { fg = "blue" }
+"function" = { fg = "red" }
+"function.builtin" = { fg = "cyan-light" }
+"function.macro" = { fg = "green" }
+"function.method" = { fg = "blue-light" }
+"keyword" = { fg = "blue" }
+"keyword.function" = { fg = "blue" }
+"keyword.operator" = { fg = "blue-light" }
+"keyword.control.conditional" = { fg = "red" }
+"keyword.control.import" = { fg = "red-light" }
+"keyword.control.return" = { fg = "blue" }
+"keyword.control.repeat" = { fg = "yellow-light" }
+"keyword.control.exception" = { fg = "black-light" }
+"label" = { fg = "blue" }
+"namespace" = { fg = "red-light" }
+"operator" = { fg = "white" }
+#"parameter.reference" = { fg = "red-light" }
+#"property" = { fg = "red" }
+"punctuation.bracket" = { fg = "white" }
+"punctuation.delimiter" = { fg = "white" }
+"punctuation.special" = { fg = "white" }
+"string" = { fg = "green" }
+"string.escape" = { fg = "blue" }
+"string.regex" = { fg = "green" }
+"string.special" = { fg = "blue" }
+"string.special.symbol" = { fg = "red" }
+"tag" = { fg = "blue" }
+"type" = { fg = "yellow" }
+"type.builtin" = { fg = "yellow" }
+"variable" = { fg = "white" }
+"variable.builtin" = { fg = "blue" }
+"variable.parameter" = { fg = "red" }
+"variable.other.member" = { fg = "red" }
+
+"diff.plus" = { fg = "blue" }
+"diff.delta" = { fg = "magenta" }
+"diff.minus" = { fg = "red" }
+
+"ui.background" = { fg = "foreground", bg = "background" }
+"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursorline.primary" = { bg = "cursorline" }
+"ui.help" = { fg = "foreground", bg = "contrast" }
+"ui.linenr" = { fg = "comment" }
+"ui.linenr.selected" = { fg = "foreground" }
+"ui.menu" = { fg = "foreground", bg = "contrast" }
+"ui.menu.selected" = { bg = "black" }
+"ui.popup" = { fg = "foreground", bg = "contrast" }
+"ui.selection" = { bg = "black" }
+"ui.selection.primary" = { bg = "black" }
+"ui.statusline" = { fg = "foreground", bg = "background" }
+"ui.statusline.inactive" = { fg = "foreground", bg = "background" }
+"ui.statusline.normal" = { fg = "white", bg = "background" }
+"ui.statusline.insert" = { fg = "blue", bg = "background" }
+"ui.statusline.select" = { fg = "cyan", bg = "magenta" }
+"ui.text" = { fg = "foreground" }
+"ui.text.focus" = { fg = "blue" }
+"ui.virtual.ruler" = { bg = "cursorline" }
+"ui.virtual.whitespace" = { fg = "comment" }
+"ui.virtual.wrap" = { fg = "comment" }
+"ui.virtual.indent-guide" = { fg = "comment" }
+"ui.virtual.inlay-hint" = { fg = "comment" }
+"ui.window" = { fg = "black" }
+
+"error" = { fg = "red" }
+"hint" = { fg = "green" }
+"warning" = { fg = "yellow" }
+"info" = { fg = "blue" }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
+"diagnostic.info" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "green" } }
+"special" = { fg = "red-light" }
+
+"markup.heading" = { fg = "blue", modifiers = ["bold"] }
+"markup.list" = { fg = "cyan" }
+"markup.bold" = { fg = "magenta", modifiers = ["bold"] }
+"markup.italic" = { fg = "yellow", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "green" }
+"markup.link.text" = { fg = "black-light" }
+"markup.quote" = { fg = "yellow", modifiers = ["italic"] }
+"markup.raw" = { fg = "cyan" }
+
+[palette]
+black = "#232a2d"
+red = "#e57474"
+green = "#8ccf7e"
+yellow = "#e5c76b"
+blue = "#67b0e8"
+magenta = "#c47fd5"
+cyan = "#6cbfbf"
+white = "#b3b9b8"
+black-light = "#2d3437"
+red-light = "#ef7e7e"
+green-light = "#96d988"
+yellow-light = "#f4d67a"
+blue-light = "#71baf2"
+magenta-light = "#ce89df"
+cyan-light = "#67cbe7"
+white-light = "#bdc3c2"
+comment = "#404749"
+contrast = "#161d1f"
+background = "#141b1e"
+foreground = "#dadada"
+cursorline = "#2c3333"

@@ -52,6 +52,7 @@
 "ui.selection" = { fg = "bg0", bg = "bg3" }
 "ui.virtual.whitespace" = { fg = "bg2" }
 "ui.virtual.ruler" = { bg = "bg01" }
+"ui.virtual.inlay-hint" = { fg = "grey2", modifiers = ["italic"] }
 
 "hint" = "blue"
 "info" = "aqua"

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{search, Range, Selection};
+use crate::{movement::Direction, search, Range, Selection};
 use ropey::RopeSlice;
 
 pub const PAIRS: &[(char, char)] = &[
@@ -55,15 +55,18 @@ pub fn get_pair(ch: char) -> (char, char) {
 pub fn find_nth_closest_pairs_pos(
     text: RopeSlice,
     range: Range,
-    n: usize,
+    mut skip: usize,
 ) -> Result<(usize, usize)> {
     let is_open_pair = |ch| PAIRS.iter().any(|(open, _)| *open == ch);
     let is_close_pair = |ch| PAIRS.iter().any(|(_, close)| *close == ch);
 
     let mut stack = Vec::with_capacity(2);
-    let pos = range.cursor(text);
+    let pos = range.from();
+    let mut close_pos = pos.saturating_sub(1);
 
     for ch in text.chars_at(pos) {
+        close_pos += 1;
+
         if is_open_pair(ch) {
             // Track open pairs encountered so that we can step over
             // the corresponding close pairs that will come up further
@@ -71,20 +74,46 @@ pub fn find_nth_closest_pairs_pos(
             // open pair is before the cursor position.
             stack.push(ch);
             continue;
-        } else if is_close_pair(ch) {
-            let (open, _) = get_pair(ch);
-            if stack.last() == Some(&open) {
-                stack.pop();
-                continue;
-            } else {
-                // In the ideal case the stack would be empty here and the
-                // current character would be the close pair that we are
-                // looking for. It could also be the case that the pairs
-                // are unbalanced and we encounter a close pair that doesn't
-                // close the last seen open pair. In either case use this
-                // char as the auto-detected closest pair.
-                return find_nth_pairs_pos(text, ch, range, n);
+        }
+
+        if !is_close_pair(ch) {
+            // We don't care if this character isn't a brace pair item,
+            // so short circuit here.
+            continue;
+        }
+
+        let (open, close) = get_pair(ch);
+
+        if stack.last() == Some(&open) {
+            // If we are encountering the closing pair for an opener
+            // we just found while traversing, then its inside the
+            // selection and should be skipped over.
+            stack.pop();
+            continue;
+        }
+
+        match find_nth_open_pair(text, open, close, close_pos, 1) {
+            // Before we accept this pair, we want to ensure that the
+            // pair encloses the range rather than just the cursor.
+            Some(open_pos)
+                if open_pos <= pos.saturating_add(1)
+                    && close_pos >= range.to().saturating_sub(1) =>
+            {
+                // Since we have special conditions for when to
+                // accept, we can't just pass the skip parameter on
+                // through to the find_nth_*_pair methods, so we
+                // track skips manually here.
+                if skip > 1 {
+                    skip -= 1;
+                    continue;
+                }
+
+                return match range.direction() {
+                    Direction::Forward => Ok((open_pos, close_pos)),
+                    Direction::Backward => Ok((close_pos, open_pos)),
+                };
             }
+            _ => continue,
         }
     }
 
@@ -244,141 +273,135 @@ mod test {
     use ropey::Rope;
     use smallvec::SmallVec;
 
-    #[allow(clippy::type_complexity)]
-    fn check_find_nth_pair_pos(
-        text: &str,
-        cases: Vec<(usize, char, usize, Result<(usize, usize)>)>,
-    ) {
-        let doc = Rope::from(text);
-        let slice = doc.slice(..);
-
-        for (cursor_pos, ch, n, expected_range) in cases {
-            let range = find_nth_pairs_pos(slice, ch, (cursor_pos, cursor_pos + 1).into(), n);
-            assert_eq!(
-                range, expected_range,
-                "Expected {:?}, got {:?}",
-                expected_range, range
-            );
-        }
-    }
-
-    #[test]
-    fn test_find_nth_pairs_pos() {
-        check_find_nth_pair_pos(
-            "some (text) here",
-            vec![
-                // cursor on [t]ext
-                (6, '(', 1, Ok((5, 10))),
-                (6, ')', 1, Ok((5, 10))),
-                // cursor on so[m]e
-                (2, '(', 1, Err(Error::PairNotFound)),
-                // cursor on bracket itself
-                (5, '(', 1, Ok((5, 10))),
-                (10, '(', 1, Ok((5, 10))),
-            ],
-        );
-    }
-
-    #[test]
-    fn test_find_nth_pairs_pos_skip() {
-        check_find_nth_pair_pos(
-            "(so (many (good) text) here)",
-            vec![
-                // cursor on go[o]d
-                (13, '(', 1, Ok((10, 15))),
-                (13, '(', 2, Ok((4, 21))),
-                (13, '(', 3, Ok((0, 27))),
-            ],
-        );
-    }
-
-    #[test]
-    fn test_find_nth_pairs_pos_same() {
-        check_find_nth_pair_pos(
-            "'so 'many 'good' text' here'",
-            vec![
-                // cursor on go[o]d
-                (13, '\'', 1, Ok((10, 15))),
-                (13, '\'', 2, Ok((4, 21))),
-                (13, '\'', 3, Ok((0, 27))),
-                // cursor on the quotes
-                (10, '\'', 1, Err(Error::CursorOnAmbiguousPair)),
-            ],
-        )
-    }
-
-    #[test]
-    fn test_find_nth_pairs_pos_step() {
-        check_find_nth_pair_pos(
-            "((so)((many) good (text))(here))",
-            vec![
-                // cursor on go[o]d
-                (15, '(', 1, Ok((5, 24))),
-                (15, '(', 2, Ok((0, 31))),
-            ],
-        )
-    }
-
-    #[test]
-    fn test_find_nth_pairs_pos_mixed() {
-        check_find_nth_pair_pos(
-            "(so [many {good} text] here)",
-            vec![
-                // cursor on go[o]d
-                (13, '{', 1, Ok((10, 15))),
-                (13, '[', 1, Ok((4, 21))),
-                (13, '(', 1, Ok((0, 27))),
-            ],
-        )
-    }
-
     #[test]
     fn test_get_surround_pos() {
-        let doc = Rope::from("(some) (chars)\n(newline)");
-        let slice = doc.slice(..);
-        let selection = Selection::new(
-            SmallVec::from_slice(&[Range::point(2), Range::point(9), Range::point(20)]),
-            0,
-        );
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations(
+                "(some) (chars)\n(newline)",
+                "_ ^  _ _ ^   _\n_    ^  _"
+            );
 
-        // cursor on s[o]me, c[h]ars, newl[i]ne
         assert_eq!(
-            get_surround_pos(slice, &selection, Some('('), 1)
-                .unwrap()
-                .as_slice(),
-            &[0, 5, 7, 13, 15, 23]
+            get_surround_pos(doc.slice(..), &selection, Some('('), 1).unwrap(),
+            expectations
         );
     }
 
     #[test]
-    fn test_get_surround_pos_bail() {
-        let doc = Rope::from("[some]\n(chars)xx\n(newline)");
-        let slice = doc.slice(..);
+    fn test_get_surround_pos_bail_different_surround_chars() {
+        #[rustfmt::skip]
+        let (doc, selection, _) =
+            rope_with_selections_and_expectations(
+                "[some]\n(chars)xx\n(newline)",
+                "  ^   \n  ^      \n         "
+            );
 
-        let selection =
-            Selection::new(SmallVec::from_slice(&[Range::point(2), Range::point(9)]), 0);
-        // cursor on s[o]me, c[h]ars
         assert_eq!(
-            get_surround_pos(slice, &selection, Some('('), 1),
-            Err(Error::PairNotFound) // different surround chars
+            get_surround_pos(doc.slice(..), &selection, Some('('), 1),
+            Err(Error::PairNotFound)
         );
+    }
 
-        let selection = Selection::new(
-            SmallVec::from_slice(&[Range::point(14), Range::point(24)]),
-            0,
-        );
-        // cursor on [x]x, newli[n]e
+    #[test]
+    fn test_get_surround_pos_bail_overlapping_surround_chars() {
+        #[rustfmt::skip]
+        let (doc, selection, _) =
+            rope_with_selections_and_expectations(
+                "[some]\n(chars)xx\n(newline)",
+                "      \n       ^ \n      ^  "
+            );
+
         assert_eq!(
-            get_surround_pos(slice, &selection, Some('('), 1),
+            get_surround_pos(doc.slice(..), &selection, Some('('), 1),
             Err(Error::PairNotFound) // overlapping surround chars
         );
+    }
 
-        let selection =
-            Selection::new(SmallVec::from_slice(&[Range::point(2), Range::point(3)]), 0);
-        // cursor on s[o][m]e
+    #[test]
+    fn test_get_surround_pos_bail_cursor_overlap() {
+        #[rustfmt::skip]
+        let (doc, selection, _) =
+            rope_with_selections_and_expectations(
+                "[some]\n(chars)xx\n(newline)",
+                "  ^^  \n         \n         "
+            );
+
         assert_eq!(
-            get_surround_pos(slice, &selection, Some('['), 1),
+            get_surround_pos(doc.slice(..), &selection, Some('['), 1),
             Err(Error::CursorOverlap)
         );
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_quote_success() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations(
+                "some 'quoted text' on this 'line'\n'and this one'",
+                "     _        ^  _               \n              "
+            );
+
+        assert_eq!(2, expectations.len());
+        assert_eq!(
+            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 1)
+                .expect("find should succeed"),
+            (expectations[0], expectations[1])
+        )
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_nested_quote_success() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations(
+                "some 'nested 'quoted' text' on this 'line'\n'and this one'",
+                "     _           ^        _               \n              "
+            );
+
+        assert_eq!(2, expectations.len());
+        assert_eq!(
+            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 2)
+                .expect("find should succeed"),
+            (expectations[0], expectations[1])
+        )
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_inside_quote_ambiguous() {
+        #[rustfmt::skip]
+        let (doc, selection, _) =
+            rope_with_selections_and_expectations(
+                "some 'nested 'quoted' text' on this 'line'\n'and this one'",
+                "                    ^                     \n              "
+            );
+
+        assert_eq!(
+            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 1),
+            Err(Error::CursorOnAmbiguousPair)
+        )
+    }
+
+    // Create a Rope and a matching Selection using a specification language.
+    // ^ is a single-point selection.
+    // _ is an expected index. These are returned as a Vec<usize> for use in assertions.
+    fn rope_with_selections_and_expectations(
+        text: &str,
+        spec: &str,
+    ) -> (Rope, Selection, Vec<usize>) {
+        if text.len() != spec.len() {
+            panic!("specification must match text length -- are newlines aligned?");
+        }
+
+        let rope = Rope::from(text);
+
+        let selections: SmallVec<[Range; 1]> = spec
+            .match_indices('^')
+            .map(|(i, _)| Range::point(i))
+            .collect();
+
+        let expectations: Vec<usize> = spec.match_indices('_').map(|(i, _)| i).collect();
+
+        (rope, Selection::new(selections, 0), expectations)
     }
 }

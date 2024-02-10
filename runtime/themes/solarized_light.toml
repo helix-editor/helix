@@ -42,6 +42,7 @@
 "ui.background" = { bg = "base03" }
 
 "ui.virtual.whitespace" = { fg = "base01" }
+"ui.virtual.inlay-hint" = { fg = "base01", modifiers = ["italic"] }
 
 # 行号栏
 # line number column

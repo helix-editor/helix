@@ -12,6 +12,8 @@
 "ui.virtual.ruler" = { bg = "acme_bar_bg" }
 "ui.cursor.match" = {bg="acme_bar_bg"}
 "ui.cursor" = {bg="cursor", fg="white"}
+"ui.debug" = {fg="orange"}
+"ui.highlight.frameline" = {bg="#da8581"}
 "string" = "red"
 "comment" = "green"
 "ui.help" = {fg="black", bg="acme_bg"}

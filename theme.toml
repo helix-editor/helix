@@ -69,7 +69,9 @@ label = "honey"
 "ui.cursor" = { modifiers = ["reversed"] }
 "ui.cursorline.primary" = { bg = "bossanova" }
 "ui.highlight" = { bg = "bossanova" }
-
+"ui.highlight.frameline" = { bg = "#634450" }
+"ui.debug" = { fg = "#634450" }
+"ui.debug.breakpoint" = { fg = "apricot" }
 "ui.menu" = { fg = "lavender", bg = "revolver" }
 "ui.menu.selected" = { fg = "revolver", bg = "white" }
 "ui.menu.scroll" = { fg = "lavender", bg = "comet" }

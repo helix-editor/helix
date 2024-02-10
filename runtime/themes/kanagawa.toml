@@ -14,9 +14,11 @@
 "ui.linenr" = { fg = "sumiInk4" }
 "ui.linenr.selected" = { fg = "roninYellow" }
 
+"ui.virtual" = "sumiInk4"
 "ui.virtual.ruler" = { bg = "sumiInk2" }
-"ui.virtual.whitespace" = "waveBlue1"
-"ui.virtual.indent-guide" = "sumiInk4"
+"ui.virtual.inlay-hint" = "fujiGray"
+"ui.virtual.inlay-hint.parameter" = { fg = "carpYellow", modifiers = ["dim"] }
+"ui.virtual.inlay-hint.type" = { fg = "waveAqua2", modifiers = ["dim"] }
 
 "ui.statusline" = { fg = "oldWhite", bg = "sumiInk0" }
 "ui.statusline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }
@@ -24,8 +26,9 @@
 "ui.statusline.insert" = { fg = "sumiInk0", bg = "autumnGreen", modifiers = ["bold"] }
 "ui.statusline.select" = { fg = "sumiInk0", bg = "oniViolet", modifiers = ["bold"] }
 
-"ui.bufferline" = { fg = "oldWhite", bg = "sumiInk0" }
-"ui.bufferline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }
+"ui.bufferline" = { fg = "fujiGray", bg = "sumiInk0" }
+"ui.bufferline.active" = { fg = "oldWhite", bg = "sumiInk0" }
+"ui.bufferline.background" = { bg = "sumiInk0" }
 
 "ui.popup" = { fg = "fujiWhite", bg = "sumiInk0" }
 "ui.window" = { fg = "sumiInk0" }
@@ -33,14 +36,16 @@
 "ui.text" = "fujiWhite"
 "ui.text.focus" = { fg = "fujiWhite", bg = "waveBlue1", modifiers = ["bold"] }
 
-"ui.cursor" = { fg = "waveBlue1", bg = "fujiWhite"}
-"ui.cursor.primary" = { fg = "waveBlue1", bg = "seaFoam" }
-"ui.cursor.match" = { fg = "seaFoam", modifiers = ["bold"] }
+"ui.cursor" = { fg = "waveBlue1", bg = "waveAqua2"}
+"ui.cursor.primary" = { fg = "waveBlue1", bg = "fujiWhite" }
+"ui.cursor.match" = { fg = "waveRed", modifiers = ["bold"] }
 "ui.highlight" = { fg = "fujiWhite", bg = "waveBlue2" }
-"ui.menu" = { fg = "fujiWhite", bg = "sumiInk0" }
-"ui.menu.selected" = { fg = "fujiWhite", bg = "waveBlue1", modifiers = ["bold"] }
+"ui.menu" = { fg = "fujiWhite", bg = "waveBlue1" }
+"ui.menu.selected" = { fg = "fujiWhite", bg = "waveBlue2", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "oldWhite", bg = "waveBlue1" }
 
 "ui.cursorline.primary" = { bg = "sumiInk3"}
+"ui.cursorcolumn.primary" = { bg = "sumiInk3" }
 
 "diagnostic.error" = { underline = { color = "samuraiRed", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "roninYellow", style = "curl" } }
@@ -58,12 +63,16 @@ hint = "dragonBlue"
 "diff.delta" = "autumnYellow"
 
 ## Syntax highlighting
+"attribute" = "waveRed"
 "type" = "waveAqua2"
+"constructor" = "springBlue"
 "constant" = "surimiOrange"
 "constant.numeric" = "sakuraPink"
 "constant.character.escape" = "springBlue"
 "string" = "springGreen"
 "string.regexp" = "boatYellow2"
+"string.special.url" = "springBlue"
+"string.special.symbol" = "oniViolet"
 "comment" = "fujiGray"
 "variable" = "fujiWhite"
 "variable.builtin" = "waveRed"
@@ -71,37 +80,36 @@ hint = "dragonBlue"
 "variable.other.member" = "carpYellow"
 "label" = "springBlue"
 "punctuation" = "springViolet2"
-"punctuation.delimiter" = "springViolet2"
-"punctuation.bracket" = "springViolet2"
 "keyword" = "oniViolet"
+"keyword.control.return" = "peachRed"
+"keyword.control.exception" = "peachRed"
 "keyword.directive" = "peachRed"
 "operator" = "boatYellow2"
 "function" = "crystalBlue"
-"function.builtin" = "peachRed"
+"function.builtin" = "springBlue"
 "function.macro" = "waveRed"
-"tag" = "springBlue"
+"tag" = "waveAqua2"
 "namespace" = "surimiOrange"
-"attribute" = "peachRed"
-"constructor" = "springBlue"
-"module" = "waveAqua2"
 "special" = "peachRed"
 
 ## Markup modifiers
-"markup.heading.marker" = "fujiGray"
+"markup.heading.marker" = "springViolet2"
 "markup.heading.1" = { fg = "surimiOrange", modifiers = ["bold"] }
 "markup.heading.2" = { fg = "carpYellow", modifiers = ["bold"] }
 "markup.heading.3" = { fg = "waveAqua2", modifiers = ["bold"] }
-"markup.heading.4" = { fg = "springGreen", modifiers = ["bold"] }
-"markup.heading.5" = { fg = "waveRed", modifiers = ["bold"] }
-"markup.heading.6" = { fg = "autumnRed", modifiers = ["bold"] }
-"markup.list" = "oniViolet"
+"markup.heading.4" = { fg = "lightBlue", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "oniViolet", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "springViolet1", modifiers = ["bold"] }
+"markup.list.numbered" = "sakuraPink"
+"markup.list.unnumbered" = "waveRed"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.link.url" = { fg = "springBlue", modifiers = ["underlined"] }
 "markup.link.text" = "crystalBlue"
-"markup.quote" = "seaFoam"
-"markup.raw" = "seaFoam"
+"markup.link.url" = { fg = "springBlue", underline.style = "line" }
+"markup.link.label" = "surimiOrange"
+"markup.quote" = "springViolet1"
+"markup.raw" = "springGreen"
 
 [palette]
 seaFoam       = "#C7CCD1" # custom lighter foreground

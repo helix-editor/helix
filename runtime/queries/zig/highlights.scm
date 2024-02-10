@@ -14,7 +14,7 @@
     field_access: (IDENTIFIER)
     parameter: (IDENTIFIER)
   ] @type
-  (#match? @type "^[A-Z]([a-z]+[A-Za-z0-9]*)*$")
+  (#match? @type "^[A-Z]([a-z]+[A-Za-z0-9]*)+$")
 )
 
 ;; assume camelCase is a function
@@ -122,8 +122,11 @@ field_constant: (IDENTIFIER) @constant
 ] @keyword.operator
 
 [
-  "struct"
   "enum"
+] @type.enum
+
+[
+  "struct"
   "union"
   "packed"
   "opaque"

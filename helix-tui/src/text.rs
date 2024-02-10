@@ -453,10 +453,12 @@ impl<'a> From<&Text<'a>> for String {
         let mut output = String::with_capacity(size);
 
         for spans in &text.lines {
+            if !output.is_empty() {
+                output.push('\n');
+            }
             for span in &spans.0 {
                 output.push_str(&span.content);
             }
-            output.push('\n');
         }
         output
     }
