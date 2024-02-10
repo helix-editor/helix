@@ -770,12 +770,6 @@ pub fn split_on_matches(
     let mut result = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
-        // Special case: zero-width selection.
-        if sel.from() == sel.to() {
-            result.push(*sel);
-            continue;
-        }
-
         // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
         let fragment = sel.fragment(text);
 
@@ -789,11 +783,15 @@ pub fn split_on_matches(
         for mat in regex.find_iter(&fragment) {
             // TODO: retain range direction
             let end = text.byte_to_char(start_byte + mat.start());
-            result.push(Range::new(start, end));
+            let range = Range::new(start, end);
+            // Don't add a zero-width range if a match is at the start of selection
+            if range != Range::point(sel.from()) {
+                result.push(range);
+            }
             start = text.byte_to_char(start_byte + mat.end());
         }
 
-        if start < sel_end {
+        if start <= sel_end {
             result.push(Range::new(start, sel_end));
         }
     }
@@ -1185,25 +1183,22 @@ mod test {
                 // TODO: rather than this behavior, maybe we want it
                 // to be based on which side is the anchor?
                 //
-                // We get a leading zero-width range when there's
-                // a leading match because ranges are inclusive on
-                // the left.  Imagine, for example, if the entire
-                // selection range were matched: you'd still want
-                // at least one range to remain after the split.
-                Range::new(0, 0),
+                // Ranges returned are exclusive on the left and inclusive on the right. Logic is
+                // as follows: Continue down the string until a match is found or the end is
+                // reached, this point will be the anchor for the current range. The head of
+                // the previous range is the start of the current match. Any anchors should
+                // come directly after a match
                 Range::new(1, 5),
                 Range::new(6, 9),
                 Range::new(11, 13),
                 Range::new(16, 19),
-                // In contrast to the comment above, there is no
-                // _trailing_ zero-width range despite the trailing
-                // match, because ranges are exclusive on the right.
+                Range::new(20, 20),
             ]
         );
 
         assert_eq!(
             result.fragments(text.slice(..)).collect::<Vec<_>>(),
-            &["", "abcd", "efg", "rs", "xyz"]
+            &["abcd", "efg", "rs", "xyz", ""]
         );
     }
 
