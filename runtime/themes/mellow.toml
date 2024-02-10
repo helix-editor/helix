@@ -1,0 +1,143 @@
+# Author : Rohit K Viswanath <kvrohit@gmail.com>
+# Theme: Mellow
+
+"attribute" = { fg = "blue", modifiers = ["italic"] }
+
+"keyword" = "blue"
+"keyword.control.conditional" = { fg = "blue", modifiers = ["italic"] }
+"keyword.directive" = "magenta" # -- preprocessor comments (#if in C)
+
+"namespace" = { fg = "cyan", modifiers = ["italic"] }
+
+"punctuation" = "gray06"
+"punctuation.delimiter" = "gray06"
+
+"operator" = "yellow"
+"special" = "yellow"
+
+"variable" = "fg"
+"variable.builtin" = "bright_blue"
+"variable.parameter" = "cyan"
+"variable.other.member" = "white"
+
+"type" = "bright_blue"
+"type.builtin" = "magenta"
+"type.enum.variant" = "magenta"
+
+"constructor" = "yellow"
+
+"function" = "white"
+"function.macro" = "bright_cyan"
+"function.builtin" = "bright_blue"
+
+"tag" = "cyan"
+"comment" = { fg = "gray05", modifiers = ["italic"] }
+
+"string" = "green"
+"string.regexp" = "green"
+"string.special" = "yellow"
+
+"constant" = "cyan"
+"constant.builtin" = "yellow"
+"constant.numeric" = "magenta"
+"constant.character.escape" = "cyan"
+
+# used for lifetimes
+"label" = "yellow"
+
+"markup.heading.marker" = { fg = "gray06" }
+"markup.heading" = { fg = "bright_blue", modifiers = ["bold"] }
+"markup.list" = "gray06"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "green", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "blue", modifiers = ["italic"] }
+"markup.raw" = "yellow"
+
+"diff.plus" = "bright_green"
+"diff.minus" = "bright_red"
+"diff.delta" = "bright_blue"
+
+"ui.background" = { bg = "bg" }
+"ui.background.separator" = { fg = "fg" }
+
+"ui.linenr" = { fg = "gray04" }
+"ui.linenr.selected" = { fg = "fg" }
+
+"ui.statusline" = { fg = "fg", bg = "gray01" }
+"ui.statusline.inactive" = { fg = "fg", bg = "gray01", modifiers = ["dim"] }
+"ui.statusline.normal" = { fg = "bg", bg = "cyan", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "bg", bg = "blue", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "bg", bg = "magenta", modifiers = ["bold"] }
+
+"ui.popup" = { bg = "gray01" }
+"ui.window" = { fg = "gray02" }
+"ui.help" = { bg = "gray01", fg = "white" }
+
+"ui.text" = { fg = "fg" }
+"ui.text.focus" = { fg = "fg" }
+
+"ui.virtual" = { fg = "gray02" }
+"ui.virtual.indent-guide" = { fg = "gray02" }
+"ui.virtual.inlay-hint" = { fg = "gray04" }
+
+"ui.selection" = { bg = "gray03" }
+"ui.selection.primary" = { bg = "gray03" }
+
+"ui.cursor" = { bg = "gray04" }
+"ui.cursor.match" = { fg = "yellow", modifiers = ["bold", "underlined"] }
+"ui.cursorline.primary" = { bg = "gray01" }
+
+"ui.highlight" = { bg = "gray02" }
+
+"ui.menu" = { fg = "white", bg = "gray01" }
+"ui.menu.selected" = { fg = "bright_white", bg = "gray03" }
+"ui.menu.scroll" = { fg = "gray04", bg = "gray01" }
+
+"diagnostic.warning" = { underline = { color = "bright_yellow", style = "curl" } }
+"diagnostic.error" = { underline = { color = "bright_red", style = "curl" } }
+"diagnostic.info" = { underline = { color = "bright_blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "bright_cyan", style = "curl" } }
+
+warning = "bright_yellow"
+error = "bright_red"
+info = "bright_blue"
+hint = "bright_cyan"
+
+[palette]
+bg = "#161617"
+fg = "#c9c7cd"
+bg_dark = "#131314"
+
+black = "#27272a"
+bright_black = "#353539"
+
+red = "#f5a191"
+bright_red = "#ffae9f"
+
+green = "#90b99f"
+bright_green = "#9dc6ac"
+
+yellow = "#e6b99d"
+bright_yellow = "#f0c5a9"
+
+blue = "#aca1cf"
+bright_blue = "#b9aeda"
+
+magenta = "#e29eca"
+bright_magenta = "#ecaad6"
+
+cyan = "#ea83a5"
+bright_cyan = "#f591b2"
+
+white = "#c1c0d4"
+bright_white = "#cac9dd"
+
+gray01 = "#1b1b1d"
+gray02 = "#2a2a2d"
+gray03 = "#3e3e43"
+gray04 = "#57575f"
+gray05 = "#757581"
+gray06 = "#9998a8"
+gray07 = "#c1c0d4"

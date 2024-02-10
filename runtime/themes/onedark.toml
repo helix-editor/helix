@@ -1,5 +1,6 @@
 # Author : Gokul Soumya <gokulps15@gmail.com>
 
+"tag" = { fg = "red" }
 "attribute" = { fg = "yellow" }
 "comment" = { fg = "light-gray", modifiers = ["italic"] }
 "constant" = { fg = "cyan" }
@@ -30,6 +31,7 @@
 "markup.raw.inline" = { fg = "green" }
 "markup.bold" = { fg = "gold", modifiers = ["bold"] }
 "markup.italic" = { fg = "purple", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.list" = { fg = "red" }
 "markup.quote" = { fg = "yellow" }
 "markup.link.url" = { fg = "cyan", modifiers = ["underlined"]}
@@ -53,23 +55,31 @@
 "ui.virtual.indent-guide" = { fg = "faint-gray" }
 "ui.virtual.whitespace" = { fg = "light-gray" }
 "ui.virtual.ruler" = { bg = "gray" }
+"ui.virtual.inlay-hint" = { fg = "light-gray" }
 
 "ui.cursor" = { fg = "white", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
 "ui.cursor.match" = { fg = "blue", modifiers = ["underlined"]}
 
-"ui.selection" = { bg = "light-gray" }
+"ui.selection" = { bg = "faint-gray" }
 "ui.selection.primary" = { bg = "gray" }
 "ui.cursorline.primary" = { bg = "light-black" }
+
+"ui.highlight" = { bg = "gray" }
+"ui.highlight.frameline" = { bg = "#97202a" }
 
 "ui.linenr" = { fg = "linenr" }
 "ui.linenr.selected" = { fg = "white" }
 
 "ui.statusline" = { fg = "white", bg = "light-black" }
 "ui.statusline.inactive" = { fg = "light-gray", bg = "light-black" }
-"ui.statusline.normal" = { fg = "light-black", bg = "blue" }
-"ui.statusline.insert" = { fg = "light-black", bg = "green" }
-"ui.statusline.select" = { fg = "light-black", bg = "purple" }
+"ui.statusline.normal" = { fg = "light-black", bg = "blue", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "light-black", bg = "green", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "light-black", bg = "purple", modifiers = ["bold"] }
+
+"ui.bufferline" = { fg = "light-gray", bg = "light-black" }
+"ui.bufferline.active" = { fg = "light-black", bg = "blue", underline = { color = "light-black", style = "line" } }
+"ui.bufferline.background" = { bg = "light-black" }
 
 "ui.text" = { fg = "white" }
 "ui.text.focus" = { fg = "white", bg = "light-black", modifiers = ["bold"] }
@@ -80,6 +90,8 @@
 "ui.menu" = { fg = "white", bg = "gray" }
 "ui.menu.selected" = { fg = "black", bg = "blue" }
 "ui.menu.scroll" = { fg = "white", bg = "light-gray" }
+
+"ui.debug" = { fg = "red" }
 
 [palette]
 

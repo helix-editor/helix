@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 // https://www.jsonrpc.org/specification#error_object
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ErrorCode {
     ParseError,
     InvalidRequest,
@@ -68,7 +68,7 @@ impl Serialize for ErrorCode {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Error {
     pub code: ErrorCode,
     pub message: String,
@@ -100,7 +100,7 @@ impl std::error::Error for Error {}
 // https://www.jsonrpc.org/specification#request_object
 
 /// Request ID
-#[derive(Debug, PartialEq, Clone, Hash, Eq, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Id {
     Null,
@@ -108,8 +108,18 @@ pub enum Id {
     Str(String),
 }
 
+impl std::fmt::Display for Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Id::Null => f.write_str("null"),
+            Id::Num(num) => write!(f, "{}", num),
+            Id::Str(string) => f.write_str(string),
+        }
+    }
+}
+
 /// Protocol Version
-#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Version {
     V2,
 }
@@ -153,7 +163,7 @@ impl<'de> Deserialize<'de> for Version {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Params {
     None,
@@ -170,6 +180,10 @@ impl Params {
         serde_json::from_value(value)
             .map_err(|err| Error::invalid_params(format!("Invalid params: {}.", err)))
     }
+
+    pub fn is_none(&self) -> bool {
+        self == &Params::None
+    }
 }
 
 impl From<Params> for Value {
@@ -182,26 +196,26 @@ impl From<Params> for Value {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct MethodCall {
     pub jsonrpc: Option<Version>,
     pub method: String,
-    #[serde(default = "default_params")]
+    #[serde(default = "default_params", skip_serializing_if = "Params::is_none")]
     pub params: Params,
     pub id: Id,
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Notification {
     pub jsonrpc: Option<Version>,
     pub method: String,
-    #[serde(default = "default_params")]
+    #[serde(default = "default_params", skip_serializing_if = "Params::is_none")]
     pub params: Params,
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Call {
@@ -235,7 +249,7 @@ impl From<Notification> for Call {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Request {
@@ -245,7 +259,7 @@ pub enum Request {
 
 // https://www.jsonrpc.org/specification#response_object
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Success {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jsonrpc: Option<Version>,
@@ -253,7 +267,7 @@ pub struct Success {
     pub id: Id,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub struct Failure {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jsonrpc: Option<Version>,
@@ -264,7 +278,7 @@ pub struct Failure {
 // Note that failure comes first because we're not using
 // #[serde(deny_unknown_field)]: we want a request that contains
 // both `result` and `error` to be a `Failure`.
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Output {
     Failure(Failure),
@@ -280,7 +294,7 @@ impl From<Output> for Result<Value, Error> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Response {
     Single(Output),
@@ -332,6 +346,33 @@ fn notification_serialize() {
         serialized,
         r#"{"jsonrpc":"2.0","method":"update","params":[1,2]}"#
     );
+}
+
+#[test]
+fn serialize_skip_none_params() {
+    use serde_json;
+
+    let m = MethodCall {
+        jsonrpc: Some(Version::V2),
+        method: "shutdown".to_owned(),
+        params: Params::None,
+        id: Id::Num(1),
+    };
+
+    let serialized = serde_json::to_string(&m).unwrap();
+    assert_eq!(
+        serialized,
+        r#"{"jsonrpc":"2.0","method":"shutdown","id":1}"#
+    );
+
+    let n = Notification {
+        jsonrpc: Some(Version::V2),
+        method: "exit".to_owned(),
+        params: Params::None,
+    };
+
+    let serialized = serde_json::to_string(&n).unwrap();
+    assert_eq!(serialized, r#"{"jsonrpc":"2.0","method":"exit"}"#);
 }
 
 #[test]

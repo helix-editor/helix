@@ -13,13 +13,13 @@
 (marker_annotation
   name: (identifier) @attribute)
 
-"@" @operator
-
 ; Types
 
 (interface_declaration
   name: (identifier) @type)
 (class_declaration
+  name: (identifier) @type)
+(record_declaration
   name: (identifier) @type)
 (enum_declaration
   name: (identifier) @type)
@@ -33,6 +33,8 @@
 
 (constructor_declaration
   name: (identifier) @type)
+(compact_constructor_declaration
+  name: (identifier) @type)
 
 (type_identifier) @type
 
@@ -43,6 +45,9 @@
   (floating_point_type)
   (void_type)
 ] @type.builtin
+
+(type_arguments
+  (wildcard "?" @type.builtin))
 
 ; Variables
 
@@ -59,6 +64,7 @@
   (hex_integer_literal)
   (decimal_integer_literal)
   (octal_integer_literal)
+  (binary_integer_literal)
 ] @constant.numeric.integer
 
 [
@@ -67,7 +73,11 @@
 ] @constant.numeric.float
 
 (character_literal) @constant.character
-(string_literal) @string
+
+[
+  (string_literal)
+  (text_block)
+] @string
 
 [
   (true)
@@ -75,7 +85,86 @@
   (null_literal)
 ] @constant.builtin
 
-(comment) @comment
+(line_comment) @comment
+(block_comment) @comment
+
+; Punctuation
+
+[
+  "::"
+  "."
+  ";"
+  ","
+] @punctuation.delimiter
+
+[
+  "@"
+  "..."
+] @punctuation.special
+
+[
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket
+
+(type_arguments
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
+
+(type_parameters
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
+
+; Operators
+
+[
+  "="
+  ">"
+  "<"
+  "!"
+  "~"
+  "?"
+  ":"
+  "->"
+  "=="
+  ">="
+  "<="
+  "!="
+  "&&"
+  "||"
+  "++"
+  "--"
+  "+"
+  "-"
+  "*"
+  "/"
+  "&"
+  "|"
+  "^"
+  "%"
+  "<<"
+  ">>"
+  ">>>"
+  "+="
+  "-="
+  "*="
+  "/="
+  "&="
+  "|="
+  "^="
+  "%="
+  "<<="
+  ">>="
+  ">>>="
+] @operator
 
 ; Keywords
 
@@ -104,15 +193,19 @@
   "module"
   "native"
   "new"
+  "non-sealed"
   "open"
   "opens"
   "package"
+  "permits"
   "private"
   "protected"
   "provides"
   "public"
   "requires"
+  "record"
   "return"
+  "sealed"
   "static"
   "strictfp"
   "switch"
@@ -127,4 +220,5 @@
   "volatile"
   "while"
   "with"
+  "yield"
 ] @keyword

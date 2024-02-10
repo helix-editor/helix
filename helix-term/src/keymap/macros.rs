@@ -62,12 +62,11 @@ macro_rules! alt {
     };
 }
 
-/// Macro for defining the root of a `Keymap` object. Example:
+/// Macro for defining a `KeyTrie`. Example:
 ///
 /// ```
 /// # use helix_core::hashmap;
 /// # use helix_term::keymap;
-/// # use helix_term::keymap::Keymap;
 /// let normal_mode = keymap!({ "Normal mode"
 ///     "i" => insert_mode,
 ///     "g" => { "Goto"
@@ -76,12 +75,12 @@ macro_rules! alt {
 ///     },
 ///     "j" | "down" => move_line_down,
 /// });
-/// let keymap = Keymap::new(normal_mode);
+/// let keymap = normal_mode;
 /// ```
 #[macro_export]
 macro_rules! keymap {
     (@trie $cmd:ident) => {
-        $crate::keymap::KeyTrie::Leaf($crate::commands::MappableCommand::$cmd)
+        $crate::keymap::KeyTrie::MappableCommand($crate::commands::MappableCommand::$cmd)
     };
 
     (@trie

@@ -7,6 +7,7 @@
 "ui.linenr.selected" = { fg = "white", bg = "black", modifiers = ["bold"] }
 "ui.selection" = { fg = "black", bg = "blue" }
 "ui.selection.primary" = { fg = "white", bg = "blue" }
+"ui.text.inactive" = { fg = "gray" }
 "comment" = { fg = "gray" }
 "ui.statusline" = { fg = "black", bg = "white" }
 "ui.statusline.inactive" = { fg = "gray", bg = "white" }

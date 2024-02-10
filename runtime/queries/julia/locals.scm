@@ -21,7 +21,7 @@
 (optional_parameter .
   (identifier) @local.definition)
 
-(spread_parameter
+(slurp_parameter
   (identifier) @local.definition)
 
 (function_expression
@@ -33,6 +33,7 @@
 
 [
   (function_definition)
+  (short_function_definition)
   (macro_definition)
 ] @local.scope
 

@@ -41,7 +41,7 @@
 (capture) @label
 
 ((predicate_name) @function
- (#match? @function "^#(eq\\?|match\\?|is\\?|is-not\\?|not-same-line\\?|not-kind-eq\\?|set!|select-adjacent!|strip!)$"))
+ (#any-of? @function "#eq?" "#match?" "#any-of?" "#not-any-of?" "#is?" "#is-not?" "#not-same-line?" "#not-kind-eq?" "#set!" "#select-adjacent!" "#strip!"))
 (predicate_name) @error
 
 (escape_sequence) @constant.character.escape

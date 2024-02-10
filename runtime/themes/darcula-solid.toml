@@ -1,0 +1,16 @@
+# Original source and more info: https://github.com/jesusmgg/darcula-solid-helix
+
+inherits = "darcula"
+
+"ui.background.separator" = { bg = "grey01" }
+"ui.menu.scroll" = { fg = "grey02", bg = "grey00" }
+"ui.popup" = { fg = "grey05", bg = "grey00" }
+"ui.window" = { bg = "grey00" }
+"ui.cursorline.secondary" = { bg = "grey03" }
+
+[palette]
+grey00 = "#101010"
+grey01 = "#1f1f1f"
+grey02 = "#323232"
+grey03 = "#555555"
+grey04 = "#a8a8a8"

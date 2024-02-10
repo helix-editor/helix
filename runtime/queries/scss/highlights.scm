@@ -1,4 +1,4 @@
-(comment) @comment
+[(comment) (single_line_comment)] @comment
 
 "~" @operator
 ">" @operator

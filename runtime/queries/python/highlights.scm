@@ -2,7 +2,7 @@
 
 (dotted_name
   (identifier)* @namespace)
-  
+
 (aliased_import
   alias: (identifier) @namespace)
 
@@ -67,7 +67,7 @@
 (parameters
   (dictionary_splat_pattern ; **kwargs
     (identifier) @variable.parameter))
-    
+
 (lambda_parameters
   (identifier) @variable.parameter)
 
@@ -94,10 +94,10 @@
 ; Variables
 
 ((identifier) @constant
- (#match? @constant "^[A-Z_]{2,}$"))
+ (#match? @constant "^_*[A-Z][A-Z\\d_]*$"))
 
 ((identifier) @type
- (#match? @type "^[A-Z]")) 
+ (#match? @type "^[A-Z]"))
 
 (attribute attribute: (identifier) @variable.other.member)
 (identifier) @variable
@@ -134,14 +134,17 @@
   "//="
   "/="
   "&"
+  "&="
   "%"
   "%="
   "^"
+  "^="
   "+"
   "->"
   "+="
   "<"
   "<<"
+  "<<="
   "<="
   "<>"
   "="
@@ -150,8 +153,11 @@
   ">"
   ">="
   ">>"
+  ">>="
   "|"
+  "|="
   "~"
+  "@="
 ] @operator
 
 [
@@ -168,6 +174,8 @@
   "if"
   "elif"
   "else"
+  "match"
+  "case"
 ] @keyword.control.conditional
 
 [

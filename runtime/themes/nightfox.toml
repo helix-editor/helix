@@ -1,0 +1,188 @@
+# Author: github.com/jhscheer
+#
+# This theme is an adaptation of
+# github.com/EdenEast/nightfox.nvim
+
+
+# INTERFACE
+# These scopes are used for theming the editor interface.
+
+"ui.background" = { bg = "bg1" } # Default background color.
+"ui.window" = { fg = "bg0" } # Window border between splits.
+"ui.gutter" = { fg = "fg3" } # Left gutter for diagnostics and breakpoints.
+
+"ui.text" = { fg = "fg1" } # Default text color.
+"ui.text.focus" = { bg = "sel1", fg = "fg1" } # Selection highlight in buffer-picker or file-picker.
+"ui.text.info" = { fg = "fg2", bg = "sel0" } # Info popup contents (space mode menu).
+
+"ui.cursor" = { bg = "fg3", fg = "bg1" } # Fallback cursor colour, non-primary cursors when there are multiple (shift-c).
+"ui.cursor.primary" = { bg = "fg1", fg = "bg1" } # The primary cursor when there are multiple (shift-c).
+"ui.cursor.match" = { fg = "yellow", modifiers = ["bold"] } # The matching parentheses of that under the cursor.
+
+"ui.selection" = { bg = "bg4" } # All currently selected text.
+"ui.selection.primary" = { bg = "sel1" } # The primary selection when there are multiple.
+"ui.cursorline.primary" = { bg = "bg3" } # The line of the primary cursor (if cursorline is enabled)
+# "ui.cursorline.secondary" = { } #	The lines of any other cursors (if cursorline is enabled)
+# "ui.cursorcolumn.primary" = { } #	The column of the primary cursor (if cursorcolumn is enabled)
+# "ui.cursorcolumn.secondary" = { } #	The columns of any other cursors (if cursorcolumn is enabled)
+
+"ui.linenr" = { fg = "fg3" } # Line numbers.
+"ui.linenr.selected" = { fg = "yellow", modifiers = ["bold"] } # Current line number.
+
+# "ui.virtual" = { } # Namespace for additions to the editing area.
+"ui.virtual.ruler" = { bg = "bg3" } # Vertical rulers (colored columns in editing area).
+"ui.virtual.whitespace" = { fg = "bg3" } # Whitespace markers in editing area.
+"ui.virtual.indent-guide" = { fg = "black" } # Vertical indent width guides
+"ui.virtual.inlay-hint" = { fg = "comment", bg = "bg2" } # Default style for inlay hints of all kinds
+
+"ui.statusline" = { fg = "fg2", bg = "bg0" } # Status line.
+"ui.statusline.inactive" = { fg = "fg3", bg = "bg0" } # Status line in unfocused windows.
+"ui.statusline.normal" = { bg = "blue", fg = "bg0", modifiers = ["bold"] } # Statusline mode during normal mode (only if editor.color-modes is enabled)
+"ui.statusline.insert" = { bg = "green", fg = "bg0", modifiers = ["bold"] } # Statusline mode during insert mode (only if editor.color-modes is enabled)
+"ui.statusline.select" = { bg = "magenta", fg = "bg0", modifiers = ["bold"] } # Statusline mode during select mode (only if editor.color-modes is enabled)
+
+"ui.bufferline" = { fg = "fg3", bg = "bg2", underline = { style = "line" } }
+"ui.bufferline.active" = { fg = "fg2", bg = "bg4" }
+"ui.bufferline.background" = { bg = "bg0" }
+
+"ui.help" = { bg = "sel0", fg = "fg1" } # Description box for commands.
+
+"ui.menu" = { bg = "sel0", fg = "fg1" } # Code and command completion menus.
+"ui.menu.selected" = { bg = "fg3" } # Selected autocomplete item.
+"ui.menu.scroll"	= { fg = "fg3" } # fg sets thumb color, bg sets track color of scrollbar.
+
+"ui.popup" = { bg = "bg0", fg = "fg1" } # Documentation popups (space-k).
+"ui.popup.info" = { bg = "sel0", fg = "fg1" } # Info popups box (space mode menu).
+
+"markup.raw" = { fg = "magenta" } # Code block in Markdown.
+"markup.raw.inline" = { fg = "orange" } # `Inline code block` in Markdown.
+"markup.heading" = { fg = "yellow", modifiers = ["bold"] }
+"markup.list" = { fg = "magenta", modifiers = ["bold"] }
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "pink" }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link" = { fg = "yellow-bright", modifiers = ["bold"] }
+"markup.quote" = { fg = "blue" }
+
+
+# DIAGNOSTICS
+"warning" = { fg = "yellow", bg = "bg1" } # Diagnostics warning (gutter)
+"error" = { fg = "red", bg = "bg1" } # Diagnostics error (gutter)
+"info" = { fg = "blue", bg = "bg1" } # Diagnostics info (gutter)
+"hint" = { fg = "green", bg = "bg1" } # Diagnostics hint (gutter)
+
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } } #	Diagnostics warning (editing area)
+"diagnostic.error" = { underline = { color = "red", style = "curl" } } #	Diagnostics error (editing area)
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } } #	Diagnostics info (editing area)
+"diagnostic.hint" = { underline = { color = "green", style = "curl" } } #	Diagnostics hint (editing area)
+
+
+# SYNTAX HIGHLIGHTING
+# These keys match tree-sitter scopes.
+
+"special" = { fg = "fg2" } # Special symbols e.g `?` in Rust, `...` in Hare.
+"attribute" = { fg = "yellow" } # Class attributes, html tag attributes.
+
+"type" = { fg = "yellow" } # Variable type, like integer or string, including program defined classes, structs etc..
+"type.builtin" = { fg = "cyan-bright" } # Primitive types of the language (string, int, float).
+"type.enum.variant" = { fg = "orange-bright" }
+
+"constructor" = { fg = "magenta" } # Constructor method for a class or struct.
+
+"constant" = { fg = "orange-bright" } # Constant value
+"constant.builtin" = { fg = "orange-bright" } # Special constants like `true`, `false`, `none`, etc.
+"constant.builtin.boolean" = { fg = "orange" } # True or False.
+"constant.character" = { fg = "green" } # Constant of character type.
+"constant.character.escape" = { fg = "yellow-bright", modifiers = ["bold"] } # escape codes like \n.
+"constant.numeric"  = { fg = "orange" } # constant integer or float value.
+
+"string" = { fg = "green" } # String literal.
+"string.regexp" = { fg = "yellow-bright" } # Regular expression literal.
+"string.special" = { fg = "yellow-bright", modifiers = ["bold"] } # Strings containing a path, URL, etc.
+"string.special.url" = { fg = "cyan", modifiers = ["bold"] } # String containing a web URL.
+
+"comment" = { fg = "comment" } # This is a comment.
+"comment.block.documentation" = { fg = "comment", modifiers = ["bold"] } # Doc comments, e.g '///' in rust.
+
+"variable" = { fg = "white" }  # Variable names.
+"variable.builtin" = { fg = "red" } # Language reserved variables: `this`, `self`, `super`, etc.
+"variable.parameter" = { fg = "cyan-bright" } # Function parameters.
+"variable.other.member" = { fg = "fg2" } # Fields of composite data types (e.g. structs, unions).
+
+"label" = { fg = "magenta-bright" } # lifetimes - Loop labels, among other things.
+
+"punctuation" = { fg = "fg2" } # Any punctuation symbol.
+# "punctuation.delimiter" = { fg = "fg2" } # Commas, colons or other delimiter depending on the language.
+# "punctuation.bracket" = { fg = "fg2" } # Parentheses, angle brackets, etc.
+# "punctuation.special" = { fg = "fg2" } # String interpolation brackets
+
+"keyword" = { fg = "magenta" } # Language reserved keywords.
+"keyword.control" = { fg = "pink" } # Control keywords.
+"keyword.control.conditional" = { fg = "magenta-bright" } # `if`, `else`, `elif`.
+"keyword.control.repeat" = { fg = "magenta-bright" } # `for`, `while`, `loop`.
+"keyword.control.import" = { fg = "pink-bright" } # `import`, `export` `use`.
+"keyword.control.return" = { fg = "magenta" } # `return` in most languages.
+"keyword.control.exception" = { fg = "magenta" } # `try`, `catch`, `raise`/`throw` and related.
+"keyword.operator" = { fg = "fg2", modifiers = ["bold"] } # 'or', 'and', 'in'.
+"keyword.directive" = { fg = "pink-bright" } # Preprocessor directives (#if in C...).
+"keyword.function" = { fg = "red" } # The keyword to define a function: 'def', 'fun', 'fn'.
+"keyword.storage" = { fg = "magenta" } # Keywords describing how things are stored
+"keyword.storage.type" = { fg = "magenta" } #  The type of something, class, function, var, let, etc.
+"keyword.storage.modifier" = { fg = "yellow" } # Storage modifiers like static, mut, const, ref, etc.
+
+"operator" = {  fg = "fg2" } # Logical, mathematical, and other operators.
+
+"function" = { fg = "blue-bright" }
+"function.builtin" = { fg = "red" }
+"function.macro" = { fg = "red" }
+# "function.special" = { fg = "blue-bright" } # Preprocessor function in C.
+# "function.method" = { fg = "blue-bright" } # Class / Struct methods.
+
+"tag" = { fg = "blue-bright" } # As in <body> for html, css tags.
+
+"namespace" = { fg = "cyan-bright" } # Namespace or module identifier.
+
+
+# Diff ==============================
+# Version control changes.
+
+"diff.plus" = "green" # Additions.
+"diff.minus" = "red" # Deletions.
+"diff.delta" = "blue" # Modifications.
+"diff.delta.moved" = "cyan" # Renamed or moved files.
+
+# color palette
+[palette]
+black          = "#393b44"
+red            = "#c94f6d"
+red-dim        = "#2f2837"
+green          = "#81b29a"
+green-dim      = "#26343c"
+yellow         = "#dbc074"
+yellow-bright  = "#e0c989"
+blue           = "#719cd6"
+blue-bright    = "#86abdc"
+blue-dim       = "#2f2837"
+magenta        = "#9d79d6"
+magenta-bright = "#baa1e2"
+cyan           = "#63cdcf"
+cyan-bright    = "#7ad4d6"
+cyan-dim       = "#253f4a"
+white          = "#dfdfe0"
+orange         = "#f4a261"
+orange-bright  = "#f6b079"
+pink           = "#d67ad2"
+pink-bright    = "#dc8ed9"
+comment        = "#738091"
+# spec
+bg0            = "#131a24" # Dark bg (status line and float)
+bg1            = "#192330" # Default bg
+bg2            = "#212e3f" # Lighter bg (colorcolm folds)
+bg3            = "#29394f" # Lighter bg (cursor line)
+bg4            = "#39506d" # Conceal, border fg
+fg0            = "#d6d6d7" # Lighter fg
+fg1            = "#cdcecf" # Default fg
+fg2            = "#aeafb0" # Darker fg (status line)
+fg3            = "#71839b" # Darker fg (line numbers, fold columns)
+sel0           = "#2b3b51" # Popup bg, visual selection bg
+sel1           = "#3c5372" # Popup sel bg, search bg

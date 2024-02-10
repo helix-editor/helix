@@ -7,12 +7,21 @@
   (block_comment)
 ] @comment
 
-(((identifier) @constant.builtin) (match? @constant.builtin "^(nothing|missing|Inf|NaN)$"))
-(((identifier) @constant.builtin.boolean) (#eq? @constant.builtin.boolean "true"))
-(((identifier) @constant.builtin.boolean) (#eq? @constant.builtin.boolean "false"))
+(
+  ((identifier) @constant.builtin)
+  (#match? @constant.builtin "^(nothing|missing|undef)$"))
+
+[
+  (true)
+  (false)
+] @constant.builtin.boolean
 
 (integer_literal) @constant.numeric.integer
 (float_literal) @constant.numeric.float
+
+(
+  ((identifier) @constant.numeric.float)
+  (#match? @constant.numeric.float "^((Inf|NaN)(16|32|64)?)$"))
 
 (character_literal) @constant.character
 (escape_sequence) @constant.character.escape
@@ -66,7 +75,7 @@
 (type_parameter_list
   (identifier) @type)
 
-(constrained_parameter
+(constrained_type_parameter
   (identifier) @type)
   
 (subtype_clause
@@ -81,13 +90,32 @@
 (type_argument_list
   (identifier) @type)
 
+(where_clause
+  (identifier) @type)
+
 ; -------------------
 ; Function definition
 ; -------------------
 
 (
   (function_definition
-    name: (identifier) @function)
+    name: [
+      (identifier) @function
+      (scoped_identifier
+        (identifier) @namespace
+        (identifier) @function)
+    ])
+  ; prevent constructors (PascalCase) to be highlighted as functions
+  (#match? @function "^[^A-Z]"))
+
+(
+  (short_function_definition
+    name: [
+      (identifier) @function
+      (scoped_identifier
+        (identifier) @namespace
+        (identifier) @function)
+    ])
   ; prevent constructors (PascalCase) to be highlighted as functions
   (#match? @function "^[^A-Z]"))
 
@@ -101,7 +129,7 @@
 (optional_parameter
   . (identifier) @variable.parameter)
 
-(spread_parameter
+(slurp_parameter
   (identifier) @variable.parameter)
 
 (function_expression
@@ -185,6 +213,7 @@
 
 [
   "abstract"
+  "baremodule"
   "begin"
   "const"
   "do"
@@ -198,6 +227,7 @@
   "return"
   "struct"
   "type"
+  "where"
 ] @keyword
 
 ; TODO: fix this

@@ -1,5 +1,8 @@
 (function_item
-  body: (_) @function.inside) @function.around(closure_expression body: (_) @function.inside) @function.around
+  body: (_) @function.inside) @function.around
+
+(closure_expression
+  body: (_) @function.inside) @function.around
 
 (struct_item
   body: (_) @class.inside) @class.around
@@ -42,7 +45,7 @@
 
 (; #[test]
  (attribute_item
-   (meta_item
+   (attribute
      (identifier) @_test_attribute))
  ; allow other attributes like #[should_panic] and comments
  [

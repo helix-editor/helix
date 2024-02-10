@@ -7,8 +7,9 @@ use crate::{
 use helix_view::graphics::{Rect, Style};
 
 /// Border render type. Defaults to [`BorderType::Plain`].
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum BorderType {
+    #[default]
     Plain,
     Rounded,
     Double,
@@ -23,12 +24,6 @@ impl BorderType {
             Self::Double => line::DOUBLE,
             Self::Thick => line::THICK,
         }
-    }
-}
-
-impl Default for BorderType {
-    fn default() -> BorderType {
-        BorderType::Plain
     }
 }
 
@@ -47,7 +42,7 @@ impl Default for BorderType {
 ///     .border_type(BorderType::Rounded)
 ///     .style(Style::default().bg(Color::Black));
 /// ```
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Block<'a> {
     /// Optional title place on the upper left of the block
     title: Option<Spans<'a>>,
@@ -187,16 +182,8 @@ impl<'a> Widget for Block<'a> {
         }
 
         if let Some(title) = self.title {
-            let lx = if self.borders.intersects(Borders::LEFT) {
-                1
-            } else {
-                0
-            };
-            let rx = if self.borders.intersects(Borders::RIGHT) {
-                1
-            } else {
-                0
-            };
+            let lx = u16::from(self.borders.intersects(Borders::LEFT));
+            let rx = u16::from(self.borders.intersects(Borders::RIGHT));
             let width = area.width.saturating_sub(lx).saturating_sub(rx);
             buf.set_spans(area.left() + lx, area.top(), &title, width);
         }

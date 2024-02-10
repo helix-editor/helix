@@ -27,6 +27,11 @@
 "ui.cursor.match" = { bg = "base4" }
 "ui.cursorline" = { bg = "base1" }
 
+# bufferline, inlay hints
+"ui.bufferline" = { fg = "base6", bg = "base8x0c" }
+"ui.bufferline.active" = { fg = "base8", bg = "base4" }
+"ui.virtual.inlay-hint" = { fg = "base6" }
+
 # comments, nord3 based lighter color
 "comment" = { fg = "base5", modifiers = ["italic"] }
 "ui.linenr" = { fg = "base5" }
@@ -53,7 +58,7 @@
 "constructor" = "blue"
 "function" = "green"
 "function.macro" = { fg = "blue" }
-"function.builtin" = { fg = "cyan" }
+"function.builtin" = { fg = "blue" }
 
 # operator, tags, units, punctuations
 "operator" = "red"
@@ -65,7 +70,7 @@
 "variable.parameter" = "#f59762"
 
 # error
-"error" = { bg = "magenta", fg = "yellow" }
+"error" = { fg = "red", modifiers = ["bold"] }
 
 # annotations, decorators
 "special" = "#f59762"
@@ -87,12 +92,16 @@
 "diff.minus" = "red"
 
 # make diagnostic underlined, to distinguish with selection text.
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.info" = { underline = { color = "base8", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "base8", style = "curl" } }
 
 # markup highlight, no need for `markup.raw` and `markup.list`, make them to be default
 "markup.heading" = "green"
 "markup.bold" = { fg = "orange", modifiers = ["bold"] }
 "markup.italic" = { fg = "orange", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "orange", modifiers = ["underlined"] }
 "markup.link.text" = "yellow"
 "markup.quote" = "green"

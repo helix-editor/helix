@@ -23,26 +23,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
-        with:
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Fetch tree-sitter grammars
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --package=helix-loader --bin=hx-loader
+        run: cargo run --package=helix-loader --bin=hx-loader
 
       - name: Bundle grammars
         run: tar cJf grammars.tar.xz -C runtime/grammars/sources .
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: grammars
           path: grammars.tar.xz
@@ -50,6 +44,16 @@ jobs:
   dist:
     name: Dist
     needs: [fetch-grammars]
+    env:
+      # For some builds, we use cross to test on 32-bit and big-endian
+      # systems.
+      CARGO: cargo
+      # When CARGO is set to CROSS, this is set to `--target matrix.target`.
+      TARGET_FLAGS:
+      # When CARGO is set to CROSS, TARGET_DIR includes matrix.target.
+      TARGET_DIR: ./target
+      # Emit backtraces on panics.
+      RUST_BACKTRACE: 1
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false # don't fail other jobs if one fails
@@ -57,30 +61,31 @@ jobs:
         build: [x86_64-linux, x86_64-macos, x86_64-windows] #, x86_64-win-gnu, win32-msvc
         include:
         - build: x86_64-linux
-          os: ubuntu-20.04
+          os: ubuntu-latest
           rust: stable
           target: x86_64-unknown-linux-gnu
           cross: false
         - build: aarch64-linux
-          os: ubuntu-20.04
+          os: ubuntu-latest
           rust: stable
           target: aarch64-unknown-linux-gnu
           cross: true
-        - build: riscv64-linux
-          os: ubuntu-20.04
-          rust: stable
-          target: riscv64gc-unknown-linux-gnu
-          cross: true
+        # - build: riscv64-linux
+        #   os: ubuntu-latest
+        #   rust: stable
+        #   target: riscv64gc-unknown-linux-gnu
+        #   cross: true
         - build: x86_64-macos
           os: macos-latest
           rust: stable
           target: x86_64-apple-darwin
           cross: false
         - build: x86_64-windows
-          os: windows-2019
+          os: windows-latest
           rust: stable
           target: x86_64-pc-windows-msvc
           cross: false
+        # 23.03: build issues
         - build: aarch64-macos
           os: macos-latest
           rust: stable
@@ -98,10 +103,10 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download grammars
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Move grammars under runtime
         if: "!startsWith(matrix.os, 'windows')"
@@ -109,13 +114,17 @@ jobs:
           mkdir -p runtime/grammars/sources
           tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
 
+      # The rust-toolchain action ignores rust-toolchain.toml files.
+      # Removing this before building with cargo ensures that the rust-toolchain
+      # is considered the same between installation and usage.
+      - name: Remove the rust-toolchain.toml file
+        run: rm rust-toolchain.toml
+
       - name: Install ${{ matrix.rust }} toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.target }}
-          override: true
 
       # Install a pre-release version of Cross
       # TODO: We need to pre-install Cross because we need cross-rs/cross#591 to
@@ -123,15 +132,20 @@ jobs:
       #       0.3.0, which includes cross-rs/cross#591, is released.
       - name: Install Cross
         if: "matrix.cross"
-        run: cargo install cross --git https://github.com/cross-rs/cross.git --rev 47df5c76e7cba682823a0b6aa6d95c17b31ba63a
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross.git --rev 47df5c76e7cba682823a0b6aa6d95c17b31ba63a
+          echo "CARGO=cross" >> $GITHUB_ENV
+        # echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
+        # echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
+
+      - name: Show command used for Cargo
+        run: |
+          echo "cargo command is: ${{ env.CARGO }}"
+          echo "target flag is: ${{ env.TARGET_FLAGS }}"
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
         if: "!matrix.skip_tests"
-        with:
-          use-cross: ${{ matrix.cross }}
-          command: test
-          args: --release --locked --target ${{ matrix.target }} --workspace
+        run: ${{ env.CARGO }} test --release --locked --target ${{ matrix.target }} --workspace
 
       - name: Set profile.release.strip = true
         shell: bash
@@ -142,16 +156,16 @@ jobs:
           EOF
 
       - name: Build release binary
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: ${{ matrix.cross }}
-          command: build
-          args: --release --locked --target ${{ matrix.target }}
+        run: ${{ env.CARGO }} build --release --locked --target ${{ matrix.target }}
 
       - name: Build AppImage
         shell: bash
-        if: matrix.build == 'aarch64-linux' || matrix.build == 'x86_64-linux'
+        if: matrix.build == 'x86_64-linux'
         run: |
+          # Required as of 22.x https://github.com/AppImage/AppImageKit/wiki/FUSE
+          sudo add-apt-repository universe
+          sudo apt install libfuse2
+
           mkdir dist
 
           name=dev
@@ -206,7 +220,7 @@ jobs:
           fi
           cp -r runtime dist
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: bins-${{ matrix.build }}
           path: dist
@@ -217,19 +231,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v3
-
-      - name: Calculate tag name
-        run: |
-          name=dev
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            name=${GITHUB_REF:10}
-          fi
-          echo ::set-output name=val::$name
-          echo TAG=$name >> $GITHUB_ENV
-        id: tagname
+      - uses: actions/download-artifact@v4
 
       - name: Build archive
         shell: bash
@@ -250,8 +254,8 @@ jobs:
               if [[ $platform =~ "windows" ]]; then
                   exe=".exe"
               fi
-              pkgname=helix-$TAG-$platform
-              mkdir $pkgname
+              pkgname=helix-$GITHUB_REF_NAME-$platform
+              mkdir -p $pkgname
               cp $source/LICENSE $source/README.md $pkgname
               mkdir $pkgname/contrib
               cp -r $source/contrib/completion $pkgname/contrib
@@ -259,7 +263,7 @@ jobs:
               mv bins-$platform/hx$exe $pkgname
               chmod +x $pkgname/hx$exe
 
-              if [[ "$platform" = "aarch64-linux" || "$platform" = "x86_64-linux" ]]; then
+              if [[ "$platform" = "x86_64-linux" ]]; then
                   mv bins-$platform/helix-*.AppImage* dist/
               fi
 
@@ -270,7 +274,7 @@ jobs:
               fi
           done
 
-          tar cJf dist/helix-$TAG-source.tar.xz -C $source .
+          tar cJf dist/helix-$GITHUB_REF_NAME-source.tar.xz -C $source .
           mv dist $source/
 
       - name: Upload binaries to release
@@ -280,11 +284,11 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: dist/*
           file_glob: true
-          tag: ${{ steps.tagname.outputs.val }}
+          tag: ${{ github.ref_name }}
           overwrite: true
       
       - name: Upload binaries as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: env.preview == 'true'
         with:
           name: release
