@@ -145,6 +145,7 @@ where
         helix_view::editor::StatusLineElement::FileModificationIndicator => {
             render_file_modification_indicator
         }
+        helix_view::editor::StatusLineElement::ReadOnlyIndicator => render_read_only_indicator,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
@@ -159,6 +160,8 @@ where
         helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
+        helix_view::editor::StatusLineElement::VersionControl => render_version_control,
+        helix_view::editor::StatusLineElement::Register => render_register,
     }
 }
 
@@ -196,15 +199,15 @@ where
     );
 }
 
+// TODO think about handling multiple language servers
 fn render_lsp_spinner<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
+    let language_server = context.doc.language_servers().next();
     write(
         context,
-        context
-            .doc
-            .language_server()
+        language_server
             .and_then(|srv| {
                 context
                     .spinners
@@ -265,7 +268,7 @@ where
             .diagnostics
             .values()
             .flatten()
-            .fold((0, 0), |mut counts, diag| {
+            .fold((0, 0), |mut counts, (diag, _)| {
                 match diag.severity {
                     Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
                     Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
@@ -275,7 +278,7 @@ where
             });
 
     if warnings > 0 || errors > 0 {
-        write(context, format!(" {} ", "W"), None);
+        write(context, " W ".into(), None);
     }
 
     if warnings > 0 {
@@ -441,6 +444,19 @@ where
     write(context, title, None);
 }
 
+fn render_read_only_indicator<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = if context.doc.readonly {
+        " [readonly] "
+    } else {
+        ""
+    }
+    .to_string();
+    write(context, title, None);
+}
+
 fn render_file_base_name<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
@@ -475,4 +491,26 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     write(context, String::from(" "), None);
+}
+
+fn render_version_control<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let head = context
+        .doc
+        .version_control_head()
+        .unwrap_or_default()
+        .to_string();
+
+    write(context, head, None);
+}
+
+fn render_register<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    if let Some(reg) = context.editor.selected_register {
+        write(context, format!(" reg={} ", reg), None)
+    }
 }

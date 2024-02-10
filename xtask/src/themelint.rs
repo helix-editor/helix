@@ -36,6 +36,8 @@ fn get_rules() -> Vec<Require> {
         Require::Difference("ui.statusline.normal", "ui.statusline.select"),
         // Check for editor.cursorline
         Require::Existence(Rule::has_bg("ui.cursorline.primary")),
+        // Check for general ui.virtual (such as inlay-hint)
+        Require::Existence(Rule::has_fg("ui.virtual")),
         // Check for editor.whitespace
         Require::Existence(Rule::has_fg("ui.virtual.whitespace")),
         // Check fir rulers

@@ -5,14 +5,30 @@
 ((((comment) @injection.language) .
   (indented_string_expression (string_fragment) @injection.content))
   (#set! injection.combined))
+((binding
+    (comment) @injection.language
+    expression: (indented_string_expression (string_fragment) @injection.content))
+  (#set! injection.combined))
+
+; Common attribute keys corresponding to Python scripts,
+; such as those for NixOS VM tests in nixpkgs/nixos/tests.
+((binding
+   attrpath: (attrpath (identifier) @_path)
+   expression: (indented_string_expression
+     (string_fragment) @injection.content))
+ (#match? @_path "(^|\\.)testScript$")
+ (#set! injection.language "python")
+ (#set! injection.combined))
 
 ; Common attribute keys corresponding to scripts,
 ; such as those of stdenv.mkDerivation.
 ((binding
    attrpath: (attrpath (identifier) @_path)
-   expression: (indented_string_expression
-     (string_fragment) @injection.content))
- (#match? @_path "(^\\w*Phase|(pre|post)\\w*|(.*\\.)?\\w*([sS]cript|[hH]ook)|(.*\\.)?startup)$")
+   expression: [
+     (indented_string_expression (string_fragment) @injection.content)
+     (binary_expression (indented_string_expression (string_fragment) @injection.content))
+   ])
+ (#match? @_path "(^\\w*Phase|command|(pre|post)\\w*|(.*\\.)?\\w*([sS]cript|[hH]ook)|(.*\\.)?startup)$")
  (#set! injection.language "bash")
  (#set! injection.combined))
 
@@ -150,3 +166,13 @@
 ;  (#match? @_func "(^|\\.)writeFSharp(Bin)?$")
 ;  (#set! injection.language "f-sharp")
 ;  (#set! injection.combined))
+
+((apply_expression
+   function: (apply_expression function: (_) @_func
+     argument: (string_expression (string_fragment) @injection.filename))
+   argument: (indented_string_expression (string_fragment) @injection.content))
+ (#match? @_func "(^|\\.)write(Text|Script(Bin)?)$")
+ (#set! injection.combined))
+
+((indented_string_expression (string_fragment) @injection.shebang @injection.content)
+  (#set! injection.combined))

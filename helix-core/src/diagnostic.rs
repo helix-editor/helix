@@ -35,14 +35,19 @@ pub enum DiagnosticTag {
     Deprecated,
 }
 
-/// Corresponds to [`lsp_types::Diagnostic`](https://docs.rs/lsp-types/0.91.0/lsp_types/struct.Diagnostic.html)
+/// Corresponds to [`lsp_types::Diagnostic`](https://docs.rs/lsp-types/0.94.0/lsp_types/struct.Diagnostic.html)
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
     pub range: Range,
+    // whether this diagnostic ends at the end of(or inside) a word
+    pub ends_at_word: bool,
+    pub starts_at_word: bool,
+    pub zero_width: bool,
     pub line: usize,
     pub message: String,
     pub severity: Option<Severity>,
     pub code: Option<NumberOrString>,
+    pub language_server_id: usize,
     pub tags: Vec<DiagnosticTag>,
     pub source: Option<String>,
     pub data: Option<serde_json::Value>,

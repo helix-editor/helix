@@ -1,37 +1,40 @@
 [package]
 name = "helix-core"
-version = "0.6.0"
-authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
-edition = "2021"
-license = "MPL-2.0"
 description = "Helix editor core editing primitives"
-categories = ["editor"]
-repository = "https://github.com/helix-editor/helix"
-homepage = "https://helix-editor.com"
 include = ["src/**/*", "README.md"]
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [features]
 unicode-lines = ["ropey/unicode_lines"]
 integration = []
 
 [dependencies]
-helix-loader = { version = "0.6", path = "../helix-loader" }
+helix-stdx = { path = "../helix-stdx" }
+helix-loader = { path = "../helix-loader" }
 
-ropey = { version = "1.6.0", default-features = false, features = ["simd"] }
-smallvec = "1.10"
+ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
+smallvec = "1.13"
 smartstring = "1.0.1"
 unicode-segmentation = "1.10"
 unicode-width = "0.1"
 unicode-general-category = "0.6"
 # slab = "0.4.2"
 slotmap = "1.0"
-tree-sitter = "0.20"
-once_cell = "1.17"
+tree-sitter.workspace = true
+once_cell = "1.19"
 arc-swap = "1"
 regex = "1"
-bitflags = "1.3"
-ahash = "0.8.3"
-hashbrown = { version = "0.13.2", features = ["raw"] }
+bitflags = "2.4"
+ahash = "0.8.6"
+hashbrown = { version = "0.14.3", features = ["raw"] }
+dunce = "1.0"
 
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
@@ -44,8 +47,12 @@ encoding_rs = "0.8"
 
 chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
 
-etcetera = "0.4"
+etcetera = "0.8"
 textwrap = "0.16.0"
+
+nucleo.workspace = true
+parking_lot = "0.12"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
+indoc = "2.0.4"

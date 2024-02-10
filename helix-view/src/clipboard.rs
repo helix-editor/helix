@@ -68,14 +68,19 @@ macro_rules! command_provider {
 
 #[cfg(windows)]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    Box::new(provider::WindowsProvider::default())
+    Box::<provider::WindowsProvider>::default()
 }
 
 #[cfg(target_os = "macos")]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    use crate::env::binary_exists;
+    use helix_stdx::env::{binary_exists, env_var_is_set};
 
-    if binary_exists("pbcopy") && binary_exists("pbpaste") {
+    if env_var_is_set("TMUX") && binary_exists("tmux") {
+        command_provider! {
+            paste => "tmux", "save-buffer", "-";
+            copy => "tmux", "load-buffer", "-w", "-";
+        }
+    } else if binary_exists("pbcopy") && binary_exists("pbpaste") {
         command_provider! {
             paste => "pbpaste";
             copy => "pbcopy";
@@ -93,7 +98,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
 
 #[cfg(not(any(windows, target_os = "wasm32", target_os = "macos")))]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    use crate::env::{binary_exists, env_var_is_set};
+    use helix_stdx::env::{binary_exists, env_var_is_set};
     use provider::command::is_exit_success;
     // TODO: support for user-defined provider, probably when we have plugin support by setting a
     // variable?

@@ -1,4 +1,5 @@
 use crate::{backend::Backend, buffer::Buffer};
+use helix_view::editor::Config as EditorConfig;
 use helix_view::graphics::{CursorKind, Rect};
 use std::io;
 
@@ -14,6 +15,19 @@ enum ResizeBehavior {
 pub struct Viewport {
     area: Rect,
     resize_behavior: ResizeBehavior,
+}
+
+#[derive(Debug)]
+pub struct Config {
+    pub enable_mouse_capture: bool,
+}
+
+impl From<EditorConfig> for Config {
+    fn from(config: EditorConfig) -> Self {
+        Self {
+            enable_mouse_capture: config.mouse,
+        }
+    }
 }
 
 impl Viewport {
@@ -51,20 +65,6 @@ where
     viewport: Viewport,
 }
 
-impl<B> Drop for Terminal<B>
-where
-    B: Backend,
-{
-    fn drop(&mut self) {
-        // Attempt to restore the cursor state
-        if self.cursor_kind == CursorKind::Hidden {
-            if let Err(err) = self.show_cursor(CursorKind::Block) {
-                eprintln!("Failed to show the cursor: {}", err);
-            }
-        }
-    }
-}
-
 impl<B> Terminal<B>
 where
     B: Backend,
@@ -96,6 +96,18 @@ where
             cursor_kind: CursorKind::Block,
             viewport: options.viewport,
         })
+    }
+
+    pub fn claim(&mut self, config: Config) -> io::Result<()> {
+        self.backend.claim(config)
+    }
+
+    pub fn reconfigure(&mut self, config: Config) -> io::Result<()> {
+        self.backend.reconfigure(config)
+    }
+
+    pub fn restore(&mut self, config: Config) -> io::Result<()> {
+        self.backend.restore(config)
     }
 
     // /// Get a Frame object which provides a consistent view into the terminal state for rendering.

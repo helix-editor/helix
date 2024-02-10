@@ -32,7 +32,7 @@
 
 (using_declaration ("using" "namespace" (identifier) @namespace))
 (using_declaration ("using" "namespace" (qualified_identifier name: (identifier) @namespace)))
-(namespace_definition name: (identifier) @namespace)
+(namespace_definition name: (namespace_identifier) @namespace)
 (namespace_identifier) @namespace
 
 (qualified_identifier name: (identifier) @type.enum.variant)

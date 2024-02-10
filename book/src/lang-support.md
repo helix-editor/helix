@@ -1,10 +1,10 @@
 # Language Support
 
-The following languages and Language Servers are supported. In order to use
+The following languages and Language Servers are supported. To use
 Language Server features, you must first [install][lsp-install-wiki] the
 appropriate Language Server.
 
-Check the language support in your installed helix version with `hx --health`.
+You can check the language support in your installed helix version with `hx --health`.
 
 Also see the [Language Configuration][lang-config] docs and the [Adding
 Languages][adding-languages] guide for more language configuration information.

@@ -2,7 +2,7 @@ mod client;
 mod transport;
 mod types;
 
-pub use client::Client;
+pub use client::{Client, ConnectionType};
 pub use events::Event;
 pub use transport::{Payload, Response, Transport};
 pub use types::*;
@@ -18,6 +18,8 @@ pub enum Error {
     Timeout(u64),
     #[error("server closed the stream")]
     StreamClosed,
+    #[error(transparent)]
+    ExecutableNotFound(#[from] helix_stdx::env::ExecutableNotFoundError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
