@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use arc_swap::ArcSwap;
-use futures_util::stream::FuturesUnordered;
+use futures_util::stream::FuturesOrdered;
 use helix_core::chars::char_is_word;
 use helix_core::syntax::LanguageServerFeature;
 use helix_event::{
@@ -196,10 +196,10 @@ fn request_completion(
     let trigger_text = text.slice(..cursor);
 
     let mut seen_language_servers = HashSet::new();
-    let mut futures: FuturesUnordered<_> = doc
+    let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::Completion)
         .filter(|ls| seen_language_servers.insert(ls.id()))
-        .map(|ls| {
+        .filter_map(|ls| {
             let language_server_id = ls.id();
             let offset_encoding = ls.offset_encoding();
             let pos = pos_to_lsp_pos(text, cursor, offset_encoding);
@@ -227,8 +227,8 @@ fn request_completion(
                 }
             };
 
-            let completion_response = ls.completion(doc_id, pos, None, context).unwrap();
-            async move {
+            let completion_response = ls.completion(doc_id, pos, None, context)?;
+            Some(async move {
                 let json = completion_response.await?;
                 let response: Option<lsp::CompletionResponse> = serde_json::from_value(json)?;
                 let items = match response {
@@ -248,7 +248,7 @@ fn request_completion(
                 })
                 .collect();
                 anyhow::Ok(items)
-            }
+            })
         })
         .collect();
 
