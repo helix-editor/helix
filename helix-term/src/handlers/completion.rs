@@ -199,7 +199,7 @@ fn request_completion(
     let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::Completion)
         .filter(|ls| seen_language_servers.insert(ls.id()))
-        .filter_map(|ls| {
+        .map(|ls| {
             let language_server_id = ls.id();
             let offset_encoding = ls.offset_encoding();
             let pos = pos_to_lsp_pos(text, cursor, offset_encoding);
@@ -227,8 +227,8 @@ fn request_completion(
                 }
             };
 
-            let completion_response = ls.completion(doc_id, pos, None, context)?;
-            Some(async move {
+            let completion_response = ls.completion(doc_id, pos, None, context).unwrap();
+            async move {
                 let json = completion_response.await?;
                 let response: Option<lsp::CompletionResponse> = serde_json::from_value(json)?;
                 let items = match response {
@@ -248,7 +248,7 @@ fn request_completion(
                 })
                 .collect();
                 anyhow::Ok(items)
-            })
+            }
         })
         .collect();
 
