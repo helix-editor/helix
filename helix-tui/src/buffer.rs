@@ -1,5 +1,5 @@
 use crate::text::{Span, Spans};
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::{line_ending::str_is_line_ending, unicode::width::UnicodeWidthStr};
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -334,6 +334,8 @@ impl Buffer {
         let max_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
         if !truncate_start {
             for (byte_offset, s) in graphemes {
+                // If this is a line break we don't want to smush lines together
+                let s = if str_is_line_ending(s) { " " } else { s };
                 let width = s.width();
                 if width == 0 {
                     continue;
