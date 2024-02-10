@@ -88,9 +88,13 @@ fn read_reg_history(filepath: PathBuf) -> Vec<String> {
 }
 
 pub fn read_command_history() -> Vec<String> {
-    read_reg_history(command_histfile())
+    let mut hist = read_reg_history(command_histfile());
+    hist.reverse();
+    hist
 }
 
 pub fn read_search_history() -> Vec<String> {
-    read_reg_history(search_histfile())
+    let mut hist = read_reg_history(search_histfile());
+    hist.reverse();
+    hist
 }
