@@ -57,10 +57,10 @@ fn find_pair(
     pos_: usize,
     traverse_parents: bool,
 ) -> Option<usize> {
-    let tree = syntax.tree();
     let pos = doc.char_to_byte(pos_);
 
-    let mut node = tree.root_node().descendant_for_byte_range(pos, pos)?;
+    let root = syntax.tree_for_byte_range(pos, pos + 1).root_node();
+    let mut node = root.descendant_for_byte_range(pos, pos + 1)?;
 
     loop {
         if node.is_named() {
@@ -118,7 +118,7 @@ fn find_pair(
         };
         node = parent;
     }
-    let node = tree.root_node().named_descendant_for_byte_range(pos, pos)?;
+    let node = root.named_descendant_for_byte_range(pos, pos + 1)?;
     if node.child_count() != 0 {
         return None;
     }
@@ -141,7 +141,7 @@ fn find_pair(
 #[must_use]
 pub fn find_matching_bracket_plaintext(doc: RopeSlice, cursor_pos: usize) -> Option<usize> {
     // Don't do anything when the cursor is not on top of a bracket.
-    let bracket = doc.char(cursor_pos);
+    let bracket = doc.get_char(cursor_pos)?;
     if !is_valid_bracket(bracket) {
         return None;
     }
@@ -264,6 +264,12 @@ fn as_char(doc: RopeSlice, node: &Node) -> Option<(usize, char)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn find_matching_bracket_empty_file() {
+        let actual = find_matching_bracket_plaintext("".into(), 0);
+        assert_eq!(actual, None);
+    }
 
     #[test]
     fn test_find_matching_bracket_current_line_plaintext() {

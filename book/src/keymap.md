@@ -205,7 +205,7 @@ Jumps to various locations.
 | ----- | -----------                                      | -------                    |
 | `g`   | Go to line number `<n>` else start of file       | `goto_file_start`          |
 | `e`   | Go to the end of the file                        | `goto_last_line`           |
-| `f`   | Go to files in the selection                     | `goto_file`                |
+| `f`   | Go to files in the selections                    | `goto_file`                |
 | `h`   | Go to the start of the line                      | `goto_line_start`          |
 | `l`   | Go to the end of the line                        | `goto_line_end`            |
 | `s`   | Go to first non-whitespace character of the line | `goto_first_nonwhitespace` |
@@ -253,8 +253,8 @@ This layer is similar to Vim keybindings as Kakoune does not support windows.
 | `w`, `Ctrl-w`          | Switch to next window                                | `rotate_view`     |
 | `v`, `Ctrl-v`          | Vertical right split                                 | `vsplit`          |
 | `s`, `Ctrl-s`          | Horizontal bottom split                              | `hsplit`          |
-| `f`                    | Go to files in the selection in horizontal splits    | `goto_file`       |
-| `F`                    | Go to files in the selection in vertical splits      | `goto_file`       |
+| `f`                    | Go to files in the selections in horizontal splits   | `goto_file`       |
+| `F`                    | Go to files in the selections in vertical splits     | `goto_file`       |
 | `h`, `Ctrl-h`, `Left`  | Move to left split                                   | `jump_view_left`  |
 | `j`, `Ctrl-j`, `Down`  | Move to split below                                  | `jump_view_down`  |
 | `k`, `Ctrl-k`, `Up`    | Move to split above                                  | `jump_view_up`    |

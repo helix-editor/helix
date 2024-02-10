@@ -270,7 +270,14 @@ impl Transport {
                         }
                     };
                 }
-                Err(Error::StreamClosed) => {
+                Err(err) => {
+                    if !matches!(err, Error::StreamClosed) {
+                        error!(
+                            "Exiting {} after unexpected error: {err:?}",
+                            &transport.name
+                        );
+                    }
+
                     // Close any outstanding requests.
                     for (id, tx) in transport.pending_requests.lock().await.drain() {
                         match tx.send(Err(Error::StreamClosed)).await {
@@ -298,10 +305,6 @@ impl Transport {
                             error!("err: <- {:?}", err);
                         }
                     }
-                    break;
-                }
-                Err(err) => {
-                    error!("{} err: <- {err:?}", transport.name);
                     break;
                 }
             }
