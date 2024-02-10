@@ -3,7 +3,7 @@ use bincode::{deserialize_from, serialize_into};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},
-    io::{self, BufRead, BufReader, Write},
+    io::{self, BufReader},
     path::PathBuf,
 };
 
@@ -34,11 +34,11 @@ impl FileHistoryEntry {
     }
 }
 
-pub fn push_file_history(entry: FileHistoryEntry) {
+fn push_history<T: Serialize>(filepath: PathBuf, entry: T) {
     let file = OpenOptions::new()
         .append(true)
         .create(true)
-        .open(file_histfile())
+        .open(filepath)
         // TODO: do something about this unwrap
         .unwrap();
 
@@ -46,8 +46,8 @@ pub fn push_file_history(entry: FileHistoryEntry) {
     serialize_into(file, &entry).unwrap();
 }
 
-pub fn read_file_history() -> Vec<FileHistoryEntry> {
-    match File::open(file_histfile()) {
+fn read_history<T: for<'a> Deserialize<'a>>(filepath: PathBuf) -> Vec<T> {
+    match File::open(filepath) {
         Ok(file) => {
             let mut read = BufReader::new(file);
             let mut entries = Vec::new();
@@ -65,45 +65,32 @@ pub fn read_file_history() -> Vec<FileHistoryEntry> {
     }
 }
 
-pub fn push_history(register: char, line: &str) {
+pub fn push_file_history(entry: FileHistoryEntry) {
+    push_history(file_histfile(), entry)
+}
+
+pub fn read_file_history() -> Vec<FileHistoryEntry> {
+    read_history(file_histfile())
+}
+
+pub fn push_reg_history(register: char, line: &str) {
     let filepath = match register {
         ':' => command_histfile(),
         '/' => search_histfile(),
         _ => return,
     };
 
-    let mut file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(filepath)
-        // TODO: do something about this unwrap
-        .unwrap();
-
-    // TODO: do something about this unwrap
-    writeln!(file, "{}", line).unwrap();
+    push_history(filepath, line)
 }
 
-fn read_histfile(filepath: PathBuf) -> Vec<String> {
-    match File::open(filepath) {
-        Ok(file) => {
-            BufReader::new(file)
-                .lines()
-                .collect::<io::Result<Vec<String>>>()
-                // TODO: do something about this unwrap
-                .unwrap()
-        }
-        Err(e) => match e.kind() {
-            io::ErrorKind::NotFound => Vec::new(),
-            // TODO: do something about this panic
-            _ => panic!(),
-        },
-    }
+fn read_reg_history(filepath: PathBuf) -> Vec<String> {
+    read_history(filepath)
 }
 
 pub fn read_command_history() -> Vec<String> {
-    read_histfile(command_histfile())
+    read_reg_history(command_histfile())
 }
 
 pub fn read_search_history() -> Vec<String> {
-    read_histfile(search_histfile())
+    read_reg_history(search_histfile())
 }
