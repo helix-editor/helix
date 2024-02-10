@@ -87,7 +87,7 @@
 "ui.text"                         = { fg    = "foreground"                                                  }
 "ui.text.focus"                   = { fg    = "cyan"                                                        }
 "ui.window"                       = { fg    = "foreground"                                                  }
-"ui.virtual.whitespace"           = { fg    = "current_line"                                                }
+"ui.virtual.whitespace"           = { fg    = "whitespace"                                                  }
 "ui.virtual.wrap"                 = { fg    = "current_line"                                                }
 "ui.virtual.ruler"                = { bg    = "black"                                                       }
 "ui.virtual.indent-guide"         = { fg    = "indent"                                                      }
@@ -133,4 +133,4 @@ green             = "#50fa7b"
 purple            = "#BD93F9" 
 cyan              = "#8be9fd"
 pink              = "#ff79c6"
-
+whitespace        = "#586693"
